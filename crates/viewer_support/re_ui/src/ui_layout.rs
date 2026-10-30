@@ -4,6 +4,7 @@ use egui::text::{LayoutJob, TextWrapping};
 use egui::{NumExt as _, TextWrapMode, WidgetText};
 
 use crate::UiExt as _;
+use crate::egui_ext::ResponseExt as _;
 use crate::syntax_highlighting::SyntaxHighlightedBuilder;
 
 /// Specifies the context in which the UI is used and the constraints it should follow.
@@ -118,10 +119,44 @@ impl UiLayout {
         ui: &mut egui::Ui,
         data: impl Into<SyntaxHighlightedBuilder>,
     ) -> egui::Response {
-        self.data_label_impl(ui, data.into().to_job(ui.style()))
+        let text = self.data_text(ui, data.into().to_job(ui.style()));
+        self.decorate_url(ui, text, true)
     }
 
-    fn decorate_url(self, ui: &mut egui::Ui, mut widget_text: WidgetText) -> egui::Response {
+    /// Like [`Self::data_label`], but shows `details_ui` on hover when the label doesn't show all
+    /// of `data`.
+    ///
+    /// That is the case when `data` [is truncated](SyntaxHighlightedBuilder::is_truncated), or when
+    /// the text is elided to fit the available width. `details_ui` replaces egui's own tooltip for
+    /// elided text. URLs keep their link behavior and never show `details_ui`.
+    pub fn data_label_with_details(
+        self,
+        ui: &mut egui::Ui,
+        data: &SyntaxHighlightedBuilder,
+        details_ui: impl FnOnce(&mut egui::Ui),
+    ) -> egui::Response {
+        let job = data.to_job(ui.style());
+        if extract_standalone_url(&job.text).is_some() {
+            let text = self.data_text(ui, job);
+            return self.decorate_url(ui, text, true);
+        }
+
+        let text = self.data_text(ui, job);
+        let elided = matches!(&text, WidgetText::Galley(galley) if galley.elided);
+        let response = self.decorate_url(ui, text, false);
+        if data.is_truncated() || elided {
+            response.on_scrollable_hover_ui(details_ui)
+        } else {
+            response
+        }
+    }
+
+    fn decorate_url(
+        self,
+        ui: &mut egui::Ui,
+        mut widget_text: WidgetText,
+        show_tooltip_when_elided: bool,
+    ) -> egui::Response {
         ui.sanity_check();
 
         if let WidgetText::Galley(galley) = &mut widget_text
@@ -161,19 +196,29 @@ impl UiLayout {
             }
 
             // This is a general link and should not open a new tab unless desired by the user.
-            return ui.re_hyperlink(widget_text.clone(), stripped, false);
+            let elided = matches!(&widget_text, WidgetText::Galley(galley) if galley.elided);
+            let response = ui.re_hyperlink(widget_text.clone(), stripped, false);
+            return if elided {
+                response.on_hover_text(stripped)
+            } else {
+                response
+            };
         }
-        let response = ui.label(widget_text);
+        let response = ui
+            .add(egui::Label::new(widget_text).show_tooltip_when_elided(show_tooltip_when_elided));
         ui.sanity_check();
         response
     }
 
-    fn data_label_impl(self, ui: &mut egui::Ui, mut layout_job: LayoutJob) -> egui::Response {
+    /// Lay out `layout_job` for this layout.
+    ///
+    /// Returns a galley, except for [`Self::Inline`], where the label must lay out the job itself.
+    fn data_text(self, ui: &egui::Ui, mut layout_job: LayoutJob) -> WidgetText {
         if self == Self::Inline {
             // To correctly allow wrapping in horizontal_wrapped uis, we must let the label itself create the galley
             layout_job.wrap =
                 TextWrapping::from_wrap_mode_and_width(ui.wrap_mode(), ui.available_width());
-            return self.decorate_url(ui, layout_job.into());
+            return layout_job.into();
         }
         let mut wrap_width = ui.available_width();
 
@@ -226,7 +271,7 @@ impl UiLayout {
 
         let galley = ui.fonts_mut(|f| f.layout_job(layout_job)); // We control the text layout; not the label
 
-        self.decorate_url(ui, galley.into())
+        galley.into()
     }
 }
 

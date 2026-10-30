@@ -161,6 +161,18 @@ impl LogSource {
         }
     }
 
+    /// The URL or URI this source streams from, if it streams from one.
+    pub fn uri(&self) -> Option<std::borrow::Cow<'_, str>> {
+        match self {
+            Self::File { path } => Some(format!("file://{}", path.to_string_lossy()).into()),
+            Self::HttpStream { url } => Some(url.as_str().into()),
+            Self::MessageProxy(uri) => Some(uri.to_string().into()),
+            Self::RedapGrpcStream { uri, .. } => Some(uri.to_string().into()),
+
+            Self::Sdk | Self::RrdWebEvent | Self::Stdin | Self::JsChannel { .. } => None,
+        }
+    }
+
     pub fn redap_uri(&self) -> Option<RedapUri> {
         match self {
             Self::RedapGrpcStream { uri, .. } => Some(RedapUri::Dataset(uri.clone())),
@@ -269,7 +281,7 @@ pub(crate) struct Channel {
     /// The sender should call this every time a message is sent.
     ///
     /// This can be used to wake up the receiver thread.
-    waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
+    waker: RwLock<re_async::UiWaker>,
 }
 
 /// Create a new communication channel for [`DataSourceMessage`].

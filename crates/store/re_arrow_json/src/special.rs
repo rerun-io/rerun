@@ -5,7 +5,7 @@ use serde_json::Value;
 
 use re_sdk_types::components::Color;
 use re_sdk_types::datatypes::Uuid;
-use re_sdk_types::reflection::{ComponentReflection, ComponentReflectionMap};
+use re_sdk_types::reflection::{ComponentReflectionMap, ComponentTypeReflection};
 use re_sdk_types::{
     ChunkId, Component as _, ComponentDescriptor, ComponentType, DeserializationError,
     FromArrow as _, RowId, ToArrow as _,
@@ -185,7 +185,7 @@ fn tuids_from_json(
 
 /// Accepts a variant name, or the integer a variant is stored as.
 fn enum_from_json(
-    reflection: &ComponentReflection,
+    reflection: &ComponentTypeReflection,
     instances: &[Value],
 ) -> Result<ArrayRef, ValueFromJsonError> {
     const EXPECTED: &str = "a variant name or a non-negative integer";

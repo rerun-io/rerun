@@ -987,24 +987,6 @@ pub async fn deleting_dataset_deletes_asset_dataset(service: impl RerunCloudServ
     );
 }
 
-/// Register an RRD into the asset dataset, returning the gRPC result without waiting for tasks.
-async fn try_register_into_asset_dataset(
-    service: &impl RerunCloudService,
-    asset_dataset_name: &str,
-    data_sources: Vec<DataSource>,
-) -> tonic::Result<()> {
-    service
-        .register_with_dataset(
-            tonic::Request::new(RegisterWithDatasetRequest {
-                data_sources,
-                on_duplicate: IfDuplicateBehavior::Error as i32,
-            })
-            .with_entry_name(entry_name(asset_dataset_name)),
-        )
-        .await
-        .map(|_| ())
-}
-
 fn rrd_data_source(path: &TempPath) -> DataSource {
     let url = Url::from_file_path(path.as_path()).expect("valid file path");
     DataSourceExt::new_rrd_url(url, None).into()
@@ -1062,8 +1044,11 @@ pub async fn asset_dataset_rejects_temporal_recording(service: impl RerunCloudSe
 
 /// An asset dataset rejects registration once it already holds the maximum number of segments.
 ///
-/// Both servers enforce this synchronously, returning `FailedPrecondition`.
-pub async fn asset_dataset_enforces_segment_limit(service: impl RerunCloudService) {
+/// The request is accepted; the overflowing segment's registration task fails instead, and the
+/// segment is not added.
+pub async fn asset_dataset_enforces_segment_limit(
+    service: impl RerunCloudService,
+) -> anyhow::Result<()> {
     let dataset_name = "dataset_with_asset";
     service.create_dataset_entry_with_name(dataset_name).await;
 
@@ -1087,20 +1072,91 @@ pub async fn asset_dataset_enforces_segment_limit(service: impl RerunCloudServic
     }
 
     let overflow = create_minimal_static_recording(999, "asset_overflow").unwrap();
-    let status = try_register_into_asset_dataset(
-        &service,
-        &asset_dataset_name,
-        vec![rrd_data_source(&overflow)],
-    )
-    .await
-    .expect_err("registering past the segment limit should fail");
+    let request = tonic::Request::new(RegisterWithDatasetRequest {
+        data_sources: vec![rrd_data_source(&overflow)],
+        on_duplicate: IfDuplicateBehavior::Error as i32,
+    })
+    .with_entry_name(entry_name(&asset_dataset_name));
+
+    let task_results = register_and_wait(&service, request).await;
     recordings.push(overflow);
 
-    assert_eq!(status.code(), tonic::Code::FailedPrecondition, "{status}");
-    assert!(
-        status.message().contains("asset dataset"),
-        "the count-limit error should name the asset dataset: {status}"
+    assert_task_failed(&task_results, "would exceed the limit");
+
+    let layers = asset_dataset_layers(&service, &asset_dataset_name).await;
+    assert_eq!(
+        layers.len(),
+        max_segments as usize,
+        "the rejected overflow must not add a segment: {layers:?}"
     );
+
+    Ok(())
+}
+
+/// The segment limit counts segment layers, so a new layer on an existing asset takes a slot
+/// like a new asset does, while re-registering an existing layer takes none.
+pub async fn asset_dataset_segment_limit_counts_layers(
+    service: impl RerunCloudService,
+) -> anyhow::Result<()> {
+    let dataset_name = "dataset_with_asset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let asset_dataset_name = asset_dataset_name(&service, dataset_name).await;
+
+    let max_segments = DatasetKind::Asset
+        .limits()
+        .max_segment_count
+        .expect("asset datasets have a segment limit");
+
+    let mut recordings = Vec::new();
+    for i in 0..max_segments {
+        let path = create_minimal_static_recording(100 + i, &format!("asset_{i}")).unwrap();
+        service
+            .register_with_dataset_name_blocking(&asset_dataset_name, vec![rrd_data_source(&path)])
+            .await;
+        recordings.push(path);
+    }
+
+    // Re-registering an existing layer replaces it and takes no slot.
+    let request = tonic::Request::new(RegisterWithDatasetRequest {
+        data_sources: vec![rrd_data_source(&recordings[0])],
+        on_duplicate: IfDuplicateBehavior::Overwrite as i32,
+    })
+    .with_entry_name(entry_name(&asset_dataset_name));
+    for batch in register_and_wait(&service, request).await {
+        let statuses = QueryTasksDataframe::COLUMN_EXEC_STATUS
+            .extract(&batch)
+            .expect("valid exec_status column");
+        assert!(
+            statuses.iter().all(|status| status == "success"),
+            "re-registering an existing layer must succeed: {statuses:?}"
+        );
+    }
+
+    // A new layer on an existing asset takes a slot, and there is none left.
+    let second_layer = create_minimal_static_recording(999, "asset_0").unwrap();
+    let url = Url::from_file_path(second_layer.as_path()).expect("valid file path");
+    let request = tonic::Request::new(RegisterWithDatasetRequest {
+        data_sources: vec![
+            DataSourceExt::new_rrd_layer("second", url.as_str(), None)
+                .expect("valid url")
+                .into(),
+        ],
+        on_duplicate: IfDuplicateBehavior::Error as i32,
+    })
+    .with_entry_name(entry_name(&asset_dataset_name));
+    let task_results = register_and_wait(&service, request).await;
+    recordings.push(second_layer);
+    assert_task_failed(&task_results, "would exceed the limit");
+
+    let layers = asset_dataset_layers(&service, &asset_dataset_name).await;
+    assert_eq!(
+        layers.len(),
+        max_segments as usize,
+        "the rejected layer must not add a row: {layers:?}"
+    );
+
+    Ok(())
 }
 
 /// Generate `len` bytes that LZ4 cannot shrink, so the on-disk size of a chunk holding them

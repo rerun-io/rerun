@@ -19,7 +19,9 @@ from .column_display_mode import (
 from .column_name import ColumnName, ColumnNameBatch
 from .column_order import ColumnOrder, ColumnOrderArrayLike, ColumnOrderBatch, ColumnOrderLike
 from .column_share import ColumnShare, ColumnShareBatch
+from .column_type import ColumnType, ColumnTypeBatch
 from .component_column_selector import ComponentColumnSelector, ComponentColumnSelectorBatch
+from .component_identifier import ComponentIdentifier, ComponentIdentifierBatch
 from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKindBatch, ContainerKindLike
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
 from .editable import Editable, EditableBatch
@@ -47,17 +49,19 @@ from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
 from .selected_columns import SelectedColumns, SelectedColumnsBatch
+from .sort_by import SortBy, SortByBatch
 from .sql_filter_expression import SqlFilterExpression, SqlFilterExpressionBatch
-from .table_cell_kind import TableCellKind, TableCellKindArrayLike, TableCellKindBatch, TableCellKindLike
 from .table_layout_kind import TableLayoutKind, TableLayoutKindArrayLike, TableLayoutKindBatch, TableLayoutKindLike
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .text_log_column import TextLogColumn, TextLogColumnBatch
 from .time_int import TimeInt, TimeIntBatch
 from .time_range import TimeRange, TimeRangeBatch
 from .timeline_column import TimelineColumn, TimelineColumnBatch
+from .timeline_fraction import TimelineFraction, TimelineFractionBatch
 from .timeline_name import TimelineName, TimelineNameBatch
 from .tooltip_mode import TooltipMode, TooltipModeArrayLike, TooltipModeBatch, TooltipModeLike
 from .view_class import ViewClass, ViewClassBatch
+from .view_density import ViewDensity, ViewDensityArrayLike, ViewDensityBatch, ViewDensityLike
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
 from .view_maximized import ViewMaximized, ViewMaximizedBatch
 from .view_origin import ViewOrigin, ViewOriginBatch
@@ -101,8 +105,12 @@ __all__ = [
     "ColumnOrderLike",
     "ColumnShare",
     "ColumnShareBatch",
+    "ColumnType",
+    "ColumnTypeBatch",
     "ComponentColumnSelector",
     "ComponentColumnSelectorBatch",
+    "ComponentIdentifier",
+    "ComponentIdentifierBatch",
     "ContainerKind",
     "ContainerKindArrayLike",
     "ContainerKindBatch",
@@ -175,12 +183,10 @@ __all__ = [
     "RowShareBatch",
     "SelectedColumns",
     "SelectedColumnsBatch",
+    "SortBy",
+    "SortByBatch",
     "SqlFilterExpression",
     "SqlFilterExpressionBatch",
-    "TableCellKind",
-    "TableCellKindArrayLike",
-    "TableCellKindBatch",
-    "TableCellKindLike",
     "TableLayoutKind",
     "TableLayoutKindArrayLike",
     "TableLayoutKindBatch",
@@ -195,6 +201,8 @@ __all__ = [
     "TimeRangeBatch",
     "TimelineColumn",
     "TimelineColumnBatch",
+    "TimelineFraction",
+    "TimelineFractionBatch",
     "TimelineName",
     "TimelineNameBatch",
     "TooltipMode",
@@ -203,6 +211,10 @@ __all__ = [
     "TooltipModeLike",
     "ViewClass",
     "ViewClassBatch",
+    "ViewDensity",
+    "ViewDensityArrayLike",
+    "ViewDensityBatch",
+    "ViewDensityLike",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",

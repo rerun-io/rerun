@@ -20,6 +20,7 @@ mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
 mod collapsed_id;
+mod command;
 mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
@@ -34,7 +35,6 @@ mod item_collection;
 mod item_counter;
 mod link_button;
 mod maybe_mut_ref;
-pub mod open_url;
 mod query_context;
 mod query_range;
 mod recording_or_table;
@@ -43,6 +43,7 @@ mod selection_state;
 mod storage_context;
 pub mod store_hub;
 mod store_view_context;
+mod syntax_highlighting;
 mod tables;
 mod tensor;
 mod time_control;
@@ -51,12 +52,17 @@ mod undo;
 mod utils;
 mod view;
 mod viewer_context;
+pub mod viewer_url;
 
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;
 mod visitor_flow_control;
 
 pub use re_ui::UiLayout;
+
+/// Reflection shared by the viewer and its visualizers; clones observe the same runtime edits.
+pub type SharedReflection =
+    std::sync::Arc<parking_lot::RwLock<re_types_core::reflection::Reflection>>;
 
 /// Cursor shown when the pointer can move the time cursor.
 pub const MOVE_TIME_CURSOR_ICON: egui::CursorIcon = egui::CursorIcon::ResizeColumn;
@@ -82,6 +88,13 @@ pub use self::cache::{
     VideoStoreSource, VideoStreamCache, VideoStreamProcessingError, filter_blob_removed_events,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
+pub use self::command::{
+    BoundCommand, CommandEnvironment, CommandKind, CommandScope, RecordingCommand,
+    RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
+    RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
+    consume_timeline_shortcut, listen_for_kb_shortcuts, redo_shortcuts, refresh_shortcuts,
+    undo_shortcuts,
+};
 pub use self::command_sender::{
     CommandReceiver, CommandSender, DownloadAction, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender, command_channel,
@@ -91,7 +104,7 @@ pub use self::component_fallbacks::{
 };
 pub use self::component_ui_registry::{
     ComponentUiRegistry, ComponentUiTypes, EditTarget, FallbackComponentUiCallback,
-    TryShowEditUiResult, VariantName,
+    TryShowEditUiResult,
 };
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
@@ -124,6 +137,7 @@ pub use self::selection_state::{
 pub use self::storage_context::StorageContext;
 pub use self::store_hub::{EntityDbUsages, StoreHub};
 pub use self::store_view_context::StoreViewContext;
+pub use self::syntax_highlighting::{InstanceInBrackets, StoreSyntaxHighlighting};
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
@@ -132,21 +146,21 @@ pub use self::time_control::{
     TimeView, time_panel_blueprint_entity_path,
 };
 pub use self::typed_entity_collections::{
-    BufferAndFormatMatch, DatatypeMatch, IndicatedEntities, PerVisualizerInstruction,
+    BufferAndFormatMatch, ComponentMatch, IndicatedEntities, PerVisualizerInstruction,
     PerVisualizerType, PerVisualizerTypeInViewClass, SingleRequiredComponentMatch,
     VisualizableEntities, VisualizableReason,
 };
-pub use self::undo::BlueprintUndoState;
+pub use self::undo::{BlueprintUndoState, is_interacting, on_external_blueprint_edit};
 pub use self::utils::{
     auto_color_egui, auto_color_for_entity_path, level_to_rich_text, video_stream_time_from_query,
     video_timestamp_component_to_video_time,
 };
 pub use self::view::{
-    BlueprintPropertiesUi, BufferAndFormatConstraint, DataResult, IdentifiedViewSystem,
-    MAX_VIEWS_SPAWNED, OptionalViewEntityHighlight, PerSystemEntities, PreviewState,
-    RecommendedMappings, RecommendedView, RecommendedVisualizers, SelectionSection,
-    SelectionSectionUi, SingleRequiredComponentConstraint, SystemExecutionOutput, ViewClass,
-    ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
+    ActivePreview, BlueprintPropertiesUi, BufferAndFormatConstraint, DataResult,
+    IdentifiedViewSystem, MAX_VIEWS_SPAWNED, NoopVisualizer, OptionalViewEntityHighlight,
+    PerSystemEntities, PreviewState, RecommendedMappings, RecommendedView, RecommendedVisualizers,
+    SelectionSection, SelectionSectionUi, SingleRequiredComponentConstraint, SystemExecutionOutput,
+    ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
     ViewClassRegistryError, ViewClassUiOutput, ViewContext, ViewContextCollection,
     ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
     ViewOutlineMasks, ViewQuery, ViewSelectionUi, ViewSpawnHeuristics, ViewState, ViewStateExt,
@@ -208,7 +222,7 @@ pub fn icon_for_container_kind(kind: &egui_tiles::ContainerKind) -> &'static re_
 /// Info given to egui when taking a screenshot.
 ///
 /// Specified what we are screenshotting.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ScreenshotInfo {
     /// What portion of the UI to take a screenshot of (in ui points).
     pub ui_rect: Option<egui::Rect>,
@@ -225,7 +239,7 @@ pub struct ScreenshotInfo {
 }
 
 /// Where to put the screenshot.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug)]
 pub enum ScreenshotTarget {
     /// The screenshot will be copied to the clipboard.
     CopyToClipboard,
@@ -241,7 +255,36 @@ pub enum ScreenshotTarget {
         /// Longest side of the saved image, in pixels.
         /// A larger screenshot is scaled down to fit; `None` applies no limit.
         max_size: Option<u32>,
+
+        /// Called once the file is written, or the screenshot failed.
+        on_done:
+            Option<re_log_channel::UiCallback<Result<(), re_log_channel::SaveScreenshotError>>>,
     },
+
+    /// The screenshot will be encoded as a PNG, and handed to `on_done`.
+    EncodePng {
+        /// Longest side of the image, in pixels.
+        /// A larger screenshot is scaled down to fit; `None` applies no limit.
+        max_size: Option<u32>,
+
+        /// Called with the PNG, or with why the screenshot failed.
+        on_done: re_log_channel::UiCallback<Result<Vec<u8>, re_log_channel::SaveScreenshotError>>,
+    },
+}
+
+impl ScreenshotTarget {
+    /// Tell the caller waiting for this screenshot, if any, that it failed.
+    pub fn report_failure(self, err: re_log_channel::SaveScreenshotError) {
+        match self {
+            Self::SaveToPath { on_done, .. } => {
+                if let Some(on_done) = on_done {
+                    on_done.call(Err(err));
+                }
+            }
+            Self::EncodePng { on_done, .. } => on_done.call(Err(err)),
+            Self::CopyToClipboard | Self::SaveToPathFromFileDialog => {}
+        }
+    }
 }
 
 // ----------------------------------------------------------------------------------------

@@ -1,25 +1,48 @@
 use egui::Role;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, Margin, NumExt as _, Rangef, Rect, StrokeKind,
-    UiBuilder, Widget as _, WidgetInfo, WidgetText, pos2,
+    UiBuilder, WidgetInfo, WidgetText, pos2,
 };
 use egui::{CornerRadius, emath::GuiRounding as _};
 
 use crate::alert::Alert;
 use crate::button::ReButton;
-use crate::list_item::{self, LabelContent, ListItemContentButtonsExt as _};
+use crate::list_item::{self, LabelContent};
 use crate::{ContextExt as _, DesignTokens, Icon, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
+pub static RESIZABLE_CONTAINER_TAG: &str = "rerun_resizable_container";
 
 fn error_label_bg_color(fg_color: Color32) -> Color32 {
     fg_color.gamma_multiply(0.35)
+}
+
+/// Style the scope for radio buttons.
+///
+/// Checkboxes get the same fills from [`crate::checkbox::CheckboxTheme`].
+fn set_radio_button_visuals(ui: &mut egui::Ui) {
+    let tokens = ui.tokens();
+    let widgets = &mut ui.visuals_mut().widgets;
+    for (visuals, fill) in [
+        (&mut widgets.inactive, tokens.control_fill),
+        (&mut widgets.hovered, tokens.control_fill_hovered),
+        (&mut widgets.active, tokens.control_fill_pressed),
+        (&mut widgets.open, tokens.control_fill_hovered),
+    ] {
+        visuals.expansion = 0.0;
+        visuals.bg_fill = fill;
+    }
 }
 
 /// Rerun custom extensions to [`egui::Ui`].
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
+
+    /// A [`re_async::UiWaker`] that requests a repaint of this ui's context.
+    fn ui_waker(&self) -> re_async::UiWaker {
+        self.ui().ctx().ui_waker()
+    }
 
     fn tokens(&self) -> &'static DesignTokens {
         crate::design_tokens_of(self.ui().theme())
@@ -46,7 +69,12 @@ pub trait UiExt {
 
     /// Show an animated loading indicator.
     ///
-    /// `reason` describes why we are loading. In debug builds, it is shown on hover.
+    /// `reason` describes why we are loading. It labels the indicator for screen readers and
+    /// tests, and is shown on hover in debug builds, so it must not be empty.
+    ///
+    /// Only show it while the user is waiting: something is loading, or work is running that the
+    /// user waits for. Never while the app is waiting on the user, e.g. for an answer or a
+    /// confirmation: then nothing is in progress from the user's point of view.
     ///
     /// This will also cause the UI to re-render every frame,
     /// so only use this when you actually have something loading and expect it to finish!
@@ -57,6 +85,11 @@ pub trait UiExt {
 
     /// Like [`Self::loading_indicator`], but as tall as one line of text, so a label can take its
     /// place without changing layout.
+    ///
+    /// `reason` describes why we are loading. It labels the indicator for screen readers and
+    /// tests, and is shown on hover in debug builds, so it must not be empty.
+    ///
+    /// The same rules as for [`Self::loading_indicator`] apply: only while the user is waiting.
     #[doc(alias = "spinner")]
     fn inline_loading_indicator(&mut self, reason: &str) -> egui::Response {
         crate::loading_indicator::inline_loading_indicator_ui(self.ui_mut(), reason)
@@ -248,46 +281,16 @@ pub trait UiExt {
         self.ui_mut().add(ReButton::new(atoms).secondary())
     }
 
-    fn re_checkbox<'a>(
-        &mut self,
-        checked: &'a mut bool,
-        text: impl IntoAtoms<'a>,
-    ) -> egui::Response {
-        self.checkbox_indeterminate(checked, text.into_atoms(), false)
-    }
-
-    #[expect(clippy::disallowed_types)]
-    fn checkbox_indeterminate<'a>(
-        &mut self,
-        checked: &'a mut bool,
-        text: impl IntoAtoms<'a>,
-        indeterminate: bool,
-    ) -> egui::Response {
-        self.ui_mut()
-            .scope(|ui| {
-                ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                ui.visuals_mut().widgets.active.expansion = 0.0;
-                ui.visuals_mut().widgets.open.expansion = 0.0;
-
-                egui::Checkbox::new(checked, text)
-                    .indeterminate(indeterminate)
-                    .ui(ui)
-            })
-            .inner
-    }
-
     #[expect(clippy::disallowed_methods)]
-    fn re_radio_value<Value: PartialEq>(
+    fn re_radio_value<'a, Value: PartialEq>(
         &mut self,
         current_value: &mut Value,
         alternative: Value,
-        text: impl Into<egui::WidgetText>,
+        text: impl IntoAtoms<'a>,
     ) -> egui::Response {
         self.ui_mut()
             .scope(|ui| {
-                ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                ui.visuals_mut().widgets.active.expansion = 0.0;
-                ui.visuals_mut().widgets.open.expansion = 0.0;
+                set_radio_button_visuals(ui);
 
                 ui.radio_value(current_value, alternative, text)
             })
@@ -396,52 +399,25 @@ pub trait UiExt {
 
     /// Static title bar used to separate panels into section.
     ///
-    /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
-    /// set.
-    ///
-    /// Shorthand for [`crate::PanelTitleBar`], which also supports buttons.
+    /// Shorthand for [`crate::PanelTitleBar`].
     fn panel_title_bar(&mut self, label: &str, hover_text: Option<&str>) {
         self.panel_title_bar_with_buttons(label, hover_text, |_ui| {});
     }
 
     /// Static title bar used to separate panels into section, with buttons at its right edge.
     ///
-    /// This title bar is meant to be used in a panel with proper inner margin and clip rectangle
-    /// set.
-    ///
-    /// Shorthand for [`crate::PanelTitleBar`], which also supports buttons after the label.
+    /// Shorthand for [`crate::PanelTitleBar::show_with_right_buttons`].
     fn panel_title_bar_with_buttons<R>(
         &mut self,
         label: &str,
         hover_text: Option<&str>,
         add_right_buttons: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> Option<R> {
-        let tokens = self.tokens();
-        let ui = self.ui_mut();
-        let scope_id = ui.next_auto_id();
-        let mut right_result = None;
-
-        list_item::list_item_scope(ui, scope_id, |ui| {
-            let content = LabelContent::new(tokens.eyebrow_text(ui.style(), label))
-                .with_buttons(|ui| {
-                    right_result = Some(add_right_buttons(ui));
-                })
-                .with_always_show_buttons(true);
-
-            let response = ui
-                .list_item()
-                .interactive(false)
-                .force_background(tokens.section_header_color)
-                .with_height(tokens.section_header_height())
-                .with_content_top_padding(tokens.section_header_top_padding())
-                .show_flat(ui, content);
-
-            if let Some(hover_text) = hover_text {
-                response.on_hover_text(hover_text);
-            }
-        });
-
-        right_result
+    ) -> R {
+        let mut title_bar = crate::PanelTitleBar::new(label);
+        if let Some(hover_text) = hover_text {
+            title_bar = title_bar.hover_text(hover_text);
+        }
+        title_bar.show_with_right_buttons(self.ui_mut(), add_right_buttons)
     }
 
     /// Replacement for [`egui::CollapsingHeader`] that respect our style.
@@ -1141,7 +1117,6 @@ pub trait UiExt {
                                 d.insert_persisted(has_shown_help_id, true);
                             });
 
-                            #[cfg(feature = "analytics")]
                             re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
                         }
                     }
@@ -1211,6 +1186,21 @@ pub trait UiExt {
                 });
             });
         response.response
+    }
+
+    /// Declare that the user can make this content wider, e.g. by dragging a splitter.
+    ///
+    /// List items inside truncate long values to the width they are given, instead of asking for
+    /// the width their content wants.
+    fn resizable_container_scope<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
+        self.ui_mut()
+            .scope_builder(
+                egui::UiBuilder::new().ui_stack_info(
+                    egui::UiStackInfo::default().with_tag_value(RESIZABLE_CONTAINER_TAG, true),
+                ),
+                content,
+            )
+            .inner
     }
 
     /// Use the provided range as full span for the nested content.
@@ -1389,7 +1379,6 @@ pub trait UiExt {
     /// Set the current style for a text field that has invalid content.
     fn style_invalid_field(&mut self) {
         let ui = self.ui_mut();
-        ui.visuals_mut().selection.stroke.color = ui.visuals().error_fg_color;
         ui.visuals_mut().widgets.active.bg_stroke =
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
         ui.visuals_mut().widgets.hovered.bg_stroke =

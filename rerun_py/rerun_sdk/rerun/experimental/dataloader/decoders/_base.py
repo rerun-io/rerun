@@ -238,9 +238,10 @@ class ColumnDecoder(ABC, Generic[_DecodedT_co]):
 
         `True` for stateless columns (images, scalars): each grid slot wants the
         most recent value snapped from the real rows. Keyframe-aware fields use
-        exact range queries instead, regardless of this value. The read is
-        partitioned by this flag so it stays a global query argument per group
-        rather than a per-column one.
+        exact queries covering the decode window, regardless of this value.
+        `TimeAlignedSampling` disables filling for all selected fields.
+        The read is partitioned by this flag so it stays a global query argument
+        per group rather than a per-column one.
         """
         return True
 

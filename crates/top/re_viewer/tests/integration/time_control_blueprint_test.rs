@@ -12,7 +12,7 @@ use re_log_types::{RecordingId, TimePoint, TimeReal};
 use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 use re_sdk_types::blueprint::components::PlayState;
 use re_test_context::TestContext;
-use re_viewer_context::open_url::{OpenUrlOptions, ViewerOpenUrl};
+use re_viewer_context::viewer_url::{OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{TimeControl, TimeControlCommand, time_panel_blueprint_entity_path};
 
 #[test]
@@ -63,13 +63,13 @@ fn opening_url_with_temporal_anchor_pauses_playing_recording() {
     // Create a store.
     let dataset_id = re_log_types::external::re_tuid::Tuid::new();
     let segment_id = RecordingId::random();
-    let url: ViewerOpenUrl = format!(
+    let url: ViewerUrl = format!(
         "rerun+http://localhost:51234/dataset/{dataset_id}?segment_id={segment_id}#when=stable_time@+3.990s"
     )
     .parse()
     .expect("test URL should parse");
     let store_id = match &url {
-        ViewerOpenUrl::RedapDataset(uri) => uri
+        ViewerUrl::RedapDataset(uri) => uri
             .store_id()
             .expect("test URL should name a segment of the dataset"),
         _ => unreachable!("test URL should be a dataset segment"),

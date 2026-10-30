@@ -8,7 +8,7 @@ use re_log_types::{ApplicationId, StoreId, StoreKind};
 use re_sdk::RecordingStreamBuilder;
 use re_sdk_types::ViewClassIdentifier;
 use re_viewer::App;
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _, step_until};
+use re_viewer::viewer_test_utils::{self, step_until};
 use re_viewer_context::ViewClass as _;
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -61,7 +61,7 @@ fn save_source_blueprint(path: &Path) {
 fn app_id(harness: &mut Harness<'_>) -> ApplicationId {
     harness
         .state_mut()
-        .testonly_get_route()
+        .route()
         .app_id()
         .expect("route should have an app id")
         .clone()
@@ -70,7 +70,7 @@ fn app_id(harness: &mut Harness<'_>) -> ApplicationId {
 fn active_blueprint_id(harness: &mut Harness<'_>, app_id: &ApplicationId) -> Option<StoreId> {
     harness
         .state_mut()
-        .testonly_get_store_hub()
+        .store_hub()
         .active_blueprint_id_for_app(app_id)
         .cloned()
 }
@@ -78,7 +78,7 @@ fn active_blueprint_id(harness: &mut Harness<'_>, app_id: &ApplicationId) -> Opt
 fn default_blueprint_id(harness: &mut Harness<'_>, app_id: &ApplicationId) -> Option<StoreId> {
     harness
         .state_mut()
-        .testonly_get_store_hub()
+        .store_hub()
         .default_blueprint_id_for_app(app_id)
         .cloned()
 }

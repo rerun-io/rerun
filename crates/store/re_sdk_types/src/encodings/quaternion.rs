@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -62,10 +59,8 @@ impl ::re_types_core::ToArrow for Quaternion {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::as_array_ref;
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let data0: Vec<_> = data
@@ -104,25 +99,17 @@ impl ::re_types_core::FromArrow for Quaternion {
         err_on_nulls(arrow_data, "rerun.encodings.Quaternion")?;
         Ok({
             let slice = {
-                let arrow_data = arrow_data
-                    .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                let arrow_data_inner = fixed_size_list_values(
+                    arrow_data,
+                    4i32,
+                    || {
                         DataType::FixedSizeList(
                             std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                             4,
                         )
-                    })
-                    .with_context("rerun.encodings.Quaternion#xyzw")?;
-                if arrow_data.value_length() != 4i32 {
-                    return Err(DeserializationError::datatype_mismatch(
-                        DataType::FixedSizeList(
-                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-                            4,
-                        ),
-                        arrow_data.data_type().clone(),
-                    ))
-                    .with_context("rerun.encodings.Quaternion#xyzw");
-                }
-                let arrow_data_inner = &**arrow_data.values();
+                    },
+                    "rerun.encodings.Quaternion#xyzw",
+                )?;
                 bytemuck::try_cast_slice::<_, [f32; 4usize]>(
                     arrow_data_inner
                         .try_cast::<Float32Array>(|| DataType::Float32)

@@ -615,8 +615,8 @@ fn test_interner() {
     let c = interner.intern("Another string");
     assert_eq!(interner.len(), 2);
 
-    assert!(a.hash == b.hash);
-    assert!(a.hash != c.hash);
+    assert_eq!(a.hash, b.hash);
+    assert_ne!(a.hash, c.hash);
 }
 
 #[test]

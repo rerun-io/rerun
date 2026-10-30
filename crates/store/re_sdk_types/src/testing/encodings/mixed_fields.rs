@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -93,10 +90,10 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, serialize_optional_strings, serialize_strings, validity_from_bools,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -145,10 +142,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let validity = validity_from_bools(somes);
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -163,10 +157,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let single_float_optional_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let single_float_optional_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<Float32Type>::new(
                             single_float_optional
                                 .into_iter()
@@ -185,33 +176,14 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let single_string_required_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let single_string_required_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                single_string_required.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in single_string_required.iter().flatten() {
-                                buffer_builder.append_slice(data.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(
-                                    offsets,
-                                    inner_data,
-                                    single_string_required_validity,
-                                )
-                            })
+                            serialize_optional_strings(
+                                single_string_required
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.as_str())),
+                                single_string_required_validity,
+                            )?
                         }
                     },
                     {
@@ -225,33 +197,14 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let single_string_optional_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let single_string_optional_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                single_string_optional.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in single_string_optional.iter().flatten() {
-                                buffer_builder.append_slice(data.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(
-                                    offsets,
-                                    inner_data,
-                                    single_string_optional_validity,
-                                )
-                            })
+                            serialize_optional_strings(
+                                single_string_optional
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.as_str())),
+                                single_string_optional_validity,
+                            )?
                         }
                     },
                     {
@@ -265,10 +218,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let many_floats_optional_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let many_floats_optional_validity = validity_from_bools(somes);
                         {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 many_floats_optional
@@ -305,10 +255,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let many_strings_required_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let many_strings_required_validity = validity_from_bools(somes);
                         {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 many_strings_required
@@ -325,29 +272,12 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
                                 {
-                                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                                    serialize_strings(
                                         many_strings_required_inner_data
                                             .iter()
-                                            .map(|datum| datum.len()),
-                                    );
-
-                                    #[expect(clippy::unwrap_used)]
-                                    let capacity = offsets.last().copied().unwrap() as usize;
-                                    let mut buffer_builder =
-                                        arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                                    for data in &many_strings_required_inner_data {
-                                        buffer_builder.append_slice(data.as_bytes());
-                                    }
-                                    let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    as_array_ref(unsafe {
-                                        StringArray::new_unchecked(
-                                            offsets,
-                                            inner_data,
-                                            many_strings_required_inner_validity,
-                                        )
-                                    })
+                                            .map(|value| value.as_str()),
+                                        many_strings_required_inner_validity,
+                                    )?
                                 },
                                 many_strings_required_validity,
                             )?)
@@ -364,10 +294,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let many_strings_optional_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let many_strings_optional_validity = validity_from_bools(somes);
                         {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 many_strings_optional
@@ -384,29 +311,12 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
                                 {
-                                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                                    serialize_strings(
                                         many_strings_optional_inner_data
                                             .iter()
-                                            .map(|datum| datum.len()),
-                                    );
-
-                                    #[expect(clippy::unwrap_used)]
-                                    let capacity = offsets.last().copied().unwrap() as usize;
-                                    let mut buffer_builder =
-                                        arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                                    for data in &many_strings_optional_inner_data {
-                                        buffer_builder.append_slice(data.as_bytes());
-                                    }
-                                    let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    as_array_ref(unsafe {
-                                        StringArray::new_unchecked(
-                                            offsets,
-                                            inner_data,
-                                            many_strings_optional_inner_validity,
-                                        )
-                                    })
+                                            .map(|value| value.as_str()),
+                                        many_strings_optional_inner_validity,
+                                    )?
                                 },
                                 many_strings_optional_validity,
                             )?)
@@ -421,10 +331,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let flattened_scalar_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let flattened_scalar_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<Float32Type>::new(
                             flattened_scalar
                                 .into_iter()
@@ -443,10 +350,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let almost_flattened_scalar_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let almost_flattened_scalar_validity = validity_from_bools(somes);
                         {
                             let _ = almost_flattened_scalar_validity;
                             crate::testing::encodings::FlattenedScalar::to_arrow_opt(
@@ -465,10 +369,7 @@ impl ::re_types_core::ToArrowOpt for MixedFields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let from_parent_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let from_parent_validity = validity_from_bools(somes);
                         as_array_ref(BooleanArray::new(
                             from_parent
                                 .into_iter()
@@ -502,128 +403,48 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
+                let fields = StructFields::new(
+                    arrow_data,
+                    Self::arrow_data_type,
+                    "rerun.testing.encodings.MixedFields",
+                );
                 let single_float_optional = {
-                    if !arrays_by_name.contains_key("single_float_optional") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "single_float_optional",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["single_float_optional"];
+                    let arrow_data = fields.required("single_float_optional")?;
                     arrow_data
                         .try_cast::<Float32Array>(|| DataType::Float32)
                         .with_context("rerun.testing.encodings.MixedFields#single_float_optional")?
                         .into_iter()
                 };
                 let single_string_required = {
-                    if !arrays_by_name.contains_key("single_string_required") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "single_string_required",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["single_string_required"];
+                    let arrow_data = fields.required("single_string_required")?;
                     {
-                        let arrow_data = arrow_data
-                            .try_cast::<StringArray>(|| DataType::Utf8)
-                            .with_context(
-                                "rerun.testing.encodings.MixedFields#single_string_required",
-                            )?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
-                            .with_context(
-                                "rerun.testing.encodings.MixedFields#single_string_required",
-                            )?
-                            .into_iter()
+                        deserialize_strings(
+                            arrow_data
+                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                .with_context(
+                                    "rerun.testing.encodings.MixedFields#single_string_required",
+                                )?,
+                        )
+                        .with_context("rerun.testing.encodings.MixedFields#single_string_required")?
+                        .into_iter()
                     }
                 };
                 let single_string_optional = {
-                    if !arrays_by_name.contains_key("single_string_optional") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "single_string_optional",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["single_string_optional"];
+                    let arrow_data = fields.required("single_string_optional")?;
                     {
-                        let arrow_data = arrow_data
-                            .try_cast::<StringArray>(|| DataType::Utf8)
-                            .with_context(
-                                "rerun.testing.encodings.MixedFields#single_string_optional",
-                            )?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
-                            .with_context(
-                                "rerun.testing.encodings.MixedFields#single_string_optional",
-                            )?
-                            .into_iter()
+                        deserialize_strings(
+                            arrow_data
+                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                .with_context(
+                                    "rerun.testing.encodings.MixedFields#single_string_optional",
+                                )?,
+                        )
+                        .with_context("rerun.testing.encodings.MixedFields#single_string_optional")?
+                        .into_iter()
                     }
                 };
                 let many_floats_optional = {
-                    if !arrays_by_name.contains_key("many_floats_optional") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "many_floats_optional",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["many_floats_optional"];
+                    let arrow_data = fields.required("many_floats_optional")?;
                     {
                         let arrow_data = arrow_data
                             .try_cast::<arrow::array::ListArray>(|| {
@@ -674,14 +495,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                     }
                 };
                 let many_strings_required = {
-                    if !arrays_by_name.contains_key("many_strings_required") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "many_strings_required",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["many_strings_required"];
+                    let arrow_data = fields.required("many_strings_required")?;
                     {
                         let arrow_data = arrow_data
                             .try_cast::<arrow::array::ListArray>(|| {
@@ -700,44 +514,13 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 {
-                                    let arrow_data_inner = arrow_data_inner
-                                        .try_cast::<StringArray>(|| DataType::Utf8)
-                                        .with_context(
-                                            "rerun.testing.encodings.MixedFields#many_strings_required",
-                                        )?;
-                                    let arrow_data_inner_buf = arrow_data_inner.values();
-                                    let offsets = arrow_data_inner.offsets();
-                                    ZipValidity::new_with_validity(
-                                            offsets.array_windows(),
-                                            arrow_data_inner.nulls(),
+                                    deserialize_strings(
+                                            arrow_data_inner
+                                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                                .with_context(
+                                                    "rerun.testing.encodings.MixedFields#many_strings_required",
+                                                )?,
                                         )
-                                        .map(|elem| {
-                                            elem
-                                                .map(|&[start, end]| {
-                                                    let start = start as usize;
-                                                    let end = end as usize;
-                                                    let len = end - start;
-                                                    if arrow_data_inner_buf.len() < end {
-                                                        return Err(
-                                                            DeserializationError::offset_slice_oob(
-                                                                (start, end),
-                                                                arrow_data_inner_buf.len(),
-                                                            ),
-                                                        );
-                                                    }
-                                                    let data = arrow_data_inner_buf
-                                                        .slice_with_length(start, len);
-                                                    Ok(data)
-                                                })
-                                                .transpose()
-                                        })
-                                        .map(|res_or_opt| {
-                                            res_or_opt
-                                                .map(|res_or_opt| {
-                                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
-                                                })
-                                        })
-                                        .collect::<DeserializationResult<Vec<Option<_>>>>()
                                         .with_context(
                                             "rerun.testing.encodings.MixedFields#many_strings_required",
                                         )?
@@ -783,14 +566,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                     }
                 };
                 let many_strings_optional = {
-                    if !arrays_by_name.contains_key("many_strings_optional") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "many_strings_optional",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["many_strings_optional"];
+                    let arrow_data = fields.required("many_strings_optional")?;
                     {
                         let arrow_data = arrow_data
                             .try_cast::<arrow::array::ListArray>(|| {
@@ -809,44 +585,13 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
                                 {
-                                    let arrow_data_inner = arrow_data_inner
-                                        .try_cast::<StringArray>(|| DataType::Utf8)
-                                        .with_context(
-                                            "rerun.testing.encodings.MixedFields#many_strings_optional",
-                                        )?;
-                                    let arrow_data_inner_buf = arrow_data_inner.values();
-                                    let offsets = arrow_data_inner.offsets();
-                                    ZipValidity::new_with_validity(
-                                            offsets.array_windows(),
-                                            arrow_data_inner.nulls(),
+                                    deserialize_strings(
+                                            arrow_data_inner
+                                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                                .with_context(
+                                                    "rerun.testing.encodings.MixedFields#many_strings_optional",
+                                                )?,
                                         )
-                                        .map(|elem| {
-                                            elem
-                                                .map(|&[start, end]| {
-                                                    let start = start as usize;
-                                                    let end = end as usize;
-                                                    let len = end - start;
-                                                    if arrow_data_inner_buf.len() < end {
-                                                        return Err(
-                                                            DeserializationError::offset_slice_oob(
-                                                                (start, end),
-                                                                arrow_data_inner_buf.len(),
-                                                            ),
-                                                        );
-                                                    }
-                                                    let data = arrow_data_inner_buf
-                                                        .slice_with_length(start, len);
-                                                    Ok(data)
-                                                })
-                                                .transpose()
-                                        })
-                                        .map(|res_or_opt| {
-                                            res_or_opt
-                                                .map(|res_or_opt| {
-                                                    res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
-                                                })
-                                        })
-                                        .collect::<DeserializationResult<Vec<Option<_>>>>()
                                         .with_context(
                                             "rerun.testing.encodings.MixedFields#many_strings_optional",
                                         )?
@@ -892,28 +637,14 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                     }
                 };
                 let flattened_scalar = {
-                    if !arrays_by_name.contains_key("flattened_scalar") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "flattened_scalar",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["flattened_scalar"];
+                    let arrow_data = fields.required("flattened_scalar")?;
                     arrow_data
                         .try_cast::<Float32Array>(|| DataType::Float32)
                         .with_context("rerun.testing.encodings.MixedFields#flattened_scalar")?
                         .into_iter()
                 };
                 let almost_flattened_scalar = {
-                    if !arrays_by_name.contains_key("almost_flattened_scalar") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "almost_flattened_scalar",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["almost_flattened_scalar"];
+                    let arrow_data = fields.required("almost_flattened_scalar")?;
                     crate::testing::encodings::FlattenedScalar::from_arrow_opt(arrow_data)
                         .with_context(
                             "rerun.testing.encodings.MixedFields#almost_flattened_scalar",
@@ -921,14 +652,7 @@ impl ::re_types_core::FromArrowOpt for MixedFields {
                         .into_iter()
                 };
                 let from_parent = {
-                    if !arrays_by_name.contains_key("from_parent") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "from_parent",
-                        ))
-                        .with_context("rerun.testing.encodings.MixedFields");
-                    }
-                    let arrow_data = &**arrays_by_name["from_parent"];
+                    let arrow_data = fields.required("from_parent")?;
                     arrow_data
                         .try_cast::<BooleanArray>(|| DataType::Boolean)
                         .with_context("rerun.testing.encodings.MixedFields#from_parent")?

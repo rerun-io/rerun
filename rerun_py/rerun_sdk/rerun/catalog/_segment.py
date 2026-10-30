@@ -47,17 +47,23 @@ class Segment:
         return self._internal.url
 
     @with_tracing("Segment.schema")
-    def schema(self) -> Schema:
+    def schema(self, *, include_assets: bool = False) -> Schema:
         """
         Fetch the current schema of this segment's registered layers.
 
-        Referenced assets are excluded from the segment's schema.
-
         Raises [`NotFoundError`][rerun.catalog.NotFoundError] if the segment or dataset does not exist.
+
+        Parameters
+        ----------
+        include_assets:
+            Also include the schemas of the dataset's assets that apply to this segment, without their properties.
+            This matches what [`DatasetEntry.segment_store`][rerun.catalog.DatasetEntry.segment_store] serves with
+            `include_assets=True`, as long as all of the assets load.
+
         """
         from ._schema import Schema
 
-        return Schema(self._internal.schema())
+        return Schema(self._internal.schema(include_assets=include_assets))
 
     @with_tracing("Segment.layers")
     def layers(self) -> set[str]:

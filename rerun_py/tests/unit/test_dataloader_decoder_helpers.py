@@ -8,6 +8,7 @@ import weakref
 from fractions import Fraction
 from itertools import pairwise
 from typing import cast
+from unittest.mock import Mock
 
 import av
 import numpy as np
@@ -16,7 +17,7 @@ import pytest
 import torch
 from PIL import Image
 from rerun.chunk import Selector
-from rerun.experimental.dataloader import Field, Yuv420Frame
+from rerun.experimental.dataloader import Field, Yuv420Frame, _utils
 from rerun.experimental.dataloader._sample_index import SegmentMetadata
 from rerun.experimental.dataloader._utils import (
     FieldFetchRequest,
@@ -1500,3 +1501,57 @@ def test_field_batch_take_rows_across_chunks() -> None:
                     starts_at_keyframe=False,
                 )
             )
+
+
+def test_worker_connection_requires_keyframe_column_and_retries_failed_initialization(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    columns = ["/camera:VideoStream:sample", "/other:VideoStream:is_keyframe"]
+    dataset = Mock()
+    dataset.schema.return_value.column_names.return_value = columns
+    client = Mock()
+    client.get_dataset.return_value = dataset
+    monkeypatch.setattr(_utils, "CatalogClientInternal", Mock())
+    monkeypatch.setattr(_utils.CatalogClient, "_from_internal", Mock(return_value=client))
+    decoder = VideoFrameDecoder()
+    connection = _utils._WorkerConnection(
+        catalog_url="rerun+http://fake",
+        token=None,
+        dataset_name="video",
+        fields={"image": Field("/camera:VideoStream:sample", decode=decoder)},
+    )
+
+    with pytest.raises(ValueError, match=r"require an is_keyframe column.*'image': '/camera:VideoStream:is_keyframe'"):
+        connection.ensure()
+
+    dataset.schema.assert_called_once_with()
+    columns.append("/camera:VideoStream:is_keyframe")
+    view, decoders = connection.ensure()
+    assert view is dataset
+    assert decoders == {"image": decoder}
+    cached_view, cached_decoders = connection.ensure()
+    assert cached_view is view
+    assert cached_decoders is decoders
+    assert dataset.schema.call_count == 2
+    assert client.get_dataset.call_count == 2
+
+
+def test_worker_connection_non_video_fields_do_not_query_schema(monkeypatch: pytest.MonkeyPatch) -> None:
+    dataset = Mock()
+    client = Mock()
+    client.get_dataset.return_value = dataset
+    monkeypatch.setattr(_utils, "CatalogClientInternal", Mock())
+    monkeypatch.setattr(_utils.CatalogClient, "_from_internal", Mock(return_value=client))
+    decoder = NumericDecoder()
+    connection = _utils._WorkerConnection(
+        catalog_url="rerun+http://fake",
+        token=None,
+        dataset_name="state",
+        fields={"state": Field("/state:Scalars:scalars", decode=decoder)},
+    )
+
+    view, decoders = connection.ensure()
+
+    assert view is dataset
+    assert decoders == {"state": decoder}
+    dataset.schema.assert_not_called()

@@ -20,9 +20,8 @@ use tokio::fs;
 /// Return type of [`do_register_with_dataset`].
 #[derive(Default)]
 pub struct RegisterWithDatasetResult {
-    /// Recording IDs from the registered RRDs, one per data source.
-    ///
-    /// Empty string for sources that failed with a schema conflict.
+    /// Recording IDs from the RRDs, one per data source, including sources whose registration
+    /// task failed.
     pub segment_ids: Vec<SegmentId>,
 
     /// Layer name for each registered source.
@@ -35,7 +34,7 @@ pub struct RegisterWithDatasetResult {
     pub storage_urls: Vec<Url>,
 
     /// Task ID for each source; [`crate::store::TASK_ID_SUCCESS`] for successes,
-    /// a unique ID for schema-conflict failures.
+    /// a unique ID for sources whose registration failed.
     pub task_ids: Vec<TaskId>,
 }
 
@@ -396,20 +395,35 @@ async fn register_sources(
                     });
                 }
 
-                // Schema conflicts and asset-segment rejections fail just this source's task,
-                // matching how the cloud server reports them during registration.
-                Err(Error::SchemaConflict(msg) | Error::SegmentRejected(msg)) => {
-                    result.segment_ids.push(SegmentId::new(String::new()));
-                    result.segment_layers.push(source.layer_info.name.clone());
-                    result.segment_types.push(ext::DataSourceKind::Rrd);
-                    result.storage_urls.push(source.storage_url);
-
-                    let task_id = TaskId::new();
-                    result.task_ids.push(task_id.clone());
-                    failed_task_results.push((task_id, TaskResult::failed(&msg)));
+                // Per-segment rejections fail just this source's task, matching how Rerun Hub
+                // reports them during registration. The other sources in the request are
+                // unaffected.
+                Err(
+                    Error::SchemaConflict(msg)
+                    | Error::SegmentRejected(msg)
+                    | Error::SegmentLimitReached(msg),
+                ) => {
+                    push_failed_source(
+                        &mut result,
+                        &mut failed_task_results,
+                        source.segment_id,
+                        source.layer_info.name.clone(),
+                        source.storage_url,
+                        &msg,
+                    );
+                }
+                Err(Error::LayerAlreadyExists(_)) => {
+                    push_failed_source(
+                        &mut result,
+                        &mut failed_task_results,
+                        source.segment_id,
+                        source.layer_info.name.clone(),
+                        source.storage_url,
+                        "already exists",
+                    );
                 }
 
-                // Everything else, including the synchronous segment-count limit, aborts the batch.
+                // Everything else aborts the batch.
                 Err(other_err) => {
                     return Err(other_err.into());
                 }
@@ -423,6 +437,32 @@ async fn register_sources(
     }
 
     Ok(result)
+}
+
+/// Records a source whose registration failed: its response row carries a fresh task id, and
+/// that task settles as failed with the same message shape Rerun Hub uses.
+fn push_failed_source(
+    result: &mut RegisterWithDatasetResult,
+    failed_task_results: &mut Vec<(TaskId, TaskResult)>,
+    segment_id: SegmentId,
+    layer_name: LayerName,
+    storage_url: Url,
+    reason: &str,
+) {
+    let message = format!(
+        "Registration failed for the segments/layers listed below.\n- Segment {:?}, layer {:?}: {reason}",
+        segment_id.as_str(),
+        layer_name.as_str(),
+    );
+
+    result.segment_ids.push(segment_id);
+    result.segment_layers.push(layer_name);
+    result.segment_types.push(ext::DataSourceKind::Rrd);
+    result.storage_urls.push(storage_url);
+
+    let task_id = TaskId::new();
+    result.task_ids.push(task_id.clone());
+    failed_task_results.push((task_id, TaskResult::failed(message)));
 }
 
 // ---
@@ -452,7 +492,16 @@ async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
     let store_ids = re_log_encoding::enumerate_rrd_stores(&file)
         .await
         .map_err(|err| {
-            tonic::Status::internal(format!("Failed to enumerate RRD stores: {err:#}"))
+            let code = match &err {
+                re_log_encoding::CodecError::Io(err)
+                    if err.kind() != std::io::ErrorKind::UnexpectedEof =>
+                {
+                    tonic::Code::Internal
+                }
+                re_log_encoding::CodecError::DecompressionAllocation(_) => tonic::Code::Internal,
+                _ => tonic::Code::InvalidArgument,
+            };
+            tonic::Status::new(code, format!("Failed to enumerate RRD stores: {err:#}"))
         })?;
 
     Ok(store_ids.into_iter().collect())

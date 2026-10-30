@@ -2,8 +2,8 @@
 title = "ARKit scenes"
 description = "Visualize the ARKitScenes dataset: color images, depth, the reconstructed mesh, and labeled 3D boxes around indoor furniture."
 tags = ["2D", "3D", "Depth", "Mesh", "Object detection", "Pinhole camera", "Blueprint"]
-thumbnail = "https://static.rerun.io/arkit-scenes/6d920eaa42fb86cfd264d47180ecbecbb6dd3e09/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/arkit_scenes_thumbnail/3c136c462f0e7b0211b6dc4d2940dd30dbc420d6/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 -->

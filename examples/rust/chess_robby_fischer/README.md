@@ -3,8 +3,8 @@ title = "Robby fischer"
 description = "Robby Fischer is an autonomous chess-playing robot arm that detects human moves with per-square camera masks."
 tags = ["3D", "URDF", "Blueprint"]
 source = "https://github.com/02alexander/robby-fischer/tree/urdf-vis"
-thumbnail = "https://static.rerun.io/robby_thumbnail/71d2d57e9720e7a96e35a43467b5d2c45aa716d9/480w.png"
-thumbnail_dimensions = [480, 385]
+thumbnail = "https://static.rerun.io/chess_robby_fischer_thumbnail/5ef5123d86b6b2c575a42815742d2d0b9ad51915/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 https://vimeo.com/989548054?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=1920:1080

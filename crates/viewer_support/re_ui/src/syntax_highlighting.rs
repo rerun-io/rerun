@@ -1,10 +1,5 @@
 use egui::text::{ByteIndex, LayoutJob};
 use egui::{Color32, Style, TextFormat, TextStyle};
-use re_entity_db::InstancePath;
-use re_log_types::external::re_types_core::{
-    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType,
-};
-use re_log_types::{ComponentPath, EntityPath, EntityPathPart, Instance};
 
 use crate::HasDesignTokens as _;
 
@@ -26,6 +21,9 @@ pub trait SyntaxHighlighting {
 pub struct SyntaxHighlightedBuilder {
     text: String,
     parts: smallvec::SmallVec<[SyntaxHighlightedPart; 1]>,
+
+    /// Set by [`Self::append_truncation_marker`].
+    truncated: bool,
 }
 
 /// Easily build syntax-highlighted [`LayoutJob`]s.
@@ -60,6 +58,7 @@ impl SyntaxHighlightedBuilder {
                     byte_range: s.byte_range,
                 })
                 .collect(),
+            truncated: false,
         }
     }
 
@@ -150,6 +149,19 @@ impl SyntaxHighlightedBuilder {
         }
     );
 
+    /// Append `…` (in syntax style) to mark that some content was left out.
+    ///
+    /// Always use this rather than appending a literal `…`, so that [`Self::is_truncated`] knows.
+    pub fn append_truncation_marker(&mut self) -> &mut Self {
+        self.truncated = true;
+        self.append_kind(SyntaxHighlightedStyle::Syntax, "…")
+    }
+
+    /// Was any content left out, i.e. was [`Self::append_truncation_marker`] called?
+    pub fn is_truncated(&self) -> bool {
+        self.truncated
+    }
+
     /// Like [`Self::append_string_value`], but truncates to `max_chars` characters
     /// and appends `…` (in syntax style) when truncated.
     pub fn append_string_value_truncated(&mut self, portion: &str, max_chars: usize) -> &mut Self {
@@ -158,7 +170,7 @@ impl SyntaxHighlightedBuilder {
         if portion.len() > max_chars {
             let truncated = &portion[..portion.floor_char_boundary(max_chars)];
             self.append_kind(SyntaxHighlightedStyle::StringValue, truncated);
-            self.append_kind(SyntaxHighlightedStyle::Syntax, "…");
+            self.append_truncation_marker();
         } else {
             self.append_kind(SyntaxHighlightedStyle::StringValue, portion);
         }
@@ -344,93 +356,6 @@ impl SyntaxHighlightedStyle {
 }
 
 // ----------------------------------------------------------------------------
-
-impl SyntaxHighlighting for EntityPathPart {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(&self.ui_string());
-    }
-}
-
-impl SyntaxHighlighting for Instance {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        if self.is_all() {
-            builder.append_primitive("all");
-        } else {
-            builder.append_index(&re_format::format_uint(self.get()));
-        }
-    }
-}
-
-impl SyntaxHighlighting for EntityPath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_syntax("/");
-
-        for (i, part) in self.iter().enumerate() {
-            if i != 0 {
-                builder.append_syntax("/");
-            }
-            builder.append(part);
-        }
-    }
-}
-
-impl SyntaxHighlighting for InstancePath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append(&self.entity_path);
-        if self.instance.is_specific() {
-            builder.append(&InstanceInBrackets(self.instance));
-        }
-    }
-}
-
-impl SyntaxHighlighting for ComponentType {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.short_name());
-    }
-}
-
-impl SyntaxHighlighting for ArchetypeName {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.short_name());
-    }
-}
-
-impl SyntaxHighlighting for ComponentIdentifier {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.as_ref());
-    }
-}
-
-impl SyntaxHighlighting for ComponentDescriptor {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.display_name());
-    }
-}
-
-impl SyntaxHighlighting for ComponentPath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        let Self {
-            entity_path,
-            component,
-        } = self;
-        builder
-            .append(entity_path)
-            .append_syntax(":")
-            .append(component);
-    }
-}
-
-/// Formats an instance number enclosed in square brackets: `[123]`
-pub struct InstanceInBrackets(pub Instance);
-
-impl SyntaxHighlighting for InstanceInBrackets {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder
-            .append_syntax("[")
-            .append(&self.0)
-            .append_syntax("]");
-    }
-}
 
 macro_rules! impl_sh_primitive {
     ($t:ty, $to_string:path) => {

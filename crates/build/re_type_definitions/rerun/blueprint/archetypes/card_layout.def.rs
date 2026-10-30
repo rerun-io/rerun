@@ -25,8 +25,8 @@ pub struct CardLayout {
     /// Unlisted fields are hidden unless their [`rerun::blueprint::archetypes::TableColumn`] visibility overrides the default.
     /// Each source column may appear at most once.
     ///
-    /// Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-    /// Card layouts currently support at most one flag field.
+    /// The first visible field of component type [`rerun::components::Flag`] is shown in the card header
+    /// instead of the labeled-field list.
     #[rerun(required)]
     pub field_order: Vec<rerun::blueprint::components::ColumnName>,
 }

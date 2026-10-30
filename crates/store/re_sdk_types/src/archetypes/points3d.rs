@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A 3D point cloud with positions and optional colors, radii, labels, etc.
@@ -605,33 +605,17 @@ impl Points3D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.positions
-                .map(|positions| positions.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.radii
-                .map(|radii| radii.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colors
-                .map(|colors| colors.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.labels
-                .map(|labels| labels.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.show_labels
-                .map(|show_labels| show_labels.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.point_shading
-                .map(|point_shading| point_shading.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.class_ids
-                .map(|class_ids| class_ids.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.keypoint_ids
-                .map(|keypoint_ids| keypoint_ids.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.positions,
+            self.radii,
+            self.colors,
+            self.labels,
+            self.show_labels,
+            self.point_shading,
+            self.class_ids,
+            self.keypoint_ids,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -642,25 +626,19 @@ impl Points3D {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_positions = self.positions.as_ref().map(|b| b.array.len());
-        let len_radii = self.radii.as_ref().map(|b| b.array.len());
-        let len_colors = self.colors.as_ref().map(|b| b.array.len());
-        let len_labels = self.labels.as_ref().map(|b| b.array.len());
-        let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
-        let len_point_shading = self.point_shading.as_ref().map(|b| b.array.len());
-        let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
-        let len_keypoint_ids = self.keypoint_ids.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_positions)
-            .or(len_radii)
-            .or(len_colors)
-            .or(len_labels)
-            .or(len_show_labels)
-            .or(len_point_shading)
-            .or(len_class_ids)
-            .or(len_keypoint_ids)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.positions,
+            self.radii,
+            self.colors,
+            self.labels,
+            self.show_labels,
+            self.point_shading,
+            self.class_ids,
+            self.keypoint_ids,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// All the 3D positions at which the point cloud shows points.

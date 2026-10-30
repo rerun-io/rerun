@@ -1,5 +1,7 @@
 use re_sdk_types::encodings::Utf8;
+use re_ui::Size;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::text_edit::ReTextEdit;
 use re_viewer_context::{MaybeMutRef, UiLayout};
 
 /// Generic singleline string editor.
@@ -56,11 +58,9 @@ fn edit_multiline_string_impl(
 ) -> egui::Response {
     if let Some(value) = value.as_mut() {
         let mut edit_name = value.to_string();
-        let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-            egui::TextEdit::multiline(&mut edit_name).show(ui).response
-        });
+        let response = ui.add(ReTextEdit::multiline(&mut edit_name).size(Size::Tiny));
         *value = edit_name.into();
-        response.response
+        response
     } else {
         UiLayout::SelectionPanel
             .data_label(ui, SyntaxHighlightedBuilder::new().with_string_value(value))

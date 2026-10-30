@@ -1,13 +1,18 @@
 //! Metadata about a server's entries, fetched one part at a time.
 
+use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
-use re_async::{AsyncRuntimeHandle, WasmNotSend};
-use re_catalog_client::{Asset, CatalogClient};
+use re_async::WasmNotSend;
+use re_catalog_client::{Asset, AssetCoverage, CatalogClient};
 use re_log_types::EntryId;
+use re_log_types::external::re_types_core::SegmentId;
 use re_mutex::Mutex;
-use re_redap_client::{ApiError, ApiResult, ConnectionHandle};
+use re_protos::cloud::v1alpha1::ext::AssetMode;
+use re_redap_client::{ApiError, ApiErrorKind, ApiResult};
 use re_ui::{RequestedObject, ServerValue};
+
+use crate::dataset_schema::DatasetSchema;
 
 /// Summary of a catalog entry, as reported by the server hosting it.
 ///
@@ -21,13 +26,93 @@ pub struct EntryMeta {
 /// Where to fetch a dataset's metadata from.
 #[derive(Clone, Copy)]
 pub struct EntryMetaQuery<'a> {
-    pub runtime: &'a AsyncRuntimeHandle,
+    pub client: &'a CatalogClient,
     pub egui_ctx: &'a egui::Context,
-    pub connection: &'a ConnectionHandle,
     pub dataset_id: EntryId,
 }
 
 pub type AssetsRef = Arc<Vec<Asset>>;
+
+pub type SegmentIdsRef = Arc<SegmentIds>;
+
+/// The segment ids of a dataset, in the order of its segment table.
+#[derive(Debug, Default)]
+pub struct SegmentIds {
+    ids: Vec<SegmentId>,
+
+    /// The same ids, to look a segment up without going through all of them.
+    set: HashSet<SegmentId>,
+}
+
+impl SegmentIds {
+    pub fn new(ids: Vec<SegmentId>) -> Self {
+        let set = ids.iter().cloned().collect();
+        Self { ids, set }
+    }
+
+    pub fn ids(&self) -> &[SegmentId] {
+        &self.ids
+    }
+
+    pub fn len(&self) -> usize {
+        self.ids.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.ids.is_empty()
+    }
+
+    /// How many of `segments` the dataset holds, each segment counted once.
+    pub fn count_held(&self, segments: &[SegmentId]) -> usize {
+        segments
+            .iter()
+            .filter(|segment| self.set.contains(*segment))
+            .collect::<HashSet<_>>()
+            .len()
+    }
+
+    /// How many segments of the dataset a coverage listing `segments` under `mode` applies to.
+    pub fn count_covered(&self, mode: AssetMode, segments: &[SegmentId]) -> usize {
+        let listed = self.count_held(segments);
+        match mode {
+            AssetMode::OptIn => listed,
+            AssetMode::OptOut => self.len().saturating_sub(listed),
+        }
+    }
+}
+
+/// The coverage the server stores for an asset, and the revision a write to it is gated on.
+#[derive(Clone, Debug)]
+pub struct StoredCoverage {
+    pub coverage: AssetCoverage,
+    pub revision: u64,
+
+    /// Whether the server stores coverage at all.
+    ///
+    /// A server without segment properties loads every asset into every segment, and the coverage
+    /// it shows cannot be changed.
+    pub is_editable: bool,
+}
+
+/// The segments of one dataset, as the asset modals name and search them.
+#[derive(Clone, Debug)]
+pub struct DatasetSegments {
+    /// How many segments the dataset holds, once the count has landed.
+    pub count: Option<usize>,
+
+    /// The id of each segment, once the list has landed.
+    pub ids: ServerValue<SegmentIdsRef, ApiError>,
+}
+
+impl Default for DatasetSegments {
+    /// The segments of a dataset we don't know: none, and nothing to wait for.
+    fn default() -> Self {
+        Self {
+            count: None,
+            ids: ServerValue::Completed(Arc::default()),
+        }
+    }
+}
 
 /// The metadata of one dataset, each part fetched the first time something asks for it.
 ///
@@ -44,26 +129,49 @@ struct Requests {
     /// From the dataset's segment table. Only the count is kept, see [`EntryMeta::segments`].
     segment_count: RequestedObject<usize, ApiError>,
 
+    /// The segment ids from the dataset's segment table, fetched when an asset modal searches
+    /// them.
+    segment_ids: RequestedObject<SegmentIdsRef, ApiError>,
+
     /// From the manifest of the dataset's asset dataset.
     assets: RequestedObject<AssetsRef, ApiError>,
+
+    asset_coverage: BTreeMap<SegmentId, RequestedObject<Arc<StoredCoverage>, ApiError>>,
+
+    /// The combined schema of all layers in the dataset.
+    schema: RequestedObject<Arc<DatasetSchema>, ApiError>,
 }
 
 impl DatasetRequests {
     /// Everything we know about the dataset, asking for whatever hasn't been asked for yet.
     pub fn meta(&self, query: EntryMetaQuery<'_>) -> EntryMeta {
-        let segments =
-            self.0
-                .lock()
-                .segment_count
-                .request_value(query.runtime, query.egui_ctx, || {
-                    warn_on_failure(
-                        "dataset segment count",
-                        query.dataset_id,
-                        segment_count(query.connection.clone(), query.dataset_id),
-                    )
-                });
+        let segments = self.0.lock().segment_count.request_value(
+            query.client.runtime(),
+            query.egui_ctx,
+            || {
+                warn_on_failure(
+                    "dataset segment count",
+                    query.dataset_id,
+                    segment_count(query.client.clone(), query.dataset_id),
+                )
+            },
+        );
 
         EntryMeta { segments }
+    }
+
+    /// The id of each segment the dataset holds, asking for them if nothing has yet.
+    pub fn segment_ids(&self, query: EntryMetaQuery<'_>) -> ServerValue<SegmentIdsRef, ApiError> {
+        self.0
+            .lock()
+            .segment_ids
+            .request_value(query.client.runtime(), query.egui_ctx, || {
+                warn_on_failure(
+                    "dataset segment ids",
+                    query.dataset_id,
+                    segment_ids(query.client.clone(), query.dataset_id),
+                )
+            })
     }
 
     /// The assets registered for the dataset, as they stand in its asset dataset.
@@ -80,11 +188,46 @@ impl DatasetRequests {
         self.0
             .lock()
             .assets
-            .request_value(query.runtime, query.egui_ctx, || {
+            .request_value(query.client.runtime(), query.egui_ctx, || {
                 warn_on_failure(
                     "dataset assets",
                     query.dataset_id,
-                    assets(query.connection.clone(), asset_dataset),
+                    assets(query.client.clone(), asset_dataset),
+                )
+            })
+    }
+
+    /// The segments covered by an asset, fetched on first access.
+    pub fn asset_coverage(
+        &self,
+        query: EntryMetaQuery<'_>,
+        asset_id: &SegmentId,
+    ) -> ServerValue<Arc<StoredCoverage>, ApiError> {
+        self.0
+            .lock()
+            .asset_coverage
+            .entry(asset_id.clone())
+            .or_default()
+            .request_value(query.client.runtime(), query.egui_ctx, || {
+                let client = query.client.clone();
+                let dataset_id = query.dataset_id;
+                let asset_id = asset_id.clone();
+                warn_on_failure("asset coverage", dataset_id, async move {
+                    stored_coverage(client.asset_coverage(dataset_id, asset_id).await).map(Arc::new)
+                })
+            })
+    }
+
+    /// The combined schema of all layers in the dataset.
+    pub fn schema(&self, query: EntryMetaQuery<'_>) -> ServerValue<Arc<DatasetSchema>, ApiError> {
+        self.0
+            .lock()
+            .schema
+            .request_value(query.client.runtime(), query.egui_ctx, || {
+                warn_on_failure(
+                    "dataset schema",
+                    query.dataset_id,
+                    schema(query.client.clone(), query.dataset_id),
                 )
             })
     }
@@ -94,17 +237,29 @@ impl DatasetRequests {
         let mut guard = self.0.lock();
         let Requests {
             segment_count,
+            segment_ids,
             assets,
+            asset_coverage,
+            schema,
         } = &mut *guard;
         segment_count.refresh();
+        segment_ids.refresh();
         assets.refresh();
+        for coverage in asset_coverage.values_mut() {
+            coverage.refresh();
+        }
+        schema.refresh();
     }
 
     /// Forget the assets we fetched, so the next access fetches them again.
     ///
     /// The rest of the metadata is left alone, since registering an asset doesn't change it.
     pub fn clear_assets(&self) {
-        self.0.lock().assets.refresh();
+        let mut guard = self.0.lock();
+        guard.assets.refresh();
+        for coverage in guard.asset_coverage.values_mut() {
+            coverage.refresh();
+        }
     }
 
     /// Whether the assets we have are older than what the server has.
@@ -131,19 +286,119 @@ async fn warn_on_failure<T>(
     result
 }
 
+/// The [`StoredCoverage`] of an asset, from what the server answered to the coverage request.
+fn stored_coverage(response: ApiResult<(AssetCoverage, u64)>) -> ApiResult<StoredCoverage> {
+    match response {
+        Ok((coverage, revision)) => Ok(StoredCoverage {
+            coverage,
+            revision,
+            is_editable: true,
+        }),
+
+        // A server without segment properties loads every asset into every
+        // segment, which is what the default coverage says.
+        Err(err) if err.kind == ApiErrorKind::Unimplemented => {
+            re_log::debug_once!("The server does not store asset coverage");
+            Ok(StoredCoverage {
+                coverage: AssetCoverage::default(),
+                revision: 0,
+                is_editable: false,
+            })
+        }
+
+        Err(err) => Err(err),
+    }
+}
+
 /// How many segments a dataset holds.
 ///
 /// The server has no count endpoint, so this counts the rows of the segment table, one per segment.
-async fn segment_count(connection: ConnectionHandle, entry_id: EntryId) -> ApiResult<usize> {
-    CatalogClient::new(connection)
-        .get_dataset_segment_count(entry_id)
-        .await
+async fn segment_count(client: CatalogClient, entry_id: EntryId) -> ApiResult<usize> {
+    client.get_dataset_segment_count(entry_id).await
 }
 
-async fn assets(connection: ConnectionHandle, asset_dataset: EntryId) -> ApiResult<AssetsRef> {
-    let assets = CatalogClient::new(connection)
-        .scan_asset_dataset(asset_dataset)
-        .await?;
+/// The id of each segment a dataset holds, read from its segment table.
+async fn segment_ids(client: CatalogClient, entry_id: EntryId) -> ApiResult<SegmentIdsRef> {
+    Ok(Arc::new(SegmentIds::new(
+        client.get_dataset_segment_ids(entry_id).await?,
+    )))
+}
+
+async fn schema(client: CatalogClient, entry_id: EntryId) -> ApiResult<Arc<DatasetSchema>> {
+    let schema = client.get_dataset_schema(entry_id).await?;
+
+    let schema = DatasetSchema::from_arrow(&schema.schema).map_err(|err| {
+        ApiError::deserialization(
+            client.origin(),
+            None,
+            format!("Invalid dataset schema: {err}"),
+        )
+    })?;
+
+    Ok(Arc::new(schema))
+}
+
+async fn assets(client: CatalogClient, asset_dataset: EntryId) -> ApiResult<AssetsRef> {
+    let assets = client.scan_asset_dataset(asset_dataset).await?;
 
     Ok(Arc::new(assets))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Coverage counts only segments in the dataset, with repeated selections counted once.
+    /// Both modes also support an empty dataset and an empty selection.
+    #[test]
+    fn coverage_counts_dataset_segments() {
+        let ids = SegmentIds::new(vec![
+            SegmentId::new("first".into()),
+            SegmentId::new("second".into()),
+        ]);
+        let segments = [
+            SegmentId::from("first"),
+            SegmentId::from("first"),
+            SegmentId::from("missing"),
+        ];
+        for (mode, selected, empty_selection) in
+            [(AssetMode::OptIn, 1, 0), (AssetMode::OptOut, 1, 2)]
+        {
+            assert_eq!(ids.count_covered(mode, &segments), selected);
+            assert_eq!(SegmentIds::default().count_covered(mode, &segments), 0);
+            assert_eq!(ids.count_covered(mode, &[]), empty_selection);
+        }
+    }
+
+    /// A server that doesn't store coverage gives the default coverage, which can't be edited.
+    /// Any other failure stays a failure.
+    #[test]
+    fn a_server_without_segment_properties_covers_every_segment() {
+        let origin: re_uri::Origin = "rerun+http://localhost:51234".parse().unwrap();
+        let error = |kind| {
+            ApiError::with_kind_and_source(
+                &origin,
+                kind,
+                None,
+                std::io::Error::other("refused"),
+                "asset coverage",
+            )
+        };
+
+        let coverage = AssetCoverage {
+            mode: AssetMode::OptIn,
+            segments: vec![SegmentId::from("first")],
+        };
+        let stored = stored_coverage(Ok((coverage.clone(), 3))).unwrap();
+        assert_eq!(stored.coverage, coverage);
+        assert_eq!(stored.revision, 3);
+        assert!(stored.is_editable);
+
+        let stored = stored_coverage(Err(error(ApiErrorKind::Unimplemented))).unwrap();
+        assert_eq!(stored.coverage, AssetCoverage::default());
+        assert!(!stored.is_editable);
+
+        let err = stored_coverage(Err(error(ApiErrorKind::PermissionDenied))).unwrap_err();
+        assert_eq!(err.kind, ApiErrorKind::PermissionDenied);
+    }
 }

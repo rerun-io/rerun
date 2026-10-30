@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: 3D capsules; cylinders with hemispherical caps.
@@ -580,42 +580,20 @@ impl Capsules3D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.lengths
-                .map(|lengths| lengths.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.radii
-                .map(|radii| radii.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.translations
-                .map(|translations| translations.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.rotation_axis_angles
-                .map(|rotation_axis_angles| rotation_axis_angles.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.quaternions
-                .map(|quaternions| quaternions.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colors
-                .map(|colors| colors.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.line_radii
-                .map(|line_radii| line_radii.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fill_mode
-                .map(|fill_mode| fill_mode.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.labels
-                .map(|labels| labels.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.show_labels
-                .map(|show_labels| show_labels.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.class_ids
-                .map(|class_ids| class_ids.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.lengths,
+            self.radii,
+            self.translations,
+            self.rotation_axis_angles,
+            self.quaternions,
+            self.colors,
+            self.line_radii,
+            self.fill_mode,
+            self.labels,
+            self.show_labels,
+            self.class_ids,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -626,31 +604,22 @@ impl Capsules3D {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_lengths = self.lengths.as_ref().map(|b| b.array.len());
-        let len_radii = self.radii.as_ref().map(|b| b.array.len());
-        let len_translations = self.translations.as_ref().map(|b| b.array.len());
-        let len_rotation_axis_angles = self.rotation_axis_angles.as_ref().map(|b| b.array.len());
-        let len_quaternions = self.quaternions.as_ref().map(|b| b.array.len());
-        let len_colors = self.colors.as_ref().map(|b| b.array.len());
-        let len_line_radii = self.line_radii.as_ref().map(|b| b.array.len());
-        let len_fill_mode = self.fill_mode.as_ref().map(|b| b.array.len());
-        let len_labels = self.labels.as_ref().map(|b| b.array.len());
-        let len_show_labels = self.show_labels.as_ref().map(|b| b.array.len());
-        let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_lengths)
-            .or(len_radii)
-            .or(len_translations)
-            .or(len_rotation_axis_angles)
-            .or(len_quaternions)
-            .or(len_colors)
-            .or(len_line_radii)
-            .or(len_fill_mode)
-            .or(len_labels)
-            .or(len_show_labels)
-            .or(len_class_ids)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.lengths,
+            self.radii,
+            self.translations,
+            self.rotation_axis_angles,
+            self.quaternions,
+            self.colors,
+            self.line_radii,
+            self.fill_mode,
+            self.labels,
+            self.show_labels,
+            self.class_ids,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// Lengths of the capsules, defined as the distance between the centers of the endcaps.

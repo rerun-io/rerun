@@ -3,8 +3,8 @@ title = "Mini NVS solver"
 description = "Minimal NVS Solver: a video diffusion model used as a zero-shot novel-view synthesizer along a chosen camera path."
 tags = ["2D", "3D", "Hugging Face", "Depth", "Pinhole camera", "Diffusion"]
 source = "https://github.com/pablovela5620/mini-nvs-solver"
-thumbnail = "https://static.rerun.io/mini-nvs-solver-thumbnail/9a9cadb7a5a3beeabbdc2f4490532c1b24765dd2/480w.png"
-thumbnail_dimensions = [480, 276]
+thumbnail = "https://static.rerun.io/mini_nvs_solver_thumbnail/1aa75d5e3e7e8be1afb40c2b52f3a06155bd9dc1/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 

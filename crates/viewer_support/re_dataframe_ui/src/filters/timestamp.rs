@@ -466,10 +466,10 @@ impl Filter for TimestampFilter {
         let (default_low_string, default_high_string) = (
             default_timestamp_range
                 .0
-                .map(|t| format_timestamp(t, timestamp_format)),
+                .map(|t| timestamp_format.format(t)),
             default_timestamp_range
                 .1
-                .map(|t| format_timestamp(t, timestamp_format)),
+                .map(|t| timestamp_format.format(t)),
         );
 
         ui.re_radio_value(&mut self.kind, TimestampFilterKind::Today, "today");
@@ -705,7 +705,7 @@ impl EditableTimestamp {
 
         match &self.resolved_timestamp {
             Ok(timestamp) => {
-                ui.label(format_timestamp(*timestamp, timestamp_format));
+                ui.label(timestamp_format.format(*timestamp));
             }
 
             Err(err) => {
@@ -729,10 +729,10 @@ impl EditableTimestamp {
             if let Some(timestamp_string) = self.timestamp_string.as_mut() {
                 if !parse_timestamp(timestamp_string, timestamp_format).is_ok_and(|t| t == resolved)
                 {
-                    *timestamp_string = format_timestamp(resolved, timestamp_format);
+                    *timestamp_string = timestamp_format.format(resolved);
                 }
             } else {
-                self.timestamp_string = Some(format_timestamp(resolved, timestamp_format));
+                self.timestamp_string = Some(timestamp_format.format(resolved));
             }
         }
     }
@@ -767,12 +767,8 @@ impl EditableTimestamp {
     ) -> Result<String, &jiff::Error> {
         self.resolved_timestamp
             .as_ref()
-            .map(|t| re_log_types::Timestamp::from(*t).format(timestamp_format))
+            .map(|t| timestamp_format.format(*t))
     }
-}
-
-fn format_timestamp(timestamp: Timestamp, timestamp_format: TimestampFormat) -> String {
-    re_log_types::Timestamp::from(timestamp).format(timestamp_format)
 }
 
 /// The range of a relative timestamp filter, in the system time zone.

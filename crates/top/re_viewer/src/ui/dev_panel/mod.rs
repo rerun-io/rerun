@@ -67,6 +67,9 @@ impl DevPanelTab {
 
 #[derive(Default)]
 pub struct DevPanel {
+    /// Whether the panel is shown.
+    pub open: bool,
+
     history: MemoryHistory,
     streaming_history: StreamingHistory,
     memory_purge_times: Vec<f64>,
@@ -282,7 +285,7 @@ impl DevPanel {
 
     fn allocation_tracking_ui(ui: &mut egui::Ui) {
         let mut is_tracking_callstacks = re_memory::accounting_allocator::is_tracking_callstacks();
-        ui.re_checkbox(
+        ui.checkbox(
             &mut is_tracking_callstacks,
             "Enable detailed allocation tracking",
         )
@@ -680,7 +683,7 @@ pub fn memory_tree_ui(
 
     ui.label("Double-click to reset view, scroll to zoom, drag to pan.");
 
-    ui.re_checkbox(include_rss, "Include RSS")
+    ui.checkbox(include_rss, "Include RSS")
         .on_hover_text("Include Resident Set Size (RSS) in the flamegraph. This shows total memory use as reported by the OS. This may be a lot bigger than what is actually _used_ because our allocator (mimalloc) retains pages in case they are needed again.");
 
     ui.separator();

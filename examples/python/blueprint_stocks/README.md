@@ -2,8 +2,8 @@
 title = "Stock charts"
 description = "Fetch the last five days of stock data and present it through several different Rerun blueprints: same data, many shapes."
 tags = ["Time series", "Blueprint"]
-thumbnail = "https://static.rerun.io/blueprint_stocks/8bfe6f16963acdceb2debb9de9a206dc2eb9b280/480w.png"
-thumbnail_dimensions = [480, 270]
+thumbnail = "https://static.rerun.io/blueprint_stocks_thumbnail/8876a633a340a98ec486f019e5378dcce5c906f6/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This example fetches the last 5 days of stock data for a few different stocks.

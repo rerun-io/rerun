@@ -2,8 +2,8 @@
 title = "Dicom MRI"
 description = "Visualize a DICOM MRI scan with tensor slicing and 3D volume raymarching."
 tags = ["Tensor", "MRI", "DICOM"]
-thumbnail = "https://static.rerun.io/dicom-thumbnail/81986d5b9ad8bae75c60f74333cb3468c1da7003/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/dicom_mri_thumbnail/70902881021494f0cec6bc937713453b9ddf48f3/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 -->

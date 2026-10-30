@@ -294,7 +294,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
                     executable_path: executable_path.clone(),
                 }
             } else {
-                let sdk_version = re_build_info::build_info!().version;
+                let sdk_version = re_build_info::CrateVersion::LOCAL;
                 SpawnError::ExecutableNotFoundInPath {
                     // Only recommend a specific Viewer version for non-alpha/rc/dev SDKs.
                     message: if sdk_version.is_release() {
@@ -328,7 +328,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
         });
 
     if let Some(viewer_version) = viewer_version {
-        let sdk_version = re_build_info::build_info!().version;
+        let sdk_version = re_build_info::CrateVersion::LOCAL;
 
         if !viewer_version.is_compatible_with(sdk_version) {
             eprintln!(

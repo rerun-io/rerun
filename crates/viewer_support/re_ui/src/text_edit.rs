@@ -1,5 +1,6 @@
-use crate::{DesignTokens, Size, TextEditVisuals, UiExt as _, all_visuals};
-use egui::widget_style::{StyleArgs, TextEditStyle};
+use crate::{ContextExt as _, DesignTokens, Size, TextEditVisuals, UiExt as _, all_visuals};
+use egui::class::HasClasses as _;
+use egui::widget_style::{ButtonStyle, StyleArgs, TextEditStyle};
 use egui::{Align2, Atoms, IntoAtoms, Response, Style, TextBuffer, TextEdit, Ui, Vec2, Widget};
 
 /// Wrapper around eguis [`TextEdit`] that applies reruns styling
@@ -57,9 +58,8 @@ impl TextEditVariant {
         style.visuals.widgets.hovered.bg_stroke = *stroke_hovered;
         style.visuals.widgets.active.weak_bg_fill = *fill_focused;
         style.visuals.widgets.active.bg_fill = *fill_focused;
+        // Outlines the focused frame, see `TextEditTheme::focus_stroke`:
         style.visuals.widgets.active.bg_stroke = *stroke_focused;
-
-        style.visuals.selection.stroke = *stroke_focused;
 
         // The hint text (placeholder) is painted with the weak text color:
         style.visuals.weak_text_color = Some(*text_placeholder);
@@ -102,6 +102,26 @@ impl ReTextEdit<'_> {
 
     pub fn size(mut self, size: Size) -> Self {
         self.size = size;
+        self
+    }
+
+    /// Pin the id of the underlying [`TextEdit`].
+    ///
+    /// Needed to query or request focus for the text edit before it is shown.
+    pub fn id(mut self, id: egui::Id) -> Self {
+        self.text_edit = self.text_edit.id(id);
+        self
+    }
+
+    /// How wide the field is, instead of egui's fixed default width.
+    pub fn desired_width(mut self, desired_width: f32) -> Self {
+        self.text_edit = self.text_edit.desired_width(desired_width);
+        self
+    }
+
+    /// Show each character as a dot, e.g. for a password or an API key.
+    pub fn password(mut self, password: bool) -> Self {
+        self.text_edit = self.text_edit.password(password);
         self
     }
 
@@ -332,15 +352,53 @@ pub fn autocomplete_text_edit(
     response
 }
 
+/// Completion navigation uses hover styling rather than persistent-selection styling.
+pub struct CompletionButtonTheme;
+
+impl egui::theme::StyleProvider<ButtonStyle> for CompletionButtonTheme {
+    fn style(&mut self, args: &StyleArgs<'_>) -> ButtonStyle {
+        let mut style: ButtonStyle = egui::theme::DefaultStyle.style(args);
+        if args
+            .classes
+            .has_class(&egui::CompletionPopup::CLASS_SUGGESTION)
+            && args.classes.has_class(&egui::Button::CLASS_SELECTED)
+        {
+            let tokens = args.ctx.tokens();
+            style.atom_layout.frame.fill = tokens.list_item_hovered_bg;
+            style.atom_layout.text_style.color = tokens.text_default;
+        }
+        style
+    }
+}
+
 /// Rerun's style for every [`TextEdit`]: egui's default, with room between the frame and the text.
 ///
 /// egui derives a text edit's margin from `button_padding`, which Rerun sets to almost nothing so
 /// that the blueprint panel's icons align (see `DesignTokens`), leaving the text cramped.
+///
+/// A focused text edit is outlined with [`Self::focus_stroke`].
 pub struct TextEditTheme;
 
 impl TextEditTheme {
     /// The space between a text edit's frame and its text.
     const MARGIN: egui::Margin = egui::Margin::symmetric(4, 2);
+
+    /// The outline of a focused text field.
+    ///
+    /// egui outlines it with `selection.stroke`, whose color is also painted onto selected glyphs.
+    /// So a scope recolors the outline through `widgets.active.bg_stroke` instead (see
+    /// [`TextEditVariant`] and [`crate::UiExt::style_invalid_field`]), which this prefers when set,
+    /// leaving selected text in the global selection colors.
+    ///
+    /// Fields that draw their own frame must use this too, to follow those scopes.
+    pub fn focus_stroke(visuals: &egui::Visuals) -> egui::Stroke {
+        let stroke = visuals.widgets.active.bg_stroke;
+        if stroke.is_empty() {
+            visuals.selection.stroke
+        } else {
+            stroke
+        }
+    }
 }
 
 impl egui::theme::StyleProvider<TextEditStyle> for TextEditTheme {
@@ -352,6 +410,16 @@ impl egui::theme::StyleProvider<TextEditStyle> for TextEditTheme {
         let frame = &mut style.atom_layout.frame;
         frame.inner_margin = frame.inner_margin + Self::MARGIN
             - egui::Margin::from(args.style.spacing.button_padding);
+
+        if args.state == egui::widget_style::WidgetState::Active
+            && !args.classes.has_class(&TextEdit::CLASS_READ_ONLY)
+        {
+            // Zero expansion: only the stroke and the margin compensating its width change.
+            *frame = frame.apply_stroke_and_expansion_without_layout_shift(
+                Self::focus_stroke(&args.style.visuals),
+                0.0,
+            );
+        }
 
         style
     }

@@ -17,7 +17,7 @@ use crate::codegen::rust::deserializer::{
     quote_arrow_deserializer, quote_arrow_deserializer_buffer_slice,
     should_optimize_buffer_slice_deserialize,
 };
-use crate::codegen::rust::serializer::quote_arrow_serializer;
+use crate::codegen::rust::serializer::{SerializerImports, quote_arrow_serializer};
 use crate::codegen::rust::util::{is_tuple_struct_from_obj, quote_doc_line};
 use crate::codegen::{Target, autogen_warning};
 use crate::objects::ObjectClass;
@@ -176,11 +176,25 @@ fn generate_object_file(
 
     code.push_str("use ::std::borrow::Cow;\n");
     code.push_str("use ::arrow::array::ArrayRef;\n");
-    code.push_str("use ::re_types_core::try_serialize_field;\n");
     code.push_str("use ::re_types_core::SerializationResult;\n");
     code.push_str("use ::re_types_core::{DeserializationResult, DeserializationError};\n");
-    code.push_str("use ::re_types_core::{ComponentDescriptor, ComponentType};\n");
-    code.push_str("use ::re_types_core::SerializedComponentBatch;\n");
+
+    // It's not terribly important to avoid unnecessary `use` but it trims overall LOC count which is always nice!
+    match obj.kind {
+        ObjectKind::Component => {
+            code.push_str("use ::re_types_core::ComponentType;\n");
+        }
+        ObjectKind::Archetype => {
+            code.push_str("use ::re_types_core::try_serialize_field;\n");
+            code.push_str(
+                "use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};\n",
+            );
+            code.push_str(
+                "use ::re_types_core::{partition_batches, partition_batches_of_unit_length};\n",
+            );
+        }
+        ObjectKind::Encoding | ObjectKind::View => {}
+    }
 
     // NOTE: `TokenStream`s discard whitespacing information by definition, so we need to
     // inject some of our own when writing to file… while making sure that don't inject
@@ -875,13 +889,16 @@ fn quote_to_arrow(objects: &Objects, type_registry: &TypeRegistry, obj: &Object)
     let name = format_ident!("{}", obj.name);
 
     let quoted_serializer = |elements_are_nullable: bool| {
+        let mut imports = SerializerImports::default();
         let quoted_serializer = quote_arrow_serializer(
             type_registry,
             objects,
             obj,
             &format_ident!("data"),
             elements_are_nullable,
+            &mut imports,
         );
+        let quoted_imports = imports.quote();
 
         quote! {
             // NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
@@ -889,7 +906,8 @@ fn quote_to_arrow(objects: &Objects, type_registry: &TypeRegistry, obj: &Object)
 
             #![allow(clippy::manual_is_variant_and)]
             use arrow::{array::*, buffer::*, datatypes::*};
-            use ::re_types_core::{ArrowDataType as _, ToArrow as _, ToArrowOpt as _, ResultExt as _, arrow_helpers::as_array_ref};
+            use ::re_types_core::{ArrowDataType as _, ToArrow as _, ToArrowOpt as _, ResultExt as _};
+            #quoted_imports
 
             Ok(#quoted_serializer)
         }
@@ -1624,17 +1642,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
 
         let fields = std::iter::chain(&required, &optional).map(|field| {
             let field_name = format_ident!("{}", field.name);
-            quote!(self.#field_name.map(|#field_name| #field_name.partitioned(_lengths.clone())).transpose()?)
-        });
-
-        let field_lengths = std::iter::chain(&required, &optional)
-            .map(|field| format_ident!("len_{}", field.name))
-            .collect_vec();
-        let unary_fields = std::iter::chain(&required, &optional).map(|field| {
-            let field_name = format_ident!("{}", field.name);
-            let len_field_name = format_ident!("len_{}", field.name);
-            quote!(let #len_field_name = self.#field_name.as_ref().map(|b| b.array.len()))
-        });
+            quote!(self.#field_name)
+        }).collect_vec();
 
         quote! {
             #columns_doc
@@ -1646,8 +1655,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
             where
                 I: IntoIterator<Item = usize> + Clone,
             {
-                let columns = [ #(#fields),* ];
-                Ok(columns.into_iter().flatten())
+                let batches = [#(#fields),*];
+                Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
             }
 
             #columns_unary_doc
@@ -1656,15 +1665,8 @@ fn quote_builder_from_obj(reporter: &Reporter, objects: &Objects, obj: &Object) 
                 self,
             ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>>
             {
-                #(#unary_fields);*;
-
-                let len = None
-                    #(.or(#field_lengths))*
-                    .unwrap_or(0);
-
-                // NOTE: This will return an error if the different batches have different lengths,
-                // which is fine.
-                self.columns(std::iter::repeat_n(1, len))
+                let batches = [#(#fields),*];
+                Ok(partition_batches_of_unit_length(batches)?.into_iter().flatten())
             }
         }
     });

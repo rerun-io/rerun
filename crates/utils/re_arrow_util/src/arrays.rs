@@ -212,7 +212,6 @@ pub fn arrays_to_list_array(
             .map(|array| array.map_or(0, |array| array.len())),
     );
 
-    #[expect(clippy::from_iter_instead_of_collect)]
     let nulls = NullBuffer::from_iter(arrays.iter().map(Option::is_some));
 
     Some(ListArray::new(field.into(), offsets, data, nulls.into()))
@@ -322,10 +321,8 @@ pub fn pad_list_array_back(list_array: &ListArray, target_len: usize) -> ListArr
 
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
-            #[expect(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(std::iter::chain(nulls.iter(), repeat_n(false, missing_len)))
         } else {
-            #[expect(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(std::iter::chain(
                 repeat_n(true, list_array.len()),
                 repeat_n(false, missing_len),
@@ -360,10 +357,8 @@ pub fn pad_list_array_front(list_array: &ListArray, target_len: usize) -> ListAr
 
     let nulls = {
         if let Some(nulls) = list_array.nulls() {
-            #[expect(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(std::iter::chain(repeat_n(false, missing_len), nulls.iter()))
         } else {
-            #[expect(clippy::from_iter_instead_of_collect)]
             NullBuffer::from_iter(std::iter::chain(
                 repeat_n(false, missing_len),
                 repeat_n(true, list_array.len()),

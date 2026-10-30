@@ -3,8 +3,8 @@ title = "Single image 3D reconstruction using MCC, SAM, and ZoeDepth"
 description = "Chain SAM, ZoeDepth, and Multiview Compressive Coding to reconstruct a 3D object from a single image."
 source = "https://github.com/rerun-io/MCC"
 tags = ["2D", "3D", "Segmentation", "Point cloud", "SAM", "Paper walkthrough"]
-thumbnail = "https://static.rerun.io/single-image-3D-reconstruction/c54498053d53148cfa43901f39a084c549df2b72/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/mcc_thumbnail/327a89061665a282e38082b7708374a7c69adda4/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This example project combines several popular computer vision methods and uses Rerun to visualize the results and how the pieces fit together.

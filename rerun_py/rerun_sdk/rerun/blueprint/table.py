@@ -7,20 +7,14 @@ Configure catalog table layouts, columns, and segment previews.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Literal, cast
 
 import rerun_bindings as bindings
 
+from .._baseclasses import ComponentDescriptor, ComponentMixin
 from .._log import escape_entity_path_part
 from ..recording_stream import RecordingStream
-from ._table_cells import (
-    EntryKindCell as EntryKindCell,
-    FlagCell as FlagCell,
-    LinkCell as LinkCell,
-    PreviewCell as PreviewCell,
-    ThumbnailCell as ThumbnailCell,
-    _Cell,
-)
+from ._table_cells import PreviewCell as PreviewCell
 from ._table_filters import (
     Filter as Filter,
     FilterColumn as FilterColumn,
@@ -36,6 +30,7 @@ from .archetypes import (
     TableColumnPreview,
     TableLayout as TableLayoutArchetype,
 )
+from .encodings import ColumnType, SortBy as SortBy
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -47,18 +42,15 @@ if TYPE_CHECKING:
 __all__ = [
     "CardLayout",
     "Column",
-    "EntryKindCell",
     "Filter",
     "FilterColumn",
-    "FlagCell",
-    "LinkCell",
     "ListFilters",
     "PreviewCell",
     "PreviewsConfig",
+    "SortBy",
     "StringFilters",
     "TableBlueprint",
     "TableLayout",
-    "ThumbnailCell",
     "col",
 ]
 
@@ -101,10 +93,18 @@ class Column:
     editable:
         Allow editing; disabled by default.
         Requires write permission on a remote table with a column marked by `rerun:is_table_index` metadata.
-        Only boolean values rendered with [`FlagCell`][rerun.blueprint.table.FlagCell] support editing.
-    cell:
-        Cell renderer.
-        If unset, the Viewer infers it from the component or Arrow datatype.
+        A cell can be edited when its component type has an editor.
+        Boolean columns are shown as [`rerun.components.Bool`][] unless `column_type` is set, e.g. to [`rerun.components.Flag`][].
+        Editable string and 64-bit float columns without a component type are shown as [`rerun.components.Text`][] and [`rerun.components.Scalar`][].
+    column_type:
+        The component the column's values are shown as.
+        Takes a component class like [`rerun.components.Url`][] or [`rerun.components.Flag`][],
+        a fully qualified component type name like `"rerun.components.Flag"`,
+        or a [`ComponentDescriptor`][rerun.ComponentDescriptor] like `rr.TextDocument.descriptor_text()`
+        for the UI of a specific archetype field.
+        The column's Arrow datatype must match the datatype of the component type.
+        [`PreviewCell`][rerun.blueprint.table.PreviewCell] shows the column as previews instead.
+        If unset, the Viewer uses the component type of the source column, or infers one from the column's datatype.
     visible:
         Override visibility in this layout.
         Configured columns are visible by default.
@@ -115,7 +115,9 @@ class Column:
     source: str
     name: str | None = field(default=None, kw_only=True)
     editable: bool | None = field(default=None, kw_only=True)
-    cell: LinkCell | ThumbnailCell | FlagCell | EntryKindCell | PreviewCell | None = field(default=None, kw_only=True)
+    column_type: type[ComponentMixin] | str | ComponentDescriptor | PreviewCell | None = field(
+        default=None, kw_only=True
+    )
     visible: bool | None = field(default=None, kw_only=True)
 
     def __post_init__(self) -> None:
@@ -126,23 +128,36 @@ class Column:
         _validate_optional_string(self.name, "Column.name")
         _validate_optional_bool(self.editable, "Column.editable")
         _validate_optional_bool(self.visible, "Column.visible")
-        if self.cell is not None and not isinstance(self.cell, _Cell):
-            raise TypeError("Column.cell must be a concrete table cell renderer")
-        if self.editable and not isinstance(self.cell, FlagCell):
-            raise ValueError("Editable columns currently require FlagCell")
+        self._column_type()
+
+    def _column_type(self) -> ColumnType | None:
+        column_type = self.column_type
+        if column_type is None or isinstance(column_type, PreviewCell):
+            return None
+        if isinstance(column_type, str):
+            if not column_type:
+                raise ValueError("Column.column_type must not be empty")
+            return ColumnType(component_type_name=column_type)
+        if isinstance(column_type, ComponentDescriptor):
+            return ColumnType(component=column_type.component, component_type_name=column_type.component_type)
+        if isinstance(column_type, type) and issubclass(column_type, ComponentMixin):  # type: ignore[redundant-expr]
+            return ColumnType(component_type_name=column_type.component_type())
+        raise TypeError(
+            "Column.column_type must be a component class, a component type name, a ComponentDescriptor, or a PreviewCell"
+        )
 
     def _log_to_stream(self, stream: RecordingStream, path: str) -> None:
         components = TableColumnArchetype(
             name=self.name,
             editable=self.editable,
             visible=self.visible,
-            cell_kind=self.cell._kind if self.cell is not None else None,
+            column_type=self._column_type(),
         ).as_component_batches()
         if components:
             stream.log(path, components)
 
-        if isinstance(self.cell, PreviewCell):
-            stream.log(path, TableColumnPreview(views=[view.blueprint_path() for view in self.cell.views]))
+        if isinstance(self.column_type, PreviewCell):
+            stream.log(path, TableColumnPreview(views=[view.blueprint_path() for view in self.column_type.views]))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -184,8 +199,8 @@ class CardLayout:
     fields:
         Fields to configure, in display order, with each source listed at most once.
         Listed fields are visible unless `visible=False`; unlisted fields are hidden.
-        At most one visible [`FlagCell`][rerun.blueprint.table.FlagCell] is allowed;
-        it appears in the card header rather than the labeled-field list.
+        The first visible field with `column_type` set to [`rerun.components.Flag`][] is shown in the card header
+        instead of the labeled-field list.
 
     """
 
@@ -196,10 +211,7 @@ class CardLayout:
     def __post_init__(self) -> None:
         _validate_optional_string(self.title, "CardLayout.title", allow_empty=False)
         _validate_optional_string(self.link, "CardLayout.link", allow_empty=False)
-        fields = _validate_unique_sources(self.fields, "CardLayout.fields")
-        if sum(isinstance(column.cell, FlagCell) and column.visible is not False for column in fields) > 1:
-            raise ValueError("CardLayout.fields accepts at most one visible FlagCell")
-        object.__setattr__(self, "fields", fields)
+        object.__setattr__(self, "fields", _validate_unique_sources(self.fields, "CardLayout.fields"))
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -226,13 +238,19 @@ class TableBlueprint:
         Column-name formatting in both layouts; defaults to compact formatting.
         Explicit `Column.name` labels take precedence.
     previews_config:
-        Timeline selection shared by every [`PreviewCell`][rerun.blueprint.table.PreviewCell] in both layouts.
+        Timeline, play state, and playback speed shared by every [`PreviewCell`][rerun.blueprint.table.PreviewCell] in both layouts.
         If no timeline is specified, one is picked automatically, preferring custom over built-in timelines.
+        Previews start paused at 1x speed unless `play_state` or `playback_speed` is set.
     filters:
         Row filters, shared by both layouts.
         A row is only shown when all filters select it.
         Build filters for one column with [`col`][rerun.blueprint.table.col], which the Viewer shows as editable filters.
         Instead of a [`Filter`][rerun.blueprint.table.Filter], you can also provide a string with a raw SQL expression.
+    sort_by:
+        Source column the rows are sorted by, with an optional direction.
+        Without a direction the viewer sorts ascending.
+        Use [`SortBy`][rerun.blueprint.table.SortBy] to set the direction.
+        If unset, rows keep the order of the data.
 
     """
 
@@ -242,6 +260,7 @@ class TableBlueprint:
     column_display_mode: ColumnDisplayModeLike | None = None
     previews_config: PreviewsConfig | None = None
     filters: Sequence[Filter | str] = ()
+    sort_by: str | SortBy | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.filters, (str, Filter)):
@@ -262,6 +281,11 @@ class TableBlueprint:
             raise ValueError("default_layout='cards' requires card_layout to be configured")
         if self.previews_config is not None and not isinstance(self.previews_config, PreviewsConfig):
             raise TypeError("TableBlueprint.previews_config must be a PreviewsConfig or None")
+        if isinstance(self.sort_by, str):
+            _validate_optional_string(self.sort_by, "TableBlueprint.sort_by", allow_empty=False)
+            object.__setattr__(self, "sort_by", SortBy(self.sort_by))
+        elif self.sort_by is not None and not isinstance(self.sort_by, SortBy):
+            raise TypeError("TableBlueprint.sort_by must be a str, SortBy, or None")
 
     def save(self, application_id: str, path: str | Path | None = None) -> None:
         """
@@ -302,8 +326,8 @@ class TableBlueprint:
             view.blueprint_path(): view
             for columns in layouts
             for column in columns
-            if isinstance(column.cell, PreviewCell)
-            for view in column.cell.views
+            if isinstance(column.column_type, PreviewCell)
+            for view in column.column_type.views
         }
 
         for view in views.values():
@@ -313,6 +337,8 @@ class TableBlueprint:
             layout=self.default_layout,
             column_display_mode=self.column_display_mode,
             filters=[str(entry) for entry in self.filters] or None,
+            # `__post_init__` converts a plain column name to `SortBy`.
+            sort_by=cast("SortBy | None", self.sort_by),
         ).as_component_batches()
         if components:
             stream.log("table", components)
@@ -342,5 +368,3 @@ class TableBlueprint:
             for field in self.card_layout.fields:
                 source = escape_entity_path_part(field.source)
                 field._log_to_stream(stream, f"table/layouts/cards/fields/{source}")
-
-    # TODO(RR-4810): Add sorting after the type definitions model it.

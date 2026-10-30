@@ -3,8 +3,8 @@ title = "VistaDream: sampling multiview consistent images for single-view scene 
 description = "VistaDream reconstructs a 3D scene from a single image with a two-stage coarse-scaffold + multi-view consistency pipeline."
 tags = ["3D", "Reconstruction", "Pinhole camera", "Diffusion", "Single-view", "Gaussian splatting", "Novel views"]
 source = "https://github.com/rerun-io/vistadream"
-thumbnail = "https://static.rerun.io/vistadream/3d632e8e5e435b3d7d88860058ad8be071c5dc8a/480w.png"
-thumbnail_dimensions = [480, 267]
+thumbnail = "https://static.rerun.io/vistadream_thumbnail/4abc5ae5837376aaa991a2a76c2c0dda75ef65ff/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 https://vimeo.com/1136303951?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=2696:1463

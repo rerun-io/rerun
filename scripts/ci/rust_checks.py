@@ -66,8 +66,9 @@ def run_cargo(
     if "wasm" in cargo_args:
         extra_cfgs = '--cfg=web_sys_unstable_apis --cfg=getrandom_backend="wasm_js"'
 
-    additional_env_vars["RUSTFLAGS"] = f"{extra_cfgs} {'--deny warnings' if deny_warnings else ''}"
-    additional_env_vars["RUSTDOCFLAGS"] = f"{extra_cfgs} {'--deny warnings' if deny_warnings else ''}"
+    additional_env_vars["RUSTFLAGS"] = extra_cfgs
+    additional_env_vars["RUSTDOCFLAGS"] = extra_cfgs
+    additional_env_vars["CARGO_BUILD_WARNINGS"] = "deny" if deny_warnings else "warn"
 
     # We shouldn't require the web viewer .wasm to exist before running clippy, unit tests, etc:
     additional_env_vars["RERUN_DISABLE_WEB_VIEWER_SERVER"] = "1"

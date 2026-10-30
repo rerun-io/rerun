@@ -757,7 +757,6 @@ mod tests {
     use re_entity_db::EntityDb;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{StoreId, TimePoint, Timeline};
-    use re_types_core::reflection::Reflection;
     use re_viewer_context::{
         ActiveStoreContext, FallbackProviderRegistry, IdentifiedViewSystem as _, StoreCache,
         ViewClass as _, ViewClassRegistry, VisualizableReason, blueprint_timeline,
@@ -787,7 +786,7 @@ mod tests {
         let mut fallback_registry = FallbackProviderRegistry::default();
         view_class_registry
             .add_class::<TestViewClass>(
-                &Reflection::default(),
+                &Default::default(),
                 &re_viewer_context::AppOptions::test(),
                 &mut fallback_registry,
             )

@@ -2,8 +2,8 @@
 title = "Notebook: minimal example"
 description = "Embed the Rerun viewer directly inside Jupyter, Colab, or VSCode. Logged data shows up inline in the notebook."
 tags = ["Notebook", "API example", "3D"]
-thumbnail = "https://static.rerun.io/notebook_cube/e40da7048fb5c0c12ef9931225791c27469d057d/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/notebook_thumbnail/3255056ed2140f05e022bc605586adddf68730be/768w.png"
+thumbnail_dimensions = [768, 576]
 channel = "nightly"
 -->
 

@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -73,10 +70,8 @@ impl ::re_types_core::ToArrow for Range2D {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, expand_validity, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -110,25 +105,15 @@ impl ::re_types_core::ToArrow for Range2D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let x_range_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let x_range_validity = validity_from_bools(somes);
                         {
                             let x_range_inner_data: Vec<_> = x_range
                                 .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
-                            let x_range_inner_validity: Option<arrow::buffer::NullBuffer> =
-                                x_range_validity.as_ref().map(|validity| {
-                                    validity
-                                        .iter()
-                                        .map(|b| std::iter::repeat_n(b, 2usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
+                            let x_range_inner_validity =
+                                expand_validity(x_range_validity.as_ref(), 2usize);
                             as_array_ref(FixedSizeListArray::new(
                                 std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                                 2,
@@ -148,25 +133,15 @@ impl ::re_types_core::ToArrow for Range2D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let y_range_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let y_range_validity = validity_from_bools(somes);
                         {
                             let y_range_inner_data: Vec<_> = y_range
                                 .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
-                            let y_range_inner_validity: Option<arrow::buffer::NullBuffer> =
-                                y_range_validity.as_ref().map(|validity| {
-                                    validity
-                                        .iter()
-                                        .map(|b| std::iter::repeat_n(b, 2usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
+                            let y_range_inner_validity =
+                                expand_validity(y_range_validity.as_ref(), 2usize);
                             as_array_ref(FixedSizeListArray::new(
                                 std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
                                 2,
@@ -201,22 +176,13 @@ impl ::re_types_core::FromArrow for Range2D {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.encodings.Range2D",
+                    );
                     let x_range = {
-                        if !arrays_by_name.contains_key("x_range") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "x_range",
-                            ))
-                            .with_context("rerun.encodings.Range2D");
-                        }
-                        let arrow_data = &**arrays_by_name["x_range"];
+                        let arrow_data = fields.required("x_range")?;
                         {
                             let arrow_data = arrow_data
                                 .try_cast::<arrow::array::FixedSizeListArray>(|| {
@@ -285,14 +251,7 @@ impl ::re_types_core::FromArrow for Range2D {
                         }
                     };
                     let y_range = {
-                        if !arrays_by_name.contains_key("y_range") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "y_range",
-                            ))
-                            .with_context("rerun.encodings.Range2D");
-                        }
-                        let arrow_data = &**arrays_by_name["y_range"];
+                        let arrow_data = fields.required("y_range")?;
                         {
                             let arrow_data = arrow_data
                                 .try_cast::<arrow::array::FixedSizeListArray>(|| {

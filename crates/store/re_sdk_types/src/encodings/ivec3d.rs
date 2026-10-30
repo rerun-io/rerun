@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -61,10 +58,8 @@ impl ::re_types_core::ToArrow for IVec3D {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::as_array_ref;
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let data0: Vec<_> = data
@@ -103,25 +98,17 @@ impl ::re_types_core::FromArrow for IVec3D {
         err_on_nulls(arrow_data, "rerun.encodings.IVec3D")?;
         Ok({
             let slice = {
-                let arrow_data = arrow_data
-                    .try_cast::<arrow::array::FixedSizeListArray>(|| {
+                let arrow_data_inner = fixed_size_list_values(
+                    arrow_data,
+                    3i32,
+                    || {
                         DataType::FixedSizeList(
                             std::sync::Arc::new(Field::new("item", DataType::Int32, false)),
                             3,
                         )
-                    })
-                    .with_context("rerun.encodings.IVec3D#xyz")?;
-                if arrow_data.value_length() != 3i32 {
-                    return Err(DeserializationError::datatype_mismatch(
-                        DataType::FixedSizeList(
-                            std::sync::Arc::new(Field::new("item", DataType::Int32, false)),
-                            3,
-                        ),
-                        arrow_data.data_type().clone(),
-                    ))
-                    .with_context("rerun.encodings.IVec3D#xyz");
-                }
-                let arrow_data_inner = &**arrow_data.values();
+                    },
+                    "rerun.encodings.IVec3D#xyz",
+                )?;
                 bytemuck::try_cast_slice::<_, [i32; 3usize]>(
                     arrow_data_inner
                         .try_cast::<Int32Array>(|| DataType::Int32)

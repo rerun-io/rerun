@@ -11,7 +11,7 @@ use itertools::{Either, Itertools as _};
 use parking_lot::Mutex;
 use re_arrow_util::RecordBatchExt as _;
 use re_chunk_index::RawRrdManifest;
-use re_log_types::{EntryId, StoreId, StoreKind, TimeType};
+use re_log_types::{AbsoluteTimeRange, EntryId, StoreId, StoreKind, TimeType, Timeline};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::ScanDatasetManifestDataframe;
@@ -20,6 +20,8 @@ use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
 use re_protos::common::v1alpha1::ext::{
     DatasetHandle, DatasetKind, IfDuplicateBehavior, SegmentId,
 };
+use re_sorbet::ColumnKind;
+use re_sorbet::metadata::RERUN_KIND;
 use re_types_core::LayerName;
 use url::Url;
 
@@ -293,7 +295,8 @@ impl Dataset {
         }
 
         // Recompute schema
-        let schema = Schema::try_merge(self.iter_sources().map(|source| source.schema()))?;
+        let schema =
+            re_arrow_util::merge_schema_fields(self.iter_sources().map(|source| source.schema()))?;
         let schema_arc = Arc::new(schema.clone());
         *cache = Some((updated_at, Arc::clone(&schema_arc)));
 
@@ -333,52 +336,8 @@ impl Dataset {
 
             let properties_batch = segment.compute_properties().await?;
 
-            let indexes_batch = RecordBatch::try_new_with_options(
-                Arc::new(Schema::new_with_metadata(
-                    current_segment_indexes
-                        .keys()
-                        .flat_map(|timeline| {
-                            ["end", "start"].into_iter().map(|index_marker| {
-                                let metadata: HashMap<_, _> = [
-                                    ("rerun:index".to_owned(), timeline.name().to_string()),
-                                    ("rerun:index_kind".to_owned(), timeline.typ().to_string()),
-                                    ("rerun:index_marker".to_owned(), index_marker.to_owned()),
-                                    ("rerun:kind".to_owned(), "index".to_owned()),
-                                ]
-                                .into_iter()
-                                .collect();
-                                let field_name = format!("{}:{index_marker}", timeline.name());
-                                let data_type = timeline.datatype();
-                                Arc::new(
-                                    Field::new(field_name, data_type, true).with_metadata(metadata),
-                                )
-                            })
-                        })
-                        .collect_vec(),
-                    HashMap::default(),
-                )),
-                current_segment_indexes
-                    .into_iter()
-                    .flat_map(|(timeline, range)| match timeline.typ() {
-                        TimeType::Sequence => [
-                            create_array!(Int64, [range.max().as_i64()]) as ArrayRef,
-                            create_array!(Int64, [range.min().as_i64()]) as ArrayRef,
-                        ],
-                        TimeType::DurationNs => [
-                            create_array!(DurationNanosecond, [range.max().as_i64()]) as ArrayRef,
-                            create_array!(DurationNanosecond, [range.min().as_i64()]) as ArrayRef,
-                        ],
-                        TimeType::TimestampNs => [
-                            create_array!(TimestampNanosecond, [range.max().as_i64()]) as ArrayRef,
-                            create_array!(TimestampNanosecond, [range.min().as_i64()]) as ArrayRef,
-                        ],
-                    })
-                    .collect(),
-                &RecordBatchOptions::default().with_row_count(Some(1)),
-            )?;
-
             all_segment_properties.push(properties_batch);
-            all_index_ranges.push(indexes_batch);
+            all_index_ranges.push(index_ranges_row(current_segment_indexes)?);
 
             segment_ids.push(segment_id.clone());
             layer_names.push(layer_names_row);
@@ -391,8 +350,7 @@ impl Dataset {
         let properties_record_batch =
             re_arrow_util::concat_polymorphic_batches(all_segment_properties.as_slice())
                 .map_err(Error::failed_to_extract_properties)?;
-        let indexes_record_batch =
-            re_arrow_util::concat_polymorphic_batches(all_index_ranges.as_slice())?;
+        let indexes_record_batch = concat_index_ranges(&all_index_ranges)?;
 
         let base_record_batch = ScanSegmentTableResponse::create_dataframe(
             segment_ids,
@@ -462,6 +420,7 @@ impl Dataset {
         let mut registration_statuses = Vec::with_capacity(row_count);
 
         let mut properties = Vec::with_capacity(row_count);
+        let mut index_ranges = Vec::with_capacity(row_count);
 
         for (layer_name, segment_id, source) in layers {
             layer_names.push(layer_name.clone());
@@ -472,17 +431,13 @@ impl Dataset {
             last_updated_at.push(source.last_updated_at().as_nanosecond() as i64);
             num_chunks.push(source.num_chunks());
             size_bytes.push(source.size_bytes());
-            schema_sha256s.push(
-                source
-                    .schema_sha256()
-                    .map_err(Error::failed_to_extract_properties)?,
-            );
+            schema_sha256s.push(source.schema_sha256());
 
-            // In re_server, only successful registrations exist (schema conflicts fail synchronously),
-            // so all entries are always `Done`.
+            // Rejected sources are never stored, so every entry here is `Done`.
             registration_statuses.push(cloud_ext::LayerRegistrationStatus::Done.to_string());
 
             properties.push(source.compute_properties().await?);
+            index_ranges.push(index_ranges_row(source.index_ranges())?);
         }
 
         let base_record_batch = ScanDatasetManifestDataframe::new(
@@ -503,10 +458,13 @@ impl Dataset {
         let properties_record_batch =
             re_arrow_util::concat_polymorphic_batches(properties.as_slice())
                 .map_err(Error::failed_to_extract_properties)?;
+        let index_ranges_record_batch = concat_index_ranges(&index_ranges)?;
 
         base_record_batch
             .concat_horizontally_with(&properties_record_batch)
-            .map_err(Error::failed_to_extract_properties)
+            .map_err(Error::failed_to_extract_properties)?
+            .concat_horizontally_with(&index_ranges_record_batch)
+            .map_err(Into::into)
     }
 
     pub fn rrd_manifest(&self, segment_id: &SegmentId) -> Result<RawRrdManifest, Error> {
@@ -534,21 +492,30 @@ impl Dataset {
     fn enforce_limits(&self, segment_id: &SegmentId, source: &Source) -> Result<(), Error> {
         let limits = self.dataset_kind.limits();
 
-        // Only new segments count against the limit. Adding a layer to an existing segment is fine.
-        // Like the cloud server, the segment-count cap is enforced synchronously up front.
+        // Every segment layer takes a slot, as on Rerun Hub, where the limit counts the rows of
+        // the dataset manifest. Re-registering a layer that already has one is free.
         if let Some(max) = limits.max_segment_count
-            && !self.inner.segments.contains_key(segment_id)
-            && self.inner.segments.len() as u64 >= max
+            && !self
+                .inner
+                .segments
+                .get(segment_id)
+                .is_some_and(|segment| segment.has_layer(&source.layer_info().name))
         {
-            return Err(Error::SegmentLimitReached(format!(
-                "this {} already holds the maximum of {max} {}s",
-                self.dataset_kind.name(),
-                self.dataset_kind.contained_name(),
-            )));
+            let current: u64 = self
+                .inner
+                .segments
+                .values()
+                .map(|segment| segment.source_count() as u64)
+                .sum();
+            if current >= max {
+                return Err(Error::SegmentLimitReached(format!(
+                    "would exceed the limit of {max} ({current} already registered)"
+                )));
+            }
         }
 
-        // The content checks below match the cloud server, which rejects them during the
-        // registration task. `register_with_dataset` reports `SegmentRejected` as a failed task.
+        // The checks here match Rerun Hub, which applies them during the registration task.
+        // `register_with_dataset` reports each rejection as that segment's failed task.
         if limits.static_chunks_only && source.has_temporal_chunks() {
             return Err(Error::SegmentRejected(format!(
                 "{}s only accept static chunks, but {} '{segment_id}' contains temporal data",
@@ -625,7 +592,7 @@ impl Dataset {
             DataSourceKind::Rrd,
             storage_url,
             layer_info,
-        ));
+        )?);
 
         self.enforce_limits(&segment_id, &source)?;
 
@@ -754,6 +721,75 @@ impl Dataset {
 
         Ok(new_segment_ids)
     }
+}
+
+/// A single-row batch with a `{timeline}:end` and a `{timeline}:start` column per timeline.
+fn index_ranges_row(ranges: BTreeMap<Timeline, AbsoluteTimeRange>) -> Result<RecordBatch, Error> {
+    let fields = ranges
+        .keys()
+        .flat_map(|timeline| {
+            [
+                RawRrdManifest::INDEX_MARKER_END,
+                RawRrdManifest::INDEX_MARKER_START,
+            ]
+            .into_iter()
+            .map(|index_marker| {
+                let metadata: HashMap<_, _> = [
+                    (
+                        RawRrdManifest::FIELD_METADATA_KEY_INDEX.to_owned(),
+                        timeline.name().to_string(),
+                    ),
+                    (
+                        RawRrdManifest::FIELD_METADATA_KEY_INDEX_KIND.to_owned(),
+                        timeline.typ().to_string(),
+                    ),
+                    (
+                        RawRrdManifest::FIELD_METADATA_KEY_INDEX_MARKER.to_owned(),
+                        index_marker.to_owned(),
+                    ),
+                    (RERUN_KIND.to_owned(), ColumnKind::Index.to_string()),
+                ]
+                .into_iter()
+                .collect();
+                let field_name = format!("{}:{index_marker}", timeline.name());
+                Arc::new(Field::new(field_name, timeline.datatype(), true).with_metadata(metadata))
+            })
+        })
+        .collect_vec();
+
+    let columns = ranges
+        .into_iter()
+        .flat_map(|(timeline, range)| match timeline.typ() {
+            TimeType::Sequence => [
+                create_array!(Int64, [range.max().as_i64()]) as ArrayRef,
+                create_array!(Int64, [range.min().as_i64()]) as ArrayRef,
+            ],
+            TimeType::DurationNs => [
+                create_array!(DurationNanosecond, [range.max().as_i64()]) as ArrayRef,
+                create_array!(DurationNanosecond, [range.min().as_i64()]) as ArrayRef,
+            ],
+            TimeType::TimestampNs => [
+                create_array!(TimestampNanosecond, [range.max().as_i64()]) as ArrayRef,
+                create_array!(TimestampNanosecond, [range.min().as_i64()]) as ArrayRef,
+            ],
+        })
+        .collect();
+
+    Ok(RecordBatch::try_new_with_options(
+        Arc::new(Schema::new_with_metadata(fields, HashMap::default())),
+        columns,
+        &RecordBatchOptions::default().with_row_count(Some(1)),
+    )?)
+}
+
+/// Stacks [`index_ranges_row`] batches, with the columns sorted by name.
+fn concat_index_ranges(rows: &[RecordBatch]) -> Result<RecordBatch, Error> {
+    let batch = re_arrow_util::concat_polymorphic_batches(rows)?;
+    let schema = batch.schema();
+    let order = (0..schema.fields().len())
+        .sorted_by_key(|&i| schema.field(i).name())
+        .collect_vec();
+    Ok(batch.project(&order)?)
 }
 
 /// A random nonzero segment properties revision.

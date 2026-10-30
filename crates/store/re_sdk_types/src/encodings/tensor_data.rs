@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -92,10 +89,10 @@ impl ::re_types_core::ToArrow for TensorData {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, serialize_strings, validity_from_bools,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -142,10 +139,7 @@ impl ::re_types_core::ToArrow for TensorData {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let shape_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let shape_validity = validity_from_bools(somes);
                         {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 shape
@@ -179,10 +173,7 @@ impl ::re_types_core::ToArrow for TensorData {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let names_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let names_validity = validity_from_bools(somes);
                         {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 names
@@ -196,26 +187,10 @@ impl ::re_types_core::ToArrow for TensorData {
                                 std::sync::Arc::new(Field::new("item", DataType::Utf8, false)),
                                 offsets,
                                 {
-                                    let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                        names_inner_data.iter().map(|datum| datum.len()),
-                                    );
-                                    #[expect(clippy::unwrap_used)]
-                                    let capacity = offsets.last().copied().unwrap() as usize;
-                                    let mut buffer_builder =
-                                        arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                                    for data in &names_inner_data {
-                                        buffer_builder.append_slice(data.as_bytes());
-                                    }
-                                    let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                                    #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                                    as_array_ref(unsafe {
-                                        StringArray::new_unchecked(
-                                            offsets,
-                                            inner_data,
-                                            names_inner_validity,
-                                        )
-                                    })
+                                    serialize_strings(
+                                        names_inner_data.iter().map(|value| value.as_str()),
+                                        names_inner_validity,
+                                    )?
                                 },
                                 names_validity,
                             )?)
@@ -229,10 +204,7 @@ impl ::re_types_core::ToArrow for TensorData {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let buffer_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let buffer_validity = validity_from_bools(somes);
                         {
                             let _ = buffer_validity;
                             crate::encodings::TensorBuffer::to_arrow_opt(buffer)?
@@ -261,22 +233,13 @@ impl ::re_types_core::FromArrow for TensorData {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.encodings.TensorData",
+                    );
                     let shape = {
-                        if !arrays_by_name.contains_key("shape") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "shape",
-                            ))
-                            .with_context("rerun.encodings.TensorData");
-                        }
-                        let arrow_data = &**arrays_by_name["shape"];
+                        let arrow_data = fields.required("shape")?;
                         {
                             let arrow_data = arrow_data
                                 .try_cast::<arrow::array::ListArray>(|| {
@@ -324,14 +287,7 @@ impl ::re_types_core::FromArrow for TensorData {
                         }
                     };
                     let names = {
-                        if !arrays_by_name.contains_key("names") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "names",
-                            ))
-                            .with_context("rerun.encodings.TensorData");
-                        }
-                        let arrow_data = &**arrays_by_name["names"];
+                        let arrow_data = fields.required("names")?;
                         {
                             let arrow_data = arrow_data
                                 .try_cast::<arrow::array::ListArray>(|| {
@@ -348,41 +304,11 @@ impl ::re_types_core::FromArrow for TensorData {
                                 let arrow_data_inner = {
                                     let arrow_data_inner = &**arrow_data.values();
                                     {
-                                        let arrow_data_inner = arrow_data_inner
-                                            .try_cast::<StringArray>(|| DataType::Utf8)
-                                            .with_context("rerun.encodings.TensorData#names")?;
-                                        let arrow_data_inner_buf = arrow_data_inner.values();
-                                        let offsets = arrow_data_inner.offsets();
-                                        ZipValidity::new_with_validity(
-                                            offsets.array_windows(),
-                                            arrow_data_inner.nulls(),
+                                        deserialize_strings(
+                                            arrow_data_inner
+                                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                                .with_context("rerun.encodings.TensorData#names")?,
                                         )
-                                        .map(|elem| {
-                                            elem.map(|&[start, end]| {
-                                                let start = start as usize;
-                                                let end = end as usize;
-                                                let len = end - start;
-                                                if arrow_data_inner_buf.len() < end {
-                                                    return Err(
-                                                        DeserializationError::offset_slice_oob(
-                                                            (start, end),
-                                                            arrow_data_inner_buf.len(),
-                                                        ),
-                                                    );
-                                                }
-                                                let data = arrow_data_inner_buf
-                                                    .slice_with_length(start, len);
-                                                Ok(data)
-                                            })
-                                            .transpose()
-                                        })
-                                        .map(|res_or_opt| {
-                                            res_or_opt.map(|res_or_opt| {
-                                                res_or_opt
-                                                    .map(|v| ::re_types_core::ArrowString::from(v))
-                                            })
-                                        })
-                                        .collect::<DeserializationResult<Vec<Option<_>>>>()
                                         .with_context("rerun.encodings.TensorData#names")?
                                         .into_iter()
                                     }
@@ -422,14 +348,7 @@ impl ::re_types_core::FromArrow for TensorData {
                         }
                     };
                     let buffer = {
-                        if !arrays_by_name.contains_key("buffer") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "buffer",
-                            ))
-                            .with_context("rerun.encodings.TensorData");
-                        }
-                        let arrow_data = &**arrays_by_name["buffer"];
+                        let arrow_data = fields.required("buffer")?;
                         crate::encodings::TensorBuffer::from_arrow_opt(arrow_data)
                             .with_context("rerun.encodings.TensorData#buffer")?
                             .into_iter()

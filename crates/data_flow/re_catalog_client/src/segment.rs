@@ -1,8 +1,11 @@
 //! Catalog dataset, segment, and layer operations.
 
-use crate::CatalogClient;
+use std::collections::{BTreeSet, HashSet};
+
 use arrow::array::RecordBatch;
 use arrow::datatypes::Schema as ArrowSchema;
+use tokio_stream::StreamExt as _;
+
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::{
@@ -10,12 +13,12 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::SegmentId;
-use re_redap_client::{ApiError, ApiResult, TraceId};
-
-use crate::dataset_info::{DatasetInfo, DatasetInfoBuilder};
+use re_redap_client::{ApiError, ApiResult, DatasetSchema, TraceId};
 use re_types_core::LayerName;
-use std::collections::HashSet;
-use tokio_stream::StreamExt as _;
+
+use crate::CatalogClient;
+use crate::DatasetSelection;
+use crate::dataset_info::{DatasetInfo, DatasetInfoBuilder};
 
 impl CatalogClient {
     /// Read one segment's mutable properties, and the revision that gates writes to them.
@@ -69,19 +72,37 @@ impl CatalogClient {
             .await
     }
 
-    /// Get a list of segment IDs for the given dataset entry ID.
+    /// Get the IDs of the segments that `selection` keeps, in the server's order.
+    ///
+    /// Pass a dataset's [`EntryId`] to get all of its segments.
+    /// Selected IDs that the dataset does not hold are not returned.
     //TODO(ab): is there a way — and a reason — to not collect and instead return a stream?
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_segment_ids(&self, entry_id: EntryId) -> ApiResult<Vec<SegmentId>> {
+    pub async fn get_dataset_segment_ids(
+        &self,
+        selection: impl Into<DatasetSelection>,
+    ) -> ApiResult<Vec<SegmentId>> {
+        let selection = selection.into();
+        if selection.selects_no_segments() {
+            return Ok(Vec::new());
+        }
+        let segment_filter = selection.segment_filter();
+
+        let mut request = ScanSegmentTableRequest::with_columns([
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
+        ]);
+        if let Some(ids) = segment_filter {
+            request.segment_id_filter = Some(SegmentIdFilter {
+                strategy: Some(segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+                    segment_ids: ids.iter().cloned().map(Into::into).collect(),
+                })),
+            });
+        }
+
         let mut stream = self
             .client()
             .await?
-            .scan_segment_table(
-                entry_id,
-                ScanSegmentTableRequest::with_columns([
-                    ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
-                ]),
-            )
+            .scan_segment_table(selection.dataset_id(), request)
             .await?;
         let trace_id = stream.trace_id();
 
@@ -101,7 +122,12 @@ impl CatalogClient {
                     )
                 })?;
 
-            segment_ids.extend(segment_id_column.into_iter_owned());
+            // Servers may ignore the filter hint, so filter locally too.
+            segment_ids.extend(
+                segment_id_column
+                    .into_iter_owned()
+                    .filter(|id| segment_filter.is_none_or(|ids| ids.contains(id))),
+            );
         }
 
         Ok(segment_ids)
@@ -138,7 +164,7 @@ impl CatalogClient {
     pub async fn get_dataset_info(&self, dataset_id: EntryId) -> ApiResult<DatasetInfo> {
         let mut client = self.client().await?;
         let segment_table_schema = client.get_segment_table_schema(dataset_id).await?;
-        let dataset_schema = client.get_dataset_schema(dataset_id).await?;
+        let dataset_schema = client.get_dataset_schema(dataset_id).await?.schema;
 
         let mut builder = DatasetInfoBuilder::new(&segment_table_schema);
         let request = ScanSegmentTableRequest::with_columns(builder.columns());
@@ -152,26 +178,66 @@ impl CatalogClient {
         builder.finish(self.origin(), &dataset_schema)
     }
 
-    /// The dataset-wide schema, which may retain fields from removed layers.
+    /// The union of the schemas of every registered layer of every segment in the dataset.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_schema(&self, dataset_id: EntryId) -> ApiResult<ArrowSchema> {
+    pub async fn get_dataset_schema(&self, dataset_id: EntryId) -> ApiResult<DatasetSchema> {
         self.client().await?.get_dataset_schema(dataset_id).await
     }
 
-    /// The union of the schemas of a segment's registered layers, without referenced assets.
+    /// The union of the schemas of a segment's registered layers.
+    ///
+    /// With `include_assets`, the schemas of the assets that apply to the segment are merged in.
+    ///
+    /// The order of the fields is unspecified.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_segment_schema(
         &self,
         dataset_id: EntryId,
         segment_id: SegmentId,
+        include_assets: bool,
     ) -> ApiResult<ArrowSchema> {
-        // TODO(RR-5928): Fetch the segment schema without the full chunk manifest.
-        let manifest = self
-            .client()
+        let mut client = self.client().await?;
+
+        let Some(segment_schema) = client
+            .get_segments_schema(dataset_id, &BTreeSet::from([segment_id.clone()]))
             .await?
-            .get_rrd_manifest(dataset_id, segment_id)
-            .await?;
-        Ok(manifest.sorbet_schema)
+        else {
+            return Err(ApiError::not_found(
+                self.origin(),
+                format!("segment '{segment_id}' not found in dataset {dataset_id}"),
+            ));
+        };
+        if !include_assets {
+            return Ok(segment_schema);
+        }
+
+        let Some((asset_dataset, asset_ids)) = client
+            .get_assets_for_segment(dataset_id, Some(segment_id))
+            .await?
+        else {
+            return Ok(segment_schema);
+        };
+        let asset_ids: BTreeSet<_> = asset_ids.into_iter().collect();
+        if asset_ids.is_empty() {
+            return Ok(segment_schema);
+        }
+
+        let Some(asset_schema) = client
+            .get_segments_schema(asset_dataset, &asset_ids)
+            .await?
+        else {
+            return Ok(segment_schema);
+        };
+
+        re_arrow_util::merge_schema_fields([segment_schema, without_properties(asset_schema)])
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    self.origin(),
+                    None,
+                    err,
+                    "failed merging segment and asset schemas",
+                )
+            })
     }
 
     /// Validate that a segment exists without fetching its layer metadata.
@@ -356,6 +422,28 @@ impl CatalogClient {
         Ok(segment_ids)
     }
 
+    /// The union of the schemas of `layer` in every segment that has it registered.
+    ///
+    /// A layer that no segment has registered is not found.
+    /// The order of the fields is unspecified.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_layer_schema(
+        &self,
+        dataset_id: EntryId,
+        layer: LayerName,
+    ) -> ApiResult<ArrowSchema> {
+        self.client()
+            .await?
+            .get_layer_schema(dataset_id, &layer)
+            .await?
+            .ok_or_else(|| {
+                ApiError::not_found(
+                    self.origin(),
+                    format!("layer '{layer}' not found in dataset {dataset_id}"),
+                )
+            })
+    }
+
     /// Unregister exactly one segment/layer pair without deleting its source objects.
     ///
     /// Missing segments or layers are a no-op. Returns the request trace ID and task IDs;
@@ -372,4 +460,20 @@ impl CatalogClient {
             .unregister_from_dataset(dataset_id, vec![segment_id], vec![layer], false)
             .await
     }
+}
+
+/// `schema` without the columns of property entities.
+fn without_properties(schema: ArrowSchema) -> ArrowSchema {
+    let fields: Vec<_> = schema
+        .fields()
+        .iter()
+        .filter(|field| {
+            let entity_path = re_sorbet::ColumnDescriptor::try_from_arrow_field(None, field)
+                .ok()
+                .and_then(|column| column.entity_path().cloned());
+            !entity_path.is_some_and(|entity_path| entity_path.is_property())
+        })
+        .cloned()
+        .collect();
+    ArrowSchema::new_with_metadata(fields, schema.metadata)
 }

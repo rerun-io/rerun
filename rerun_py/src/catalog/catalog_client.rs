@@ -3,8 +3,8 @@ use std::sync::Arc;
 use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
-use pyo3::types::{PyAnyMethods as _, PyDict};
-use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pymethods};
+use pyo3::types::{PyAnyMethods as _, PyBytes, PyDict};
+use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pyfunction, pymethods};
 use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
@@ -21,6 +21,9 @@ use crate::utils::wait_for_future;
 /// (version, cloud_provider, cloud_region, features), as returned by `version_info`.
 type VersionInfoTuple = (String, Option<String>, Option<String>, Vec<String>);
 
+/// (storage URL, expiry, method, request URL, headers).
+type WriteAccessGrantTuple = (String, String, String, String, Vec<(String, Py<PyBytes>)>);
+
 /// Client for a remote Rerun catalog server.
 #[pyclass(
     name = "CatalogClientInternal",
@@ -35,6 +38,9 @@ pub struct PyCatalogClientInternal {
 
     /// Authentication for direct object store fetches made by dataframe queries.
     object_store_auth: Arc<dyn ObjectStoreAuthenticator>,
+
+    /// The token the client was created with, for processes that must reconnect as this client.
+    token: Option<String>,
 }
 
 impl PyCatalogClientInternal {
@@ -47,10 +53,84 @@ impl PyCatalogClientInternal {
     }
 }
 
+/// Used for testing only.
+#[pyfunction]
+#[pyo3(signature = (client, *, key, size_bytes))]
+pub fn _get_write_access_grant(
+    client: Py<PyCatalogClientInternal>,
+    py: Python<'_>,
+    key: String,
+    size_bytes: Option<u64>,
+) -> PyResult<WriteAccessGrantTuple> {
+    use re_protos::cloud::v1alpha1::UploadMethod;
+    use re_protos::cloud::v1alpha1::ext::{
+        GetWriteAccessGrantRequest, HttpRequest, ObjectKey, Redemption, UrlSigning,
+    };
+
+    let _span = read_trace_context_from_python(py, "_get_write_access_grant").entered();
+    let connection = client.borrow(py).connection.clone();
+    let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+    let response = wait_for_future(py, async {
+        connection
+            .client()
+            .await?
+            .get_write_access_grant(GetWriteAccessGrantRequest {
+                key,
+                location: None,
+                size_bytes,
+                supported_upload_methods: vec![UploadMethod::SingleRequest],
+                signing: UrlSigning::Signed,
+            })
+            .await
+            .map_err(to_py_err)
+    })?;
+    let request = match response.grant.redemption {
+        Redemption::HttpRequest(request) => request,
+        Redemption::MultipartRequest(_) => {
+            return Err(PyRuntimeError::new_err(
+                "server returned a multipart grant, which this client did not accept",
+            ));
+        }
+    };
+    let (method, url, headers) = match request {
+        HttpRequest::External {
+            method,
+            url,
+            headers,
+        } => (method, url, headers),
+        HttpRequest::SameOrigin {
+            method,
+            path_and_query,
+            headers,
+        } => {
+            let url = url::Url::parse(&connection.origin().as_url())
+                .and_then(|base| base.join(path_and_query.as_str()))
+                .map_err(to_py_err)?;
+            (method, url, headers)
+        }
+    };
+    Ok((
+        response.storage_url.to_string(),
+        response.grant.expires_at.to_string(),
+        method.to_string(),
+        url.to_string(),
+        headers
+            .iter()
+            .map(|(name, value)| {
+                (
+                    name.to_string(),
+                    PyBytes::new(py, value.as_bytes()).unbind(),
+                )
+            })
+            .collect(),
+    ))
+}
+
 fn setup_datafusion_context(py: Python<'_>) -> PyResult<Py<PyAny>> {
     let df_module = py.import("datafusion")?;
 
     let config_options = PyDict::new(py);
+    // TODO(RR-6101): share these options with `ordered_record_batch_stream` in `dataset_selection.rs`.
     config_options.set_item("datafusion.execution.coalesce_batches", "false")?;
 
     if let Some(cores) = re_datafusion::rerun_sdk_num_cpus() {
@@ -110,6 +190,7 @@ impl PyCatalogClientInternal {
         }
 
         let credentials = match token
+            .clone()
             .map(TryFrom::try_from)
             .transpose()
             .map_err(to_py_err)?
@@ -135,6 +216,7 @@ impl PyCatalogClientInternal {
             connection,
             datafusion_ctx,
             object_store_auth,
+            token,
         };
 
         ret.register_catalog_provider_list(py)?;
@@ -146,6 +228,12 @@ impl PyCatalogClientInternal {
     #[getter]
     pub fn url(&self) -> String {
         self.connection.origin().to_string()
+    }
+
+    /// The token this client was created with, if any.
+    #[getter]
+    pub fn token(&self) -> Option<String> {
+        self.token.clone()
     }
 
     /// Returns version and deployment information as (version, cloud_provider, cloud_region, features).
@@ -181,23 +269,32 @@ impl PyCatalogClientInternal {
         connection.bandwidth_bytes_per_sec(py, num_bytes, rtt)
     }
 
-    #[pyo3(signature = (path, *, key))]
-    fn stage_file(self_: Py<Self>, py: Python<'_>, path: String, key: String) -> PyResult<String> {
+    // TODO(RR-6055): Expose object_store_config and forward it to file staging.
+    #[pyo3(signature = (path, *, key, upload_method))]
+    fn stage_file(
+        self_: Py<Self>,
+        py: Python<'_>,
+        path: String,
+        key: String,
+        upload_method: &str,
+    ) -> PyResult<String> {
         let _span = read_trace_context_from_python(py, "CatalogClient.stage").entered();
         let connection = self_.borrow(py).connection.clone();
-        connection.stage_file(py, path.into(), key)
+        connection.stage_file(py, path.into(), key, upload_method)
     }
 
-    #[pyo3(signature = (data, *, key))]
+    // TODO(RR-6055): Expose object_store_config and forward it to bytes staging.
+    #[pyo3(signature = (data, *, key, upload_method))]
     fn stage_bytes(
         self_: Py<Self>,
         py: Python<'_>,
         data: Vec<u8>,
         key: String,
+        upload_method: &str,
     ) -> PyResult<String> {
         let _span = read_trace_context_from_python(py, "CatalogClient.stage").entered();
         let connection = self_.borrow(py).connection.clone();
-        connection.stage_bytes(py, &data, key)
+        connection.stage_bytes(py, &data, key, upload_method)
     }
 
     /// Get a list of all dataset entries in the catalog.

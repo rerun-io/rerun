@@ -8,7 +8,8 @@ use super::{
     ContentContext, DesiredWidth, ItemButtons, LayoutInfoStack, ListItemContent,
     ListItemContentButtonsExt, ListVisuals,
 };
-use crate::{Icon, UiExt as _};
+use crate::text_edit::ReTextEdit;
+use crate::{Icon, Size, UiExt as _};
 
 /// Closure to draw an icon left of the label.
 type IconFn<'a> = dyn FnOnce(&mut egui::Ui, egui::Rect, ListVisuals) + 'a;
@@ -111,7 +112,7 @@ impl<'a> PropertyContent<'a> {
         } else {
             // This is not readable, which is why it is disabled
             self.value_fn(move |ui: &mut Ui, _| {
-                ui.add_enabled_ui(false, |ui| ui.re_checkbox(&mut b, ""));
+                ui.add_enabled_ui(false, |ui| ui.checkbox(&mut b, ""));
             })
         }
     }
@@ -120,7 +121,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_bool_mut(self, b: &'a mut bool) -> Self {
         self.value_fn(|ui: &mut Ui, _| {
-            ui.re_checkbox(b, "");
+            ui.checkbox(b, "");
         })
     }
 
@@ -145,9 +146,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_text_mut(self, text: &'a mut String) -> Self {
         self.value_fn(|ui, _| {
-            crate::text_edit::text_edit_scope(ui, |ui| {
-                ui.text_edit_singleline(text);
-            });
+            ui.add(ReTextEdit::singleline(text).size(Size::Tiny));
         })
     }
 
@@ -271,20 +270,19 @@ impl ListItemContent for PropertyContent<'_> {
             ui.fonts_mut(|fonts| fonts.layout_job(layout_job))
         };
 
-        // this happens here to avoid cloning the text
-        context.response.widget_info(|| {
-            egui::WidgetInfo::selected(
-                egui::Role::Button,
-                ui.is_enabled(),
-                context.list_item.selected,
-                galley.text(),
-            )
+        let text_rect = Align2::LEFT_CENTER.align_size_within_rect(galley.size(), label_rect);
+        let label_response = ui.interact(
+            text_rect,
+            context.response.id.with("property_label"),
+            egui::Sense::hover(),
+        );
+        // Label gets its own widget info for accessibility, making both tests and navigation easier.
+        label_response.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::Role::Label, ui.is_enabled(), galley.text())
         });
 
         // Label ready to draw.
-        let text_pos = Align2::LEFT_CENTER
-            .align_size_within_rect(galley.size(), label_rect)
-            .min;
+        let text_pos = text_rect.min;
         let mut visuals_for_label = visuals;
         visuals_for_label.interactive = false;
         ui.painter()
@@ -325,8 +323,7 @@ impl ListItemContent for PropertyContent<'_> {
             }
 
             child_ui.sanity_check();
-            // The row itself carries the property name (see `widget_info` above).
-            child_ui.label_inputs_by(context.response.id, |ui| {
+            child_ui.label_inputs_by(label_response.id, |ui| {
                 value_fn(ui, visuals_for_value);
             });
             child_ui.sanity_check();
@@ -354,12 +351,12 @@ impl ListItemContent for PropertyContent<'_> {
 
         let layout_info = LayoutInfoStack::top(ui.ctx());
 
-        if crate::is_in_resizable_panel(ui) {
+        if crate::is_in_resizable_container(ui) {
             DesiredWidth::AtLeast(self.min_desired_width)
         } else if let Some(max_width) = layout_info.property_content_max_width {
             let desired_width = max_width + layout_info.left_x - ui.max_rect().left();
 
-            DesiredWidth::AtLeast(desired_width.ceil())
+            DesiredWidth::AtLeastIncludingIndent(desired_width.ceil())
         } else {
             DesiredWidth::AtLeast(self.min_desired_width)
         }

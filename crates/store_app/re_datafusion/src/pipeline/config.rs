@@ -18,15 +18,15 @@ const DEFAULT_WINDOW_BYTES: u64 = 512 * 1024 * 1024;
 
 /// Which pipeline executes dataset scans, from `RERUN_DATAFRAME_PIPELINE`.
 ///
-/// Unset or `v1` selects the IO-loop / CPU-worker pipeline; `v2` selects
-/// the streaming pipeline (`PIPELINE_V2.md`). Case and surrounding
+/// Unset or `v2` selects the streaming pipeline (`PIPELINE_V2.md`); `v1`
+/// selects the IO-loop / CPU-worker pipeline. Case and surrounding
 /// whitespace are ignored; any other value is an error.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DataframePipeline {
-    /// The IO-loop / CPU-worker pipeline, the default.
+    /// The IO-loop / CPU-worker pipeline, selected only by an explicit `v1`.
     V1,
 
-    /// The streaming pipeline, with its flow-control knobs.
+    /// The streaming pipeline, with its flow-control knobs; the default.
     V2(FetchConfig),
 }
 
@@ -68,8 +68,8 @@ impl DataframePipeline {
         fetch_config: impl FnOnce() -> Result<FetchConfig>,
     ) -> Result<Self> {
         match pipeline.map(str::to_ascii_lowercase).as_deref() {
-            None | Some("v1") => Ok(Self::V1),
-            Some("v2") => Ok(Self::V2(fetch_config()?)),
+            Some("v1") => Ok(Self::V1),
+            None | Some("v2") => Ok(Self::V2(fetch_config()?)),
             Some(_) => Err(config_datafusion_err!(
                 "{ENV_PIPELINE} must be \"v1\" or \"v2\", got {pipeline:?}"
             )),
@@ -173,9 +173,21 @@ mod tests {
     }
 
     #[test]
+    fn unset_selects_v2() {
+        assert_eq!(
+            DataframePipeline::parse(None, || FetchConfig::parse(None, None)).unwrap(),
+            DataframePipeline::V2(FetchConfig {
+                fetch_concurrency: DEFAULT_FETCH_CONCURRENCY,
+                window_bytes: DEFAULT_WINDOW_BYTES,
+            }),
+        );
+    }
+
+    #[test]
     fn v1_ignores_v2_knobs() {
         assert_eq!(
-            DataframePipeline::parse(None, || FetchConfig::parse(Some("0"), Some("lots"))).unwrap(),
+            DataframePipeline::parse(Some("v1"), || FetchConfig::parse(Some("0"), Some("lots")))
+                .unwrap(),
             DataframePipeline::V1,
         );
     }

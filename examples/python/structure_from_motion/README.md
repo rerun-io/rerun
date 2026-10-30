@@ -2,8 +2,8 @@
 title = "Structure from motion"
 description = "Visualize a sparse 3D reconstruction from COLMAP: camera frames, estimated poses, and an accumulating point cloud."
 tags = ["2D", "3D", "COLMAP", "Pinhole camera", "Time series"]
-thumbnail = "https://static.rerun.io/structure-from-motion/af24e5e8961f46a9c10399dbc31b6611eea563b4/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/structure_from_motion_thumbnail/286f9d5db2c931403cd115a7b6eb21096c858a99/768w.png"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 build_args = ["--dataset=colmap_fiat", "--resize=800x600"]

@@ -1,6 +1,8 @@
 //! This example shows how to add custom Views to the Rerun Viewer.
 
-use rerun::external::{re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer, tokio};
+use rerun::external::{
+    re_build_info, re_crash_handler, re_grpc_server, re_log, re_memory, re_viewer, tokio,
+};
 
 mod color_coordinate_config;
 mod points3d_color_view;
@@ -21,8 +23,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();
 
     // Install handlers for panics and crashes that prints to stderr and send
-    // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
-    re_crash_handler::install_crash_handlers(re_viewer::build_info());
+    // them to Rerun analytics (if the `analytics` feature of `rerun` is on).
+    re_crash_handler::install_crash_handlers(re_build_info::build_info!());
 
     // Listen for gRPC connections from Rerun's logging SDKs.
     // There are other ways of "feeding" the viewer though - all you need is a `re_log_channel::LogReceiver`.
@@ -34,7 +36,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let startup_options = re_viewer::StartupOptions::default();
 
-    // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
+    // This is used for analytics, if the `analytics` feature of `rerun` is on
     let app_env = re_viewer::AppEnvironment::Custom("My extended Rerun Viewer".to_owned());
 
     println!(
@@ -49,7 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Box::new(move |cc| {
             let mut app = re_viewer::App::new(
                 main_thread_token,
-                re_viewer::build_info(),
+                re_build_info::build_info!(),
                 app_env,
                 startup_options,
                 cc,

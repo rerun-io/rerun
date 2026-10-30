@@ -103,6 +103,9 @@ enum VideoType {
     AssetVideo,
     VideoStream,
     VideoStreamFrameReference,
+
+    /// A video stream with cleared fields between two frames.
+    VideoStreamWithClear,
 }
 
 impl std::fmt::Display for VideoType {
@@ -111,8 +114,19 @@ impl std::fmt::Display for VideoType {
             Self::AssetVideo => write!(f, "asset"),
             Self::VideoStream => write!(f, "stream"),
             Self::VideoStreamFrameReference => write!(f, "stream_reference"),
+            Self::VideoStreamWithClear => write!(f, "stream_with_clear"),
         }
     }
+}
+
+/// [`VideoType::VideoStreamWithClear`] logs the clear between this frame and the next.
+const FRAME_BEFORE_CLEAR: usize = 4;
+
+fn clear_time_ns(frame_timestamps_nanos: &[i64]) -> i64 {
+    i64::midpoint(
+        frame_timestamps_nanos[FRAME_BEFORE_CLEAR],
+        frame_timestamps_nanos[FRAME_BEFORE_CLEAR + 1],
+    )
 }
 
 fn snapshot_options_for_codec(codec: &VideoCodec, viewport_size: egui::Vec2) -> SnapshotOptions {
@@ -192,7 +206,9 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
             });
         }
 
-        VideoType::VideoStream | VideoType::VideoStreamFrameReference => {
+        VideoType::VideoStream
+        | VideoType::VideoStreamFrameReference
+        | VideoType::VideoStreamWithClear => {
             // Pretend the file is a video stream.
             let blob_bytes =
                 encodings::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap())
@@ -308,6 +324,17 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
                         &VideoStream::new(codec).with_sample(sample_bytes),
                     )
                 });
+
+                if video_type == VideoType::VideoStreamWithClear && sample_idx == FRAME_BEFORE_CLEAR
+                {
+                    test_context.log_entity(entity_path, |builder| {
+                        builder.with_archetype(
+                            RowId::new(),
+                            [(timeline, clear_time_ns(&frame_timestamps_nanos))],
+                            &VideoStream::clear_fields(),
+                        )
+                    });
+                }
             }
 
             if video_type == VideoType::VideoStreamFrameReference {
@@ -380,6 +407,16 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
 
     let seek_locations = if video_type == VideoType::VideoStreamFrameReference {
         vec![("at_reference", 102_000_000_000)]
+    } else if video_type == VideoType::VideoStreamWithClear {
+        // The frame after the clear decodes from the keyframe before the clear.
+        vec![
+            (
+                "frame_before_clear",
+                frame_timestamps_nanos[FRAME_BEFORE_CLEAR],
+            ),
+            ("cleared", clear_time_ns(&frame_timestamps_nanos)),
+            ("next_frame", frame_timestamps_nanos[FRAME_BEFORE_CLEAR + 1]),
+        ]
     } else {
         VideoTestSeekLocation::ALL
             .into_iter()
@@ -446,6 +483,11 @@ fn test_video_stream_codec_h264() {
 #[test]
 fn test_video_stream_frame_reference_h264() {
     test_video(VideoType::VideoStreamFrameReference, &VideoCodec::H264);
+}
+
+#[test]
+fn test_video_stream_with_clear_h264() {
+    test_video(VideoType::VideoStreamWithClear, &VideoCodec::H264);
 }
 
 #[test]

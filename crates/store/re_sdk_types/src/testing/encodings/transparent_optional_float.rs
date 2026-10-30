@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -45,10 +42,8 @@ impl ::re_types_core::ToArrow for TransparentOptionalFloat {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -59,10 +54,7 @@ impl ::re_types_core::ToArrow for TransparentOptionalFloat {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let data0_validity = validity_from_bools(somes);
             as_array_ref(PrimitiveArray::<Float32Type>::new(
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_validity,

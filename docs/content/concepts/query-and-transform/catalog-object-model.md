@@ -117,10 +117,12 @@ In this context, the schema of a dataset is the union of schemas of its segments
 
 Use `segment.schema()` to fetch a snapshot of one segment's schema across its registered layers.
 Referenced assets are excluded from the segment's schema.
+Use `dataset.layer(name).schema()` to fetch the union of one layer's schemas across the segments that contain it.
 
 ```python
 segment_schema = dataset.segment(segment_id).schema()
 print(segment_schema)
+print(dataset.layer("base").schema())
 print(dataset.schema())
 print(dataset.schema().to_arrow())
 ```

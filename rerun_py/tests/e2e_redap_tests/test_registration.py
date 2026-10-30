@@ -4,10 +4,11 @@ import os
 import tempfile
 from typing import TYPE_CHECKING
 
+import pyarrow as pa
 import pytest
 import rerun as rr
 from inline_snapshot import snapshot as inline_snapshot
-from rerun.catalog import AlreadyExistsError, OnDuplicateSegmentLayer, SegmentRegistrationResult
+from rerun.catalog import OnDuplicateSegmentLayer, SegmentRegistrationResult
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
@@ -70,6 +71,225 @@ def test_register_single_with_wait(
 
     assert len(result.segment_ids) == 1
     assert result.segment_ids[0] == recording_id
+
+
+SCHEMA_CHANGE_SEGMENT_ID = "e2e_schema_change_boxes"
+SCHEMA_CHANGE_COMPONENT = "/boxes:Boxes2D:half_sizes"
+SCHEMA_CHANGE_NEW_INDEX = "time_schema_change"
+
+
+def _reader_columns(dataset: DatasetEntry) -> list[str]:
+    names: list[str] = dataset.reader(index="time_3").schema().names
+    return names
+
+
+def _dataset_revision(dataset: DatasetEntry) -> int:
+    """
+    The newest revision of `dataset` this process has observed.
+
+    The reader caches the schema per revision, so a server that reports none (the OSS server) never populates the
+    cache and would let every schema-cache test pass without exercising it.
+    """
+    revision: int | None = dataset._internal._dataset_revision()
+    if revision is None:
+        pytest.skip("server does not report dataset revisions, so the schema cache is never populated")
+    return revision
+
+
+# Runs in a separate process, so its registration cannot advance this process's revision watermark.
+#
+# The server promotes a new revision to its query replicas asynchronously, so `wait()` alone does not guarantee that
+# the next read observes the change. The task's completion advanced this process's watermark, so the schema fetch
+# that follows is stamped with the new revision and the client retries it until a replica serves that revision.
+_OTHER_PROCESS_SCRIPT = """
+import sys
+from rerun.catalog import CatalogClient
+
+url, token, dataset_id, action, target = sys.argv[1:]
+dataset = CatalogClient(url=url, token=token or None).get_dataset(id=dataset_id)
+if action == "register":
+    dataset.register([target]).wait()
+elif action == "unregister":
+    dataset.unregister(segments_to_drop=[target], layers_to_drop=[]).wait()
+else:
+    raise ValueError(action)
+dataset.schema()
+print(dataset._internal._dataset_revision())
+"""
+
+
+@pytest.fixture
+def other_process(
+    entry_factory: EntryFactory, request: pytest.FixtureRequest
+) -> Callable[[DatasetEntry, str, str], int]:
+    """
+    Mutate a dataset from a fresh client in a separate process, like an unrelated SDK user would.
+
+    Returns the dataset revision the server served to that process after the mutation, so once this process catches
+    up it can be checked against the exact revision instead of merely a newer one.
+    """
+    import subprocess
+    import sys
+
+    token = request.config.getoption("--redap-token") or ""
+
+    def run(dataset: DatasetEntry, action: str, target: str) -> int:
+        completed = subprocess.run(
+            [
+                sys.executable,
+                "-c",
+                _OTHER_PROCESS_SCRIPT,
+                entry_factory.client.url,
+                token,
+                str(dataset.id),
+                action,
+                target,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if completed.returncode != 0:
+            pytest.fail(f"other process failed with exit code {completed.returncode}:\n{completed.stderr}")
+        return int(completed.stdout.strip().splitlines()[-1])
+
+    return run
+
+
+def test_reader_schema_updates_after_register(entry_factory: EntryFactory, resource_prefix: str) -> None:
+    """The reader caches the schema per dataset revision, so a registration on the same handle must show up."""
+    dataset = entry_factory.create_dataset("test_reader_schema_updates_after_register")
+
+    dataset.register([resource_prefix + "dataset/file1.rrd"]).wait()
+    assert SCHEMA_CHANGE_COMPONENT not in _reader_columns(dataset)
+    before = _dataset_revision(dataset)
+
+    dataset.register([resource_prefix + "schema_change/boxes.rrd"]).wait()
+    assert _dataset_revision(dataset) > before
+    assert SCHEMA_CHANGE_COMPONENT in _reader_columns(dataset)
+
+
+def test_reader_schema_updates_after_unregister(entry_factory: EntryFactory, resource_prefix: str) -> None:
+    """An unregistration on the same handle must invalidate the reader's cached schema."""
+    dataset = entry_factory.create_dataset("test_reader_schema_updates_after_unregister")
+
+    dataset.register([resource_prefix + "dataset/file1.rrd", resource_prefix + "schema_change/boxes.rrd"]).wait()
+    assert SCHEMA_CHANGE_COMPONENT in _reader_columns(dataset)
+    before = _dataset_revision(dataset)
+
+    dataset.unregister(segments_to_drop=[SCHEMA_CHANGE_SEGMENT_ID], layers_to_drop=[]).wait()
+    assert _dataset_revision(dataset) > before
+    assert SCHEMA_CHANGE_COMPONENT not in _reader_columns(dataset)
+
+
+def test_reader_schema_updates_after_register_on_other_handle(
+    entry_factory: EntryFactory, resource_prefix: str
+) -> None:
+    """The revision watermark is process-wide, so a registration through another handle must invalidate this one."""
+    dataset = entry_factory.create_dataset("test_reader_schema_updates_after_register_on_other_handle")
+    other = entry_factory.client.get_dataset(id=dataset.id)
+
+    dataset.register([resource_prefix + "dataset/file1.rrd"]).wait()
+    assert SCHEMA_CHANGE_COMPONENT not in _reader_columns(dataset)
+    before = _dataset_revision(dataset)
+
+    other.register([resource_prefix + "schema_change/boxes.rrd"]).wait()
+    assert _dataset_revision(dataset) > before
+    assert SCHEMA_CHANGE_COMPONENT in _reader_columns(dataset)
+
+
+def test_reader_schema_catches_up_after_register_in_other_process(
+    entry_factory: EntryFactory,
+    resource_prefix: str,
+    other_process: Callable[[DatasetEntry, str, str], int],
+) -> None:
+    """
+    A registration by another process is invisible until some response for the dataset advances the watermark.
+
+    The stale reader must still produce a correct snapshot of the old schema, and the query it runs must be enough
+    to refresh the next reader.
+    """
+    dataset = entry_factory.create_dataset("test_reader_schema_catches_up_after_register_in_other_process")
+
+    dataset.register([resource_prefix + "dataset/file1.rrd"]).wait()
+    assert SCHEMA_CHANGE_COMPONENT not in _reader_columns(dataset)
+    before = _dataset_revision(dataset)
+
+    after = other_process(dataset, "register", resource_prefix + "schema_change/boxes.rrd")
+    assert after > before
+
+    # Nothing in this process has talked to the dataset since, so the cache is still served.
+    stale_reader = dataset.reader(index="time_3")
+    assert SCHEMA_CHANGE_COMPONENT not in stale_reader.schema().names
+    assert _dataset_revision(dataset) == before
+
+    # The stale schema is the projection, so the result is the old columns over the current data.
+    batches = stale_reader.collect()
+    assert sum(batch.num_rows for batch in batches) > 0
+    assert SCHEMA_CHANGE_COMPONENT not in stale_reader.schema().names
+
+    # The query's first response carried the newer revision.
+    assert _dataset_revision(dataset) == after
+    assert SCHEMA_CHANGE_COMPONENT in _reader_columns(dataset)
+
+
+def test_reader_schema_survives_unregister_in_other_process(
+    entry_factory: EntryFactory,
+    resource_prefix: str,
+    other_process: Callable[[DatasetEntry, str, str], int],
+) -> None:
+    """A reader built from a cached schema that lists since-dropped data must still complete its query."""
+    dataset = entry_factory.create_dataset("test_reader_schema_survives_unregister_in_other_process")
+
+    dataset.register([resource_prefix + "dataset/file1.rrd", resource_prefix + "schema_change/boxes.rrd"]).wait()
+    assert SCHEMA_CHANGE_COMPONENT in _reader_columns(dataset)
+    before = _dataset_revision(dataset)
+
+    after = other_process(dataset, "unregister", SCHEMA_CHANGE_SEGMENT_ID)
+    assert after > before
+
+    stale_reader = dataset.reader(index="time_3")
+    assert SCHEMA_CHANGE_COMPONENT in stale_reader.schema().names
+    assert _dataset_revision(dataset) == before
+
+    # The dropped column is projected from the stale schema but has no data left to fill it.
+    table = pa.Table.from_batches(stale_reader.collect(), schema=stale_reader.schema())
+    assert table.num_rows > 0
+    assert table[SCHEMA_CHANGE_COMPONENT].null_count == table.num_rows
+    assert SCHEMA_CHANGE_SEGMENT_ID not in table["rerun_segment_id"].to_pylist()
+
+    assert _dataset_revision(dataset) == after
+    assert SCHEMA_CHANGE_COMPONENT not in _reader_columns(dataset)
+
+
+def test_reader_on_index_registered_in_other_process(
+    entry_factory: EntryFactory,
+    resource_prefix: str,
+    other_process: Callable[[DatasetEntry, str, str], int],
+) -> None:
+    """
+    Asking for an index the cached schema lacks must refetch the schema instead of failing.
+
+    Rejecting the index sends no request, so nothing else would ever advance the revision watermark and the handle
+    would keep rejecting an index that exists.
+    """
+    dataset = entry_factory.create_dataset("test_reader_on_index_registered_in_other_process")
+
+    dataset.register([resource_prefix + "dataset/file1.rrd"]).wait()
+    assert SCHEMA_CHANGE_NEW_INDEX not in _reader_columns(dataset)
+    before = _dataset_revision(dataset)
+
+    after = other_process(dataset, "register", resource_prefix + "schema_change/new_index.rrd")
+    assert after > before
+    assert _dataset_revision(dataset) == before
+
+    with pytest.raises(ValueError, match="does not exist in the dataset"):
+        dataset.reader(index="no_such_index")
+
+    reader = dataset.reader(index=SCHEMA_CHANGE_NEW_INDEX)
+    assert SCHEMA_CHANGE_NEW_INDEX in reader.schema().names
+    assert _dataset_revision(dataset) == after
+    assert sum(batch.num_rows for batch in reader.collect()) > 0
 
 
 @pytest.mark.local_only
@@ -149,7 +369,7 @@ def test_register_unregister_batch(
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                         │
-│ * version: 0.1.3                                                                                                  │
+│ * version: 0.1.4                                                                                                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────────────────────┬──────────────────────┬─────────────────────────────────────────────────┐ │
 │ │ rerun_segment_id                     ┆ log_tick             ┆ /points:Points2D:positions                      │ │
@@ -182,7 +402,7 @@ def test_register_unregister_batch(
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                         │
-│ * version: 0.1.3                                                                                                  │
+│ * version: 0.1.4                                                                                                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────────────────────┬──────────────────────┬─────────────────────────────────────────────────┐ │
 │ │ rerun_segment_id                     ┆ log_tick             ┆ /points:Points2D:positions                      │ │
@@ -446,9 +666,11 @@ def test_register_duplicate_error_behavior(
     assert len(result.segment_ids) == 1
     assert result.segment_ids[0] == recording_id
 
-    # Second registration of the same segment should fail
-    with pytest.raises(AlreadyExistsError, match="already exists"):
+    # Second registration of the same segment is accepted, and its task fails
+    with pytest.raises(ValueError, match="already exists"):
         ds.register([uris[0]], on_duplicate=OnDuplicateSegmentLayer.ERROR).wait()
+
+    assert ds.segment_ids() == [recording_id]
 
 
 @pytest.mark.local_only

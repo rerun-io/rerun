@@ -44,6 +44,25 @@ use std::time::Duration;
 
 use jiff::Timestamp;
 
+static GLOBAL_ANALYTICS: OnceLock<Option<Analytics>> = OnceLock::new();
+
+/// Set by [`enable_in_this_process`].
+static ENABLED_IN_THIS_PROCESS: AtomicBool = AtomicBool::new(false);
+
+/// Set to a truthy value to send analytics even where they are normally off, e.g. in debug builds.
+///
+/// This does not apply in tests, which never initialize analytics whatever the environment says.
+const ENV_FORCE_ANALYTICS: &str = "FORCE_RERUN_ANALYTICS";
+
+/// Allow analytics for the rest of this process.
+///
+/// Analytics is off until this is called, so only applications should call it, never libraries.
+/// Events recorded before the call are dropped.
+/// The user's opt-out, CI, debug builds, and tests still keep analytics off.
+pub fn enable_in_this_process() {
+    ENABLED_IN_THIS_PROCESS.store(true, Ordering::Relaxed);
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -301,20 +320,15 @@ fn load_config(_user_logged_in: bool) -> Result<Config, ConfigError> {
     }
 }
 
-static GLOBAL_ANALYTICS: OnceLock<Option<Analytics>> = OnceLock::new();
-
-/// Set to a truthy value to send analytics even where they are normally off, e.g. in debug builds.
-///
-/// This does not apply in tests, which never initialize analytics whatever the environment says.
-const ENV_FORCE_ANALYTICS: &str = "FORCE_RERUN_ANALYTICS";
-
 /// Why analytics is off for this whole process, if it is.
 ///
 /// This is decided without touching the filesystem, so that tests and CI never read or write
 /// the shared analytics config, and never print the first-run disclaimer.
 fn disabled_reason() -> Option<&'static str> {
     let is_native = !cfg!(target_arch = "wasm32");
-    if cfg!(any(test, feature = "testing")) {
+    if !ENABLED_IN_THIS_PROCESS.load(Ordering::Relaxed) {
+        Some("because the application did not enable it")
+    } else if cfg!(any(test, feature = "testing")) {
         // Checked before `ENV_FORCE_ANALYTICS`: a test must never touch the shared config,
         // not even in an environment that forces analytics on.
         Some("in tests")
@@ -365,6 +379,9 @@ impl Analytics {
     ///
     /// Usually it is better to use [`Self::global_or_init`] instead.
     pub fn global_get() -> Option<&'static Self> {
+        if !ENABLED_IN_THIS_PROCESS.load(Ordering::Relaxed) {
+            return None;
+        }
         GLOBAL_ANALYTICS.get()?.as_ref()
     }
 
@@ -550,6 +567,8 @@ impl Properties for re_build_info::BuildInfo {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use serde_json::Value;
 
     use super::*;
@@ -558,6 +577,7 @@ mod tests {
     /// in a test, not even through the lazily-initializing free functions.
     #[test]
     fn analytics_is_never_initialized_in_tests() {
+        enable_in_this_process();
         assert!(Analytics::global_or_init().is_none());
         assert!(Analytics::global_or_init_with_login_state(true).is_none());
         record(|| event::HelpButtonFirstClicked {});
@@ -585,10 +605,8 @@ mod tests {
 
         build_info.serialize(&mut event);
 
-        assert!(matches!(
-            event.props.get("git_hash"),
-            Some(Property::String(git_hash)) if git_hash == "v0.38.1"
-        ));
+        assert_matches!(event.props.get("git_hash"),
+            Some(Property::String(git_hash)) if git_hash == "v0.38.1");
     }
 
     #[test]

@@ -11,7 +11,6 @@
 use std::rc::Rc;
 
 use re_entity_db::EntityDb;
-use re_log_channel::LogSource;
 use re_log_types::{ApplicationId, RecordingId, TimeReal, Timeline, TimelineName};
 use re_sdk_types::SegmentId;
 use re_viewer_context::{ContainerId, Item, ItemCollection, ItemContext, ViewId};
@@ -36,21 +35,7 @@ pub struct ViewerEvent {
 impl ViewerEvent {
     #[inline]
     fn from_db_and_kind(db: &EntityDb, kind: ViewerEventKind) -> Self {
-        let segment_id = db.data_source.as_ref().and_then(|ds| {
-            if let LogSource::RedapGrpcStream {
-                uri:
-                    re_uri::DatasetUri {
-                        segment_id: Some(segment_id),
-                        ..
-                    },
-                ..
-            } = ds
-            {
-                Some(segment_id.clone())
-            } else {
-                None
-            }
-        });
+        let segment_id = db.redap_uri().and_then(|uri| uri.segment_id.clone());
 
         Self {
             application_id: db.application_id().clone(),

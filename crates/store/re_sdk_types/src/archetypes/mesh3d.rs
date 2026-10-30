@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
@@ -663,39 +663,19 @@ impl Mesh3D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.vertex_positions
-                .map(|vertex_positions| vertex_positions.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.triangle_indices
-                .map(|triangle_indices| triangle_indices.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.vertex_normals
-                .map(|vertex_normals| vertex_normals.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.vertex_colors
-                .map(|vertex_colors| vertex_colors.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.vertex_texcoords
-                .map(|vertex_texcoords| vertex_texcoords.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.albedo_factor
-                .map(|albedo_factor| albedo_factor.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.face_rendering
-                .map(|face_rendering| face_rendering.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.albedo_texture_buffer
-                .map(|albedo_texture_buffer| albedo_texture_buffer.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.albedo_texture_format
-                .map(|albedo_texture_format| albedo_texture_format.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.class_ids
-                .map(|class_ids| class_ids.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.vertex_positions,
+            self.triangle_indices,
+            self.vertex_normals,
+            self.vertex_colors,
+            self.vertex_texcoords,
+            self.albedo_factor,
+            self.face_rendering,
+            self.albedo_texture_buffer,
+            self.albedo_texture_format,
+            self.class_ids,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -706,29 +686,21 @@ impl Mesh3D {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_vertex_positions = self.vertex_positions.as_ref().map(|b| b.array.len());
-        let len_triangle_indices = self.triangle_indices.as_ref().map(|b| b.array.len());
-        let len_vertex_normals = self.vertex_normals.as_ref().map(|b| b.array.len());
-        let len_vertex_colors = self.vertex_colors.as_ref().map(|b| b.array.len());
-        let len_vertex_texcoords = self.vertex_texcoords.as_ref().map(|b| b.array.len());
-        let len_albedo_factor = self.albedo_factor.as_ref().map(|b| b.array.len());
-        let len_face_rendering = self.face_rendering.as_ref().map(|b| b.array.len());
-        let len_albedo_texture_buffer = self.albedo_texture_buffer.as_ref().map(|b| b.array.len());
-        let len_albedo_texture_format = self.albedo_texture_format.as_ref().map(|b| b.array.len());
-        let len_class_ids = self.class_ids.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_vertex_positions)
-            .or(len_triangle_indices)
-            .or(len_vertex_normals)
-            .or(len_vertex_colors)
-            .or(len_vertex_texcoords)
-            .or(len_albedo_factor)
-            .or(len_face_rendering)
-            .or(len_albedo_texture_buffer)
-            .or(len_albedo_texture_format)
-            .or(len_class_ids)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.vertex_positions,
+            self.triangle_indices,
+            self.vertex_normals,
+            self.vertex_colors,
+            self.vertex_texcoords,
+            self.albedo_factor,
+            self.face_rendering,
+            self.albedo_texture_buffer,
+            self.albedo_texture_format,
+            self.class_ids,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The positions of each vertex.

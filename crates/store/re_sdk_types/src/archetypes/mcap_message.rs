@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: The binary payload of a single MCAP message, without metadata.
@@ -185,11 +185,8 @@ impl McapMessage {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [self
-            .data
-            .map(|data| data.partitioned(_lengths.clone()))
-            .transpose()?];
-        Ok(columns.into_iter().flatten())
+        let batches = [self.data];
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -200,9 +197,10 @@ impl McapMessage {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_data = self.data.as_ref().map(|b| b.array.len());
-        let len = None.or(len_data).unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [self.data];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The raw message payload as a binary blob.

@@ -4,6 +4,7 @@
   "name": "Web Viewer",
   "readme": "./README.md",
   "includeVersion": true,
+  "plugin": ["./typedoc-used-by.mjs"],
 
   "highlightLanguages": ["js", "ts", "jsx"]
 }

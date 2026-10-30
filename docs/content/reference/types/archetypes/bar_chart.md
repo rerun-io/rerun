@@ -20,6 +20,7 @@ The bar heights will be the provided values, and the x coordinates of the bars w
 ## Can be shown in
 * [BarChartView](../views/bar_chart_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `BarChart`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1BarChart.html)

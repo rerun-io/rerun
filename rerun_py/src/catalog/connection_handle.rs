@@ -1,10 +1,11 @@
 use arrow::array::RecordBatch;
-use arrow::datatypes::{Schema as ArrowSchema, SchemaRef};
+use arrow::datatypes::SchemaRef;
 use arrow::ffi_stream::ArrowArrayStreamReader;
 use itertools::Itertools as _;
 use pyo3::exceptions::{PyOSError, PyValueError};
 use pyo3::{PyResult, Python};
-use re_catalog_client::{CatalogClient, RegistrationHandle};
+
+use re_catalog_client::{CatalogClient, DatasetSelection, RegistrationHandle, StageOpt};
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::EntryFilter;
@@ -15,12 +16,23 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
-use re_redap_client::{ConnectionClient, ConnectionRegistryHandle, TraceId};
+use re_redap_client::{ConnectionClient, ConnectionRegistryHandle, DatasetSchema, TraceId};
 use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
 use crate::catalog::to_py_err;
-use crate::utils::wait_for_future;
+use crate::utils::{get_tokio_runtime, wait_for_future};
+
+fn stage_options(method: &str) -> PyResult<StageOpt> {
+    match method {
+        "auto" => Ok(StageOpt::default()),
+        "single" => Ok(StageOpt::single()),
+        "multipart" => Ok(StageOpt::multipart()),
+        _ => Err(PyValueError::new_err(
+            "upload_method must be 'auto', 'single', or 'multipart'",
+        )),
+    }
+}
 
 /// Connection handle to a catalog service.
 #[derive(Clone)]
@@ -31,7 +43,10 @@ pub(crate) struct PyConnectionHandle {
 impl PyConnectionHandle {
     pub fn new(connection_registry: ConnectionRegistryHandle, origin: re_uri::Origin) -> Self {
         Self {
-            inner: CatalogClient::new(connection_registry.connection_handle(origin)),
+            inner: CatalogClient::new(
+                connection_registry.connection_handle(origin),
+                re_async::AsyncRuntimeHandle::new_native(get_tokio_runtime().handle().clone()),
+            ),
         }
     }
 
@@ -48,6 +63,7 @@ impl PyConnectionHandle {
     }
 }
 
+// TODO(RR-6055): Pass object_store_config through both staging paths to StageOpt.
 impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn stage_file(
@@ -55,8 +71,10 @@ impl PyConnectionHandle {
         py: Python<'_>,
         path: std::path::PathBuf,
         key: String,
+        upload_method: &str,
     ) -> PyResult<String> {
         let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let opt = stage_options(upload_method)?;
 
         wait_for_future(py, async move {
             let file = std::fs::File::open(&path).map_err(|err| {
@@ -65,18 +83,33 @@ impl PyConnectionHandle {
                     path.display()
                 ))
             })?;
-            let url = self.inner.stage(key, file).await.map_err(to_py_err)?;
+            let url = self
+                .inner
+                .stage_opt(key, file, opt)
+                .await
+                .map_err(to_py_err)?;
             Ok(url.to_string())
         })
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn stage_bytes(&self, py: Python<'_>, bytes: &[u8], key: String) -> PyResult<String> {
+    pub fn stage_bytes(
+        &self,
+        py: Python<'_>,
+        bytes: &[u8],
+        key: String,
+        upload_method: &str,
+    ) -> PyResult<String> {
         let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let opt = stage_options(upload_method)?;
         let bytes = bytes::Bytes::copy_from_slice(bytes);
 
         wait_for_future(py, async move {
-            let url = self.inner.stage(key, bytes).await.map_err(to_py_err)?;
+            let url = self
+                .inner
+                .stage_opt(key, bytes, opt)
+                .await
+                .map_err(to_py_err)?;
             Ok(url.to_string())
         })
     }
@@ -174,17 +207,18 @@ impl PyConnectionHandle {
     pub fn get_dataset_segment_ids(
         &self,
         py: Python<'_>,
-        entry_id: EntryId,
+        selection: impl Into<DatasetSelection>,
     ) -> PyResult<Vec<String>> {
+        let selection = selection.into();
         wait_for_future(py, async {
             Ok(self
                 .inner
-                .get_dataset_segment_ids(entry_id)
+                .get_dataset_segment_ids(selection)
                 .await
                 .map_err(to_py_err)?
-                .iter()
-                .map(|id| id.to_string())
-                .collect::<Vec<_>>())
+                .into_iter()
+                .map(String::from)
+                .collect())
         })
     }
 
@@ -354,7 +388,7 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<ArrowSchema> {
+    pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetSchema> {
         wait_for_future(py, async {
             self.inner
                 .get_dataset_schema(entry_id)

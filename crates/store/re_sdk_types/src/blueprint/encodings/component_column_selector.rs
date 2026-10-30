@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -68,10 +65,10 @@ impl ::re_types_core::ToArrowOpt for ComponentColumnSelector {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, serialize_optional_strings, validity_from_bools,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -93,10 +90,7 @@ impl ::re_types_core::ToArrowOpt for ComponentColumnSelector {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let validity = validity_from_bools(somes);
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -108,33 +102,14 @@ impl ::re_types_core::ToArrowOpt for ComponentColumnSelector {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let entity_path_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let entity_path_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                entity_path.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in entity_path.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(
-                                    offsets,
-                                    inner_data,
-                                    entity_path_validity,
-                                )
-                            })
+                            serialize_optional_strings(
+                                entity_path
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.0.as_str())),
+                                entity_path_validity,
+                            )?
                         }
                     },
                     {
@@ -145,29 +120,14 @@ impl ::re_types_core::ToArrowOpt for ComponentColumnSelector {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let component_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let component_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                component.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in component.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, component_validity)
-                            })
+                            serialize_optional_strings(
+                                component
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.0.as_str())),
+                                component_validity,
+                            )?
                         }
                     },
                 ],
@@ -195,111 +155,43 @@ impl ::re_types_core::FromArrowOpt for ComponentColumnSelector {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
+                let fields = StructFields::new(
+                    arrow_data,
+                    Self::arrow_data_type,
+                    "rerun.blueprint.encodings.ComponentColumnSelector",
+                );
                 let entity_path = {
-                    if !arrays_by_name.contains_key("entity_path") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "entity_path",
-                        ))
-                        .with_context("rerun.blueprint.encodings.ComponentColumnSelector");
-                    }
-                    let arrow_data = &**arrays_by_name["entity_path"];
+                    let arrow_data = fields.required("entity_path")?;
                     {
-                        let arrow_data = arrow_data
-                            .try_cast::<StringArray>(|| DataType::Utf8)
-                            .with_context(
-                                "rerun.blueprint.encodings.ComponentColumnSelector#entity_path",
-                            )?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::encodings::EntityPath(
-                                            ::re_types_core::ArrowString::from(v),
-                                        )
-                                    })
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
-                            .with_context(
-                                "rerun.blueprint.encodings.ComponentColumnSelector#entity_path",
-                            )?
-                            .into_iter()
+                        deserialize_strings(
+                            arrow_data
+                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                .with_context(
+                                    "rerun.blueprint.encodings.ComponentColumnSelector#entity_path",
+                                )?,
+                        )
+                        .with_context(
+                            "rerun.blueprint.encodings.ComponentColumnSelector#entity_path",
+                        )?
+                        .into_iter()
+                        .map(|res_or_opt| res_or_opt.map(crate::encodings::EntityPath))
                     }
                 };
                 let component = {
-                    if !arrays_by_name.contains_key("component") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "component",
-                        ))
-                        .with_context("rerun.blueprint.encodings.ComponentColumnSelector");
-                    }
-                    let arrow_data = &**arrays_by_name["component"];
+                    let arrow_data = fields.required("component")?;
                     {
-                        let arrow_data = arrow_data
-                            .try_cast::<StringArray>(|| DataType::Utf8)
-                            .with_context(
-                                "rerun.blueprint.encodings.ComponentColumnSelector#component",
-                            )?;
-                        let arrow_data_buf = arrow_data.values();
-                        let offsets = arrow_data.offsets();
-                        ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::encodings::Utf8(::re_types_core::ArrowString::from(
-                                            v,
-                                        ))
-                                    })
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
-                            .with_context(
-                                "rerun.blueprint.encodings.ComponentColumnSelector#component",
-                            )?
-                            .into_iter()
+                        deserialize_strings(
+                            arrow_data
+                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                .with_context(
+                                    "rerun.blueprint.encodings.ComponentColumnSelector#component",
+                                )?,
+                        )
+                        .with_context(
+                            "rerun.blueprint.encodings.ComponentColumnSelector#component",
+                        )?
+                        .into_iter()
+                        .map(|res_or_opt| res_or_opt.map(crate::encodings::Utf8))
                     }
                 };
                 ZipValidity::new_with_validity(

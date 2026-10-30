@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <string_view>
 #include <utility>
@@ -33,6 +34,13 @@ namespace rerun {
         ///
         /// The default is `rerun+http://127.0.0.1:9876/proxy`.
         std::string_view url = "rerun+http://127.0.0.1:9876/proxy";
+
+        /// How long a flush waits for the connection to be established.
+        ///
+        /// If the sink has not connected by then, the flush fails, and dropping the sink discards
+        /// the data that has not been sent.
+        /// Must be finite and non-negative.
+        std::chrono::duration<float> flush_timeout = std::chrono::seconds(5);
 
         inline operator LogSink() const;
     };

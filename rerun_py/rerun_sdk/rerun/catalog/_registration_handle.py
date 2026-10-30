@@ -41,7 +41,7 @@ class RegistrationResult:
     """The ids of the registered segments."""
 
 
-class RegistrationHandle:
+class RegistrationOperation:
     """Handle to track and wait on segment registration tasks."""
 
     def __init__(self, internal: RegistrationHandleInternal) -> None:

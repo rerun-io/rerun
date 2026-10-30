@@ -13,10 +13,10 @@ use re_sdk::external::re_log_types::EntryId;
 use re_uri::DatasetResource;
 use re_viewer::App;
 use re_viewer::external::re_viewer_context::{EntryKind, Route};
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 fn assert_route_and_selection(harness: &mut Harness<'static, App>, expected_route: &Route) {
-    let actual_route = harness.state_mut().testonly_get_route().clone();
+    let actual_route = harness.state_mut().route().clone();
     assert_eq!(&actual_route, expected_route, "unexpected route");
 
     let actual_selection =
@@ -34,8 +34,7 @@ fn click_folder_card(harness: &Harness<'static, App>, label: &str) {
         .last()
         .unwrap_or_else(|| panic!("{label} folder card should be present"))
         .rect();
-    // Click the card's blank body so the child text widget does not consume the pointer event.
-    let pos = label_rect.right_center() + egui::vec2(120.0, 0.0);
+    let pos = label_rect.center();
     harness.event(egui::Event::PointerMoved(pos));
     for pressed in [true, false] {
         harness.event(egui::Event::PointerButton {
@@ -167,8 +166,12 @@ pub async fn dataset_folders() {
     assert_route_and_selection(&mut harness, &folder_route("perception.detection"));
     snapshot_results.add(harness.try_snapshot("dataset_folders_02_perception_detection"));
 
-    // Navigate back up with the parent-folder button.
-    harness.get_by_label("Go to parent folder").click();
+    // Navigate back up with the `perception` breadcrumb, right of the recording panel's folder item.
+    harness
+        .query_all_by_role_and_label(Role::Button, "perception")
+        .max_by(|a, b| a.rect().left().total_cmp(&b.rect().left()))
+        .expect("`perception` breadcrumb should be present")
+        .click();
     viewer_test_utils::step_until(
         "folder `perception` cards reappear after parent navigation",
         &mut harness,

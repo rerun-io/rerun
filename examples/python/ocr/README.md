@@ -2,8 +2,8 @@
 title = "PaddleOCR"
 description = "Run PaddleOCR layout analysis and text detection on documents: regions, detected text, and recovered output in one view."
 tags = ["Text", "OCR", "2D", "Blueprint"]
-thumbnail = "https://static.rerun.io/ocr1/54b3a9d0706fd4a3a3dcbf878046ae34a7a6feec/480w.png"
-thumbnail_dimensions = [480, 259]
+thumbnail = "https://static.rerun.io/ocr_thumbnail/12ccfdda84143a7b513b419f8e393837abeac34e/768w.png"
+thumbnail_dimensions = [768, 576]
 # Channel = "main" # uncomment if this example can be run fast an easily
 -->
 

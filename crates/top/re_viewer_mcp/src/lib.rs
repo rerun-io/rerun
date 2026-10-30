@@ -5,7 +5,7 @@
 //! - **Agent ↔ this server: MCP.** MCP is JSON-RPC over stdio: the agent's harness spawns this
 //!   process and exchanges JSON messages on stdin/stdout. The agent sees only JSON — the tool
 //!   list with JSON Schemas for their arguments, the `INSTRUCTIONS` prose, and JSON or text
-//!   results. It never sees gRPC, but it does read the `.proto` documentation: `proto_tools`
+//!   results. It never sees gRPC, but it does read the `.proto` documentation: `re_viewer_control_tools`
 //!   derives each viewer-control tool's schema and description from the descriptor set, which
 //!   carries the comments.
 //! - **This server ↔ the viewer: gRPC.** Every tool call becomes one call on the viewer's
@@ -18,7 +18,7 @@
 //! Each call becomes one `egui_inspection` request/response exchange carried inside a single
 //! `egui_inspect` operation instead of `egui_mcp`'s local inspection socket.
 //!
-//! The viewer-control tools (`rerun_get_viewer_state`, `rerun_set_time_cursor`, `rerun_close_recordings`, …) are
+//! The viewer-control tools (`rerun_get_state`, `rerun_set_time_cursor`, `rerun_close`, …) are
 //! generated from `viewer_control.proto`: one tool per operation in the request envelope's
 //! `oneof`. `rerun_connect` and `rerun_disconnect` are hand-written, since they manage the connection itself
 //! rather than driving the viewer.
@@ -43,7 +43,6 @@ use rmcp::{
     service::{RequestContext, RoleServer},
     tool, tool_router, transport,
 };
-mod proto_tools;
 
 use serde::Deserialize;
 use tonic::transport::Channel;
@@ -52,16 +51,23 @@ use url::Url;
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
 use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
 use re_protos::viewer_control::v1alpha1::{
-    EguiInspectRequest, GetViewerLogsRequest, ViewerControlOp, ViewerLogEntry,
+    EguiInspectRequest, GetLogsRequest, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
+use re_viewer_control_tools::ScreenshotDelivery;
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
+
+/// Agents on MCP are coding agents that can read files. See [`ScreenshotDelivery::File`].
+const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::File;
+
+/// Appended to the description of every viewer-control tool, since they share one connection.
+const REQUIRES_CONNECT: &str = "\n\nRequires `rerun_connect`.";
 
 /// Deadline for one viewer-control operation.
 ///
 /// Matches the viewer's own deadline for an answer, `re_log_channel::VIEWER_CONTROL_TIMEOUT`.
-/// Slow work, like `open_url` waiting on a slow server, answers before that, so anything this
+/// Slow work, like `open` waiting on a slow server, answers before that, so anything this
 /// slow means the viewer is gone rather than busy.
 const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 
@@ -116,8 +122,8 @@ impl Transport for GrpcInspector {
                 format!(
                     "The viewer did not paint a frame within {UI_REQUEST_TIMEOUT:?}. \
                      Every UI tool waits on the frame loop, so a long import or an unresponsive \
-                     window stalls all of them. `rerun_get_viewer_state` and \
-                     `rerun_get_viewer_logs` are answered without a frame and still work: use \
+                     window stalls all of them. `rerun_get_state` and \
+                     `rerun_get_logs` are answered without a frame and still work: use \
                      them to see whether the viewer is busy loading, and retry once it is idle."
                 )
             })?
@@ -189,7 +195,7 @@ struct Connection {
 /// The egui tools keep their upstream names on purpose: they are the same tools the standalone
 /// `egui-mcp` binary serves, and its `batch` tool re-enters its own router by unprefixed name, so
 /// renaming them here would make a name inside `batch` differ from the same name outside it.
-const RERUN_PREFIX: &str = "rerun_";
+const RERUN_PREFIX: &str = re_viewer_control_tools::TOOL_NAME_PREFIX;
 
 /// Tools whose results cannot include viewer log entries.
 const TOOLS_WITHOUT_LOG: &[&str] = &["rerun_disconnect"];
@@ -256,7 +262,7 @@ impl ViewerMcpServer {
         let peer = bridge.peer_info.clone();
         let newest_log = execute(
             &mut client,
-            GetViewerLogsRequest {
+            GetLogsRequest {
                 after_sequence: None,
             },
         )
@@ -285,7 +291,7 @@ impl ViewerMcpServer {
         let mut client = conn.client.clone();
         let Ok(response) = execute(
             &mut client,
-            GetViewerLogsRequest {
+            GetLogsRequest {
                 after_sequence: Some(after_sequence),
             },
         )
@@ -311,7 +317,24 @@ impl ViewerMcpServer {
     /// disconnected.
     fn all_tools(&self) -> Vec<Tool> {
         let mut tools = self.tool_router.list_all();
-        tools.extend(proto_tools::tools());
+        tools.extend(
+            re_viewer_control_tools::tools(SCREENSHOT_DELIVERY)
+                .into_iter()
+                .map(
+                    |re_viewer_control_tools::ToolDefinition {
+                         name,
+                         description,
+                         input_schema,
+                         requires_approval: _,
+                     }| {
+                        Tool::new(
+                            name,
+                            format!("{description}{REQUIRES_CONNECT}"),
+                            Arc::new(input_schema),
+                        )
+                    },
+                ),
+        );
         for tool in &mut tools {
             tool.name = std::borrow::Cow::Owned(format!("{RERUN_PREFIX}{}", tool.name));
         }
@@ -331,14 +354,14 @@ impl ViewerMcpServer {
         name: &str,
         arguments: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> ToolResult<CallToolResult> {
-        let request = proto_tools::build_request(name, arguments)?;
+        let request = re_viewer_control_tools::build_request(name, arguments, SCREENSHOT_DELIVERY)?;
         let mut client = self.client()?;
         let response = client
             .viewer_control(request)
             .await
             .map_err(|err| format!("{name} failed: {err}"))?
             .into_inner();
-        let json = proto_tools::response_json(name, &response)
+        let json = re_viewer_control_tools::response_json(name, &response)
             .map_err(|err| format!("{name} failed: {err}"))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(
             json.to_string(),
@@ -506,7 +529,9 @@ impl ServerHandler for ViewerMcpServer {
         let ours = name
             .strip_prefix(RERUN_PREFIX)
             .map(ToOwned::to_owned)
-            .filter(|name| self.tool_router.has_route(name) || proto_tools::is_operation(name));
+            .filter(|name| {
+                self.tool_router.has_route(name) || re_viewer_control_tools::is_operation(name)
+            });
 
         let mut result = if let Some(ours) = ours {
             if self.tool_router.has_route(&ours) {
@@ -567,8 +592,6 @@ pub async fn serve(viewer_endpoint: Option<Url>) -> anyhow::Result<()> {
 #[cfg(test)]
 mod tests {
     use std::fmt::Write as _;
-
-    use rmcp::ServerHandler as _;
 
     use super::*;
 

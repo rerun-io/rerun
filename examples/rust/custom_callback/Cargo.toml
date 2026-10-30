@@ -1,8 +1,8 @@
 [package]
 name = "custom_callback"
-version = "0.40.0-alpha.1+dev"
+version = "0.42.0-alpha.1+dev"
 edition = "2024"
-rust-version = "1.96"
+rust-version = "1.98"
 license = "MIT OR Apache-2.0"
 publish = false
 
@@ -13,12 +13,6 @@ path = "src/viewer.rs"
 [[bin]]
 name = "custom_callback_app"
 path = "src/app.rs"
-
-[features]
-default = []
-
-# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
-analytics = ["rerun/analytics"]
 
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
@@ -44,6 +38,9 @@ tokio = { workspace = true, features = [
   "time",
 ] }
 tokio-tungstenite.workspace = true
+
+[build-dependencies]
+re_build_tools = { path = "../../../crates/build/re_build_tools" }
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]
 re_workspace_hack.workspace = true

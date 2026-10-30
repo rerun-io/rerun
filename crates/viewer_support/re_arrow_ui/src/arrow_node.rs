@@ -75,8 +75,6 @@ impl<'a> ArrowNode<'a> {
         let data_type = self.values.array().data_type();
         let data_type_ui = DataTypeUi::new(data_type);
 
-        let item = ui.list_item();
-
         // We *don't* use index for the ID, since it might change across timesteps,
         // while referring the same logical data.
         let id = ui.make_persistent_id(label.text());
@@ -93,6 +91,8 @@ impl<'a> ArrowNode<'a> {
                 .ctx()
                 .data(|r| r.get_temp::<bool>(id.with("value_overflow")))
                 .unwrap_or(false);
+
+        let item = ui.list_item().toggle_on_click(expandable);
 
         let content = PropertyContent::new(label)
             .value_fn(|ui, visuals| {
@@ -125,6 +125,8 @@ impl<'a> ArrowNode<'a> {
                                 });
                             }
 
+                            // Should always be able to copy out raw arrow values!
+                            ui.style_mut().interaction.selectable_labels = true;
                             match result {
                                 Ok(()) => UiLayout::List.data_label(ui, value),
                                 Err(err) => ui.error_label(format!("Error: {err}")),
@@ -136,13 +138,39 @@ impl<'a> ArrowNode<'a> {
                             // Keep showing the data type when the tooltip is open, so the
                             // user can interact with it.
                             if visuals.hovered || tooltip_open {
+                                let border_stroke = Stroke::new(1.0, visuals.text_color());
+                                let border_padding = 2.0;
+
+                                // The badge border extends beyond its label, and floating scrollbars
+                                // can cover the clipping edge. Account for any existing inset so
+                                // callers that already pad their content don't pay for it twice.
+                                let scroll = ui.spacing().scroll;
+                                let mut right_visible_edge = ui.clip_rect().right();
+                                if scroll.floating {
+                                    for parent in ui.stack().iter() {
+                                        if parent.kind() == Some(egui::UiKind::ScrollArea) {
+                                            right_visible_edge = right_visible_edge.min(
+                                                parent.max_rect.right()
+                                                    - scroll.bar_width
+                                                    - scroll.bar_inner_margin
+                                                    - scroll.bar_outer_margin,
+                                            );
+                                        }
+                                    }
+                                }
+                                let right = ui.available_rect_before_wrap().right();
+                                let inset = (right + border_padding + border_stroke.width / 2.0
+                                    - right_visible_edge)
+                                    .max(0.0);
+                                ui.add_space(inset);
+
                                 // TODO(lucas): We should show the nullability here too
                                 let response =
                                     ui.small(RichText::new(&data_type_ui.type_name).strong());
                                 ui.painter().rect_stroke(
-                                    response.rect.expand(2.0),
+                                    response.rect.expand(border_padding),
                                     4.0,
-                                    Stroke::new(1.0, visuals.text_color()),
+                                    border_stroke,
                                     StrokeKind::Middle,
                                 );
 

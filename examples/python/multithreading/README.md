@@ -1,8 +1,8 @@
 <!--[metadata]
 title = "Multithreading"
 description = "Log to a Rerun recording from multiple Python threads, a reference for safe concurrent use of the SDK."
-thumbnail = "https://static.rerun.io/multithreading/80a3e566d6d9f8f17b04c839cd0ae2380c2baf02/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/multithreading_thumbnail/013c0cda0fcd8ea0ab693bfee20d4ac42d22c355/768w.png"
+thumbnail_dimensions = [768, 576]
 tags = ["API example"]
 -->
 

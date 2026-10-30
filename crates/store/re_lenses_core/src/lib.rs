@@ -14,6 +14,7 @@ mod cast;
 mod chunk;
 mod error;
 mod execute;
+mod heuristic_mappings;
 mod plan;
 mod selector;
 

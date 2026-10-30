@@ -156,7 +156,7 @@ impl AssetRegistrations {
         self.for_dataset(dataset_id)
             .find_map(|registration| match &registration.state {
                 RegistrationState::Failed(err) if err.asset_id.as_ref() == Some(asset_id) => {
-                    Some(&err.error)
+                    Some(err.error.as_ref())
                 }
                 RegistrationState::Failed(_)
                 | RegistrationState::Pending
@@ -278,7 +278,10 @@ mod tests {
     fn server_said_no() -> AssetRegistrationError {
         AssetRegistrationError {
             asset_id: None,
-            error: ApiError::internal(&re_uri::Origin::test(), "the server said no"),
+            error: Box::new(ApiError::internal(
+                &re_uri::Origin::test(),
+                "the server said no",
+            )),
         }
     }
 
@@ -287,7 +290,10 @@ mod tests {
     fn server_kept(asset_id: SegmentId) -> AssetRegistrationError {
         AssetRegistrationError {
             asset_id: Some(asset_id),
-            error: ApiError::internal(&re_uri::Origin::test(), "the server said no"),
+            error: Box::new(ApiError::internal(
+                &re_uri::Origin::test(),
+                "the server said no",
+            )),
         }
     }
 

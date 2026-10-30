@@ -237,6 +237,23 @@ pub struct PanelStateOverrides {
     pub time: Option<PanelState>,
 }
 
+/// [`PanelStateOverrides`] that the user can toggle on and off.
+#[derive(Debug, Clone, Copy)]
+pub struct ToggleablePanelStateOverrides {
+    /// Whether [`Self::overrides`] apply.
+    pub enabled: bool,
+
+    /// Applied on top of the blueprint's panel states while [`Self::enabled`].
+    pub overrides: PanelStateOverrides,
+}
+
+impl ToggleablePanelStateOverrides {
+    /// The overrides, if enabled.
+    pub fn active(&self) -> Option<PanelStateOverrides> {
+        self.enabled.then_some(self.overrides)
+    }
+}
+
 pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
     // Most things are hidden in the welcome screen:
     for (panel_name, value) in [

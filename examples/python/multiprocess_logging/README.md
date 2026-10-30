@@ -1,8 +1,8 @@
 <!--[metadata]
 title = "Multiprocess logging"
 description = "Log to the same Rerun viewer from multiple Python processes with `multiprocessing` and `@rr.shutdown_at_exit`."
-thumbnail = "https://static.rerun.io/multiprocessing/959e2c675f52a7ca83e11e5170903e8f0f53f5ed/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/multiprocess_logging_thumbnail/7aa2ff873f18ff2a438a43d5b7d6e6ec930ff58c/768w.jpg"
+thumbnail_dimensions = [768, 576]
 tags = ["API example"]
 -->
 

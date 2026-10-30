@@ -1,4 +1,4 @@
-//! The Rerun selector runtime, carrying all built-in functions.
+//! The Rerun selector runtime, carrying built-in functions.
 
 use std::sync::{Arc, OnceLock};
 

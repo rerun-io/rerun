@@ -17,11 +17,23 @@ pub enum CollapseButtonPlacement {
 /// Styling shared by all list items in a [`list_item_scope_with_style`].
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ListItemStyle {
-    pub(crate) background_inset: f32,
-    pub(crate) corner_radius: egui::CornerRadius,
-    pub(crate) collapse_button_placement: CollapseButtonPlacement,
-    pub(crate) hierarchy_indent: Option<f32>,
-    pub(crate) label_icon_matches_text: bool,
+    /// Horizontal inset of the background highlight, leaving the item content in place.
+    pub background_inset: f32,
+
+    /// Corner radius of the background highlight.
+    pub corner_radius: egui::CornerRadius,
+
+    /// Where collapse buttons are placed relative to item labels.
+    pub collapse_button_placement: CollapseButtonPlacement,
+
+    /// Indentation per hierarchy level, or `None` for the caller's default.
+    pub hierarchy_indent: Option<f32>,
+
+    /// Whether label icons are tinted with the label text color.
+    pub label_icon_matches_text: bool,
+
+    /// Density of items that don't set their own.
+    pub density: crate::ListItemDensity,
 }
 
 impl ListItemStyle {
@@ -64,7 +76,15 @@ impl ListItemStyle {
         self
     }
 
-    pub(crate) fn hierarchy_indent(self, default: f32) -> f32 {
+    /// Set the density of items that don't set their own with [`super::ListItem::with_density`].
+    #[inline]
+    pub fn with_density(mut self, density: crate::ListItemDensity) -> Self {
+        self.density = density;
+        self
+    }
+
+    /// Indentation per hierarchy level, falling back to `default`.
+    pub fn hierarchy_indent(self, default: f32) -> f32 {
         self.hierarchy_indent.unwrap_or(default)
     }
 }
@@ -201,7 +221,7 @@ pub struct LayoutInfo {
     is_first_item: bool,
 
     /// Styling shared by the list items in this scope.
-    pub(crate) style: ListItemStyle,
+    pub style: ListItemStyle,
 }
 
 impl Default for LayoutInfo {

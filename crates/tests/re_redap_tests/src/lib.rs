@@ -35,5 +35,6 @@ pub use self::utils::rerun::{
     create_recording_with_static_components, create_recording_with_text, create_simple_blueprint,
     create_simple_recording, create_simple_recording_in,
     create_simple_recording_one_chunk_per_frame, create_simple_recording_one_chunk_per_frame_in,
-    multi_chunked_entities_recording,
-}; // convenience
+    create_two_timeline_recording, multi_chunked_entities_recording, next_chunk_id_generator,
+};
+pub use self::utils::{assert_one_empty_batch, chunk_ids}; // convenience

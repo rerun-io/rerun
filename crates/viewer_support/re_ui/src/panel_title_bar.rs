@@ -64,7 +64,7 @@ impl PanelTitleBar {
         let Self { label, hover_text } = self;
 
         let tokens = ui.tokens();
-        let height = crate::DesignTokens::list_item_height();
+        let height = crate::DesignTokens::list_item_height(crate::ListItemDensity::Spacious);
         let background = tokens.section_header_color;
 
         let shape_idx = ui.painter().add(Shape::Noop);

@@ -161,7 +161,8 @@ Layers are immutable.
 
 ### What happens if I register to an existing layer name?
 
-Registering a `.rrd` file with a `recording_id` and `layer_name` that already exists will result in an error.
+Registering an `.rrd` file with a `recording_id` and `layer_name` that already exists fails that segment's registration, which `wait()` reports as an error.
+The existing layer is left untouched.
 
 ### How can I replace an existing layer?
 
@@ -212,7 +213,7 @@ Output:
 
 ### How many segments contain each layer?
 
-[`DatasetEntry.info()`](https://ref.rerun.io/docs/python/stable/catalog/?speculative-link#rerun.catalog.DatasetEntry.info) counts the distinct segments of each layer:
+[`DatasetEntry.info()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.info) counts the distinct segments of each layer:
 
 ```python
 >>> {layer.name: layer.num_segments for layer in dataset.info().layers}

@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A visual representation of a [`archetypes::Transform3D`][crate::archetypes::Transform3D].
@@ -277,15 +277,8 @@ impl TransformAxes3D {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.axis_length
-                .map(|axis_length| axis_length.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.show_frame
-                .map(|show_frame| show_frame.partitioned(_lengths.clone()))
-                .transpose()?,
-        ];
-        Ok(columns.into_iter().flatten())
+        let batches = [self.axis_length, self.show_frame];
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -296,10 +289,10 @@ impl TransformAxes3D {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_axis_length = self.axis_length.as_ref().map(|b| b.array.len());
-        let len_show_frame = self.show_frame.as_ref().map(|b| b.array.len());
-        let len = None.or(len_axis_length).or(len_show_frame).unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [self.axis_length, self.show_frame];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// Visual length of the 3 axes.

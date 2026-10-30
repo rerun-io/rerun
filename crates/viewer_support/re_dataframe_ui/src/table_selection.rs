@@ -11,6 +11,14 @@ pub struct TableSelectionState {
 
     pub hovered_row: Option<u64>,
     pub all_hovered: bool,
+
+    /// Data column index of the hovered cell.
+    pub hovered_column: Option<usize>,
+
+    /// Data column index of the cell that opened the row context menu.
+    ///
+    /// `None` if the menu was opened outside of a data cell.
+    pub context_menu_column: Option<usize>,
 }
 
 impl TableSelectionState {

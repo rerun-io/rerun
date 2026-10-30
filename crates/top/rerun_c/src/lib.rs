@@ -344,6 +344,8 @@ pub struct CGrpcSink {
     ///
     /// Default is `rerun+http://127.0.0.1:9876/proxy`.
     pub url: CStringView,
+
+    pub flush_timeout_sec: c_float,
 }
 
 /// Log sink which writes messages to a file.
@@ -458,7 +460,7 @@ pub struct CError {
 #[unsafe(no_mangle)]
 pub extern "C" fn rr_version_string() -> *const c_char {
     static VERSION: std::sync::LazyLock<CString> = std::sync::LazyLock::new(|| {
-        CString::new(re_sdk::build_info().version.to_string()).expect("CString::new failed")
+        CString::new(re_build_info::build_info!().version.to_string()).expect("CString::new failed")
     }); // unwrap: there won't be any NUL bytes in the string
 
     VERSION.as_ptr()
@@ -785,7 +787,10 @@ fn rr_recording_stream_set_sinks_impl(
                     .as_nonempty_str("url")?
                     .parse::<re_sdk::external::re_uri::ProxyUri>()
                     .map_err(|err| CError::new(CErrorCode::InvalidServerUrl, &err.to_string()))?;
-                sinks.push(Box::new(re_sdk::sink::GrpcSink::new(uri)));
+                sinks.push(Box::new(re_sdk::sink::GrpcSink::new_with_options(
+                    uri,
+                    grpc_client_options(grpc.flush_timeout_sec)?,
+                )));
             }
             CLogSink::FileSink { file } => {
                 let path = file.path.as_nonempty_str("path")?;
@@ -863,15 +868,34 @@ pub extern "C" fn rr_recording_stream_set_sinks(
 }
 
 #[expect(clippy::result_large_err)]
+fn grpc_client_options(
+    flush_timeout_sec: c_float,
+) -> Result<re_sdk::external::re_grpc_client::write::Options, CError> {
+    let connect_timeout_on_flush =
+        Duration::try_from_secs_f32(flush_timeout_sec).map_err(|err| {
+            CError::new(
+                CErrorCode::InvalidTimeArgument,
+                &format!("Invalid flush_timeout_sec {flush_timeout_sec}: {err}"),
+            )
+        })?;
+    Ok(re_sdk::external::re_grpc_client::write::Options {
+        connect_timeout_on_flush,
+        ..Default::default()
+    })
+}
+
+#[expect(clippy::result_large_err)]
 fn rr_recording_stream_connect_grpc_impl(
     stream: CRecordingStream,
     url: CStringView,
+    flush_timeout_sec: c_float,
 ) -> Result<(), CError> {
     let stream = recording_stream(stream)?;
 
     let url = url.as_nonempty_str("url")?;
+    let options = grpc_client_options(flush_timeout_sec)?;
 
-    if let Err(err) = stream.connect_grpc_opts(url) {
+    if let Err(err) = stream.connect_grpc_with_options(url, options) {
         return Err(CError::new(CErrorCode::InvalidServerUrl, &err.to_string()));
     }
 
@@ -883,9 +907,10 @@ fn rr_recording_stream_connect_grpc_impl(
 pub extern "C" fn rr_recording_stream_connect_grpc(
     id: CRecordingStream,
     url: CStringView,
+    flush_timeout_sec: c_float,
     error: *mut CError,
 ) {
-    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url) {
+    if let Err(err) = rr_recording_stream_connect_grpc_impl(id, url, flush_timeout_sec) {
         err.write_error(error);
     }
 }

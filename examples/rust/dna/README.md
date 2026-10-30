@@ -2,8 +2,8 @@
 title = "Helix"
 description = "Tiny example that logs points and lines to draw a 3D helix. A friendly starting point for entity paths and primitive archetypes."
 tags = ["3D", "API example"]
-thumbnail = "https://static.rerun.io/dna/40d9744af3f0e21d3b174054f0a935662a574ce0/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/dna_thumbnail/1679592e1f11cee3ce5f0a5db3dd9ed7e0ffecf9/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 -->

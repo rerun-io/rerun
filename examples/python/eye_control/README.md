@@ -3,8 +3,8 @@ title = "Eye control"
 description = "Programmatically configure and animate the 3D view camera with the Rerun Blueprint API. Useful for cinematic walkthroughs."
 tags = ["Eye control", "3D", "Pinhole camera"]
 source = "https://github.com/rerun-io/eye_control_example"
-thumbnail = "https://static.rerun.io/eye_control_example/01288e2cd92ec68715258e281104701fc8908c37/480w.png"
-thumbnail_dimensions = [480, 306]
+thumbnail = "https://static.rerun.io/eye_control_thumbnail/f77743c4be89d551094a75d015c88ac046bc51af/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 <video width="100%" autoplay loop muted controls>

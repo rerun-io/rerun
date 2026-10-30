@@ -113,6 +113,8 @@ impl<'a> BlueprintResolvedRangeResults<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
     use re_log_types::{AbsoluteTimeRange, build_frame_nr};
     use re_sdk_types::components::Color;
@@ -153,10 +155,10 @@ mod tests {
                     [component],
                     &instruction,
                 );
-                assert!(matches!(
+                assert_matches!(
                     range.component_sources[&component].source(),
                     VisualizerComponentSource::Default
-                ));
+                );
 
                 let latest = latest_at_with_blueprint_resolved_data(
                     ctx,

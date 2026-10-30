@@ -11,14 +11,17 @@ use re_sdk::external::re_log_types::EntryId;
 use re_sdk::external::re_tuid;
 use re_sdk::time::TimeType;
 use re_sdk::{RecordingStreamBuilder, TimeCell};
-use re_sdk_types::SegmentId;
+use re_sdk_types::{LayerName, SegmentId};
 use re_viewer::external::re_sdk_types::{archetypes, components::Color};
+
+/// The ID of the dataset that `load_test_data` registers.
+pub const TEST_DATASET_ID: &str = "187b552b95a5c2f73f37894708825ba5";
 
 pub async fn load_test_data(catalog_client: &CatalogClient) -> Result<SegmentId, Box<dyn Error>> {
     load_test_data_with_name(
         catalog_client,
         "my_dataset",
-        "187b552b95a5c2f73f37894708825ba5",
+        TEST_DATASET_ID,
         "new_recording_id",
     )
     .await
@@ -131,7 +134,7 @@ fn recording_rrd(
     Ok(path)
 }
 
-/// Create a dataset entry and register the `.rrd`s at `paths`, waiting for registration to finish.
+/// Create a dataset entry and upload the `.rrd`s at `paths`, waiting for registration to finish.
 ///
 /// Returns the segment ids in the same order as `paths`.
 async fn register_rrds(
@@ -148,15 +151,20 @@ async fn register_rrds(
         .create_dataset_entry(EntryName::new(dataset_name)?, Some(dataset_id.into()))
         .await?;
 
-    let mut data_sources = Vec::with_capacity(paths.len());
+    let mut segment_ids = Vec::with_capacity(paths.len());
     for path in paths {
-        data_sources.push(DataSource::new_rrd(file_url(path)?, None)?);
+        let registration = catalog_client
+            .write_segment_path(
+                entry.details.id,
+                path.to_path_buf(),
+                None,
+                LayerName::base(),
+                IfDuplicateBehavior::Error,
+            )
+            .await?;
+        segment_ids.extend(registration.wait(Duration::from_secs(10)).await?);
     }
-
-    let registration = catalog_client
-        .register_with_dataset(entry.details.id, data_sources, IfDuplicateBehavior::Error)
-        .await?;
-    Ok(registration.wait(Duration::from_secs(10)).await?)
+    Ok(segment_ids)
 }
 
 /// Build an `.rrd` file holding a recording that can be registered as an asset.

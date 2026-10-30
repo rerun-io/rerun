@@ -14,6 +14,9 @@ pub enum DatasetResource {
 
     /// The assets of the dataset, which are segments of its hidden asset dataset.
     Assets,
+
+    /// The combined schema of all layers in the dataset.
+    Schema,
 }
 
 impl std::fmt::Display for DatasetResource {
@@ -21,6 +24,7 @@ impl std::fmt::Display for DatasetResource {
         f.write_str(match self {
             Self::Segments => "segments",
             Self::Assets => "assets",
+            Self::Schema => "schema",
         })
     }
 }
@@ -32,6 +36,7 @@ impl std::str::FromStr for DatasetResource {
         match s {
             "segments" => Ok(Self::Segments),
             "assets" => Ok(Self::Assets),
+            "schema" => Ok(Self::Schema),
             _ => Err(()),
         }
     }
@@ -44,6 +49,7 @@ impl std::str::FromStr for DatasetResource {
 /// `<origin>/dataset/$DATASET_ID?segment_id=$SEGMENT_ID#$FRAGMENT`
 /// `<origin>/dataset/$DATASET_ID/assets`
 /// `<origin>/dataset/$DATASET_ID/assets?segment_id=$ASSET_ID`
+/// `<origin>/dataset/$DATASET_ID/schema`
 ///
 /// Without `segment_id` the uri points at the dataset as a whole.
 /// The optional `#$FRAGMENT` sets what the viewer focuses on (selection, time, time range)
@@ -173,6 +179,8 @@ impl DatasetUri {
             DatasetResource::Assets => {
                 re_log_types::ApplicationId::from_asset(dataset_id, segment_id.as_str())
             }
+
+            DatasetResource::Schema => return None,
         };
 
         Some(StoreId::new(
@@ -300,6 +308,15 @@ fn a_dataset_without_a_segment_has_no_store_id() {
     uri.segment_id = None;
 
     assert_eq!(uri.store_id(), None);
+}
+
+/// The schema resource has no recording store, even when a segment is specified.
+#[test]
+fn a_dataset_schema_has_no_store_id() {
+    assert_eq!(
+        test_uri(DatasetResource::Schema, "segment").store_id(),
+        None
+    );
 }
 
 #[test]

@@ -9,7 +9,7 @@ use re_byte_size::SizeBytes as _;
 use re_chunk::{Chunk, ChunkId, ComponentIdentifier, TimeInt, Timeline, TimelineName};
 use re_chunk_index::RrdManifest;
 use re_chunk_store::{ChunkStore, QueriedChunkIdTracker};
-use re_int::SaturatingCast as _;
+use re_int::SaturatingInto as _;
 use re_log::debug_assert;
 use re_log_types::{AbsoluteTimeRange, EntityPathHash, TimelinePoint};
 use re_mutex::Mutex;
@@ -260,7 +260,7 @@ impl RemainingByteBudget {
         Self {
             total_bytes_in_memory,
             remaining_bytes_in_memory: total_bytes_in_memory,
-            remaining_bytes_on_wire: max_bytes_on_wire.saturating_cast::<i64>(),
+            remaining_bytes_on_wire: max_bytes_on_wire.saturating_into::<i64>(),
         }
     }
 
@@ -1390,7 +1390,6 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::array::RecordBatch;
-    use re_byte_size::SizeBytes as _;
     use re_chunk::{Chunk, EntityPath, RowId, TimeInt, Timeline};
     use re_chunk_store::ChunkStore;
     use re_log_types::example_components::{MyPoint, MyPoints};

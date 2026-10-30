@@ -3,8 +3,8 @@ title = "Depth compare"
 description = "Prompt Depth Anything fuses iPhone LiDAR depth with a high-res image to produce metric depth up to 4K."
 tags = ["2D", "3D", "Lidar", "Depth", "Pinhole camera"]
 source = "https://github.com/rerun-io/prompt-da"
-thumbnail = "https://static.rerun.io/prompt-da/c0d7f8045e5b120ec3d5fb09ce8511dd2fcb356e/480w.png"
-thumbnail_dimensions = [480, 275]
+thumbnail = "https://static.rerun.io/prompt_depth_anything_thumbnail/8d9ab43ce1666575f2599376171a37f2e31f4c53/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 

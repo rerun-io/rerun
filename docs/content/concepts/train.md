@@ -25,8 +25,15 @@ Three things describe a dataset (see [reference](https://ref.rerun.io/docs/pytho
 - **`index`** — the timeline that defines what "one sample" means (e.g. `"frame_index"` or `"real_time"`)
 - **`fields`** — a dict of [`Field`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.Field)s, each mapping a source column (an `entity:Archetype:component` triple) to a decoder
 
-[`SampleIndex`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.SampleIndex) pre-computes the full sample space from lightweight per-segment index-range metadata — one query per segment, not a scan of the data.
-For timestamp timelines, `FixedRateSampling` defines the sampling grid and the server handles drift between grid and real row positions via `fill_latest_at`.
+[`SampleIndex`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.SampleIndex) computes the sample space from per-segment index-range metadata.
+For integer timelines, leave `timeline_sampling` unset.
+For timestamp and duration timelines, `timeline_sampling=FixedRateSampling(rate_hz=…)` defines the sampling grid; fields that use `fill_latest_at` resolve each grid point to the latest recorded value.
+The sampling choice must match the timeline type.
+Shuffling controls sample order separately through `shuffle_strategy`.
+
+For fields already aligned on a dense, zero-based integer frame grid, `timeline_sampling=TimeAlignedSampling(keyframe_interval=10)` enables exact-index reads across all selected fields and calculates video decode starts from keyframes at `0, 10, 20, …`.
+The keyframe interval is required, and the caller must validate the [data requirements](../howto/train/dataloader.md#video-decoding-is-gop-aware).
+The default `timeline_sampling=None` preserves each field's filling behavior.
 
 ### Decoders
 

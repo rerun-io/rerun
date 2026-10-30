@@ -19,6 +19,7 @@ pub struct TextLog {
     /// The verbosity level of the message.
     ///
     /// This can be used to filter the log messages in the Rerun Viewer.
+    #[rerun(no_ui_edit)]
     #[rerun(recommended)]
     pub level: Option<rerun::components::TextLogLevel>,
 

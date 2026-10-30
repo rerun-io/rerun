@@ -2,8 +2,8 @@
 title = "ControlNet"
 description = "Generate an image from text conditioned on detected edges with Hugging Face's ControlNet. Every diffusion timestep is logged."
 tags = ["ControlNet", "Canny", "Hugging Face", "Stable diffusion", "Tensor", "Text"]
-thumbnail = "https://static.rerun.io/controlnet/2e984b27dd8120fb89d4e805df9da506ea6d9138/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/controlnet_thumbnail/20fb51095542805ab6f37d1806a26d7006b288b1/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 Use [Hugging Face's ControlNet](https://huggingface.co/docs/diffusers/using-diffusers/controlnet#controlnet) to generate an image from text, conditioned on detected edges from another image.

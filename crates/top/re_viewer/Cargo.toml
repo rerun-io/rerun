@@ -15,14 +15,6 @@ include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
-  "agent_context/**/*.cpp",
-  "agent_context/**/*.in",
-  "agent_context/**/*.md",
-  "agent_context/**/*.py",
-  "agent_context/**/*.rs",
-  "agent_context/**/*.toml",
-  "agent_context/**/*.txt",
-  "agent_context/**/*.yaml",
   "Cargo.toml",
   "data/**/*.cpp",
   "data/**/*.jpg",
@@ -30,6 +22,7 @@ include = [
   "data/**/*.png",
   "data/**/*.py",
   "data/**/*.rs",
+  "data/**/*.svg",
 ]
 
 [lints]
@@ -38,10 +31,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
-
-
-[lib]
-crate-type = ["cdylib", "rlib"]
 
 
 [package.metadata.cargo-shear]
@@ -53,17 +42,17 @@ default = ["agent_context", "analytics", "default_web"]
 
 ## The default features of web builds, apart from `analytics`, which each web build opts into separately.
 ##
-## `re_dev_tools build-web-viewer` builds with `--no-default-features --features analytics,default_web`,
+## `scripts/build_web_viewer.py` builds with `--no-default-features --features analytics,default_web`,
 ## so a feature that should be on for the web must be added here.
 default_web = ["audio", "map_view"]
 
 ## Embed the Rerun skills and documentation for the agent panel to hand its agent.
 ##
 ## Costs a couple of megabytes of binary size, and does nothing on the web.
-agent_context = []
+agent_context = ["re_agent_panel/agent_context"]
 
 ## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics", "re_dataframe_ui/analytics", "re_ui/analytics"]
+analytics = []
 
 ## Enable the audio view and audio playback.
 audio = ["re_audio/output", "dep:re_view_audio"]
@@ -86,6 +75,9 @@ testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 
 [dependencies]
 # Internal:
+re_agent_panel.workspace = true
+re_agent_ui.workspace = true
+re_analytics.workspace = true
 re_arrow_json.workspace = true
 re_async.workspace = true
 re_audio = { workspace = true, default-features = false }
@@ -103,6 +95,7 @@ re_component_ui.workspace = true
 # The viewer needs to have all importers, so explicitly set that here
 # Rather than relying on an upper crate to do it.
 re_importer = { workspace = true, features = ["all"] }
+re_lenses = { workspace = true, features = ["semantic"] }
 re_data_source.workspace = true
 re_data_ui.workspace = true
 re_dataframe_ui.workspace = true
@@ -140,6 +133,7 @@ re_view.workspace = true
 re_view_bar_chart.workspace = true
 re_view_dataframe.workspace = true
 re_view_graph.workspace = true
+re_view_raw_data.workspace = true
 re_view_spatial.workspace = true
 re_view_state_timeline.workspace = true
 re_view_tensor.workspace = true
@@ -151,7 +145,6 @@ re_viewport_blueprint.workspace = true
 re_viewport.workspace = true
 
 # Internal (optional):
-re_analytics = { workspace = true, optional = true }
 re_view_audio = { workspace = true, optional = true }
 re_view_map = { workspace = true, optional = true }
 
@@ -205,8 +198,8 @@ wgpu.workspace = true
 axum.workspace = true
 egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
-re_agent_ui.workspace = true
 re_perf_telemetry = { workspace = true, optional = true }
+rustls = { workspace = true, features = ["ring", "std"] }
 tempfile.workspace = true
 tokio.workspace = true
 
@@ -229,7 +222,7 @@ wasm-bindgen-futures.workspace = true
 #         Try running a cell which starts a viewer, and then running it again.
 #         There should be no errors in the browser console.
 #     For details see https://github.com/rerun-io/rerun/issues/8766
-wasm-bindgen = "=0.2.126" # ⚠️ read above notice before touching this!
+wasm-bindgen = "=0.2.129" # ⚠️ read above notice before touching this!
 web-sys = { workspace = true, features = [
   "Crypto",
   "File",

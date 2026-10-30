@@ -3,8 +3,8 @@ title = "DROID"
 description = "Visualize the DROID robot manipulation dataset: joint states, wrist and side-view stereo cameras, and teleoperator actions."
 source = "https://github.com/rerun-io/python-example-droid-dataset"
 tags = ["2D", "3D", "Depth", "Pinhole camera", "Blueprint"]
-thumbnail = "https://static.rerun.io/droid-screenshot-thumbnail.png/87462a48d06a3c2fcc9225ac86df617048c262e6/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/droid_dataset_thumbnail/dbaa2f2f8589b47e16ca13c3c30a41dab82b81f8/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This example visualizes the [DROID dataset](https://droid-dataset.github.io/).

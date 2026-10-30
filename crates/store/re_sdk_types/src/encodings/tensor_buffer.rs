@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -189,10 +186,10 @@ impl ::re_types_core::ToArrowOpt for TensorBuffer {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, concat_u8_buffers, dense_union_offsets,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             // Dense Arrow union
@@ -323,84 +320,7 @@ impl ::re_types_core::ToArrowOpt for TensorBuffer {
                     Some(Self::F64(_)) => 11i8,
                 })
                 .collect();
-            let offsets = {
-                let mut u8_offset = 0;
-                let mut u16_offset = 0;
-                let mut u32_offset = 0;
-                let mut u64_offset = 0;
-                let mut i8_offset = 0;
-                let mut i16_offset = 0;
-                let mut i32_offset = 0;
-                let mut i64_offset = 0;
-                let mut f16_offset = 0;
-                let mut f32_offset = 0;
-                let mut f64_offset = 0;
-                let mut nulls_offset = 0;
-                data.iter()
-                    .map(|v| match v.as_deref() {
-                        None => {
-                            let offset = nulls_offset;
-                            nulls_offset += 1;
-                            offset
-                        }
-                        Some(Self::U8(_)) => {
-                            let offset = u8_offset;
-                            u8_offset += 1;
-                            offset
-                        }
-                        Some(Self::U16(_)) => {
-                            let offset = u16_offset;
-                            u16_offset += 1;
-                            offset
-                        }
-                        Some(Self::U32(_)) => {
-                            let offset = u32_offset;
-                            u32_offset += 1;
-                            offset
-                        }
-                        Some(Self::U64(_)) => {
-                            let offset = u64_offset;
-                            u64_offset += 1;
-                            offset
-                        }
-                        Some(Self::I8(_)) => {
-                            let offset = i8_offset;
-                            i8_offset += 1;
-                            offset
-                        }
-                        Some(Self::I16(_)) => {
-                            let offset = i16_offset;
-                            i16_offset += 1;
-                            offset
-                        }
-                        Some(Self::I32(_)) => {
-                            let offset = i32_offset;
-                            i32_offset += 1;
-                            offset
-                        }
-                        Some(Self::I64(_)) => {
-                            let offset = i64_offset;
-                            i64_offset += 1;
-                            offset
-                        }
-                        Some(Self::F16(_)) => {
-                            let offset = f16_offset;
-                            f16_offset += 1;
-                            offset
-                        }
-                        Some(Self::F32(_)) => {
-                            let offset = f32_offset;
-                            f32_offset += 1;
-                            offset
-                        }
-                        Some(Self::F64(_)) => {
-                            let offset = f64_offset;
-                            f64_offset += 1;
-                            offset
-                        }
-                    })
-                    .collect()
-            };
+            let offsets = dense_union_offsets(&type_ids)?;
             let children = vec![
                 as_array_ref(NullArray::new(data.iter().filter(|v| v.is_none()).count())),
                 {
@@ -416,23 +336,7 @@ impl ::re_types_core::ToArrowOpt for TensorBuffer {
                         let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                             u8.iter().map(|datum| datum.len()),
                         );
-                        let u8_inner_data: ScalarBuffer<_> = {
-                            let mut iter = u8.iter();
-                            let first = iter.next();
-                            let second = iter.next();
-                            match (first, second) {
-                                (Some(single), None) => single.clone(),
-                                (Some(first_buf), Some(second_buf)) => ::itertools::chain!(
-                                    ::std::iter::once(first_buf.as_ref() as &[_]),
-                                    ::std::iter::once(second_buf.as_ref() as &[_]),
-                                    iter.map(|b| b.as_ref() as &[_]),
-                                )
-                                .collect::<Vec<_>>()
-                                .concat()
-                                .into(),
-                                _ => Vec::new().into(),
-                            }
-                        };
+                        let u8_inner_data: ScalarBuffer<_> = concat_u8_buffers(&mut u8.iter());
                         let u8_inner_validity = None;
                         as_array_ref(ListArray::try_new(
                             std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),

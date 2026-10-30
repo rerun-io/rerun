@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -63,10 +60,8 @@ impl ::re_types_core::ToArrowOpt for KeypointPair {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -88,10 +83,7 @@ impl ::re_types_core::ToArrowOpt for KeypointPair {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let validity = validity_from_bools(somes);
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -103,10 +95,7 @@ impl ::re_types_core::ToArrowOpt for KeypointPair {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let keypoint0_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let keypoint0_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt16Type>::new(
                             keypoint0
                                 .into_iter()
@@ -123,10 +112,7 @@ impl ::re_types_core::ToArrowOpt for KeypointPair {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let keypoint1_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let keypoint1_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt16Type>::new(
                             keypoint1
                                 .into_iter()
@@ -160,22 +146,13 @@ impl ::re_types_core::FromArrowOpt for KeypointPair {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
+                let fields = StructFields::new(
+                    arrow_data,
+                    Self::arrow_data_type,
+                    "rerun.encodings.KeypointPair",
+                );
                 let keypoint0 = {
-                    if !arrays_by_name.contains_key("keypoint0") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "keypoint0",
-                        ))
-                        .with_context("rerun.encodings.KeypointPair");
-                    }
-                    let arrow_data = &**arrays_by_name["keypoint0"];
+                    let arrow_data = fields.required("keypoint0")?;
                     arrow_data
                         .try_cast::<UInt16Array>(|| DataType::UInt16)
                         .with_context("rerun.encodings.KeypointPair#keypoint0")?
@@ -183,14 +160,7 @@ impl ::re_types_core::FromArrowOpt for KeypointPair {
                         .map(|res_or_opt| res_or_opt.map(crate::encodings::KeypointId))
                 };
                 let keypoint1 = {
-                    if !arrays_by_name.contains_key("keypoint1") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "keypoint1",
-                        ))
-                        .with_context("rerun.encodings.KeypointPair");
-                    }
-                    let arrow_data = &**arrays_by_name["keypoint1"];
+                    let arrow_data = fields.required("keypoint1")?;
                     arrow_data
                         .try_cast::<UInt16Array>(|| DataType::UInt16)
                         .with_context("rerun.encodings.KeypointPair#keypoint1")?

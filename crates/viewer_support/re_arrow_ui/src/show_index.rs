@@ -25,7 +25,7 @@ use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
 use itertools::Itertools as _;
-use re_log_types::TimestampFormat;
+use re_format::TimestampFormat;
 use re_span::Span;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -61,8 +61,11 @@ pub struct DisplayOptions<'a> {
 
     /// Where should strings ([`arrow::array::StringArray`] etc.) be truncated?
     ///
-    /// [`usize::MAX`] by default, will be set to `min(max_string_chars, 100)` by [`DisplayOptions::nested`].
+    /// [`usize::MAX`] by default; nested items use [`Self::max_nested_string_chars`] instead.
     pub max_string_chars: usize,
+
+    /// Where should strings inside nested items be truncated?
+    pub max_nested_string_chars: usize,
 }
 
 impl Default for DisplayOptions<'_> {
@@ -78,11 +81,26 @@ impl Default for DisplayOptions<'_> {
             max_struct_items: 6,
             decrease_nested_items_per_nested_level: 1,
             max_string_chars: usize::MAX,
+            max_nested_string_chars: 100,
         }
     }
 }
 
 impl DisplayOptions<'_> {
+    /// Options that show every item and every character.
+    pub fn untruncated() -> Self {
+        Self {
+            max_nested_array_items: usize::MAX,
+            max_array_items: usize::MAX,
+            max_map_items: usize::MAX,
+            max_struct_items: usize::MAX,
+            decrease_nested_items_per_nested_level: 0,
+            max_string_chars: usize::MAX,
+            max_nested_string_chars: usize::MAX,
+            ..Default::default()
+        }
+    }
+
     fn nested(&self) -> Self {
         Self {
             format_options: self.format_options.clone(),
@@ -100,7 +118,8 @@ impl DisplayOptions<'_> {
                 .max_struct_items
                 .saturating_sub(self.decrease_nested_items_per_nested_level),
             decrease_nested_items_per_nested_level: self.decrease_nested_items_per_nested_level,
-            max_string_chars: 100,
+            max_string_chars: self.max_nested_string_chars,
+            max_nested_string_chars: self.max_nested_string_chars,
         }
     }
 
@@ -138,6 +157,11 @@ impl<'a> ArrayUi<'a> {
     /// The list item will _not_ display the index.
     pub fn show_value(&self, idx: usize, ui: &mut Ui) {
         self.show_index.show(idx, ui, UiLayout::List);
+    }
+
+    /// Can a single item be expanded into children, e.g. a struct or a list?
+    pub fn is_item_nested(&self) -> bool {
+        self.show_index.is_item_nested()
     }
 
     /// Show a `list_item` based tree view of the data.
@@ -469,7 +493,7 @@ macro_rules! timestamp_primitive_display {
                     #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     let timestamp = jiff::Timestamp::$conv_fn(self.value(idx) as _)
                         .map_err(|err| ArrowError::ExternalError(Box::new(err)))?;
-                    f.append_primitive(&re_log_types::Timestamp::from(timestamp).format(*state));
+                    f.append_primitive(&state.format(timestamp));
                 }
 
                 Ok(())
@@ -539,7 +563,7 @@ fn write_list(
 ) -> EmptyArrowResult {
     f.append_syntax("[");
     if max_items == 0 && !range.is_empty() {
-        f.append_syntax("…");
+        f.append_truncation_marker();
     } else {
         if let Some(idx) = range.next() {
             values.write(idx, f)?;
@@ -547,7 +571,7 @@ fn write_list(
 
         for (items, idx) in iter::zip(1.., range) {
             if items >= max_items {
-                f.append_syntax(", …");
+                f.append_syntax(", ").append_truncation_marker();
                 break;
             }
             f.append_syntax(", ");
@@ -701,7 +725,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
         let mut iter = items.iter();
         f.append_syntax("{");
         if *max_items == 0 && !items.is_empty() {
-            f.append_syntax("…");
+            f.append_truncation_marker();
         } else {
             if let Some((field, display)) = iter.next() {
                 f.append_identifier(field.name());
@@ -710,7 +734,7 @@ impl<'a> ShowIndexState<'a> for &'a StructArray {
             }
             for (items, (field, display)) in iter::zip(1.., iter) {
                 if items >= *max_items {
-                    f.append_syntax(", …");
+                    f.append_syntax(", ").append_truncation_marker();
                     break;
                 }
                 f.append_syntax(", ");
@@ -772,7 +796,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
 
         f.append_syntax("{");
         if *max_items == 0 && !iter.is_empty() {
-            f.append_syntax("…");
+            f.append_truncation_marker();
         } else {
             if let Some(idx) = iter.next() {
                 keys.write(idx, f)?;
@@ -782,7 +806,7 @@ impl<'a> ShowIndexState<'a> for &'a MapArray {
 
             for (items, idx) in iter::zip(1.., iter) {
                 if items >= *max_items {
-                    f.append_syntax(", …");
+                    f.append_syntax(", ").append_truncation_marker();
                     break;
                 }
                 f.append_syntax(", ");

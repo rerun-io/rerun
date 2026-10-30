@@ -398,13 +398,9 @@ fn pixel_value_ui(
 }
 
 fn show_depth_at_hover(ui: &mut egui::Ui, raw_value: f64, meter: f32) {
-    let meters = raw_value / (meter as f64);
+    let depth_in_world_units = raw_value / (meter as f64);
     ui.label("Depth");
-    if meters < 1.0 {
-        ui.monospace(format!("{:.1} mm", meters * 1e3));
-    } else {
-        ui.monospace(format!("{meters:.3} m"));
-    }
+    ui.monospace(re_format::format_f64(depth_in_world_units));
 }
 
 fn format_pixel_value(

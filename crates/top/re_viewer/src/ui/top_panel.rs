@@ -5,9 +5,11 @@ use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, icons};
-use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
+use re_viewer_context::{
+    ActiveStoreContext, RecordingCommandKind, StoreHub, SystemCommand, SystemCommandSender as _,
+};
 
-use crate::App;
+use crate::AppCore;
 use crate::app_blueprint::AppBlueprint;
 use crate::dev_panel::{DevPanelTab, MAX_PLAUSIBLE_LATENCY_SEC, latency_text};
 use crate::latency_tracker::{LatencyResult, ServerLatencyTrackers};
@@ -36,7 +38,7 @@ impl NavigationButtonsState {
 
 pub fn top_panel(
     frame: &eframe::Frame,
-    app: &mut App,
+    app: &mut AppCore,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
@@ -68,14 +70,12 @@ pub fn top_panel(
             let title_bar_response = ui.interact(
                 ui.max_rect(),
                 ui.make_persistent_id("background"),
-                egui::Sense::click(),
+                egui::Sense::click_and_drag(),
             );
             if title_bar_response.double_clicked() {
                 let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
                 ui.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
-            } else if title_bar_response.is_pointer_button_down_on() {
-                // TODO(emilk): This should probably only run on `title_bar_response.drag_started_by(PointerButton::Primary)`,
-                // see https://github.com/emilk/egui/pull/4656
+            } else if title_bar_response.drag_started_by(egui::PointerButton::Primary) {
                 ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
         }
@@ -117,7 +117,7 @@ pub fn top_panel(
 
 fn top_bar_ui(
     frame: &eframe::Frame,
-    app: &mut App,
+    app: &mut AppCore,
     app_blueprint: &AppBlueprint<'_>,
     store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
@@ -140,9 +140,9 @@ fn top_bar_ui(
             .filter(|store_context| {
                 store_context
                     .recording
-                    .data_source
-                    .as_ref()
-                    .is_some_and(re_log_channel::LogSource::may_be_live)
+                    .data_sources()
+                    .iter()
+                    .any(|source| source.may_be_live())
             })
             .map(|store_context| store_context.recording.ingestion_stats().latency_snapshot());
 
@@ -184,14 +184,16 @@ fn top_bar_ui(
                 });
 
                 // Avoid flicker by showing the latency for 1 second since it was last deemed interesting:
-                if is_latency_interesting {
-                    app.latest_latency_interest = Some(web_time::Instant::now());
-                }
+                let now = ui.input(|i| i.time);
+                let latest_interest_id = egui::Id::unique("latest_latency_interest");
+                let latest_interest = ui.data_mut(|d| {
+                    if is_latency_interesting {
+                        d.insert_temp(latest_interest_id, now);
+                    }
+                    d.get_temp::<f64>(latest_interest_id)
+                });
 
-                if app
-                    .latest_latency_interest
-                    .is_some_and(|instant| instant.elapsed().as_secs_f32() < 1.0)
-                {
+                if latest_interest.is_some_and(|time| now - time < 1.0) {
                     ui.separator();
                     show_latency_tab |= latency_snapshot_button_ui(ui, &latency_snapshot);
                 }
@@ -276,7 +278,7 @@ fn command_palette_trigger_ui(
     top_bar_rect: Rect,
     left_content_right: f32,
     right_content_left: f32,
-    app: &App,
+    app: &AppCore,
 ) {
     const MAX_WIDTH: f32 = 420.0;
     const MIN_WIDTH: f32 = 180.0;
@@ -285,6 +287,7 @@ fn command_palette_trigger_ui(
     const NAVIGATION_GAP: f32 = 8.0;
 
     let navigation_buttons_state = navigation_buttons_state(app);
+    let agent_enabled = app.app_options().experimental.agent_panel;
     let navigation_width = if navigation_buttons_state.is_visible() {
         2.0 * NAVIGATION_BUTTON_SIZE + NAVIGATION_GAP
     } else {
@@ -323,8 +326,14 @@ fn command_palette_trigger_ui(
         icons::SEARCH
             .as_image()
             .fit_to_exact_size(ui.tokens().small_icon_size),
-        RichText::new("Search commands…").color(subdued_color),
+        RichText::new(if agent_enabled {
+            "Search commands or ask agent…"
+        } else {
+            "Search commands…"
+        })
+        .color(subdued_color),
     )
+    .truncate()
     .right_text(RichText::new(shortcut).color(subdued_color))
     .image_tint_follows_text_color(true)
     .corner_radius(ui.tokens().normal_corner_radius())
@@ -370,7 +379,21 @@ fn command_palette_trigger_ui(
     }
 }
 
-fn navigation_buttons_state(app: &App) -> NavigationButtonsState {
+impl AppCore {
+    /// Whether navigating back and forward in history would do anything.
+    pub fn navigation_availability(&self) -> (bool, bool) {
+        match navigation_buttons_state(self) {
+            #[cfg(target_arch = "wasm32")]
+            NavigationButtonsState::Hidden => (false, false),
+            NavigationButtonsState::Visible {
+                can_go_back,
+                can_go_forward,
+            } => (can_go_back, can_go_forward),
+        }
+    }
+}
+
+fn navigation_buttons_state(app: &AppCore) -> NavigationButtonsState {
     #[cfg(target_arch = "wasm32")]
     if app.startup_options().web_history_enabled() {
         return crate::web_history::navigation_availability().map_or(
@@ -392,7 +415,7 @@ fn navigation_buttons_at(
     ui: &mut egui::Ui,
     top_bar_rect: Rect,
     forward_center_x: f32,
-    app: &App,
+    app: &AppCore,
     state: NavigationButtonsState,
 ) {
     let (can_go_back, can_go_forward) = match state {
@@ -437,7 +460,7 @@ fn navigation_buttons_at(
 
 fn navigation_button(
     ui: &mut egui::Ui,
-    app: &App,
+    app: &AppCore,
     enabled: bool,
     icon: &'static icons::Icon,
     alt_text: &'static str,
@@ -636,12 +659,11 @@ fn connection_status_ui(
 
 /// Lay out the panel button right-to-left
 fn panel_buttons_r2l(
-    app: &mut App,
+    app: &mut AppCore,
     app_blueprint: &AppBlueprint<'_>,
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
-    #[cfg(agent_panel)]
     if app.app_options().experimental.agent_panel {
         let mut open = app.agent_panel_open();
         if ui
@@ -700,7 +722,7 @@ fn panel_buttons_r2l(
                     "Time panel toggle",
                     &mut app_blueprint.time_panel_state().is_expanded(),
                 )
-                .on_hover_ui(|ui| re_ui::RecordingCommandKind::ToggleTimePanel.tooltip_ui(ui))
+                .on_hover_ui(|ui| RecordingCommandKind::ToggleTimePanel.tooltip_ui(ui))
                 .clicked()
             {
                 app_blueprint.toggle_time_panel(&app.command_sender);
@@ -805,7 +827,7 @@ fn user_icon(email: &str, rect: Rect, ui: &egui::Ui, corner_radius: f32, tint: u
     );
 }
 
-fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
+fn frame_time_label_ui(ui: &mut egui::Ui, app: &AppCore) {
     if let Some(frame_time) = app.frame_time_history.average() {
         let ms = frame_time * 1e3;
 
@@ -822,7 +844,7 @@ fn frame_time_label_ui(ui: &mut egui::Ui, app: &App) {
     }
 }
 
-fn fps_ui(ui: &mut egui::Ui, app: &App) {
+fn fps_ui(ui: &mut egui::Ui, app: &AppCore) {
     if let Some(fps) = app.frame_time_history.rate() {
         let visuals = ui.visuals();
 

@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -59,10 +56,8 @@ impl ::re_types_core::ToArrow for Float16Fields {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -96,10 +91,7 @@ impl ::re_types_core::ToArrow for Float16Fields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let single_half_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let single_half_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<Float16Type>::new(
                             single_half
                                 .into_iter()
@@ -116,10 +108,7 @@ impl ::re_types_core::ToArrow for Float16Fields {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let many_halves_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let many_halves_validity = validity_from_bools(somes);
                         {
                             let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 many_halves
@@ -168,36 +157,20 @@ impl ::re_types_core::FromArrow for Float16Fields {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.testing.encodings.Float16Fields",
+                    );
                     let single_half = {
-                        if !arrays_by_name.contains_key("single_half") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "single_half",
-                            ))
-                            .with_context("rerun.testing.encodings.Float16Fields");
-                        }
-                        let arrow_data = &**arrays_by_name["single_half"];
+                        let arrow_data = fields.required("single_half")?;
                         arrow_data
                             .try_cast::<Float16Array>(|| DataType::Float16)
                             .with_context("rerun.testing.encodings.Float16Fields#single_half")?
                             .into_iter()
                     };
                     let many_halves = {
-                        if !arrays_by_name.contains_key("many_halves") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "many_halves",
-                            ))
-                            .with_context("rerun.testing.encodings.Float16Fields");
-                        }
-                        let arrow_data = &**arrays_by_name["many_halves"];
+                        let arrow_data = fields.required("many_halves")?;
                         {
                             let arrow_data = arrow_data
                                 .try_cast::<arrow::array::ListArray>(|| {

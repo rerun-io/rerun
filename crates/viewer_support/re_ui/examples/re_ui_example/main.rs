@@ -271,11 +271,11 @@ impl eframe::App for ExampleApp {
             ui.section_collapsing_header("Blueprint").show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.label("Some blueprint stuff here, that might be wide.");
-                ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
+                ui.checkbox(&mut self.dummy_bool, "Checkbox");
 
                 ui.collapsing_header("Collapsing header", true, |ui| {
                     ui.label("Some data here");
-                    ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
+                    ui.checkbox(&mut self.dummy_bool, "Checkbox");
                 });
             });
 
@@ -299,6 +299,7 @@ impl eframe::App for ExampleApp {
                             ui.ctx(),
                             name,
                             hierarchy_ranges.remove(0).into_iter().flatten(),
+                            &egui::TextStyle::Body,
                             None,
                         );
                         ui.list_item_flat_noninteractive(list_item::LabelContent::new(widget_text));
@@ -442,14 +443,12 @@ impl ExampleApp {
                     let title_bar_response = ui.interact(
                         ui.max_rect(),
                         ui.make_persistent_id("background"),
-                        egui::Sense::click(),
+                        egui::Sense::click_and_drag(),
                     );
                     if title_bar_response.double_clicked() {
                         let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
                         ui.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
-                    } else if title_bar_response.is_pointer_button_down_on() {
-                        // TODO(emilk): This should probably only run on `title_bar_response.drag_started_by(PointerButton::Primary)`,
-                        // see https://github.com/emilk/egui/pull/4656
+                    } else if title_bar_response.drag_started_by(egui::PointerButton::Primary) {
                         ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
                     }
                 }

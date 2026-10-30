@@ -2,12 +2,14 @@ use std::str::FromStr as _;
 
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
-use re_integration_test::{HarnessConfig, InspectionHarness, TestServer, ViewerHarnessExt as _};
+use re_integration_test::{
+    HarnessConfig, InspectionHarness, TEST_DATASET_ID, TestServer, ViewerHarnessExt as _,
+};
 use re_sdk::{
     TimeCell, Timeline,
     external::{re_log_types::AbsoluteTimeRange, re_tuid},
 };
-use re_viewer::external::{re_chunk::TimelineName, re_viewer_context::open_url::ViewerOpenUrl};
+use re_viewer::external::{re_chunk::TimelineName, re_viewer_context::viewer_url::ViewerUrl};
 
 #[tokio::test(flavor = "multi_thread")]
 pub async fn dataset_ui_test() {
@@ -71,7 +73,7 @@ pub async fn start_with_dataset_url() {
 
     let mut harness = InspectionHarness::spawn(HarnessConfig {
         startup_url: Some(format!(
-            "rerun+http://localhost:{}/entry/187b552b95a5c2f73f37894708825ba5",
+            "rerun+http://localhost:{}/entry/{TEST_DATASET_ID}",
             server.port()
         )),
         ..Default::default()
@@ -101,8 +103,7 @@ pub async fn start_with_dataset_url() {
 pub async fn start_with_segment_fragment_url() {
     let (server, segment_id) = TestServer::spawn().await.with_test_data().await;
 
-    let dataset_id =
-        re_tuid::Tuid::from_str("187b552b95a5c2f73f37894708825ba5").expect("Failed to parse TUID");
+    let dataset_id = re_tuid::Tuid::from_str(TEST_DATASET_ID).expect("Failed to parse TUID");
     let segment_uri = re_uri::DatasetUri {
         origin: re_uri::Origin {
             scheme: re_uri::Scheme::RerunHttp,
@@ -124,7 +125,7 @@ pub async fn start_with_segment_fragment_url() {
             }),
         },
     };
-    let url = ViewerOpenUrl::RedapDataset(segment_uri);
+    let url = ViewerUrl::RedapDataset(segment_uri);
 
     let mut harness = InspectionHarness::spawn(HarnessConfig {
         startup_url: Some(url.sharable_url(None).expect("Should be a sharable url")),

@@ -16,6 +16,7 @@ A visual representation of a [`archetypes.Transform3D`](https://rerun.io/docs/re
 ## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `TransformAxes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TransformAxes3D.html)

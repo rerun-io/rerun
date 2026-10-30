@@ -57,7 +57,7 @@ pub fn generate_reflection(
                 ArchetypeFieldReflection,
                 ArchetypeReflection,
                 ArchetypeReflectionMap,
-                ComponentReflection,
+                ComponentTypeReflection,
                 ComponentReflectionMap,
                 ComponentTypeSet,
                 EnumVariantReflection,
@@ -230,7 +230,7 @@ fn generate_component_reflection(
             };
         let own_chunk = obj.attrs.has(RerunAttr::OwnChunk);
         let quoted_reflection = quote! {
-            ComponentReflection {
+            ComponentTypeReflection {
                 docstring_md: #docstring_md,
                 deprecation_summary: #deprecation_summary,
                 custom_placeholder: #custom_placeholder,

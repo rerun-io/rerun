@@ -306,16 +306,30 @@ impl ::prost::Name for Error {
         "/rerun.cloud.v1alpha1.Error".into()
     }
 }
-/// Requests authorization to write one object.
+/// Requests authorization to create one object.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetWriteAccessGrantRequest {
     /// The full object key, including the file name, relative to the location's base.
+    /// Clients must generate a fresh random key for each new upload session.
+    /// Retries within a multipart session use its existing token and key.
+    /// A grant does not reserve the key; another writer may publish first and make this write fail.
     #[prost(string, tag = "1")]
     pub key: ::prost::alloc::string::String,
     /// The requested storage location.
     /// The request fails if this is absent and the server has no default location.
     #[prost(message, optional, tag = "2")]
     pub location: ::core::option::Option<Location>,
+    /// Exact object size, if known; absent means unknown.
+    /// Servers use it to select the upload method and part size.
+    #[prost(uint64, optional, tag = "3")]
+    pub size_bytes: ::core::option::Option<u64>,
+    /// Upload methods the client supports; the server must select one of them.
+    /// Empty means SINGLE_REQUEST only, which is what clients predating this field support.
+    #[prost(enumeration = "UploadMethod", repeated, tag = "4")]
+    pub supported_upload_methods: ::prost::alloc::vec::Vec<i32>,
+    /// Required signing mode for the grant's HTTP requests. UNSPECIFIED means SIGNED.
+    #[prost(enumeration = "UrlSigning", tag = "5")]
+    pub signing: i32,
 }
 impl ::prost::Name for GetWriteAccessGrantRequest {
     const NAME: &'static str = "GetWriteAccessGrantRequest";
@@ -342,12 +356,10 @@ impl ::prost::Name for Location {
         "/rerun.cloud.v1alpha1.Location".into()
     }
 }
-/// Contains the URL that identifies the object and the authorization needed to write it.
+/// Authorization to create one object.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetWriteAccessGrantResponse {
-    /// Stable, credential-free URL naming the object.
-    ///
-    /// Pass this URL to `RegisterWithDataset` after writing the object.
+    /// Credential-free object URL for subsequent registration.
     #[prost(string, tag = "1")]
     pub storage_url: ::prost::alloc::string::String,
     /// Authorization for the write operation.
@@ -364,15 +376,22 @@ impl ::prost::Name for GetWriteAccessGrantResponse {
         "/rerun.cloud.v1alpha1.GetWriteAccessGrantResponse".into()
     }
 }
-/// Authorizes one storage operation until `expires_at`.
+/// Authorization to create one object.
+/// Publication must atomically fail if the destination exists, leaving that object unchanged.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct AccessGrant {
-    /// The time after which the caller must not redeem this grant.
+    /// Deadline for HTTP requests, or session deadline for multipart renewal and publication.
+    /// HTTP grants may stop working earlier. After the session deadline, clients may still
+    /// confirm an already-published upload or abort; they must not publish an unfinished upload.
     #[prost(message, optional, tag = "1")]
     pub expires_at: ::core::option::Option<::prost_types::Timestamp>,
+    /// Effective signing mode for all HTTP requests in this grant, including renewed part requests.
+    /// UNSPECIFIED means SIGNED. Clients must reject a mode that differs from their request.
+    #[prost(enumeration = "UrlSigning", tag = "4")]
+    pub signing: i32,
     /// How the caller redeems this grant.
     /// TODO(grtlr): Add data-plane and client-side SDK redemption mechanisms when needed.
-    #[prost(oneof = "access_grant::Redemption", tags = "2")]
+    #[prost(oneof = "access_grant::Redemption", tags = "2, 3")]
     pub redemption: ::core::option::Option<access_grant::Redemption>,
 }
 /// Nested message and enum types in `AccessGrant`.
@@ -384,6 +403,9 @@ pub mod access_grant {
         /// The HTTP request that redeems this grant.
         #[prost(message, tag = "2")]
         HttpRequest(super::HttpRequest),
+        /// Multipart upload session and the initial part-upload requests.
+        #[prost(message, tag = "3")]
+        MultipartRequest(super::MultipartRequest),
     }
 }
 impl ::prost::Name for AccessGrant {
@@ -394,6 +416,159 @@ impl ::prost::Name for AccessGrant {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.AccessGrant".into()
+    }
+}
+/// Describes a multipart upload session and its initial part-upload requests.
+///
+/// TODO(RR-6103): Define multipart upload size limits.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct MultipartRequest {
+    /// Bearer token for renewal, completion, and abort. Return it unchanged.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub upload_token: ::prost::bytes::Bytes,
+    /// Clients must upload parts of this size, except the last, which may be smaller.
+    /// Part numbers must be consecutive from 1; parts may be uploaded in any order.
+    /// The server chooses it from `GetWriteAccessGrantRequest.size_bytes` when known.
+    #[prost(uint64, tag = "2")]
+    pub part_size_bytes: u64,
+    /// HTTP requests for consecutive parts starting at 1, using the grant's signing mode.
+    /// Expired requests can be renewed before the session deadline.
+    #[prost(message, repeated, tag = "3")]
+    pub part_requests: ::prost::alloc::vec::Vec<HttpRequest>,
+}
+impl ::prost::Name for MultipartRequest {
+    const NAME: &'static str = "MultipartRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.MultipartRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.MultipartRequest".into()
+    }
+}
+/// Requests HTTP upload instructions for selected parts of an active multipart upload.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetMultipartUploadPartGrantsRequest {
+    /// Token from GetWriteAccessGrant, unchanged.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub upload_token: ::prost::bytes::Bytes,
+    /// Distinct, one-based part numbers; non-empty. Grants may be renewed.
+    /// Retries must upload identical bytes for the same part number, including after renewal.
+    #[prost(uint32, repeated, tag = "2")]
+    pub part_numbers: ::prost::alloc::vec::Vec<u32>,
+}
+impl ::prost::Name for GetMultipartUploadPartGrantsRequest {
+    const NAME: &'static str = "GetMultipartUploadPartGrantsRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetMultipartUploadPartGrantsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetMultipartUploadPartGrantsRequest".into()
+    }
+}
+/// Returns HTTP requests for the requested multipart upload parts.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetMultipartUploadPartGrantsResponse {
+    /// HTTP requests in the same order as the requested part numbers, using the session's signing mode.
+    #[prost(message, repeated, tag = "1")]
+    pub requests: ::prost::alloc::vec::Vec<HttpRequest>,
+}
+impl ::prost::Name for GetMultipartUploadPartGrantsResponse {
+    const NAME: &'static str = "GetMultipartUploadPartGrantsResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetMultipartUploadPartGrantsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetMultipartUploadPartGrantsResponse".into()
+    }
+}
+/// Completes a multipart upload using the uploaded parts and their receipts.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct CompleteMultipartUploadRequest {
+    /// Token from GetWriteAccessGrant, unchanged.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub upload_token: ::prost::bytes::Bytes,
+    /// Non-empty list in ascending part-number order, numbered consecutively from 1.
+    #[prost(message, repeated, tag = "2")]
+    pub parts: ::prost::alloc::vec::Vec<UploadedPart>,
+}
+impl ::prost::Name for CompleteMultipartUploadRequest {
+    const NAME: &'static str = "CompleteMultipartUploadRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CompleteMultipartUploadRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CompleteMultipartUploadRequest".into()
+    }
+}
+/// Identifies an uploaded part and its storage-service receipt.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct UploadedPart {
+    /// One-based number of the uploaded part.
+    #[prost(uint32, tag = "1")]
+    pub part_number: u32,
+    /// Value of the part response's `ETag` header, preserved verbatim, including any quotes.
+    /// Opaque to the client and untrusted by the server; empty if the provider returns none.
+    ///
+    /// NOTE: Browsers can read this header only if the bucket's CORS rule exposes it,
+    /// for example S3's `ExposeHeaders: \["ETag"\]`.
+    #[prost(string, tag = "2")]
+    pub etag: ::prost::alloc::string::String,
+}
+impl ::prost::Name for UploadedPart {
+    const NAME: &'static str = "UploadedPart";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.UploadedPart".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.UploadedPart".into()
+    }
+}
+/// Confirms publication, not catalog registration.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CompleteMultipartUploadResponse {}
+impl ::prost::Name for CompleteMultipartUploadResponse {
+    const NAME: &'static str = "CompleteMultipartUploadResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.CompleteMultipartUploadResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.CompleteMultipartUploadResponse".into()
+    }
+}
+/// Aborts an active multipart upload.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AbortMultipartUploadRequest {
+    /// Token from GetWriteAccessGrant, unchanged.
+    #[prost(bytes = "bytes", tag = "1")]
+    pub upload_token: ::prost::bytes::Bytes,
+}
+impl ::prost::Name for AbortMultipartUploadRequest {
+    const NAME: &'static str = "AbortMultipartUploadRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.AbortMultipartUploadRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.AbortMultipartUploadRequest".into()
+    }
+}
+/// Confirms the abort request, not cleanup of in-flight parts.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct AbortMultipartUploadResponse {}
+impl ::prost::Name for AbortMultipartUploadResponse {
+    const NAME: &'static str = "AbortMultipartUploadResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.AbortMultipartUploadResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.AbortMultipartUploadResponse".into()
     }
 }
 /// Describes an HTTP request that the caller can perform directly.
@@ -687,6 +862,55 @@ impl ::prost::Name for SegmentIdFilter {
         "/rerun.cloud.v1alpha1.SegmentIdFilter".into()
     }
 }
+/// A plain list of layer names.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LayerNameList {
+    /// The layer names.
+    #[prost(string, repeated, tag = "1")]
+    pub layer_names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for LayerNameList {
+    const NAME: &'static str = "LayerNameList";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.LayerNameList".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.LayerNameList".into()
+    }
+}
+/// Narrows a manifest scan down to, or away from, a set of layers.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct LayerNameFilter {
+    /// Whether the listed layers are the ones to keep or the ones to drop.
+    #[prost(oneof = "layer_name_filter::Strategy", tags = "1, 2")]
+    pub strategy: ::core::option::Option<layer_name_filter::Strategy>,
+}
+/// Nested message and enum types in `LayerNameFilter`.
+pub mod layer_name_filter {
+    /// Whether the listed layers are the ones to keep or the ones to drop.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Strategy {
+        /// Scan only manifest rows belonging to these layers.
+        /// An empty list scans no rows.
+        #[prost(message, tag = "1")]
+        ScanOnly(super::LayerNameList),
+        /// Scan all manifest rows except those belonging to these layers.
+        /// An empty list skips no rows.
+        #[prost(message, tag = "2")]
+        Skip(super::LayerNameList),
+    }
+}
+impl ::prost::Name for LayerNameFilter {
+    const NAME: &'static str = "LayerNameFilter";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.LayerNameFilter".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.LayerNameFilter".into()
+    }
+}
 /// Request for `ScanSegmentTable`.
 ///
 /// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
@@ -799,6 +1023,13 @@ pub struct ScanDatasetManifestRequest {
     /// Clients must re-apply filters locally if correctness depends on them.
     #[prost(message, optional, tag = "5")]
     pub segment_id_filter: ::core::option::Option<SegmentIdFilter>,
+    /// An optional best-effort hint for pruning layers from the server-side scan.
+    ///
+    /// Combined with `segment_id_filter`, a row is scanned only if it passes both.
+    /// Servers may apply or ignore this filter.
+    /// Clients must re-apply filters locally if correctness depends on them.
+    #[prost(message, optional, tag = "6")]
+    pub layer_name_filter: ::core::option::Option<LayerNameFilter>,
 }
 impl ::prost::Name for ScanDatasetManifestRequest {
     const NAME: &'static str = "ScanDatasetManifestRequest";
@@ -816,6 +1047,10 @@ pub struct ScanDatasetManifestResponse {
     /// The contents of the dataset manifest (i.e. information about layers) as Arrow RecordBatch,
     /// with the columns pinned by
     /// [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
+    ///
+    /// Per-timeline `{timeline}:start` / `{timeline}:end` columns hold the index range of each row's layer.
+    /// Servers older than Rerun 0.42 / Rerun Hub 0.20 don't send them.
+    /// A null means the layer has no data on that timeline.
     #[prost(message, optional, tag = "1")]
     pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
     /// Dataset identity and revision for the entire stream.
@@ -870,6 +1105,59 @@ impl ::prost::Name for GetDatasetSchemaResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.GetDatasetSchemaResponse".into()
+    }
+}
+/// Request for `GetSchemas`.
+///
+/// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSchemasRequest {
+    /// The schemas to look up.
+    ///
+    /// Duplicates are ignored. Any invalid identifier fails the request with `InvalidArgument`.
+    /// An empty list yields an empty stream.
+    ///
+    /// At most 1024 identifiers, duplicates included; a longer list fails the request with `InvalidArgument`.
+    /// Servers may raise this limit but never lower it.
+    /// Clients with more identifiers split them across several requests.
+    #[prost(message, repeated, tag = "1")]
+    pub schema_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SchemaId>,
+}
+impl ::prost::Name for GetSchemasRequest {
+    const NAME: &'static str = "GetSchemasRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetSchemasRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetSchemasRequest".into()
+    }
+}
+/// One schema returned by `GetSchemas`.
+///
+/// Each requested identifier that the dataset holds yields exactly one message, in no particular order.
+/// Identifiers the dataset does not hold yield nothing.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSchemasResponse {
+    /// The identifier this schema was looked up by. Required.
+    #[prost(message, optional, tag = "1")]
+    pub schema_id: ::core::option::Option<super::super::common::v1alpha1::SchemaId>,
+    /// The schema of the layers registered with this identifier. Required.
+    #[prost(message, optional, tag = "2")]
+    pub schema: ::core::option::Option<super::super::common::v1alpha1::Schema>,
+    /// Dataset identity and revision for the entire stream.
+    /// Set only on the first response message; omitted from subsequent messages.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
+}
+impl ::prost::Name for GetSchemasResponse {
+    const NAME: &'static str = "GetSchemasResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetSchemasResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetSchemasResponse".into()
     }
 }
 /// Request for `GetRrdManifest`.
@@ -1138,8 +1426,7 @@ pub struct QueryDatasetRequest {
     /// to the client. Ignored if `generate_direct_urls` is not `true`.
     #[prost(bool, tag = "13")]
     pub unsigned_direct_urls: bool,
-    /// Client can specify specific chunk ids to include. If left unspecified (empty list),
-    /// all chunks that match other query parameters will be included.
+    /// Must be empty. A nonempty list returns `INVALID_ARGUMENT`.
     #[prost(message, repeated, tag = "3")]
     pub chunk_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::Tuid>,
     /// Which entity paths are we interested in? Leave empty, and set `select_all_entity_paths`,
@@ -1165,19 +1452,20 @@ pub struct QueryDatasetRequest {
     ///
     /// If left unspecified, all existing components are considered of interest.
     ///
-    /// This will perform a basic fuzzy match on the available columns' descriptors.
-    /// The fuzzy logic is a simple case-sensitive `contains()` query.
-    /// For example, given a `log_tick__SeriesLines:width` index, all of the following
-    /// would match: `SeriesLines:width`, `Width`, `SeriesLines`, etc.
+    /// Each entry must equal a component identifier, for example `SeriesLines:width`.
+    /// A partial identifier, such as `Width` or `SeriesLines`, matches nothing.
     #[prost(string, repeated, tag = "10")]
     pub fuzzy_descriptors: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
-    /// If set, static data will be excluded from the results.
+    /// Must be `false`. Setting this to `true` returns `INVALID_ARGUMENT`.
     #[prost(bool, tag = "8")]
     pub exclude_static_data: bool,
-    /// If set, temporal data will be excluded from the results.
+    /// Must be `false`. Setting this to `true` returns `INVALID_ARGUMENT`.
     #[prost(bool, tag = "9")]
     pub exclude_temporal_data: bool,
-    /// Generic parameters that will influence the behavior of the Lance scanner.
+    /// Optional scan parameters.
+    ///
+    /// Leave `filter`, `limit_offset`, and `limit_len` unset, and `order_by` empty.
+    /// The server returns `INVALID_ARGUMENT` otherwise.
     #[prost(message, optional, tag = "5")]
     pub scan_parameters: ::core::option::Option<super::super::common::v1alpha1::ScanParameters>,
     /// The Rerun-native query to run. Leave unset to match on the other filters alone: an unset
@@ -1277,16 +1565,13 @@ impl ::prost::Name for Query {
         "/rerun.cloud.v1alpha1.Query".into()
     }
 }
-/// A chunk-level latest-at query, aka `LatestAtRelevantChunks`.
-///
-/// This has the exact same semantics as the query of the same name on our `ChunkStore`.
+/// A query for candidate chunks containing the latest values at or before the requested index values.
 ///
 /// Two modes of use (mutually exclusive):
 ///    1. Global: set `at`. Applied to all segments.
 ///    2. Per-segment: set `per_segment_values`. Each entry is positionally
-///       matched to `QueryDatasetRequest.segment_ids`. `at` and `Query.range`
-///       must be unset — the server reconstructs global bounds internally
-///       from the per-segment values.
+///       matched to `QueryDatasetRequest.segment_ids`.
+///       `at` and `Query.range` must be unset.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryLatestAt {
     /// Which index column should we perform the query on? E.g. `log_time`.
@@ -1303,18 +1588,16 @@ pub struct QueryLatestAt {
     /// Per-segment index values, positionally matched to
     /// `QueryDatasetRequest.segment_ids`.
     ///
-    /// When non-empty, `at` and `Query.range` must be unset — the server
-    /// reconstructs global bounds from the values for Lance pre-filtering,
-    /// then applies a per-segment post-filter for precision.
+    /// When non-empty, `at` and `Query.range` must be unset.
     ///
-    /// Constraints (server returns `invalid_argument` on violation):
+    /// Constraints (server returns `INVALID_ARGUMENT` on violation):
     ///    - `segment_ids` must be non-empty.
     ///    - `per_segment_values.len()` must equal `segment_ids.len()`.
     ///    - `segment_ids` must contain no duplicates.
     ///
     /// Each entry's values list corresponds to the segment at the same
-    /// position in `segment_ids`. An empty values list for a segment means
-    /// no temporal chunks are returned for that segment (only static data).
+    /// position in `segment_ids`. An empty values list selects nothing from
+    /// that segment.
     #[prost(message, repeated, tag = "4")]
     pub per_segment_values: ::prost::alloc::vec::Vec<IndexValueList>,
 }
@@ -1407,6 +1690,319 @@ impl ::prost::Name for FetchChunksResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.FetchChunksResponse".into()
+    }
+}
+/// Request for `FindChunks`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct FindChunksRequest {
+    /// The entities and components to include. Required.
+    #[prost(message, optional, tag = "1")]
+    pub contents: ::core::option::Option<ContentSelection>,
+    /// Which direct chunk URLs to return. Defaults to `DIRECT_URL_MODE_SIGNED`.
+    #[prost(enumeration = "DirectUrlMode", tag = "5")]
+    pub direct_url_mode: i32,
+    /// The selection mode. Required.
+    ///
+    /// A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset
+    /// has no data.
+    #[prost(oneof = "find_chunks_request::Mode", tags = "2, 3, 4")]
+    pub mode: ::core::option::Option<find_chunks_request::Mode>,
+}
+/// Nested message and enum types in `FindChunksRequest`.
+pub mod find_chunks_request {
+    /// The selection mode. Required.
+    ///
+    /// A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset
+    /// has no data.
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Mode {
+        /// The static chunks of the selected segments.
+        #[prost(message, tag = "2")]
+        Static(super::StaticSelection),
+        /// The chunks that overlap a time range on one timeline, plus the matching static chunks.
+        #[prost(message, tag = "3")]
+        Range(super::RangeSelection),
+        /// The chunks with data at given times, per segment, plus the matching static chunks.
+        #[prost(message, tag = "4")]
+        Samples(super::SegmentSamplesSelection),
+    }
+}
+impl ::prost::Name for FindChunksRequest {
+    const NAME: &'static str = "FindChunksRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FindChunksRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FindChunksRequest".into()
+    }
+}
+/// One batch of chunk candidates yielded by `FindChunks`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct FindChunksResponse {
+    /// One row per candidate chunk, in the fixed `ChunkCandidatesDataframe` column layout.
+    #[prost(message, optional, tag = "1")]
+    pub data: ::core::option::Option<super::super::common::v1alpha1::DataframePart>,
+    /// Metadata for the entire stream.
+    /// Servers may omit it.
+    /// When set, only the first response message carries it.
+    #[prost(message, optional, tag = "100")]
+    pub meta: ::core::option::Option<DatasetResponseMeta>,
+}
+impl ::prost::Name for FindChunksResponse {
+    const NAME: &'static str = "FindChunksResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.FindChunksResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.FindChunksResponse".into()
+    }
+}
+/// Selects every segment of the dataset, or an explicit list.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SegmentSelection {
+    /// The segment set. Required.
+    #[prost(oneof = "segment_selection::Selection", tags = "1, 2")]
+    pub selection: ::core::option::Option<segment_selection::Selection>,
+}
+/// Nested message and enum types in `SegmentSelection`.
+pub mod segment_selection {
+    /// The segment set. Required.
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Selection {
+        /// Every segment of the dataset.
+        #[prost(message, tag = "1")]
+        All(()),
+        /// Exactly the listed segments.
+        #[prost(message, tag = "2")]
+        Explicit(super::SegmentIds),
+    }
+}
+impl ::prost::Name for SegmentSelection {
+    const NAME: &'static str = "SegmentSelection";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentSelection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentSelection".into()
+    }
+}
+/// An explicit list of segment ids.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SegmentIds {
+    /// The segment ids. An empty list selects no segments.
+    /// Unknown ids select nothing, and duplicates are ignored.
+    #[prost(message, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::SegmentId>,
+}
+impl ::prost::Name for SegmentIds {
+    const NAME: &'static str = "SegmentIds";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentIds".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentIds".into()
+    }
+}
+/// Selects the static chunks of the selected segments.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct StaticSelection {
+    /// The segments to select from. Required.
+    #[prost(message, optional, tag = "1")]
+    pub segments: ::core::option::Option<SegmentSelection>,
+}
+impl ::prost::Name for StaticSelection {
+    const NAME: &'static str = "StaticSelection";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.StaticSelection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.StaticSelection".into()
+    }
+}
+/// Selects the chunks that overlap `\[start_inclusive, end_inclusive\]` on `timeline`.
+///
+/// Both bounds are inclusive. A missing bound is unbounded, and a range with neither bound selects
+/// every chunk.
+///
+/// Also selects every static chunk of the selected contents and segments, whatever the bounds and
+/// the fill mode.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RangeSelection {
+    /// The timeline of the bounds. Required.
+    #[prost(string, tag = "1")]
+    pub timeline: ::prost::alloc::string::String,
+    /// The lower bound. Unbounded when unset.
+    #[prost(int64, optional, tag = "2")]
+    pub start_inclusive: ::core::option::Option<i64>,
+    /// The upper bound. Unbounded when unset.
+    #[prost(int64, optional, tag = "3")]
+    pub end_inclusive: ::core::option::Option<i64>,
+    /// Whether to also select the chunks that resolve state at a bound. Defaults to
+    /// `FILL_MODE_NONE`.
+    #[prost(enumeration = "FillMode", tag = "4")]
+    pub fill_mode: i32,
+    /// The segments to select from. Required.
+    #[prost(message, optional, tag = "5")]
+    pub segments: ::core::option::Option<SegmentSelection>,
+}
+impl ::prost::Name for RangeSelection {
+    const NAME: &'static str = "RangeSelection";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.RangeSelection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.RangeSelection".into()
+    }
+}
+/// Selects, per segment, the chunks with data at each sample time.
+///
+/// Also selects every static chunk of the selected contents in each listed segment, whatever the
+/// fill mode. A segment entry with no sample times selects nothing, not even static chunks.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SegmentSamplesSelection {
+    /// The timeline of the sample times. Required.
+    #[prost(string, tag = "1")]
+    pub timeline: ::prost::alloc::string::String,
+    /// The segments to select from, with their sample times.
+    #[prost(message, repeated, tag = "2")]
+    pub segments: ::prost::alloc::vec::Vec<SegmentSamples>,
+    /// Whether to also select the chunks that resolve state at each sample time. Defaults to
+    /// `FILL_MODE_NONE`.
+    #[prost(enumeration = "FillMode", tag = "3")]
+    pub fill_mode: i32,
+}
+impl ::prost::Name for SegmentSamplesSelection {
+    const NAME: &'static str = "SegmentSamplesSelection";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentSamplesSelection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentSamplesSelection".into()
+    }
+}
+/// The sample times for one segment.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SegmentSamples {
+    /// The segment these times apply to. Required.
+    #[prost(message, optional, tag = "1")]
+    pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
+    /// The sample times, in the unit of the selection's timeline.
+    #[prost(int64, repeated, tag = "2")]
+    pub values: ::prost::alloc::vec::Vec<i64>,
+}
+impl ::prost::Name for SegmentSamples {
+    const NAME: &'static str = "SegmentSamples";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.SegmentSamples".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.SegmentSamples".into()
+    }
+}
+/// Selects the entities and components to include.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ContentSelection {
+    /// The content set. Required.
+    #[prost(oneof = "content_selection::Selection", tags = "1, 2")]
+    pub selection: ::core::option::Option<content_selection::Selection>,
+}
+/// Nested message and enum types in `ContentSelection`.
+pub mod content_selection {
+    /// The content set. Required.
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Selection {
+        /// Every entity and component.
+        #[prost(message, tag = "1")]
+        All(()),
+        /// Exactly the listed entities, each with its own component set.
+        #[prost(message, tag = "2")]
+        Explicit(super::EntitySelections),
+    }
+}
+impl ::prost::Name for ContentSelection {
+    const NAME: &'static str = "ContentSelection";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ContentSelection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ContentSelection".into()
+    }
+}
+/// An explicit list of entity selections.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct EntitySelections {
+    /// The entities to select. An empty list selects nothing. Each entity path may appear once.
+    #[prost(message, repeated, tag = "1")]
+    pub entities: ::prost::alloc::vec::Vec<EntitySelection>,
+}
+impl ::prost::Name for EntitySelections {
+    const NAME: &'static str = "EntitySelections";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntitySelections".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntitySelections".into()
+    }
+}
+/// Selects one entity and the components to include for it.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct EntitySelection {
+    /// The entity path. Required.
+    #[prost(message, optional, tag = "1")]
+    pub entity_path: ::core::option::Option<super::super::common::v1alpha1::EntityPath>,
+    /// The component set for this entity. Required.
+    #[prost(oneof = "entity_selection::Components", tags = "2, 3")]
+    pub components: ::core::option::Option<entity_selection::Components>,
+}
+/// Nested message and enum types in `EntitySelection`.
+pub mod entity_selection {
+    /// The component set for this entity. Required.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Components {
+        /// Every component logged on this entity.
+        #[prost(message, tag = "2")]
+        All(()),
+        /// Exactly the listed component identifiers.
+        #[prost(message, tag = "3")]
+        Explicit(super::ComponentIds),
+    }
+}
+impl ::prost::Name for EntitySelection {
+    const NAME: &'static str = "EntitySelection";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.EntitySelection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.EntitySelection".into()
+    }
+}
+/// An explicit list of component identifiers.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ComponentIds {
+    /// The component identifiers, e.g. `Points3D:positions`. Each must be non-empty.
+    /// An empty list selects nothing for this entity.
+    #[prost(string, repeated, tag = "1")]
+    pub ids: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ComponentIds {
+    const NAME: &'static str = "ComponentIds";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ComponentIds".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ComponentIds".into()
     }
 }
 /// Request for `GetTableSchema`.
@@ -2519,6 +3115,72 @@ impl ErrorCode {
         }
     }
 }
+/// How the object is uploaded, independently of URL signing.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum UploadMethod {
+    /// Never selected; servers ignore it.
+    Unspecified = 0,
+    /// `AccessGrant.http_request`.
+    SingleRequest = 1,
+    /// `AccessGrant.multipart_request`.
+    Multipart = 2,
+}
+impl UploadMethod {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "UPLOAD_METHOD_UNSPECIFIED",
+            Self::SingleRequest => "UPLOAD_METHOD_SINGLE_REQUEST",
+            Self::Multipart => "UPLOAD_METHOD_MULTIPART",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "UPLOAD_METHOD_UNSPECIFIED" => Some(Self::Unspecified),
+            "UPLOAD_METHOD_SINGLE_REQUEST" => Some(Self::SingleRequest),
+            "UPLOAD_METHOD_MULTIPART" => Some(Self::Multipart),
+            _ => None,
+        }
+    }
+}
+/// Who supplies authorization for the upload's HTTP requests.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum UrlSigning {
+    /// Same as SIGNED.
+    Unspecified = 0,
+    /// Server-signed URLs, usable without client-managed object-store credentials.
+    Signed = 1,
+    /// Unsigned URLs. The client authorizes requests with its own object-store credentials.
+    Unsigned = 2,
+}
+impl UrlSigning {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "URL_SIGNING_UNSPECIFIED",
+            Self::Signed => "URL_SIGNING_SIGNED",
+            Self::Unsigned => "URL_SIGNING_UNSIGNED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "URL_SIGNING_UNSPECIFIED" => Some(Self::Unspecified),
+            "URL_SIGNING_SIGNED" => Some(Self::Signed),
+            "URL_SIGNING_UNSIGNED" => Some(Self::Unsigned),
+            _ => None,
+        }
+    }
+}
 /// What format the data behind a `DataSource` is stored in.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -2544,6 +3206,84 @@ impl DataSourceKind {
         match value {
             "DATA_SOURCE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "DATA_SOURCE_KIND_RRD" => Some(Self::Rrd),
+            _ => None,
+        }
+    }
+}
+/// Which direct chunk URLs `FindChunks` returns, and how they are signed.
+///
+/// The mode is an upper bound: a server may return fewer URLs than requested, or none.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DirectUrlMode {
+    /// Same as `DIRECT_URL_MODE_SIGNED`.
+    Unspecified = 0,
+    /// Return no direct URLs and no expiration times.
+    Omit = 1,
+    /// Return unsigned URLs. The client manages object-store credentials.
+    Unsigned = 2,
+    /// Return server-signed URLs, usable without object-store credentials.
+    Signed = 3,
+}
+impl DirectUrlMode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DIRECT_URL_MODE_UNSPECIFIED",
+            Self::Omit => "DIRECT_URL_MODE_OMIT",
+            Self::Unsigned => "DIRECT_URL_MODE_UNSIGNED",
+            Self::Signed => "DIRECT_URL_MODE_SIGNED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DIRECT_URL_MODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "DIRECT_URL_MODE_OMIT" => Some(Self::Omit),
+            "DIRECT_URL_MODE_UNSIGNED" => Some(Self::Unsigned),
+            "DIRECT_URL_MODE_SIGNED" => Some(Self::Signed),
+            _ => None,
+        }
+    }
+}
+/// Whether a selection also selects the chunks that resolve state from earlier or later data.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum FillMode {
+    /// Same as `FILL_MODE_NONE`.
+    Unspecified = 0,
+    /// Select only the chunks with data in the range, or at the sample times.
+    None = 1,
+    /// Also select the chunks that resolve latest-at state at a range's `start_inclusive`, or at
+    /// each sample time. A range requires `start_inclusive`.
+    LatestAt = 2,
+    /// Reserved for selecting the chunks that resolve state from later data, at a range's
+    /// `end_inclusive` or at each sample time. UNIMPLEMENTED.
+    EarliestAt = 3,
+}
+impl FillMode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "FILL_MODE_UNSPECIFIED",
+            Self::None => "FILL_MODE_NONE",
+            Self::LatestAt => "FILL_MODE_LATEST_AT",
+            Self::EarliestAt => "FILL_MODE_EARLIEST_AT",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "FILL_MODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "FILL_MODE_NONE" => Some(Self::None),
+            "FILL_MODE_LATEST_AT" => Some(Self::LatestAt),
+            "FILL_MODE_EARLIEST_AT" => Some(Self::EarliestAt),
             _ => None,
         }
     }
@@ -3113,9 +3853,11 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Returns authorization to write one object at the requested key.
+        /// Returns authorization to create one object at the requested key.
         ///
-        /// The grant expires at the time in the response.
+        /// The server selects one of the upload methods the request accepts,
+        /// or fails with FAILED_PRECONDITION if it supports none of them.
+        /// The grant must use the requested URL signing mode; unsupported modes fail with UNIMPLEMENTED.
         /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
         pub async fn get_write_access_grant(
             &mut self,
@@ -3133,6 +3875,74 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "GetWriteAccessGrant",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Issues part grants without extending the session deadline.
+        pub async fn get_multipart_upload_part_grants(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetMultipartUploadPartGrantsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMultipartUploadPartGrantsResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetMultipartUploadPartGrants",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetMultipartUploadPartGrants",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Publishes an upload at its authorized key without replacing an existing object.
+        /// If another object exists at the destination, fails atomically with ALREADY_EXISTS.
+        /// Idempotent: confirming this upload's publication succeeds even after the session deadline.
+        /// After the deadline, this RPC must not publish an unfinished upload.
+        pub async fn complete_multipart_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::CompleteMultipartUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CompleteMultipartUploadResponse>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/CompleteMultipartUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "CompleteMultipartUpload",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Aborts an upload, even after the session deadline.
+        /// Idempotent: aborting an unknown, aborted, or published upload succeeds without side effects.
+        pub async fn abort_multipart_upload(
+            &mut self,
+            request: impl tonic::IntoRequest<super::AbortMultipartUploadRequest>,
+        ) -> std::result::Result<tonic::Response<super::AbortMultipartUploadResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/AbortMultipartUpload",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "AbortMultipartUpload",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -3316,6 +4126,33 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Look up layer schemas by their `SchemaId`.
+        ///
+        /// The identifiers wrap the hashes reported in the `rerun_schema_sha256` column of `ScanDatasetManifest`.
+        /// Unlike `GetDatasetSchema`, the schemas are returned unmerged, one per distinct identifier.
+        ///
+        /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+        pub async fn get_schemas(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetSchemasRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::GetSchemasResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetSchemas",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetSchemas",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
         /// Get the RRD Footer manifest.
         ///
         /// This includes details about what chunks there are, and what kind of data they contain.
@@ -3456,29 +4293,18 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-        /// as information that can be sent back to the catalog server to fetch the actual chunks as part
-        /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
-        /// from the server about the chunks that contain relevant information. 2nd step is fetching
-        /// those chunks (the actual data).
+        /// Deprecated: use `FindChunks`. Kept for older clients.
         ///
-        /// These Rerun-native queries include:
-        /// * Filtering by specific segment and chunk IDs.
-        /// * Latest-at, range and dataframe queries.
-        /// * Arbitrary Lance filters.
+        /// Returns candidate chunk IDs and metadata for fetching them with `FetchChunks`.
         ///
-        /// To fetch the actual chunks themselves, see `FetchChunks`.
+        /// Supports segment filtering, latest-at queries, and range queries.
+        /// See `QueryDatasetRequest` for field restrictions.
         ///
-        /// Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
-        ///
-        /// For latest-at queries, the returned chunks are a **correctness-preserving
-        /// superset** of the minimum set needed to answer the query: the server may
-        /// include additional candidate chunks (e.g., overlap siblings within the
-        /// global max chunk length, or chunks that pass segment-level bounds without
-        /// per-value narrowing). Clients are expected to run their own latest-at
-        /// resolution on the returned chunks.
+        /// The server may return more chunks than needed to answer a latest-at query.
+        /// Clients must resolve latest-at values from the fetched chunks.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+        #[deprecated]
         pub async fn query_dataset(
             &mut self,
             request: impl tonic::IntoRequest<super::QueryDatasetRequest>,
@@ -3501,7 +4327,7 @@ pub mod rerun_cloud_service_client {
             self.inner.server_streaming(req, path, codec).await
         }
         /// Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
-        /// that is, the result of `QueryDataset` should include all the necessary information to send
+        /// that is, the result of `FindChunks` should include all the necessary information to send
         /// the actual chunk requests, which is the 2nd step of the query process.
         ///
         /// See `FetchChunksRequest` for details on the fields that describe each individual chunk.
@@ -3523,6 +4349,33 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "FetchChunks",
+            ));
+            self.inner.server_streaming(req, path, codec).await
+        }
+        /// Find the candidate chunks for a selection of content and segments.
+        ///
+        /// The server may return more chunks than the selection needs. The client resolves the final
+        /// rows from the chunks it fetches.
+        ///
+        /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+        pub async fn find_chunks(
+            &mut self,
+            request: impl tonic::IntoRequest<super::FindChunksRequest>,
+        ) -> std::result::Result<
+            tonic::Response<tonic::codec::Streaming<super::FindChunksResponse>>,
+            tonic::Status,
+        > {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/FindChunks",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "FindChunks",
             ));
             self.inner.server_streaming(req, path, codec).await
         }
@@ -3891,14 +4744,41 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::UpdateTableEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::UpdateTableEntryResponse>, tonic::Status>;
-        /// Returns authorization to write one object at the requested key.
+        /// Returns authorization to create one object at the requested key.
         ///
-        /// The grant expires at the time in the response.
+        /// The server selects one of the upload methods the request accepts,
+        /// or fails with FAILED_PRECONDITION if it supports none of them.
+        /// The grant must use the requested URL signing mode; unsupported modes fail with UNIMPLEMENTED.
         /// TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
         async fn get_write_access_grant(
             &self,
             request: tonic::Request<super::GetWriteAccessGrantRequest>,
         ) -> std::result::Result<tonic::Response<super::GetWriteAccessGrantResponse>, tonic::Status>;
+        /// Issues part grants without extending the session deadline.
+        async fn get_multipart_upload_part_grants(
+            &self,
+            request: tonic::Request<super::GetMultipartUploadPartGrantsRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::GetMultipartUploadPartGrantsResponse>,
+            tonic::Status,
+        >;
+        /// Publishes an upload at its authorized key without replacing an existing object.
+        /// If another object exists at the destination, fails atomically with ALREADY_EXISTS.
+        /// Idempotent: confirming this upload's publication succeeds even after the session deadline.
+        /// After the deadline, this RPC must not publish an unfinished upload.
+        async fn complete_multipart_upload(
+            &self,
+            request: tonic::Request<super::CompleteMultipartUploadRequest>,
+        ) -> std::result::Result<
+            tonic::Response<super::CompleteMultipartUploadResponse>,
+            tonic::Status,
+        >;
+        /// Aborts an upload, even after the session deadline.
+        /// Idempotent: aborting an unknown, aborted, or published upload succeeds without side effects.
+        async fn abort_multipart_upload(
+            &self,
+            request: tonic::Request<super::AbortMultipartUploadRequest>,
+        ) -> std::result::Result<tonic::Response<super::AbortMultipartUploadResponse>, tonic::Status>;
         /// Register new segments with the Dataset.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
@@ -3984,6 +4864,21 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::GetDatasetSchemaRequest>,
         ) -> std::result::Result<tonic::Response<super::GetDatasetSchemaResponse>, tonic::Status>;
+        /// Server streaming response type for the GetSchemas method.
+        type GetSchemasStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::GetSchemasResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Look up layer schemas by their `SchemaId`.
+        ///
+        /// The identifiers wrap the hashes reported in the `rerun_schema_sha256` column of `ScanDatasetManifest`.
+        /// Unlike `GetDatasetSchema`, the schemas are returned unmerged, one per distinct identifier.
+        ///
+        /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+        async fn get_schemas(
+            &self,
+            request: tonic::Request<super::GetSchemasRequest>,
+        ) -> std::result::Result<tonic::Response<Self::GetSchemasStream>, tonic::Status>;
         /// Server streaming response type for the GetRrdManifest method.
         type GetRrdManifestStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::GetRrdManifestResponse, tonic::Status>,
@@ -4064,27 +4959,15 @@ pub mod rerun_cloud_service_server {
                 Item = std::result::Result<super::QueryDatasetResponse, tonic::Status>,
             > + std::marker::Send
             + 'static;
-        /// Perform Rerun-native queries on a dataset, returning the matching chunk IDs, as well
-        /// as information that can be sent back to the catalog server to fetch the actual chunks as part
-        /// of `FetchChunks` request. In this 2-step query process, 1st step is getting information
-        /// from the server about the chunks that contain relevant information. 2nd step is fetching
-        /// those chunks (the actual data).
+        /// Deprecated: use `FindChunks`. Kept for older clients.
         ///
-        /// These Rerun-native queries include:
-        /// * Filtering by specific segment and chunk IDs.
-        /// * Latest-at, range and dataframe queries.
-        /// * Arbitrary Lance filters.
+        /// Returns candidate chunk IDs and metadata for fetching them with `FetchChunks`.
         ///
-        /// To fetch the actual chunks themselves, see `FetchChunks`.
+        /// Supports segment filtering, latest-at queries, and range queries.
+        /// See `QueryDatasetRequest` for field restrictions.
         ///
-        /// Passing chunk IDs to this method effectively acts as a IF_EXIST filter.
-        ///
-        /// For latest-at queries, the returned chunks are a **correctness-preserving
-        /// superset** of the minimum set needed to answer the query: the server may
-        /// include additional candidate chunks (e.g., overlap siblings within the
-        /// global max chunk length, or chunks that pass segment-level bounds without
-        /// per-value narrowing). Clients are expected to run their own latest-at
-        /// resolution on the returned chunks.
+        /// The server may return more chunks than needed to answer a latest-at query.
+        /// Clients must resolve latest-at values from the fetched chunks.
         ///
         /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
         async fn query_dataset(
@@ -4097,7 +4980,7 @@ pub mod rerun_cloud_service_server {
             > + std::marker::Send
             + 'static;
         /// Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
-        /// that is, the result of `QueryDataset` should include all the necessary information to send
+        /// that is, the result of `FindChunks` should include all the necessary information to send
         /// the actual chunk requests, which is the 2nd step of the query process.
         ///
         /// See `FetchChunksRequest` for details on the fields that describe each individual chunk.
@@ -4105,6 +4988,21 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::FetchChunksRequest>,
         ) -> std::result::Result<tonic::Response<Self::FetchChunksStream>, tonic::Status>;
+        /// Server streaming response type for the FindChunks method.
+        type FindChunksStream: tonic::codegen::tokio_stream::Stream<
+                Item = std::result::Result<super::FindChunksResponse, tonic::Status>,
+            > + std::marker::Send
+            + 'static;
+        /// Find the candidate chunks for a selection of content and segments.
+        ///
+        /// The server may return more chunks than the selection needs. The client resolves the final
+        /// rows from the chunks it fetches.
+        ///
+        /// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+        async fn find_chunks(
+            &self,
+            request: tonic::Request<super::FindChunksRequest>,
+        ) -> std::result::Result<tonic::Response<Self::FindChunksStream>, tonic::Status>;
         /// Register a foreign table as a new table entry in the catalog.
         async fn register_table(
             &self,
@@ -4858,6 +5756,137 @@ pub mod rerun_cloud_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetMultipartUploadPartGrants" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetMultipartUploadPartGrantsSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetMultipartUploadPartGrantsRequest>
+                        for GetMultipartUploadPartGrantsSvc<T>
+                    {
+                        type Response = super::GetMultipartUploadPartGrantsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetMultipartUploadPartGrantsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_multipart_upload_part_grants(
+                                    &inner, request,
+                                )
+                                .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetMultipartUploadPartGrantsSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/CompleteMultipartUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct CompleteMultipartUploadSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::CompleteMultipartUploadRequest>
+                        for CompleteMultipartUploadSvc<T>
+                    {
+                        type Response = super::CompleteMultipartUploadResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::CompleteMultipartUploadRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::complete_multipart_upload(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = CompleteMultipartUploadSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/AbortMultipartUpload" => {
+                    #[allow(non_camel_case_types)]
+                    struct AbortMultipartUploadSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::AbortMultipartUploadRequest>
+                        for AbortMultipartUploadSvc<T>
+                    {
+                        type Response = super::AbortMultipartUploadResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::AbortMultipartUploadRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::abort_multipart_upload(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = AbortMultipartUploadSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/rerun.cloud.v1alpha1.RerunCloudService/RegisterWithDataset" => {
                     #[allow(non_camel_case_types)]
                     struct RegisterWithDatasetSvc<T: RerunCloudService>(pub Arc<T>);
@@ -5165,6 +6194,50 @@ pub mod rerun_cloud_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetSchemas" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetSchemasSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::GetSchemasRequest>
+                        for GetSchemasSvc<T>
+                    {
+                        type Response = super::GetSchemasResponse;
+                        type ResponseStream = T::GetSchemasStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetSchemasRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_schemas(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetSchemasSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/rerun.cloud.v1alpha1.RerunCloudService/GetRrdManifest" => {
                     #[allow(non_camel_case_types)]
                     struct GetRrdManifestSvc<T: RerunCloudService>(pub Arc<T>);
@@ -5458,6 +6531,50 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = FetchChunksSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/FindChunks" => {
+                    #[allow(non_camel_case_types)]
+                    struct FindChunksSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::ServerStreamingService<super::FindChunksRequest>
+                        for FindChunksSvc<T>
+                    {
+                        type Response = super::FindChunksResponse;
+                        type ResponseStream = T::FindChunksStream;
+                        type Future =
+                            BoxFuture<tonic::Response<Self::ResponseStream>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::FindChunksRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::find_chunks(&inner, request).await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = FindChunksSvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

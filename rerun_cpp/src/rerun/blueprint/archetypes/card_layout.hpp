@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../archetype_utils.hpp"
 #include "../../blueprint/components/column_name.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -37,8 +38,8 @@ namespace rerun::blueprint::archetypes {
         /// Unlisted fields are hidden unless their `archetypes::TableColumn` visibility overrides the default.
         /// Each source column may appear at most once.
         ///
-        /// Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-        /// Card layouts currently support at most one flag field.
+        /// The first visible field of component type `components::Flag` is shown in the card header
+        /// instead of the labeled-field list.
         std::optional<ComponentBatch> field_order;
 
       public:
@@ -103,8 +104,8 @@ namespace rerun::blueprint::archetypes {
         /// Unlisted fields are hidden unless their `archetypes::TableColumn` visibility overrides the default.
         /// Each source column may appear at most once.
         ///
-        /// Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-        /// Card layouts currently support at most one flag field.
+        /// The first visible field of component type `components::Flag` is shown in the card header
+        /// instead of the labeled-field list.
         CardLayout with_field_order(
             const Collection<rerun::blueprint::components::ColumnName>& _field_order
         ) && {
@@ -121,13 +122,19 @@ namespace rerun::blueprint::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches({&title, &link, &field_order}, lengths_)
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length({&title, &link, &field_order})
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::blueprint::archetypes
@@ -143,6 +150,10 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const blueprint::archetypes::CardLayout& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.title, &archetype.link, &archetype.field_order}
+            );
+        }
     };
 } // namespace rerun

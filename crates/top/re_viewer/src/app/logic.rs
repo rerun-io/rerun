@@ -16,24 +16,23 @@ use crate::app_blueprint::AppBlueprint;
 
 use super::viewer_control::serve_egui_inspect_request;
 
-use super::{App, WindowDecorationsRequest};
+use super::{AppCore, WindowDecorationsRequest};
 
-impl App {
+impl AppCore {
     /// Called before each call to `ui`, but ALSO when the app is
     /// hidden (occluded, minimized, …) if something has called `request_repaint`.
     ///
     /// We put things here that are unrelated to the UI,
     /// and that we still want to happen if the application is hidden.
-    pub(super) fn logic_impl(&mut self, egui_ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Temporarily take the `StoreHub` out of the Viewer so it doesn't interfere with mutability
-        let mut store_hub = self
-            .store_hub
-            .take()
-            .expect("Failed to take store hub from the Viewer");
-
+    pub(super) fn logic_impl(
+        &mut self,
+        egui_ctx: &egui::Context,
+        _frame: &mut eframe::Frame,
+        store_hub: &mut StoreHub,
+    ) {
         {
             // Respect memory budget:
-            self.purge_memory_if_needed(&mut store_hub); // Call BEFORE `begin_frame_caches`
+            self.purge_memory_if_needed(store_hub); // Call BEFORE `begin_frame_caches`
 
             if self.app_options().blueprint_gc {
                 store_hub.gc_blueprints(&self.state.blueprint_undo_state);
@@ -42,12 +41,17 @@ impl App {
 
         {
             // Download/ingest data:
-            self.receive_messages(&mut store_hub, egui_ctx);
-            self.receive_fetched_chunks(&mut store_hub);
-            self.prefetch_chunks(&mut store_hub);
+            self.receive_messages(store_hub, egui_ctx);
+            for re_agent_panel::ViewerControlCall { request, on_done } in
+                self.agent_panel.take_viewer_control_calls()
+            {
+                self.serve_viewer_control(request, on_done, store_hub, egui_ctx);
+            }
+            self.receive_fetched_chunks(store_hub);
+            self.prefetch_chunks(store_hub);
         }
 
-        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+        self.run_pending_system_commands(store_hub, egui_ctx);
 
         {
             // We also need to check for UI commands, especially `UICommand::Quit`.
@@ -89,8 +93,7 @@ impl App {
                 blueprint,
                 &blueprint_query,
                 egui_ctx,
-                self.panel_state_overrides_active
-                    .then_some(self.panel_state_overrides),
+                self.panel_state_overrides.active(),
             );
             self.run_pending_ui_commands(
                 egui_ctx,
@@ -111,14 +114,11 @@ impl App {
 
         // The commands above may queue system commands, and answer viewer-control requests that
         // wait on them.
-        self.run_pending_system_commands(&mut store_hub, egui_ctx);
+        self.run_pending_system_commands(store_hub, egui_ctx);
 
-        self.state.cleanup(&store_hub);
+        self.state.cleanup(store_hub);
 
         self.sync_native_window_decorations(egui_ctx);
-
-        // Return the `StoreHub` to the Viewer so we have it on the next frame
-        self.store_hub = Some(store_hub);
     }
 
     /// Hand the window decorations over to the OS, or take them over ourselves.
@@ -210,9 +210,7 @@ impl App {
 
             if let Some(sid) = &msg_store_id {
                 let entity_db = store_hub.entity_db_entry(sid);
-                if entity_db.data_source.is_none() {
-                    entity_db.data_source = Some((*channel_source).clone());
-                }
+                entity_db.add_data_source(&channel_source);
             }
 
             match msg {
@@ -221,7 +219,7 @@ impl App {
                     let store_events = entity_db.add_rrd_manifest_message(rrd_manifest);
 
                     if let Some((entity_db, cache)) =
-                        store_hub.entity_db_and_cache(&store_id, &self.view_class_registry)
+                        store_hub.entity_db_and_cache(&store_id, &self.registries.view_classes)
                     {
                         cache.on_store_events(&store_events, entity_db);
                     }
@@ -411,7 +409,7 @@ impl App {
                                 {
                                     store_hub.load_blueprint_and_caches(
                                         &recording_id,
-                                        &self.view_class_registry,
+                                        &self.registries.view_classes,
                                     );
                                     self.state
                                         .selection_state
@@ -455,7 +453,7 @@ impl App {
         // Keep all caches up to date, even if they're in the background.
         // This ensures that when we switch to a different recording, the caches are already valid.
         if let Some((entity_db, cache)) =
-            store_hub.entity_db_and_cache(store_id, &self.view_class_registry)
+            store_hub.entity_db_and_cache(store_id, &self.registries.view_classes)
         {
             cache.on_store_events(store_events, entity_db);
         }
@@ -546,7 +544,7 @@ impl App {
         let entity_db = store_hub.entity_db_entry(store_id);
         let is_example = entity_db.store_class().is_example();
 
-        if cfg!(target_arch = "wasm32") && !self.startup_options.is_in_notebook && !is_example {
+        if cfg!(target_arch = "wasm32") && !self.startup.options.is_in_notebook && !is_example {
             use std::sync::Once;
             static ONCE: Once = Once::new();
             ONCE.call_once(|| {
@@ -569,7 +567,7 @@ impl App {
             #[cfg(feature = "analytics")]
             if let Some(analytics) = re_analytics::Analytics::global_or_init()
                 && let Some(event) =
-                    crate::viewer_analytics::event::open_recording(&self.app_env, entity_db)
+                    crate::viewer_analytics::event::open_recording(&self.startup.app_env, entity_db)
             {
                 analytics.record(event);
             }
@@ -701,6 +699,11 @@ impl App {
     }
 
     /// Makes the given store active and request user attention if Rerun in the background.
+    ///
+    /// A recording that was streamed as a preview, and whose app has neither an active nor a
+    /// default blueprint, shows the loading screen until its server blueprint has streamed in.
+    /// A recording whose store doesn't exist yet, because its stream hasn't sent anything, shows
+    /// the loading screen for that stream.
     pub(super) fn make_store_active_and_highlight(
         &mut self,
         store_hub: &mut StoreHub,
@@ -715,18 +718,51 @@ impl App {
         }
 
         store_hub.set_opened(store_id, true);
-        store_hub.load_blueprint_and_caches(store_id, &self.view_class_registry);
+
+        // A recording has no store until its first message arrives. Until then the loading screen
+        // stays up, and the viewer shows and selects the recording once every stream for its
+        // segment has finished.
+        if store_hub.entity_db(store_id).is_none() {
+            let is_loading = matches!(self.state.navigation.current(), Route::Loading(_));
+            if !is_loading && let Some(source) = self.receiving_source_for(store_id) {
+                self.state
+                    .navigation
+                    .replace(Route::Loading(Box::new(source)));
+            }
+            return;
+        }
+
+        store_hub.load_blueprint_and_caches(store_id, &self.registries.view_classes);
+
+        let app_id = store_id.application_id();
+        let waits_for_blueprint = store_hub.is_blueprint_pending(store_id)
+            && store_hub.active_blueprint_for_app(app_id).is_none()
+            && store_hub.default_blueprint_for_app(app_id).is_none();
+
         // If this recording was streamed as a preview, fetch the blueprint we skipped back then.
         self.fetch_pending_blueprint(store_hub, store_id);
-        self.state.navigation.replace(Route::LocalRecording {
-            recording_id: store_id.clone(),
-        });
 
-        // Also select the new recording:
-        self.command_sender
-            .send_system(SystemCommand::set_selection(
-                re_viewer_context::Item::StoreId(store_id.clone()),
-            ));
+        if waits_for_blueprint
+            && let Some(data_source) = store_hub
+                .entity_db(store_id)
+                .and_then(|db| db.primary_data_source().cloned())
+        {
+            // The viewer shows and selects the recording once every stream for its segment has
+            // finished.
+            self.state
+                .navigation
+                .replace(Route::Loading(Box::new(data_source)));
+        } else {
+            self.state.navigation.replace(Route::LocalRecording {
+                recording_id: store_id.clone(),
+            });
+
+            // Also select the new recording:
+            self.command_sender
+                .send_system(SystemCommand::set_selection(
+                    re_viewer_context::Item::StoreId(store_id.clone()),
+                ));
+        }
 
         // If the viewer is in the background, tell the user that it has received something new.
         egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
@@ -734,9 +770,20 @@ impl App {
         ));
     }
 
+    /// The source of a connected stream for the given dataset segment, if any.
+    fn receiving_source_for(&self, store_id: &StoreId) -> Option<LogSource> {
+        self.rx_log.sources().into_iter().find_map(|source| {
+            let re_uri::RedapUri::Dataset(uri) = source.redap_uri()? else {
+                return None;
+            };
+            (uri.store_id().as_ref() == Some(store_id)).then(|| source.as_ref().clone())
+        })
+    }
+
     /// After loading some data; check if the loaded data makes sense.
     fn validate_loaded_events(&self, store_events: &[re_chunk_store::ChunkStoreEvent]) {
         re_tracing::profile_function!();
+        let reflection = self.registries.reflection.read();
 
         for event in store_events {
             let Some(chunk) = event.delta_chunk() else {
@@ -746,13 +793,18 @@ impl App {
             // For speed, we don't care about the order of the following log statements, so we silence this warning
             for component_descr in chunk.components().component_descriptors() {
                 if let Some(archetype_name) = component_descr.archetype {
-                    if !self.reflection.archetypes.contains_key(&archetype_name) {
+                    if !reflection.archetypes.contains_key(&archetype_name) {
                         re_log::trace_once!("Unknown archetype: {archetype_name}");
                         continue;
                     }
 
-                    for view_class in self.reflection.views_for_archetype(archetype_name) {
-                        if self.view_class_registry.class_entry(view_class).is_none() {
+                    for view_class in reflection.views_for_archetype(archetype_name) {
+                        if self
+                            .registries
+                            .view_classes
+                            .class_entry(view_class)
+                            .is_none()
+                        {
                             re_log::warn_once!(
                                 "Found data associated with unavailable view class {view_class}. This viewer was compiled without support for that view class."
                             );

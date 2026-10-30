@@ -1,8 +1,9 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
+use std::sync::Arc;
 
-use arrow::array::RecordBatch;
+use arrow::array::{ArrayRef, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::buffer::NullBuffer;
-use arrow::datatypes::{Field, FieldRef};
+use arrow::datatypes::{Field, FieldRef, Schema};
 use arrow::{
     array::{BooleanArray, UInt64Array},
     error::ArrowError,
@@ -12,6 +13,7 @@ use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType, TimelineName};
+use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_types_core::{
     ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,
     FIELD_METADATA_KEY_COMPONENT_TYPE,
@@ -290,6 +292,49 @@ impl RawRrdManifest {
             .map_err(ChunkIndexError::ArrowDeserialization)?;
 
         Ok(Self { data, ..self })
+    }
+
+    /// Returns this manifest with `columns` appended after its own, in order.
+    ///
+    /// Each array has one entry per chunk.
+    pub fn with_appended_columns(
+        self,
+        columns: impl IntoIterator<Item = (FieldRef, ArrayRef)>,
+    ) -> Result<Self, ArrowError> {
+        let (schema, mut arrays, row_count) = self.data.into_parts();
+        let mut fields = schema.fields.to_vec();
+        for (field, array) in columns {
+            fields.push(field);
+            arrays.push(array);
+        }
+
+        let data = RecordBatch::try_new_with_options(
+            Arc::new(Schema::new_with_metadata(fields, schema.metadata.clone())),
+            arrays,
+            &RecordBatchOptions::new().with_row_count(Some(row_count)),
+        )?;
+
+        Ok(Self { data, ..self })
+    }
+
+    /// Returns this manifest with the segment id and layer columns appended.
+    ///
+    /// Both have one entry per chunk.
+    pub fn with_segment_layers(
+        self,
+        segment_ids: impl IntoIterator<Item = impl AsRef<str>>,
+        layers: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Result<Self, ArrowError> {
+        self.with_appended_columns([
+            (
+                Self::COLUMN_CHUNK_PARTITION_ID.arrow_field_ref(),
+                Arc::new(StringArray::from_iter_values(segment_ids)) as ArrayRef,
+            ),
+            (
+                Self::COLUMN_RERUN_PARTITION_LAYER.arrow_field_ref(),
+                Arc::new(StringArray::from_iter_values(layers)) as ArrayRef,
+            ),
+        ])
     }
 
     /// Merges multiple manifests into one, tolerating schema differences.
@@ -687,14 +732,14 @@ impl PartialEq for RawRrdManifest {
 // helpers centralize the conventions so downstream code doesn't reach into names or metadata.
 impl RawRrdManifest {
     /// Field metadata key holding the index name an index column belongs to.
-    const FIELD_METADATA_KEY_INDEX: &str = "rerun:index";
+    pub const FIELD_METADATA_KEY_INDEX: &str = "rerun:index";
 
     /// Field metadata key holding the index kind (`"sequence"`, `"timestamp"`, `"duration"`).
-    const FIELD_METADATA_KEY_INDEX_KIND: &str = "rerun:index_kind";
+    pub const FIELD_METADATA_KEY_INDEX_KIND: &str = "rerun:index_kind";
 
     /// Field metadata key holding the index marker in the Segment Manifest schema, where the RRD
     /// manifest encodes it as the column name's last `:`-separated part instead.
-    const FIELD_METADATA_KEY_INDEX_MARKER: &str = "rerun:index_marker";
+    pub const FIELD_METADATA_KEY_INDEX_MARKER: &str = "rerun:index_marker";
 
     /// The `rerun:index` value of the static-data pseudo-index.
     ///
@@ -704,8 +749,11 @@ impl RawRrdManifest {
     /// The Segment Manifest's `rerun:index` value of the static-data pseudo-index.
     const INDEX_NAME_STATIC_SEGMENT_MANIFEST: &str = "static";
 
-    const INDEX_MARKER_START: &str = "start";
-    const INDEX_MARKER_END: &str = "end";
+    /// Index marker of the column holding the lower bound of an index range.
+    pub const INDEX_MARKER_START: &str = "start";
+
+    /// Index marker of the column holding the upper bound of an index range.
+    pub const INDEX_MARKER_END: &str = "end";
     const INDEX_MARKER_NUM_ROWS: &str = "num_rows";
     const INDEX_MARKER_HAS_DATA: &str = "has_data";
     const INDEX_MARKER_HAS_STATIC_DATA: &str = "has_static_data";
@@ -887,36 +935,70 @@ impl RawRrdManifest {
         prefix: Option<&str>,
         suffix: Option<&str>,
     ) -> String {
-        use re_types_core::reflection::ComponentDescriptorExt as _;
-        let full_name = [
-            prefix.map(ToOwned::to_owned),
-            entity_path.map(|p| {
-                let path = p.to_string();
+        let mut name = String::new();
+        Self::write_column_name(
+            &mut name,
+            entity_path,
+            strip_entity_prefix,
+            component_desc,
+            prefix,
+            suffix,
+        );
+        name
+    }
+
+    /// [`Self::compute_column_name`] that writes to a provided string (clears it first).
+    fn write_column_name(
+        out: &mut String,
+        entity_path: Option<&EntityPath>,
+        strip_entity_prefix: Option<&str>,
+        component_desc: Option<&ComponentDescriptor>,
+        prefix: Option<&str>,
+        suffix: Option<&str>,
+    ) {
+        out.clear();
+
+        let entity_path = entity_path.map(|path| path.to_string());
+
+        let parts = [
+            prefix,
+            entity_path.as_deref().map(|path| {
                 // Optionally strip the entity prefix if provided
                 let path = strip_entity_prefix
                     .and_then(|prefix| path.strip_prefix(prefix))
-                    .unwrap_or(&path);
+                    .unwrap_or(path);
                 // Always strip trailing slashes (if present)
-                path.strip_suffix("/").unwrap_or(path).to_owned()
+                path.strip_suffix('/').unwrap_or(path)
             }),
             component_desc
                 .and_then(|descr| descr.archetype)
-                .map(|archetype| archetype.short_name().to_owned()),
-            component_desc.map(|descr| descr.archetype_field_name().to_owned()),
-            suffix.map(ToOwned::to_owned),
+                .map(|archetype| archetype.short_name()),
+            component_desc.map(|descr| descr.archetype_field_name()),
+            suffix,
         ]
         .into_iter()
         .flatten()
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join(":");
+        .filter(|s| !s.is_empty());
 
         // All of the following characters have proven to be problematic in one or more
         // environments. Replace them with `_`, unconditionally.
-        let sanitized = full_name.replace([',', ' ', '-', '.', '\\'], "_");
+        const PROBLEMATIC_CHARS: [char; 5] = [',', ' ', '-', '.', '\\'];
+
+        for part in parts {
+            if !out.is_empty() {
+                out.push(':');
+            }
+
+            if part.contains(PROBLEMATIC_CHARS) {
+                out.push_str(&part.replace(PROBLEMATIC_CHARS, "_"));
+            } else {
+                out.push_str(part);
+            }
+        }
 
         // Remove leading underscore if present
-        sanitized.trim_start_matches('_').to_owned()
+        let num_leading_underscores = out.len() - out.trim_start_matches('_').len();
+        out.drain(..num_leading_underscores);
     }
 
     // Prune the RecordBatch to keep only columns needed for chunk fetching.
@@ -956,11 +1038,27 @@ impl RawRrdManifest {
     ///
     /// See [`Self::sanity_check_heavy`] for a more costly version that is not suitable to use in
     /// production, but can be useful in e.g. tests.
-    pub fn sanity_check_cheap(&self) -> ChunkIndexResult<()> {
+    ///
+    /// The returned [`SorbetIndexLayout`] can be passed to [`Self::sanity_check_cheap_with_layout`]
+    /// to check other manifests with an equal Sorbet schema.
+    pub fn sanity_check_cheap(&self) -> ChunkIndexResult<SorbetIndexLayout> {
+        re_tracing::profile_function!();
+        let layout = SorbetIndexLayout::new(&self.sorbet_schema)?;
+        self.sanity_check_cheap_with_layout(&layout)?;
+        Ok(layout)
+    }
+
+    /// [`Self::sanity_check_cheap`], reusing the layout returned by an earlier call for performance reasons.
+    ///
+    /// `layout` must come from a manifest with the same Sorbet schema.
+    pub fn sanity_check_cheap_with_layout(
+        &self,
+        layout: &SorbetIndexLayout,
+    ) -> ChunkIndexResult<()> {
         re_tracing::profile_function!();
         self.check_global_columns_are_correct()?;
         self.check_index_columns_are_correct()?;
-        self.check_manifest_schema_matches_sorbet_schema()?;
+        self.check_manifest_schema_matches_sorbet_schema(layout)?;
         Ok(())
     }
 
@@ -1007,13 +1105,74 @@ impl RawRrdManifest {
 
     /// Cheap.
     fn check_index_columns_are_correct(&self) -> ChunkIndexResult<()> {
+        // Constant-time lookups for the `:start`/`:end` counterpart checks below.
+        let fields_by_name: ahash::HashMap<&str, &FieldRef> = self
+            .data
+            .schema_ref()
+            .fields()
+            .iter()
+            .map(|field| (field.name().as_str(), field))
+            .collect();
+
+        let mut counterpart_name = String::new();
+
         {
             // All columns either end in :has_static_data or :num_rows or :start or :end (or are global).
             for field in self.data.schema().fields() {
-                if let Some((_, suffix)) = field.name().rsplit_once(':') {
+                if let Some((prefix, suffix)) = field.name().rsplit_once(':') {
                     match suffix {
                         Self::INDEX_MARKER_START | Self::INDEX_MARKER_END => {
-                            // Checked in depth below
+                            // All `:start` columns should have a matching `:end`, and vice versa,
+                            // and both must share a supported index datatype.
+
+                            let counterpart = if suffix == Self::INDEX_MARKER_START {
+                                Self::INDEX_MARKER_END
+                            } else {
+                                Self::INDEX_MARKER_START
+                            };
+
+                            counterpart_name.clear();
+                            counterpart_name.push_str(prefix);
+                            counterpart_name.push(':');
+                            counterpart_name.push_str(counterpart);
+
+                            let Some(field_counterpart) =
+                                fields_by_name.get(counterpart_name.as_str())
+                            else {
+                                return Err(ChunkIndexError::from(ChunkError::Malformed {
+                                    reason: format!(
+                                        "field '{}' does not have matching `:{counterpart}` field",
+                                        field.name()
+                                    ),
+                                }));
+                            };
+
+                            match field.data_type() {
+                                arrow::datatypes::DataType::Int64
+                                | arrow::datatypes::DataType::Timestamp(_, _)
+                                | arrow::datatypes::DataType::Duration(_) => {}
+
+                                datatype => {
+                                    return Err(ChunkIndexError::from(ChunkError::Malformed {
+                                        reason: format!(
+                                            "field '{}' is {datatype} which is not a supported index datatype",
+                                            field.name(),
+                                        ),
+                                    }));
+                                }
+                            }
+
+                            if field.data_type() != field_counterpart.data_type() {
+                                return Err(ChunkIndexError::from(ChunkError::Malformed {
+                                    reason: format!(
+                                        "field '{}' is {} but field '{}' is {}",
+                                        field.name(),
+                                        field.data_type(),
+                                        field_counterpart.name(),
+                                        field_counterpart.data_type()
+                                    ),
+                                }));
+                            }
                         }
 
                         Self::INDEX_MARKER_HAS_STATIC_DATA => {
@@ -1070,168 +1229,46 @@ impl RawRrdManifest {
             }
         }
 
-        {
-            // All `:start` columns should have a matching `:end`.
-            // All `:end` columns should have a matching `:start`.
-            for field in self.data.schema().fields() {
-                if let Some((prefix, suffix)) = field.name().rsplit_once(':') {
-                    let counterpart = match suffix {
-                        "start" => "end",
-                        "end" => "start",
-                        _ => continue,
-                    };
-
-                    let field_counterpart = self
-                        .data
-                        .schema_ref()
-                        .field_with_name(&format!("{prefix}:{counterpart}"))
-                        .map_err(|_err| {
-                            ChunkIndexError::from(ChunkError::Malformed {
-                                reason: format!(
-                                    "field '{}' does not have matching `:{counterpart}` field",
-                                    field.name()
-                                ),
-                            })
-                        })?;
-
-                    match field.data_type() {
-                        arrow::datatypes::DataType::Int64
-                        | arrow::datatypes::DataType::Timestamp(_, _)
-                        | arrow::datatypes::DataType::Duration(_) => {}
-
-                        datatype => {
-                            return Err(ChunkIndexError::from(ChunkError::Malformed {
-                                reason: format!(
-                                    "field '{}' is {datatype} which is not a supported index datatype",
-                                    field.name(),
-                                ),
-                            }));
-                        }
-                    }
-
-                    if field.data_type() != field_counterpart.data_type() {
-                        return Err(ChunkIndexError::from(ChunkError::Malformed {
-                            reason: format!(
-                                "field '{}' is {} but field '{}' is {}",
-                                field.name(),
-                                field.data_type(),
-                                field_counterpart.name(),
-                                field_counterpart.data_type()
-                            ),
-                        }));
-                    }
-                }
-            }
-        }
-
-        {
-            // All `:start` columns should have a matching `:num_rows`.
-            for field in self.data.schema().fields() {
-                if let Some((prefix, "num_rows")) = field.name().rsplit_once(':') {
-                    let field_num_rows = self
-                        .data
-                        .schema_ref()
-                        .field_with_name(&format!("{prefix}:num_rows"))
-                        .map_err(|_err| {
-                            ChunkIndexError::from(ChunkError::Malformed {
-                                reason: format!(
-                                    "field '{}' does not have matching `:num_rows` field",
-                                    field.name()
-                                ),
-                            })
-                        })?;
-
-                    match field_num_rows.data_type() {
-                        arrow::datatypes::DataType::UInt64 => {}
-                        datatype => {
-                            return Err(ChunkIndexError::from(ChunkError::Malformed {
-                                reason: format!(
-                                    "field '{}' is {datatype} while it should be UInt64Array",
-                                    field_num_rows.name(),
-                                ),
-                            }));
-                        }
-                    }
-                }
-            }
-        }
+        // NOTE: there is deliberately no `:num_rows` check here. Per-component `:start` columns
+        // always have a `:num_rows` sibling, and `calc_temporal_map` enforces that where it is
+        // relied upon. Global `{index}:start` columns have no `:num_rows` sibling at all.
 
         Ok(())
     }
 
     /// Cheap.
-    fn check_manifest_schema_matches_sorbet_schema(&self) -> ChunkIndexResult<()> {
+    fn check_manifest_schema_matches_sorbet_schema(
+        &self,
+        layout: &SorbetIndexLayout,
+    ) -> ChunkIndexResult<()> {
         let any_static_chunks = self.col_chunk_is_static_iter()?.any(|b| b);
 
-        let sorbet_indexes = self
-            .sorbet_schema
-            .fields()
-            .iter()
-            .filter_map(|f| {
-                let md = f.metadata();
-                (md.get(re_sorbet::RERUN_KIND).map(|s| s.as_str()) == Some(Self::SORBET_KIND_INDEX))
-                    .then(|| md.contains_key(re_sorbet::SORBET_INDEX_NAME).then_some(f))
-                    .flatten()
-            })
-            .unique()
-            .collect_vec();
-
-        let sorbet_columns = self
-            .sorbet_schema
-            .fields()
-            .iter()
-            .filter(|f| {
-                f.metadata().get(re_sorbet::RERUN_KIND).map(|s| s.as_str())
-                    == Some(Self::SORBET_KIND_DATA)
-            })
-            .unique()
-            .collect_vec();
+        let SorbetIndexLayout {
+            sorbet_indexes,
+            static_marker_columns,
+        } = layout;
 
         if any_static_chunks {
-            // If there are any static chunks, then all components must have :has_static_data indexes.
-            for column in &sorbet_columns {
-                let md = column.metadata();
-                let Some(component) = md.get(FIELD_METADATA_KEY_COMPONENT) else {
-                    return Err(ChunkIndexError::from(ChunkError::Malformed {
-                        reason: format!(
-                            "column '{}' is missing rerun:component metadata",
-                            column.name()
-                        ),
-                    }));
-                };
-                let descr = ComponentDescriptor {
-                    archetype: md
-                        .get(FIELD_METADATA_KEY_ARCHETYPE)
-                        .and_then(|s| ArchetypeName::try_new(s).ok()),
-                    component: ComponentIdentifier::try_new(component).map_err(|err| {
-                        ChunkIndexError::from(ChunkError::Malformed {
-                            reason: err.to_string(),
-                        })
-                    })?,
-                    component_type: md
-                        .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                        .and_then(|s| ComponentType::try_new(s).ok()),
-                };
-                let column_name = Self::compute_column_name(
-                    None,
-                    None,
-                    Some(&descr),
-                    None,
-                    Some(Self::INDEX_MARKER_HAS_STATIC_DATA),
-                );
+            // Constant-time lookups for the static-marker checks below.
+            let manifest_field_names: ahash::HashSet<&str> = self
+                .data
+                .schema_ref()
+                .fields()
+                .iter()
+                .map(|field| field.name().as_str())
+                .collect();
 
-                self.data
-                    .schema_ref()
-                    .field_with_name(&column_name)
-                    .map_err(|_err| {
-                        ChunkIndexError::from(ChunkError::Malformed {
-                            reason: format!("static index '{column_name}' is missing"),
-                        })
-                    })?;
+            // If there are any static chunks, then all components must have :has_static_data indexes.
+            for column_name in static_marker_columns {
+                if !manifest_field_names.contains(column_name.as_str()) {
+                    return Err(ChunkIndexError::from(ChunkError::Malformed {
+                        reason: format!("static index '{column_name}' is missing"),
+                    }));
+                }
             }
         }
 
-        let mut rrd_manifest_fields: HashMap<_, _> = self
+        let mut rrd_manifest_fields: ahash::HashMap<_, _> = self
             .data
             .schema_ref()
             .fields()
@@ -1240,21 +1277,24 @@ impl RawRrdManifest {
             .map(|f| (f.name(), f))
             .collect();
 
-        for sorbet_index in &sorbet_indexes {
-            // We must account for the fact that names in the Sorbet schema are not normalized yet.
-            let sorbet_index_name_normalized =
-                Self::compute_column_name(None, None, None, Some(sorbet_index.name()), None);
-
+        for SorbetIndexColumns {
+            index: sorbet_index,
+            global_columns,
+            local_columns,
+        } in sorbet_indexes
+        {
             // All global indexes should have :start and :end columns of the right type.
-            for suffix in [Self::INDEX_MARKER_START, Self::INDEX_MARKER_END] {
-                let field = rrd_manifest_fields.remove(&format!("{sorbet_index_name_normalized}:{suffix}"))
-                    .ok_or_else(|| {
-                        ChunkIndexError::from(ChunkError::Malformed {
-                            reason: format!(
-                                "global index '{sorbet_index}' does not have matching `:{suffix}` field"
-                            ),
-                        })
-                    })?;
+            for (suffix, global_column) in std::iter::zip(
+                [Self::INDEX_MARKER_START, Self::INDEX_MARKER_END],
+                global_columns,
+            ) {
+                let field = rrd_manifest_fields.remove(global_column).ok_or_else(|| {
+                    ChunkIndexError::from(ChunkError::Malformed {
+                        reason: format!(
+                            "global index '{sorbet_index}' does not have matching `:{suffix}` field"
+                        ),
+                    })
+                })?;
 
                 if sorbet_index.data_type() != field.data_type() {
                     return Err(ChunkIndexError::from(ChunkError::Malformed {
@@ -1270,51 +1310,19 @@ impl RawRrdManifest {
             }
 
             // All local indexes should exist and have :start and :end columns of the right type.
-            for sorbet_column in &sorbet_columns {
-                let md = sorbet_column.metadata();
-
-                let Some(component) = md.get(FIELD_METADATA_KEY_COMPONENT) else {
-                    return Err(ChunkIndexError::from(ChunkError::Malformed {
-                        reason: format!(
-                            "column '{}' is missing rerun:component metadata",
-                            sorbet_column.name()
-                        ),
-                    }));
-                };
-                let descr = ComponentDescriptor {
-                    archetype: md
-                        .get(FIELD_METADATA_KEY_ARCHETYPE)
-                        .and_then(|s| ArchetypeName::try_new(s).ok()),
-                    component: ComponentIdentifier::try_new(component).map_err(|err| {
-                        ChunkIndexError::from(ChunkError::Malformed {
-                            reason: err.to_string(),
-                        })
-                    })?,
-                    component_type: md
-                        .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
-                        .and_then(|s| ComponentType::try_new(s).ok()),
-                };
-
-                for suffix in [Self::INDEX_MARKER_START, Self::INDEX_MARKER_END] {
-                    let column_name = Self::compute_column_name(
-                        None,
-                        None,
-                        Some(&descr),
-                        Some(sorbet_index.name()),
-                        Some(suffix),
-                    );
-
-                    if md.get(re_sorbet::SORBET_IS_STATIC).map(|s| s.as_str()) == Some("true") {
+            for (column_names, is_static) in local_columns {
+                for column_name in column_names {
+                    if *is_static {
                         // Static columns don't have :start nor :end columns… unless they exist
                         // both temporally and statically, something which is legal in Rerun, and
                         // will end up with a final Sorbet schema that declares those column as
                         // static (which is correct, since static overrides everything else), even
                         // though there are still traces of temporal data for that same column!
-                        _ = rrd_manifest_fields.remove(&column_name);
+                        _ = rrd_manifest_fields.remove(column_name);
                         continue;
                     }
 
-                    let Some(field) = rrd_manifest_fields.remove(&column_name) else {
+                    let Some(field) = rrd_manifest_fields.remove(column_name) else {
                         // Not all indexes have all components, that's fine.
                         continue;
                     };
@@ -1361,6 +1369,143 @@ impl RawRrdManifest {
             ));
         }
         Ok(())
+    }
+}
+
+fn sorbet_column_descriptor(column: &Field) -> ChunkIndexResult<ComponentDescriptor> {
+    let md = column.metadata();
+    let Some(component) = md.get(FIELD_METADATA_KEY_COMPONENT) else {
+        return Err(ChunkIndexError::from(ChunkError::Malformed {
+            reason: format!(
+                "column '{}' is missing rerun:component metadata",
+                column.name()
+            ),
+        }));
+    };
+    Ok(ComponentDescriptor {
+        archetype: md
+            .get(FIELD_METADATA_KEY_ARCHETYPE)
+            .and_then(|s| ArchetypeName::try_new(s).ok()),
+        component: ComponentIdentifier::try_new(component).map_err(|err| {
+            ChunkIndexError::from(ChunkError::Malformed {
+                reason: err.to_string(),
+            })
+        })?,
+        component_type: md
+            .get(FIELD_METADATA_KEY_COMPONENT_TYPE)
+            .and_then(|s| ComponentType::try_new(s).ok()),
+    })
+}
+
+/// The parts of [`RawRrdManifest::sanity_check_cheap`] that depend only on the Sorbet schema.
+///
+/// Returned by [`RawRrdManifest::sanity_check_cheap`], and reusable through
+/// [`RawRrdManifest::sanity_check_cheap_with_layout`] for manifests with an equal Sorbet schema.
+pub struct SorbetIndexLayout {
+    sorbet_indexes: Vec<SorbetIndexColumns>,
+
+    /// The `:has_static_data` column of every component.
+    static_marker_columns: Vec<String>,
+}
+
+/// The manifest columns of one index of the Sorbet schema.
+struct SorbetIndexColumns {
+    index: FieldRef,
+
+    /// The global `:start` and `:end` columns.
+    global_columns: [String; 2],
+
+    /// The `:start` and `:end` columns of every component, with whether that component is static.
+    local_columns: Vec<([String; 2], bool)>,
+}
+
+impl SorbetIndexLayout {
+    fn new(schema: &Schema) -> ChunkIndexResult<Self> {
+        let sorbet_columns: Vec<_> = schema
+            .fields()
+            .iter()
+            .filter(|f| {
+                f.metadata().get(re_sorbet::RERUN_KIND).map(|s| s.as_str())
+                    == Some(RawRrdManifest::SORBET_KIND_DATA)
+            })
+            .unique_by(|f| f.name())
+            .map(|column| {
+                let descriptor = sorbet_column_descriptor(column)?;
+                let is_static = column
+                    .metadata()
+                    .get(re_sorbet::SORBET_IS_STATIC)
+                    .map(|s| s.as_str())
+                    == Some("true");
+                ChunkIndexResult::Ok((descriptor, is_static))
+            })
+            .try_collect()?;
+
+        let static_marker_columns = sorbet_columns
+            .iter()
+            .map(|(descr, _is_static)| {
+                RawRrdManifest::compute_column_name(
+                    None,
+                    None,
+                    Some(descr),
+                    None,
+                    Some(RawRrdManifest::INDEX_MARKER_HAS_STATIC_DATA),
+                )
+            })
+            .collect();
+
+        let sorbet_indexes = schema
+            .fields()
+            .iter()
+            .filter_map(|f| {
+                let md = f.metadata();
+                (md.get(re_sorbet::RERUN_KIND).map(|s| s.as_str())
+                    == Some(RawRrdManifest::SORBET_KIND_INDEX))
+                .then(|| md.contains_key(re_sorbet::SORBET_INDEX_NAME).then_some(f))
+                .flatten()
+            })
+            .unique_by(|f| f.name())
+            .map(|index| {
+                // We must account for the fact that names in the Sorbet schema are not normalized yet.
+                let normalized =
+                    RawRrdManifest::compute_column_name(None, None, None, Some(index.name()), None);
+                let global_columns = [
+                    RawRrdManifest::INDEX_MARKER_START,
+                    RawRrdManifest::INDEX_MARKER_END,
+                ]
+                .map(|suffix| format!("{normalized}:{suffix}"));
+
+                let local_columns = sorbet_columns
+                    .iter()
+                    .map(|(descr, is_static)| {
+                        let names = [
+                            RawRrdManifest::INDEX_MARKER_START,
+                            RawRrdManifest::INDEX_MARKER_END,
+                        ]
+                        .map(|suffix| {
+                            RawRrdManifest::compute_column_name(
+                                None,
+                                None,
+                                Some(descr),
+                                Some(index.name()),
+                                Some(suffix),
+                            )
+                        });
+                        (names, *is_static)
+                    })
+                    .collect();
+
+                SorbetIndexColumns {
+                    index: Arc::clone(index),
+                    global_columns,
+                    local_columns,
+                }
+            })
+            .collect_vec();
+
+        Ok(Self {
+            sorbet_indexes,
+            static_marker_columns,
+        })
     }
 }
 
@@ -1738,11 +1883,12 @@ fn strip_null_mask_on_default_columns(data: RecordBatch) -> ChunkIndexResult<Rec
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
+    use super::{RawRrdManifest, SorbetIndexLayout};
+    use crate::ChunkIndexResult;
     use arrow::datatypes::{DataType, Field, FieldRef};
-
-    use super::RawRrdManifest;
+    use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
+    use re_log_types::{TimePoint, Timestamp, build_frame_nr, build_log_time};
+    use std::sync::Arc;
 
     fn index_field(name: &str, index: &str, marker: &str, component: Option<&str>) -> FieldRef {
         let mut metadata = std::collections::HashMap::from([
@@ -1786,5 +1932,237 @@ mod tests {
             .map(|(index, start, end)| (index, start.name().as_str(), end.name().as_str()))
             .collect();
         assert_eq!(names, vec![("frame", "frame:start", "frame:end")]);
+    }
+
+    fn example_manifest() -> RawRrdManifest {
+        let entity_path = re_log_types::EntityPath::from("points");
+        let temporal = re_chunk::Chunk::builder(entity_path.clone())
+            .with_archetype_auto_row(
+                [build_frame_nr(1)],
+                &MyPoints::new(MyPoint::from_iter(0..3)).with_colors(MyColor::from_iter(0..3)),
+            )
+            .build()
+            .unwrap();
+        let r#static = re_chunk::Chunk::builder(entity_path)
+            .with_archetype_auto_row(
+                TimePoint::default(),
+                &MyPoints::new(MyPoint::from_iter(0..3))
+                    .with_labels([MyLabel("static".to_owned())]),
+            )
+            .build()
+            .unwrap();
+
+        RawRrdManifest::build_in_memory_from_chunks(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test"),
+            [&temporal, &r#static].into_iter(),
+        )
+        .unwrap()
+    }
+
+    /// Rebuilds `manifest.data` from edited columns.
+    fn with_data(
+        mut manifest: RawRrdManifest,
+        edit: impl FnOnce(&mut Vec<FieldRef>, &mut Vec<arrow::array::ArrayRef>),
+    ) -> RawRrdManifest {
+        let mut fields = manifest.data.schema_ref().fields().to_vec();
+        let mut columns = manifest.data.columns().to_vec();
+        edit(&mut fields, &mut columns);
+        let metadata = manifest.data.schema_ref().metadata().clone();
+        manifest.data = arrow::array::RecordBatch::try_new_with_options(
+            Arc::new(arrow::datatypes::Schema::new_with_metadata(
+                fields, metadata,
+            )),
+            columns,
+            &arrow::array::RecordBatchOptions::new().with_row_count(Some(manifest.data.num_rows())),
+        )
+        .unwrap();
+        manifest
+    }
+
+    fn drop_column(manifest: RawRrdManifest, name: &str) -> RawRrdManifest {
+        with_data(manifest, |fields, columns| {
+            let i = fields.iter().position(|f| f.name() == name).unwrap();
+            fields.remove(i);
+            columns.remove(i);
+        })
+    }
+
+    /// Replaces an `Int64` column with a `UInt64` one of the same name and metadata.
+    fn retype_column(manifest: RawRrdManifest, name: &str) -> RawRrdManifest {
+        with_data(manifest, |fields, columns| {
+            let i = fields.iter().position(|f| f.name() == name).unwrap();
+            let n = columns[i].len();
+            fields[i] = Arc::new(
+                Field::new(name, DataType::UInt64, true)
+                    .with_metadata(fields[i].metadata().clone()),
+            );
+            columns[i] = Arc::new(arrow::array::UInt64Array::from(vec![0; n]));
+        })
+    }
+
+    fn check(manifest: &RawRrdManifest) -> ChunkIndexResult<()> {
+        let layout = SorbetIndexLayout::new(&manifest.sorbet_schema)?;
+        manifest.check_manifest_schema_matches_sorbet_schema(&layout)
+    }
+
+    fn check_err(manifest: &RawRrdManifest) -> String {
+        check(manifest).unwrap_err().to_string()
+    }
+
+    #[test]
+    fn schema_check_accepts_valid_manifest() {
+        check(&example_manifest()).unwrap();
+    }
+
+    #[test]
+    fn schema_check_rejects_missing_global_index_column() {
+        let manifest = drop_column(example_manifest(), "frame_nr:end");
+        let err = check_err(&manifest);
+        // The message formats the whole `Field`, so only check the parts that matter.
+        assert!(err.contains("global index 'Field {"), "{err}");
+        assert!(err.contains("\"frame_nr\""), "{err}");
+        assert!(err.contains("does not have matching `:end` field"), "{err}");
+    }
+
+    #[test]
+    fn schema_check_rejects_global_index_type_mismatch() {
+        let manifest = retype_column(example_manifest(), "frame_nr:start");
+        let err = check_err(&manifest);
+        assert!(
+            err.contains("global index 'frame_nr' is Int64 but 'frame_nr:start' is UInt64"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn schema_check_rejects_local_index_type_mismatch() {
+        let manifest = retype_column(example_manifest(), "frame_nr:example_MyPoints:colors:end");
+        let err = check_err(&manifest);
+        assert!(
+            err.contains("local index 'frame_nr' is Int64 but 'frame_nr:example_MyPoints:colors:end' is UInt64"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn schema_check_rejects_missing_static_index() {
+        let manifest = drop_column(
+            example_manifest(),
+            "example_MyPoints:labels:has_static_data",
+        );
+        let err = check_err(&manifest);
+        assert!(
+            err.contains("static index 'example_MyPoints:labels:has_static_data' is missing"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn schema_check_handles_multiple_timelines() {
+        let entity_path = re_log_types::EntityPath::from("points");
+        let on_frame_nr = re_chunk::Chunk::builder(entity_path.clone())
+            .with_archetype_auto_row(
+                [build_frame_nr(1)],
+                &MyPoints::new(MyPoint::from_iter(0..3)).with_colors(MyColor::from_iter(0..3)),
+            )
+            .build()
+            .unwrap();
+        let on_log_time = re_chunk::Chunk::builder(entity_path)
+            .with_archetype_auto_row(
+                [build_log_time(Timestamp::from_nanos_since_epoch(1))],
+                &MyPoints::new(MyPoint::from_iter(0..3))
+                    .with_labels([MyLabel("temporal".to_owned())]),
+            )
+            .build()
+            .unwrap();
+        let manifest = RawRrdManifest::build_in_memory_from_chunks(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test"),
+            [&on_frame_nr, &on_log_time].into_iter(),
+        )
+        .unwrap();
+
+        check(&manifest).unwrap();
+
+        let manifest = retype_column(manifest, "log_time:example_MyPoints:labels:end");
+        let err = check_err(&manifest);
+        assert!(err.contains("local index 'log_time' is Timestamp"), "{err}");
+        assert!(
+            err.contains("but 'log_time:example_MyPoints:labels:end' is UInt64"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn schema_check_rejects_dangling_index() {
+        let manifest = with_data(example_manifest(), |fields, columns| {
+            let n = columns[0].len();
+            fields.push(Arc::new(Field::new(
+                "frame_nr:example_MyPoints:radii:start",
+                DataType::Int64,
+                true,
+            )));
+            columns.push(Arc::new(arrow::array::Int64Array::from(vec![0; n])));
+        });
+        let err = check_err(&manifest);
+        assert!(err.contains("dangling indexes"), "{err}");
+        assert!(
+            err.contains("frame_nr:example_MyPoints:radii:start"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn compute_column_name_pins_sanitization() {
+        use re_types_core::{ArchetypeName, ComponentDescriptor, ComponentIdentifier};
+
+        let descr = ComponentDescriptor {
+            archetype: Some(ArchetypeName::try_new("rerun.archetypes.Points3D").unwrap()),
+            component: ComponentIdentifier::try_new("Points3D:positions").unwrap(),
+            component_type: None,
+        };
+        let name = |entity: Option<&str>,
+                    strip: Option<&str>,
+                    descr: Option<&ComponentDescriptor>,
+                    prefix,
+                    suffix| {
+            let entity = entity.map(re_log_types::EntityPath::from);
+            RawRrdManifest::compute_column_name(entity.as_ref(), strip, descr, prefix, suffix)
+        };
+
+        assert_eq!(name(None, None, None, None, None), "");
+        assert_eq!(
+            name(None, None, Some(&descr), Some("frame_nr"), Some("start")),
+            "frame_nr:Points3D:positions:start"
+        );
+        assert_eq!(
+            name(None, None, Some(&descr), None, Some("has_static_data")),
+            "Points3D:positions:has_static_data"
+        );
+        // Empty parts are skipped, not joined as `::`.
+        assert_eq!(
+            name(None, None, None, Some("frame_nr"), Some("")),
+            "frame_nr"
+        );
+        // Problematic characters become `_`, and a leading `_` is trimmed once the name is assembled.
+        assert_eq!(
+            name(None, None, None, Some("my index, v1.2-beta\\x"), None),
+            "my_index__v1_2_beta_x"
+        );
+        assert_eq!(
+            name(None, None, None, Some("_leading"), Some("start")),
+            "leading:start"
+        );
+        assert_eq!(name(None, None, None, Some("a"), Some(".b")), "a:_b");
+        // Entity paths: leading slash kept, prefix stripped, trailing slash dropped, root
+        // collapses to nothing.
+        assert_eq!(
+            name(Some("/world/points"), None, Some(&descr), None, Some("end")),
+            "/world/points:Points3D:positions:end"
+        );
+        assert_eq!(
+            name(Some("/world/points"), Some("/world"), None, None, None),
+            "/points"
+        );
+        assert_eq!(name(Some("/"), None, None, Some("p"), None), "p");
     }
 }

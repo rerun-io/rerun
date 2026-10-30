@@ -52,7 +52,8 @@ pub struct ListItem {
     pub force_hovered: bool,
     force_background: Option<egui::Color32>,
     pub collapse_openness: Option<f32>,
-    height: f32,
+    toggle_on_click: bool,
+    density: Option<crate::ListItemDensity>,
     y_offset: f32,
     render_offscreen: bool,
     corner_radius: Option<egui::CornerRadius>,
@@ -72,7 +73,8 @@ impl Default for ListItem {
             force_hovered: false,
             force_background: None,
             collapse_openness: None,
-            height: DesignTokens::list_item_height(),
+            toggle_on_click: false,
+            density: None,
             y_offset: 0.0,
             render_offscreen: true,
             corner_radius: None,
@@ -170,7 +172,8 @@ impl ListVisuals {
         }
     }
 
-    pub(crate) fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
+    /// Color of the collapse caret.
+    pub fn collapse_button_color(self, icon_hovered: bool) -> Color32 {
         let design_tokens = design_tokens_of(self.theme);
         if !self.hovered && !self.selected && !self.active && !icon_hovered {
             design_tokens.list_item_collapse_default
@@ -286,10 +289,11 @@ impl ListItem {
         self
     }
 
-    /// Add padding above the item's content without changing its background or interaction area.
+    /// Add padding above the item's content, increasing its total height beyond the density's row height.
+    /// The background and interaction area include this padding.
     #[inline]
-    pub fn with_content_top_padding(mut self, content_top_padding: f32) -> Self {
-        self.content_top_padding = content_top_padding;
+    pub fn with_top_padding(mut self, top_padding: f32) -> Self {
+        self.content_top_padding = top_padding;
         self
     }
 
@@ -303,13 +307,17 @@ impl ListItem {
         self
     }
 
-    /// Set the item height.
-    ///
-    /// The default is provided by [`DesignTokens::list_item_height`] and is suitable for hierarchical
-    /// lists.
+    /// Toggle a collapsible item when its row is clicked rather than double-clicked.
     #[inline]
-    pub fn with_height(mut self, height: f32) -> Self {
-        self.height = height;
+    pub fn toggle_on_click(mut self, toggle_on_click: bool) -> Self {
+        self.toggle_on_click = toggle_on_click;
+        self
+    }
+
+    /// Override the scope's [`super::ListItemStyle::density`] for this item.
+    #[inline]
+    pub fn with_density(mut self, density: crate::ListItemDensity) -> Self {
+        self.density = Some(density);
         self
     }
 
@@ -468,16 +476,21 @@ impl ListItem {
         self.collapse_openness = Some(openness);
 
         // Note: the purpose of the scope is to minimize interferences on subsequent items' id
+        let toggle_on_click = self.toggle_on_click;
         let response = ui
             .scope(|ui| self.ui(ui, Some(id), 0.0, Box::new(content)))
             .inner;
 
-        if let Some(collapse_response) = response.collapse_response
-            && collapse_response.clicked()
-        {
-            state.toggle(ui);
-        }
-        if response.response.double_clicked() {
+        let collapse_clicked = response
+            .collapse_response
+            .as_ref()
+            .is_some_and(egui::Response::clicked);
+        let row_clicked = if toggle_on_click {
+            response.response.clicked()
+        } else {
+            response.response.double_clicked()
+        };
+        if collapse_clicked || row_clicked {
             state.toggle(ui);
         }
 
@@ -524,7 +537,8 @@ impl ListItem {
             force_hovered,
             force_background,
             collapse_openness,
-            mut height,
+            toggle_on_click: _,
+            density,
             y_offset,
             render_offscreen,
             corner_radius,
@@ -536,6 +550,9 @@ impl ListItem {
         let tokens = ui.tokens();
         let is_first_item = LayoutInfoStack::take_is_first_item(ui.ctx());
         let layout_info = LayoutInfoStack::top(ui.ctx());
+        let mut height =
+            DesignTokens::list_item_height(density.unwrap_or(layout_info.style.density))
+                + content_top_padding;
 
         if y_offset != 0.0 && !is_first_item {
             ui.add_space(y_offset);
@@ -560,20 +577,21 @@ impl ListItem {
             0.0
         };
 
+        let at_least = |total_width: f32| {
+            if ui.is_sizing_pass() {
+                // In the sizing pass we try to be as small as possible.
+                // egui will then use the maximum width from the sizing pass
+                // as the max width in all following frames.
+                total_width
+            } else {
+                // Use as much space as we are given (i.e. fill up the full width of the ui).
+                ui.available_width().at_least(total_width)
+            }
+        };
         let desired_width = match content.desired_width(ui) {
             DesiredWidth::Exact(width) => extra_indent + collapse_extra + width,
-            DesiredWidth::AtLeast(width) => {
-                let total_width = extra_indent + collapse_extra + width;
-                if ui.is_sizing_pass() {
-                    // In the sizing pass we try to be as small as possible.
-                    // egui will then use the maximum width from the sizing pass
-                    // as the max width in all following frames.
-                    total_width
-                } else {
-                    // Use as much space as we are given (i.e. fill up the full width of the ui).
-                    ui.available_width().at_least(total_width)
-                }
-            }
+            DesiredWidth::AtLeast(width) => at_least(extra_indent + collapse_extra + width),
+            DesiredWidth::AtLeastIncludingIndent(width) => at_least(width),
         };
 
         let desired_size = egui::vec2(desired_width, height);
@@ -778,7 +796,8 @@ impl ListItem {
     }
 }
 
-pub(crate) fn collapse_button_ui(
+/// Interactive collapse caret, painted in `rect`.
+pub fn collapse_button_ui(
     ui: &Ui,
     id: egui::Id,
     openness: f32,

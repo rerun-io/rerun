@@ -3,6 +3,10 @@
 
 #pragma once
 
+#include "../../archetype_utils.hpp"
+#include "../../blueprint/components/play_state.hpp"
+#include "../../blueprint/components/playback_speed.hpp"
+#include "../../blueprint/components/timeline_fraction.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -27,6 +31,23 @@ namespace rerun::blueprint::archetypes {
         /// If left empty a timeline is automatically picked, preferring custom over built-in.
         std::optional<ComponentBatch> timeline;
 
+        /// Whether every preview cell plays.
+        ///
+        /// A single preview can still be played or paused on its own.
+        /// Defaults to paused, and following plays like playing.
+        std::optional<ComponentBatch> play_state;
+
+        /// Playback speed of every preview cell.
+        ///
+        /// Defaults to 1.0.
+        std::optional<ComponentBatch> playback_speed;
+
+        /// Where every preview cell starts, as a fraction of the recording's time range.
+        ///
+        /// 0.0 is the start and 1.0 the end.
+        /// Defaults to 0.5.
+        std::optional<ComponentBatch> start_point;
+
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
         static constexpr const char ArchetypeName[] = "rerun.blueprint.archetypes.PreviewsConfig";
@@ -35,6 +56,21 @@ namespace rerun::blueprint::archetypes {
         static constexpr auto Descriptor_timeline = ComponentDescriptor(
             ArchetypeName, "PreviewsConfig:timeline",
             Loggable<rerun::blueprint::components::TimelineName>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `play_state` field.
+        static constexpr auto Descriptor_play_state = ComponentDescriptor(
+            ArchetypeName, "PreviewsConfig:play_state",
+            Loggable<rerun::blueprint::components::PlayState>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `playback_speed` field.
+        static constexpr auto Descriptor_playback_speed = ComponentDescriptor(
+            ArchetypeName, "PreviewsConfig:playback_speed",
+            Loggable<rerun::blueprint::components::PlaybackSpeed>::ComponentType
+        );
+        /// `ComponentDescriptor` for the `start_point` field.
+        static constexpr auto Descriptor_start_point = ComponentDescriptor(
+            ArchetypeName, "PreviewsConfig:start_point",
+            Loggable<rerun::blueprint::components::TimelineFraction>::ComponentType
         );
 
       public:
@@ -62,6 +98,41 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
+        /// Whether every preview cell plays.
+        ///
+        /// A single preview can still be played or paused on its own.
+        /// Defaults to paused, and following plays like playing.
+        PreviewsConfig with_play_state(const rerun::blueprint::components::PlayState& _play_state
+        ) && {
+            play_state =
+                ComponentBatch::from_loggable(_play_state, Descriptor_play_state).value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Playback speed of every preview cell.
+        ///
+        /// Defaults to 1.0.
+        PreviewsConfig with_playback_speed(
+            const rerun::blueprint::components::PlaybackSpeed& _playback_speed
+        ) && {
+            playback_speed =
+                ComponentBatch::from_loggable(_playback_speed, Descriptor_playback_speed)
+                    .value_or_throw();
+            return std::move(*this);
+        }
+
+        /// Where every preview cell starts, as a fraction of the recording's time range.
+        ///
+        /// 0.0 is the start and 1.0 the end.
+        /// Defaults to 0.5.
+        PreviewsConfig with_start_point(
+            const rerun::blueprint::components::TimelineFraction& _start_point
+        ) && {
+            start_point = ComponentBatch::from_loggable(_start_point, Descriptor_start_point)
+                              .value_or_throw();
+            return std::move(*this);
+        }
+
         /// Partitions the component data into multiple sub-batches.
         ///
         /// Specifically, this transforms the existing `ComponentBatch` data into `ComponentColumn`s
@@ -70,13 +141,24 @@ namespace rerun::blueprint::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&timeline, &play_state, &playback_speed, &start_point},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length(
+                       {&timeline, &play_state, &playback_speed, &start_point}
+            )
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::blueprint::archetypes
@@ -92,6 +174,13 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const blueprint::archetypes::PreviewsConfig& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.timeline,
+                 &archetype.play_state,
+                 &archetype.playback_speed,
+                 &archetype.start_point}
+            );
+        }
     };
 } // namespace rerun

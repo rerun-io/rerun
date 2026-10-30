@@ -17,9 +17,6 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
-use crate::SerializedComponentBatch;
-use crate::try_serialize_field;
-use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 use ::arrow::array::ArrayRef;
 use ::std::borrow::Cow;
@@ -55,10 +52,8 @@ impl crate::ToArrow for AbsoluteTimeRange {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use crate::arrow_helpers::{as_array_ref, validity_from_bools};
+        use crate::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -84,10 +79,7 @@ impl crate::ToArrow for AbsoluteTimeRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let min_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let min_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<Int64Type>::new(
                             min.into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
@@ -103,10 +95,7 @@ impl crate::ToArrow for AbsoluteTimeRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let max_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let max_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<Int64Type>::new(
                             max.into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
@@ -137,22 +126,13 @@ impl crate::FromArrow for AbsoluteTimeRange {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.encodings.AbsoluteTimeRange",
+                    );
                     let min = {
-                        if !arrays_by_name.contains_key("min") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "min",
-                            ))
-                            .with_context("rerun.encodings.AbsoluteTimeRange");
-                        }
-                        let arrow_data = &**arrays_by_name["min"];
+                        let arrow_data = fields.required("min")?;
                         arrow_data
                             .try_cast::<Int64Array>(|| DataType::Int64)
                             .with_context("rerun.encodings.AbsoluteTimeRange#min")?
@@ -160,14 +140,7 @@ impl crate::FromArrow for AbsoluteTimeRange {
                             .map(|res_or_opt| res_or_opt.map(crate::encodings::TimeInt))
                     };
                     let max = {
-                        if !arrays_by_name.contains_key("max") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "max",
-                            ))
-                            .with_context("rerun.encodings.AbsoluteTimeRange");
-                        }
-                        let arrow_data = &**arrays_by_name["max"];
+                        let arrow_data = fields.required("max")?;
                         arrow_data
                             .try_cast::<Int64Array>(|| DataType::Int64)
                             .with_context("rerun.encodings.AbsoluteTimeRange#max")?

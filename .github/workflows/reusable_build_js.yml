@@ -12,8 +12,9 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RUSTFLAGS: --deny warnings
-  RUSTDOCFLAGS: --deny warnings
+  # Empty, so that `.cargo/config.toml` doesn't enable `re_workspace_hack`.
+  RUSTFLAGS: ""
+  CARGO_BUILD_WARNINGS: deny
 
 defaults:
   run:
@@ -37,9 +38,6 @@ jobs:
         with:
           node-version: "24.x"
 
-      - name: Install Yarn
-        run: npm install -g yarn
-
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
         with:
@@ -51,17 +49,20 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
-      - name: Install yarn dependencies
-        run: pixi run yarn --cwd rerun_js install
+      - name: Install npm dependencies
+        run: pixi run npm --prefix rerun_js ci
 
       - name: Build rerun_js package
-        run: pixi run yarn --cwd rerun_js workspaces run build
+        run: pixi run npm --prefix rerun_js run build --workspaces
+
+      - name: Test rerun_js package
+        run: pixi run npm --prefix rerun_js run test --workspaces --if-present
 
       - name: Package rerun_js
         run: |
-          pixi run yarn --cwd rerun_js workspaces run pack
+          pixi run npm --prefix rerun_js run pack --workspaces
           mkdir rerun_js_package
           cp rerun_js/*/*.tar.gz rerun_js_package/
 

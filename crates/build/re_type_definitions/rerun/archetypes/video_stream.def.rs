@@ -47,6 +47,8 @@ pub struct VideoStream {
     /// never log this component as static data as this means that you loose all information of
     /// previous samples which may be required to decode an image.
     ///
+    /// Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
+    ///
     /// See [`rerun::components::VideoCodec`] for codec specific requirements.
     #[rerun(recommended)]
     pub sample: Option<rerun::components::VideoSample>,

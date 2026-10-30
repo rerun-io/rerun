@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -67,10 +64,10 @@ impl ::re_types_core::ToArrow for TimelineColumn {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, serialize_optional_strings, validity_from_bools,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -104,10 +101,7 @@ impl ::re_types_core::ToArrow for TimelineColumn {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let visible_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let visible_validity = validity_from_bools(somes);
                         as_array_ref(BooleanArray::new(
                             visible
                                 .into_iter()
@@ -124,29 +118,14 @@ impl ::re_types_core::ToArrow for TimelineColumn {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let timeline_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let timeline_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                timeline.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in timeline.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, timeline_validity)
-                            })
+                            serialize_optional_strings(
+                                timeline
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.0.as_str())),
+                                timeline_validity,
+                            )?
                         }
                     },
                 ],
@@ -172,22 +151,13 @@ impl ::re_types_core::FromArrow for TimelineColumn {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.blueprint.encodings.TimelineColumn",
+                    );
                     let visible = {
-                        if !arrays_by_name.contains_key("visible") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "visible",
-                            ))
-                            .with_context("rerun.blueprint.encodings.TimelineColumn");
-                        }
-                        let arrow_data = &**arrays_by_name["visible"];
+                        let arrow_data = fields.required("visible")?;
                         arrow_data
                             .try_cast::<BooleanArray>(|| DataType::Boolean)
                             .with_context("rerun.blueprint.encodings.TimelineColumn#visible")?
@@ -195,54 +165,18 @@ impl ::re_types_core::FromArrow for TimelineColumn {
                             .map(|res_or_opt| res_or_opt.map(crate::encodings::Bool))
                     };
                     let timeline = {
-                        if !arrays_by_name.contains_key("timeline") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "timeline",
-                            ))
-                            .with_context("rerun.blueprint.encodings.TimelineColumn");
-                        }
-                        let arrow_data = &**arrays_by_name["timeline"];
+                        let arrow_data = fields.required("timeline")?;
                         {
-                            let arrow_data = arrow_data
-                                .try_cast::<StringArray>(|| DataType::Utf8)
-                                .with_context(
-                                    "rerun.blueprint.encodings.TimelineColumn#timeline",
-                                )?;
-                            let arrow_data_buf = arrow_data.values();
-                            let offsets = arrow_data.offsets();
-                            ZipValidity::new_with_validity(
-                                offsets.array_windows(),
-                                arrow_data.nulls(),
+                            deserialize_strings(
+                                arrow_data
+                                    .try_cast::<StringArray>(|| DataType::Utf8)
+                                    .with_context(
+                                        "rerun.blueprint.encodings.TimelineColumn#timeline",
+                                    )?,
                             )
-                            .map(|elem| {
-                                elem.map(|&[start, end]| {
-                                    let start = start as usize;
-                                    let end = end as usize;
-                                    let len = end - start;
-                                    if arrow_data_buf.len() < end {
-                                        return Err(DeserializationError::offset_slice_oob(
-                                            (start, end),
-                                            arrow_data_buf.len(),
-                                        ));
-                                    }
-                                    let data = arrow_data_buf.slice_with_length(start, len);
-                                    Ok(data)
-                                })
-                                .transpose()
-                            })
-                            .map(|res_or_opt| {
-                                res_or_opt.map(|res_or_opt| {
-                                    res_or_opt.map(|v| {
-                                        crate::encodings::Utf8(::re_types_core::ArrowString::from(
-                                            v,
-                                        ))
-                                    })
-                                })
-                            })
-                            .collect::<DeserializationResult<Vec<Option<_>>>>()
                             .with_context("rerun.blueprint.encodings.TimelineColumn#timeline")?
                             .into_iter()
+                            .map(|res_or_opt| res_or_opt.map(crate::encodings::Utf8))
                         }
                     };
                     ZipValidity::new_with_validity(

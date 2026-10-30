@@ -17,9 +17,6 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
-use crate::SerializedComponentBatch;
-use crate::try_serialize_field;
-use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 use ::arrow::array::ArrayRef;
 use ::std::borrow::Cow;
@@ -49,10 +46,8 @@ impl crate::ToArrow for Bool {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use crate::arrow_helpers::as_array_ref;
+        use crate::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let data0: Vec<_> = data

@@ -177,6 +177,7 @@ pub const HELP: Icon = icon_from_path!("../data/icons/help.svg");
 pub const PLAY: Icon = icon_from_path!("../data/icons/play.svg");
 pub const PLAYHEAD_NAV: Icon = icon_from_path!("../data/icons/playhead_nav.svg");
 pub const PAUSE: Icon = icon_from_path!("../data/icons/pause.svg");
+pub const STOP: Icon = icon_from_path!("../data/icons/stop.svg");
 pub const SKIP_TO_END: Icon = icon_from_path!("../data/icons/skip_to_end.svg");
 pub const CHEVRON: Icon = icon_from_path!("../data/icons/chevron.svg");
 pub const ARROW_LEFT: Icon = icon_from_path!("../data/icons/arrow_left.svg");
@@ -231,7 +232,7 @@ pub const CHROME_CLOSE: Icon = icon_from_path!("../data/icons/chrome_close.svg")
 /// Used for HTTP URLs that lead out of the app.
 ///
 /// Remember to also use `.on_hover_cursor(egui::CursorIcon::PointingHand)`,
-/// but don't add `.on_hover_text(url)`.
+/// but don't add `.on_hover_text(url)` unless the label is elided.
 pub const EXTERNAL_LINK: Icon = icon_from_path!("../data/icons/external_link.svg");
 pub const DISCORD: Icon = icon_from_path!("../data/icons/discord.svg");
 

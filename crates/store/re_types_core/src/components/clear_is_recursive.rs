@@ -16,10 +16,8 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::wildcard_imports)]
 
+use crate::ComponentType;
 use crate::SerializationResult;
-use crate::SerializedComponentBatch;
-use crate::try_serialize_field;
-use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 use ::arrow::array::ArrayRef;
 use ::std::borrow::Cow;

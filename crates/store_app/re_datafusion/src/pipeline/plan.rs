@@ -16,7 +16,7 @@ use arrow::array::{BooleanArray, RecordBatch};
 use re_dataframe::TimelineName;
 use re_dataframe::external::re_chunk::ChunkId;
 use re_log_types::TimeInt;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::cloud::v1alpha1::ext::{ChunkCandidatesDataframe, QueryDatasetDataframe};
 use re_redap_client::{ApiError, ApiResult};
 use re_types_core::SegmentId;
 
@@ -28,7 +28,7 @@ use crate::dataframe_query_provider::fetch_plan::{
 
 /// Sort/cursor key for within-segment plan order.
 ///
-/// `PreTime` (static chunk, or null `{timeline}:start`) sorts before every
+/// `PreTime` (static chunk, or null `chunk_timeline_start`) sorts before every
 /// temporal value, mirroring the planner's row sort. Placing time-less
 /// chunks first means the plan cursor holds the safe horizon at
 /// "nothing emittable" until they are delivered — closing the gap where a
@@ -36,7 +36,7 @@ use crate::dataframe_query_provider::fetch_plan::{
 /// emitted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum CursorKey {
-    /// Static chunk, or temporal chunk with a null `{timeline}:start`.
+    /// Static chunk, or temporal chunk with a null `chunk_timeline_start`.
     PreTime,
 
     /// Chunk `time_min` on the query's filtered index.
@@ -54,7 +54,7 @@ pub(crate) enum SegmentEmitMode {
     ///   list overrides `filtered_index_range` inside `QueryHandle`, so
     ///   incremental emit would replay rows), or
     /// - the query has no temporal `filtered_index` (static-only), or
-    /// - the `{timeline}:start` column is absent from this segment's
+    /// - the `chunk_timeline_start` column is absent from this segment's
     ///   chunk-info batch (old server), leaving no basis for a horizon.
     BufferAll,
 }
@@ -200,22 +200,32 @@ impl FetchPlan {
 /// `group_chunk_infos_by_segment_id` invariant). Segments absent from a
 /// present `index_values` map are dropped here: they cannot produce output,
 /// so fetching them is pure waste.
+///
+/// `starts_eligible` is the scan's verdict on whether `chunk_timeline_start`
+/// is on the reader's index; when `false` no segment is ordered or emitted by
+/// it, even where the column is present.
 pub(crate) fn build_fetch_plan(
     origin: &re_uri::Origin,
     chunk_infos: Vec<RecordBatch>,
     filtered_index: Option<TimelineName>,
+    starts_eligible: bool,
     index_values: &IndexValuesMap,
     target_size_bytes: u64,
 ) -> ApiResult<FetchPlan> {
     re_tracing::profile_function!();
 
-    let start_col_name = filtered_index.map(|t| format!("{t}:start"));
+    let start_col_name = (filtered_index.is_some() && starts_eligible)
+        .then_some(ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START_NAME);
 
     // Pre-pass over the per-segment inputs: apply the index_values filter
-    // and decide each segment's emit mode (the `:start` schema check must
+    // and decide each segment's emit mode (the start-column schema check must
     // run per segment, before packing merges batches).
     let mut kept: Vec<(SegmentId, RecordBatch)> = Vec::with_capacity(chunk_infos.len());
     let mut modes: HashMap<SegmentId, SegmentEmitMode> = HashMap::new();
+    // All-or-nothing across the batches the packer sees: if one segment lacks
+    // `chunk_timeline_start`, the packer must not sort any batch by it.
+    // `normalize_legacy_candidate_batches` applies the same rule on the `scan` path.
+    let mut starts_eligible = start_col_name.is_some();
     for chunk_info in chunk_infos {
         if chunk_info.num_rows() == 0 {
             continue;
@@ -234,9 +244,11 @@ pub(crate) fn build_fetch_plan(
             None => false,
         };
 
-        let has_start = start_col_name
-            .as_deref()
-            .is_some_and(|name| chunk_info.column_by_name(name).is_some());
+        let has_start =
+            start_col_name.is_some_and(|name| chunk_info.column_by_name(name).is_some());
+        if start_col_name.is_some() && !has_start {
+            starts_eligible = false;
+        }
 
         let mode = if uses_index_values || !has_start {
             SegmentEmitMode::BufferAll
@@ -244,10 +256,10 @@ pub(crate) fn build_fetch_plan(
             SegmentEmitMode::Watermark
         };
         // Each segment must arrive as exactly one *input* `chunk_info` batch.
-        // The packer's `:start` sort runs per batch, so a segment split across
-        // two would become two independently sorted runs laid end to end: plan
-        // order would stop matching time order, and the horizon would stay
-        // pinned by a late-planned early chunk.
+        // The packer's start-column sort runs per batch, so a segment split
+        // across two would become two independently sorted runs laid end to
+        // end: plan order would stop matching time order, and the horizon would
+        // stay pinned by a late-planned early chunk.
         //
         // This says nothing about *request* batches: `split_large_segments`
         // still spreads a segment past the packing target across several of
@@ -282,7 +294,7 @@ pub(crate) fn build_fetch_plan(
         kept,
         target_size_bytes,
         usize::MAX,
-        filtered_index,
+        starts_eligible,
     )?;
 
     let segment_indices: HashMap<SegmentId, usize> = segment_order
@@ -338,7 +350,7 @@ pub(crate) fn build_fetch_plan(
                 origin,
                 request,
                 transport,
-                start_col_name.as_deref(),
+                start_col_name,
                 &segment_indices,
                 &mut segments,
                 batches.len(),
@@ -431,11 +443,9 @@ fn plan_request(
         .extract(&request)
         .ok();
 
-    // `:start`, same dtype tolerance as everywhere else (Int64 / Timestamp /
-    // Time64 / Duration are all i64 underneath).
     let starts = start_col_name
-        .and_then(|name| request.column_by_name(name).map(|col| (name, col)))
-        .map(|(name, col)| read_start_column(origin, col.as_ref(), name))
+        .and_then(|name| request.column_by_name(name))
+        .map(|col| read_start_column(origin, col.as_ref()))
         .transpose()?;
 
     let mut est_total = 0u64;
@@ -557,6 +567,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -656,6 +667,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000, // big target: both segments pack into one request batch
         )
@@ -696,7 +708,7 @@ mod tests {
     fn missing_start_column_yields_buffer_all() {
         let infos = vec![chunk_info_batch(
             "seg-a",
-            None, // no `:start` column at all
+            None, // no start column at all
             &[None, None],
             &[false, false],
             &[Some(1), Some(2)],
@@ -706,6 +718,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -752,6 +765,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -767,6 +781,28 @@ mod tests {
     }
 
     #[test]
+    fn untrusted_starts_yield_buffer_all() {
+        let infos = vec![chunk_info_batch(
+            "seg-a",
+            Some("frame"),
+            &[Some(10)],
+            &[false],
+            &[Some(1)],
+        )];
+
+        let plan = build_fetch_plan(
+            &re_uri::Origin::test(),
+            infos,
+            Some(TimelineName::from("frame")),
+            false,
+            &None,
+            1_000_000,
+        )
+        .unwrap();
+        assert_eq!(plan.segments[0].mode, SegmentEmitMode::BufferAll);
+    }
+
+    #[test]
     fn static_only_query_yields_buffer_all() {
         let infos = vec![chunk_info_batch(
             "seg-a",
@@ -777,7 +813,7 @@ mod tests {
         )];
 
         let plan =
-            build_fetch_plan(&re_uri::Origin::test(), infos, None, &None, 1_000_000).unwrap();
+            build_fetch_plan(&re_uri::Origin::test(), infos, None, true, &None, 1_000_000).unwrap();
         assert_eq!(plan.segments[0].mode, SegmentEmitMode::BufferAll);
     }
 
@@ -802,6 +838,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &index_values,
             1_000_000,
         )
@@ -823,6 +860,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -834,7 +872,7 @@ mod tests {
 
     /// A segment split across two `chunk_info` batches must be caught at plan
     /// time. Each half is single-segment, so `extract_segment_id`'s assert
-    /// sees nothing wrong — but the `:start` sort is per batch, so the
+    /// sees nothing wrong. But the start-column sort is per batch, so the
     /// segment's plan order would come out as two sorted runs end to end
     /// (`30, 40, 10, 20`) rather than ascending. A hard error (not a debug
     /// assert): the release-mode failure is a pipeline hang, not bad output.
@@ -860,6 +898,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         ) else {
@@ -887,6 +926,7 @@ mod tests {
             &re_uri::Origin::test(),
             vec![doubled],
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )
@@ -917,6 +957,7 @@ mod tests {
             &re_uri::Origin::test(),
             infos,
             Some(TimelineName::from("frame")),
+            true,
             &None,
             1_000_000,
         )

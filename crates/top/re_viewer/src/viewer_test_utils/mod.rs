@@ -7,7 +7,6 @@ use crate::{
 #[cfg(feature = "testing")]
 pub use app_testing_ext::AppTestingExt;
 use egui_kittest::Harness;
-use re_build_info::build_info;
 use re_viewer_context::AppOptions;
 
 pub type AppOptionsEditor = Box<dyn Fn(&mut AppOptions)>;
@@ -66,13 +65,14 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
         // origin's port is just a label here.
         let addr =
             std::net::SocketAddr::from((std::net::Ipv4Addr::LOCALHOST, re_uri::DEFAULT_PROXY_PORT));
-        let catalog = crate::internal_catalog::build(addr);
+        let build_info = re_build_info::cargo_build_info!();
+        let catalog = crate::internal_catalog::build(addr, build_info.clone());
         let connection_registry =
             re_redap_client::ConnectionRegistry::new_without_stored_credentials()
                 .with_internal(catalog.connection.clone(), catalog.storage_dir().to_owned());
         let mut app = App::new(
             MainThreadToken::i_promise_i_am_only_using_this_for_a_test(),
-            build_info!(),
+            build_info,
             AppEnvironment::Test,
             StartupOptions {
                 // Don't show the welcome / example screen in tests.
@@ -101,63 +101,6 @@ pub fn viewer_harness(options: &HarnessOptions) -> Harness<'static, App> {
     })
 }
 
-/// How long [`step_until`] sleeps between attempts by default.
-pub const DEFAULT_POLL_INTERVAL: std::time::Duration = std::time::Duration::from_millis(10);
-
-/// How long [`step_until`] waits before timing out by default.
-pub const DEFAULT_WAIT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5);
-
-/// Steps through the harness until the `predicate` closure returns `true`.
-#[track_caller]
-pub fn step_until<'app, 'harness, Predicate>(
-    test_description: &'static str,
-    harness: &'harness mut egui_kittest::Harness<'app, App>,
-    predicate: Predicate,
-) where
-    Predicate: for<'a> FnMut(&'a mut egui_kittest::Harness<'app, App>) -> bool,
-{
-    step_until_with_custom_timeout(
-        test_description,
-        harness,
-        predicate,
-        DEFAULT_POLL_INTERVAL,
-        DEFAULT_WAIT_TIMEOUT,
-    );
-}
-
-/// Steps through the harness until the `predicate` closure returns `true`.
-#[track_caller]
-pub fn step_until_with_custom_timeout<'app, 'harness, Predicate>(
-    test_description: &'static str,
-    harness: &'harness mut egui_kittest::Harness<'app, App>,
-    mut predicate: Predicate,
-    poll_interval: std::time::Duration,
-    timeout: std::time::Duration,
-) where
-    Predicate: for<'a> FnMut(&'a mut egui_kittest::Harness<'app, App>) -> bool,
-{
-    let start_time = std::time::Instant::now();
-    let mut success = predicate(harness);
-    while !success && start_time.elapsed() <= timeout {
-        harness.step();
-        std::thread::sleep(poll_interval);
-        harness.step();
-        success = predicate(harness);
-    }
-
-    if !success {
-        // Take a screenshot of the state of the harness if we failed the test.
-        // This is invaluable for debugging test failures.
-        let snapshot_path = "tests/failures";
-        harness
-            .try_snapshot_options(
-                test_description,
-                &re_ui::testing::default_snapshot_options_for_ui().output_path(snapshot_path),
-            )
-            .ok();
-
-        panic!(
-            "Timed out waiting for predicate to be true for {test_description:?}. A screenshot of the harness has been saved to `{snapshot_path}/{test_description}.new.png`."
-        );
-    }
-}
+pub use re_ui::testing::{
+    DEFAULT_POLL_INTERVAL, DEFAULT_WAIT_TIMEOUT, step_until, step_until_with_custom_timeout,
+};

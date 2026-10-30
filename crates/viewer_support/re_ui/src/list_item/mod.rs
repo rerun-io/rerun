@@ -66,6 +66,12 @@ pub enum DesiredWidth {
     /// collapsing triangle (if any). This may trigger some scrolling. In any case, the content will
     /// be provided with `ui.available_width()`.
     AtLeast(f32),
+
+    /// Like [`Self::AtLeast`], but the width already includes the indent and collapsing triangle.
+    ///
+    /// Use it for a width measured from the left of the [`ListItem`] on an earlier frame. Content
+    /// that fills its row would otherwise grow by the indent on every frame.
+    AtLeastIncludingIndent(f32),
 }
 
 impl Default for DesiredWidth {

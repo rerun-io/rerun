@@ -2,8 +2,8 @@
 title = "IMU signals"
 tags = ["Plots"]
 description = "Log multi-dimensional IMU signals from the TUM VI Benchmark using the columnar `send_columns()` API."
-thumbnail = "https://static.rerun.io/imu_signals/64f773d238a0456a0f233abeea7e521cfb871b67/480w.jpg"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/imu_signals_thumbnail/610dab5e550b637152210436370dff5b079be8b0/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 build_args = ["--seconds=10"]

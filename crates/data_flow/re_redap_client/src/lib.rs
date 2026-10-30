@@ -12,6 +12,7 @@ mod dataset_revisions;
 mod grpc;
 mod registration_response;
 mod rpc_retry;
+mod schema_cache;
 mod tasks;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -26,8 +27,8 @@ pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 pub use self::api_response_stream::ApiResponseStream;
 pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
-    BoxedRedapClientStack, Connection, ConnectionClient, FetchChunksResponseStream, RedapClient,
-    SegmentQueryParams,
+    BoxedRedapClientStack, Connection, ConnectionClient, DatasetManifest, DatasetSchema,
+    FetchChunksResponseStream, RedapClient,
 };
 pub use self::connection_handle::ConnectionHandle;
 pub use self::connection_registry::{

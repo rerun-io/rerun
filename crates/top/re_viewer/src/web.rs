@@ -13,16 +13,14 @@ use re_log::ResultExt as _;
 use re_log_channel::{LogSender, RecordingOpenBehavior};
 use re_log_msg::TableMsg;
 use re_log_types::TableId;
-use re_log_types::TimelineName;
 use re_memory::AccountingAllocator;
-use re_sdk_types::blueprint::components::PlayState;
-use re_viewer_context::{SystemCommand, SystemCommandSender as _, TimeControlCommand, open_url};
+use re_viewer_context::{SystemCommand, SystemCommandSender as _, viewer_url};
 use serde::Deserialize;
 use wasm_bindgen::prelude::*;
 
 use crate::saving::RrdSnapshot;
 use crate::web_history::install_popstate_listener;
-use crate::web_tools::{Callback, JsResultExt as _, StringOrStringArray};
+use crate::web_tools::{Callback, StringOrStringArray};
 
 #[global_allocator]
 static GLOBAL: AccountingAllocator<std::alloc::System> =
@@ -37,6 +35,11 @@ pub struct WebHandle {
     /// This exists because the direct bytes API is expected to submit many small RRD chunks
     /// and allocating a new tx pair for each chunk doesn't make sense.
     log_senders: HashMap<String, LogSender>,
+
+    /// Carries [`WebHandle::viewer_control`] requests to the viewer.
+    ///
+    /// Opened on the first request.
+    viewer_control_tx: std::cell::RefCell<Option<LogSender>>,
 
     /// The connection registry to use for the viewer.
     connection_registry: re_redap_client::ConnectionRegistryHandle,
@@ -63,13 +66,14 @@ impl WebHandle {
         } else {
             re_redap_client::ConnectionRegistry::new_with_stored_credentials()
         };
-        let catalog = crate::internal_catalog::build();
+        let catalog = crate::internal_catalog::build(re_build_info::build_info!());
         let connection_registry = connection_registry
             .with_internal(catalog.connection.clone(), catalog.storage_dir().to_owned());
 
         Ok(Self {
             runner: eframe::WebRunner::new(),
             log_senders: Default::default(),
+            viewer_control_tx: Default::default(),
             connection_registry,
             app_options: app_options.unwrap_or_default(),
         })
@@ -159,6 +163,78 @@ impl WebHandle {
             })
     }
 
+    /// Perform one operation of the [`ViewerControlService`] API, defined by `viewer_control.proto`.
+    ///
+    /// Takes an encoded [`ViewerControlRequest`], and resolves to the encoded
+    /// [`ViewerControlResponse`].
+    /// A failed operation rejects with an `Error` named `ViewerControlError`, whose `code` property
+    /// is the gRPC status code of the failure, e.g. `NOT_FOUND`.
+    ///
+    /// Not an `async fn`: that would borrow `self` until the viewer answers, and every `&mut self`
+    /// method, like `open_channel`, would fail while a request is pending.
+    ///
+    /// [`ViewerControlService`]: re_protos::viewer_control::v1alpha1::viewer_control_service_server::ViewerControlService
+    /// [`ViewerControlRequest`]: re_protos::viewer_control::v1alpha1::ViewerControlRequest
+    /// [`ViewerControlResponse`]: re_protos::viewer_control::v1alpha1::ViewerControlResponse
+    #[wasm_bindgen(unchecked_return_type = "Promise<Uint8Array>")]
+    pub fn viewer_control(&self, request_bytes: &[u8]) -> js_sys::Promise {
+        use re_log_channel::ViewerControlErrorCode;
+        use re_protos::external::prost::Message as _;
+        use re_protos::viewer_control::v1alpha1::ViewerControlRequest;
+
+        let reply_rx = ViewerControlRequest::decode(request_bytes)
+            .map_err(|err| {
+                viewer_control_error(
+                    "INVALID_ARGUMENT",
+                    &format!("Failed to decode `ViewerControlRequest`: {err}"),
+                )
+            })
+            .and_then(|request| self.send_viewer_control(request));
+        let reply_rx = match reply_rx {
+            Ok(reply_rx) => reply_rx,
+            Err(err) => return js_sys::Promise::reject(&err),
+        };
+
+        wasm_bindgen_futures::future_to_promise(async move {
+            let response = reply_rx
+                .await
+                .map_err(|err| {
+                    viewer_control_error(
+                        "INTERNAL",
+                        &format!("Viewer dropped the request without answering: {err}"),
+                    )
+                })?
+                .map_err(|err| {
+                    let code = match err.code {
+                        ViewerControlErrorCode::InvalidArgument => "INVALID_ARGUMENT",
+                        ViewerControlErrorCode::NotFound => "NOT_FOUND",
+                        ViewerControlErrorCode::FailedPrecondition => "FAILED_PRECONDITION",
+                        ViewerControlErrorCode::Internal => "INTERNAL",
+                    };
+                    viewer_control_error(code, &err.message)
+                })?;
+
+            Ok(js_sys::Uint8Array::from(response.encode_to_vec().as_slice()).into())
+        })
+    }
+
+    /// The encoded `GetStateResponse` of the Viewer Control API, computed right away.
+    ///
+    /// Unlike [`Self::viewer_control`], this doesn't wait for the next frame,
+    /// so it can back synchronous JS APIs.
+    #[wasm_bindgen]
+    pub fn viewer_state(&self) -> Result<Vec<u8>, JsValue> {
+        use re_protos::external::prost::Message as _;
+
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return Err(viewer_control_error(
+                "FAILED_PRECONDITION",
+                "Viewer is not running, or is busy painting a frame",
+            ));
+        };
+        Ok(app.viewer_state().encode_to_vec())
+    }
+
     #[wasm_bindgen]
     pub fn toggle_panel_overrides(&self, value: Option<bool>) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
@@ -166,8 +242,8 @@ impl WebHandle {
         };
 
         match value {
-            Some(value) => app.panel_state_overrides_active = value,
-            None => app.panel_state_overrides_active ^= true,
+            Some(value) => app.panel_state_overrides.enabled = value,
+            None => app.panel_state_overrides.enabled ^= true,
         }
 
         // request repaint, because the overrides may cause panels to expand/collapse
@@ -192,7 +268,7 @@ impl WebHandle {
             None => None,
         };
 
-        let overrides = &mut app.panel_state_overrides;
+        let overrides = &mut app.panel_state_overrides.overrides;
         match panel {
             Panel::Top => overrides.top = state,
             Panel::Blueprint => overrides.blueprint = state,
@@ -224,8 +300,7 @@ impl WebHandle {
             .ok_or_else(|| JsValue::from_str("No active recording to save"))?;
         let recording = app
             .store_hub
-            .as_ref()
-            .and_then(|store_hub| store_hub.entity_db(&recording_id))
+            .entity_db(&recording_id)
             .ok_or_else(|| JsValue::from_str("Active recording is unavailable"))?;
 
         RrdSnapshot::recording(recording, None)
@@ -246,8 +321,7 @@ impl WebHandle {
             .ok_or_else(|| JsValue::from_str("No active recording for blueprint"))?;
         let blueprint = app
             .store_hub
-            .as_ref()
-            .and_then(|store_hub| store_hub.active_blueprint_for_app(recording_id.application_id()))
+            .active_blueprint_for_app(recording_id.application_id())
             .ok_or_else(|| JsValue::from_str("No active blueprint to save"))?;
         let undo_state = app.state.blueprint_undo_state.get(blueprint.store_id());
 
@@ -282,11 +356,11 @@ impl WebHandle {
             return;
         };
 
-        match url.parse::<open_url::ViewerOpenUrl>() {
+        match url.parse::<viewer_url::ViewerUrl>() {
             Ok(url) => {
                 url.open(
                     &app.egui_ctx,
-                    &open_url::OpenUrlOptions {
+                    &viewer_url::OpenUrlOptions {
                         recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                         show_loader: true,
                     },
@@ -297,20 +371,6 @@ impl WebHandle {
                 re_log::warn!(?url, "Failed to open URL: {err}");
             }
         }
-    }
-
-    #[wasm_bindgen]
-    pub fn remove_receiver(&self, url: &str) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-        app.msg_receive_set().remove_by_uri(url);
-        if let Some(store_hub) = app.store_hub.as_mut() {
-            store_hub.remove_recording_by_uri(url);
-        }
-
-        app.egui_ctx
-            .request_repaint_after(std::time::Duration::from_millis(10));
     }
 
     /// Open a new channel for streaming data.
@@ -459,229 +519,15 @@ impl WebHandle {
     }
 
     #[wasm_bindgen]
-    pub fn get_active_recording_id(&self) -> Option<String> {
-        let app = self.runner.app_mut::<crate::App>()?;
-        let hub = app.store_hub.as_ref()?;
-        let recording_id = app.active_recording_id()?;
-        let recording = hub.entity_db(recording_id)?;
-
-        Some(recording.store_id().recording_id().to_string())
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn set_active_recording_id(&self, recording_id: &str) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-
-        let Some(hub) = app.store_hub.as_mut() else {
-            return;
-        };
-
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-
-        if store_id.is_recording() {
-            app.command_sender.send_system(SystemCommand::SetRoute(
-                re_viewer_context::Route::LocalRecording {
-                    recording_id: store_id,
-                },
-            ));
-        }
-
-        app.egui_ctx.request_repaint();
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn get_active_timeline(&self, recording_id: &str) -> Option<String> {
-        let app = self.runner.app_mut::<crate::App>()?;
-        let hub = app.store_hub.as_ref()?;
-
-        let store_id = store_id_from_recording_id(hub, recording_id)?;
-        let time_ctrl = app.state.time_control(&store_id)?;
-        Some(time_ctrl.timeline_name().as_str().to_owned())
-    }
-
-    /// Set the active timeline.
-    ///
-    /// This does nothing if the timeline can't be found.
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn set_active_timeline(&self, recording_id: &str, timeline_name: &str) {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-
-        let Some(hub) = &app.store_hub else {
-            return;
-        };
-
-        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-
-        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
-        else {
-            return;
-        };
-
-        app.command_sender
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: recording_id,
-                time_commands: vec![TimeControlCommand::SetActiveTimeline(timeline_name)],
-            });
-
-        app.egui_ctx.request_repaint();
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn get_time_for_timeline(&self, recording_id: &str, timeline_name: &str) -> Option<f64> {
-        let app = self.runner.app_mut::<crate::App>()?;
-
-        let hub = app.store_hub.as_ref()?;
-        let store_id = store_id_from_recording_id(hub, recording_id)?;
-        let time_ctrl = app.state.time_control(&store_id)?;
-
-        let timeline_name = TimelineName::try_new(timeline_name).ok_or_log_error_once()?;
-
-        time_ctrl
-            .time_for_timeline(timeline_name)
-            .map(|v| v.as_f64())
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn set_time_for_timeline(&self, recording_id: &str, timeline_name: &str, time: f64) {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-
-        let Some(hub) = &app.store_hub else {
-            return;
-        };
-
-        let Some(recording_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-
-        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
-        else {
-            return;
-        };
-
-        app.command_sender
-            .send_system(SystemCommand::TimeControlCommands {
-                store_id: recording_id,
-                time_commands: vec![
-                    TimeControlCommand::SetActiveTimeline(timeline_name),
-                    TimeControlCommand::SetTime(time.into()),
-                ],
-            });
-
-        app.egui_ctx.request_repaint();
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn get_timeline_time_range(&self, recording_id: &str, timeline_name: &str) -> JsValue {
-        let Some(app) = self.runner.app_mut::<crate::App>() else {
-            return JsValue::null();
-        };
-        let crate::App {
-            store_hub: Some(hub),
-            ..
-        } = &*app
-        else {
-            return JsValue::null();
-        };
-
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return JsValue::null();
-        };
-        let Some(recording) = hub.store_bundle().get(&store_id) else {
-            return JsValue::null();
-        };
-
-        let Some(timeline_name) = TimelineName::try_new(timeline_name).ok_or_log_error_once()
-        else {
-            return JsValue::null();
-        };
-        let Some(time_range) = recording.time_range_for(&timeline_name) else {
-            return JsValue::null();
-        };
-
-        let min = time_range.min().as_f64();
-        let max = time_range.max().as_f64();
-
-        let obj = js_sys::Object::new();
-        js_sys::Reflect::set(&obj, &"min".into(), &min.into()).ok_or_log_js_error();
-        js_sys::Reflect::set(&obj, &"max".into(), &max.into()).ok_or_log_js_error();
-
-        JsValue::from(obj)
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn get_playing(&self, recording_id: &str) -> Option<bool> {
-        let app = self.runner.app_mut::<crate::App>()?;
-        let hub = app.store_hub.as_ref()?;
-
-        let store_id = store_id_from_recording_id(hub, recording_id)?;
-        if !hub.store_bundle().contains(&store_id) {
-            return None;
-        }
-        let time_ctrl = app.state.time_control(&store_id)?;
-
-        Some(time_ctrl.play_state() == PlayState::Playing)
-    }
-
-    //TODO(#10737): we should refer to logical recordings using store id (recording id is ambiguous)
-    #[wasm_bindgen]
-    pub fn set_playing(&self, recording_id: &str, value: bool) {
-        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
-            return;
-        };
-        let crate::App {
-            store_hub,
-            egui_ctx,
-            command_sender,
-            ..
-        } = &mut *app;
-
-        let Some(hub) = store_hub.as_ref() else {
-            return;
-        };
-        let Some(store_id) = store_id_from_recording_id(hub, recording_id) else {
-            return;
-        };
-
-        let play_state = if value {
-            PlayState::Playing
-        } else {
-            PlayState::Paused
-        };
-
-        command_sender.send_system(SystemCommand::TimeControlCommands {
-            store_id: store_id.clone(),
-            time_commands: vec![TimeControlCommand::SetPlayState(play_state)],
-        });
-        egui_ctx.request_repaint();
-    }
-
-    #[wasm_bindgen]
     pub fn set_credentials(&self, access_token: &str, email: &str) {
         let Some(mut app) = self.runner.app_mut::<crate::App>() else {
             return;
         };
-        let crate::App {
+        let crate::AppCore {
             command_sender,
             egui_ctx,
             ..
-        } = &mut *app;
+        } = &mut **app;
 
         command_sender.send_system(SystemCommand::SetAuthCredentials {
             access_token: access_token.to_owned(),
@@ -689,19 +535,6 @@ impl WebHandle {
         });
         egui_ctx.request_repaint();
     }
-}
-
-/// Best effort attempt at finding a store id based on the recording id.
-fn store_id_from_recording_id(
-    store_hub: &re_viewer_context::StoreHub,
-    recording_id: &str,
-) -> Option<re_log_types::StoreId> {
-    store_hub
-        .store_bundle()
-        .recordings()
-        .map(|entity_db| entity_db.store_id())
-        .find(|store_id| store_id.recording_id().as_str() == recording_id)
-        .cloned()
 }
 
 // TODO(jprochazk): figure out a way to auto-generate these types on JS side
@@ -940,11 +773,11 @@ fn create_app(
 
     if let Some(urls) = url {
         for url in urls.into_inner() {
-            match url.parse::<open_url::ViewerOpenUrl>() {
+            match url.parse::<viewer_url::ViewerUrl>() {
                 Ok(url) => {
                     url.open(
                         &app.egui_ctx,
-                        &open_url::OpenUrlOptions {
+                        &viewer_url::OpenUrlOptions {
                             recording_open_behavior: RecordingOpenBehavior::OpenAndSelect,
                             show_loader: true,
                         },
@@ -970,6 +803,62 @@ fn integration_test() -> bool {
     };
     web_sys::UrlSearchParams::new_with_str(&search)
         .is_ok_and(|params| params.has("integration_test"))
+}
+
+/// Where the answer to a [`WebHandle::viewer_control`] request lands.
+type ViewerControlReply = futures::channel::oneshot::Receiver<
+    Result<
+        re_protos::viewer_control::v1alpha1::ViewerControlResponse,
+        re_log_channel::ViewerControlError,
+    >,
+>;
+
+impl WebHandle {
+    /// Hand a request to the viewer, and return where its answer will land.
+    fn send_viewer_control(
+        &self,
+        request: re_protos::viewer_control::v1alpha1::ViewerControlRequest,
+    ) -> Result<ViewerControlReply, JsValue> {
+        let Some(mut app) = self.runner.app_mut::<crate::App>() else {
+            return Err(viewer_control_error(
+                "FAILED_PRECONDITION",
+                "Viewer is not running, or is busy painting a frame",
+            ));
+        };
+
+        let (reply_tx, reply_rx) = futures::channel::oneshot::channel();
+        let mut viewer_control_tx = self.viewer_control_tx.borrow_mut();
+        let viewer_control_tx = viewer_control_tx.get_or_insert_with(|| {
+            let (tx, rx) = re_log_channel::log_channel(re_log_channel::LogSource::JsChannel {
+                channel_name: "viewer_control".to_owned(),
+            });
+            app.add_log_receiver(rx);
+            tx
+        });
+        viewer_control_tx
+            .send(re_log_channel::DataSourceMessage::ViewerControl(
+                re_log_channel::ViewerControlCommand::ViewerControl {
+                    request,
+                    on_done: re_log_channel::UiCallback::new(move |result| {
+                        reply_tx.send(result).ok();
+                    }),
+                },
+            ))
+            .map_err(|err| {
+                viewer_control_error("INTERNAL", &format!("Viewer stopped listening: {err}"))
+            })?;
+        app.egui_ctx.request_repaint();
+
+        Ok(reply_rx)
+    }
+}
+
+/// A JS `ViewerControlError` with the gRPC status `code`, for a failed [`WebHandle::viewer_control`].
+fn viewer_control_error(code: &str, message: &str) -> JsValue {
+    let error = js_sys::Error::new(message);
+    error.set_name("ViewerControlError");
+    js_sys::Reflect::set(&error, &"code".into(), &code.into()).ok();
+    error.into()
 }
 
 /// Used to set the "email" property in the analytics config,

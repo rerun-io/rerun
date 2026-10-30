@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: Video stream consisting of raw video chunks.
@@ -62,6 +62,8 @@ pub struct VideoStream {
     /// Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes::EncodedImage`][crate::archetypes::EncodedImage])
     /// never log this component as static data as this means that you loose all information of
     /// previous samples which may be required to decode an image.
+    ///
+    /// Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
     ///
     /// See [`components::VideoCodec`][crate::components::VideoCodec] for codec specific requirements.
     pub sample: Option<SerializedComponentBatch>,
@@ -355,24 +357,14 @@ impl VideoStream {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.codec
-                .map(|codec| codec.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.sample
-                .map(|sample| sample.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.is_keyframe
-                .map(|is_keyframe| is_keyframe.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.opacity
-                .map(|opacity| opacity.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.draw_order
-                .map(|draw_order| draw_order.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.codec,
+            self.sample,
+            self.is_keyframe,
+            self.opacity,
+            self.draw_order,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -383,19 +375,16 @@ impl VideoStream {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_codec = self.codec.as_ref().map(|b| b.array.len());
-        let len_sample = self.sample.as_ref().map(|b| b.array.len());
-        let len_is_keyframe = self.is_keyframe.as_ref().map(|b| b.array.len());
-        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
-        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_codec)
-            .or(len_sample)
-            .or(len_is_keyframe)
-            .or(len_opacity)
-            .or(len_draw_order)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.codec,
+            self.sample,
+            self.is_keyframe,
+            self.opacity,
+            self.draw_order,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The codec used to encode the video chunks.
@@ -441,6 +430,8 @@ impl VideoStream {
     /// Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes::EncodedImage`][crate::archetypes::EncodedImage])
     /// never log this component as static data as this means that you loose all information of
     /// previous samples which may be required to decode an image.
+    ///
+    /// Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
     ///
     /// See [`components::VideoCodec`][crate::components::VideoCodec] for codec specific requirements.
     #[inline]

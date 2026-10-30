@@ -17,9 +17,6 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
-use crate::SerializedComponentBatch;
-use crate::try_serialize_field;
-use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 use ::arrow::array::ArrayRef;
 use ::std::borrow::Cow;
@@ -47,10 +44,8 @@ impl crate::ToArrowOpt for Utf8 {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use crate::arrow_helpers::{serialize_optional_strings, validity_from_bools};
+        use crate::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
@@ -61,29 +56,14 @@ impl crate::ToArrowOpt for Utf8 {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let data0_validity = validity_from_bools(somes);
             {
-                let offsets = arrow::buffer::OffsetBuffer::from_lengths(
+                serialize_optional_strings(
                     data0
                         .iter()
-                        .map(|opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default()),
-                );
-
-                #[expect(clippy::unwrap_used)]
-                let capacity = offsets.last().copied().unwrap() as usize;
-                let mut buffer_builder = arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                for data in data0.iter().flatten() {
-                    buffer_builder.append_slice(data.as_bytes());
-                }
-                let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                as_array_ref(unsafe {
-                    StringArray::new_unchecked(offsets, inner_data, data0_validity)
-                })
+                        .map(|value| value.as_ref().map(|value| value.as_str())),
+                    data0_validity,
+                )?
             }
         })
     }
@@ -101,34 +81,13 @@ impl crate::FromArrowOpt for Utf8 {
         };
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
-            let arrow_data = arrow_data
-                .try_cast::<StringArray>(|| Self::arrow_data_type())
-                .with_context("rerun.encodings.Utf8#value")?;
-            let arrow_data_buf = arrow_data.values();
-            let offsets = arrow_data.offsets();
-            ZipValidity::new_with_validity(offsets.array_windows(), arrow_data.nulls())
-                .map(|elem| {
-                    elem.map(|&[start, end]| {
-                        let start = start as usize;
-                        let end = end as usize;
-                        let len = end - start;
-                        if arrow_data_buf.len() < end {
-                            return Err(DeserializationError::offset_slice_oob(
-                                (start, end),
-                                arrow_data_buf.len(),
-                            ));
-                        }
-                        let data = arrow_data_buf.slice_with_length(start, len);
-                        Ok(data)
-                    })
-                    .transpose()
-                })
-                .map(|res_or_opt| {
-                    res_or_opt.map(|res_or_opt| res_or_opt.map(|v| crate::ArrowString::from(v)))
-                })
-                .collect::<DeserializationResult<Vec<Option<_>>>>()
-                .with_context("rerun.encodings.Utf8#value")?
-                .into_iter()
+            deserialize_strings(
+                arrow_data
+                    .try_cast::<StringArray>(|| Self::arrow_data_type())
+                    .with_context("rerun.encodings.Utf8#value")?,
+            )
+            .with_context("rerun.encodings.Utf8#value")?
+            .into_iter()
         }
         .map(|v| v.ok_or_else(DeserializationError::missing_data))
         .map(|res| res.map(|v| Some(Self(v))))

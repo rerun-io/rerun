@@ -149,7 +149,7 @@ pub fn open_recording(
         }
     });
 
-    let data_source = entity_db.data_source.as_ref().map(|v| match v {
+    let data_source = entity_db.primary_data_source().map(|v| match v {
         re_log_channel::LogSource::File { .. } => Some("file"), // .rrd, .png, .glb, …
         re_log_channel::LogSource::HttpStream { .. } => Some("http"),
         re_log_channel::LogSource::RedapGrpcStream { .. } => None,

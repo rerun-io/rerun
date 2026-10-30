@@ -145,8 +145,9 @@ impl TimeType {
             _ => match self {
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
                 Self::DurationNs => super::Duration::from(time_int).format_secs(subsecond_decimals),
-                Self::TimestampNs => super::Timestamp::from(time_int)
-                    .format_opt(timestamp_format, subsecond_decimals),
+                Self::TimestampNs => {
+                    timestamp_format.format_nanos_opt(time_int.as_i64(), subsecond_decimals)
+                }
             },
         }
     }

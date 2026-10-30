@@ -140,9 +140,16 @@ namespace rerun {
         return status;
     }
 
-    Error RecordingStream::connect_grpc(std::string_view url) const {
+    Error RecordingStream::connect_grpc(
+        std::string_view url, std::chrono::duration<float> flush_timeout
+    ) const {
         rr_error status = {};
-        rr_recording_stream_connect_grpc(_id, detail::to_rr_string(url), &status);
+        rr_recording_stream_connect_grpc(
+            _id,
+            detail::to_rr_string(url),
+            flush_timeout.count(),
+            &status
+        );
         return status;
     }
 

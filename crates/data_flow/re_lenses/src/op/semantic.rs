@@ -292,11 +292,11 @@ mod tests {
     use std::sync::Arc;
 
     use arrow::array::{
-        Array as _, ArrayRef, BinaryArray, Float32Array, Float64Array, GenericByteBuilder,
-        Int32Array, Int64Array, ListBuilder, StringArray, StructArray, UInt8Builder, UInt32Array,
+        ArrayRef, BinaryArray, Float32Array, Float64Array, GenericByteBuilder, Int32Array,
+        Int64Array, ListBuilder, StringArray, StructArray, UInt8Builder, UInt32Array,
     };
     use arrow::datatypes::{DataType, Field, GenericBinaryType};
-    use re_lenses_core::combinators::{Error, Transform as _};
+    use re_lenses_core::combinators::Error;
     use re_sdk_types::components::VideoCodec;
     use re_sdk_types::reflection::Enum as _;
 

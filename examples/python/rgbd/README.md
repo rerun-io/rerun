@@ -2,8 +2,8 @@
 title = "RGBD"
 description = "Visualize an indoor recording from the NYU Depth V2 dataset (Kinect): synchronized RGB and depth aligned in 3D."
 tags = ["2D", "3D", "Depth", "NYUD", "Pinhole camera"]
-thumbnail = "https://static.rerun.io/rgbd/2fde3a620adc8bd9a5680260f0792d16ac5498bd/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/rgbd_thumbnail/a5351e8aab86293b6e3f79a06d66c94a7849d368/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "release"
 include_in_manifest = true
 build_args = ["--frames=300"]

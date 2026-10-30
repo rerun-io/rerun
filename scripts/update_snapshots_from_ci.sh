@@ -8,14 +8,25 @@
 # Elsewhere, or when `RUN_ID` is set, this downloads the `test-results-linux` artifact of a GitHub Actions run:
 # the latest one on your branch, unless `RUN_ID` says which.
 # That requires the gh cli, installed and authenticated.
+#
+# Changed insta snapshots are accepted with `cargo insta accept`, which requires cargo-insta.
 
 set -eu
+
+find_insta_pending() {
+    find . \( -path ./target -o -path ./.pixi \) -prune -o -type f \( -name "*.snap.new" -o -name "*.pending-snap" \) -print
+}
 
 # remove any existing .new.png that might have been left behind
 find . -type d -path "*/tests/snapshots*" | while read -r dir; do
     find "$dir" -type f -name "*.new.png" | while read -r file; do
         rm "$file"
     done
+done
+
+# remove any existing .snap.new and .pending-snap that might have been left behind
+find_insta_pending | while read -r file; do
+    rm "$file"
 done
 
 if [ -n "${RUN_ID:-}" ] || [ ! -d "$(git rev-parse --show-toplevel)/.buildkite" ]; then
@@ -60,3 +71,14 @@ NUM_NEW="$(find . -type f -path "*/tests/snapshots*" -name "*.new.png" | wc -l |
 echo "Found $NUM_NEW new snapshot(s)"
 
 ./scripts/accept_snapshots.sh
+
+NUM_INSTA="$(find_insta_pending | wc -l | tr -d ' ')"
+echo "Found $NUM_INSTA changed insta snapshot file(s)"
+
+if [ "$NUM_INSTA" != "0" ]; then
+    if ! cargo insta --version >/dev/null 2>&1; then
+        echo "Accepting insta snapshots requires cargo-insta: cargo install cargo-insta --locked" >&2
+        exit 1
+    fi
+    cargo insta accept --workspace
+fi

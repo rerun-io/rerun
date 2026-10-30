@@ -17,10 +17,8 @@
 #![allow(clippy::wildcard_imports)]
 
 use ::arrow::array::ArrayRef;
+use ::re_types_core::ComponentType;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -62,10 +60,8 @@ impl ::re_types_core::ToArrow for ColumnOrder {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, serialize_strings};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let data0: Vec<_> = data
@@ -90,23 +86,10 @@ impl ::re_types_core::ToArrow for ColumnOrder {
                     )),
                     offsets,
                     {
-                        let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                            data0_inner_data.iter().map(|datum| datum.0.len()),
-                        );
-
-                        #[expect(clippy::unwrap_used)]
-                        let capacity = offsets.last().copied().unwrap() as usize;
-                        let mut buffer_builder =
-                            arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                        for data in &data0_inner_data {
-                            buffer_builder.append_slice(data.0.as_bytes());
-                        }
-                        let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                        #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                        as_array_ref(unsafe {
-                            StringArray::new_unchecked(offsets, inner_data, data0_inner_validity)
-                        })
+                        serialize_strings(
+                            data0_inner_data.iter().map(|value| value.0.as_str()),
+                            data0_inner_validity,
+                        )?
                     },
                     data0_validity,
                 )?)
@@ -133,43 +116,16 @@ impl ::re_types_core::FromArrow for ColumnOrder {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
                     {
-                        let arrow_data_inner = arrow_data_inner
-                            .try_cast::<StringArray>(|| DataType::Utf8)
-                            .with_context("rerun.blueprint.components.ColumnOrder#entity_paths")?;
-                        let arrow_data_inner_buf = arrow_data_inner.values();
-                        let offsets = arrow_data_inner.offsets();
-                        ZipValidity::new_with_validity(
-                            offsets.array_windows(),
-                            arrow_data_inner.nulls(),
+                        deserialize_strings(
+                            arrow_data_inner
+                                .try_cast::<StringArray>(|| DataType::Utf8)
+                                .with_context(
+                                    "rerun.blueprint.components.ColumnOrder#entity_paths",
+                                )?,
                         )
-                        .map(|elem| {
-                            elem.map(|&[start, end]| {
-                                let start = start as usize;
-                                let end = end as usize;
-                                let len = end - start;
-                                if arrow_data_inner_buf.len() < end {
-                                    return Err(DeserializationError::offset_slice_oob(
-                                        (start, end),
-                                        arrow_data_inner_buf.len(),
-                                    ));
-                                }
-                                let data = arrow_data_inner_buf.slice_with_length(start, len);
-                                Ok(data)
-                            })
-                            .transpose()
-                        })
-                        .map(|res_or_opt| {
-                            res_or_opt.map(|res_or_opt| {
-                                res_or_opt.map(|v| {
-                                    crate::encodings::EntityPath(
-                                        ::re_types_core::ArrowString::from(v),
-                                    )
-                                })
-                            })
-                        })
-                        .collect::<DeserializationResult<Vec<Option<_>>>>()
                         .with_context("rerun.blueprint.components.ColumnOrder#entity_paths")?
                         .into_iter()
+                        .map(|res_or_opt| res_or_opt.map(crate::encodings::EntityPath))
                     }
                     .collect::<Vec<_>>()
                 };

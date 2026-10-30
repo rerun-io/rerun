@@ -11,6 +11,10 @@ Use table blueprints to order, rename, or hide columns, embed segment previews, 
 
 Table blueprints are separate from [blueprints for individual recordings](build-a-blueprint-programmatically.md), though both are saved as `.rbl` files, and segment previews use the same view classes, such as `Spatial3DView`.
 
+An agent changes the table on screen through the [Viewer MCP server](../../reference/viewer/mcp.md#table-blueprints), which reads and writes the same blueprint as JSON.
+It writes the table blueprint rather than clicking through the **Columns** menu.
+The [`rerun-blueprint` skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-blueprint/SKILL.md) covers both the Python API and the MCP tools.
+
 The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/visualization/configure_table_blueprints.py) downloads 20 recordings from the public [DROID sample dataset](https://huggingface.co/datasets/rerun/droid_sample/tree/main), starts a local catalog server, and opens the Viewer.
 
 ## Prerequisites
@@ -20,7 +24,7 @@ For an introduction to catalog tables, see [Table entries](../../concepts/query-
 For creating and populating tables from query results, follow [Storing query results in catalog tables](../query-and-transform/catalog-tables.md).
 
 The example used here creates `my_table` with a `recording_uri` for each segment and `uuid` and `current_task` columns copied from DROID's episode properties.
-It also adds an `id` row key and a boolean `reviewed` column, used for [editable flags](#adding-editable-flags).
+It also adds an `id` row key and a boolean `reviewed` column, used for [editable flags](#editing-columns).
 (These are example-specific columns, not required table fields.)
 
 ## Configuring a catalog table
@@ -33,11 +37,16 @@ This only creates a column configuration — we'll add it to the card layout bel
 snippet: howto/visualization/configure_table_blueprints[preview]
 
 `Column` takes the source column's physical name; `name` overrides its display label.
+`column_type` overrides the component the column's values are shown as.
+It takes any component class, e.g. `rr.components.Url`, `rr.components.Thumbnail` or `rr.components.Color`.
+For the UI of one archetype field, pass its component descriptor, e.g. `rr.TextDocument.descriptor_text()`.
 
-`PreviewCell` is what renders the referenced recording using one or more views.
+Instead of a component, `column_type` also takes a `PreviewCell`, which is what we use here.
+`PreviewCell` renders the referenced recording using one or more views.
 You configure these views just as you would in a [recording blueprint](build-a-blueprint-programmatically.md), including their contents and view properties.
 Pass the views directly to `PreviewCell`, without the container layout tree (`Horizontal`, `Vertical`, `Tabs`, etc.) used to arrange a recording's viewport.
 Multiple views are shown side by side.
+Previews only come from a table blueprint, since the Viewer has no option to turn a column into a preview.
 
 ### Configuring card and table layouts
 
@@ -74,8 +83,12 @@ snippet: howto/visualization/configure_table_blueprints[layouts]
 Column settings are independent between the two layouts: here, the Viewer automatically displays `recording_uri` as a link in the table, while `PreviewCell` turns it into a preview on cards.
 
 Setting `card_layout` enables cards and makes them the initial layout.
-`PreviewsConfig` selects a timeline for the previews (omit it to let the Viewer choose automatically).
-This setting is shared by all preview columns, whether they're in a table or on cards.
+`PreviewsConfig` sets the timeline, play state, playback speed, and start point of the previews.
+These settings are shared by all preview columns, whether they're in a table or on cards.
+Without a `timeline`, the Viewer picks one automatically.
+Pass `play_state="playing"` to start all previews playing, and `playback_speed` to change their speed, e.g. `playback_speed=0.5` for half speed.
+It defaults to `0.5`, the middle of the recording.
+The play and speed buttons in the table toolbar change the same settings, and a single preview can still be played or paused on its own.
 
 ### Saving and registering the blueprint
 
@@ -90,9 +103,13 @@ snippet: howto/visualization/configure_table_blueprints[register_table]
 > This local example requires the server to access the same file path.
 > For remote servers, see [Using remote storage](#using-remote-storage).
 
-### Adding editable flags
+### Editing columns
 
-To make an existing boolean `reviewed` column editable, configure it with `editable=True` and a `FlagCell`, then add it to the layout's `columns` or `fields` list:
+To make a column editable, configure it with `editable=True` and add it to the layout's `columns` or `fields` list.
+A cell can be edited when its component type has an editor in the Viewer.
+
+To edit the boolean `reviewed` column as flag buttons, use `column_type=rr.components.Flag`.
+Card layouts show the first flag field in the card header:
 
 snippet: howto/visualization/configure_table_blueprints[flags]
 
@@ -104,9 +121,13 @@ snippet: howto/visualization/configure_table_blueprints[flags]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/table_blueprint_cards_flags/afad289d2beba7827f6586da1fc568dfec2de87e/1200w.png">
 </picture>
 
+To edit a string `notes` column as text, use `column_type=rr.components.Text`:
+
+snippet: howto/visualization/configure_table_blueprints[text]
+
 Editing requires write access to a catalog table with a row-key column marked with `rr.SORBET_IS_TABLE_INDEX` metadata.
 The Viewer uses this key to persist edits. See [Update a table](../query-and-transform/catalog-tables.md#update-a-table) for details.
-Editing flags is currently not supported on dataset segment tables.
+Editing is currently not supported on dataset segment tables.
 
 ### Filtering rows
 
@@ -149,6 +170,25 @@ Upload the `.rbl` file to storage the server has permission to read, then regist
 snippet: howto/visualization/configure_table_blueprints[register_remote]
 
 For dataset segment tables, use `get_dataset(…).register_blueprint(uri, segment_table=True)` instead.
+
+## What the blueprint stores
+
+A table blueprint is stored as blueprint entities, which is what an `.rbl` file holds and what the [Viewer MCP server](../../reference/viewer/mcp.md) reads and writes as JSON.
+Each Python class maps to these entity paths and archetypes:
+
+| Python | Entity path | Archetypes |
+|--------|-------------|------------|
+| `TableBlueprint` | `/table` | `TableBlueprint`, `PreviewsConfig` |
+| `TableLayout` | `/table/layouts/table` | `TableLayout`, with the columns in `column_order` |
+| `Column` in a `TableLayout` | `/table/layouts/table/columns/{column}` | `TableColumn`, and `TableColumnPreview` for a `PreviewCell` |
+| `CardLayout` | `/table/layouts/cards` | `CardLayout`, with the fields in `field_order` |
+| `Column` in a `CardLayout` | `/table/layouts/cards/fields/{column}` | `TableColumn`, and `TableColumnPreview` for a `PreviewCell` |
+| A view in a `PreviewCell` | `/view/{view_id}` | `ViewBlueprint` and its view properties, as in a recording blueprint |
+
+In an entity path, `:` and spaces in a column name are escaped as `\:` and `\ `.
+`TableColumnPreview.views` lists the `/view/{view_id}` paths of its views.
+A column with a `TableColumnPreview` shows as a preview.
+`TableColumn.column_type` holds the component identifier and component type set by `column_type`, e.g. `rerun.components.Flag`.
 
 ## Further examples
 

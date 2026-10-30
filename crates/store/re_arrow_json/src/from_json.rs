@@ -16,6 +16,11 @@ use crate::archetype_key::archetype_by_json_key;
 use crate::arrow_union::array_from_json;
 use crate::special::special_batch_from_json;
 
+/// Accepted alternative spellings of field names, as `(alias, field)`.
+///
+/// Only consulted when the archetype has no field by the given name.
+const FIELD_ALIASES: &[(&str, &str)] = &[("column_shares", "col_shares")];
+
 /// Why one JSON value could not be decoded into a component.
 #[derive(Debug, thiserror::Error)]
 pub enum ValueFromJsonError {
@@ -133,6 +138,25 @@ pub fn chunks_from_json(
     timepoint: &TimePoint,
     reflection: &Reflection,
 ) -> Result<Vec<Chunk>, ChunksFromJsonError> {
+    chunks_from_json_impl(json, Some(store), timepoint, reflection)
+}
+
+/// Write only the fields supplied in `json`, preserving all omitted fields and entities.
+/// Component batches and struct values replace the whole field; `null` clears a field.
+pub fn partial_chunks_from_json(
+    json: &Value,
+    timepoint: &TimePoint,
+    reflection: &Reflection,
+) -> Result<Vec<Chunk>, ChunksFromJsonError> {
+    chunks_from_json_impl(json, None, timepoint, reflection)
+}
+
+fn chunks_from_json_impl(
+    json: &Value,
+    store: Option<&ChunkStore>,
+    timepoint: &TimePoint,
+    reflection: &Reflection,
+) -> Result<Vec<Chunk>, ChunksFromJsonError> {
     re_tracing::profile_function!();
 
     let Value::Object(entities) = json else {
@@ -151,17 +175,36 @@ pub fn chunks_from_json(
         }
     }
 
-    for (entity_path, entry) in store.schema().all_column_metadata() {
-        if entry.datatype == DataType::Null {
-            continue;
+    if let Some(store) = store {
+        for (entity_path, entry) in store.schema().all_column_metadata() {
+            if entry.datatype == DataType::Null {
+                continue;
+            }
+            rows.entry(entity_path.clone())
+                .or_default()
+                .entry(entry.descriptor.component)
+                .or_insert_with(|| (entry.descriptor.clone(), new_empty_array(&entry.datatype)));
         }
-        rows.entry(entity_path.clone())
-            .or_default()
-            .entry(entry.descriptor.component)
-            .or_insert_with(|| (entry.descriptor.clone(), new_empty_array(&entry.datatype)));
     }
 
-    rows.into_iter()
+    // Even an empty Clear batch shadows components with the same (time, row id).
+    // Reset tombstones before writing replacement data, including data below cleared parents.
+    let clear_component = re_sdk_types::archetypes::Clear::descriptor_is_recursive().component;
+    let mut tombstone_resets = BTreeMap::new();
+    for (entity_path, row) in &mut rows {
+        if row
+            .get(&clear_component)
+            .is_some_and(|(_, batch)| batch.is_empty())
+            && let Some(clear) = row.remove(&clear_component)
+        {
+            tombstone_resets.insert(
+                entity_path.clone(),
+                BTreeMap::from([(clear_component, clear)]),
+            );
+        }
+    }
+
+    std::iter::chain(tombstone_resets, rows)
         .filter(|(_, components)| !components.is_empty())
         .map(|(entity_path, components)| {
             Chunk::builder(entity_path.clone())
@@ -224,7 +267,13 @@ fn archetype_components_from_json(
 
     let mut components = Vec::with_capacity(fields.len());
     for (field, value) in fields {
-        let Some(field_reflection) = archetype_reflection.field_by_name(field) else {
+        let field_reflection = archetype_reflection.field_by_name(field).or_else(|| {
+            FIELD_ALIASES
+                .iter()
+                .find(|(alias, _)| alias == field)
+                .and_then(|(_, name)| archetype_reflection.field_by_name(name))
+        });
+        let Some(field_reflection) = field_reflection else {
             return Err(ChunksFromJsonError::At {
                 location: location.to_owned(),
                 err: ValueFromJsonError::UnknownField {
@@ -390,6 +439,181 @@ mod tests {
         write(&mut blueprint, &json);
 
         assert_eq!(read(&blueprint), json);
+    }
+
+    /// Checks that a focused edit preserves unrelated settings and replaces arrays without merging.
+    #[test]
+    fn partial_updates_preserve_omitted_fields_and_replace_batches() {
+        // Keep the complete initial state so unrelated changes are caught by the comparison.
+        let mut blueprint = example_blueprint();
+        let mut expected = read(&blueprint);
+        let (scene, _) = view_paths(&expected);
+        let root = format!(
+            "/container/{}",
+            expected["/viewport"]["ViewportBlueprint"]["root_container"]
+                .as_str()
+                .unwrap()
+        );
+        // Exercise scalar replacement, whole-array replacement, and an explicit clear together.
+        let update = json!({
+            scene.clone(): {"ViewBlueprint": {"display_name": "Renamed"}},
+            root.clone(): {"ContainerBlueprint": {"col_shares": [5.0, 3.0]}},
+            "/viewport": {"ViewportBlueprint": {"maximized": null}}
+        });
+        for chunk in partial_chunks_from_json(
+            &update,
+            &TimePoint::default(),
+            re_sdk_types::reflection::reflection(),
+        )
+        .unwrap()
+        {
+            blueprint.add_chunk(&Arc::new(chunk)).unwrap();
+        }
+        // Only the supplied fields may differ from the initial blueprint.
+        expected[&scene]["ViewBlueprint"]["display_name"] = json!("Renamed");
+        expected[&root]["ContainerBlueprint"]["col_shares"] = json!([5.0, 3.0]);
+        expected["/viewport"]["ViewportBlueprint"]
+            .as_object_mut()
+            .unwrap()
+            .remove("maximized");
+        assert_eq!(read(&blueprint), expected);
+        // An empty partial update must not generate any writes.
+        assert!(
+            partial_chunks_from_json(
+                &json!({}),
+                &TimePoint::default(),
+                re_sdk_types::reflection::reflection(),
+            )
+            .unwrap()
+            .is_empty()
+        );
+    }
+
+    /// Checks that editing a cleared entity restores only the supplied fields, not older values.
+    #[test]
+    fn partial_updates_restore_only_supplied_fields_after_a_clear() {
+        use re_sdk_types::blueprint::archetypes::ViewBlueprint;
+        use re_sdk_types::blueprint::components::ViewClass;
+        use re_sdk_types::components::Name;
+
+        let mut blueprint = empty_blueprint();
+        let path = EntityPath::from("/view/aaaaaaaa-0000-4000-8000-000000000001");
+        let timeline = TimelineName::from_static_str("blueprint");
+        // Create a view, clear it, then restore only its name at a later time.
+        for (time, json) in [
+            (
+                1,
+                json!({path.to_string(): {"ViewBlueprint": {"class_identifier": "3D", "display_name": "Before"}}}),
+            ),
+            (
+                2,
+                json!({path.to_string(): {"Clear": {"is_recursive": true}}}),
+            ),
+            (
+                3,
+                json!({path.to_string(): {"ViewBlueprint": {"display_name": "After"}}}),
+            ),
+        ] {
+            for chunk in partial_chunks_from_json(
+                &json,
+                &TimePoint::from([(timeline, re_log_types::TimeCell::from_sequence(time))]),
+                re_sdk_types::reflection::reflection(),
+            )
+            .unwrap()
+            {
+                blueprint.add_chunk(&Arc::new(chunk)).unwrap();
+            }
+        }
+        // The new name must be visible without reviving the cleared view class.
+        let name = ViewBlueprint::descriptor_display_name().component;
+        let class = ViewBlueprint::descriptor_class_identifier().component;
+        let results = blueprint.storage_engine().cache().latest_at(
+            re_chunk_store::ChunkTrackingMode::Report,
+            &LatestAtQuery::latest(timeline),
+            &path,
+            [name, class],
+        );
+        assert_eq!(results.component_mono::<Name>(name), Some("After".into()));
+        assert_eq!(results.component_mono::<ViewClass>(class), None);
+    }
+
+    /// Checks that cleared container IDs and descendants can be reused across repeated writes.
+    #[test]
+    fn replacing_a_cleared_entity_restores_its_components() {
+        use re_sdk_types::blueprint::archetypes::ContainerBlueprint;
+        use re_sdk_types::blueprint::components::ContainerKind;
+
+        // Include a child to cover the effect of recursive clears on descendants.
+        let mut blueprint = empty_blueprint();
+        let path = EntityPath::from("/container/aaaaaaaa-0000-4000-8000-000000000001");
+        let child = EntityPath::from(format!("{path}/child").as_str());
+        let replacement = json!({
+            path.to_string(): {"ContainerBlueprint": {"container_kind": "Horizontal"}},
+            child.to_string(): {"ContainerBlueprint": {"container_kind": "Horizontal"}}
+        });
+        let timeline = TimelineName::from_static_str("blueprint");
+
+        // Restore both paths repeatedly, then restore each alone after a recursive clear.
+        for (time, json, visible) in [
+            (1, replacement.clone(), [true, true]),
+            (
+                2,
+                json!({path.to_string(): {"Clear": {"is_recursive": true}}}),
+                [false, false],
+            ),
+            (3, replacement.clone(), [true, true]),
+            (4, replacement.clone(), [true, true]),
+            (
+                5,
+                json!({path.to_string(): {"Clear": {"is_recursive": true}}}),
+                [false, false],
+            ),
+            (
+                6,
+                json!({path.to_string(): {"ContainerBlueprint": {"container_kind": "Horizontal"}}}),
+                [true, false],
+            ),
+            (7, replacement, [true, true]),
+            (
+                8,
+                json!({path.to_string(): {"Clear": {"is_recursive": true}}}),
+                [false, false],
+            ),
+            (
+                9,
+                json!({child.to_string(): {"ContainerBlueprint": {"container_kind": "Horizontal"}}}),
+                [false, true],
+            ),
+        ] {
+            // Apply each full JSON replacement through the normal conversion path.
+            let chunks = chunks_from_json(
+                &json,
+                blueprint.storage_engine().store(),
+                &TimePoint::from([(timeline, re_log_types::TimeCell::from_sequence(time))]),
+                re_sdk_types::reflection::reflection(),
+            )
+            .unwrap();
+            for chunk in chunks {
+                blueprint.add_chunk(&Arc::new(chunk)).unwrap();
+            }
+
+            // Restoring one path must not revive omitted components on the other.
+            for (entity, visible) in std::iter::zip([&path, &child], visible) {
+                let results = blueprint.storage_engine().cache().latest_at(
+                    re_chunk_store::ChunkTrackingMode::Report,
+                    &LatestAtQuery::latest(timeline),
+                    entity,
+                    [ContainerBlueprint::descriptor_container_kind().component],
+                );
+                assert_eq!(
+                    results.component_mono::<ContainerKind>(
+                        ContainerBlueprint::descriptor_container_kind().component
+                    ),
+                    visible.then_some(ContainerKind::Horizontal),
+                    "replacement at time {time}: {entity}"
+                );
+            }
+        }
     }
 
     /// Every field of every blueprint archetype survives JSON and back, so a new one cannot
@@ -579,6 +803,20 @@ mod tests {
         write(&mut blueprint, &json);
 
         assert_eq!(read(&blueprint), json);
+    }
+
+    #[test]
+    fn field_aliases_are_read_as_their_field() {
+        let mut blueprint = empty_blueprint();
+        write(
+            &mut blueprint,
+            &json!({ "/container/c": { "ContainerBlueprint": { "column_shares": [2.0, 1.0] } } }),
+        );
+
+        assert_eq!(
+            read(&blueprint),
+            json!({ "/container/c": { "ContainerBlueprint": { "col_shares": [2.0, 1.0] } } })
+        );
     }
 
     #[test]

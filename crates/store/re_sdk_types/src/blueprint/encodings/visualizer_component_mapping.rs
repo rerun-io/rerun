@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -77,10 +74,10 @@ impl ::re_types_core::ToArrow for VisualizerComponentMapping {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
+        use ::re_types_core::arrow_helpers::{
+            as_array_ref, serialize_optional_strings, validity_from_bools,
         };
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -112,29 +109,14 @@ impl ::re_types_core::ToArrow for VisualizerComponentMapping {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let target_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let target_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                target.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in target.iter().flatten() {
-                                buffer_builder.append_slice(data.0.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, target_validity)
-                            })
+                            serialize_optional_strings(
+                                target
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.0.as_str())),
+                                target_validity,
+                            )?
                         }
                     },
                     {
@@ -145,10 +127,7 @@ impl ::re_types_core::ToArrow for VisualizerComponentMapping {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let source_kind_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let source_kind_validity = validity_from_bools(somes);
                         {
                             let _ = source_kind_validity;
                             crate::blueprint::encodings::ComponentSourceKind::to_arrow_opt(
@@ -164,33 +143,14 @@ impl ::re_types_core::ToArrow for VisualizerComponentMapping {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let source_component_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let source_component_validity = validity_from_bools(somes);
                         {
-                            let offsets = arrow::buffer::OffsetBuffer::from_lengths(
-                                source_component.iter().map(|opt| {
-                                    opt.as_ref().map(|datum| datum.len()).unwrap_or_default()
-                                }),
-                            );
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in source_component.iter().flatten() {
-                                buffer_builder.append_slice(data.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(
-                                    offsets,
-                                    inner_data,
-                                    source_component_validity,
-                                )
-                            })
+                            serialize_optional_strings(
+                                source_component
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.as_str())),
+                                source_component_validity,
+                            )?
                         }
                     },
                     {
@@ -201,28 +161,14 @@ impl ::re_types_core::ToArrow for VisualizerComponentMapping {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let selector_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let selector_validity = validity_from_bools(somes);
                         {
-                            let offsets =
-                                arrow::buffer::OffsetBuffer::from_lengths(selector.iter().map(
-                                    |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
-                                ));
-                            #[expect(clippy::unwrap_used)]
-                            let capacity = offsets.last().copied().unwrap() as usize;
-                            let mut buffer_builder =
-                                arrow::array::builder::BufferBuilder::<u8>::new(capacity);
-                            for data in selector.iter().flatten() {
-                                buffer_builder.append_slice(data.as_bytes());
-                            }
-                            let inner_data: arrow::buffer::Buffer = buffer_builder.finish();
-
-                            #[expect(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            as_array_ref(unsafe {
-                                StringArray::new_unchecked(offsets, inner_data, selector_validity)
-                            })
+                            serialize_optional_strings(
+                                selector
+                                    .iter()
+                                    .map(|value| value.as_ref().map(|value| value.as_str())),
+                                selector_validity,
+                            )?
                         }
                     },
                 ],
@@ -256,88 +202,30 @@ impl ::re_types_core::FromArrow for VisualizerComponentMapping {
                     if arrow_data.is_empty() {
                         Vec::new()
                     } else {
-                        let (arrow_data_fields, arrow_data_arrays) = (
-                            arrow_data.fields(),
-                            arrow_data.columns(),
+                        let fields = StructFields::new(
+                            arrow_data,
+                            Self::arrow_data_type,
+                            "rerun.blueprint.encodings.VisualizerComponentMapping",
                         );
-                        let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                                arrow_data_fields.iter().map(|field| field.name().as_str()),
-                                arrow_data_arrays,
-                            )
-                            .collect();
                         let target = {
-                            if !arrays_by_name.contains_key("target") {
-                                return Err(
-                                        DeserializationError::missing_struct_field(
-                                            Self::arrow_data_type(),
-                                            "target",
-                                        ),
-                                    )
-                                    .with_context(
-                                        "rerun.blueprint.encodings.VisualizerComponentMapping",
-                                    );
-                            }
-                            let arrow_data = &**arrays_by_name["target"];
+                            let arrow_data = fields.required("target")?;
                             {
-                                let arrow_data = arrow_data
-                                    .try_cast::<StringArray>(|| DataType::Utf8)
-                                    .with_context(
-                                        "rerun.blueprint.encodings.VisualizerComponentMapping#target",
-                                    )?;
-                                let arrow_data_buf = arrow_data.values();
-                                let offsets = arrow_data.offsets();
-                                ZipValidity::new_with_validity(
-                                        offsets.array_windows(),
-                                        arrow_data.nulls(),
+                                deserialize_strings(
+                                        arrow_data
+                                            .try_cast::<StringArray>(|| DataType::Utf8)
+                                            .with_context(
+                                                "rerun.blueprint.encodings.VisualizerComponentMapping#target",
+                                            )?,
                                     )
-                                    .map(|elem| {
-                                        elem
-                                            .map(|&[start, end]| {
-                                                let start = start as usize;
-                                                let end = end as usize;
-                                                let len = end - start;
-                                                if arrow_data_buf.len() < end {
-                                                    return Err(
-                                                        DeserializationError::offset_slice_oob(
-                                                            (start, end),
-                                                            arrow_data_buf.len(),
-                                                        ),
-                                                    );
-                                                }
-                                                let data = arrow_data_buf.slice_with_length(start, len);
-                                                Ok(data)
-                                            })
-                                            .transpose()
-                                    })
-                                    .map(|res_or_opt| {
-                                        res_or_opt
-                                            .map(|res_or_opt| {
-                                                res_or_opt
-                                                    .map(|v| crate::encodings::Utf8(
-                                                        ::re_types_core::ArrowString::from(v),
-                                                    ))
-                                            })
-                                    })
-                                    .collect::<DeserializationResult<Vec<Option<_>>>>()
                                     .with_context(
                                         "rerun.blueprint.encodings.VisualizerComponentMapping#target",
                                     )?
                                     .into_iter()
+                                    .map(|res_or_opt| res_or_opt.map(crate::encodings::Utf8))
                             }
                         };
                         let source_kind = {
-                            if !arrays_by_name.contains_key("source_kind") {
-                                return Err(
-                                        DeserializationError::missing_struct_field(
-                                            Self::arrow_data_type(),
-                                            "source_kind",
-                                        ),
-                                    )
-                                    .with_context(
-                                        "rerun.blueprint.encodings.VisualizerComponentMapping",
-                                    );
-                            }
-                            let arrow_data = &**arrays_by_name["source_kind"];
+                            let arrow_data = fields.required("source_kind")?;
                             crate::blueprint::encodings::ComponentSourceKind::from_arrow_opt(
                                     arrow_data,
                                 )
@@ -347,56 +235,15 @@ impl ::re_types_core::FromArrow for VisualizerComponentMapping {
                                 .into_iter()
                         };
                         let source_component = {
-                            if !arrays_by_name.contains_key("source_component") {
-                                return Err(
-                                        DeserializationError::missing_struct_field(
-                                            Self::arrow_data_type(),
-                                            "source_component",
-                                        ),
-                                    )
-                                    .with_context(
-                                        "rerun.blueprint.encodings.VisualizerComponentMapping",
-                                    );
-                            }
-                            let arrow_data = &**arrays_by_name["source_component"];
+                            let arrow_data = fields.required("source_component")?;
                             {
-                                let arrow_data = arrow_data
-                                    .try_cast::<StringArray>(|| DataType::Utf8)
-                                    .with_context(
-                                        "rerun.blueprint.encodings.VisualizerComponentMapping#source_component",
-                                    )?;
-                                let arrow_data_buf = arrow_data.values();
-                                let offsets = arrow_data.offsets();
-                                ZipValidity::new_with_validity(
-                                        offsets.array_windows(),
-                                        arrow_data.nulls(),
+                                deserialize_strings(
+                                        arrow_data
+                                            .try_cast::<StringArray>(|| DataType::Utf8)
+                                            .with_context(
+                                                "rerun.blueprint.encodings.VisualizerComponentMapping#source_component",
+                                            )?,
                                     )
-                                    .map(|elem| {
-                                        elem
-                                            .map(|&[start, end]| {
-                                                let start = start as usize;
-                                                let end = end as usize;
-                                                let len = end - start;
-                                                if arrow_data_buf.len() < end {
-                                                    return Err(
-                                                        DeserializationError::offset_slice_oob(
-                                                            (start, end),
-                                                            arrow_data_buf.len(),
-                                                        ),
-                                                    );
-                                                }
-                                                let data = arrow_data_buf.slice_with_length(start, len);
-                                                Ok(data)
-                                            })
-                                            .transpose()
-                                    })
-                                    .map(|res_or_opt| {
-                                        res_or_opt
-                                            .map(|res_or_opt| {
-                                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
-                                            })
-                                    })
-                                    .collect::<DeserializationResult<Vec<Option<_>>>>()
                                     .with_context(
                                         "rerun.blueprint.encodings.VisualizerComponentMapping#source_component",
                                     )?
@@ -404,56 +251,15 @@ impl ::re_types_core::FromArrow for VisualizerComponentMapping {
                             }
                         };
                         let selector = {
-                            if !arrays_by_name.contains_key("selector") {
-                                return Err(
-                                        DeserializationError::missing_struct_field(
-                                            Self::arrow_data_type(),
-                                            "selector",
-                                        ),
-                                    )
-                                    .with_context(
-                                        "rerun.blueprint.encodings.VisualizerComponentMapping",
-                                    );
-                            }
-                            let arrow_data = &**arrays_by_name["selector"];
+                            let arrow_data = fields.required("selector")?;
                             {
-                                let arrow_data = arrow_data
-                                    .try_cast::<StringArray>(|| DataType::Utf8)
-                                    .with_context(
-                                        "rerun.blueprint.encodings.VisualizerComponentMapping#selector",
-                                    )?;
-                                let arrow_data_buf = arrow_data.values();
-                                let offsets = arrow_data.offsets();
-                                ZipValidity::new_with_validity(
-                                        offsets.array_windows(),
-                                        arrow_data.nulls(),
+                                deserialize_strings(
+                                        arrow_data
+                                            .try_cast::<StringArray>(|| DataType::Utf8)
+                                            .with_context(
+                                                "rerun.blueprint.encodings.VisualizerComponentMapping#selector",
+                                            )?,
                                     )
-                                    .map(|elem| {
-                                        elem
-                                            .map(|&[start, end]| {
-                                                let start = start as usize;
-                                                let end = end as usize;
-                                                let len = end - start;
-                                                if arrow_data_buf.len() < end {
-                                                    return Err(
-                                                        DeserializationError::offset_slice_oob(
-                                                            (start, end),
-                                                            arrow_data_buf.len(),
-                                                        ),
-                                                    );
-                                                }
-                                                let data = arrow_data_buf.slice_with_length(start, len);
-                                                Ok(data)
-                                            })
-                                            .transpose()
-                                    })
-                                    .map(|res_or_opt| {
-                                        res_or_opt
-                                            .map(|res_or_opt| {
-                                                res_or_opt.map(|v| ::re_types_core::ArrowString::from(v))
-                                            })
-                                    })
-                                    .collect::<DeserializationResult<Vec<Option<_>>>>()
                                     .with_context(
                                         "rerun.blueprint.encodings.VisualizerComponentMapping#selector",
                                     )?

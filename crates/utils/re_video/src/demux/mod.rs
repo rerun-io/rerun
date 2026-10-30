@@ -304,6 +304,9 @@ impl VideoDataDescription {
                         return Err(format!("Keyframe {keyframe} is not marked with `is_sync`."));
                     }
                 }
+                SampleMetadataState::Clear { .. } => {
+                    return Err(format!("Keyframe {keyframe} refers to a clear"));
+                }
                 SampleMetadataState::Unloaded { .. } => {
                     return Err(format!("Keyframe {keyframe} refers to an unloaded sample"));
                 }
@@ -557,9 +560,9 @@ impl SamplesStatistics {
             samples
                 .iter()
                 .map(move |sample| {
-                    sample.sample().is_some_and(|sample| {
-                        if sample.presentation_timestamp > biggest_pts_so_far {
-                            biggest_pts_so_far = sample.presentation_timestamp;
+                    sample.presentation_timestamp().is_some_and(|pts| {
+                        if pts > biggest_pts_so_far {
+                            biggest_pts_so_far = pts;
                             true
                         } else {
                             false
@@ -576,6 +579,7 @@ impl SamplesStatistics {
                 |(mut sizes, mut count), sample| {
                     let ends_gop = match sample {
                         SampleMetadataState::Present(s) => s.is_sync,
+                        SampleMetadataState::Clear { .. } => false,
                         SampleMetadataState::Unloaded { .. } => true,
                     };
 
@@ -801,7 +805,8 @@ impl VideoDataDescription {
 
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
     ///
-    /// If ok, the returned sample index is guaranteed to be [`SampleMetadataState::Present`].
+    /// If ok, the returned sample index is guaranteed to be [`SampleMetadataState::Present`]
+    /// or [`SampleMetadataState::Clear`].
     ///
     /// ### Returns
     /// If we find a loaded sample with the best presentation timestamp, returns `Ok(sample_idx)`.
@@ -843,20 +848,18 @@ impl VideoDataDescription {
         let mut best_index = SampleIndex::MAX;
         let mut best_pts = Time::MIN;
         for sample_idx in (samples.min_index()..=decode_sample_idx).rev() {
-            let Some(sample) = samples[sample_idx].sample() else {
+            let Some(sample_pts) = samples[sample_idx].presentation_timestamp() else {
                 return Err(Some(sample_idx));
             };
 
-            if sample.presentation_timestamp == presentation_timestamp {
+            if sample_pts == presentation_timestamp {
                 // Clean hit. Take this one, no questions asked :)
                 // (assuming that each PTS is unique!)
                 return Ok(sample_idx);
             }
 
-            if sample.presentation_timestamp < presentation_timestamp
-                && sample.presentation_timestamp > best_pts
-            {
-                best_pts = sample.presentation_timestamp;
+            if sample_pts < presentation_timestamp && sample_pts > best_pts {
+                best_pts = sample_pts;
                 best_index = sample_idx;
             }
 
@@ -878,7 +881,7 @@ impl VideoDataDescription {
     /// if the stream has sample reordering!
     ///
     /// ### Returns
-    /// If we find a loaded sample with the best presentation timestamp, returns `Ok(sample_idx)`.
+    /// If we find a loaded sample or a clear with the best presentation timestamp, returns `Ok(sample_idx)`.
     /// If we run into some unloaded sample that should be decoded at this timestamp, returns
     /// `Err(Some(sample_idx))`. Otherwise, returns `Err(None)`.
     pub fn latest_sample_index_at_presentation_timestamp(
@@ -909,7 +912,16 @@ impl VideoDataDescription {
             .ok()?;
 
         for sample_idx in (self.samples.min_index()..=last_idx).rev() {
-            let sample = self.samples[sample_idx].sample()?;
+            let sample = match &self.samples[sample_idx] {
+                SampleMetadataState::Present(sample) => sample,
+                SampleMetadataState::Clear { timestamp, .. } => {
+                    if *timestamp != presentation_timestamp {
+                        break;
+                    }
+                    continue;
+                }
+                SampleMetadataState::Unloaded { .. } => return None,
+            };
 
             if sample.presentation_timestamp != presentation_timestamp {
                 break;
@@ -927,16 +939,22 @@ impl VideoDataDescription {
     /// Remember that samples are ordered in decode timestamp order,
     /// and that sample presented immediately prior to the given sample may have a higher decode timestamp.
     /// Therefore, this may be a jump on sample index.
+    ///
+    /// Clears in between are skipped.
     pub fn previous_presented_sample(&self, sample: &SampleMetadata) -> Option<&SampleMetadata> {
-        let idx = Self::latest_sample_index_at_presentation_timestamp_internal(
-            &self.samples,
-            &self.samples_statistics,
-            sample.presentation_timestamp - Time::new(1),
-        )
-        .ok()?;
-        match self.samples.get(idx) {
-            Some(SampleMetadataState::Present(sample)) => Some(sample),
-            None | Some(_) => unreachable!(),
+        let mut pts = sample.presentation_timestamp;
+        loop {
+            let idx = Self::latest_sample_index_at_presentation_timestamp_internal(
+                &self.samples,
+                &self.samples_statistics,
+                pts - Time::new(1),
+            )
+            .ok()?;
+            match self.samples.get(idx) {
+                Some(SampleMetadataState::Present(sample)) => return Some(sample),
+                Some(SampleMetadataState::Clear { timestamp, .. }) => pts = *timestamp,
+                None | Some(SampleMetadataState::Unloaded { .. }) => unreachable!(),
+            }
         }
     }
 
@@ -977,11 +995,17 @@ impl VideoDataDescription {
 
 /// The state of the current sample.
 ///
-/// When the source is loaded, all of its samples will be either `Present` or `Skip`.
+/// When the source is loaded, all of its samples are either `Present` or `Clear`.
 #[derive(Debug, Clone, re_byte_size::SizeBytes)]
 pub enum SampleMetadataState {
     /// Sample is present and contains video data.
     Present(SampleMetadata),
+
+    /// Nothing is shown from `timestamp` until the next sample.
+    ///
+    /// A clear has no video data and is never a keyframe. Decoding continues across it.
+    /// `source_id` is the primary id of the container the clear comes from.
+    Clear { source_id: Tuid, timestamp: Time },
 
     /// The source for this sample hasn't arrived yet.
     ///
@@ -995,15 +1019,30 @@ impl SampleMetadataState {
     pub fn sample(&self) -> Option<&SampleMetadata> {
         match self {
             Self::Present(sample_metadata) => Some(sample_metadata),
-            Self::Unloaded { .. } => None,
+            Self::Clear { .. } | Self::Unloaded { .. } => None,
         }
     }
 
     pub fn sample_mut(&mut self) -> Option<&mut SampleMetadata> {
         match self {
             Self::Present(sample_metadata) => Some(sample_metadata),
+            Self::Clear { .. } | Self::Unloaded { .. } => None,
+        }
+    }
+
+    /// The presentation timestamp of a present sample or a clear.
+    ///
+    /// `None` for unloaded samples.
+    pub fn presentation_timestamp(&self) -> Option<Time> {
+        match self {
+            Self::Present(sample) => Some(sample.presentation_timestamp),
+            Self::Clear { timestamp, .. } => Some(*timestamp),
             Self::Unloaded { .. } => None,
         }
+    }
+
+    pub fn is_clear(&self) -> bool {
+        matches!(self, Self::Clear { .. })
     }
 
     /// The full [`VideoSource`] descriptor for this sample.
@@ -1013,7 +1052,7 @@ impl SampleMetadataState {
     pub fn source(&self) -> VideoSource {
         match self {
             Self::Present(sample) => sample.source,
-            Self::Unloaded { source_id, .. } => VideoSource::Id {
+            Self::Clear { source_id, .. } | Self::Unloaded { source_id, .. } => VideoSource::Id {
                 container_id: *source_id,
                 sample_id: None,
             },
@@ -1029,7 +1068,7 @@ impl SampleMetadataState {
     pub fn source_primary_id(&self) -> Option<Tuid> {
         match self {
             Self::Present(sample) => sample.source.primary_id(),
-            Self::Unloaded { source_id, .. } => Some(*source_id),
+            Self::Clear { source_id, .. } | Self::Unloaded { source_id, .. } => Some(*source_id),
         }
     }
 
@@ -1038,8 +1077,12 @@ impl SampleMetadataState {
     /// actual bytes.
     ///
     /// Returns `None` for [`VideoSource::Span`] sources, which have no
-    /// container the host could unload.
+    /// container the host could unload, and for clears, which need no data.
     pub fn source_to_mark_in_use(&self) -> Option<VideoSource> {
+        if self.is_clear() {
+            return None;
+        }
+
         self.source_primary_id()
             .map(|container_id| VideoSource::Id {
                 container_id,
@@ -1056,7 +1099,9 @@ impl SampleMetadataState {
                 VideoSource::Span(_) => {}
                 VideoSource::Id { container_id, .. } => *container_id = new_id,
             },
-            Self::Unloaded { source_id, .. } => *source_id = new_id,
+            Self::Clear { source_id, .. } | Self::Unloaded { source_id, .. } => {
+                *source_id = new_id;
+            }
         }
     }
 
@@ -1071,6 +1116,7 @@ impl SampleMetadataState {
     pub fn decode_timestamp(&self) -> Time {
         match self {
             Self::Present(sample) => sample.decode_timestamp,
+            Self::Clear { timestamp, .. } => *timestamp,
             Self::Unloaded { min_dts, .. } => *min_dts,
         }
     }
@@ -1092,6 +1138,15 @@ impl SampleMetadataState {
                     min_dts: dts,
                 }
             }
+            Self::Clear {
+                source_id,
+                timestamp,
+            } => {
+                *self = Self::Unloaded {
+                    source_id: new_primary_id.unwrap_or(*source_id),
+                    min_dts: *timestamp,
+                }
+            }
             Self::Unloaded {
                 source_id,
                 min_dts: _,
@@ -1105,7 +1160,7 @@ impl SampleMetadataState {
 
     pub fn is_loaded(&self) -> bool {
         match self {
-            Self::Present(_) => true,
+            Self::Present(_) | Self::Clear { .. } => true,
             Self::Unloaded { .. } => false,
         }
     }

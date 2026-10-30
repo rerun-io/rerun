@@ -11,9 +11,9 @@ use re_ui::{
 };
 use re_viewer_context::{
     CollapseScope, ContainerId, Contents, DataResultInteractionAddress, DragAndDropFeedback,
-    DragAndDropPayload, HoverHighlight, Item, ItemCollection, ItemContext, SystemCommand,
-    SystemCommandSender as _, ViewId, ViewStates, ViewerContext, ViewerReportSeverity,
-    VisitorControlFlow, VisualizerViewReport, icon_for_container_kind,
+    DragAndDropPayload, HoverHighlight, Item, ItemCollection, ItemContext, RecordingCommandKind,
+    SystemCommand, SystemCommandSender as _, ViewId, ViewStates, ViewerContext,
+    ViewerReportSeverity, VisitorControlFlow, VisualizerViewReport, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use smallvec::SmallVec;
@@ -99,8 +99,11 @@ impl BlueprintTree {
                             .on_hover_text("Open menu with more options")
                             .on_menu(|ui| {
                                 let recording_id = ctx.store_context.recording_store_id();
-                                re_ui::RecordingCommandKind::OpenAddViewOrContainerDialog
-                                    .menu_button_ui(ui, Some(recording_id), ctx.command_sender());
+                                RecordingCommandKind::OpenAddViewOrContainerDialog.menu_button_ui(
+                                    ui,
+                                    Some(recording_id),
+                                    ctx.command_sender(),
+                                );
                                 set_blueprint_to_default_menu_buttons(ctx, ui);
                                 set_blueprint_to_auto_menu_button(ctx, ui);
                             }),
@@ -569,6 +572,7 @@ impl BlueprintTree {
                     ctx.egui_ctx(),
                     &data_result_data.label,
                     data_result_data.highlight_sections.iter().cloned(),
+                    &egui::TextStyle::Body,
                     format_color,
                 ))
                 .with_icon(guess_instance_path_icon(
@@ -906,7 +910,7 @@ impl BlueprintTree {
             &item_desc,
             response.rect,
             None,
-            DesignTokens::list_item_height(),
+            DesignTokens::list_item_height(re_ui::ListItemDensity::Spacious),
         );
 
         if let Some(drop_target) = drop_target {
@@ -986,7 +990,7 @@ impl BlueprintTree {
             &item_desc,
             response.rect,
             body_response.map(|r| r.rect),
-            DesignTokens::list_item_height(),
+            DesignTokens::list_item_height(re_ui::ListItemDensity::Spacious),
         );
 
         if let Some(drop_target) = drop_target {
@@ -1263,7 +1267,7 @@ fn set_blueprint_to_default_menu_buttons(ctx: &ViewerContext<'_>, ui: &mut egui:
     let recording_id = disabled_reason
         .is_none()
         .then(|| ctx.store_context.recording_store_id());
-    let response = re_ui::RecordingCommandKind::ResetBlueprintToDefault.menu_button_ui(
+    let response = RecordingCommandKind::ResetBlueprintToDefault.menu_button_ui(
         ui,
         recording_id,
         ctx.command_sender(),
@@ -1282,7 +1286,7 @@ fn set_blueprint_to_auto_menu_button(ctx: &ViewerContext<'_>, ui: &mut egui::Ui)
     //    * these heuristics run incrementally, does rerunning them in bulk change anything?
     // * any changes in overrides/defaults/view-property means that a reset would change something
     let recording_id = ctx.store_context.recording_store_id();
-    re_ui::RecordingCommandKind::ResetBlueprintToHeuristic.menu_button_ui(
+    RecordingCommandKind::ResetBlueprintToHeuristic.menu_button_ui(
         ui,
         Some(recording_id),
         ctx.command_sender(),

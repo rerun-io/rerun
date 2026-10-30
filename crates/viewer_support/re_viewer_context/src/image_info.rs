@@ -530,13 +530,13 @@ impl ImageInfo {
 }
 
 fn bgr_to_rgb<T: Clone>(bgr_elements: &mut [T]) {
-    for bgr in bgr_elements.chunks_exact_mut(3) {
+    for bgr in bgr_elements.as_chunks_mut::<3>().0 {
         bgr.swap(0, 2);
     }
 }
 
 fn bgra_to_rgba<T: Clone>(bgra_elements: &mut [T]) {
-    for bgra in bgra_elements.chunks_exact_mut(4) {
+    for bgra in bgra_elements.as_chunks_mut::<4>().0 {
         bgra.swap(0, 2);
     }
 }

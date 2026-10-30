@@ -9,14 +9,12 @@ use std::task::Poll;
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_redap_browser::RedapServers;
-use re_ui::{
-    BoundCommand, CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd,
-    SyntaxHighlighting as _,
-};
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_ui::{CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd};
+use re_viewer_context::viewer_url::ViewerUrl;
+use re_viewer_context::{BoundCommand, StoreSyntaxHighlighting as _};
 
 use crate::command_catalog::{CommandContext, catalog_commands};
-use crate::open_url_description::ViewerOpenUrlDescription;
+use crate::viewer_url_description::ViewerUrlDescription;
 
 /// Something the user can pick in the command palette.
 #[derive(Clone, Debug)]
@@ -50,11 +48,19 @@ pub enum CommandPaletteAction {
     /// ui commands usually don't have arbitrary state. We keep the raw query string and let the
     /// handler re-parse it, so this also covers file paths and schemeless URLs.
     OpenUrl(String),
+
+    /// Submit a prompt from agent mode, opening the agent panel.
+    AskAgent(String),
+
+    /// Open agent setup without submitting a prompt.
+    SetUpAgent,
 }
 
 impl CommandPaletteAction {
     fn tooltip(&self) -> &'static str {
         match self {
+            Self::AskAgent(_) => "Send this prompt to the agent",
+            Self::SetUpAgent => "Set up an agent",
             Self::Command(command) => command.kind().tooltip(),
             Self::SelectEntityPath(_) => "Select and focus on this entity",
             Self::SelectComponentPath(_) => "Select and focus on this component",
@@ -70,7 +76,9 @@ impl CommandPaletteAction {
     pub fn is_debug_only(&self) -> bool {
         match self {
             Self::Command(command) => command.kind().is_debug_only(),
-            Self::SelectEntityPath(_)
+            Self::AskAgent(_)
+            | Self::SetUpAgent
+            | Self::SelectEntityPath(_)
             | Self::SelectComponentPath(_)
             | Self::SelectRedapServer(_)
             | Self::SelectRedapEntry { .. }
@@ -81,6 +89,12 @@ impl CommandPaletteAction {
 
 /// Feeds the viewer's commands into the [`re_ui::CommandPalette`].
 pub struct CommandPaletteProviderImpl<'a> {
+    /// Whether the agent panel feature is enabled, allowing agent mode in the palette.
+    pub agent_enabled: bool,
+
+    /// Whether agent setup has been completed, allowing prompt submission.
+    pub agent_setup_done: bool,
+
     /// The active recording, if any. Provides entity-path completion.
     pub recording: Option<&'a EntityDb>,
 
@@ -92,17 +106,25 @@ pub struct CommandPaletteProviderImpl<'a> {
 }
 
 impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl<'_> {
-    fn initial_hint_ui(&mut self, ui: &mut egui::Ui) {
+    fn agent_enabled(&self) -> bool {
+        self.agent_enabled
+    }
+
+    fn submit_agent_prompt(&mut self, query: &str) -> Option<CommandPaletteAction> {
+        (self.agent_enabled && self.agent_setup_done && !query.trim().is_empty())
+            .then(|| CommandPaletteAction::AskAgent(query.to_owned()))
+    }
+
+    fn agent_setup_action(&self) -> Option<CommandPaletteAction> {
+        (self.agent_enabled && !self.agent_setup_done).then_some(CommandPaletteAction::SetUpAgent)
+    }
+
+    fn search_hint(&self) -> &'static str {
         if self.recording.is_some() {
-            ui.weak(
-                "Find a command, search for an entity, dataset or table, or enter a URL to open",
-            );
+            "Find a command, search for an entity, dataset or table, or enter a URL to open."
         } else {
-            ui.weak(
-                "Find a command, search for a server, dataset or table, or enter a URL to open",
-            );
+            "Find a command, search for a server, dataset or table, or enter a URL to open."
         }
-        ui.add_space(4.0);
     }
 
     fn all_matching(&mut self, query: &FuzzyQuery) -> Vec<MatchGroup<CommandPaletteAction>> {
@@ -247,14 +269,14 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         };
 
         let raw_url = query.raw_query().trim();
-        let url_group = if let Ok(open_url) = ViewerOpenUrl::parse_with_options(
+        let url_group = if let Ok(open_url) = ViewerUrl::parse_with_options(
             raw_url,
             &re_data_source::FromUriOptions {
                 accept_extensionless_http: true,
             },
         ) {
             // The user entered something openable (URL, file path, …). Offer to open it!
-            let command_text = format!("Open {}", ViewerOpenUrlDescription::from_url(&open_url));
+            let command_text = format!("Open {}", ViewerUrlDescription::from_url(&open_url));
             vec![MatchedCmd {
                 fuzzy_match: FuzzyMatch::highest(command_text),
                 command: CommandPaletteAction::OpenUrl(raw_url.to_owned()),
@@ -264,6 +286,7 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
             vec![]
         };
 
+        // Keep search sources in separate groups for ranking and truncation.
         itertools::chain!(
             [ui_cmd_group, entity_group, server_group],
             entry_groups,
@@ -283,7 +306,9 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
                 .kind()
                 .formatted_kb_shortcut(ui.ctx())
                 .unwrap_or_default(),
-            CommandPaletteAction::SelectEntityPath(_)
+            CommandPaletteAction::AskAgent(_)
+            | CommandPaletteAction::SetUpAgent
+            | CommandPaletteAction::SelectEntityPath(_)
             | CommandPaletteAction::SelectComponentPath(_)
             | CommandPaletteAction::SelectRedapServer(_)
             | CommandPaletteAction::SelectRedapEntry { .. }
@@ -311,6 +336,9 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         };
 
         let job = match &matched.command {
+            CommandPaletteAction::AskAgent(_) | CommandPaletteAction::SetUpAgent => {
+                unreachable!("agent prompts are submitted directly, not shown as search results")
+            }
             CommandPaletteAction::SelectEntityPath(entity_path) => {
                 recolor_if_selected(entity_path.syntax_highlighted(ui.style()))
             }

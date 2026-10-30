@@ -2,10 +2,62 @@
 
 use std::fmt::Write as _;
 
+use re_viewer_context::CommandSender;
 #[cfg(debug_assertions)]
-use re_ui::RecordingCommandKind;
+use re_viewer_context::RecordingCommandKind;
 
 const SPACING: f32 = 12.0;
+
+/// The modal dialogs opened through commands.
+#[derive(Default)]
+pub struct Modals {
+    /// Shows [`about_rerun_ui`].
+    pub about: re_ui::modal::ModalHandler,
+
+    /// Shows [`debug_tools_ui`].
+    #[cfg(debug_assertions)]
+    pub debug_tools: re_ui::modal::ModalHandler,
+}
+
+impl Modals {
+    /// Show whichever modal is open.
+    #[cfg_attr(not(debug_assertions), expect(unused_variables))]
+    pub fn ui(
+        &mut self,
+        ui: &egui::Ui,
+        build_info: &re_build_info::BuildInfo,
+        render_state: Option<&egui_wgpu::RenderState>,
+        app_options: &mut re_viewer_context::AppOptions,
+        command_sender: &CommandSender,
+        active_recording_id: Option<&re_log_types::StoreId>,
+    ) {
+        self.about.ui(
+            ui.ctx(),
+            || {
+                re_ui::modal::ModalWrapper::new("About Rerun")
+                    .min_width(460.0)
+                    .max_width(520.0)
+            },
+            |ui| about_rerun_ui(ui, build_info, render_state),
+        );
+
+        #[cfg(debug_assertions)]
+        {
+            let max_height = (ui.ctx().content_rect().height() - 64.0).max(320.0);
+            self.debug_tools.ui(
+                ui.ctx(),
+                || {
+                    re_ui::modal::ModalWrapper::new("Debug tools")
+                        .min_width(560.0)
+                        .max_width(720.0)
+                        .max_height(max_height)
+                        .scrollable([false, true])
+                },
+                |ui| debug_tools_ui(ui, app_options, active_recording_id, command_sender),
+            );
+        }
+    }
+}
 
 /// The About UI serves two purposes:
 ///
@@ -219,28 +271,24 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 
 #[cfg(debug_assertions)]
 fn egui_debug_options_ui(ui: &mut egui::Ui) {
-    use re_ui::UiExt as _;
-
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
     any_clicked |= ui
-        .re_checkbox(&mut debug.debug_on_hover, "Ui debug on hover")
+        .checkbox(&mut debug.debug_on_hover, "Ui debug on hover")
         .on_hover_text("However over widgets to see their rectangles")
         .changed();
     any_clicked |= ui
-        .re_checkbox(&mut debug.show_expand_width, "Show expand width")
+        .checkbox(&mut debug.show_expand_width, "Show expand width")
         .on_hover_text("Show which widgets make their parent wider")
         .changed();
     any_clicked |= ui
-        .re_checkbox(&mut debug.show_expand_height, "Show expand height")
+        .checkbox(&mut debug.show_expand_height, "Show expand height")
         .on_hover_text("Show which widgets make their parent higher")
         .changed();
+    any_clicked |= ui.checkbox(&mut debug.show_resize, "Show resize").changed();
     any_clicked |= ui
-        .re_checkbox(&mut debug.show_resize, "Show resize")
-        .changed();
-    any_clicked |= ui
-        .re_checkbox(
+        .checkbox(
             &mut debug.show_interactive_widgets,
             "Show interactive widgets",
         )
@@ -253,9 +301,6 @@ fn egui_debug_options_ui(ui: &mut egui::Ui) {
         ui.set_global_style(style);
     }
 }
-
-#[cfg(debug_assertions)]
-use re_viewer_context::CommandSender;
 
 #[cfg(debug_assertions)]
 fn debug_menu_options_ui(
@@ -305,7 +350,7 @@ fn debug_menu_options_ui(
         command_sender,
     );
 
-    ui.re_checkbox(&mut app_options.show_metrics, "Show top bar diagnostics")
+    ui.checkbox(&mut app_options.show_metrics, "Show top bar diagnostics")
         .on_hover_text(
             "Show the debug-build warning, milliseconds/frame, RAM usage, FPS, and connection \
          diagnostics in the top bar",
@@ -317,7 +362,7 @@ fn debug_menu_options_ui(
         ui.re_radio_value(&mut app_options.blueprint_gc, false, "Disabled");
     });
 
-    ui.re_checkbox(
+    ui.checkbox(
         &mut app_options.show_picking_debug_overlay,
         "Picking Debug Overlay",
     )
@@ -388,7 +433,7 @@ fn debug_menu_options_ui(
 }
 
 #[cfg(debug_assertions)]
-pub(crate) fn debug_tools_ui(
+pub fn debug_tools_ui(
     ui: &mut egui::Ui,
     app_options: &mut re_viewer_context::AppOptions,
     active_recording_id: Option<&re_log_types::StoreId>,

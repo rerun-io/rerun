@@ -1,7 +1,7 @@
 use re_chunk::{ComponentIdentifier, ComponentType};
 use re_sdk_types::{ComponentDescriptor, ComponentSet};
 
-use crate::typed_entity_collections::DatatypeMatch;
+use crate::typed_entity_collections::ComponentMatch;
 
 pub type DatatypeSet = std::collections::BTreeSet<arrow::datatypes::DataType>;
 
@@ -95,16 +95,16 @@ impl SingleRequiredComponentConstraint {
 
     /// Check if an incoming component's Arrow datatype matches this constraint.
     ///
-    /// Returns `Some(DatatypeMatch)` when the component satisfies the constraint, `None` otherwise.
+    /// Returns `Some(ComponentMatch)` when the component satisfies the constraint, `None` otherwise.
     ///
     /// If either side is a known builtin enum type, a semantic match is required.
     pub(crate) fn check_datatype_match(
         &self,
-        known_enum_types: &nohash_hasher::IntSet<ComponentType>,
+        components: &re_types_core::reflection::ComponentReflectionMap,
         incoming_arrow_datatype: &arrow::datatypes::DataType,
         incoming_component_type: Option<ComponentType>,
         incoming_component: ComponentIdentifier,
-    ) -> Option<DatatypeMatch> {
+    ) -> Option<ComponentMatch> {
         use re_lenses_core::extract_nested_fields;
 
         let is_physical_match = self.physical_types.contains(incoming_arrow_datatype);
@@ -116,9 +116,13 @@ impl SingleRequiredComponentConstraint {
         //   (e.g. `FillMode` (UInt8) shouldn't be picked up by a visualizer that accepts UInt8).
         // - A visualizer that requires an enum type shouldn't accept non-enum data physically
         //   (e.g. a `FillMode` visualizer shouldn't pick up arbitrary UInt8 data).
-        let incoming_is_enum =
-            incoming_component_type.is_some_and(|ct| known_enum_types.contains(&ct));
-        let constraint_is_enum = known_enum_types.contains(&self.semantic_type);
+        let is_enum = |ct| {
+            components
+                .get(&ct)
+                .is_some_and(|reflection| reflection.is_enum())
+        };
+        let incoming_is_enum = incoming_component_type.is_some_and(is_enum);
+        let constraint_is_enum = is_enum(self.semantic_type);
         if (incoming_is_enum || constraint_is_enum) && !is_semantic_match {
             return None;
         }
@@ -129,20 +133,20 @@ impl SingleRequiredComponentConstraint {
                 extract_nested_fields(incoming_arrow_datatype, |dt| {
                     self.physical_types.contains(dt)
                 })
-                .map(|selectors| DatatypeMatch::PhysicalDatatypeOnly {
+                .map(|selectors| ComponentMatch::PhysicalDatatypeOnly {
                     arrow_data_type: incoming_arrow_datatype.clone(),
                     component_type: incoming_component_type,
-                    selectors: selectors.into(),
+                    field_accessors: selectors.into(),
                 })
             }
 
-            (true, false) => Some(DatatypeMatch::PhysicalDatatypeOnly {
+            (true, false) => Some(ComponentMatch::PhysicalDatatypeOnly {
                 arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: incoming_component_type,
-                selectors: Vec::new(),
+                field_accessors: Vec::new(),
             }),
 
-            (true, true) => Some(DatatypeMatch::NativeSemantics {
+            (true, true) => Some(ComponentMatch::NativeSemantics {
                 arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: incoming_component_type,
             }),
@@ -150,10 +154,10 @@ impl SingleRequiredComponentConstraint {
             (false, true) => extract_nested_fields(incoming_arrow_datatype, |dt| {
                 self.physical_types.contains(dt)
             })
-            .map(|selectors| DatatypeMatch::PhysicalDatatypeOnly {
+            .map(|selectors| ComponentMatch::PhysicalDatatypeOnly {
                 arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: incoming_component_type,
-                selectors: selectors.into(),
+                field_accessors: selectors.into(),
             })
             .or_else(|| {
                 re_log::warn_once!(
@@ -265,31 +269,31 @@ impl BufferAndFormatConstraint {
         &self,
         incoming_arrow_datatype: &arrow::datatypes::DataType,
         descriptor: &re_sdk_types::ComponentDescriptor,
-    ) -> Option<DatatypeMatch> {
+    ) -> Option<ComponentMatch> {
         use re_lenses_core::extract_nested_fields;
 
         let is_physical_match = *incoming_arrow_datatype == Self::buffer_arrow_datatype();
         let is_semantic = descriptor.component_type == Some(self.buffer_semantic_type);
 
         match (is_physical_match, is_semantic) {
-            (true, true) => Some(DatatypeMatch::NativeSemantics {
+            (true, true) => Some(ComponentMatch::NativeSemantics {
                 arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: descriptor.component_type,
             }),
-            (true, false) => Some(DatatypeMatch::PhysicalDatatypeOnly {
+            (true, false) => Some(ComponentMatch::PhysicalDatatypeOnly {
                 arrow_data_type: incoming_arrow_datatype.clone(),
                 component_type: descriptor.component_type,
-                selectors: Vec::new(),
+                field_accessors: Vec::new(),
             }),
             (false, _) => {
                 // No direct match — try nested field access.
                 extract_nested_fields(incoming_arrow_datatype, |dt| {
                     *dt == Self::buffer_arrow_datatype()
                 })
-                .map(|selectors| DatatypeMatch::PhysicalDatatypeOnly {
+                .map(|selectors| ComponentMatch::PhysicalDatatypeOnly {
                     arrow_data_type: incoming_arrow_datatype.clone(),
                     component_type: descriptor.component_type,
-                    selectors: selectors.into(),
+                    field_accessors: selectors.into(),
                 })
             }
         }

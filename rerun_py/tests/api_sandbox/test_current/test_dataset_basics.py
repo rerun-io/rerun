@@ -35,7 +35,7 @@ property:RecordingInfo:start_time: list<item: int64>
 timeline:end: timestamp[ns]
 timeline:start: timestamp[ns]
 -- schema metadata --
-sorbet:version: '0.1.3'\
+sorbet:version: '0.1.4'\
 """)
 
         assert str(
@@ -48,7 +48,7 @@ sorbet:version: '0.1.3'\
         ) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                            │
-│ * version: 0.1.3                                                                                                                     │
+│ * version: 0.1.4                                                                                                                     │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬────────────────────────────────────┬───────────────────────┬───────────────────────┬───────────────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names                  ┆ rerun_num_chunks      ┆ timeline:end          ┆ timeline:start        │ │
@@ -131,7 +131,7 @@ def test_dataset_metadata(complex_dataset_prefix: Path, tmp_path: Path) -> None:
         assert (str(meta.reader())) == inline_snapshot("""\
 ┌─────────────────────────────────────────┐
 │ METADATA:                               │
-│ * version: 0.1.3                        │
+│ * version: 0.1.4                        │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────┐ │
 │ │ rerun_segment_id    ┆ success       │ │

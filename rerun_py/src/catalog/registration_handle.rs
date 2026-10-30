@@ -5,7 +5,7 @@ use parking_lot::Mutex;
 use pyo3::exceptions::{PyStopIteration, PyValueError};
 use pyo3::{PyErr, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_catalog_client::RegistrationHandle;
-use re_redap_client::TraceId;
+use re_redap_client::{ApiError, TraceId};
 use tokio::sync::mpsc;
 use tracing::Instrument as _;
 
@@ -18,7 +18,7 @@ use crate::utils::{get_tokio_runtime, wait_for_future};
 /// This is the timeout used when set to `None` on the Python side. The idea here is to mimic a
 /// blocking for notebook/interactive uses of the SDK, but in practice it's never a thing, as the
 /// server always ends up bailing to avoid blocking resources.
-const DEFAULT_TIMEOUT_SECS: u64 = 60 * 60;
+pub const DEFAULT_TIMEOUT_SECS: u64 = 60 * 60;
 
 /// Tuple of (URI, segment ID, error).
 type RegistrationResult = (String, String, Option<String>);
@@ -113,7 +113,7 @@ impl PyRegistrationHandleInternal {
                             .map(|segment_id| segment_id.to_string())
                             .collect()
                     })
-                    .map_err(to_py_err)
+                    .map_err(|err| to_py_err(ApiError::from(err)))
             }
             .instrument(span),
         )

@@ -7,6 +7,7 @@ from unittest.mock import Mock, patch
 import pytest
 import rerun as rr
 import rerun.blueprint as rrb
+from rerun.blueprint.encodings import SortDirection
 from rerun.chunk import RrdReader
 
 if TYPE_CHECKING:
@@ -31,8 +32,8 @@ def _save_and_read(blueprint: rrb.TableBlueprint, path: Path) -> dict[str, dict[
 
 def test_table_blueprint_logs_layouts_columns_and_preview_views(tmp_path: Path) -> None:
     view = rrb.Spatial2DView(origin="/camera")
-    preview = rrb.table.Column("recording/link", name="Recording", cell=rrb.table.PreviewCell(view))
-    flag = rrb.table.Column("flag", editable=True, visible=False, cell=rrb.table.FlagCell())
+    preview = rrb.table.Column("recording/link", name="Recording", column_type=rrb.table.PreviewCell(view))
+    flag = rrb.table.Column("flag", editable=True, visible=False, column_type=rr.components.Flag)
     blueprint = rrb.TableBlueprint(
         table_layout=rrb.table.TableLayout(columns=[preview, flag]),
         card_layout=rrb.table.CardLayout(title="recording/link", link="recording/link", fields=[flag, preview]),
@@ -41,13 +42,12 @@ def test_table_blueprint_logs_layouts_columns_and_preview_views(tmp_path: Path) 
 
     preview_settings = {
         "TableColumn:name": [["Recording"]],
-        "TableColumn:cell_kind": [[rrb.components.TableCellKind.Preview.value]],
         "TableColumnPreview:views": [[view.blueprint_path()]],
     }
     flag_settings = {
         "TableColumn:editable": [[True]],
         "TableColumn:visible": [[False]],
-        "TableColumn:cell_kind": [[rrb.components.TableCellKind.Flag.value]],
+        "TableColumn:column_type": [[{"component": None, "component_type_name": "rerun.components.Flag"}]],
     }
     assert set(data) == {
         f"/{view.blueprint_path()}",
@@ -78,7 +78,7 @@ def test_table_blueprint_logs_layouts_columns_and_preview_views(tmp_path: Path) 
 
 def test_table_blueprint_logs_shared_preview_once() -> None:
     view = rrb.Spatial2DView(origin="/camera")
-    preview = rrb.table.Column("recording/link", cell=rrb.table.PreviewCell(view))
+    preview = rrb.table.Column("recording/link", column_type=rrb.table.PreviewCell(view))
     blueprint = rrb.TableBlueprint(
         table_layout=rrb.table.TableLayout(columns=[preview]),
         card_layout=rrb.table.CardLayout(fields=[preview]),
@@ -130,6 +130,26 @@ def test_table_blueprint_logs_root_settings(
         assert "/table" not in data
 
 
+@pytest.mark.parametrize(
+    ("sort_by", "direction"),
+    [
+        ("score", None),
+        (rrb.table.SortBy("score"), None),
+        (rrb.table.SortBy("score", direction="descending"), SortDirection.Descending),
+    ],
+)
+def test_table_blueprint_logs_sort(
+    sort_by: str | rrb.table.SortBy,
+    direction: SortDirection | None,
+    tmp_path: Path,
+) -> None:
+    blueprint = rrb.table.TableBlueprint(sort_by=sort_by)
+    data = _save_and_read(blueprint, tmp_path / "table.rbl")
+
+    expected_direction = None if direction is None else direction.value
+    assert data["/table"] == {"TableBlueprint:sort_by": [[{"column": "score", "direction": expected_direction}]]}
+
+
 @pytest.mark.parametrize("table_layout", [None, rrb.table.TableLayout()])
 def test_table_blueprint_logs_empty_table_layout(table_layout: rrb.table.TableLayout | None, tmp_path: Path) -> None:
     blueprint = rrb.table.TableBlueprint(table_layout=table_layout)
@@ -157,19 +177,38 @@ def test_table_blueprint_validates_inputs() -> None:
         rrb.table.PreviewCell("not a view")  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="each source column at most once"):
         rrb.table.TableLayout(columns=[rrb.table.Column("a"), rrb.table.Column("a")])
-    with pytest.raises(ValueError, match="at most one visible FlagCell"):
-        rrb.table.CardLayout(
-            fields=[
-                rrb.table.Column("a", cell=rrb.table.FlagCell()),
-                rrb.table.Column("b", cell=rrb.table.FlagCell()),
-            ],
-        )
     with pytest.raises(ValueError, match="requires card_layout"):
         rrb.table.TableBlueprint(default_layout="cards")
-    with pytest.raises(ValueError, match="require FlagCell"):
-        rrb.table.Column("a", editable=True)
+    with pytest.raises(ValueError, match="sort_by must not be empty"):
+        rrb.table.TableBlueprint(sort_by="")
+    with pytest.raises(ValueError, match="must not be empty"):
+        rrb.table.Column("a", column_type="")
+    with pytest.raises(TypeError, match="column_type"):
+        rrb.table.Column("a", column_type=3)  # type: ignore[arg-type]
 
     assert rrb.table.PreviewCell(view).views == (view,)
+
+
+@pytest.mark.parametrize(
+    ("column_type", "expected"),
+    [
+        (rr.components.Url, {"component": None, "component_type_name": "rerun.components.Url"}),
+        (rr.components.Flag, {"component": None, "component_type_name": "rerun.components.Flag"}),
+        ("rerun.components.Timestamp", {"component": None, "component_type_name": "rerun.components.Timestamp"}),
+        (
+            rr.TextDocument.descriptor_text(),
+            {"component": "TextDocument:text", "component_type_name": "rerun.components.Text"},
+        ),
+        (rrb.table.PreviewCell(rrb.Spatial2DView()), None),
+    ],
+)
+def test_table_column_logs_column_type(column_type: object, expected: dict[str, str] | None, tmp_path: Path) -> None:
+    column = rrb.table.Column("a", column_type=column_type)  # type: ignore[arg-type]
+    blueprint = rrb.TableBlueprint(table_layout=rrb.table.TableLayout(columns=[column]))
+    data = _save_and_read(blueprint, tmp_path / "table.rbl")
+
+    logged = data.get("/table/layouts/table/columns/a", {}).get("TableColumn:column_type")
+    assert logged == ([[expected]] if expected is not None else None)
 
 
 def test_table_blueprint_logs_filters(tmp_path: Path) -> None:
@@ -305,11 +344,10 @@ def test_filters_validate_inputs() -> None:
         _ = rrb.table.col("score") > 1 and rrb.table.col("score") < 3
 
 
-@pytest.mark.parametrize("visible", [None, True, False])
-def test_card_layout_accepts_hidden_flags(visible: bool | None) -> None:
+def test_card_layout_accepts_multiple_flags() -> None:
     fields = [
-        rrb.table.Column("primary", cell=rrb.table.FlagCell(), visible=visible),
-        rrb.table.Column("secondary", cell=rrb.table.FlagCell(), visible=False),
+        rrb.table.Column("primary", column_type=rr.components.Flag),
+        rrb.table.Column("secondary", column_type=rr.components.Flag),
     ]
 
     layout = rrb.table.CardLayout(fields=fields)

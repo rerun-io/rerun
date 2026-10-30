@@ -23,7 +23,7 @@ dev = [
   #
   # This fixup package points the `rerun` CLI of editable installs at `target/debug/rerun`.
   "rerun-dev-fixup",
-  "opentelemetry-exporter-otlp-proto-grpc==1.39.0",
+  "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
   "maturin>=1.14.1",
   "ruff==0.16.9",
   "mypy==1.19.1",
@@ -37,7 +37,7 @@ dev = [
   "types-tqdm==4.67.0.20250809",
   "colorama>=0.4",
   "types-colorama>=0.4.15",
-  "Pillow>=12.3.0,<13", # has py.typed, no stubs needed
+  "Pillow>=13.0.0,<14", # has py.typed, no stubs needed
   "types-psutil>=7.0", # Stubs for `psutil`, used by `rerun.tracing_session()`.
   # Typed packages needed for linting scripts/examples
   "attrs>=23.1.0",
@@ -72,8 +72,9 @@ dev = [
   "polars>=1.0",
   "datafusion>=54.0",
   "jupyter>=1.0",
-  # >=2.20.0 fixes the nbconvert stored-XSS (missing CSP sandbox directive)
-  "jupyter-server>=2.20.0",
+  # >=2.20.0 fixes the nbconvert stored-XSS (missing CSP sandbox directive).
+  # >=2.21.1 serves static files with tornado>=6.5.9 (older versions return 500s).
+  "jupyter-server>=2.21.1",
   # Runs the marimo example notebooks in `scripts/ci/run_example_notebooks.py`
   "marimo>=0.25.0",
   # Needed for pretty-printing tables in `fetch_patch_candidates.py`

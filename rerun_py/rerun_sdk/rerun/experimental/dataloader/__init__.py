@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING, Any
 
 from rerun._tracing import tracing_scope, with_tracing
 
-from ._config import DataSource, Field
+from ._config import DataSource, Field, FixedRateSampling, TimeAlignedSampling
 from ._sample_index import (
-    FixedRateSampling,
     IndexValue,
     SampleIndex,
     SegmentMetadata,
@@ -50,6 +49,7 @@ __all__ = [
     "SampleShuffle",
     "SegmentMetadata",
     "ShuffleStrategy",
+    "TimeAlignedSampling",
     "VideoFrameDecoder",
     "Yuv420Collator",
     "Yuv420Frame",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import os
 from dataclasses import dataclass
 from datetime import timedelta
@@ -175,6 +176,12 @@ class CatalogClient:
                 optional_dep="catalog",
             )
 
+        if url.startswith(("http://", "https://")):
+            logging.warning(
+                f"Use `rerun+{url}` instead of `{url}`. The `rerun+` prefix marks a Rerun data protocol URL."
+            )
+            url = f"rerun+{url}"
+
         self._internal = CatalogClientInternal(url, token, object_store_auth)
 
     @classmethod
@@ -262,9 +269,8 @@ class CatalogClient:
             File contents must remain unchanged until the upload completes.
         key:
             The object's key within catalog storage, for example `project/run-001/recording.rrd`.
-            Existing-key behavior is determined by the server: the OSS server rejects overwrites,
-            while Hub uploads may overwrite existing objects.
-            Use unique keys to avoid replacing objects referenced by existing registrations.
+            Existing objects cannot be overwritten.
+            Use a unique key for each upload.
 
         Returns
         -------
@@ -289,8 +295,8 @@ class CatalogClient:
 
         """
         if isinstance(source, bytes):
-            return self._internal.stage_bytes(source, key=key)
-        return self._internal.stage_file(os.fspath(source), key=key)
+            return self._internal.stage_bytes(source, key=key, upload_method="auto")
+        return self._internal.stage_file(os.fspath(source), key=key, upload_method="auto")
 
     def entries(self, *, include_hidden: bool = False) -> list[DatasetEntry | TableEntry]:
         """

@@ -46,3 +46,7 @@ We do not use a colon suffix for labels in front of a value.
 Good: `Color 🔴`
 
 Bad: `Color: 🔴`
+
+## Cursors
+
+Show `CursorIcon::PointingHand` only on links and on clickable things that do not look like buttons (e.g. cards); buttons, menu items, and collapsing headers keep the default cursor, since their hover highlight already shows they are clickable.

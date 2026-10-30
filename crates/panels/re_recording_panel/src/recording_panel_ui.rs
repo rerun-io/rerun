@@ -10,7 +10,7 @@ use re_redap_browser::{EXAMPLES_ORIGIN, RedapServers};
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
 use re_ui::{ContextExt as _, OnResponseExt as _, UiExt as _, UiLayout, icons, list_item};
 use re_uri::dataset_hierarchy_leaf_name;
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
     AppContext, Item, RecordingOrLocalTable, RedapEntryKind, Route, SystemCommand,
     SystemCommandSender as _,
@@ -339,6 +339,7 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         is_active,
         is_selected,
         is_internal,
+        is_registering,
         entries_data,
     } = server_data;
 
@@ -348,15 +349,32 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         return;
     }
 
-    let content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
+    let mut content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
         .with_menu_button(&icons::MORE, "Actions", move |ui| {
-            for command in re_ui::RedapServerCommand::all_for_server(origin) {
+            for command in re_viewer_context::RedapServerCommand::all_for_server(origin) {
                 if command.requires_editable_server() && *is_internal {
                     continue;
                 }
                 command.menu_button_ui(ui, ctx.command_sender());
             }
         });
+
+    if *is_registering {
+        content = content.with_icon_fn(|ui, rect, _| {
+            let reason = ctx.registering_files.get(origin).map_or_else(
+                || "Registering data".to_owned(),
+                |names| format!("Registering:\n{}", names.join("\n")),
+            );
+            re_ui::loading_indicator::paint_loading_indicator_inside(
+                ui,
+                egui::Align2::CENTER_CENTER,
+                rect,
+                1.0,
+                None,
+                &reason,
+            );
+        });
+    }
 
     let item_response = ui
         .list_item()
@@ -366,8 +384,9 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
         .show_hierarchical_with_children(ui, server_item_id(origin), true, content, |ui| {
             server_entries_ui(ctx, ui, entries_data, origin);
         })
-        .item_response
-        .on_hover_text(origin.to_string());
+        .item_response;
+
+    let item_response = item_response.on_hover_text(origin.to_string());
 
     ctx.handle_select_hover_drag_interactions(&item_response, server_data.item(), false);
     ctx.handle_select_focus_sync(&item_response, server_data.item());
@@ -560,7 +579,7 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
     };
 
     item_response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_route)
+        let url = ViewerUrl::from_route(ctx.store_hub(), &new_route)
             .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to dataset"))
@@ -797,7 +816,7 @@ fn receiver_ui(
     };
 
     response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
+        let url = ViewerUrl::from_data_source(receiver).and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))
             .on_disabled_hover_text(if let Err(err) = url.as_ref() {
@@ -940,7 +959,55 @@ fn ancestor_folder_paths(path: &str) -> impl Iterator<Item = &str> {
 
 #[cfg(test)]
 mod tests {
+    use egui_kittest::kittest::{NodeT as _, Queryable as _};
+
     use super::ancestor_folder_paths;
+
+    #[test]
+    fn ongoing_registration_snapshot() {
+        let test_context = re_test_context::TestContext::default();
+        let server = super::ServerData {
+            origin: re_uri::Origin::test(),
+            is_active: false,
+            is_selected: false,
+            is_internal: true,
+            is_registering: true,
+            entries_data: super::ServerEntriesData::Loaded {
+                entry_tree: Vec::new(),
+            },
+        };
+        let registering_files = std::iter::once((
+            server.origin.clone(),
+            vec![
+                "data/recording.rrd".to_owned(),
+                "data/points.rrd".to_owned(),
+            ],
+        ))
+        .collect();
+        let mut harness = test_context
+            .setup_kittest_for_rendering_ui(egui::vec2(280.0, 160.0))
+            .build_ui(|ui| {
+                test_context.run_ui(ui, |ctx, ui| {
+                    let app_ctx = super::AppContext {
+                        registering_files: &registering_files,
+                        ..ctx.app_ctx.clone()
+                    };
+                    re_ui::list_item::list_item_scope(ui, "recording panel", |ui| {
+                        super::server_section_ui(&app_ctx, ui, &server);
+                    });
+                });
+            });
+
+        harness.step();
+        harness.snapshot("ongoing_registration");
+        assert_eq!(
+            harness
+                .get_by_label("Registering:\ndata/recording.rrd\ndata/points.rrd")
+                .accesskit_node()
+                .role(),
+            egui::Role::ProgressIndicator
+        );
+    }
 
     #[test]
     fn ancestor_folder_paths_basic() {

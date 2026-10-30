@@ -6,16 +6,42 @@ expression: surface
 
 This MCP drives a live Rerun viewer: it reads the viewer's accessibility tree and synthesizes real input events. Work in an observe → act → verify loop.
 
+Before calling any tool, read its description and the descriptions of its input fields.
+Do not call a tool based only on its name.
+
 Getting oriented:
 - Call `rerun_connect` first (it dials the viewer's gRPC server); every other tool errors until then. A server started for a specific viewer is already connected and says so above.
 - A `rerun_*` tool is high level: it names a viewer action and carries it out in one call. Every other tool (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, …) drives the widgets one input event at a time, the way a person would. Prefer a `rerun_*` tool whenever one fits, and `rerun_run_command` over clicking through menus: clicking through the UI costs several calls and a lot of context, and breaks whenever the layout moves.
-- Start most tasks with `rerun_get_viewer_state`: it names the recordings, timelines, views and Redap servers that are loaded. Confirm a load with it too, not with `screenshot`; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks.
-- To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_viewer_state` and pass its `url` to `rerun_open_url`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
-- Never guess an entity path or a component name: `rerun_get_recording_schema` names every entity of an open recording and the components logged on each.
-- The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_viewer_logs` fetches older messages.
+- Start most tasks with `rerun_get_state`: it names the recordings, timelines, views and Redap servers that are loaded. Confirm a load with it too, not with `screenshot`; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks.
+- Use `rerun_get_transform_graph` when debugging 3D transforms (TF). Read its tool description for guidance on inspecting and interpreting transform trees.
+- To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_state` and pass its `url` to `rerun_open`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
+- Never guess an entity path or a component name: `rerun_get_recording_schema` lists entities and their archetypes by default. For blueprint planning, start with this compact summary; check `omitted_entities` and use `entity_path` with `with_components: true` for focused component details.
+  `rerun_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. Without a `dataset_url` it describes the dataset on screen. It names the dataset's assets by id. An asset is static data such as robot meshes that the viewer shows as part of every segment it applies to, see <https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>. `rerun_get_dataset_assets_schema` names the entities in each asset, so read it when an entity is missing from the segments. It names the entities in the segments and assets, not a table's columns: `rerun_get_table_schema` names those.
+- The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_logs` fetches older messages.
 - Whenever the user asks where something is, answer with `rerun_highlight_rect` (below), not with prose about the layout.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
 - Every Rerun gRPC endpoint serves gRPC server reflection, so where `grpcurl` is installed, `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `rerun_connect`, and `describe` shows a service's methods and message types.
+
+Editing blueprints:
+- `rerun_set_blueprint` takes `mode: "full"` (default) or `mode: "partial"` for either recordings or tables. Prefer partial for focused edits: omitted fields and entities stay untouched. Full replaces the blueprint and clears omitted fields.
+- Both modes replace arrays and struct-valued fields as a whole, including `component_map`, `instruction_ids`, and container contents; preserve entries you intend to keep. Set a field to `null` to clear it. An empty object in partial mode changes nothing.
+- A write that would break a reference is rejected, and nothing is written: a missing or unreferenced view, container, or visualizer instruction, or a loop of containers. Add a new view and the reference to it in the same call. Delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.
+- When supplying a deliberate recording layout, set `auto_layout` and `auto_views` to false. Full mode with an explicit root defaults omitted automatic options to false; partial mode preserves omitted options.
+
+Changing visualizer inputs:
+- For component overrides like colors or colormaps, read <https://rerun.io/docs/reference/viewer/mcp#component-overrides>. Values belong beside a `VisualizerInstruction` under `/view/<view UUID>/ViewContents/overrides/<entity path>/visualizers/<instruction UUID>`, not directly under `overrides/<entity path>`.
+- Set the instruction's `component_map` entry for the target to `source_kind: 2` (Override). Send the changed fields with `mode: "partial"`, preserving existing instruction IDs, other mappings, and active visualizers. Readback only proves storage: verify the effective value in the entity's Visualizers section and check the visual result.
+
+Changing how a table looks:
+- `rerun_get_blueprint` and `rerun_set_blueprint` handle both regular blueprints (per-recording or per-segment views and layouts) and table blueprints (tables, card layouts, and preview cells).
+  Use `{"recording": {}}` for regular blueprints or `{"table": {}}` for table blueprints.
+  The `table` input field of `rerun_set_blueprint` documents how to customize tables, enable card layouts, and add preview cells, with examples.
+- To hide, show, reorder or rename columns, or to filter rows, write the table blueprint. Don't click through the **Columns** menu or read the columns from `widget_tree`. Only point at the menu when the user asks how to do it themselves.
+- The steps:
+  1. `rerun_get_table_schema` for the real column names. `rerun_get_dataset_schema` names entities, not columns.
+  2. `rerun_get_blueprint` with `{"table": {}}`.
+  3. `rerun_set_blueprint` with `{"table": {}, "mode": "partial"}` and a `json` containing the changed fields. `column_order` in `TableLayout` at `/table/layouts/table` sets the order, and a column's `TableColumn` sets its `name` and `"visible": false`. A column's `TableColumn` is at `/table/layouts/table/columns/<column name>`, with each `:` and space in the column name escaped as `\:` and `\ `. In the JSON string that backslash is doubled, e.g. `"/table/layouts/table/columns/property\\:episode\\:date"`. Row filters go in `filters` of `TableBlueprint` at `/table`.
+  4. One `rerun_save_screenshot` to check the result.
 
 Targeting widgets:
 - Prefer locators — an `id` from `widget_tree`, or `role`/`label_contains` — over a raw `pos`. Locators resolve to the widget's current position and survive layout changes; reach for `pos` only when nothing matches.
@@ -26,19 +52,22 @@ Pointing the user at something:
 
 Acting and verifying:
 - After an action that changes the UI, confirm it landed: `widget_tree` for the expected state, `screenshot` to look, or `wait_for` to poll until async or animated UI settles.
-- Confirm a load with `rerun_get_viewer_state`, not `screenshot`. It names the recordings, timelines and views that appeared, which is what "did it load?" actually asks; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks — framing, layout, colors. `rerun_save_screenshot` scales to 1024 pixels unless you pass `max_size`; pass a `view_id` to capture one view rather than the whole window.
+- Confirm a load with `rerun_get_state`, not `screenshot`. It names the recordings, timelines and views that appeared, which is what "did it load?" actually asks; a full-window screenshot costs far more and answers less. Screenshot when the question is about looks — framing, layout, colors. `rerun_save_screenshot` scales to 1024 pixels unless you pass `max_size`; pass a `view_id` to capture one view rather than the whole window.
 - Use `batch` to act and observe in one round trip (e.g. `click` then `screenshot`), avoiding an extra turn.
-- To move through time, call `rerun_get_viewer_state` for the recordings/timelines and their valid ranges, then `rerun_set_time_cursor`.
-- `rerun_close_recordings` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `rerun_get_viewer_state` and the UI hard to read — close them.
+- To move through time, call `rerun_get_state` for the recordings/timelines and their valid ranges, then `rerun_set_time_cursor`.
+- `rerun_close` clears recordings away. Iterating on a file you keep regenerating leaves a pile of stale recordings behind, which makes `rerun_get_state` and the UI hard to read — close them.
 
 Reading the data itself:
 - `rerun_get_recording_schema` names every entity of an open recording, the components logged on each, and their Arrow datatypes, whatever the recording was loaded from. Read it before you write a query, a blueprint, or a sentence describing the data.
 - That is the schema, not the values: it says what was logged at some point, not what is there at the current time. These tools drive the UI and do not read values — the viewer hosts a catalog server, so read the real values through the Python API.
-- `rerun_get_viewer_state` reports that server as `catalog_url`. Hand it straight to `CatalogClient`; do not hardcode a port, since a viewer may serve on any of them.
+- `rerun_get_state` reports that server as `catalog_url`. Hand it straight to `CatalogClient`; do not hardcode a port, since a viewer may serve on any of them.
 - A recording's `store_id` is the string `{kind}:{application_id}:{recording_id}`. The kind runs to the first colon, the application id to the next colon not preceded by a backslash, and the recording id is the rest; a colon inside the application id is escaped as `\:` (and a backslash as `\\`). The application id is the catalog dataset's **id** (not its name) and the recording id is the segment id, so look the dataset up by id:
   `CatalogClient(catalog_url).get_dataset(id=application_id)`, then `.schema().entity_paths()` for the schema and `.segment_store(recording_id)` for the data.
 - Only local `.rrd` and `.rbl` files are registered, so a recording streamed from an SDK, opened from an `http(s)` URL, or imported from a directory or another file format is absent from the catalog, and its application id is the plain application id rather than a dataset id. Read those from the source instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends), fetching a URL to a temporary file first.
-- `rerun_close_recordings` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
+- `rerun_close` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
+
+Telling Rerun what let you down:
+- When a Rerun tool, doc, or API lets you down (an error you cannot explain, a feature you need that is missing, docs that are wrong), call `rerun_submit_feedback` once, after you have tried to work around it. Write only about Rerun, never about the user's data, and name the tool in `surface`. If it fails with `FAILED_PRECONDITION`, analytics is turned off: carry on and do not retry.
 
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.
@@ -684,7 +713,7 @@ Conventions:
 
 {
   "name": "rerun_capture_profile_trace",
-  "description": "Record a puffin profile of the next frames the viewer paints, and write it to disk as a\n`.puffin` file.\n\nThe viewer keeps repainting while it records, so this finishes even when nothing changes on\nscreen. It answers when the file is written. Use the `investigate-puffin` skill\nto analyze the trace.\n\nFails with `INVALID_ARGUMENT` if `num_frames` is out of range, `FAILED_PRECONDITION` if\nanother profile capture is still running or on the web viewer, and `INTERNAL` if the write\nto disk failed.\n\nRequires `rerun_connect`.",
+  "description": "Record a puffin profile of the next frames the viewer paints, and write it to disk as a\n`.puffin` file.\n\nThis is for profiling the viewer's own performance: where its time goes in each frame.\nOpen the file in puffin_viewer, see https://github.com/EmbarkStudios/puffin.\n\nThe viewer keeps repainting while it records, so this finishes even when nothing changes on\nscreen. It answers when the file is written. Use the `investigate-puffin` skill\nto analyze the trace.\n\nFails with `INVALID_ARGUMENT` if `num_frames` is out of range, `FAILED_PRECONDITION` if\nanother profile capture is still running or on the web viewer, and `INTERNAL` if the write\nto disk failed.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -705,10 +734,10 @@ Conventions:
   }
 }
 
-## rerun_close_recordings
+## rerun_close
 
 {
-  "name": "rerun_close_recordings",
+  "name": "rerun_close",
   "description": "Close recordings in the viewer, to clear away what is no longer needed.\n\nThis only removes them from the viewer. Files on disk are untouched, and registered\nrecordings stay in the catalog and can be reopened, but unsaved blueprint edits are lost.\n\nIterating on a file you keep regenerating leaves a pile of stale recordings behind, which\nmakes the viewer state and the UI hard to read.\n\n`NOT_FOUND` if the requested recording is not open.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
@@ -739,6 +768,19 @@ Conventions:
           }
         },
         "description": "Close these recordings."
+      },
+      "urls": {
+        "type": "object",
+        "properties": {
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The URLs the recordings were opened from, as passed to `Open`. `INVALID_ARGUMENT` if one\ncannot load anything, and `NOT_FOUND` if the viewer has neither a recording nor a stream\nfrom one of them."
+          }
+        },
+        "description": "Close the recordings loaded from these URLs, and stop loading from them."
       }
     },
     "oneOf": [
@@ -756,9 +798,14 @@ Conventions:
         "required": [
           "store_ids"
         ]
+      },
+      {
+        "required": [
+          "urls"
+        ]
       }
     ],
-    "description": "Request for `CloseRecordings`.\n\nExactly one of `current`, `all`, `store_ids` must be set."
+    "description": "Request for `Close`.\n\nExactly one of `current`, `all`, `store_ids`, `urls` must be set."
   }
 }
 
@@ -826,16 +873,150 @@ Conventions:
 
 {
   "name": "rerun_get_blueprint",
-  "description": "Read a recording's active blueprint (layout, views, their properties and overrides) as\nJSON, keyed by blueprint entity path, then archetype, then field.\n\n`NOT_FOUND` if the recording is not open or has no active blueprint.\n\nRequires `rerun_connect`.",
+  "description": "Read regular blueprints (per-recording or per-segment views and layouts) or table blueprints\n(tables, card layouts, and preview cells) as JSON, keyed by blueprint entity path, then\narchetype, then field. Use `recording` for a regular blueprint and `table` for a table blueprint.\n\nA recording's blueprint has the layout, views, their properties and overrides. A table's\nblueprint only has what it sets, such as row filters, the layout, and column settings.\n`GetTableSchema` names all columns of a table.\nSee https://rerun.io/docs/concepts/visualization/blueprints.\n\nSet at most one of `recording` and `table`, such as `{\"recording\": {}}` or\n`{\"table\": {\"table_url\": \"…\"}}`. With neither it reads the blueprint of what is on screen:\nthe table if one is shown, else the active recording. Without a `store_id` it reads the\nactive recording's blueprint, and without a `table_url` the blueprint of the table on\nscreen. The response names the recording or table it read.\n\nA recording or table without a blueprint gets a default one. For a recording on screen,\nthis is the heuristic blueprint unless the user did manual changes to it. A table shows\na set of columns by default, with potential sorting and filtering done by the user.\n\n`FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the\nrecording is not open or the viewer does not know the table.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
-      "store_id": {
-        "type": "string",
-        "description": "Recording whose active blueprint to read, as `{kind}:{application_id}:{recording_id}`.\nIf omitted, the active recording is used.\n\nBlueprints belong to an application, so every recording of the same application shares one."
+      "recording": {
+        "type": "object",
+        "properties": {
+          "store_id": {
+            "type": "string",
+            "description": "The recording, as `{kind}:{application_id}:{recording_id}`. Defaults to the active recording."
+          }
+        },
+        "description": "Read the blueprint of a recording."
+      },
+      "table": {
+        "type": "object",
+        "properties": {
+          "table_url": {
+            "type": "string",
+            "description": "The table: a dataset or table `url` from `servers` in `GetState`, or a server's\n`origin` for its list of entries. Defaults to the table on screen."
+          }
+        },
+        "description": "Read the blueprint of a table."
       }
     },
-    "description": "Request for `GetBlueprint`."
+    "oneOf": [
+      {
+        "required": [
+          "recording"
+        ]
+      },
+      {
+        "required": [
+          "table"
+        ]
+      },
+      {
+        "not": {
+          "anyOf": [
+            {
+              "required": [
+                "recording"
+              ]
+            },
+            {
+              "required": [
+                "table"
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "description": "Request for `GetBlueprint`.\n\nAt most one of `recording`, `table` may be set."
+  }
+}
+
+## rerun_get_dataset_assets_schema
+
+{
+  "name": "rerun_get_dataset_assets_schema",
+  "description": "Describe the assets of a dataset on a server: the entities of each asset and the components\nlogged on each, in the form `GetDatasetSchema` describes the segments.\n\nAn asset holds static data shared by the dataset's segments, such as a robot's meshes. The\nviewer shows it as part of every segment it applies to, so an entity missing from\n`GetDatasetSchema` may be in an asset. See\n<https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>.\n\nOnly assets the server is done registering are described.\n\n`FAILED_PRECONDITION`, `INVALID_ARGUMENT` and `NOT_FOUND` as for `GetDatasetSchema`, where\n`NOT_FOUND` means no asset has anything at or below `entity_path`.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "dataset_url": {
+        "type": "string",
+        "description": "A dataset `url` from `servers` in `GetState`. Defaults to the dataset on screen, or\nthe dataset of the segment on screen."
+      },
+      "entity_path": {
+        "type": "string",
+        "description": "Only describe this entity and the entities below it, e.g. `/world/robot`. Assets with nothing\nthere are left out. Omit for every entity."
+      },
+      "max_entities": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "How many entities to describe at most, per asset.\n\nDefaults to 100, or to 10000 with `paths_only`."
+      },
+      "paths_only": {
+        "type": "boolean",
+        "description": "Name the entities without describing what is logged on them. Defaults to false."
+      }
+    },
+    "description": "Request for `GetDatasetAssetsSchema`."
+  }
+}
+
+## rerun_get_dataset_schema
+
+{
+  "name": "rerun_get_dataset_schema",
+  "description": "Describe a dataset on a server: the entities of all its segments and the components logged\non each, in the form `GetRecordingSchema` describes one recording. Nothing is opened or\nloaded, so read it to learn what a dataset holds before opening any of it.\n\nIt names the entities in the segments, not a table's columns. For the columns of a table,\nsuch as to change how a table looks, call `GetTableSchema` instead.\n\nThis is the schema, not the data: a component listed here has been logged in some segment,\nnot necessarily in all of them.\n\nThe dataset's assets are only named by id. `GetDatasetAssetsSchema` names the entities in\nthem.\n\n`FAILED_PRECONDITION` if no `dataset_url` is given and no dataset is on screen.\n`INVALID_ARGUMENT` if `dataset_url` is not a dataset, or without it if a table is on screen. `NOT_FOUND` if the viewer does not\nknow the dataset, or nothing in its segments is at or below `entity_path`.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "dataset_url": {
+        "type": "string",
+        "description": "A dataset `url` from `servers` in `GetState`. Defaults to the dataset on screen, or\nthe dataset of the segment on screen."
+      },
+      "entity_path": {
+        "type": "string",
+        "description": "Only describe this entity and the entities below it, e.g. `/world/robot`. Omit for the whole\ndataset."
+      },
+      "max_entities": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "How many entities to describe at most.\n\nDefaults to 100, or to 10000 with `paths_only`."
+      },
+      "paths_only": {
+        "type": "boolean",
+        "description": "Name the entities without describing what is logged on them.\n\nDefaults to true without an `entity_path` and to false with one. So a first call shows the\nshape of the dataset, and a call with `entity_path` gives the components of the entities\nthat turned out to matter."
+      }
+    },
+    "description": "Request for `GetDatasetSchema`."
+  }
+}
+
+## rerun_get_location
+
+{
+  "name": "rerun_get_location",
+  "description": "Report the URL of what the viewer is showing: a recording, a table, a catalog entry,\nthe settings, … Pass it to `set_location` to come back to it later.\n\nA recording is reported as `about:recording?app_id=…&recording_id=…`, which works whether\nor not the recording was loaded from a URL, and a table that only exists in the viewer as\n`about:table?id=…`. While the viewer is loading, this is the URL of what it loads.\n\n`FAILED_PRECONDITION` if what is shown has no URL, like something loading from an SDK.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "description": "Request for `GetLocation`."
+  }
+}
+
+## rerun_get_logs
+
+{
+  "name": "rerun_get_logs",
+  "description": "Return the viewer's recent log messages (INFO and above), oldest first, so a caller sees the\nwarnings and errors the user sees. A warning here usually explains what the user is seeing.\n\nEntries carry a sequence number, so passing the last one back fetches only what is new.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "after_sequence": {
+        "type": "integer",
+        "minimum": 0,
+        "description": "Only return entries with a sequence number greater than this.\nOmit for everything still buffered."
+      }
+    },
+    "description": "Request for `GetLogs`."
   }
 }
 
@@ -843,7 +1024,7 @@ Conventions:
 
 {
   "name": "rerun_get_recording_schema",
-  "description": "Report a recording's schema: its timelines, every entity, every component ever logged on\nit, whether that component has a static value, and its Arrow datatype.\n\n`paths_only` answers the cheaper question — which entities exist at all — for a recording\ntoo large to describe in full.\n\nRead this before naming an entity path or a component anywhere else. A component name\nguessed from an archetype's documentation is often not the one the recording carries, and\nthe viewer cannot tell a caller that it guessed wrong — a query for a component that is not\nthere just comes back empty.\n\nThis is the schema, not the data: a component listed here has been logged at some point,\nwhich says nothing about the current time cursor. Read values through the catalog server\n`GetViewerState` reports as `catalog_url`.\n\n`NOT_FOUND` if the requested recording is not open.\n\nRequires `rerun_connect`.",
+  "description": "Report a recording's schema: its timelines, entities, and archetypes by default.\nSet `with_components` to true for component names, static flags, and Arrow datatypes.\n\nSet both `with_archetypes` and `with_components` to false to list only entity paths\nfor a recording too large to describe in full.\n\nRead this before naming an entity path or a component anywhere else. A component name\nguessed from an archetype's documentation is often not the one the recording carries, and\nthe viewer cannot tell a caller that it guessed wrong — a query for a component that is not\nthere just comes back empty.\n\nThis is the schema, not the data: a component listed here has been logged at some point,\nwhich says nothing about the current time cursor. Read values through the catalog server\n`GetState` reports as `catalog_url`.\n\n`NOT_FOUND` if the requested recording is not open.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -858,44 +1039,88 @@ Conventions:
       "max_entities": {
         "type": "integer",
         "minimum": 0,
-        "description": "How many entities to describe at most.\n\nDefaults to 100, or to 10000 with `paths_only`, since a path costs a line where the\ncomponents on it cost many."
+        "description": "How many entities to describe at most.\n\nDefaults to 100, or to 10000 when both `with_archetypes` and `with_components` are false."
       },
-      "paths_only": {
+      "with_archetypes": {
         "type": "boolean",
-        "description": "Name the entities without describing what is logged on them.\n\nA whole recording's paths fit in one answer at a size worth reading, where its components\nwould not. Use this to see the shape of an unfamiliar recording, then call again with\n`entity_path` for the components of the entities that turned out to matter."
+        "description": "Include each entity's sorted, unique archetype names. Defaults to true.\nEntities without archetype metadata still appear, with no archetypes listed.\nThis describes what was logged, not visibility at the cursor."
+      },
+      "with_components": {
+        "type": "boolean",
+        "description": "Include component names, types, and metadata. Defaults to false.\nRequest these details with `entity_path` when inspecting specific entities."
       }
     },
     "description": "Request for `GetRecordingSchema`."
   }
 }
 
-## rerun_get_viewer_logs
+## rerun_get_state
 
 {
-  "name": "rerun_get_viewer_logs",
-  "description": "Return the viewer's recent log messages (INFO and above), oldest first, so a caller sees the\nwarnings and errors the user sees. A warning here usually explains what the user is seeing.\n\nEntries carry a sequence number, so passing the last one back fetches only what is new.\n\nRequires `rerun_connect`.",
-  "inputSchema": {
-    "type": "object",
-    "properties": {
-      "after_sequence": {
-        "type": "integer",
-        "minimum": 0,
-        "description": "Only return entries with a sequence number greater than this.\nOmit for everything still buffered."
-      }
-    },
-    "description": "Request for `GetViewerLogs`."
-  }
-}
-
-## rerun_get_viewer_state
-
-{
-  "name": "rerun_get_viewer_state",
+  "name": "rerun_get_state",
   "description": "Report what the viewer is currently showing, so a caller can orient itself.\n\nCovers the active recording, the current page URL, every open recording with its timelines,\ntheir time ranges and its current time cursor, and every view of the current blueprint with\nthe warnings and errors that view reports.\n\nCall this to learn which recording and timeline to drive, and which time values are valid,\nbefore moving the time cursor. A view's reports say what failed to visualize.\n\nRecordings are named by a store id string, `{kind}:{application_id}:{recording_id}`, e.g.\n`Recording:my_app:1830B33B45B963E7`. Pass it back whole wherever an operation takes a\nrecording. To read a part out of one: the kind runs to the first colon, the application id\nto the next colon that is not preceded by a backslash, and the recording id is the rest.\nBoth ids may contain a colon, so the application id's are escaped as `\\:` (and `\\` as `\\\\`).\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {},
-    "description": "Request for `GetViewerState`. Empty: the whole state is always returned."
+    "description": "Request for `GetState`. Empty: the whole state is always returned."
+  }
+}
+
+## rerun_get_table_schema
+
+{
+  "name": "rerun_get_table_schema",
+  "description": "Name a table's columns in display order, as last shown: the name a table blueprint uses,\nthe header name, and the Arrow datatype. Read it before writing a table blueprint.\n\n`FAILED_PRECONDITION` if no `table_url` is given and no table is on screen. `NOT_FOUND` if\nthe viewer does not know the table or has not shown it yet, so open it with `Open`.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "table_url": {
+        "type": "string",
+        "description": "The table's URL: a dataset or table `url` from `servers` in `GetState`, or a server's\n`origin` for its list of entries. Defaults to the table on screen."
+      }
+    },
+    "description": "Request for `GetTableSchema`."
+  }
+}
+
+## rerun_get_transform_graph
+
+{
+  "name": "rerun_get_transform_graph",
+  "description": "Inspect the recording's direct transform graph (TF) at its current timeline and time cursor.\nRead the full guidance below before calling this tool or interpreting its results:\nit explains which frames to query and what this graph can and cannot tell you.\n\nReturns JSON with frames, edges, provenance, query time, effective options, and missing-chunk status.\nThis is a latest-at snapshot, not transform history. To inspect another time, call\n`rerun_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.\nIf no cursor is set, queries latest values and explicitly reports query.mode = \"latest\".\nIf chunks are missing, the graph is incomplete: missing edges do not prove disconnection.\n\nEntity-path frames (`tf#/…`) follow the entity hierarchy with implicit identity relationships\nunless overridden. Named frames work like ROS TF: CoordinateFrame associates entities with\na frame, and Transform3D connects child and parent frames independently of entity paths.\nParents can change over time; pinholes connect 3D and 2D spaces. This graph excludes\nper-instance poses and view-specific blueprint overrides; it is not the rendering result.\nSee https://rerun.io/docs/concepts/logging-and-ingestion/transforms.\n\nChoose the representation before diagnosing connectivity:\n1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.\n2. If named frames exist, assume they are the user's intended representation and keep\n   inspecting and reporting on named frames only, unless the user indicates otherwise.\n3. If no named frames exist, inspect FRAME_FILTER_ENTITY_PATH instead.\nImplicit tf# frames always exist, even for entities assigned to named frames. Their separate\ntree is normal: do not report it as \"two disconnected trees\", a problem, or something to connect.\nNamed and entity-path frames are usually not mixed; mixing is supported but discouraged.\nUse FRAME_FILTER_ALL only if requested or there is evidence of an intentional mixed setup.\nIf intent remains unclear, use your structured question tool.\n\nFor transform trees with named frames, Transform3D connects frames; CoordinateFrame values\nassign entities to frames. For named-frame topologies, this API shows frame connections,\nnot entity assignments.\nDo not flag uninspected frame assignments as potential problems.\nIn named-frame topologies, a video/image entity uses a pinhole when its CoordinateFrame\nvalue matches the pinhole's child_frame.\nInspecting frame assignments is a separate concern from this API, do it only when asked or\nnecessary for debugging.\n\nUse also rerun_get_state to check spatial-view topology errors.\nFor missing content, check if the blueprint's target frame is set to a meaningful value.\ntf#/ is the default root for entity-path frame topologies, but is also a fallback when\nthere are multiple disconnected trees with named frames.\nInspect potential roots to use as target frames and use your structured question tool to\nclarify with the user if there are ambiguities.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "store_id": {
+        "type": "string",
+        "description": "Recording store id from GetState. Defaults to the active recording."
+      },
+      "frame_filter": {
+        "type": "string",
+        "enum": [
+          "FRAME_FILTER_UNSPECIFIED",
+          "FRAME_FILTER_ENTITY_PATH",
+          "FRAME_FILTER_NAMED",
+          "FRAME_FILTER_ALL"
+        ],
+        "description": "Defaults to ALL. Removes edges if either endpoint is excluded, including mixed-frame connections."
+      },
+      "edge_filter": {
+        "type": "string",
+        "enum": [
+          "EDGE_FILTER_UNSPECIFIED",
+          "EDGE_FILTER_STATIC",
+          "EDGE_FILTER_TEMPORAL",
+          "EDGE_FILTER_ALL"
+        ],
+        "description": "Defaults to ALL. Implicit hierarchy identity edges count as static."
+      },
+      "include_transforms": {
+        "type": "boolean",
+        "description": "Defaults to false. Include affine matrices and pinhole intrinsics, resolution and camera axes.\nConnectivity, source entity paths and sample times are always included."
+      }
+    },
+    "description": "Request for `GetTransformGraph`."
   }
 }
 
@@ -973,23 +1198,27 @@ Conventions:
   }
 }
 
-## rerun_open_url
+## rerun_open
 
 {
-  "name": "rerun_open_url",
-  "description": "Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link).\n\nReturns once the initial load is done, or after about ten seconds, whichever comes first.\nWhat the initial load covers depends on the URL:\n* A file or HTTP URL that is opened directly: the whole file is read.\n* A file registered with the viewer catalog (the default for `.rrd`), or a dataset segment\n  on a server: the recording's chunk index (manifest) has arrived. The chunks themselves\n  are fetched on demand afterwards, and need not all fit in memory.\n* Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted\n  on it.\nIf the response says `still_loading`, poll `GetViewerState` until its `loading` list\nis empty; only then does an absent timeline mean an empty recording rather than one still\narriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,\nso anything waiting on one stalls, while `GetViewerState` keeps answering.\n\nRequires `rerun_connect`.",
+  "name": "rerun_open",
+  "description": "Open a URL in the viewer (a recording/blueprint file, a `rerun://` dataset URI, a redap\nserver/catalog URL, or an intra-recording link). A recording it opens, such as a dataset\nsegment, becomes the active recording and is shown.\n\nRoughly the inverse of `get_location`: opening the location it reports goes back there.\n\nA location the viewer already has open is not loaded again: the viewer only navigates there,\nlike `set_location` does, but also refreshes a server, folder, or entry. Unlike\n`set_location`, which never loads anything, `open` loads what the viewer does not have\nyet. `NOT_FOUND` for an `about:recording` URL of a recording that is not loaded, since\nnothing can load it.\n\nReturns once the initial load is done, or after about ten seconds, whichever comes first.\nWhat the initial load covers depends on the URL:\n* A file or HTTP URL that is opened directly: the whole file is read.\n* A file registered with the viewer catalog (the default for `.rrd`), or a dataset segment\n  on a server: the recording's chunk index (manifest) has arrived. The chunks themselves\n  are fetched on demand afterwards, and need not all fit in memory.\n* Anything else (a server, a catalog entry, an intra-recording link): the viewer has acted\n  on it.\nIf the response names anything as `loading`, poll `GetState` until its `loading` list\nis empty; only then does an absent timeline mean an empty recording rather than one still\narriving. Do not drive the UI while it loads — a viewer busy importing paints no frames,\nso anything waiting on one stalls, while `GetState` keeps answering.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
       "url": {
         "type": "string",
         "description": "The URL to open in the viewer. This can be a recording/blueprint file URL, a `rerun://`\ndataset URI, a redap server/catalog URL, or an intra-recording link."
+      },
+      "navigate": {
+        "type": "boolean",
+        "description": "Whether to also show what it opens, making a recording the active one. Defaults to true.\n\nWithout it, a recording loads in the background, a server is connected to without being\nshown, and a location the viewer already has open is left as it is."
       }
     },
     "required": [
       "url"
     ],
-    "description": "Request for `OpenUrl`."
+    "description": "Request for `Open`."
   }
 }
 
@@ -997,7 +1226,7 @@ Conventions:
 
 {
   "name": "rerun_run_command",
-  "description": "Run a command palette command by id.\n\nReturns once queued; verify the effect with `GetViewerState` or a screenshot.\nCommands that open a native modal are refused unless `allow_blocking_native_modal` is set.\nAsk the user before running a `destructive` command.\n\nRequires `rerun_connect`.",
+  "description": "Run a command palette command by id.\n\nReturns once queued; verify the effect with `GetState` or a screenshot.\nCommands that open a native modal are refused unless `allow_blocking_native_modal` is set.\nAsk the user before running a `destructive` command.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -1029,7 +1258,7 @@ Conventions:
 
 {
   "name": "rerun_save_screenshot",
-  "description": "Take a screenshot of the viewer, or of a single view within it, and write it to disk.\n\nThe screenshot is saved by the viewer process, so the path is resolved on the machine\nrunning the viewer, not on the machine making the request.\n\nFails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is\ncurrently visible, `FAILED_PRECONDITION` if the view is too small to capture, and\n`INTERNAL` if the capture itself or the write to disk failed.\n\nRequires `rerun_connect`.",
+  "description": "Take a screenshot of the viewer, or of a single view within it, and write it to disk, or\nreturn it as a PNG.\n\nThe screenshot is saved by the viewer process, so the path is resolved on the machine\nrunning the viewer, not on the machine making the request. Without a `file_path`, the\nresponse carries the PNG instead. The web viewer cannot write files, so it needs that.\n\nFails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is\ncurrently visible, `FAILED_PRECONDITION` if the view is too small to capture, and\n`INTERNAL` if the capture itself, the PNG encoding, or the write to disk failed.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -1039,7 +1268,7 @@ Conventions:
       },
       "file_path": {
         "type": "string",
-        "description": "Path at which the screenshot will be saved.\nThis path is relative to the current working directory of the viewer process."
+        "description": "Path at which the screenshot will be saved, which picks the image format by its extension.\nThis path is relative to the current working directory of the viewer process.\n\nIf omitted, nothing is saved, and the response carries the screenshot as a PNG."
       },
       "max_size": {
         "type": "integer",
@@ -1058,23 +1287,80 @@ Conventions:
 
 {
   "name": "rerun_set_blueprint",
-  "description": "Replace a recording's active blueprint with JSON, in the form `GetBlueprint` reads.\n\nThe JSON is the whole blueprint: anything it leaves out is cleared. A field holding a\nsingle value may be written as that value or as an array of one.\n`INVALID_ARGUMENT` names where the JSON is wrong and what was expected there.\n\nRequires `rerun_connect`.",
+  "description": "Set regular blueprints (per-recording or per-segment views and layouts) or table blueprints\n(customize tables, enable card layouts, and add preview cells) with JSON, in the form\n`GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.\nRead the `table` input field's documentation for the table, card, and preview configuration interface.\n\n`mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;\npartial updates write only supplied fields, preserving everything else. Prefer partial\nupdates for small edits such as a colormap or view name. Arrays and struct-valued fields\nare replaced as a whole, not merged. Set a field to null to clear it.\nA full recording update with an explicit root defaults omitted `auto_layout` and\n`auto_views` to false. Partial updates preserve these options unless supplied.\nA field holding a\nsingle value may be written as that value or as an array of one. Exactly one of\n`recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the\nresponse names which one it wrote.\n\n## Tables\n\nTo change how a table looks, write its blueprint with this rather than clicking through the\nviewer's Columns menu. Read the column names with `GetTableSchema` and the blueprint with\n`GetBlueprint` first, and keep what it returned. `column_order` in `TableLayout` sets the\norder, and a column's `TableColumn` sets its `name` and `visible`. Row filters go in\n`filters` of `TableBlueprint` at `/table`.\n\nRows show either as a table or as cards with segment previews. A request about columns or\nrows only changes the table layout, so write it without asking. For any other request, such\nas to make a table look nice, ask the user before the first write which layout they want and\nwhat it shows, unless they already said.\nThe docs of `table` describe how to write a table blueprint, with examples of both layouts.\n\n## Errors\n\n`INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked\nagainst a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor\n`table` is set.\n`INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a\nreference to a missing view, container, or visualizer instruction, a view, container, or\ninstruction that nothing refers to, a loop of containers, or a view or container in two\ncontainers. So add a view and the reference to it in the same call.\n`FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the\nrecording is not open or the viewer does not know the table.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
-      "store_id": {
-        "type": "string",
-        "description": "Recording whose active blueprint to write, as `{kind}:{application_id}:{recording_id}`.\nIf omitted, the active recording is used."
-      },
       "json": {
         "type": "string",
-        "description": "The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`\nreturns it."
+        "description": "Blueprint JSON keyed by entity path, as `GetBlueprint` returns it.\nIn partial mode, include only the fields to change. Null clears a field;\nan empty object makes no changes. Arrays replace the entire field."
+      },
+      "recording": {
+        "type": "object",
+        "properties": {
+          "store_id": {
+            "type": "string",
+            "description": "The recording, as `{kind}:{application_id}:{recording_id}`. Defaults to the active recording."
+          }
+        },
+        "description": "Write the blueprint of a recording."
+      },
+      "table": {
+        "type": "object",
+        "properties": {
+          "table_url": {
+            "type": "string",
+            "description": "The table: a dataset or table `url` from `servers` in `GetState`, or a server's\n`origin` for its list of entries. Defaults to the table on screen."
+          }
+        },
+        "description": "Write the blueprint of a table.\nUse this to customize tables, enable card layouts, and add preview cells.\n\nThe entity paths and archetypes of a table blueprint are described by\n`rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in\n<https://rerun.io/docs/howto/visualization/configure-table-blueprints>.\n\n`TableBlueprint` at `/table` has these fields:\n* `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a\n  `CardLayout`, and the table shows otherwise. `Cards` without a `CardLayout` shows the table.\n* `column_display_mode`: how column names show, `Compact`, `Component` or `Full`.\n  Defaults to `Compact`.\n* `filters`: SQL row filters, described below.\n\nEnum values in the JSON are the variant names, such as `\"Cards\"`. The Python SDK takes\nlowercase strings instead, such as `default_layout=\"cards\"`.\n\nThis blueprint shows three columns first, renames one and hides another:\n\n```json\n{\n  \"/table/layouts/table\": {\"TableLayout\": {\"column_order\": [\"recording link\", \"property:my_props:my_score\", \"rerun_segment_id\"]}},\n  \"/table/layouts/table/columns/property\\\\:my_props\\\\:my_score\": {\"TableColumn\": {\"name\": \"Score\"}},\n  \"/table/layouts/table/columns/rerun_segment_id\": {\"TableColumn\": {\"visible\": false}}\n}\n```\n\n`column_order` takes plain column names. In a column's entity path, `:` and spaces are\nescaped as `\\:` and `\\ `, so `recording link` becomes `columns/recording\\ link`.\n\nThis blueprint shows rows as cards, with a 3D view of `/my_scene` on each card, titled by\n`my_title`:\n\n```json\n{\n  \"/table\": {\"TableBlueprint\": {\"layout\": \"Cards\"}},\n  \"/table/layouts/cards\": {\"CardLayout\": {\"title\": \"my_title\", \"link\": \"recording link\", \"field_order\": [\"recording link\", \"my_title\"]}},\n  \"/table/layouts/cards/fields/recording\\\\ link\": {\"TableColumnPreview\":{\"views\": \"/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d\"}},\n  \"/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d\": {\"ViewBlueprint\": {\"class_identifier\": \"3D\", \"space_origin\": \"/my_scene\"}},\n  \"/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents\": {\"ViewContents\": {\"query\": \"+ /my_scene/**\"}}\n}\n```\n\nCard fields live under `fields/`, not `columns/`, and only the fields in `field_order`\nshow. Each preview view has its own UUID, in the form a recording blueprint writes views.\n\nLearn what the dataset holds with `GetDatasetSchema` before choosing a preview. Then ask the\nuser what the preview shows, and suggest what tells the segments apart at a glance, such as\na moving robot model, a trajectory, or a video. To refine a preview, inspect the recordings\nit loads rather than opening a segment.\nEach card's recording shows in `recordings` of `GetState`, with the dataset id as its\napplication id and the segment id as its recording id, and works with `GetRecordingSchema`.\nEvery visible card renders its own recording, which is costly, so keep previews small: few\nviews, and only the entities that matter.\n\nRow filters are SQL expressions in `filters` of `TableBlueprint` at `/table`, such as\n`\"my_column\" ILIKE '%text%'`. Its docs list the forms the filter bar shows as editable widgets.\nUsers cannot write SQL in the viewer. They only add those forms from a column header's menu,\nand can only remove any other filter."
+      },
+      "mode": {
+        "type": "string",
+        "enum": [
+          "full",
+          "partial"
+        ],
+        "description": "`full` (default) replaces the whole blueprint; `partial` preserves omitted fields.",
+        "default": "full"
       }
     },
     "required": [
       "json"
     ],
-    "description": "Request for `SetBlueprint`."
+    "oneOf": [
+      {
+        "required": [
+          "recording"
+        ]
+      },
+      {
+        "required": [
+          "table"
+        ]
+      }
+    ],
+    "description": "Request for `SetBlueprint`.\n\nExactly one of `recording`, `table` must be set."
+  }
+}
+
+## rerun_set_location
+
+{
+  "name": "rerun_set_location",
+  "description": "Show a location the viewer already has open, as `get_location` reports it.\nEach recording in `get_state` carries its location too.\nThis only navigates, and never loads anything: use `open` for that.\n\nLike a user navigating, it leaves the page shown before in the viewer's history, so the\nback button of the native viewer, or of the browser for the web viewer, returns to it.\n\n`INVALID_ARGUMENT` if it is not a location, and `NOT_FOUND` if the viewer does not have it\nopen.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "location": {
+        "type": "string",
+        "description": "A location, as `GetLocation` reports it."
+      }
+    },
+    "required": [
+      "location"
+    ],
+    "description": "Request for `SetLocation`."
   }
 }
 
@@ -1082,7 +1368,7 @@ Conventions:
 
 {
   "name": "rerun_set_time_cursor",
-  "description": "Move the time cursor (timeline position) of a recording in the viewer.\n\nRequires `rerun_connect`.",
+  "description": "Move the time cursor (timeline position) of a recording in the viewer, switch its active\ntimeline, or play, pause, or follow it.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -1114,17 +1400,78 @@ Conventions:
         "required": [
           "time"
         ],
-        "description": "Time value to seek to: a sequence index for sequence timelines, or nanoseconds for\ntemporal timelines (see `GetViewerState` for each timeline's type and range)."
+        "description": "Time value to seek to: a sequence index for sequence timelines, or nanoseconds for\ntemporal timelines (see `GetState` for each timeline's type and range).\nIf omitted, the cursor stays at its current time on the timeline."
       },
-      "play": {
-        "type": "boolean",
-        "description": "If true, start playing the recording from the new position. Omit it, or pass false, to\npause the recording instead."
+      "play_state": {
+        "type": "string",
+        "enum": [
+          "PLAY_STATE_UNSPECIFIED",
+          "PLAY_STATE_PAUSED",
+          "PLAY_STATE_PLAYING",
+          "PLAY_STATE_FOLLOWING"
+        ],
+        "description": "Whether to pause, play, or follow the latest data. If omitted, playback continues as it was.\nFollowing moves the cursor to the latest data, so it cannot be combined with a `time`."
+      }
+    },
+    "description": "Request for `SetTimeCursor`."
+  }
+}
+
+## rerun_submit_feedback
+
+{
+  "name": "rerun_submit_feedback",
+  "description": "Report a problem with a Rerun tool, doc, or API, after you have tried to work around it.\nWrite only about Rerun, never about the user's data.\nThe text is only sent when the user has agreed to share redacted prompts with Rerun.\nFails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "One or two sentences: what you tried to do, and what the tool, doc, or API did wrong or lacked."
+      },
+      "category": {
+        "type": "string",
+        "enum": [
+          "FEEDBACK_CATEGORY_UNSPECIFIED",
+          "FEEDBACK_CATEGORY_BUG",
+          "FEEDBACK_CATEGORY_DOCS_MISMATCH",
+          "FEEDBACK_CATEGORY_FRICTION",
+          "FEEDBACK_CATEGORY_FEATURE_GAP",
+          "FEEDBACK_CATEGORY_QUALITY_DEGRADATION",
+          "FEEDBACK_CATEGORY_OTHER"
+        ],
+        "description": "What kind of problem it is."
+      },
+      "surface": {
+        "type": "string",
+        "description": "The tool, command, or API that let you down, e.g. `rerun_set_blueprint` or `rr.log`."
+      },
+      "summary": {
+        "type": "string",
+        "description": "More detail: the error message, what you expected instead, and how you worked around it."
+      },
+      "agent": {
+        "type": "string",
+        "description": "Your name as an agent, e.g. `Claude Code` or `Codex`."
+      },
+      "severity": {
+        "type": "string",
+        "enum": [
+          "FEEDBACK_SEVERITY_UNSPECIFIED",
+          "FEEDBACK_SEVERITY_CRITICAL",
+          "FEEDBACK_SEVERITY_HIGH",
+          "FEEDBACK_SEVERITY_MEDIUM",
+          "FEEDBACK_SEVERITY_LOW"
+        ],
+        "description": "How much the problem got in your way."
       }
     },
     "required": [
-      "time"
+      "title",
+      "category",
+      "severity"
     ],
-    "description": "Request for `SetTimeCursor`."
+    "description": "Request for `SubmitFeedback`."
   }
 }
 

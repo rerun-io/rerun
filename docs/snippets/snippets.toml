@@ -382,6 +382,10 @@ backwards_check = [
   "cpp", # Doesn't exist
   "rust", # Doesn't exist
 ]
+"howto/send_dataframe" = [ # Python-only API
+  "cpp",
+  "rust",
+]
 "howto/send_table" = [
   "py", # Requires a server to connect to
   "cpp", # Doesn't exist

@@ -3,8 +3,9 @@
 
 #pragma once
 
+#include "../../archetype_utils.hpp"
+#include "../../blueprint/components/column_type.hpp"
 #include "../../blueprint/components/editable.hpp"
-#include "../../blueprint/components/table_cell_kind.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
 #include "../../component_column.hpp"
@@ -35,7 +36,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// If unset, editing is disabled.
         /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-        /// ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
+        /// A column can only be edited when its component type has an editor in the Viewer.
         std::optional<ComponentBatch> editable;
 
         /// Whether the column is visible in this layout.
@@ -45,10 +46,12 @@ namespace rerun::blueprint::archetypes {
         /// Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
         std::optional<ComponentBatch> visible;
 
-        /// How to render the column's values.
+        /// Overrides the component the column's values are shown as.
         ///
-        /// If unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.
-        std::optional<ComponentBatch> cell_kind;
+        /// This picks the component UI for every value of the column.
+        /// The column's Arrow datatype must match the datatype of the component type.
+        /// If unset, the component of the source column is used, or the Viewer infers one from the column's datatype.
+        std::optional<ComponentBatch> column_type;
 
       public:
         /// The name of the archetype as used in `ComponentDescriptor`s.
@@ -68,10 +71,10 @@ namespace rerun::blueprint::archetypes {
             ArchetypeName, "TableColumn:visible",
             Loggable<rerun::components::Visible>::ComponentType
         );
-        /// `ComponentDescriptor` for the `cell_kind` field.
-        static constexpr auto Descriptor_cell_kind = ComponentDescriptor(
-            ArchetypeName, "TableColumn:cell_kind",
-            Loggable<rerun::blueprint::components::TableCellKind>::ComponentType
+        /// `ComponentDescriptor` for the `column_type` field.
+        static constexpr auto Descriptor_column_type = ComponentDescriptor(
+            ArchetypeName, "TableColumn:column_type",
+            Loggable<rerun::blueprint::components::ColumnType>::ComponentType
         );
 
       public:
@@ -101,7 +104,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// If unset, editing is disabled.
         /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-        /// ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
+        /// A column can only be edited when its component type has an editor in the Viewer.
         TableColumn with_editable(const rerun::blueprint::components::Editable& _editable) && {
             editable =
                 ComponentBatch::from_loggable(_editable, Descriptor_editable).value_or_throw();
@@ -118,13 +121,15 @@ namespace rerun::blueprint::archetypes {
             return std::move(*this);
         }
 
-        /// How to render the column's values.
+        /// Overrides the component the column's values are shown as.
         ///
-        /// If unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.
-        TableColumn with_cell_kind(const rerun::blueprint::components::TableCellKind& _cell_kind
+        /// This picks the component UI for every value of the column.
+        /// The column's Arrow datatype must match the datatype of the component type.
+        /// If unset, the component of the source column is used, or the Viewer infers one from the column's datatype.
+        TableColumn with_column_type(const rerun::blueprint::components::ColumnType& _column_type
         ) && {
-            cell_kind =
-                ComponentBatch::from_loggable(_cell_kind, Descriptor_cell_kind).value_or_throw();
+            column_type = ComponentBatch::from_loggable(_column_type, Descriptor_column_type)
+                              .value_or_throw();
             return std::move(*this);
         }
 
@@ -136,13 +141,21 @@ namespace rerun::blueprint::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches({&name, &editable, &visible, &column_type}, lengths_)
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length(
+                       {&name, &editable, &visible, &column_type}
+            )
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::blueprint::archetypes
@@ -158,6 +171,10 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const blueprint::archetypes::TableColumn& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.name, &archetype.editable, &archetype.visible, &archetype.column_type}
+            );
+        }
     };
 } // namespace rerun

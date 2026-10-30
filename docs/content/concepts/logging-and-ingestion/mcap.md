@@ -10,6 +10,7 @@ Working with MCAP files in Rerun:
 
 * [Working with MCAP](../../howto/logging-and-ingestion/mcap.md)
 * [Supported Message Formats](mcap/message-formats.md)
+* [Recording ROS 2 bags as RRD](../../howto/logging-and-ingestion/mcap.md#recording-ros-2-bags-as-rrd) with the experimental [`rosbag2_storage_rrd`](https://github.com/rerun-io/rosbag2_storage_rrd) plugin
 
 Technical details and advanced usage:
 * [MCAP Decoders Explained](mcap/decoders-explained.md)

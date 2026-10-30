@@ -727,6 +727,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    if cfg!(feature = "analytics") {
+        re_analytics::enable_in_this_process();
+    }
+
     #[cfg(feature = "native_viewer")]
     re_memory::accounting_allocator::turn_on_tracking_if_env_var(
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,
@@ -798,7 +802,7 @@ where
             Command::Auth(cmd) => cmd.run(tokio_runtime.handle()).map_err(Into::into),
 
             #[cfg(feature = "analytics")]
-            Command::Analytics(analytics) => analytics.run().map_err(Into::into),
+            Command::Analytics(analytics) => analytics.run(&build_info).map_err(Into::into),
 
             Command::Download(cmd) => cmd.run(tokio_runtime.handle()),
 
@@ -834,7 +838,7 @@ where
             Command::Rrd(rrd) => rrd.run(),
 
             #[cfg(feature = "oss_server")]
-            Command::Server(server) => tokio_runtime.block_on(server.run_async()),
+            Command::Server(server) => tokio_runtime.block_on(server.run_async(build_info)),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -1241,7 +1245,7 @@ fn start_native_viewer(
 
     let (command_tx, command_rx) = re_viewer_context::command_channel();
 
-    let auth_error_handler = re_viewer::App::auth_error_handler(command_tx.clone());
+    let auth_error_handler = re_viewer::AppCore::auth_error_handler(command_tx.clone());
 
     // Start catching `re_log::info/warn/error` messages
     // so we can show them in the notification panel.
@@ -1255,7 +1259,8 @@ fn start_native_viewer(
     let (viewer_server_listener, internal_catalog, connection_registry, connect_hint) = {
         let listener = re_grpc_server::ServerListener::bind(server_addr)?;
         let connect_hint = url_or_paths.is_empty().then(|| listener.connect_hint());
-        let internal_catalog = re_viewer::internal_catalog::build(listener.local_addr());
+        let internal_catalog =
+            re_viewer::internal_catalog::build(listener.local_addr(), _build_info.clone());
         let connection_registry = connection_registry.with_internal(
             internal_catalog.connection.clone(),
             internal_catalog.storage_dir().to_owned(),
@@ -2185,6 +2190,8 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
 
 #[cfg(test)]
 mod cli_data_source_tests {
+    use std::assert_matches;
+
     use std::path::PathBuf;
 
     use clap::Parser as _;
@@ -2201,7 +2208,7 @@ mod cli_data_source_tests {
     #[test]
     fn connect_and_viewer_server_ports_are_independent() {
         let args = Args::try_parse_from(["rerun", "--connect", "--port", "1234"]).unwrap();
-        assert!(matches!(args.port, Some(PortArg::Port(1234))));
+        assert_matches!(args.port, Some(PortArg::Port(1234)));
         assert_eq!(
             connect_proxy_uri(None).unwrap().to_string(),
             "rerun+http://127.0.0.1:9876/proxy"
@@ -2215,10 +2222,10 @@ mod cli_data_source_tests {
         );
 
         let args = Args::try_parse_from(["rerun", "--port", "auto"]).unwrap();
-        assert!(matches!(args.port, Some(PortArg::Auto)));
+        assert_matches!(args.port, Some(PortArg::Auto));
 
         let args = Args::try_parse_from(["rerun", "--connect", "4321", "--port", "1234"]).unwrap();
-        assert!(matches!(args.port, Some(PortArg::Port(1234))));
+        assert_matches!(args.port, Some(PortArg::Port(1234)));
         assert_eq!(
             connect_proxy_uri(Some("4321".to_owned()))
                 .unwrap()

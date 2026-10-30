@@ -3,13 +3,13 @@ use re_ui::list_item::PropertyContent;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{UiExt as _, icons};
 use re_uri::Fragment;
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{ItemCollection, Route, StoreHub, TimeControl, ViewerContext};
 
 pub struct ShareModal {
     modal: ModalHandler,
 
-    url: Option<ViewerOpenUrl>,
+    url: Option<ViewerUrl>,
     create_web_viewer_url: bool,
 
     /// Whether to show feedback that the link just has been copied to the clipboard.
@@ -41,8 +41,8 @@ impl ShareModal {
         route: &Route,
         time_ctrl: Option<&TimeControl>,
         selection: &ItemCollection,
-    ) -> anyhow::Result<ViewerOpenUrl> {
-        ViewerOpenUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
+    ) -> anyhow::Result<ViewerUrl> {
+        ViewerUrl::from_context_expanded(store_hub, route, time_ctrl, selection)
     }
 
     /// Opens the share modal with the current URL.
@@ -59,7 +59,7 @@ impl ShareModal {
     }
 
     /// Opens the share modal with the given URL.
-    fn open_with_url(&mut self, url: ViewerOpenUrl) {
+    fn open_with_url(&mut self, url: ViewerUrl) {
         self.url = Some(url);
         self.modal.open();
     }
@@ -241,7 +241,7 @@ const MIN_TOGGLE_WIDTH_RH: f32 = 120.0;
 fn url_settings_ui(
     ctx: Option<&ViewerContext<'_>>,
     ui: &mut egui::Ui,
-    url: &mut ViewerOpenUrl,
+    url: &mut ViewerUrl,
     create_web_viewer_url: &mut bool,
 ) {
     ui.list_item_flat_noninteractive(PropertyContent::new("Link format").value_fn(|ui, _| {
@@ -372,7 +372,7 @@ mod tests {
     use re_log_types::external::re_tuid;
     use re_log_types::{AbsoluteTimeRangeF, TimeCell};
     use re_test_context::TestContext;
-    use re_viewer_context::open_url::ViewerOpenUrl;
+    use re_viewer_context::viewer_url::ViewerUrl;
     use re_viewer_context::{Item, ItemCollection, Route, TimeControlCommand};
 
     use crate::ui::ShareModal;
@@ -423,7 +423,7 @@ mod tests {
             });
         harness.snapshot("share_modal__server_url");
 
-        modal.lock().url = Some(ViewerOpenUrl::RedapDataset(re_uri::DatasetUri {
+        modal.lock().url = Some(ViewerUrl::RedapDataset(re_uri::DatasetUri {
             origin: origin.clone(),
             dataset_id,
             resource: re_uri::DatasetResource::Segments,
@@ -447,7 +447,7 @@ mod tests {
 
         harness.run();
 
-        modal.lock().url = Some(ViewerOpenUrl::RedapDataset(re_uri::DatasetUri {
+        modal.lock().url = Some(ViewerUrl::RedapDataset(re_uri::DatasetUri {
             origin: origin.clone(),
             dataset_id,
             resource: re_uri::DatasetResource::Segments,

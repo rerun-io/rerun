@@ -86,6 +86,11 @@ def pytest_configure(config: pytest.Config) -> None:
 
     config.addinivalue_line(
         "markers",
+        "requires_write_access_grants: runs on local OSS and dev-stack profiles",
+    )
+
+    config.addinivalue_line(
+        "markers",
         "aws_only: mark test as requiring AWS (e.g., uses S3 buckets directly)",
     )
 
@@ -124,6 +129,12 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         for item in items:
             if "local_only" in item.keywords:
                 item.add_marker(skip_marker)
+
+    if profile_name == "dpf-docker":
+        skip_uploads = pytest.mark.skip(reason="write access grants are not configured in Docker")
+        for item in items:
+            if "requires_write_access_grants" in item.keywords:
+                item.add_marker(skip_uploads)
 
     # Skip aws_only tests when not running on AWS
     cloud = config.getoption("--cloud")
@@ -366,7 +377,7 @@ def entry_factory(catalog_client: CatalogClient, request: pytest.FixtureRequest)
     after the test completes.
     """
 
-    prefix = f"{request.node.name}_"
+    prefix = f"{request.node.name.replace('/', '_')}_"
     factory = EntryFactory(catalog_client, prefix)
     yield factory
     factory.cleanup()

@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -55,10 +52,8 @@ impl ::re_types_core::ToArrow for TensorDimensionSelection {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -84,10 +79,7 @@ impl ::re_types_core::ToArrow for TensorDimensionSelection {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let dimension_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let dimension_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt32Type>::new(
                             dimension
                                 .into_iter()
@@ -104,10 +96,7 @@ impl ::re_types_core::ToArrow for TensorDimensionSelection {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let invert_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let invert_validity = validity_from_bools(somes);
                         as_array_ref(BooleanArray::new(
                             invert.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             invert_validity,
@@ -136,36 +125,20 @@ impl ::re_types_core::FromArrow for TensorDimensionSelection {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.encodings.TensorDimensionSelection",
+                    );
                     let dimension = {
-                        if !arrays_by_name.contains_key("dimension") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "dimension",
-                            ))
-                            .with_context("rerun.encodings.TensorDimensionSelection");
-                        }
-                        let arrow_data = &**arrays_by_name["dimension"];
+                        let arrow_data = fields.required("dimension")?;
                         arrow_data
                             .try_cast::<UInt32Array>(|| DataType::UInt32)
                             .with_context("rerun.encodings.TensorDimensionSelection#dimension")?
                             .into_iter()
                     };
                     let invert = {
-                        if !arrays_by_name.contains_key("invert") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "invert",
-                            ))
-                            .with_context("rerun.encodings.TensorDimensionSelection");
-                        }
-                        let arrow_data = &**arrays_by_name["invert"];
+                        let arrow_data = fields.required("invert")?;
                         arrow_data
                             .try_cast::<BooleanArray>(|| DataType::Boolean)
                             .with_context("rerun.encodings.TensorDimensionSelection#invert")?

@@ -250,7 +250,9 @@ pub trait ViewClass: Send + Sync {
     /// Called once for every new view instance of this class.
     ///
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
-    fn new_state(&self) -> Box<dyn ViewState>;
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::new(())
+    }
 
     /// Preferred aspect ratio for the ui tiles of this view.
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
@@ -305,21 +307,16 @@ pub trait ViewClass: Send + Sync {
         visualizers_with_reason: &[(ViewSystemIdentifier, &VisualizableReason)],
         indicated_entities_per_visualizer: &PerVisualizerType<&IndicatedEntities>,
     ) -> RecommendedVisualizers {
-        let recommended = visualizers_with_reason
-            .iter()
-            .filter_map(|(visualizer, _reason)| {
-                if indicated_entities_per_visualizer
-                    .get(visualizer)
-                    .is_some_and(|matching_list| matching_list.contains(entity_path))
-                {
-                    Some((*visualizer, Default::default()))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        RecommendedVisualizers::new(recommended)
+        let mut recommended = RecommendedVisualizers::empty();
+        for (visualizer, reason) in visualizers_with_reason {
+            if indicated_entities_per_visualizer
+                .get(visualizer)
+                .is_some_and(|matching_list| matching_list.contains(entity_path))
+            {
+                recommended.insert(*visualizer, reason.recommended_mappings(), true);
+            }
+        }
+        recommended
     }
 
     /// Determines which views should be spawned by default for this class.
@@ -497,3 +494,108 @@ pub trait ViewStateExt: ViewState {
 }
 
 impl ViewStateExt for dyn ViewState {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        ComponentMatch, SingleRequiredComponentMatch, ViewClassPlaceholder,
+        VisualizerComponentSource,
+    };
+    use nohash_hasher::IntMap;
+
+    #[test]
+    fn native_mappings_take_precedence_over_ordered_heuristics() {
+        let entity = EntityPath::from("entity");
+        let visualizer: ViewSystemIdentifier = "TestVisualizer".into();
+        let target = "target".into();
+        let indicated = IndicatedEntities(std::iter::once(entity.clone()).collect());
+        let indicated_per_visualizer =
+            PerVisualizerType(std::iter::once((visualizer, &indicated)).collect());
+        let expected: Vec<_> = ["message_a", "message_b"]
+            .map(|source| {
+                RecommendedMappings::new(
+                    target,
+                    VisualizerComponentSource::SourceComponent {
+                        source_component: source.into(),
+                        selector: ".data".into(),
+                    },
+                )
+            })
+            .into();
+
+        // Without a native match, both heuristics are recommended in source order.
+        // A native match suppresses both: "other" requires remapping, "target" uses identity.
+        for native_source in [None, Some("other"), Some("target")] {
+            // Recommendation order must not depend on heuristic insertion order.
+            for sources in [["message_b", "message_a"], ["message_a", "message_b"]] {
+                let mut matches = IntMap::default();
+                for source in sources {
+                    matches.insert(
+                        source.into(),
+                        ComponentMatch::HeuristicMapping {
+                            component_type: None,
+                            mappings: RecommendedMappings::new(
+                                target,
+                                VisualizerComponentSource::SourceComponent {
+                                    source_component: source.into(),
+                                    selector: ".data".into(),
+                                },
+                            ),
+                        },
+                    );
+                }
+                if let Some(source) = native_source {
+                    matches.insert(
+                        source.into(),
+                        ComponentMatch::NativeSemantics {
+                            arrow_data_type: arrow::datatypes::DataType::Float64,
+                            component_type: None,
+                        },
+                    );
+                }
+                let reason = VisualizableReason::SingleRequiredComponentMatch(
+                    SingleRequiredComponentMatch {
+                        target_component: target,
+                        matches,
+                    },
+                );
+                let recommended = ViewClassPlaceholder.recommended_visualizers_for_entity(
+                    &entity,
+                    &[(visualizer, &reason)],
+                    &indicated_per_visualizer,
+                );
+
+                let native = native_source.map(|source| {
+                    if source == "target" {
+                        RecommendedMappings::default()
+                    } else {
+                        RecommendedMappings::new(
+                            target,
+                            VisualizerComponentSource::simple_map(source.into()),
+                        )
+                    }
+                });
+                let defaults = native.map_or_else(|| expected.clone(), |mapping| vec![mapping]);
+                assert_eq!(
+                    recommended.all_recommendations()[&visualizer].as_slice(),
+                    defaults,
+                    "{native_source:?}, {sources:?}"
+                );
+                // Auto-spawning must use the same precedence as the recommendation list.
+                assert_eq!(
+                    recommended.into_auto_spawned()[&visualizer].as_slice(),
+                    defaults
+                );
+
+                // Matching alone is insufficient: the visualizer must also be indicated.
+                let not_indicated = ViewClassPlaceholder.recommended_visualizers_for_entity(
+                    &entity,
+                    &[(visualizer, &reason)],
+                    &Default::default(),
+                );
+                assert!(not_indicated.all_recommendations().is_empty());
+            }
+        }
+    }
+}

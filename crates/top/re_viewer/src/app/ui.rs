@@ -8,9 +8,9 @@ use crate::{
     app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
 };
 
-use super::{App, WindowDecorationsRequest};
+use super::{AppCore, WindowDecorationsRequest};
 
-impl App {
+impl AppCore {
     /// Top-level ui function.
     ///
     /// Shows the viewer ui.
@@ -28,10 +28,10 @@ impl App {
         // Before the panels: the highlight is dismissed by any click, and the welcome screen
         // clears `InputState::pointer` while it paints, so a read afterwards would miss that
         // click. The outline is painted on its own layer, so it still ends up on top.
-        if let Some(highlight) = &self.screen_highlight
+        if let Some(highlight) = &self.viewer_control.screen_highlight
             && !highlight.show(ui)
         {
-            self.screen_highlight = None;
+            self.viewer_control.screen_highlight = None;
         }
 
         let custom_window_decorations = self.custom_window_decorations();
@@ -65,8 +65,7 @@ impl App {
                     ui,
                 );
 
-                #[cfg(agent_panel)]
-                self.agent_panel_ui(ui);
+                self.agent_panel_ui(ui, active_store_context);
 
                 self.dev_panel_ui(
                     ui,
@@ -112,7 +111,7 @@ impl App {
                             &self.connections.registry,
                             &self.async_runtime,
                             &self.egui_ctx,
-                            self.startup_options.login_enabled(),
+                            self.startup.options.login_enabled(),
                             &self.command_sender,
                         );
 
@@ -141,26 +140,28 @@ impl App {
                     );
 
                     self.state.show(
-                        &self.app_env,
-                        &self.startup_options,
+                        &self.startup.app_env,
+                        &self.startup.options,
                         app_blueprint,
                         ui,
                         render_ctx,
                         active_store_context,
                         storage_context,
                         &self.table_blueprints,
-                        &self.reflection,
-                        &self.component_ui_registry,
-                        &self.component_fallback_registry,
-                        &self.view_class_registry,
+                        &self.registries.reflection.read(),
+                        &self.registries.component_uis,
+                        &self.registries.component_fallbacks,
+                        &self.registries.view_classes,
                         &self.rx_log,
                         &self.command_sender,
                         &WelcomeScreenState {
-                            hide_examples: self.startup_options.hide_welcome_screen,
+                            hide_examples: self.startup.options.hide_welcome_screen
+                                || !self.app_options().enable_welcome_screen,
                             opacity: self.welcome_screen_opacity(ui),
                         },
                         self.event_dispatcher.as_ref(),
                         &self.connections.registry,
+                        &self.connections.registrations_in_flight,
                         &self.async_runtime,
                         self.custom_window_frame(),
                     );
@@ -194,13 +195,13 @@ impl App {
             ..ui.tokens().bottom_panel_frame(window_frame)
         };
 
-        let external_trees = if self.dev_panel_open {
+        let external_trees = if self.dev_panel.open {
             self.external_memory_users.captured_trees()
         } else {
             &[]
         };
 
-        let mut dev_panel_open = self.dev_panel_open;
+        let mut dev_panel_open = self.dev_panel.open;
         let mut close_requested = false;
         egui::Panel::bottom("dev_panel")
             .default_size(300.0)
@@ -225,12 +226,15 @@ impl App {
                 }
             });
         // `show_collapsible` flips `dev_panel_open` when the user drags the panel closed:
-        self.dev_panel_open = dev_panel_open && !close_requested;
+        self.dev_panel.open = dev_panel_open && !close_requested;
     }
 
     /// The rightmost panel: a chat with a coding agent that drives this viewer.
-    #[cfg(agent_panel)]
-    fn agent_panel_ui(&mut self, ui: &mut egui::Ui) {
+    fn agent_panel_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        active_store_context: Option<&ActiveStoreContext<'_>>,
+    ) {
         if !self.app_options().experimental.agent_panel {
             return;
         }
@@ -240,12 +244,19 @@ impl App {
             .registry
             .internal_origin()
             .map(|origin| origin.as_url());
-        let cache_dir = self.app_options().cache_directory.clone();
+        let cache_dir = cfg_select! {
+            target_arch = "wasm32" => None::<std::path::PathBuf>,
+            _ => self.app_options().cache_directory.clone(),
+        };
+        let recording = active_store_context
+            .map(|context| context.recording)
+            .filter(|recording| !recording.store_id().is_empty_recording());
 
         let Self {
             agent_panel,
             state,
-            build_info,
+            startup,
+            async_runtime,
             ..
         } = self;
 
@@ -253,9 +264,11 @@ impl App {
             ui,
             &mut state.agent_panel_open,
             &mut state.agent_settings,
+            async_runtime,
             viewer_endpoint.as_deref(),
             cache_dir.as_deref(),
-            build_info.is_in_rerun_workspace,
+            startup.build_info.is_in_rerun_workspace,
+            recording,
         );
     }
 
@@ -299,7 +312,7 @@ impl App {
     }
 
     fn should_fade_in_welcome_screen(&self) -> bool {
-        if let Some(expect_data_soon) = self.startup_options.expect_data_soon {
+        if let Some(expect_data_soon) = self.startup.options.expect_data_soon {
             return expect_data_soon;
         }
 
@@ -342,7 +355,7 @@ impl App {
             // which should happen _right away_, so we only need a small delay.
             // Why not skip the wlecome screen completely when we expect the data?
             // Because maybe the data never comes.
-            let sec_since_first_shown = self.start_time.elapsed().as_secs_f32();
+            let sec_since_first_shown = self.startup.start_time.elapsed().as_secs_f32();
             let opacity = egui::remap_clamp(sec_since_first_shown, 0.4..=0.6, 0.0..=1.0);
             if opacity < 1.0 {
                 egui_ctx.request_repaint();
@@ -358,7 +371,7 @@ impl App {
         re_tracing::profile_function!();
 
         while let Ok(message) = self.text_log_rx.try_recv() {
-            self.viewer_log.push(&message);
+            self.viewer_control.log.push(&message);
             self.notifications.add_log(message);
         }
     }
@@ -504,6 +517,9 @@ fn custom_windows_decorations_resize_ui(ui: &egui::Ui) {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+fn custom_windows_decorations_resize_ui(_ui: &egui::Ui) {}
+
 fn paint_background_fill(ui: &egui::Ui) {
     // This is required because the streams view (time panel)
     // has rounded top corners, which leaves a gap.
@@ -519,9 +535,6 @@ fn paint_background_fill(ui: &egui::Ui) {
         tokens.panel_bg_color,
     );
 }
-
-#[cfg(target_arch = "wasm32")]
-fn custom_windows_decorations_resize_ui(_ui: &egui::Ui) {}
 
 pub(super) fn paint_custom_window_frame(egui_ctx: &egui::Context) {
     let tokens = egui_ctx.tokens();

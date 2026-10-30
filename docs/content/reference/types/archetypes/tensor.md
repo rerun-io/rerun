@@ -17,6 +17,7 @@ An N-dimensional array of numbers.
 * [TensorView](../views/tensor_view.md)
 * [BarChartView](../views/bar_chart_view.md) (for 1D tensors)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Tensor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Tensor.html)

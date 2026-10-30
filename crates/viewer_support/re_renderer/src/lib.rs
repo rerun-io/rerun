@@ -169,7 +169,9 @@ pub fn pad_rgb_to_rgba<T: Copy>(rgb: &[T], alpha: T) -> Vec<T> {
         rgba
     } else {
         // fastest version in optimized builds
-        rgb.chunks_exact(3)
+        rgb.as_chunks::<3>()
+            .0
+            .iter()
             .flat_map(|chunk| [chunk[0], chunk[1], chunk[2], alpha])
             .collect()
     }

@@ -86,7 +86,13 @@ impl Args {
     /// Waits for the server to start, and return a handle to it.
     ///
     /// Use [`ServerHandle::connect_addr`] for the address to connect to.
-    pub async fn create_server_handle(self) -> anyhow::Result<ServerHandle> {
+    ///
+    /// `build_info` describes the binary hosting the server, and is what the server reports
+    /// from its version endpoints.
+    pub async fn create_server_handle(
+        self,
+        build_info: re_build_info::BuildInfo,
+    ) -> anyhow::Result<ServerHandle> {
         let Self {
             host: ip,
             port,
@@ -103,7 +109,7 @@ impl Args {
         let server_builder = ServerBuilder::bind(ip_port)?;
 
         let (handler, write_upload_route) = {
-            let mut builder = crate::RerunCloudHandlerBuilder::new();
+            let mut builder = crate::RerunCloudHandlerBuilder::new(build_info.clone());
 
             for NamedPathCollection { name, paths } in datasets {
                 builder = builder
@@ -150,9 +156,13 @@ impl Args {
             .max_decoding_message_size(re_grpc_server::MAX_DECODING_MESSAGE_SIZE)
             .max_encoding_message_size(re_grpc_server::MAX_ENCODING_MESSAGE_SIZE);
 
+        let version = build_info.to_string();
         let server_builder = server_builder
             .with_service(rerun_cloud_server)
-            .with_http_route("/version", axum::routing::get(crate::routes::get_version))
+            .with_http_route(
+                "/version",
+                axum::routing::get(move || std::future::ready(version.clone())),
+            )
             .with_http_route("/upload/{grant}", write_upload_route)
             .with_artificial_latency(std::time::Duration::from_millis(latency_ms as _))
             .with_bandwidth_limit(bandwidth_limit)
@@ -165,8 +175,8 @@ impl Args {
         server.start(&async_runtime).await.map_err(Into::into)
     }
 
-    pub async fn run_async(self) -> anyhow::Result<()> {
-        let mut server_handle = self.create_server_handle().await?;
+    pub async fn run_async(self, build_info: re_build_info::BuildInfo) -> anyhow::Result<()> {
+        let mut server_handle = self.create_server_handle(build_info).await?;
 
         #[cfg(unix)]
         let mut term_signal = signal(SignalKind::terminate())?;

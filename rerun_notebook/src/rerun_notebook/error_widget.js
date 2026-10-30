@@ -1,4 +1,4 @@
-(async function () {
+void (async function () {
   function template(urls) {
     return [
       `<div style="border:1px solid red;padding: 0 0.5em">`,
@@ -42,8 +42,8 @@
     ].map(async (url) => [url, await url_exists(url)]);
 
     let bad_urls = (await Promise.all(urls))
-      .filter(([_, exists]) => !exists)
-      .map(([url, _]) => url);
+      .filter(([, exists]) => !exists)
+      .map(([url]) => url);
 
     if (bad_urls.length > 0) {
       const container = document.getElementById("{{widget_id}}");

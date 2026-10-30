@@ -36,7 +36,7 @@ def test_index_ranges(readonly_test_dataset: DatasetEntry) -> None:
     assert str(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                                                                                                                                │
-│ * version: 0.1.3                                                                                                                                                                                                                                                                                         │
+│ * version: 0.1.4                                                                                                                                                                                                                                                                                         │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────────────────┬──────────────────────┬──────────────────────┬────────────────────────────┬────────────────────────────┬───────────────────────────────┬───────────────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┐ │
 │ │ rerun_segment_id                 ┆ log_tick:start       ┆ log_tick:end         ┆ log_time:start             ┆ log_time:end               ┆ time_1:start                  ┆ time_1:end                    ┆ time_2:start         ┆ time_2:end           ┆ time_3:start         ┆ time_3:end           │ │
@@ -71,8 +71,8 @@ def test_index_ranges(readonly_test_dataset: DatasetEntry) -> None:
 """)
 
 
-def test_index_ranges_dataset_view(readonly_test_dataset: DatasetEntry) -> None:
-    view = readonly_test_dataset.filter_segments([
+def test_index_ranges_dataset_selection(readonly_test_dataset: DatasetEntry) -> None:
+    selection = readonly_test_dataset.filter_segments([
         "141a866deb2d49f69eb3215e8a404ffc",
         "3ee345b2e801448cace33a1097b9b49b",
     ])
@@ -91,7 +91,7 @@ def test_index_ranges_dataset_view(readonly_test_dataset: DatasetEntry) -> None:
         "time_3:end",
     ]
 
-    df = view.get_index_ranges().sort("rerun_segment_id").select(*column_orders)
+    df = selection.get_index_ranges().sort("rerun_segment_id").select(*column_orders)
     df_schema = df.schema()
     for batch in df.collect():
         assert batch.schema.equals(df_schema, check_metadata=True)
@@ -99,7 +99,7 @@ def test_index_ranges_dataset_view(readonly_test_dataset: DatasetEntry) -> None:
     assert str(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                                                                                                                                │
-│ * version: 0.1.3                                                                                                                                                                                                                                                                                         │
+│ * version: 0.1.4                                                                                                                                                                                                                                                                                         │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────────────────┬──────────────────────┬──────────────────────┬────────────────────────────┬────────────────────────────┬───────────────────────────────┬───────────────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┐ │
 │ │ rerun_segment_id                 ┆ log_tick:start       ┆ log_tick:end         ┆ log_time:start             ┆ log_time:end               ┆ time_1:start                  ┆ time_1:end                    ┆ time_2:start         ┆ time_2:end           ┆ time_3:start         ┆ time_3:end           │ │
@@ -119,13 +119,13 @@ def test_index_ranges_dataset_view(readonly_test_dataset: DatasetEntry) -> None:
 
     # Note: the ranges are relative to the actual data being filtered, see how the ranges differ here
 
-    view = view.filter_contents(["/obj1:Points3D:positions"])
-    df = view.get_index_ranges().sort("rerun_segment_id").select(*column_orders)
+    selection = selection.filter_contents(["/obj1:Points3D:positions"])
+    df = selection.get_index_ranges().sort("rerun_segment_id").select(*column_orders)
 
     assert str(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                                                                                                                                                                                │
-│ * version: 0.1.3                                                                                                                                                                                                                                                                                         │
+│ * version: 0.1.4                                                                                                                                                                                                                                                                                         │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────────────────┬──────────────────────┬──────────────────────┬────────────────────────────┬────────────────────────────┬───────────────────────────────┬───────────────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┬──────────────────────┐ │
 │ │ rerun_segment_id                 ┆ log_tick:start       ┆ log_tick:end         ┆ log_time:start             ┆ log_time:end               ┆ time_1:start                  ┆ time_1:end                    ┆ time_2:start         ┆ time_2:end           ┆ time_3:start         ┆ time_3:end           │ │

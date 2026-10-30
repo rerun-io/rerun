@@ -725,7 +725,9 @@ fn pad_and_narrow_and_cast<T: Copy + bytemuck::Pod + Default>(
     let alpha = 0.0; // The shader should just ignore it
 
     let floats: Vec<f32> = data
-        .chunks_exact(3)
+        .as_chunks::<3>()
+        .0
+        .iter()
         .flat_map(|chunk| [narrow(chunk[0]), narrow(chunk[1]), narrow(chunk[2]), alpha])
         .collect();
     bytemuck::pod_collect_to_vec(&floats).into()

@@ -35,12 +35,13 @@ impl StoreBundle {
         let decoder = re_log_encoding::DecoderApp::decode_eager(reader)?;
 
         let mut slf = Self::default();
+        let data_source = std::sync::Arc::new(data_source.clone());
 
         for msg in decoder {
             let msg = msg?;
             let entity_db = slf.stores.entry(msg.store_id().clone()).or_insert_with(|| {
                 let mut db = EntityDb::new(msg.store_id().clone());
-                db.data_source = Some(data_source.clone());
+                db.add_data_source(&data_source);
                 db
             });
             entity_db.add_log_msg(&msg)?;
@@ -138,12 +139,7 @@ impl StoreBundle {
         origin: &re_uri::Origin,
     ) -> impl Iterator<Item = &EntityDb> {
         self.recordings()
-            .filter(|db| {
-                matches!(
-                    &db.data_source,
-                    Some(re_log_channel::LogSource::RedapGrpcStream { uri, .. }) if uri.origin == *origin
-                )
-            })
+            .filter(|db| db.redap_uris().any(|uri| uri.origin == *origin))
     }
 
     /// Iterates all blueprints in insertion order.

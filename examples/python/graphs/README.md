@@ -2,8 +2,8 @@
 title = "Graphs"
 description = "Different graph types and layouts visualized with Rerun's built-in force-directed engine Fjädra: trees, lattices, and random graphs."
 tags = ["Graph", "Layout", "Node-link diagrams", "Bubble charts"]
-thumbnail = "https://static.rerun.io/graphs/c1070214bed5e50c9e7d452835f32759b991383e/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/graphs_thumbnail/2f28d372245dd2f2c9ab35b3ed06d603fcf0e4eb/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 -->

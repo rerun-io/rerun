@@ -1,0 +1,11 @@
+{
+  "$schema": "./rerun_js/node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "unicorn", "oxc", "import", "promise"],
+  "categories": {
+    "correctness": "error"
+  },
+  "rules": {
+    "typescript/no-deprecated": "error"
+  },
+  "ignorePatterns": ["rerun_js/web-viewer/proto/**/*_pb.ts"]
+}

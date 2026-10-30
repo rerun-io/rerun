@@ -1,6 +1,6 @@
 use custom_callback::comms::viewer::ControlViewer;
 use custom_callback::panel::Control;
-use rerun::external::{eframe, re_crash_handler, re_log, re_memory, re_viewer};
+use rerun::external::{eframe, re_build_info, re_crash_handler, re_log, re_memory, re_viewer};
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
 // and prune the data store when it goes above a certain limit.
@@ -20,8 +20,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();
 
     // Install handlers for panics and crashes that prints to stderr and send
-    // them to Rerun analytics (if the `analytics` feature is on in `Cargo.toml`).
-    re_crash_handler::install_crash_handlers(re_viewer::build_info());
+    // them to Rerun analytics (if the `analytics` feature of `rerun` is on).
+    re_crash_handler::install_crash_handlers(re_build_info::build_info!());
 
     // Connect to the external application in the background, retrying until it is up.
     let viewer = ControlViewer::new(CONTROL_URL);
@@ -34,7 +34,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .viewport
         .with_app_id("rerun_example_custom_callback");
 
-    // This is used for analytics, if the `analytics` feature is on in `Cargo.toml`
+    // This is used for analytics, if the `analytics` feature of `rerun` is on
     let app_env = re_viewer::AppEnvironment::Custom("My Custom Callback".to_owned());
 
     let startup_options = re_viewer::StartupOptions::default();
@@ -47,7 +47,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
             let rerun_app = re_viewer::App::new(
                 main_thread_token,
-                re_viewer::build_info(),
+                re_build_info::build_info!(),
                 app_env,
                 startup_options,
                 cc,

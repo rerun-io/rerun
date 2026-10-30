@@ -67,6 +67,57 @@ pub struct QueryDatasetDataframe {
     pub extra_columns: Vec<quiver::DynColumn>,
 }
 
+// --- FindChunksResponse ---
+
+/// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::FindChunksResponse`].
+///
+/// One row per candidate chunk; see [`crate::cloud::v1alpha1::FindChunksResponse`] for the row
+/// semantics. The field names are the column names.
+#[derive(quiver::Quiver)]
+pub struct ChunkCandidatesDataframe {
+    /// The id of the chunk ([`re_chunk::ChunkId`]).
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_id: quiver::Column<re_chunk::ChunkId>,
+
+    /// The segment this chunk belongs to.
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_segment_id: quiver::Column<SegmentId>,
+
+    /// The layer this chunk belongs to.
+    pub rerun_segment_layer: quiver::Column<LayerName>,
+
+    /// Opaque key encoding where to fetch the chunk
+    /// (see [`RrdChunkLocation`](crate::cloud::v1alpha1::ext::RrdChunkLocation)).
+    pub chunk_key: quiver::Column<quiver::Binary>,
+
+    /// The entity path of the chunk.
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_entity_path: quiver::Column<EntityPath>,
+
+    /// Does this chunk hold static data?
+    #[quiver(metadata("rerun:kind" = "control"))]
+    pub chunk_is_static: quiver::Column<bool>,
+
+    /// Byte length of the chunk within the source object.
+    pub chunk_byte_len: quiver::Column<u64>,
+
+    /// Uncompressed size of the chunk, if known.
+    pub chunk_byte_size_uncompressed: quiver::Column<Option<u64>>,
+
+    /// The chunk's minimum on the request's selection timeline, in that timeline's unit.
+    ///
+    /// Null in `Static` mode, for static chunks, and for chunks without that timeline.
+    #[quiver(metadata("rerun:kind" = "index"))]
+    pub chunk_timeline_start: quiver::Column<Option<i64>>,
+
+    /// Direct URL for fetching the source object, if the server wants
+    /// the client to fetch this row via direct HTTP Range.
+    pub rerun_layer_direct_url: quiver::Column<Option<quiver::Dictionary<i32, quiver::Utf8>>>,
+
+    /// When the direct URL expires, if any.
+    pub rerun_layer_direct_url_expires_at: quiver::Column<Option<quiver::Dictionary<i32, i64>>>,
+}
+
 // --- QueryTasksResponse ---
 
 /// Strongly-typed view of the dataframe in [`crate::cloud::v1alpha1::QueryTasksResponse::data`].
@@ -233,7 +284,10 @@ pub struct ScanDatasetManifestDataframe {
     /// (see [`LayerRegistrationStatus`](crate::cloud::v1alpha1::ext::LayerRegistrationStatus)).
     pub rerun_registration_status: quiver::Column<quiver::Utf8>,
 
-    /// Any per-dataset property columns appended at runtime.
+    /// Any per-dataset property and index-range columns appended at runtime.
+    ///
+    /// Older servers send no index-range columns, see
+    /// [`crate::cloud::v1alpha1::ScanDatasetManifestResponse::data`].
     #[quiver(extra_columns)]
     pub extra_columns: Vec<quiver::DynColumn>,
 }
@@ -278,6 +332,55 @@ impl ScanDatasetManifestDataframe {
             rerun_registration_status: Self::COLUMN_RERUN_REGISTRATION_STATUS
                 .new_from_values(registration_statuses),
             extra_columns: vec![],
+        }
+    }
+}
+
+// --- Entries table ---
+
+/// Strongly-typed view of the `__entries` table, with one row per catalog entry.
+///
+/// The field names are the column names.
+#[derive(quiver::Quiver)]
+pub struct EntriesTableDataframe {
+    /// The unique identifier of the entry.
+    pub id: quiver::Column<re_tuid::Tuid>,
+
+    /// The name of the entry.
+    pub name: quiver::Column<quiver::Utf8>,
+
+    /// The kind of entry, as an [`EntryKind`](crate::cloud::v1alpha1::EntryKind) value.
+    ///
+    /// Stored as `u8`, the datatype of the `rerun.components.EntryKind` component.
+    #[quiver(metadata("rerun:component_type" = "rerun.components.EntryKind"))]
+    pub entry_kind: quiver::Column<u8>,
+
+    /// When the entry was created.
+    pub created_at: quiver::Column<quiver::TimestampNanosecond>,
+
+    /// When the entry was last updated.
+    pub updated_at: quiver::Column<quiver::TimestampNanosecond>,
+}
+
+impl EntriesTableDataframe {
+    /// One row per entry, in the given order.
+    pub fn new(entries: &[crate::cloud::v1alpha1::ext::EntryDetails]) -> Self {
+        Self {
+            id: Self::COLUMN_ID.new_from_values(entries.iter().map(|entry| entry.id.id)),
+            name: Self::COLUMN_NAME
+                .new_from_values(entries.iter().map(|entry| entry.name.as_str().to_owned())),
+            entry_kind: Self::COLUMN_ENTRY_KIND
+                .new_from_values(entries.iter().map(|entry| entry.kind as u8)),
+            created_at: Self::COLUMN_CREATED_AT.new_from_values(
+                entries
+                    .iter()
+                    .map(|entry| entry.created_at.as_nanosecond() as i64),
+            ),
+            updated_at: Self::COLUMN_UPDATED_AT.new_from_values(
+                entries
+                    .iter()
+                    .map(|entry| entry.updated_at.as_nanosecond() as i64),
+            ),
         }
     }
 }

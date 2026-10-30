@@ -36,7 +36,7 @@ impl ColorCoordinatesConfiguration {
 
     /// Reflection metadata for the custom archetype.
     ///
-    /// Register once with [`rerun::external::re_viewer::App::add_archetype_reflection`] to enable
+    /// Register once with [`rerun::external::re_viewer::AppCore::add_archetype_reflection`] to enable
     /// `re_view::view_property_ui::<ColorCoordinatesConfiguration>`.
     pub fn reflection() -> ArchetypeReflection {
         ArchetypeReflection {

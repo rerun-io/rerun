@@ -1,6 +1,7 @@
+use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use arrow::array::{Array, ArrayRef, Int64Array, RecordBatch, StringArray};
+use arrow::array::{Array, ArrayRef, RecordBatch, StringArray};
 use arrow::datatypes::{DataType, Field, FieldRef, Schema};
 use arrow::error::ArrowError;
 use itertools::Itertools as _;
@@ -8,18 +9,17 @@ use prost::Name as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::AbsoluteTimeRange;
-use re_log_types::{EntityPath, EntryId, TimeInt};
+use re_log_types::{EntryId, TimeInt};
 use re_types_core::LayerName;
 
-use crate::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDataframe};
+use crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use crate::cloud::v1alpha1::{
-    DoBandwidthTestResponse, EntryKind, FetchChunksRequest, GetDatasetSchemaResponse,
-    QueryDatasetResponse, QueryTasksResponse, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableRequest, ScanSegmentTableResponse,
-    UnregisterFromDatasetResponse,
+    DoBandwidthTestResponse, EntryKind, GetDatasetSchemaResponse, QueryTasksResponse,
+    ScanDatasetManifestResponse, ScanSegmentTableResponse, UnregisterFromDatasetResponse,
+    UploadMethod,
 };
 use crate::common::v1alpha1::ext as common_ext;
-use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SchemaId, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -220,324 +220,6 @@ impl crate::cloud::v1alpha1::UnregisterFromDatasetRequest {
         }
 
         Ok(())
-    }
-}
-
-// --- QueryDatasetRequest ---
-
-#[derive(Debug, Clone)]
-pub struct QueryDatasetRequest {
-    pub segment_ids: Vec<common_ext::SegmentId>,
-    pub generate_direct_urls: bool,
-    pub unsigned_direct_urls: bool,
-    pub chunk_ids: Vec<re_chunk::ChunkId>,
-    pub entity_paths: Vec<EntityPath>,
-    pub select_all_entity_paths: bool,
-    pub fuzzy_descriptors: Vec<String>,
-    pub exclude_static_data: bool,
-    pub exclude_temporal_data: bool,
-    pub scan_parameters: Option<common_ext::ScanParameters>,
-    pub query: Option<Query>,
-}
-
-impl Default for QueryDatasetRequest {
-    fn default() -> Self {
-        Self {
-            segment_ids: vec![],
-            chunk_ids: vec![],
-            entity_paths: vec![],
-            select_all_entity_paths: true,
-            fuzzy_descriptors: vec![],
-            exclude_static_data: false,
-            exclude_temporal_data: false,
-            scan_parameters: None,
-            query: None,
-            generate_direct_urls: false,
-            unsigned_direct_urls: false,
-        }
-    }
-}
-
-impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
-    fn from(value: QueryDatasetRequest) -> Self {
-        Self {
-            segment_ids: value.segment_ids.into_iter().map(Into::into).collect(),
-            chunk_ids: value
-                .chunk_ids
-                .into_iter()
-                .map(|chunk_id| chunk_id.as_tuid().into())
-                .collect(),
-            entity_paths: value.entity_paths.into_iter().map(Into::into).collect(),
-            select_all_entity_paths: value.select_all_entity_paths,
-            fuzzy_descriptors: value.fuzzy_descriptors,
-            exclude_static_data: value.exclude_static_data,
-            exclude_temporal_data: value.exclude_temporal_data,
-            scan_parameters: value.scan_parameters.map(Into::into),
-            query: value.query.map(Into::into),
-            generate_direct_urls: value.generate_direct_urls,
-            unsigned_direct_urls: value.unsigned_direct_urls,
-        }
-    }
-}
-
-impl TryFrom<crate::cloud::v1alpha1::QueryDatasetRequest> for QueryDatasetRequest {
-    type Error = tonic::Status;
-
-    fn try_from(value: crate::cloud::v1alpha1::QueryDatasetRequest) -> Result<Self, Self::Error> {
-        // Support both segment_ids (new) and partition_ids (deprecated) for backward compatibility
-        let segment_ids = value
-            .segment_ids
-            .into_iter()
-            .map(TryInto::try_into)
-            .try_collect()?;
-
-        let result = Self {
-            segment_ids,
-
-            chunk_ids: value
-                .chunk_ids
-                .into_iter()
-                .map(|tuid| {
-                    let id: re_tuid::Tuid = tuid.try_into()?;
-                    Ok::<_, tonic::Status>(re_chunk::ChunkId::from_u128(id.as_u128()))
-                })
-                .try_collect()?,
-
-            entity_paths: value
-                .entity_paths
-                .into_iter()
-                .map(|path| {
-                    path.try_into().map_err(|err| {
-                        tonic::Status::invalid_argument(format!("invalid entity path: {err}"))
-                    })
-                })
-                .try_collect()?,
-
-            select_all_entity_paths: value.select_all_entity_paths,
-
-            fuzzy_descriptors: value.fuzzy_descriptors,
-
-            exclude_static_data: value.exclude_static_data,
-            exclude_temporal_data: value.exclude_temporal_data,
-
-            scan_parameters: value
-                .scan_parameters
-                .map(|params| params.try_into())
-                .transpose()?,
-
-            query: value.query.map(|q| q.try_into()).transpose()?,
-
-            generate_direct_urls: value.generate_direct_urls,
-            unsigned_direct_urls: value.unsigned_direct_urls,
-        };
-
-        if let Some(query) = result.query.as_ref()
-            && let Some(la) = query.latest_at.as_ref()
-            && !la.per_segment_values.is_empty()
-        {
-            // Per `cloud.proto`: `per_segment_values` is mutually exclusive
-            // with both `latest_at.at` and `query.range`, and requires
-            // `latest_at.index` to be set. The server reconstructs global
-            // bounds internally from the per-segment values, so a
-            // caller-supplied `at` or `range` would be ambiguous, and a
-            // missing `index` would leave the per-segment values without a
-            // timeline to apply to. Without these checks, the two backends
-            // diverged: dataplatform errored on missing `index` while OSS
-            // silently degraded to a static-only fallback (and OSS kept
-            // `range` while dataplatform overwrote it) — same illegal
-            // request, backend-divergent behavior.
-            if la.index.is_none() {
-                return Err(tonic::Status::invalid_argument(
-                    "`latest_at.index` must be set when `per_segment_values` is non-empty",
-                ));
-            }
-            if la.at != re_log_types::TimeInt::STATIC {
-                return Err(tonic::Status::invalid_argument(
-                    "`latest_at.at` must be unset when `per_segment_values` is non-empty",
-                ));
-            }
-            if query.range.is_some() {
-                return Err(tonic::Status::invalid_argument(
-                    "`query.range` must be unset when `per_segment_values` is non-empty",
-                ));
-            }
-            if result.segment_ids.is_empty() {
-                return Err(tonic::Status::invalid_argument(
-                    "`per_segment_values` requires `segment_ids` to be non-empty",
-                ));
-            }
-            if la.per_segment_values.len() != result.segment_ids.len() {
-                return Err(tonic::Status::invalid_argument(format!(
-                    "`per_segment_values.len()` ({}) must equal `segment_ids.len()` ({})",
-                    la.per_segment_values.len(),
-                    result.segment_ids.len(),
-                )));
-            }
-            let mut seen = std::collections::HashSet::with_capacity(result.segment_ids.len());
-            for sid in &result.segment_ids {
-                if !seen.insert(sid) {
-                    return Err(tonic::Status::invalid_argument(
-                        "`segment_ids` must contain no duplicates when `per_segment_values` is set",
-                    ));
-                }
-            }
-        }
-
-        Ok(result)
-    }
-}
-
-// --- QueryDatasetResponse ---
-
-impl QueryDatasetResponse {
-    /// Per-timeline `{timeline_name}:start` column that carries `time_min` for each chunk.
-    ///
-    /// Consumed by the client's `build_segment_manifests` to compute the per-segment safe
-    /// horizon; no other downstream consumer reads the time range, so there is no matching
-    /// `:end` column.
-    ///
-    /// The column type is `Int64` because all rerun time types store `i64` internally.
-    pub fn field_timeline_start(timeline_name: &str) -> FieldRef {
-        let metadata = std::collections::HashMap::from([
-            ("rerun:index".to_owned(), timeline_name.to_owned()),
-            (
-                re_sorbet::metadata::RERUN_KIND.to_owned(),
-                "index".to_owned(),
-            ),
-            ("rerun:index_marker".to_owned(), "start".to_owned()),
-        ]);
-        Arc::new(
-            Field::new(format!("{timeline_name}:start"), DataType::Int64, true)
-                .with_metadata(metadata),
-        )
-    }
-
-    pub fn create_dataframe(
-        chunk_ids: Vec<re_chunk::ChunkId>,
-        chunk_segment_ids: Vec<SegmentId>,
-        chunk_layer_names: Vec<LayerName>,
-        chunk_keys: Vec<&[u8]>,
-        chunk_entity_paths: Vec<EntityPath>,
-        chunk_is_static: Vec<bool>,
-        chunk_byte_lengths: Vec<u64>,
-        chunk_byte_lengths_uncompressed: Vec<Option<u64>>,
-        chunk_direct_urls: Vec<Option<String>>,
-        chunk_direct_urls_expiry: Vec<Option<i64>>,
-    ) -> arrow::error::Result<RecordBatch> {
-        Self::create_dataframe_with_timelines(
-            chunk_ids,
-            chunk_segment_ids,
-            chunk_layer_names,
-            chunk_keys,
-            chunk_entity_paths,
-            chunk_is_static,
-            chunk_byte_lengths,
-            chunk_byte_lengths_uncompressed,
-            chunk_direct_urls,
-            chunk_direct_urls_expiry,
-            &Default::default(),
-        )
-    }
-
-    pub fn create_dataframe_with_timelines(
-        chunk_ids: Vec<re_chunk::ChunkId>,
-        chunk_segment_ids: Vec<SegmentId>,
-        chunk_layer_names: Vec<LayerName>,
-        chunk_keys: Vec<&[u8]>,
-        chunk_entity_paths: Vec<EntityPath>,
-        chunk_is_static: Vec<bool>,
-        chunk_byte_lengths: Vec<u64>,
-        chunk_byte_lengths_uncompressed: Vec<Option<u64>>,
-        chunk_direct_urls: Vec<Option<String>>,
-        chunk_direct_urls_expiry: Vec<Option<i64>>,
-        timelines: &std::collections::BTreeMap<String, (DataType, Vec<Option<i64>>)>,
-    ) -> arrow::error::Result<RecordBatch> {
-        type Df = QueryDatasetDataframe;
-        Df {
-            chunk_id: Df::COLUMN_CHUNK_ID.new_from_values(chunk_ids),
-            chunk_segment_id: Df::COLUMN_CHUNK_SEGMENT_ID.new_from_values(chunk_segment_ids),
-            rerun_segment_layer: Df::COLUMN_RERUN_SEGMENT_LAYER.new_from_values(chunk_layer_names),
-            chunk_key: Df::COLUMN_CHUNK_KEY.new_from_values(chunk_keys),
-            chunk_entity_path: Df::COLUMN_CHUNK_ENTITY_PATH.new_from_values(chunk_entity_paths),
-            chunk_is_static: Df::COLUMN_CHUNK_IS_STATIC.new_from_values(chunk_is_static),
-            chunk_byte_len: Df::COLUMN_CHUNK_BYTE_LEN.new_from_values(chunk_byte_lengths),
-            chunk_byte_size_uncompressed: Df::COLUMN_CHUNK_BYTE_SIZE_UNCOMPRESSED
-                .new_from_values(chunk_byte_lengths_uncompressed),
-            rerun_layer_direct_url: Df::COLUMN_RERUN_LAYER_DIRECT_URL
-                .try_new_from_values(chunk_direct_urls)?,
-            rerun_layer_direct_url_expires_at: Df::COLUMN_RERUN_LAYER_DIRECT_URL_EXPIRES_AT
-                .try_new_from_values(chunk_direct_urls_expiry)?,
-
-            // Caller is responsible for producing the same `timelines` set for every response of a
-            // single query, so all batches share a schema and the client can concatenate them.
-            extra_columns: timelines
-                .iter()
-                .map(|(timeline_name, (_data_type, mins))| {
-                    quiver::DynColumn::try_new(
-                        Self::field_timeline_start(timeline_name),
-                        Arc::new(Int64Array::from(mins.clone())),
-                    )
-                })
-                .collect::<Result<Vec<_>, _>>()
-                .map_err(|err| ArrowError::InvalidArgumentError(err.to_string()))?,
-        }
-        .into_record_batch()
-        .map_err(|err| ArrowError::InvalidArgumentError(err.to_string()))
-    }
-}
-
-impl ScanSegmentTableRequest {
-    /// Request every segment-table column with no filter hint.
-    pub fn all() -> Self {
-        Self {
-            columns: Vec::new(),
-            segment_id_filter: None,
-        }
-    }
-
-    /// Request selected segment-table columns with no filter hint.
-    pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        Self {
-            columns: columns.into_iter().map(Into::into).collect(),
-            segment_id_filter: None,
-        }
-    }
-}
-
-impl ScanDatasetManifestRequest {
-    /// Request every dataset-manifest column with no filter hint.
-    pub fn all() -> Self {
-        Self {
-            columns: Vec::new(),
-            segment_id_filter: None,
-        }
-    }
-
-    /// Request selected dataset-manifest columns with no filter hint.
-    pub fn with_columns(columns: impl IntoIterator<Item = impl Into<String>>) -> Self {
-        Self {
-            columns: columns.into_iter().map(Into::into).collect(),
-            segment_id_filter: None,
-        }
-    }
-}
-
-impl FetchChunksRequest {
-    /// The only column a `FetchChunks` request truly requires.
-    pub const COLUMN_CHUNK_KEY: quiver::ColumnDesc<quiver::Binary> =
-        QueryDatasetDataframe::COLUMN_CHUNK_KEY;
-
-    pub fn required_column_names() -> Vec<String> {
-        [
-            Self::COLUMN_CHUNK_KEY.name,
-            //TODO(RR-2677): remove these, they are only required for old clients.
-            QueryDatasetDataframe::COLUMN_CHUNK_ID.name,
-            QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.name,
-            QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER.name,
-            QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN.name,
-        ]
-        .map(str::to_owned)
-        .to_vec()
     }
 }
 
@@ -2026,6 +1708,104 @@ impl GetDatasetSchemaResponse {
     }
 }
 
+// --- GetSchemasRequest ---
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct GetSchemasRequest {
+    pub schema_ids: BTreeSet<SchemaId>,
+}
+
+impl GetSchemasRequest {
+    /// The most identifiers one request may carry, duplicates included.
+    ///
+    /// Servers and clients are released independently, so a server may raise this limit but
+    /// never lower it. Clients with more identifiers split them across several requests.
+    pub const MAX_SCHEMA_IDS: usize = 1024;
+}
+
+impl TryFrom<crate::cloud::v1alpha1::GetSchemasRequest> for GetSchemasRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::GetSchemasRequest) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::GetSchemasRequest { schema_ids } = value;
+
+        if schema_ids.len() > Self::MAX_SCHEMA_IDS {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::GetSchemasRequest,
+                "schema_ids",
+                format!(
+                    "got {} identifiers, but at most {} are allowed",
+                    schema_ids.len(),
+                    Self::MAX_SCHEMA_IDS
+                )
+            ));
+        }
+
+        Ok(Self {
+            schema_ids: schema_ids
+                .into_iter()
+                .map(TryInto::try_into)
+                .try_collect()?,
+        })
+    }
+}
+
+impl From<GetSchemasRequest> for crate::cloud::v1alpha1::GetSchemasRequest {
+    fn from(value: GetSchemasRequest) -> Self {
+        Self {
+            schema_ids: value.schema_ids.into_iter().map(Into::into).collect(),
+        }
+    }
+}
+
+// --- GetSchemasResponse ---
+
+/// One message of the `GetSchemas` stream, without its `meta`.
+#[derive(Debug, Clone)]
+pub struct GetSchemasResponse {
+    pub schema_id: SchemaId,
+    pub schema: Schema,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::GetSchemasResponse> for GetSchemasResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::GetSchemasResponse) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::GetSchemasResponse {
+            schema_id,
+            schema,
+            meta: _,
+        } = value;
+
+        Ok(Self {
+            schema_id: schema_id
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::GetSchemasResponse,
+                    "schema_id"
+                ))?
+                .try_into()?,
+            schema: schema
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::GetSchemasResponse,
+                    "schema"
+                ))?
+                .try_into()?,
+        })
+    }
+}
+
+impl TryFrom<GetSchemasResponse> for crate::cloud::v1alpha1::GetSchemasResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(value: GetSchemasResponse) -> Result<Self, Self::Error> {
+        Ok(Self {
+            schema_id: Some(value.schema_id.into()),
+            schema: Some((&value.schema).try_into()?),
+            meta: None,
+        })
+    }
+}
+
 // --- RegisterWithDatasetResponse ---
 
 //TODO(ab): this should be an actual grpc message, returned by `RegisterWithDataset` instead of a dataframe
@@ -2181,6 +1961,22 @@ pub struct GetWriteAccessGrantRequest {
 
     /// The requested storage location, or the server's default.
     pub location: Option<crate::cloud::v1alpha1::Location>,
+
+    /// Exact object size, if known.
+    pub size_bytes: Option<u64>,
+
+    /// Upload methods the client supports. Empty means none.
+    pub supported_upload_methods: Vec<UploadMethod>,
+
+    /// Required signing mode for the grant's HTTP requests.
+    pub signing: UrlSigning,
+}
+
+impl GetWriteAccessGrantRequest {
+    /// Whether the client accepts a grant using `method`.
+    pub fn accepts(&self, method: UploadMethod) -> bool {
+        method != UploadMethod::Unspecified && self.supported_upload_methods.contains(&method)
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAccessGrantRequest {
@@ -2189,20 +1985,93 @@ impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAcc
     fn try_from(
         value: crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
     ) -> Result<Self, Self::Error> {
-        let crate::cloud::v1alpha1::GetWriteAccessGrantRequest { key, location } = value;
+        let crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
+            key,
+            location,
+            size_bytes,
+            supported_upload_methods,
+            signing,
+        } = value;
         Ok(Self {
             key: ObjectKey::try_new(key)?,
             location,
+            size_bytes,
+            supported_upload_methods: if supported_upload_methods.is_empty() {
+                vec![UploadMethod::SingleRequest]
+            } else {
+                supported_upload_methods
+                    .into_iter()
+                    .filter_map(|method| UploadMethod::try_from(method).ok())
+                    .filter(|method| *method != UploadMethod::Unspecified)
+                    .collect()
+            },
+            signing: signing.try_into().map_err(|err: prost::UnknownEnumValue| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
+                    "signing",
+                    err.to_string()
+                )
+            })?,
         })
     }
 }
 
 impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
     fn from(value: GetWriteAccessGrantRequest) -> Self {
-        let GetWriteAccessGrantRequest { key, location } = value;
+        let GetWriteAccessGrantRequest {
+            key,
+            location,
+            size_bytes,
+            supported_upload_methods,
+            signing,
+        } = value;
         Self {
             key: key.0,
             location,
+            size_bytes,
+            supported_upload_methods: if supported_upload_methods.is_empty() {
+                // An empty wire list means single-request only, so encode no support explicitly.
+                vec![UploadMethod::Unspecified.into()]
+            } else {
+                supported_upload_methods
+                    .into_iter()
+                    .map(Into::into)
+                    .collect()
+            },
+            signing: signing.into(),
+        }
+    }
+}
+
+/// Who supplies authorization for an upload's HTTP requests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UrlSigning {
+    /// Server-signed URLs, usable without client-managed object-store credentials.
+    Signed,
+    /// Unsigned URLs that the client authorizes with its own object-store credentials.
+    Unsigned,
+}
+
+impl TryFrom<i32> for UrlSigning {
+    type Error = prost::UnknownEnumValue;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::UrlSigning as Proto;
+
+        Ok(match Proto::try_from(value)? {
+            Proto::Unspecified | Proto::Signed => Self::Signed,
+            Proto::Unsigned => Self::Unsigned,
+        })
+    }
+}
+
+impl From<UrlSigning> for i32 {
+    fn from(value: UrlSigning) -> Self {
+        use crate::cloud::v1alpha1::UrlSigning as Proto;
+
+        match value {
+            UrlSigning::Signed => Proto::Signed.into(),
+            UrlSigning::Unsigned => Proto::Unsigned.into(),
         }
     }
 }
@@ -2254,11 +2123,19 @@ impl TryFrom<GetWriteAccessGrantResponse> for crate::cloud::v1alpha1::GetWriteAc
     }
 }
 
-/// Authorizes one storage operation until `expires_at`.
+/// Authorizes create-only publication through HTTP or a multipart session.
+///
+/// Publication must atomically reject an existing destination without modifying it.
 #[derive(Debug, Clone)]
 pub struct AccessGrant {
+    /// HTTP request deadline, or the session deadline for multipart renewal and publication.
+    /// Storage may reject HTTP requests earlier. Confirming publication and abort remain valid
+    /// after the session deadline; publishing an unfinished upload does not.
     pub expires_at: jiff::Timestamp,
+    /// The server-selected mechanism; clients must support it before consuming the source.
     pub redemption: Redemption,
+    /// Effective signing mode, including for renewed part requests. Must match the request.
+    pub signing: UrlSigning,
 }
 
 /// How the caller redeems an [`AccessGrant`].
@@ -2266,6 +2143,71 @@ pub struct AccessGrant {
 pub enum Redemption {
     /// An HTTP request the caller performs directly.
     HttpRequest(HttpRequest),
+    /// A multipart session whose bytes are uploaded directly to storage.
+    MultipartRequest(MultipartRequest),
+}
+
+/// A multipart session with initial part requests and an opaque token.
+#[derive(Debug, Clone)]
+pub struct MultipartRequest {
+    /// Bearer token for part grants, completion, and abort. Return unchanged; do not log it.
+    pub upload_token: prost::bytes::Bytes,
+    /// Size of each part except the last, which may be smaller.
+    pub part_size_bytes: std::num::NonZeroU64,
+    /// Requests for consecutive parts starting at 1, in part-number order.
+    pub part_requests: Vec<HttpRequest>,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::MultipartRequest) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::MultipartRequest as Proto;
+
+        let Proto {
+            upload_token,
+            part_size_bytes,
+            part_requests,
+        } = value;
+        if upload_token.is_empty() {
+            return Err(invalid_field!(
+                Proto,
+                "upload_token",
+                "expected a non-empty token"
+            ));
+        }
+        let part_size_bytes = std::num::NonZeroU64::new(part_size_bytes).ok_or_else(|| {
+            invalid_field!(Proto, "part_size_bytes", "expected a positive part size")
+        })?;
+        Ok(Self {
+            upload_token,
+            part_size_bytes,
+            part_requests: part_requests
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
+        })
+    }
+}
+
+impl TryFrom<MultipartRequest> for crate::cloud::v1alpha1::MultipartRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(value: MultipartRequest) -> Result<Self, Self::Error> {
+        let MultipartRequest {
+            upload_token,
+            part_size_bytes,
+            part_requests,
+        } = value;
+        Ok(Self {
+            upload_token,
+            part_size_bytes: part_size_bytes.get(),
+            part_requests: part_requests
+                .into_iter()
+                .map(TryInto::try_into)
+                .collect::<Result<_, _>>()?,
+        })
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
@@ -2275,6 +2217,7 @@ impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
         let crate::cloud::v1alpha1::AccessGrant {
             expires_at,
             redemption,
+            signing,
         } = value;
         let expires_at = expires_at
             .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::AccessGrant, "expires_at"))?;
@@ -2284,10 +2227,20 @@ impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
             crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(request) => {
                 Redemption::HttpRequest(request.try_into()?)
             }
+            crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(request) => {
+                Redemption::MultipartRequest(request.try_into()?)
+            }
         };
         Ok(Self {
             expires_at: jiff::Timestamp::new(expires_at.seconds, expires_at.nanos)?,
             redemption,
+            signing: signing.try_into().map_err(|err: prost::UnknownEnumValue| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::AccessGrant,
+                    "signing",
+                    err.to_string()
+                )
+            })?,
         })
     }
 }
@@ -2299,12 +2252,19 @@ impl TryFrom<AccessGrant> for crate::cloud::v1alpha1::AccessGrant {
         let AccessGrant {
             expires_at,
             redemption,
+            signing,
         } = value;
         Ok(Self {
             expires_at: Some(common_ext::timestamp_to_proto(expires_at)),
+            signing: signing.into(),
             redemption: Some(match redemption {
                 Redemption::HttpRequest(request) => {
                     crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(
+                        request.try_into()?,
+                    )
+                }
+                Redemption::MultipartRequest(request) => {
+                    crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
                         request.try_into()?,
                     )
                 }
@@ -2899,50 +2859,11 @@ impl From<crate::cloud::v1alpha1::VersionResponse> for VersionResponse {
 
 #[cfg(test)]
 mod tests {
-    use arrow::datatypes::ToByteSlice as _;
-
     use super::*;
     use crate::cloud::v1alpha1::ext::{
-        QueryTasksDataframe, RegisterWithDatasetDataframe, ScanDatasetManifestDataframe,
+        ChunkCandidatesDataframe, QueryDatasetDataframe, QueryTasksDataframe,
+        RegisterWithDatasetDataframe, ScanDatasetManifestDataframe,
     };
-
-    #[test]
-    fn test_query_dataset_response_create_dataframe() {
-        let chunk_ids = vec![re_chunk::ChunkId::new(), re_chunk::ChunkId::new()];
-        let chunk_segment_ids = vec![
-            SegmentId::from("segment_id_1"),
-            SegmentId::from("segment_id_2"),
-        ];
-        let chunk_layer_names = vec![LayerName::from("layer1"), LayerName::from("layer2")];
-        let chunk_keys = vec![b"key1".to_byte_slice(), b"key2".to_byte_slice()];
-        let chunk_entity_paths = vec![EntityPath::root(), EntityPath::root()];
-        let chunk_is_static = vec![true, false];
-        let chunk_byte_lengths = vec![1024u64, 2048u64];
-        let direct_urls = vec![None, None];
-        let direct_urls_expiry = vec![None, None];
-
-        let chunk_byte_lengths_uncompressed = vec![Some(2048u64), Some(4096u64)];
-
-        let batch = QueryDatasetResponse::create_dataframe(
-            chunk_ids,
-            chunk_segment_ids,
-            chunk_layer_names,
-            chunk_keys,
-            chunk_entity_paths,
-            chunk_is_static,
-            chunk_byte_lengths,
-            chunk_byte_lengths_uncompressed,
-            direct_urls,
-            direct_urls_expiry,
-        )
-        .unwrap();
-
-        assert_eq!(
-            batch.schema().as_ref(),
-            &QueryDatasetDataframe::max_schema(),
-            "the builder must produce exactly the declared columns (no stray extra columns)"
-        );
-    }
 
     #[test]
     fn test_scan_segment_table_response_create_dataframe() {
@@ -2971,133 +2892,6 @@ mod tests {
             &ScanSegmentTableDataframe::max_schema(),
             "the builder must produce exactly the declared columns (no stray extra columns)"
         );
-    }
-
-    #[test]
-    fn test_query_latest_at_per_segment_values_round_trip() {
-        let ext = QueryLatestAt {
-            index: Some("frame".into()),
-            at: TimeInt::STATIC,
-            per_segment_values: vec![vec![1, 2, 3], vec![10], vec![]],
-        };
-        let wire: crate::cloud::v1alpha1::QueryLatestAt = ext.clone().into();
-        assert!(wire.at.is_none(), "STATIC must serialize as None");
-        assert_eq!(wire.per_segment_values.len(), 3);
-        assert_eq!(wire.per_segment_values[0].values, vec![1, 2, 3]);
-        assert_eq!(wire.per_segment_values[1].values, vec![10]);
-        assert!(wire.per_segment_values[2].values.is_empty());
-    }
-
-    #[test]
-    fn test_query_dataset_request_per_segment_values_length_validates() {
-        // Mismatched lengths → invalid_argument
-        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
-            segment_ids: vec![
-                crate::common::v1alpha1::SegmentId {
-                    id: Some("00000000-0000-0000-0000-000000000001".to_owned()),
-                },
-                crate::common::v1alpha1::SegmentId {
-                    id: Some("00000000-0000-0000-0000-000000000002".to_owned()),
-                },
-            ],
-            query: Some(crate::cloud::v1alpha1::Query {
-                latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
-                    index: Some(re_log_types::TimelineName::from("log_time").into()),
-                    at: None,
-                    per_segment_values: vec![crate::cloud::v1alpha1::IndexValueList {
-                        values: vec![1],
-                    }],
-                }),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-        let err = QueryDatasetRequest::try_from(req).unwrap_err();
-        assert_eq!(err.code(), tonic::Code::InvalidArgument);
-        assert!(err.message().contains("per_segment_values.len()"));
-    }
-
-    #[test]
-    fn test_query_dataset_request_per_segment_values_requires_segment_ids() {
-        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
-            segment_ids: vec![],
-            query: Some(crate::cloud::v1alpha1::Query {
-                latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
-                    index: Some(re_log_types::TimelineName::from("log_time").into()),
-                    at: None,
-                    per_segment_values: vec![crate::cloud::v1alpha1::IndexValueList {
-                        values: vec![1],
-                    }],
-                }),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-        let err = QueryDatasetRequest::try_from(req).unwrap_err();
-        assert_eq!(err.code(), tonic::Code::InvalidArgument);
-        assert!(err.message().contains("segment_ids"));
-    }
-
-    #[test]
-    fn test_query_dataset_request_per_segment_values_rejects_duplicate_segments() {
-        let dup = crate::common::v1alpha1::SegmentId {
-            id: Some("00000000-0000-0000-0000-000000000007".to_owned()),
-        };
-        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
-            segment_ids: vec![dup.clone(), dup],
-            query: Some(crate::cloud::v1alpha1::Query {
-                latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
-                    index: Some(re_log_types::TimelineName::from("log_time").into()),
-                    at: None,
-                    per_segment_values: vec![
-                        crate::cloud::v1alpha1::IndexValueList { values: vec![1] },
-                        crate::cloud::v1alpha1::IndexValueList { values: vec![2] },
-                    ],
-                }),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-        let err = QueryDatasetRequest::try_from(req).unwrap_err();
-        assert_eq!(err.code(), tonic::Code::InvalidArgument);
-        assert!(err.message().contains("duplicates"));
-    }
-
-    #[test]
-    fn test_query_dataset_request_per_segment_values_empty_is_allowed() {
-        // per_segment_values absent → no validation triggered
-        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
-            segment_ids: vec![],
-            query: Some(crate::cloud::v1alpha1::Query::default()),
-            ..Default::default()
-        };
-        QueryDatasetRequest::try_from(req).expect("empty per_segment_values must be accepted");
-    }
-
-    #[test]
-    fn test_query_dataset_request_per_segment_values_requires_index() {
-        // Regression: previously the dataplatform handler errored on a missing
-        // `latest_at.index` while OSS silently degraded to a static-only
-        // fallback. Both backends must now reject identically at request decode.
-        let req = crate::cloud::v1alpha1::QueryDatasetRequest {
-            segment_ids: vec![crate::common::v1alpha1::SegmentId {
-                id: Some("00000000-0000-0000-0000-000000000001".to_owned()),
-            }],
-            query: Some(crate::cloud::v1alpha1::Query {
-                latest_at: Some(crate::cloud::v1alpha1::QueryLatestAt {
-                    index: None,
-                    at: None,
-                    per_segment_values: vec![crate::cloud::v1alpha1::IndexValueList {
-                        values: vec![1],
-                    }],
-                }),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
-        let err = QueryDatasetRequest::try_from(req).unwrap_err();
-        assert_eq!(err.code(), tonic::Code::InvalidArgument);
-        assert!(err.message().contains("latest_at.index"));
     }
 
     #[test]
@@ -3215,6 +3009,10 @@ mod tests {
             format_schema(&QueryDatasetDataframe::max_schema())
         );
         insta::assert_snapshot!(
+            "chunk_candidates_dataframe_schema",
+            format_schema(&ChunkCandidatesDataframe::max_schema())
+        );
+        insta::assert_snapshot!(
             "query_tasks_dataframe_schema",
             format_schema(&QueryTasksDataframe::max_schema())
         );
@@ -3257,6 +3055,78 @@ mod tests {
         ] {
             assert!(ObjectKey::try_new(invalid).is_err(), "{invalid:?}");
         }
+    }
+
+    #[test]
+    fn write_access_grant_request_supported_upload_methods() {
+        use crate::cloud::v1alpha1::GetWriteAccessGrantRequest as Proto;
+        use crate::cloud::v1alpha1::UploadMethod::{Multipart, SingleRequest, Unspecified};
+
+        for (supported_upload_methods, expected) in [
+            (vec![], vec![SingleRequest]),
+            (vec![Unspecified.into()], vec![]),
+            (vec![Multipart.into()], vec![Multipart]),
+        ] {
+            let proto = Proto {
+                key: "recording.rrd".to_owned(),
+                supported_upload_methods,
+                ..Default::default()
+            };
+            let parsed = GetWriteAccessGrantRequest::try_from(proto.clone()).unwrap();
+            let roundtrip =
+                GetWriteAccessGrantRequest::try_from(Proto::from(parsed.clone())).unwrap();
+
+            for method in [SingleRequest, Multipart, Unspecified] {
+                assert_eq!(
+                    parsed.accepts(method),
+                    expected.contains(&method),
+                    "{method:?} with wire methods {:?}",
+                    proto.supported_upload_methods,
+                );
+                assert_eq!(
+                    roundtrip.accepts(method),
+                    expected.contains(&method),
+                    "{method:?} after roundtrip with wire methods {:?}",
+                    proto.supported_upload_methods,
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn multipart_grant_roundtrip_and_validation() {
+        let grant = crate::cloud::v1alpha1::AccessGrant {
+            signing: UrlSigning::Signed.into(),
+            expires_at: Some(common_ext::timestamp_to_proto(
+                jiff::Timestamp::new(1_700_000_000, 0).unwrap(),
+            )),
+            redemption: Some(
+                crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
+                    crate::cloud::v1alpha1::MultipartRequest {
+                        upload_token: b"opaque-token".as_slice().into(),
+                        part_size_bytes: 8 * 1024 * 1024,
+                        part_requests: vec![],
+                    },
+                ),
+            ),
+        };
+        let parsed = AccessGrant::try_from(grant.clone()).unwrap();
+        assert!(matches!(parsed.redemption, Redemption::MultipartRequest(_)));
+        assert_eq!(
+            crate::cloud::v1alpha1::AccessGrant::try_from(parsed).unwrap(),
+            grant
+        );
+
+        let Some(crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(mut request)) =
+            grant.redemption
+        else {
+            panic!("expected multipart request");
+        };
+        request.part_size_bytes = 0;
+        assert!(MultipartRequest::try_from(request.clone()).is_err());
+        request.part_size_bytes = 1;
+        request.upload_token = prost::bytes::Bytes::new();
+        assert!(MultipartRequest::try_from(request).is_err());
     }
 
     #[test]

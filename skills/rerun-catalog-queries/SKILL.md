@@ -17,6 +17,26 @@ that catch teams off guard.
 
 ---
 
+## Connect with a `rerun://` URL
+
+```python
+from rerun.catalog import CatalogClient
+
+client = CatalogClient("rerun+https://api.example.cloud.rerun.io:443")
+dataset = client.get_dataset(id=dataset_id)
+```
+
+`CatalogClient` takes a `rerun://` or `rerun+https://` URL, or
+`rerun+http://` for a local server. Do not pass a plain `https://` URL.
+A segment URL such as
+`rerun://host:443/dataset/<dataset-id>?segment_id=<segment-id>` gives
+the server, the dataset id and the segment id.
+
+The client reads the token from `REDAP_TOKEN`, or from the stored
+credentials of `rerun auth login`, so `token=` is usually not needed.
+
+---
+
 ## The query cost model in one sentence
 
 Every materialization of a `dataset.reader(...)` DataFrame is **one

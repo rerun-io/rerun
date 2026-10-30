@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -57,10 +54,8 @@ impl ::re_types_core::ToArrow for TensorDimensionIndexSelection {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -86,10 +81,7 @@ impl ::re_types_core::ToArrow for TensorDimensionIndexSelection {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let dimension_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let dimension_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt32Type>::new(
                             dimension
                                 .into_iter()
@@ -106,10 +98,7 @@ impl ::re_types_core::ToArrow for TensorDimensionIndexSelection {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let index_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let index_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<UInt64Type>::new(
                             index.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             index_validity,
@@ -138,22 +127,13 @@ impl ::re_types_core::FromArrow for TensorDimensionIndexSelection {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.encodings.TensorDimensionIndexSelection",
+                    );
                     let dimension = {
-                        if !arrays_by_name.contains_key("dimension") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "dimension",
-                            ))
-                            .with_context("rerun.encodings.TensorDimensionIndexSelection");
-                        }
-                        let arrow_data = &**arrays_by_name["dimension"];
+                        let arrow_data = fields.required("dimension")?;
                         arrow_data
                             .try_cast::<UInt32Array>(|| DataType::UInt32)
                             .with_context(
@@ -162,14 +142,7 @@ impl ::re_types_core::FromArrow for TensorDimensionIndexSelection {
                             .into_iter()
                     };
                     let index = {
-                        if !arrays_by_name.contains_key("index") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "index",
-                            ))
-                            .with_context("rerun.encodings.TensorDimensionIndexSelection");
-                        }
-                        let arrow_data = &**arrays_by_name["index"];
+                        let arrow_data = fields.required("index")?;
                         arrow_data
                             .try_cast::<UInt64Array>(|| DataType::UInt64)
                             .with_context("rerun.encodings.TensorDimensionIndexSelection#index")?

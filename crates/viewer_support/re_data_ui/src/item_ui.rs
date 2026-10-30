@@ -10,11 +10,12 @@ use re_log_types::{ApplicationId, EntityPath, TimeInt, TimeType, TimelineName};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::{Name, Timestamp};
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{SyntaxHighlighting as _, UiExt as _, icons, list_item};
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_ui::{UiExt as _, icons, list_item};
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
-    AppContext, DataResultInteractionAddress, HoverHighlight, Item, Route, StoreViewContext,
-    SystemCommand, SystemCommandSender as _, TimeControlCommand, UiLayout, ViewId, ViewerContext,
+    AppContext, DataResultInteractionAddress, HoverHighlight, Item, Route,
+    StoreSyntaxHighlighting as _, StoreViewContext, SystemCommand, SystemCommandSender as _,
+    TimeControlCommand, UiLayout, ViewId, ViewerContext,
 };
 
 use crate::AppUi as _;
@@ -643,7 +644,7 @@ pub fn entity_db_button_ui(
     let new_entry: re_viewer_context::RecordingOrLocalTable = store_id.clone().into();
 
     response.context_menu(|ui| {
-        let url = ViewerOpenUrl::from_route(ctx.store_hub(), &new_entry.route())
+        let url = ViewerUrl::from_route(ctx.store_hub(), &new_entry.route())
             .and_then(|url| url.sharable_url(None));
         if ui
             .add_enabled(url.is_ok(), egui::Button::new("Copy link to segment"))

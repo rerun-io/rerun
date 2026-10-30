@@ -10,8 +10,6 @@ use parking_lot::Mutex;
 
 use crate::{GamepadInput, GamepadNavigation, StandardGamepadMapping};
 
-type WakeCallback = dyn Fn() + Send + Sync;
-
 static EVENT_BACKEND: OnceLock<Arc<EventBackend>> = OnceLock::new();
 
 // Gamepad input is not delivered through egui/winit events, so an idle viewer would never wake up
@@ -26,7 +24,7 @@ struct EventBackend {
     enabled: AtomicBool,
     snapshot: Mutex<GamepadSnapshot>,
     worker_thread: Mutex<Option<std::thread::Thread>>,
-    wake_callback: Mutex<Option<Arc<WakeCallback>>>,
+    waker: Mutex<re_async::UiWaker>,
 }
 
 impl EventBackend {
@@ -35,7 +33,7 @@ impl EventBackend {
             enabled: AtomicBool::new(false),
             snapshot: Mutex::new(GamepadSnapshot::default()),
             worker_thread: Mutex::new(None),
-            wake_callback: Mutex::new(None),
+            waker: Mutex::new(re_async::UiWaker::noop()),
         });
 
         match std::thread::Builder::new()
@@ -55,14 +53,14 @@ impl EventBackend {
         this
     }
 
-    fn set_wake_callback(&self, wake_callback: Arc<WakeCallback>) {
-        *self.wake_callback.lock() = Some(wake_callback);
+    fn set_waker(&self, waker: re_async::UiWaker) {
+        *self.waker.lock() = waker;
         self.enabled.store(true, Ordering::Relaxed);
         self.unpark();
     }
 
-    fn clear_wake_callback(&self) {
-        *self.wake_callback.lock() = None;
+    fn clear_waker(&self) {
+        *self.waker.lock() = re_async::UiWaker::noop();
         self.enabled.store(false, Ordering::Relaxed);
     }
 
@@ -122,11 +120,7 @@ impl EventBackend {
     }
 
     fn wake(&self) {
-        let wake_callback = self.wake_callback.lock().clone();
-
-        if let Some(wake_callback) = wake_callback {
-            wake_callback();
-        }
+        self.waker.lock().wake();
     }
 
     fn unpark(&self) {
@@ -136,17 +130,17 @@ impl EventBackend {
     }
 }
 
-/// Registers a callback that is called whenever the gamepad backend observes input.
-pub fn set_event_waker(wake_callback: impl Fn() + Send + Sync + 'static) {
+/// Registers a waker that is woken whenever the gamepad backend observes input.
+pub fn set_event_waker(waker: re_async::UiWaker) {
     EVENT_BACKEND
         .get_or_init(EventBackend::new)
-        .set_wake_callback(Arc::new(wake_callback));
+        .set_waker(waker);
 }
 
 /// Clears the gamepad event callback and parks the backend until it is enabled again.
 pub fn clear_event_waker() {
     if let Some(event_backend) = EVENT_BACKEND.get() {
-        event_backend.clear_wake_callback();
+        event_backend.clear_waker();
     }
 }
 
@@ -272,7 +266,7 @@ fn trigger_value(raw_axis: f32, button_pressed: bool) -> f32 {
     }
 
     if raw_axis < 0.0 {
-        ((raw_axis + 1.0) * 0.5).clamp(0.0, 1.0)
+        f32::midpoint(raw_axis, 1.0).clamp(0.0, 1.0)
     } else {
         raw_axis.clamp(0.0, 1.0)
     }

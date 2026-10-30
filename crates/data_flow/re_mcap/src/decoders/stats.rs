@@ -1,5 +1,5 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
-use re_int::SaturatingCast as _;
+use re_int::SaturatingInto as _;
 use re_sdk_types::archetypes::McapStatistics;
 use re_sdk_types::{components, encodings};
 
@@ -67,8 +67,8 @@ fn from_statistics(stats: &::mcap::records::Statistics) -> McapStatistics {
         .with_attachment_count(*attachment_count as u64)
         .with_metadata_count(*metadata_count as u64)
         .with_chunk_count(*chunk_count as u64)
-        .with_message_start_time(message_start_time.saturating_cast::<i64>())
-        .with_message_end_time(message_end_time.saturating_cast::<i64>())
+        .with_message_start_time(message_start_time.saturating_into::<i64>())
+        .with_message_end_time(message_end_time.saturating_into::<i64>())
         .with_channel_message_counts(components::ChannelMessageCounts(channel_count_pairs))
 }
 

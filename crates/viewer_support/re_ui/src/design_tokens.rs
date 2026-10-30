@@ -243,6 +243,17 @@ pub enum TableStyle {
     Spacious,
 }
 
+/// Row spacing for list items.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum ListItemDensity {
+    /// Present content with more spacing and visual structure.
+    #[default]
+    Spacious,
+
+    /// Present content using less space.
+    Compact,
+}
+
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
@@ -269,6 +280,18 @@ pub struct DesignTokens {
 
     /// Outline for compact controls that need more definition than a divider.
     pub control_stroke: Stroke,
+
+    /// Background of controls whose fill is all that sets them apart from the panel,
+    /// like checkboxes and radio buttons.
+    ///
+    /// Unlike buttons, these have no text or icon on them to make them visible.
+    pub control_fill: Color32,
+
+    /// [`Self::control_fill`] when hovered.
+    pub control_fill_hovered: Color32,
+
+    /// [`Self::control_fill`] when pressed.
+    pub control_fill_pressed: Color32,
 
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
@@ -529,6 +552,21 @@ pub struct DesignTokens {
     /// Fill of a card whose flag is set.
     pub card_marked_fill: Color32,
 
+    /// Fill of the selected card of a set, e.g. the picked coverage mode.
+    pub card_selected_fill: Color32,
+
+    /// Outline of the selected card of a set.
+    pub card_selected_stroke: Stroke,
+
+    /// Fill of a text field on a card.
+    pub card_text_edit_bg_color: Color32,
+
+    /// Text of a link on a card.
+    pub card_link_color: Color32,
+
+    /// The unfilled part of a bar on a card.
+    pub card_bar_track_color: Color32,
+
     // Flag button when it is not set, at rest and hovered. A set flag takes
     // [`Self::button_blue`].
     pub flag_untoggled_bg: Color32,
@@ -560,6 +598,17 @@ const HEADING_2_TYPOGRAPHY_NAME: &str = "Heading 2";
 const HEADING_3_TYPOGRAPHY_NAME: &str = "Heading 3";
 const HEADING_4_TYPOGRAPHY_NAME: &str = "Heading 4";
 const EYEBROW_TYPOGRAPHY_NAME: &str = "Eyebrow";
+
+/// Minimum contrast ratio for UI components against adjacent colors.
+///
+/// WCAG 2.1 SC 1.4.11 (Non-text Contrast) recommends 3:1, but that makes filled checkboxes
+/// too heavy, so we settle for less.
+const MIN_NON_TEXT_CONTRAST_RATIO: f32 = 1.5;
+
+/// Minimum contrast ratio of a hover highlight against the panel.
+///
+/// WCAG sets no number for hover states; but below this the highlight is hard to see.
+const MIN_HOVER_CONTRAST_RATIO: f32 = 1.2;
 
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
@@ -621,6 +670,9 @@ impl DesignTokens {
             bottom_bar_color: get_color("bottom_bar_color"),
             divider_stroke,
             control_stroke,
+            control_fill: get_color("control_fill"),
+            control_fill_hovered: get_color("control_fill_hovered"),
+            control_fill_pressed: get_color("control_fill_pressed"),
             shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
             tab_bar_color: get_color("tab_bar_color"),
             viewport_tab_selected_text_color: get_color("viewport_tab_selected_text_color"),
@@ -789,6 +841,11 @@ impl DesignTokens {
             card_hover_fill: get_color("card_hover_fill"),
             card_hover_stroke: get_stroke("card_hover_stroke"),
             card_marked_fill: get_color("card_marked_fill"),
+            card_selected_fill: get_color("card_selected_fill"),
+            card_selected_stroke: get_stroke("card_selected_stroke"),
+            card_text_edit_bg_color: get_color("card_text_edit_bg_color"),
+            card_link_color: get_color("card_link_color"),
+            card_bar_track_color: get_color("card_bar_track_color"),
 
             flag_untoggled_bg: get_color("flag_untoggled_bg"),
             flag_untoggled_bg_hover: get_color("flag_untoggled_bg_hover"),
@@ -813,6 +870,7 @@ impl DesignTokens {
         self.set_text_styles(style);
         self.set_spacing(style);
         self.set_colors(style);
+        self.check_contrast(&style.visuals);
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
     }
@@ -942,6 +1000,45 @@ impl DesignTokens {
         egui_style.visuals.image_loading_spinners = false;
     }
 
+    /// Warn (in debug builds) if interactive widgets don't stand out from the panel behind them.
+    fn check_contrast(&self, visuals: &egui::Visuals) {
+        let panel = self.panel_bg_color;
+
+        // Checkboxes and radio buttons stand out by either their fill or their outline.
+        let inactive = &visuals.widgets.inactive;
+        let fill_contrast = contrast_ratio(self.control_fill, panel);
+        let outline_contrast = if 1.0 <= inactive.bg_stroke.width {
+            contrast_ratio(inactive.bg_stroke.color, panel)
+        } else {
+            1.0
+        };
+        if fill_contrast.max(outline_contrast) < MIN_NON_TEXT_CONTRAST_RATIO {
+            re_log::debug_warn_once!(
+                "Checkboxes and radio buttons have fill contrast {fill_contrast:.2} and outline contrast {outline_contrast:.2} against panel_bg_color; one should be at least {MIN_NON_TEXT_CONTRAST_RATIO}"
+            );
+        }
+
+        let resting = contrast_ratio(self.control_fill, panel);
+        for (name, color) in [
+            ("control_fill_hovered", self.control_fill_hovered),
+            ("control_fill_pressed", self.control_fill_pressed),
+        ] {
+            let contrast = contrast_ratio(color, panel);
+            if contrast < resting {
+                re_log::debug_warn_once!(
+                    "{name:?} has contrast {contrast:.2} against panel_bg_color, less than control_fill ({resting:.2})"
+                );
+            }
+        }
+
+        let hovered = contrast_ratio(self.widget_hovered_color, panel);
+        if hovered < MIN_HOVER_CONTRAST_RATIO {
+            re_log::debug_warn_once!(
+                "widget_hovered_color has contrast {hovered:.2} against panel_bg_color; should be at least {MIN_HOVER_CONTRAST_RATIO}"
+            );
+        }
+    }
+
     fn set_colors(&self, egui_style: &mut egui::Style) {
         // For table zebra stripes.
         egui_style.visuals.faint_bg_color = self.faint_bg_color;
@@ -956,7 +1053,6 @@ impl DesignTokens {
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
-        // Fill of unchecked radio buttons, checkboxes, etc.
         egui_style.visuals.widgets.inactive.bg_fill = self.button_secondary.fill;
         egui_style.visuals.disabled_alpha = self.disabled_opacity;
 
@@ -1095,7 +1191,9 @@ impl DesignTokens {
 
     pub fn table_cell_margin(&self, table_style: TableStyle) -> Margin {
         match table_style {
-            TableStyle::Dense => Margin::symmetric(8, 2),
+            // No vertical margin, so that tiny buttons (`Size::Tiny`) fit in the row height.
+            // Cells center their content vertically.
+            TableStyle::Dense => Margin::symmetric(8, 0),
             TableStyle::Spacious => Margin::symmetric(8, 6),
         }
     }
@@ -1133,6 +1231,11 @@ impl DesignTokens {
         egui::Margin::symmetric(8, 0)
     }
 
+    /// Radius of a small status dot, e.g. one marking unread messages or an error.
+    pub fn status_dot_radius(&self) -> f32 {
+        3.0
+    }
+
     pub fn text_to_icon_padding(&self) -> f32 {
         4.0
     }
@@ -1167,12 +1270,11 @@ impl DesignTokens {
         4.0
     }
 
-    pub fn section_header_height(&self) -> f32 {
-        Self::list_item_height() + self.section_header_top_padding()
-    }
-
-    pub fn list_item_height() -> f32 {
-        24.0
+    pub fn list_item_height(density: ListItemDensity) -> f32 {
+        match density {
+            ListItemDensity::Spacious => 24.0,
+            ListItemDensity::Compact => 20.0,
+        }
     }
 
     pub fn list_header_vertical_offset() -> f32 {
@@ -1319,6 +1421,18 @@ impl RonExt for ron::Value {
             _ => None,
         }
     }
+}
+
+/// WCAG 2.1 contrast ratio between two opaque colors, in `[1, 21]`.
+///
+/// See <https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio>.
+fn contrast_ratio(a: Color32, b: Color32) -> f32 {
+    let luminance = |color: Color32| {
+        let rgba = egui::Rgba::from(color);
+        0.2126 * rgba.r() + 0.7152 * rgba.g() + 0.0722 * rgba.b()
+    };
+    let (a, b) = (luminance(a), luminance(b));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }
 
 /// Build the [`ColorTable`] based on the content of `design_token.ron`

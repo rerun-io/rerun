@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>WebViewer API test page</title>
+    <style>
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+        font-family: system-ui, sans-serif;
+        background: #0d1011;
+        color: #cad8de;
+      }
+
+      body {
+        display: grid;
+        grid-template-columns: 1fr 420px;
+      }
+
+      #viewer {
+        min-height: 0;
+      }
+
+      #console {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        padding: 8px;
+        min-height: 0;
+      }
+
+      #code {
+        height: 120px;
+        font-family: monospace;
+      }
+
+      #output {
+        flex: 1;
+        margin: 0;
+        overflow: auto;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewer"></div>
+    <div id="console">
+      <select id="snippets" aria-label="API call"></select>
+      <textarea id="code" aria-label="Code" spellcheck="false"></textarea>
+      <button id="run">Run</button>
+      <pre id="output"></pre>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

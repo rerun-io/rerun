@@ -79,8 +79,8 @@ pub enum Error {
     #[error("{0}")]
     SegmentRejected(String),
 
-    /// Registration would push the dataset past its segment-count limit. Reported synchronously,
-    /// matching how the cloud server reports this.
+    /// Registration would push the dataset past its segment-count limit. Reported through the
+    /// segment's registration task, like [`Self::SegmentRejected`].
     #[error("{0}")]
     SegmentLimitReached(String),
 

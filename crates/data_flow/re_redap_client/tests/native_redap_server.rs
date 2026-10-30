@@ -33,7 +33,7 @@ async fn check_native_redap_server_version_endpoint() {
 
     let text = text.expect("/version response should be valid UTF-8");
     assert!(
-        text.starts_with("re_server "),
+        text.starts_with("re_web_tests "),
         "unexpected /version response: {text:?}"
     );
 }

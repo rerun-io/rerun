@@ -1,8 +1,8 @@
 use egui::emath::Rangef;
 use egui::scroll_area::ScrollSource;
 use egui::{
-    Align2, CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText,
-    TextEdit, Ui, Vec2, WidgetInfo,
+    CursorIcon, Modifiers, NumExt as _, Painter, PointerButton, Rect, Response, RichText, Ui, Vec2,
+    WidgetInfo,
 };
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item_with_context};
 use re_data_ui::DataUi as _;
@@ -16,11 +16,11 @@ use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::components::PanelState;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
 use re_ui::filter_widget::format_matching_text;
+use re_ui::text_edit::ReTextEdit;
 use re_ui::{
-    ContextExt as _, DesignTokens, Help, IconText, Size, UiExt as _, filter_widget, icons,
-    list_item,
+    ContextExt as _, DesignTokens, Help, IconText, UiExt as _, filter_widget, icons, list_item,
 };
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
     AppContext, AppOptions, CollapseScope, HoverHighlight, Item, ItemCollection, ItemContext,
     StoreViewContext, SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand,
@@ -31,7 +31,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimelineStoreSubscriber;
 use crate::streams_tree_data::{EntityData, StreamsTreeData, components_for_entity};
 use crate::time_axis::TimelineAxis;
-use crate::time_control_ui::TimeControlUi;
+use crate::time_control_ui::{TIME_CONTROL_ROW_SIZE, TimeControlUi};
 use re_time_ruler::{self, TimeRangesUi};
 
 use crate::{data_density_graph, time_selection_ui};
@@ -588,7 +588,10 @@ impl TimePanel {
             ui.response()
                 .widget_info(|| WidgetInfo::labeled(egui::Role::Pane, true, "_streams_tree"));
 
-            let size = egui::vec2(self.prev_col_width, DesignTokens::list_item_height());
+            let size = egui::vec2(
+                self.prev_col_width,
+                DesignTokens::list_item_height(re_ui::ListItemDensity::Spacious),
+            );
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -865,6 +868,7 @@ impl TimePanel {
                     store_ctx.egui_ctx,
                     &entity_data.label,
                     entity_data.highlight_sections.iter().cloned(),
+                    &egui::TextStyle::Body,
                     None,
                 ))
                 .with_icon(re_data_ui::item_ui::instance_path_icon(
@@ -1622,14 +1626,13 @@ impl TimePanel {
 
             let text_edit_width = 200.0.at_most(ui.available_width());
 
-            let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-                // `TextEdit::min_size` is ignored for some reason so we need add_sized
-                ui.add_sized(
-                    Vec2::new(text_edit_width, Size::Tiny.height()),
-                    TextEdit::singleline(&mut time_str).align(Align2::LEFT_CENTER),
+            let response = ui
+                .add(
+                    ReTextEdit::singleline(&mut time_str)
+                        .size(TIME_CONTROL_ROW_SIZE)
+                        .desired_width(text_edit_width),
                 )
-                .accessible_name("Current time")
-            });
+                .accessible_name("Current time");
             if response.changed() {
                 self.time_edit_string = Some(time_str.clone());
             }
@@ -1661,7 +1664,7 @@ fn archetype_label_ui(
 ) -> egui::Response {
     ui.list_item()
         .with_y_offset(1.0)
-        .with_height(20.0)
+        .with_density(re_ui::ListItemDensity::Compact)
         .interactive(false)
         .show_hierarchical(
             ui,
@@ -1836,7 +1839,9 @@ fn pan_and_zoom_interaction(
 
     // Check for zoom/pan inputs (via e.g. horizontal scrolling) on the entire
     // time area rectangle, including the timeline rect.
-    let full_rect_hovered = pointer_pos.is_some_and(|pointer_pos| full_rect.contains(pointer_pos));
+    let full_rect_hovered = pointer_pos.is_some_and(|pointer_pos| {
+        full_rect.contains(pointer_pos) && ui.ctx().layer_id_at(pointer_pos) == Some(ui.layer_id())
+    });
     if full_rect_hovered {
         ui.input(|input| {
             delta_x += input.smooth_scroll_delta.x;
@@ -1888,7 +1893,7 @@ fn timeline_properties_context_menu(
     time_ctrl: &TimeControl,
     hovered_time: TimeReal,
 ) {
-    let mut url = ViewerOpenUrl::from_context(&ctx.app_ctx);
+    let mut url = ViewerUrl::from_context(&ctx.app_ctx);
     let has_fragment = url.as_mut().is_ok_and(|url| {
         if let Some(fragment) = url.fragment_mut() {
             fragment.time_selection = None;

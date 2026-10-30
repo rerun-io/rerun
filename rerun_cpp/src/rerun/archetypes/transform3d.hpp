@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../archetype_utils.hpp"
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
@@ -912,13 +913,36 @@ namespace rerun::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&translation,
+                        &rotation_axis_angle,
+                        &quaternion,
+                        &scale,
+                        &mat3x3,
+                        &relation,
+                        &child_frame,
+                        &parent_frame},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length({&translation,
+                                                             &rotation_axis_angle,
+                                                             &quaternion,
+                                                             &scale,
+                                                             &mat3x3,
+                                                             &relation,
+                                                             &child_frame,
+                                                             &parent_frame})
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::archetypes
@@ -934,6 +958,17 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const archetypes::Transform3D& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.translation,
+                 &archetype.rotation_axis_angle,
+                 &archetype.quaternion,
+                 &archetype.scale,
+                 &archetype.mat3x3,
+                 &archetype.relation,
+                 &archetype.child_frame,
+                 &archetype.parent_frame}
+            );
+        }
     };
 } // namespace rerun

@@ -36,6 +36,7 @@ front faces are assumed to be those with counter clockwise triangle winding orde
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Mesh3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Mesh3D.html)

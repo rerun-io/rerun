@@ -3,8 +3,8 @@ title = "MCAP"
 description = "Load, convert, and post-process MCAP files in Rerun, including conversion of older ROS 1/2 bags into MCAP and RRD."
 tags = ["MCAP", "RRD", "ROS", "ROS 2", "Rosbag", "Tutorial"]
 source = "https://github.com/rerun-io/mcap_example"
-thumbnail = "https://static.rerun.io/mcap_example/7a3207652fa411979a96d5c5a25a43be29f1fdfb/480w.png"
-thumbnail_dimensions = [480, 305]
+thumbnail = "https://static.rerun.io/mcap_thumbnail/535c4ce0d8ac909cfee6e003de8b04ae9344c834/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 <video width="100%" autoplay loop muted controls>
@@ -18,6 +18,7 @@ This example demonstrates how to visualize and work with [MCAP](https://mcap.dev
 > MCAP (pronounced "em-cap") is an open source container file format for multimodal log data. It supports multiple channels of timestamped pre-serialized data, and is ideal for use in pub/sub or robotics applications.
 
 MCAP is the default bag format in ROS 2 and is rapidly gaining adoption. You can read more about [Rerun's MCAP support here](https://rerun.io/docs/howto/mcap).
+To record ROS 2 bags directly to RRD instead of MCAP, see the experimental [`rosbag2_storage_rrd`](https://github.com/rerun-io/rosbag2_storage_rrd) plugin.
 
 In this guide, you will learn:
 

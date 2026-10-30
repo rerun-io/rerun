@@ -54,7 +54,7 @@ pub enum ApiErrorKind {
     PermissionDenied,
     Unauthenticated,
 
-    /// The gRPC endpoint has not been implemented.
+    /// The requested operation or feature is not implemented.
     Unimplemented,
     Connection,
     Timeout,
@@ -408,6 +408,16 @@ impl ApiError {
 
     pub fn invalid_arguments(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
         Self::new(origin, ApiErrorKind::InvalidArguments, message)
+    }
+
+    /// The request's preconditions are not met.
+    pub fn failed_precondition(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
+        Self::new(origin, ApiErrorKind::FailedPrecondition, message)
+    }
+
+    /// The requested operation or feature is not implemented.
+    pub fn unimplemented(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
+        Self::new(origin, ApiErrorKind::Unimplemented, message)
     }
 
     pub fn internal(origin: &re_uri::Origin, message: impl Into<String>) -> Self {

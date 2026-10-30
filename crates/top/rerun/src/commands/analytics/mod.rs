@@ -27,8 +27,10 @@ pub enum AnalyticsCommands {
 }
 
 impl AnalyticsCommands {
-    pub fn run(&self) -> Result<(), re_analytics::cli::CliError> {
-        let build_info = re_build_info::build_info!();
+    pub fn run(
+        &self,
+        build_info: &re_build_info::BuildInfo,
+    ) -> Result<(), re_analytics::cli::CliError> {
         match self {
             #[expect(clippy::unit_arg)]
             Self::Details => Ok(re_analytics::cli::print_details(&build_info.git_ref())),

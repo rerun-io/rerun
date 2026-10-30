@@ -26,6 +26,7 @@ Dimensionality of the scalar arrays logged at each time point is assumed to be t
 ## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `SeriesPoints`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesPoints.html)

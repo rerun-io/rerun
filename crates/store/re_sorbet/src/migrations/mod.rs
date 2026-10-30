@@ -25,6 +25,7 @@ mod v0_0_2__to__v0_1_0;
 mod v0_1_0__to__v0_1_1;
 mod v0_1_1__to__v0_1_2;
 mod v0_1_2__to__v0_1_3;
+mod v0_1_3__to__v0_1_4;
 
 /// This trait needs to be implemented by any new migrations. It ensures that
 /// all migrations adhere to the same contract.
@@ -37,6 +38,14 @@ trait Migration {
 
     /// Migrates a record batch from one Sorbet version to the next.
     fn migrate(batch: RecordBatch) -> RecordBatch;
+
+    /// Migrates the data of an RRD manifest whose chunks are at [`Self::SOURCE_VERSION`].
+    ///
+    /// The per-component index columns of a manifest are named after the components of its chunks.
+    /// A migration that renames a component renames these columns here.
+    fn migrate_rrd_manifest(batch: RecordBatch) -> RecordBatch {
+        batch
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -139,6 +148,7 @@ fn migrate_record_batch_impl(mut batch: RecordBatch) -> RecordBatch {
                     batch = maybe_apply::<v0_1_0__to__v0_1_1::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_1__to__v0_1_2::Migration>(&batch_version, batch);
                     batch = maybe_apply::<v0_1_2__to__v0_1_3::Migration>(&batch_version, batch);
+                    batch = maybe_apply::<v0_1_3__to__v0_1_4::Migration>(&batch_version, batch);
                 }
                 batch
             }
@@ -164,4 +174,40 @@ fn migrate_record_batch_impl(mut batch: RecordBatch) -> RecordBatch {
 pub fn migrate_schema_ref(schema: SchemaRef) -> SchemaRef {
     re_tracing::profile_function!();
     migrate_record_batch_impl(RecordBatch::new_empty(schema)).schema()
+}
+
+fn maybe_apply_to_rrd_manifest<M: Migration>(
+    version: &semver::Version,
+    data: RecordBatch,
+) -> RecordBatch {
+    if version < &M::TARGET_VERSION {
+        M::migrate_rrd_manifest(data)
+    } else {
+        data
+    }
+}
+
+/// Migrate the data of an RRD manifest to the latest Sorbet version.
+///
+/// The Sorbet version comes from `raw_sorbet_schema`, the Sorbet schema of the manifest before migration.
+#[tracing::instrument(level = "debug", skip_all)]
+pub fn migrate_rrd_manifest_data(raw_sorbet_schema: &SchemaRef, data: RecordBatch) -> RecordBatch {
+    re_tracing::profile_function!();
+
+    let version = match get_or_guess_version(&RecordBatch::new_empty(raw_sorbet_schema.clone())) {
+        Ok(version) => version,
+        Err(err) => {
+            re_log::error_once!("Skipping RRD manifest migrations due to error: {err}");
+            return data;
+        }
+    };
+
+    let mut data = data;
+    data = maybe_apply_to_rrd_manifest::<v0_0_1__to__v0_0_2::Migration>(&version, data);
+    data = maybe_apply_to_rrd_manifest::<v0_0_2__to__v0_1_0::Migration>(&version, data);
+    data = maybe_apply_to_rrd_manifest::<v0_1_0__to__v0_1_1::Migration>(&version, data);
+    data = maybe_apply_to_rrd_manifest::<v0_1_1__to__v0_1_2::Migration>(&version, data);
+    data = maybe_apply_to_rrd_manifest::<v0_1_2__to__v0_1_3::Migration>(&version, data);
+    data = maybe_apply_to_rrd_manifest::<v0_1_3__to__v0_1_4::Migration>(&version, data);
+    data
 }

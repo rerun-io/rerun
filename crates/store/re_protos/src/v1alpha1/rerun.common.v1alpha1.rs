@@ -295,11 +295,10 @@ pub struct DataframePart {
     pub compression: i32,
     /// How large is the uncompressed data?
     ///
-    /// The value is undefined if `self.compression == Off`.
-    ///
-    /// This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
-    /// in many real world recordings out there (which is fine, because they are all implicitly
-    /// using `Compression::Off`).
+    /// Encoders always write it, and it equals the payload length when the payload is not
+    /// compressed. Readers must treat the payload length as authoritative for uncompressed parts,
+    /// because this was introduced late in `DataframePart`'s lifetime and old recordings left it
+    /// unset (which is fine, because they are all implicitly using `Compression::Off`).
     #[prost(uint64, tag = "4")]
     pub uncompressed_size: u64,
 }
@@ -412,6 +411,26 @@ impl ::prost::Name for SegmentId {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.common.v1alpha1.SegmentId".into()
+    }
+}
+/// Identifies an Arrow schema by the SHA-256 of its canonical form: fields sorted,
+/// top-level metadata dropped, encoded as Arrow IPC.
+///
+/// Equal schemas have equal identifiers, whichever layer or dataset they come from.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SchemaId {
+    /// The SHA-256 digest, exactly 32 bytes. Required.
+    #[prost(bytes = "bytes", optional, tag = "1")]
+    pub sha256: ::core::option::Option<::prost::bytes::Bytes>,
+}
+impl ::prost::Name for SchemaId {
+    const NAME: &'static str = "SchemaId";
+    const PACKAGE: &'static str = "rerun.common.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.common.v1alpha1.SchemaId".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.common.v1alpha1.SchemaId".into()
     }
 }
 /// Fully describes the semantics of a column of data. Mirrors `re_types_core::ComponentDescriptor`.
@@ -587,6 +606,9 @@ pub enum Compression {
     /// No compression.
     None = 1,
     /// LZ4 block compression.
+    ///
+    /// Encoders only use this where it saves enough bytes; a payload that compresses poorly is
+    /// written as `COMPRESSION_NONE` even when LZ4 was requested.
     Lz4 = 2,
 }
 impl Compression {

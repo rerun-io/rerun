@@ -6,25 +6,43 @@
 use std::collections::{BTreeSet, VecDeque};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
-use std::time::Instant;
 
-use agent_client_protocol::schema::v1::{
+use agent_client_protocol_schema::v1::{
     AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest, CreateElicitationResponse,
-    ElicitationAction, ElicitationMode, ImageContent, PermissionOption, PermissionOptionId,
-    PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome, RequestPermissionRequest,
-    RequestPermissionResponse, SelectedPermissionOutcome, SessionConfigId, SessionConfigValueId,
-    SessionModeId, SessionModeState, SessionUpdate, StopReason, TextContent, ToolCallStatus,
-    ToolKind,
+    ElicitationAction, ElicitationMode, ElicitationScope, ImageContent, PermissionOption,
+    PermissionOptionId, PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome,
+    RequestPermissionRequest, RequestPermissionResponse, SelectedPermissionOutcome,
+    SessionConfigId, SessionConfigValueId, SessionModeId, SessionModeState, SessionUpdate,
+    StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
 };
-use agent_client_protocol::{LineDirection, Responder};
 
-use crate::connection::{AgentCommand, AgentConnection, AgentEvent, LaunchConfig, McpStdioServer};
+use re_async::{AsyncRuntimeHandle, UiWaker};
+use web_time::Instant;
+
+use crate::agent_harness::McpStdioServer;
+use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
 use crate::error::McpStartupFailure;
+use crate::responder::{AgentStoppedWaiting, Responder};
+use crate::settings::AgentLaunch;
 use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
+
+/// Why [`AgentSession::start`] could not start an agent.
+#[derive(Debug, thiserror::Error)]
+enum StartError {
+    #[cfg(not(agent_harness_backend))]
+    #[error("Agent subprocesses are not supported on this platform")]
+    HarnessUnsupported,
+
+    #[error(transparent)]
+    ModelApi(crate::ModelApiError),
+
+    #[error("This host cannot run a model-API agent: it has no async runtime")]
+    NoAsyncRuntime,
+}
 
 /// An image the user attached to a prompt, already encoded as `mime_type`.
 #[derive(Clone, Debug)]
@@ -39,7 +57,7 @@ pub struct PromptImage {
     pub mime_type: String,
 
     /// Width and height of the encoded image, in pixels.
-    pub size: [usize; 2],
+    pub resolution: [usize; 2],
 }
 
 /// What a single prompt carries: the text as typed, and any images attached to it.
@@ -94,10 +112,7 @@ pub struct PendingPermission {
 }
 
 impl PendingPermission {
-    fn answer(
-        self,
-        option_id: Option<PermissionOptionId>,
-    ) -> Result<(), agent_client_protocol::Error> {
+    fn answer(self, option_id: Option<PermissionOptionId>) -> Result<(), AgentStoppedWaiting> {
         let outcome = match option_id {
             Some(option_id) => {
                 RequestPermissionOutcome::Selected(SelectedPermissionOutcome::new(option_id))
@@ -126,10 +141,7 @@ pub struct PendingElicitation {
 }
 
 impl PendingElicitation {
-    fn answer(
-        mut self,
-        response: CreateElicitationResponse,
-    ) -> Result<(), agent_client_protocol::Error> {
+    fn answer(mut self, response: CreateElicitationResponse) -> Result<(), AgentStoppedWaiting> {
         // Consume the responder before sending so that Drop cannot send a second response on error.
         match self.responder.take() {
             Some(responder) => responder.respond(response),
@@ -206,9 +218,11 @@ pub struct AgentSession {
 
     /// Holds the images written out for an agent that cannot take them inline. Deleting it with
     /// the session is the point: the files are only meant to outlive the prompt that names them.
+    #[cfg(agent_harness_backend)]
     image_dir: Option<tempfile::TempDir>,
 
     /// Images written to [`Self::image_dir`] so far, so their file names stay unique.
+    #[cfg(agent_harness_backend)]
     images_written: usize,
 
     /// The turn started by the last prompt, until the agent finishes it.
@@ -230,24 +244,65 @@ pub struct AgentSession {
 }
 
 impl AgentSession {
-    /// Spawns the agent. `wake` is called whenever new events arrive, so the UI can repaint.
-    pub fn start(&mut self, config: LaunchConfig, wake: impl Fn() + Send + Sync + 'static) {
+    /// Starts whichever kind of agent `launch` describes.
+    ///
+    /// A model-API agent runs on `async_runtime`, and fails to start without one.
+    /// `waker` is woken whenever new events arrive, so that the UI can
+    /// call [`Self::poll_events`].
+    pub fn start(
+        &mut self,
+        launch: AgentLaunch,
+        async_runtime: Option<&AsyncRuntimeHandle>,
+        waker: UiWaker,
+    ) {
         self.stop();
-        *self = Self {
-            phase: Phase::Connecting {
-                status: format!("Starting {}…", config.command.display()),
-            },
+        let mut fresh = Self {
             auto_approve: self.auto_approve,
-            requested_mcp_servers: config.mcp_servers.clone(),
-            preamble: config.preamble.clone(),
-            readable_directories: config.additional_directories.clone(),
-            off_limits_directories: config.off_limits_directories.clone(),
-            cwd: config.cwd.clone(),
             finished_turns: std::mem::take(&mut self.finished_turns),
             next_elicitation_id: self.next_elicitation_id,
             ..Default::default()
         };
-        self.connection = Some(AgentConnection::spawn(config, wake));
+        let connection = match launch {
+            AgentLaunch::AgentHarness(config) => {
+                fresh.phase = Phase::Connecting {
+                    status: format!("Starting {}…", config.command.display()),
+                };
+                fresh.requested_mcp_servers = config.mcp_servers.clone();
+                fresh.preamble = config.preamble.clone();
+                fresh.readable_directories = config.additional_directories.clone();
+                fresh.off_limits_directories = config.off_limits_directories.clone();
+                fresh.cwd = config.cwd.clone();
+                *self = fresh;
+                cfg_select! {
+                    agent_harness_backend => Ok(crate::agent_harness::spawn(config, waker)),
+                    _ => {{
+                        drop((config, waker));
+                        Err(StartError::HarnessUnsupported)
+                    }}
+                }
+            }
+            AgentLaunch::ModelApi(config) => {
+                fresh.phase = Phase::Connecting {
+                    status: format!("Connecting to {}…", config.model),
+                };
+                *self = fresh;
+                match async_runtime {
+                    Some(async_runtime) => {
+                        crate::model_api_backend::spawn(config, async_runtime, waker)
+                            .map_err(StartError::ModelApi)
+                    }
+                    None => Err(StartError::NoAsyncRuntime),
+                }
+            }
+        };
+        match connection {
+            Ok(connection) => self.connection = Some(connection),
+            Err(err) => {
+                let reason = err.to_string();
+                self.report_error(reason.clone());
+                self.phase = Phase::Disconnected { reason };
+            }
+        }
     }
 
     /// Shuts the agent down. Pending permission and elicitation requests are cancelled.
@@ -332,6 +387,28 @@ impl AgentSession {
         &self.pending_elicitations
     }
 
+    /// The agent is blocked on the user: a login, a permission request, or a question.
+    pub fn is_waiting_on_user(&self) -> bool {
+        self.auth.is_some()
+            || !self.pending_permissions.is_empty()
+            || !self.pending_elicitations.is_empty()
+    }
+
+    /// The tool call is blocked on the user: a permission request or a question names it.
+    ///
+    /// A login, or a question that names no tool call, could belong to any running call, so
+    /// those count for all of them.
+    pub fn is_tool_call_waiting_on_user(&self, id: &ToolCallId) -> bool {
+        let permission = self
+            .pending_permissions
+            .iter()
+            .any(|pending| pending.request.tool_call.tool_call_id == *id);
+        let question = self.pending_elicitations.iter().any(|pending| {
+            elicitation_tool_call(&pending.request).is_none_or(|tool_call| tool_call == id)
+        });
+        self.auth.is_some() || permission || question
+    }
+
     pub fn log(&self) -> &VecDeque<LogLine> {
         &self.log
     }
@@ -411,6 +488,13 @@ impl AgentSession {
 
     /// Turns `images` into what the prompt carries: the text to send, the blocks to append, and
     /// how many images never reached the agent because they could not be written to disk.
+    #[cfg_attr(
+        not(agent_harness_backend),
+        expect(
+            clippy::needless_pass_by_ref_mut,
+            reason = "only an agent harness takes images as files, which needs `&mut self`"
+        )
+    )]
     fn attach_images(
         &mut self,
         text: &str,
@@ -420,8 +504,7 @@ impl AgentSession {
 
         let mut prompt_text = text.to_owned();
         let mut blocks = Vec::new();
-        let mut paths = Vec::new();
-        let mut unsaved = 0;
+        let mut for_files = Vec::new();
 
         for image in images {
             if self.prompt_capabilities.image {
@@ -433,12 +516,26 @@ impl AgentSession {
                     data,
                     image.mime_type.clone(),
                 )));
-            } else if let Some(path) = self.write_image(image) {
-                paths.push(path);
             } else {
-                unsaved += 1;
+                for_files.push(image);
             }
         }
+
+        let (paths, unsaved) = cfg_select! {
+            agent_harness_backend => {{
+                let mut paths = Vec::new();
+                let mut unsaved = 0;
+                for image in for_files {
+                    match self.write_image(image) {
+                        Some(path) => paths.push(path),
+                        None => unsaved += 1,
+                    }
+                }
+                (paths, unsaved)
+            }}
+            // The web has no file system to hand images over through.
+            _ => (Vec::<PathBuf>::new(), for_files.len()),
+        };
 
         if !paths.is_empty() {
             prompt_text
@@ -455,6 +552,7 @@ impl AgentSession {
     ///
     /// The directory is added to the readable ones, so reading back what the user just pasted
     /// does not raise a permission prompt.
+    #[cfg(agent_harness_backend)]
     fn write_image(&mut self, image: &PromptImage) -> Option<PathBuf> {
         if self.image_dir.is_none() {
             match tempfile::Builder::new()
@@ -584,6 +682,7 @@ impl AgentSession {
 
         self.finished_turns.push(TurnReport {
             agent: self.agent_name.clone(),
+            model: self.transcript.current_model().map(str::to_owned),
             prompt,
             duration: started.elapsed(),
             outcome,
@@ -707,11 +806,17 @@ impl AgentSession {
 
     /// Applies everything the agent sent since the last call. Call once per frame.
     pub fn poll_events(&mut self) {
+        self.pending_permissions.retain(|pending| {
+            pending
+                .responder
+                .as_ref()
+                .is_none_or(|responder| !responder.is_cancelled())
+        });
         self.pending_elicitations.retain(|pending| {
             pending
                 .responder
                 .as_ref()
-                .is_none_or(|responder| !responder.cancellation().is_cancelled())
+                .is_none_or(|responder| !responder.is_cancelled())
         });
         let Some(connection) = &self.connection else {
             return;
@@ -793,7 +898,11 @@ impl AgentSession {
                 if let Some(failure) =
                     McpStartupFailure::from_codex_update(&update, &self.requested_mcp_servers)
                 {
-                    self.transcript.push_mcp_startup_failure(failure);
+                    if let Some(note) = failure.replaced_by_agent_config_note() {
+                        self.transcript.push_note(note, false);
+                    } else {
+                        self.transcript.push_mcp_startup_failure(failure);
+                    }
                 } else {
                     self.transcript.apply(update);
                 }
@@ -805,6 +914,10 @@ impl AgentSession {
                     request,
                     responder: Some(responder),
                 };
+                if self.cancel_requested {
+                    pending.answer(None).ok();
+                    return;
+                }
                 let is_harmless_read = self
                     .transcript
                     .tool_call(&pending.request.tool_call.tool_call_id)
@@ -1049,18 +1162,35 @@ fn is_within(path: &Path, directories: &[PathBuf]) -> bool {
             .any(|directory| path.starts_with(directory))
 }
 
+/// The tool call a question is about, if the agent says.
+fn elicitation_tool_call(request: &CreateElicitationRequest) -> Option<&ToolCallId> {
+    let scope = match &request.mode {
+        ElicitationMode::Form(form) => &form.scope,
+        ElicitationMode::Url(url) => &url.scope,
+        _ => return None,
+    };
+    match scope {
+        ElicitationScope::Session(session) => session.tool_call_id.as_ref(),
+        _ => None,
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use agent_client_protocol::schema::v1::{
-        ContentChunk, ElicitationAcceptAction, ElicitationContentValue, SessionUpdate, ToolCall,
-        ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
+    use std::assert_matches;
+
+    use agent_client_protocol_schema::v1::{
+        ContentChunk, SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation,
+        ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields,
     };
 
     use super::*;
 
+    #[cfg(agent_harness_backend)]
     #[test]
     fn question_answers_and_cancellation_reach_the_agent() {
         use agent_client_protocol::{Agent, Channel, Client, ConnectionTo};
+        use agent_client_protocol_schema::v1::{ElicitationAcceptAction, ElicitationContentValue};
 
         let (client_channel, agent_channel) = Channel::duplex();
         let (done_tx, done_rx) = futures::channel::oneshot::channel();
@@ -1068,7 +1198,9 @@ mod tests {
             let client = Client
                 .builder()
                 .on_receive_request(
-                    async |request: CreateElicitationRequest, responder, _cx| {
+                    async |request: CreateElicitationRequest, acp_responder, cx| {
+                        let (responder, task) = crate::agent_harness::forward_answer(acp_responder);
+                        cx.spawn(task)?;
                         let cancel = request.message == "Cancel this question";
                         let mut session = AgentSession::default();
                         session.handle_event(AgentEvent::ElicitationRequest { request, responder });
@@ -1136,6 +1268,31 @@ mod tests {
     }
 
     #[test]
+    fn a_question_waits_on_its_tool_call_or_on_all_of_them() {
+        let asking = ToolCallId::new("asking");
+        let other = ToolCallId::new("other");
+
+        let mut session = AgentSession::default();
+        assert!(!session.is_tool_call_waiting_on_user(&asking));
+
+        let mut scoped = form_question();
+        if let ElicitationMode::Form(form) = &mut scoped.mode
+            && let ElicitationScope::Session(scope) = &mut form.scope
+        {
+            scope.tool_call_id = Some(asking.clone());
+        }
+        session.push_elicitation(scoped, None);
+        assert!(session.is_tool_call_waiting_on_user(&asking));
+        assert!(!session.is_tool_call_waiting_on_user(&other));
+
+        session.push_elicitation(form_question(), None);
+        assert!(
+            session.is_tool_call_waiting_on_user(&other),
+            "unscoped questions count for all"
+        );
+    }
+
+    #[test]
     fn questions_require_an_answer_even_with_auto_approve() {
         let mut session = AgentSession::default();
         session.set_auto_approve(true);
@@ -1158,6 +1315,49 @@ mod tests {
         assert!(session.pending_elicitations().is_empty());
         session.push_elicitation(form_question(), None);
         assert!(session.pending_elicitations().is_empty());
+    }
+
+    fn permission_request() -> RequestPermissionRequest {
+        RequestPermissionRequest::new(
+            "test-session",
+            ToolCallUpdate::new("call", ToolCallUpdateFields::new()),
+            vec![PermissionOption::new(
+                "allow",
+                "Allow",
+                PermissionOptionKind::AllowOnce,
+            )],
+        )
+    }
+
+    #[test]
+    fn cancelling_rejects_late_permission_requests() {
+        let mut session = AgentSession::default();
+        session.cancel();
+        let (responder, mut answer) = Responder::channel();
+        session.handle_event(AgentEvent::PermissionRequest {
+            request: permission_request(),
+            responder,
+        });
+        assert!(session.pending_permissions().is_empty());
+        let answer = answer.try_recv().expect("answered").expect("answered");
+        assert!(matches!(
+            answer.outcome,
+            RequestPermissionOutcome::Cancelled
+        ));
+    }
+
+    #[test]
+    fn permission_requests_the_agent_gave_up_on_are_dropped() {
+        let mut session = AgentSession::default();
+        let (responder, answer) = Responder::channel();
+        session.handle_event(AgentEvent::PermissionRequest {
+            request: permission_request(),
+            responder,
+        });
+        assert_eq!(session.pending_permissions().len(), 1);
+        drop(answer);
+        session.poll_events();
+        assert!(session.pending_permissions().is_empty());
     }
 
     #[test]
@@ -1287,16 +1487,44 @@ mod tests {
     }
 
     #[test]
+    fn codex_config_replacing_our_mcp_server_is_a_notice() {
+        let mut session = AgentSession::default();
+        let error = "[codex-acp] MCP server `rerun` was not started, because the Codex config \
+                     already defines an MCP server with this name. Codex uses its own entry, \
+                     or no server if that entry is disabled.";
+        session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
+            ToolCall::new("mcp_startup.rerun.1", "mcp__rerun__startup")
+                .status(ToolCallStatus::Failed)
+                .content(vec![ToolCallContent::from(ContentBlock::Text(
+                    TextContent::new(error),
+                ))]),
+        )));
+
+        let TranscriptItem::Note { text, is_error } = &session.transcript.items[0].item else {
+            panic!(
+                "expected a note, got {:?}",
+                session.transcript.items[0].item
+            );
+        };
+        assert!(!is_error);
+        assert_eq!(
+            text,
+            "Codex uses the `rerun` MCP server from `[mcp_servers.rerun]` in your Codex config \
+             instead of the one Rerun provides."
+        );
+    }
+
+    #[test]
     fn ordinary_failed_tools_are_not_classified_as_mcp_startup_failures() {
         let mut session = AgentSession::default();
         session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
             ToolCall::new("call-1", "mcp__rerun__startup").status(ToolCallStatus::Failed),
         )));
 
-        assert!(matches!(
+        assert_matches!(
             session.transcript.items[0].item,
             TranscriptItem::ToolCall(_)
-        ));
+        );
     }
 
     fn call(

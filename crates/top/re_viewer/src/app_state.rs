@@ -13,7 +13,7 @@ use re_redap_browser::RedapServers;
 use re_redap_client::ConnectionRegistryHandle;
 use re_sdk_types::blueprint::components::{PanelState, PlayState};
 use re_ui::{ContextExt as _, UiExt as _, WindowFrameConfig};
-use re_viewer_context::open_url::{self, ViewerOpenUrl};
+use re_viewer_context::viewer_url::{self, ViewerUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, AppContext, AppOptions, ApplicationSelectionState,
     AuthContext, BlueprintContext, BlueprintUndoState, CommandSender, ComponentUiRegistry,
@@ -28,9 +28,9 @@ use re_viewport_blueprint::ui::add_view_or_container_modal_ui;
 
 use crate::app_blueprint::AppBlueprint;
 use crate::navigation::Navigation;
-use crate::open_url_description::ViewerOpenUrlDescription;
 use crate::ui::settings_screen_ui;
 use crate::ui::{CloudState, LoginState};
+use crate::viewer_url_description::ViewerUrlDescription;
 use crate::{StartupOptions, history};
 
 const WATERMARK: bool = false; // Nice for recording media material
@@ -54,13 +54,10 @@ pub struct AppState {
 
     /// Settings shared by all conversations in the agent panel.
     ///
-    /// This stays in `re_viewer` so `re_viewer_context` does not depend on the native-only
-    /// agent UI.
-    #[cfg(agent_panel)]
+    /// This stays in `re_viewer` so `re_viewer_context` does not depend on the agent UI.
     pub(crate) agent_settings: re_agent_ui::AgentSettings,
 
     /// Whether the agent panel is open. Persisted, so it comes back on the next run.
-    #[cfg(agent_panel)]
     pub(crate) agent_panel_open: bool,
 
     /// The time control for each recording (found in [`EntityDb`]).
@@ -172,9 +169,7 @@ impl Default for AppState {
         Self {
             app_options: Default::default(),
             audio_output: Default::default(),
-            #[cfg(agent_panel)]
             agent_settings: Default::default(),
-            #[cfg(agent_panel)]
             agent_panel_open: false,
             time_controls: Default::default(),
             app_caches: Default::default(),
@@ -319,6 +314,7 @@ impl AppState {
         welcome_screen_state: &WelcomeScreenState,
         event_dispatcher: Option<&crate::event::ViewerEventDispatcher>,
         connection_registry: &ConnectionRegistryHandle,
+        registrations_in_flight: &crate::registrations_in_flight::RegistrationsInFlight,
         runtime: &AsyncRuntimeHandle,
         custom_window_frame: bool,
     ) {
@@ -343,6 +339,8 @@ impl AppState {
                 .or_default()
                 .update(&egui_ctx, blueprint);
         }
+
+        re_dataframe_ui::write_pending_upserts(&egui_ctx, connection_registry, runtime);
 
         let blueprint_query =
             self.blueprint_query_for_viewer(active_store_context.map(|ctx| ctx.blueprint));
@@ -374,6 +372,14 @@ impl AppState {
             );
         }
 
+        let mut registering_files: ahash::HashMap<_, Vec<_>> = Default::default();
+        for registration in registrations_in_flight.snapshot().into_values() {
+            registering_files
+                .entry(registration.origin)
+                .or_default()
+                .push(registration.name);
+        }
+
         // App-level context, available for all routes (also those without an active recording).
         let app_ctx = AppContext {
             is_test: app_env.is_test(),
@@ -386,6 +392,7 @@ impl AppState {
             command_sender,
 
             connection_registry,
+            registering_files: &registering_files,
             last_loading_error: &self.last_loading_error,
             storage_context,
             blueprint_undo_states: &self.blueprint_undo_state,
@@ -436,7 +443,7 @@ impl AppState {
             } => {
                 let mut show_settings_ui = true;
                 let app_options = new_app_options.insert(self.app_options.clone());
-                settings_screen_ui(ui, app_options, &mut show_settings_ui);
+                settings_screen_ui(ui, app_options, startup_options, &mut show_settings_ui);
                 if !show_settings_ui {
                     command_sender.send_system(SystemCommand::SetRoute((**previous).clone()));
                 }
@@ -708,8 +715,8 @@ impl AppState {
                     None,
                 );
 
-                let source_name = if let Ok(url) = ViewerOpenUrl::from_data_source(log_source) {
-                    Cow::Owned(ViewerOpenUrlDescription::from_url(&url).to_string())
+                let source_name = if let Ok(url) = ViewerUrl::from_data_source(log_source) {
+                    Cow::Owned(ViewerUrlDescription::from_url(&url).to_string())
                 } else {
                     // In practice this shouldn't happen.
                     Cow::Borrowed("<unknown>")
@@ -1219,23 +1226,8 @@ pub(crate) fn create_time_control_for<'cfgs>(
         entity_db: &'_ EntityDb,
         blueprint_ctx: &'_ impl BlueprintContext,
     ) -> TimeControl {
-        let follow = if let Some(data_source) = &entity_db.data_source {
-            match data_source {
-                // Not live data:
-                LogSource::File { .. }
-                | LogSource::HttpStream { .. }
-                | LogSource::RedapGrpcStream { .. }
-                | LogSource::RrdWebEvent => false,
-
-                // Live data:
-                LogSource::Sdk
-                | LogSource::MessageProxy { .. }
-                | LogSource::Stdin
-                | LogSource::JsChannel { .. } => true,
-            }
-        } else {
-            true // No known source 🤷‍♂️
-        };
+        let sources = entity_db.data_sources();
+        let follow = sources.is_empty() || sources.iter().any(|source| source.may_be_live());
 
         let play_state = if follow {
             PlayState::Following
@@ -1268,7 +1260,7 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
     egui_ctx.output_mut(|o| {
         o.commands.retain_mut(|command| {
             if let egui::OutputCommand::OpenUrl(open_url) = command {
-                if let Ok(url) = open_url::ViewerOpenUrl::parse_with_options(
+                if let Ok(url) = viewer_url::ViewerUrl::parse_with_options(
                     &open_url.url,
                     &re_data_source::FromUriOptions {
                         accept_extensionless_http: false,
@@ -1276,7 +1268,7 @@ fn check_for_clicked_hyperlinks(egui_ctx: &egui::Context, command_sender: &Comma
                 ) {
                     url.open(
                         egui_ctx,
-                        &open_url::OpenUrlOptions {
+                        &viewer_url::OpenUrlOptions {
                             recording_open_behavior: if open_url.new_tab {
                                 RecordingOpenBehavior::Open
                             } else {
@@ -1368,7 +1360,7 @@ mod tests {
         );
         assert_eq!(kind, Some(EntryKind::Table));
 
-        let url = ViewerOpenUrl::from_route(
+        let url = ViewerUrl::from_route(
             &StoreHub::test_hub(),
             &Route::RedapEntry {
                 origin: origin.clone(),
@@ -1380,7 +1372,7 @@ mod tests {
 
         assert_eq!(
             url,
-            ViewerOpenUrl::RedapEntry(re_uri::EntryUri::new(origin, entry_id))
+            ViewerUrl::RedapEntry(re_uri::EntryUri::new(origin, entry_id))
         );
     }
 

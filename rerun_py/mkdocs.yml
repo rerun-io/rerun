@@ -38,11 +38,26 @@ plugins:
         python:
           paths: ["rerun_sdk", "."] # Lookup python modules relative to this path
           inventories: # Cross-references for python and numpy
-            - https://arrow.apache.org/docs/objects.inv
-            - https://docs.python.org/3.10/objects.inv
-            - https://numpy.org/doc/stable/objects.inv
-            - https://ipython.readthedocs.io/en/stable/objects.inv
-            - https://datafusion.apache.org/python/objects.inv
+            - url: !ENV
+                - MKDOCS_INV_ARROW
+                - https://arrow.apache.org/docs/objects.inv
+              base_url: https://arrow.apache.org/docs
+            - url: !ENV
+                - MKDOCS_INV_PYTHON
+                - https://docs.python.org/3.10/objects.inv
+              base_url: https://docs.python.org/3.10
+            - url: !ENV
+                - MKDOCS_INV_NUMPY
+                - https://numpy.org/doc/stable/objects.inv
+              base_url: https://numpy.org/doc/stable
+            - url: !ENV
+                - MKDOCS_INV_IPYTHON
+                - https://ipython.readthedocs.io/en/stable/objects.inv
+              base_url: https://ipython.readthedocs.io/en/stable
+            - url: !ENV
+                - MKDOCS_INV_DATAFUSION
+                - https://datafusion.apache.org/python/objects.inv
+              base_url: https://datafusion.apache.org/python
           options: # https://mkdocstrings.github.io/python/usage/#globallocal-options
             docstring_section_style: spacy # list spacy table
             docstring_style: numpy

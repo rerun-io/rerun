@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -62,10 +59,8 @@ impl ::re_types_core::ToArrowOpt for MultiEnum {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -87,10 +82,7 @@ impl ::re_types_core::ToArrowOpt for MultiEnum {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let validity = validity_from_bools(somes);
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -102,10 +94,7 @@ impl ::re_types_core::ToArrowOpt for MultiEnum {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let value1_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let value1_validity = validity_from_bools(somes);
                         {
                             let _ = value1_validity;
                             crate::testing::encodings::EnumTest::to_arrow_opt(value1)?
@@ -120,10 +109,7 @@ impl ::re_types_core::ToArrowOpt for MultiEnum {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let value2_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let value2_validity = validity_from_bools(somes);
                         {
                             let _ = value2_validity;
                             crate::testing::encodings::ValuedEnum::to_arrow_opt(value2)?
@@ -154,35 +140,19 @@ impl ::re_types_core::FromArrowOpt for MultiEnum {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
+                let fields = StructFields::new(
+                    arrow_data,
+                    Self::arrow_data_type,
+                    "rerun.testing.encodings.MultiEnum",
+                );
                 let value1 = {
-                    if !arrays_by_name.contains_key("value1") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "value1",
-                        ))
-                        .with_context("rerun.testing.encodings.MultiEnum");
-                    }
-                    let arrow_data = &**arrays_by_name["value1"];
+                    let arrow_data = fields.required("value1")?;
                     crate::testing::encodings::EnumTest::from_arrow_opt(arrow_data)
                         .with_context("rerun.testing.encodings.MultiEnum#value1")?
                         .into_iter()
                 };
                 let value2 = {
-                    if !arrays_by_name.contains_key("value2") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "value2",
-                        ))
-                        .with_context("rerun.testing.encodings.MultiEnum");
-                    }
-                    let arrow_data = &**arrays_by_name["value2"];
+                    let arrow_data = fields.required("value2")?;
                     crate::testing::encodings::ValuedEnum::from_arrow_opt(arrow_data)
                         .with_context("rerun.testing.encodings.MultiEnum#value2")?
                         .into_iter()

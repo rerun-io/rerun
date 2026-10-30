@@ -1,19 +1,24 @@
+use std::num::NonZeroU64;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 use arrow::array::RecordBatch;
+use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
+use parking_lot::Mutex;
 use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
 use pyo3::types::PyAnyMethods as _;
 use pyo3::{Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_chunk_store::LazyStore;
 use re_datafusion::{DatasetManifestProvider, SegmentTableProvider};
 use re_log_types::EntryId;
-use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails};
+use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails, ObjectKey};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
-use re_redap_client::SegmentChunkProvider;
+use re_redap_client::{DatasetSchema, SegmentChunkProvider};
 use re_types_core::LayerName;
 
 use super::registration_handle::PyRegistrationHandleInternal;
+use super::write_operation::PyWriteOperationInternal;
 use super::{
     PyCatalogClientInternal, PyDatasetInfoInternal, PyEntryDetails, PyTableProviderAdapterInternal,
     to_py_err,
@@ -35,6 +40,61 @@ pub struct PyDatasetEntryInternal {
     entry_details: EntryDetails,
     dataset_details: DatasetDetails,
     dataset_handle: DatasetHandle,
+
+    /// The schema last fetched, keyed on the dataset revision it describes.
+    dataset_schema: SchemaCache,
+}
+
+/// A dataset schema cached alongside the revision it describes.
+///
+/// Entries are only valid while the process-wide watermark in
+/// [`re_redap_client::dataset_revisions`] still equals the cached revision, so a schema whose
+/// revision the server did not report is never stored.
+struct SchemaCache(Mutex<Option<CachedSchema>>);
+
+impl SchemaCache {
+    fn new() -> Self {
+        Self(Mutex::new(None))
+    }
+
+    /// The cached schema, if it describes exactly `watermark`.
+    fn try_get(&self, watermark: NonZeroU64) -> Option<ArrowSchema> {
+        let guard = self.0.lock();
+        let cached = guard.as_ref()?;
+        if cached.revision == watermark {
+            Some(cached.schema.clone())
+        } else {
+            None
+        }
+    }
+
+    /// Record a freshly fetched schema.
+    ///
+    /// Writes are monotonic in revision: concurrent fetches may complete out of order, and an
+    /// older response must not evict a newer one. A schema without a revision is not cached.
+    fn observe(&self, fetched: &DatasetSchema) {
+        let Some(fetched_revision) = fetched.revision else {
+            return;
+        };
+
+        let mut guard = self.0.lock();
+        if guard
+            .as_ref()
+            .is_some_and(|cached| fetched_revision <= cached.revision)
+        {
+            return;
+        }
+
+        *guard = Some(CachedSchema {
+            revision: fetched_revision,
+            schema: fetched.schema.clone(),
+        });
+    }
+}
+
+struct CachedSchema {
+    revision: NonZeroU64,
+    schema: ArrowSchema,
 }
 
 impl PyDatasetEntryInternal {
@@ -44,6 +104,7 @@ impl PyDatasetEntryInternal {
             entry_details: dataset_entry.details,
             dataset_details: dataset_entry.dataset_details,
             dataset_handle: dataset_entry.handle,
+            dataset_schema: SchemaCache::new(),
         }
     }
 
@@ -120,6 +181,15 @@ impl PyDatasetEntryInternal {
     #[getter]
     fn manifest_url(&self) -> String {
         self.dataset_handle.url.to_string()
+    }
+
+    /// The newest dataset revision this process has observed, or `None` if the server reports none.
+    ///
+    /// Any reader built while this value is unchanged reuses the cached schema.
+    fn _dataset_revision(&self) -> Option<u64> {
+        re_redap_client::dataset_revisions()
+            .get(self.entry_details.id)
+            .map(NonZeroU64::get)
     }
 
     /// The associated blueprint dataset, if any.
@@ -311,10 +381,7 @@ impl PyDatasetEntryInternal {
     /// Return the schema of the data contained in the dataset.
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let _span = read_trace_context_from_python(self_.py(), "DatasetEntry.schema").entered();
-        let connection = self_.client.borrow(self_.py()).connection().clone();
-        PySchemaInternal::from_arrow_schema(
-            connection.get_dataset_schema(self_.py(), self_.entry_details.id)?,
-        )
+        PySchemaInternal::from_arrow_schema(Self::fetch_arrow_schema(&self_)?)
     }
 
     /// Returns a list of segment IDs for the dataset.
@@ -547,6 +614,93 @@ impl PyDatasetEntryInternal {
         Ok(PyRegistrationHandleInternal::new(registration))
     }
 
+    #[pyo3(signature = (data, storage_prefix, kind, layer, on_duplicate))]
+    fn write_bytes(
+        self_: PyRef<'_, Self>,
+        data: Vec<u8>,
+        storage_prefix: Option<&str>,
+        kind: &str,
+        layer: String,
+        on_duplicate: &str,
+    ) -> PyResult<PyWriteOperationInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.write_bytes").entered();
+        let kind = WriteKind::parse(kind)?;
+        let layer = LayerName::try_new(layer).map_err(to_py_err)?;
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
+        let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_id();
+        let storage_prefix = storage_prefix.map(parse_storage_prefix).transpose()?;
+        let operation = connection.inner().start_write(async move |client| {
+            let storage_prefix = storage_prefix.as_ref();
+            let data = bytes::Bytes::from(data);
+            match kind {
+                WriteKind::Asset => {
+                    client
+                        .write_asset_bytes(dataset_id, data, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+                WriteKind::Blueprint => {
+                    client
+                        .write_blueprint_bytes(
+                            dataset_id,
+                            data,
+                            storage_prefix,
+                            layer,
+                            on_duplicate,
+                        )
+                        .await
+                }
+                WriteKind::Segment => {
+                    client
+                        .write_segment_bytes(dataset_id, data, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+            }
+        });
+        Ok(PyWriteOperationInternal::new(operation))
+    }
+
+    #[pyo3(signature = (path, storage_prefix, kind, layer, on_duplicate))]
+    fn write_path(
+        self_: PyRef<'_, Self>,
+        path: PathBuf,
+        storage_prefix: Option<&str>,
+        kind: &str,
+        layer: String,
+        on_duplicate: &str,
+    ) -> PyResult<PyWriteOperationInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetEntry.write_path").entered();
+        let kind = WriteKind::parse(kind)?;
+        let layer = LayerName::try_new(layer).map_err(to_py_err)?;
+        let on_duplicate = parse_on_duplicate(on_duplicate)?;
+        let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_id();
+        let storage_prefix = storage_prefix.map(parse_storage_prefix).transpose()?;
+        let operation = connection.inner().start_write(async move |client| {
+            let storage_prefix = storage_prefix.as_ref();
+            match kind {
+                WriteKind::Asset => {
+                    client
+                        .write_asset_path(dataset_id, path, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+                WriteKind::Blueprint => {
+                    client
+                        .write_blueprint_path(dataset_id, path, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+                WriteKind::Segment => {
+                    client
+                        .write_segment_path(dataset_id, path, storage_prefix, layer, on_duplicate)
+                        .await
+                }
+            }
+        });
+        Ok(PyWriteOperationInternal::new(operation))
+    }
+
     /// Unregisters segments and layers from the dataset.
     ///
     /// Excluding IO errors, this will always succeed as long the target dataset exists.
@@ -743,7 +897,7 @@ impl PyDatasetEntryInternal {
         })
     }
 
-    /// Returns a new `DatasetView` filtered to the given segment IDs.
+    /// Returns a new `DatasetSelection` filtered to the given segment IDs.
     ///
     /// Parameters
     /// ----------
@@ -752,17 +906,18 @@ impl PyDatasetEntryInternal {
     ///
     /// Returns
     /// -------
-    /// DatasetViewInternal
-    ///     A new view filtered to the given segments.
+    /// DatasetSelectionInternal
+    ///     A new selection filtered to the given segments.
     fn filter_segments(
         self_: PyRef<'_, Self>,
         segment_ids: Vec<String>,
-    ) -> super::PyDatasetViewInternal {
-        let filter: std::collections::HashSet<String> = segment_ids.into_iter().collect();
-        super::PyDatasetViewInternal::new(Py::from(self_), Some(filter), None)
+    ) -> super::PyDatasetSelectionInternal {
+        let selection = re_catalog_client::DatasetSelection::new(self_.entry_details.id)
+            .filter_segments(segment_ids.into_iter().map(SegmentId::from));
+        super::PyDatasetSelectionInternal::new(Py::from(self_), selection)
     }
 
-    /// Returns a new `DatasetView` filtered to the given entity paths.
+    /// Returns a new `DatasetSelection` filtered to the given entity paths.
     ///
     /// Parameters
     /// ----------
@@ -771,10 +926,15 @@ impl PyDatasetEntryInternal {
     ///
     /// Returns
     /// -------
-    /// DatasetViewInternal
-    ///     A new view filtered to the given entity paths.
-    fn filter_contents(self_: PyRef<'_, Self>, exprs: Vec<String>) -> super::PyDatasetViewInternal {
-        super::PyDatasetViewInternal::new(Py::from(self_), None, Some(exprs))
+    /// DatasetSelectionInternal
+    ///     A new selection filtered to the given entity paths.
+    fn filter_contents(
+        self_: PyRef<'_, Self>,
+        exprs: Vec<String>,
+    ) -> super::PyDatasetSelectionInternal {
+        let selection = re_catalog_client::DatasetSelection::new(self_.entry_details.id)
+            .filter_contents(super::parse_content_filter(&exprs));
+        super::PyDatasetSelectionInternal::new(Py::from(self_), selection)
     }
 
     pub fn __str__(self_: PyRef<'_, Self>) -> String {
@@ -782,6 +942,57 @@ impl PyDatasetEntryInternal {
             "DatasetEntry(name='{}', id='{}')",
             self_.entry_details.name, self_.entry_details.id,
         )
+    }
+}
+
+impl PyDatasetEntryInternal {
+    /// The dataset's schema, reused while this process has seen no newer dataset revision.
+    ///
+    /// A change made by another client is not seen until some response for this dataset advances
+    /// the watermark, e.g. the first response of a query.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn cached_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
+        let revision = re_redap_client::dataset_revisions().get(self_.entry_details.id);
+
+        if let Some(revision) = revision
+            && let Some(cached) = self_.dataset_schema.try_get(revision)
+        {
+            return Ok(cached);
+        }
+
+        Self::fetch_arrow_schema(self_)
+    }
+
+    /// The dataset's current schema, fetched from the server.
+    ///
+    /// Refreshes the schema served by [`Self::cached_arrow_schema`].
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
+        let connection = self_.client.borrow(self_.py()).connection().clone();
+        let ds_schema = connection.get_dataset_schema(self_.py(), self_.entry_details.id)?;
+
+        self_.dataset_schema.observe(&ds_schema);
+
+        Ok(ds_schema.schema)
+    }
+}
+
+enum WriteKind {
+    Asset,
+    Blueprint,
+    Segment,
+}
+
+impl WriteKind {
+    fn parse(kind: &str) -> PyResult<Self> {
+        match kind {
+            "asset" => Ok(Self::Asset),
+            "blueprint" => Ok(Self::Blueprint),
+            "segment" => Ok(Self::Segment),
+            _ => Err(PyValueError::new_err(format!(
+                "invalid write kind: {kind:?}. Expected 'asset', 'blueprint', or 'segment'"
+            ))),
+        }
     }
 }
 
@@ -795,6 +1006,11 @@ fn parse_on_duplicate(on_duplicate: &str) -> PyResult<IfDuplicateBehavior> {
             "invalid on_duplicate value: '{on_duplicate}'. Expected 'error', 'skip', or 'replace'"
         ))),
     }
+}
+
+fn parse_storage_prefix(storage_prefix: &str) -> PyResult<ObjectKey> {
+    ObjectKey::try_new(storage_prefix)
+        .map_err(|err| PyValueError::new_err(format!("invalid storage_prefix: {err}")))
 }
 
 /// Helper function to convert a Python object to i64.

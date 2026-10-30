@@ -55,6 +55,28 @@ fn image_chunk(start_time: f64, dt: f64, count: u64) -> Chunk {
     builder.build().unwrap()
 }
 
+/// One row per second starting at one second. A `true` row is a clear and has no image.
+fn image_chunk_with_clears(is_clear: &[bool]) -> Chunk {
+    let timeline = Timeline::new_duration(TIMELINE_NAME);
+    let blob = re_sdk_types::components::Blob::from(test_png_blob());
+    let mut builder = Chunk::builder(STREAM_ENTITY);
+
+    for (i, is_clear) in is_clear.iter().enumerate() {
+        let blobs = if *is_clear {
+            vec![]
+        } else {
+            vec![blob.clone()]
+        };
+        builder = builder.with_component_batch(
+            RowId::new(),
+            [(timeline, TimeInt::from_secs(1.0 + i as f64))],
+            (EncodedImage::descriptor_blob(), &blobs as _),
+        );
+    }
+
+    builder.build().unwrap()
+}
+
 fn playable_stream(cache: &mut VideoStreamCache, store: &EntityDb) -> SharablePlayableVideoStream {
     let blob_component = EncodedImage::descriptor_blob().component;
     let media_type_component = EncodedImage::descriptor_media_type().component;
@@ -156,6 +178,78 @@ fn multi_chunk_with_gc() {
         )
         .unwrap();
     player.expect_decoded_samples(4..8);
+}
+
+/// Image rows without a blob clear the image. Nothing is shown from their time until the next
+/// image, also when the first row is a clear.
+#[test]
+fn cleared_images() {
+    let mut cache = VideoStreamCache::default();
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let codec = Arc::new(codec_chunk());
+    let images = Arc::new(image_chunk_with_clears(&[true, false, true, false]));
+    load_chunks(&mut store, &mut cache, &[codec, images]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    let mut player = TestVideoPlayer::from_stream(video_stream);
+
+    let engine = store.storage_engine();
+    let source = super::super::VideoStoreSource {
+        store: engine.store(),
+        sample_component: EncodedImage::descriptor_blob().component,
+        indicate: true,
+    };
+
+    player.frame_at(1.5, &source).unwrap();
+    assert!(player.cleared());
+
+    player.frame_at(2.5, &source).unwrap();
+    assert!(!player.cleared());
+    assert_eq!(player.shown_sample_idx(), Some(1));
+
+    player.frame_at(3.5, &source).unwrap();
+    assert!(player.cleared());
+
+    player.frame_at(4.5, &source).unwrap();
+    assert!(!player.cleared());
+    assert_eq!(player.shown_sample_idx(), Some(3));
+}
+
+/// Image rows without a blob count as rows in the manifest. Before the chunk is loaded, every row
+/// has an unloaded sample. Loading the chunk turns the rows without a blob into clears.
+#[test]
+fn cleared_images_from_manifest() {
+    let mut cache = VideoStreamCache::default();
+    let mut store = EntityDb::new(StoreId::recording("test", "test"));
+
+    let codec = Arc::new(codec_chunk());
+    let images = Arc::new(image_chunk_with_clears(&[true, false, true, false]));
+    load_into_rrd_manifest(&mut store, &[codec.clone(), images.clone()]);
+    load_chunks(&mut store, &mut cache, &[codec]);
+
+    let video_stream = playable_stream(&mut cache, &store);
+    {
+        let guard = video_stream.read();
+        let samples = &guard.video_renderer.data_descr().samples;
+        assert_eq!(samples.num_elements(), 4);
+        assert!(samples.iter().all(|sample| sample.is_unloaded()));
+    }
+
+    load_chunks(&mut store, &mut cache, &[images]);
+
+    let guard = video_stream.read();
+    let samples = guard
+        .video_renderer
+        .data_descr()
+        .samples
+        .iter()
+        .collect::<Vec<_>>();
+    assert_eq!(samples.len(), 4);
+    assert!(samples[0].is_clear());
+    assert!(samples[1].sample().is_some());
+    assert!(samples[2].is_clear());
+    assert!(samples[3].sample().is_some());
 }
 
 /// A statically logged encoded image carries no timeline, so it isn't in the manifest's

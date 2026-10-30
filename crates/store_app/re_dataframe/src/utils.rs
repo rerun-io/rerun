@@ -182,7 +182,7 @@ mod tests {
     use arrow::datatypes::{DataType, Field, Fields, Schema};
 
     fn new_schema(fields: Vec<Field>) -> Schema {
-        let meta = HashMap::with_capacity(0);
+        let meta = HashMap::new();
         Schema::new_with_metadata(fields, meta)
     }
 
@@ -419,7 +419,7 @@ mod try_merge_invariants {
     use arrow::datatypes::{DataType, Field, Schema};
 
     fn schema_of(field: Field) -> Schema {
-        Schema::new_with_metadata(vec![field], HashMap::with_capacity(0))
+        Schema::new_with_metadata(vec![field], HashMap::new())
     }
 
     fn try_merge_fields(a: Field, b: Field) -> Result<Schema, arrow::error::ArrowError> {

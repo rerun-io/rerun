@@ -3,8 +3,8 @@ title = "VRS viewer"
 description = "A C++ example that loads VRS (Facebook's per-device sensor record format) into Rerun: images, audio, IMU, and more."
 source = "https://github.com/rerun-io/cpp-example-vrs"
 tags = ["2D", "3D", "VRS", "Viewer", "C++"]
-thumbnail = "https://static.rerun.io/vrs/614f0adf0dd31fa01fff0d6eaeae67bbe8ba9af0/480w.png"
-thumbnail_dimensions = [480, 482]
+thumbnail = "https://static.rerun.io/vrs_thumbnail/ffb77e8877bf831e657494aaa5a23960c196af0a/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 <picture>

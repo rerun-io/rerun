@@ -10,9 +10,8 @@ use std::sync::atomic::Ordering;
 use arrow::array::RecordBatch;
 use futures::StreamExt as _;
 use re_arrow_util::RecordBatchExt as _;
-use re_dataframe::TimelineName;
 use re_log_types::TimeInt;
-use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::cloud::v1alpha1::ext::ChunkCandidatesDataframe;
 
 use re_redap_client::{ApiError, ApiResult};
 use re_types_core::SegmentId;
@@ -48,63 +47,42 @@ const GRPC_BATCH_SIZE: usize = 12;
 /// This bounds both concurrency and the reorder buffer size.
 const IO_PIPELINE_BUFFER: usize = 24;
 
-/// Build a [`SegmentChunkManifest`] per segment from the `:start` column
-/// the server attaches to each `chunk_info` row when the query has a
-/// temporal `filtered_index`.
+/// Build a [`SegmentChunkManifest`] per segment from the fixed
+/// `chunk_timeline_start` column every `chunk_info` batch carries.
 ///
-/// Returns an empty map if `filtered_timeline` is `None` (static-only
-/// query — no horizon math is possible) or if **any** batch is missing
-/// the `:start` column (old server, or mixed-schema response). In both
-/// fallback cases the CPU worker falls back to "emit at completion"
-/// semantics for every segment, governed by
-/// [`CpuWorkerMsg::SegmentChunkCount`].
-///
-/// All-or-nothing across batches is load-bearing: if we built entries
-/// only from the batches that *do* carry `:start`, segments split
-/// across mixed batches would end up with partial entries; `lock()`
-/// would then commit a manifest that under-counts the segment, and
-/// every later `record_arrival` for a chunk that came from a
-/// no-`:start` batch would fire `debug_panic!` and pin `safe_horizon`
-/// at the laggard's `time_min` forever.
+/// Returns an empty map when `starts_eligible` is `false`: either the query
+/// has no temporal `filtered_index` (no horizon math is possible for a
+/// static-only reader) or the caller has determined `chunk_timeline_start` is
+/// not trustworthy for this request's emission ordering. In both fallback
+/// cases the CPU worker falls back to "emit at completion" semantics for
+/// every segment, governed by [`CpuWorkerMsg::SegmentChunkCount`].
 ///
 /// Static chunks (rows with `chunk_is_static = true`) and rows with a
-/// null `:start` value are deliberately skipped: they carry no time
-/// semantics on the filtered timeline, so they can never gate or
+/// null `chunk_timeline_start` value are deliberately skipped: they carry no
+/// time semantics on the filtered timeline, so they can never gate or
 /// advance the safe horizon.
 fn build_segment_manifests(
     origin: &re_uri::Origin,
     chunk_infos: &[RecordBatch],
-    filtered_timeline: Option<TimelineName>,
+    starts_eligible: bool,
 ) -> ApiResult<HashMap<SegmentId, SegmentChunkManifest>> {
     let mut manifests: HashMap<SegmentId, SegmentChunkManifest> = HashMap::new();
-    let Some(timeline_name) = filtered_timeline else {
-        return Ok(manifests);
-    };
-    let start_col_name = format!("{timeline_name}:start");
-
-    // All-or-nothing pre-check: if any batch lacks `:start`, fall back
-    // to completion-only flush for the whole query. See doc comment for
-    // why partial-batch builds are unsafe.
-    if chunk_infos
-        .iter()
-        .any(|rb| rb.column_by_name(&start_col_name).is_none())
-    {
+    if !starts_eligible {
         return Ok(manifests);
     }
 
     for rb in chunk_infos {
         let start_col = rb
-            .try_get_column(&start_col_name)
-            .expect("pre-check above guarantees presence on every batch");
-        let (start_values, start_nulls) =
-            read_start_column(origin, start_col.as_ref(), &start_col_name)?;
-        let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+            .try_get_column(ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START_NAME)
+            .map_err(|err| ApiError::internal(origin, err.to_string()))?;
+        let (start_values, start_nulls) = read_start_column(origin, start_col.as_ref())?;
+        let segment_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
             .extract(rb)
             .map_err(|err| ApiError::internal_quiver(origin, err))?;
-        let entity_paths = QueryDatasetDataframe::COLUMN_CHUNK_ENTITY_PATH
+        let entity_paths = ChunkCandidatesDataframe::COLUMN_CHUNK_ENTITY_PATH
             .extract(rb)
             .map_err(|err| ApiError::internal_quiver(origin, err))?;
-        let is_statics = QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC
+        let is_statics = ChunkCandidatesDataframe::COLUMN_CHUNK_IS_STATIC
             .extract(rb)
             .map_err(|err| ApiError::internal_quiver(origin, err))?;
 
@@ -139,7 +117,7 @@ fn build_segment_manifests(
     // Every manifest we built has now seen every announced chunk for
     // its segment — lock so the worker can start consulting
     // `safe_horizon`. Segments with NO temporal chunks (all static, or
-    // `:start` absent for them) won't appear here and the worker
+    // null `chunk_timeline_start` for them) won't appear here and the worker
     // handles them via the count-based path.
     for m in manifests.values_mut() {
         m.lock();
@@ -163,7 +141,7 @@ fn count_chunks_per_segment(
     let mut counts: HashMap<SegmentId, usize> = HashMap::new();
     let mut order: Vec<SegmentId> = Vec::new();
     for rb in chunk_infos {
-        let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        let segment_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
             .extract(rb)
             .map_err(|err| ApiError::internal_quiver(origin, err))?;
         for seg in &segment_ids {
@@ -199,7 +177,7 @@ fn extend_distinct_segment_ids(
     seen: &mut HashSet<String>,
     order: &mut Vec<String>,
 ) -> ApiResult<()> {
-    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+    let segment_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
         .extract(batch)
         .map_err(|err| ApiError::internal(origin, err.to_string()))?;
     for segment_id in &segment_ids {
@@ -211,27 +189,27 @@ fn extend_distinct_segment_ids(
     Ok(())
 }
 
-/// Smallest `time_min` (i.e. earliest `:start` value) across the
-/// chunks in a fetch batch, on the query's `filtered_index`
-/// timeline. Used by the IO side as the budget's priority key —
+/// Smallest `time_min` (i.e. earliest `chunk_timeline_start` value) across the
+/// chunks in a fetch batch. Used by the IO side as the budget's priority key:
 /// reservations with the lowest `task_time_min` wake first so the
 /// horizon-advancing chunk preempts later-time chunks under
 /// saturation.
 ///
 /// Returns [`TimeInt::MAX`] (back-of-the-queue priority) when:
-/// * `filtered_timeline` is `None` (static-only query),
-/// * the `{timeline}:start` column is absent (old server),
-/// * the `{timeline}:start` column has an unsupported dtype, or
-/// * every row in the batch has a null `:start` (static chunks only).
+/// * `starts_eligible` is `false` (static-only query, or the caller has
+///   determined `chunk_timeline_start` is not trustworthy for this request),
+/// * the `chunk_timeline_start` column is missing or malformed, or
+/// * every row in the batch has a null `chunk_timeline_start` (static chunks only).
 ///
-/// Reads the array directly rather than through [`read_start_column`], which would turn a
-/// malformed column into a hard error; see there for why the dtype is not downcast.
-fn extract_task_time_min(batch: &RecordBatch, filtered_timeline: Option<&str>) -> TimeInt {
-    let Some(timeline) = filtered_timeline else {
+/// A malformed column only costs priority, so it maps to [`TimeInt::MAX`] instead of the hard
+/// error [`read_start_column`] returns.
+fn extract_task_time_min(batch: &RecordBatch, starts_eligible: bool) -> TimeInt {
+    if !starts_eligible {
         return TimeInt::MAX;
-    };
-    let col_name = format!("{timeline}:start");
-    let Some(start_col) = batch.column_by_name(&col_name) else {
+    }
+    let Some(start_col) =
+        batch.column_by_name(ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START_NAME)
+    else {
         return TimeInt::MAX;
     };
     let Ok((start_values, start_nulls)) = TimeColumn::read_nullable_array(start_col.as_ref())
@@ -283,7 +261,7 @@ fn create_request_batches(
         chunk_infos,
         target_size_bytes,
         MAX_CONCURRENT_SEGMENTS,
-        None,
+        false,
     )
 }
 
@@ -519,7 +497,7 @@ async fn admit_segment_wave(
     manifests: &mut HashMap<SegmentId, SegmentChunkManifest>,
     output_channel: &Sender<ApiResult<CpuWorkerMsg>>,
     pipeline_budget: &PipelineBudget,
-    filtered_index_timeline: Option<&str>,
+    starts_eligible: bool,
 ) -> ApiResult<bool> {
     if wave_segments.is_empty() {
         return Ok(true);
@@ -527,7 +505,7 @@ async fn admit_segment_wave(
 
     let task_time_min = wave_batches
         .iter()
-        .map(|b| extract_task_time_min(b, filtered_index_timeline))
+        .map(|b| extract_task_time_min(b, starts_eligible))
         .min()
         .unwrap_or(TimeInt::MAX);
     let segment_ids = wave_segments
@@ -592,7 +570,7 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
     batches: &[RecordBatch],
     client: &T,
     global_segment_order: &[SegmentId],
-    filtered_index_timeline: Option<&str>,
+    starts_eligible: bool,
     output_channel: &Sender<ApiResult<CpuWorkerMsg>>,
     pipeline_budget: &PipelineBudget,
     metrics: &QueryMetrics,
@@ -616,7 +594,7 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
             .sum::<u64>() as usize;
         let task_time_min = batch_group
             .iter()
-            .map(|b| extract_task_time_min(b, filtered_index_timeline))
+            .map(|b| extract_task_time_min(b, starts_eligible))
             .min()
             .unwrap_or(TimeInt::MAX);
         let mut segment_ids: Vec<String> = Vec::new();
@@ -716,7 +694,7 @@ async fn fetch_remaining_via_grpc<T: DataframeClientAPI>(
 pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
     client: T,
     chunk_infos: Vec<RecordBatch>,
-    filtered_index_timeline: Option<TimelineName>,
+    starts_eligible: bool,
     output_channel: Sender<ApiResult<CpuWorkerMsg>>,
     pending_analytics: crate::PendingQueryAnalytics,
     pipeline_budget: Arc<PipelineBudget>,
@@ -734,15 +712,12 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
             .into_iter()
             .collect();
 
-    // When a temporal `filtered_index` is set, build per-segment manifests from the
-    // `{timeline}:start` columns. Metadata is sent to the CPU worker wave-by-wave,
-    // only after the corresponding segment IDs have been admitted by the budget's
-    // segment-count gate; sending it all up front would let the CPU worker allocate
-    // per-segment state for hundreds of not-yet-admissible segments.
-    let filtered_index_timeline_str: Option<Arc<str>> = filtered_index_timeline
-        .as_ref()
-        .map(|t| Arc::<str>::from(t.as_str()));
-    let mut manifests = build_segment_manifests(origin, &chunk_infos, filtered_index_timeline)?;
+    // When `starts_eligible` holds, build per-segment manifests from the fixed
+    // `chunk_timeline_start` column. Metadata is sent to the CPU worker wave-by-wave, only
+    // after the corresponding segment IDs have been admitted by the budget's segment-count
+    // gate; sending it all up front would let the CPU worker allocate per-segment state for
+    // hundreds of not-yet-admissible segments.
+    let mut manifests = build_segment_manifests(origin, &chunk_infos, starts_eligible)?;
 
     let segment_limit = pipeline_budget.segment_limit();
     let (request_batches, global_segment_order) = create_request_batches_with_segment_limit(
@@ -750,7 +725,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
         chunk_infos,
         target_size_bytes,
         segment_limit,
-        filtered_index_timeline,
+        starts_eligible,
     )?;
     let (request_batches_by_wave, max_segments_per_batch, max_segments_per_wave) =
         batches_by_segment_wave_with_segment_limit(
@@ -825,7 +800,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                     &mut manifests,
                     &output_channel,
                     &pipeline_budget,
-                    filtered_index_timeline_str.as_deref(),
+                    starts_eligible,
                 )
                 .await?
                 {
@@ -837,7 +812,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                     wave_batches,
                     &client,
                     &global_segment_order,
-                    filtered_index_timeline_str.as_deref(),
+                    starts_eligible,
                     &output_channel,
                     &pipeline_budget,
                     &metrics,
@@ -894,7 +869,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
             &mut manifests,
             &output_channel,
             &pipeline_budget,
-            filtered_index_timeline_str.as_deref(),
+            starts_eligible,
         )
         .await?
         {
@@ -909,7 +884,6 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                 let pending_analytics = pending_analytics.clone();
                 let pipeline_budget = Arc::clone(&pipeline_budget);
                 let metrics = Arc::clone(&metrics);
-                let filtered_index_timeline = filtered_index_timeline_str.as_ref().map(Arc::clone);
                 async move {
                     // Task-local stats buffer — flushed once to the shared atomics
                     // at the end of this task to avoid cross-core cache-line
@@ -922,8 +896,7 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
                     let estimated = batch_byte_size_uncompressed(batch_ref)
                         .unwrap_or_else(|| batch_byte_size(batch_ref))
                         as usize;
-                    let task_time_min =
-                        extract_task_time_min(batch_ref, filtered_index_timeline.as_deref());
+                    let task_time_min = extract_task_time_min(batch_ref, starts_eligible);
                     let mut seen: HashSet<String> = HashSet::new();
                     let mut segment_ids: Vec<String> = Vec::new();
                     extend_distinct_segment_ids(origin, batch_ref, &mut seen, &mut segment_ids)?;
@@ -1071,13 +1044,13 @@ mod tests {
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
                 Field::new(
-                    QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
+                    ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_LEN_NAME,
                     arrow::datatypes::DataType::UInt64,
                     false,
                 ),
-                QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_ID.arrow_field(),
             ],
             HashMap::default(),
         ));
@@ -1170,7 +1143,7 @@ mod tests {
         assert_eq!(batches.len(), 2);
         // Each batch's distinct-segment count must not exceed the cap.
         for batch in &batches {
-            let seg_col = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+            let seg_col = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
                 .extract(batch)
                 .expect("segment-id column");
             let distinct: HashSet<&str> = seg_col.iter().collect();
@@ -1230,7 +1203,7 @@ mod tests {
             chunk_infos,
             TARGET_BATCH_SIZE_BYTES as u64,
             SEGMENT_LIMIT,
-            None,
+            false,
         )
         .unwrap();
         let (waves, max_segments_per_batch, max_segments_per_wave) =
@@ -1385,7 +1358,7 @@ mod tests {
             chunk_infos,
             1_000,
             MAX_CONCURRENT_SEGMENTS,
-            None,
+            false,
         )
         .unwrap();
         let (waves, _, max_segments_per_wave) = batches_by_segment_wave_with_segment_limit(
@@ -1457,7 +1430,7 @@ mod tests {
         );
 
         // Verify that segments within the batch maintain input order
-        let segment_id_column = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        let segment_id_column = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
             .extract(&batches[0])
             .unwrap();
 
@@ -1616,12 +1589,9 @@ mod tests {
     // ----------------------------------------------------------------
 
     /// One row per `(segment_id, entity_path, is_static, start)` tuple.
-    /// `start = None` produces a null entry in the `{timeline}:start`
+    /// `start = None` produces a null entry in the `chunk_timeline_start`
     /// column.
-    fn create_chunk_info_with_starts(
-        timeline_name: &str,
-        rows: &[(&str, &str, bool, Option<i64>)],
-    ) -> RecordBatch {
+    fn create_chunk_info_with_starts(rows: &[(&str, &str, bool, Option<i64>)]) -> RecordBatch {
         let num_rows = rows.len();
         let segment_ids = StringArray::from(rows.iter().map(|r| r.0).collect::<Vec<_>>());
         let entity_paths = StringArray::from(rows.iter().map(|r| r.1).collect::<Vec<_>>());
@@ -1630,14 +1600,10 @@ mod tests {
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
-                QueryDatasetDataframe::COLUMN_CHUNK_ENTITY_PATH.arrow_field(),
-                QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC.arrow_field(),
-                re_protos::cloud::v1alpha1::QueryDatasetResponse::field_timeline_start(
-                    timeline_name,
-                )
-                .as_ref()
-                .clone(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_ENTITY_PATH.arrow_field(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_IS_STATIC.arrow_field(),
+                ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START.arrow_field(),
             ],
             HashMap::default(),
         ));
@@ -1655,73 +1621,30 @@ mod tests {
         .unwrap()
     }
 
-    /// `filtered_timeline = None` (static-only query) → empty manifest
+    /// `starts_eligible = false` (static-only reader, or the caller has
+    /// determined `chunk_timeline_start` is not trustworthy) → empty manifest
     /// map, no error. Worker then falls back to completion-only flush.
     #[test]
-    fn test_build_segment_manifests_no_timeline_yields_empty() {
-        let rb = create_chunk_info_with_starts("time", &[("seg1", "/a", false, Some(10))]);
-        let manifests = build_segment_manifests(&re_uri::Origin::test(), &[rb], None).unwrap();
+    fn test_build_segment_manifests_not_eligible_yields_empty() {
+        let rb = create_chunk_info_with_starts(&[("seg1", "/a", false, Some(10))]);
+        let manifests = build_segment_manifests(&re_uri::Origin::test(), &[rb], false)
+            .expect("valid chunk info");
         assert!(manifests.is_empty());
     }
 
-    /// `:start` column absent on every batch (old server) → empty map.
-    #[test]
-    fn test_build_segment_manifests_missing_start_column_yields_empty() {
-        // Reuse the `create_test_chunk_info` helper, which produces a
-        // batch *without* a `{timeline}:start` column.
-        let rb = create_test_chunk_info("seg1", &[100]);
-        let manifests = build_segment_manifests(
-            &re_uri::Origin::test(),
-            &[rb],
-            Some(TimelineName::from("time")),
-        )
-        .unwrap();
-        assert!(manifests.is_empty());
-    }
-
-    /// Mixed batches: one batch has `:start`, the other doesn't. Building
-    /// a partial manifest from only the `:start` batch and locking would
-    /// leave segments split across both with under-counted manifests →
-    /// `record_arrival` for chunks from the no-`:start` batch would
-    /// `debug_panic!` and pin `safe_horizon` at the laggard's `time_min`
-    /// forever. The all-or-nothing pre-check must reject the whole input
-    /// and yield an empty map.
-    #[test]
-    fn test_build_segment_manifests_mixed_batches_yields_empty() {
-        let with_start = create_chunk_info_with_starts("time", &[("seg1", "/a", false, Some(10))]);
-        let without_start = create_test_chunk_info("seg1", &[20]);
-        let manifests = build_segment_manifests(
-            &re_uri::Origin::test(),
-            &[with_start, without_start],
-            Some(TimelineName::from("time")),
-        )
-        .unwrap();
-        assert!(
-            manifests.is_empty(),
-            "any batch missing `:start` must trigger full fallback, even if other batches carry it",
-        );
-    }
-
-    /// Null `:start`, `is_static = true`, and the `i64::MIN` saturation
-    /// edge are all filtered correctly. Only the two ordinary temporal
-    /// rows reach the manifest.
+    /// Null `chunk_timeline_start`, `is_static = true`, and the `i64::MIN`
+    /// saturation edge are all filtered correctly. Only the two ordinary
+    /// temporal rows reach the manifest.
     #[test]
     fn test_build_segment_manifests_filters_null_and_static() {
-        let rb = create_chunk_info_with_starts(
-            "time",
-            &[
-                ("seg1", "/a", false, None),           // null :start → skip
-                ("seg1", "/b", true, Some(10)),        // is_static → skip
-                ("seg1", "/c", false, Some(20)),       // keep
-                ("seg1", "/d", false, Some(i64::MIN)), // saturates to TimeInt::MIN, kept
-            ],
-        );
-        let manifests = build_segment_manifests(
-            &re_uri::Origin::test(),
-            &[rb],
-            Some(TimelineName::from("time")),
-        )
-        .unwrap();
+        let rb = create_chunk_info_with_starts(&[
+            ("seg1", "/a", false, None),           // null chunk_timeline_start → skip
+            ("seg1", "/b", true, Some(10)),        // is_static → skip
+            ("seg1", "/c", false, Some(20)),       // keep
+            ("seg1", "/d", false, Some(i64::MIN)), // saturates to TimeInt::MIN, kept
+        ]);
+        let manifests = build_segment_manifests(&re_uri::Origin::test(), &[rb], true)
+            .expect("valid chunk info");
         let m = manifests
             .get(&SegmentId::from("seg1"))
             .expect("seg1 has at least one temporal chunk");
@@ -1740,13 +1663,9 @@ mod tests {
     /// every chunk arrival.
     #[test]
     fn test_build_segment_manifests_entity_path_keys_roundtrip() {
-        let rb = create_chunk_info_with_starts("time", &[("seg1", "/foo/bar", false, Some(42))]);
-        let mut manifests = build_segment_manifests(
-            &re_uri::Origin::test(),
-            &[rb],
-            Some(TimelineName::from("time")),
-        )
-        .unwrap();
+        let rb = create_chunk_info_with_starts(&[("seg1", "/foo/bar", false, Some(42))]);
+        let mut manifests = build_segment_manifests(&re_uri::Origin::test(), &[rb], true)
+            .expect("valid chunk info");
         let m = manifests.get_mut(&SegmentId::from("seg1")).unwrap();
         // Looking up via `EntityPath::from(&str)` must hit the entry.
         assert!(m.record_arrival(
@@ -1761,83 +1680,15 @@ mod tests {
     /// segments via the count-based path.
     #[test]
     fn test_build_segment_manifests_all_static_segment_absent() {
-        let rb = create_chunk_info_with_starts(
-            "time",
-            &[
-                ("segA", "/a", true, Some(10)),
-                ("segA", "/b", true, Some(20)),
-                ("segB", "/c", false, Some(30)),
-            ],
-        );
-        let manifests = build_segment_manifests(
-            &re_uri::Origin::test(),
-            &[rb],
-            Some(TimelineName::from("time")),
-        )
-        .unwrap();
+        let rb = create_chunk_info_with_starts(&[
+            ("segA", "/a", true, Some(10)),
+            ("segA", "/b", true, Some(20)),
+            ("segB", "/c", false, Some(30)),
+        ]);
+        let manifests = build_segment_manifests(&re_uri::Origin::test(), &[rb], true)
+            .expect("valid chunk info");
         assert!(!manifests.contains_key(&SegmentId::from("segA")));
         let b = &manifests[&SegmentId::from("segB")];
         assert_eq!(b.outstanding_count(), 1);
-    }
-
-    /// Non-OSS servers may emit `:start` as `TimestampNanosecondArray`
-    /// (or any other nanosecond-typed array) instead of `Int64`. Both
-    /// shapes are i64 under the hood and must be accepted.
-    #[test]
-    fn test_build_segment_manifests_accepts_timestamp_ns_start_column() {
-        use arrow::array::TimestampNanosecondArray;
-
-        let num_rows = 2;
-        let segment_ids = StringArray::from(vec!["seg1", "seg1"]);
-        let entity_paths = StringArray::from(vec!["/a", "/b"]);
-        let is_static = BooleanArray::from(vec![false, false]);
-        let starts = TimestampNanosecondArray::from(vec![Some(100_i64), Some(200_i64)]);
-
-        // The OSS schema contract nominally types `:start` as Int64, but the
-        // server sends a TimestampNanosecond column. Build the field as
-        // Timestamp here (`RecordBatch` requires field type == array type) to
-        // validate `TimeColumn::read_nullable_array` accepts i64-backed
-        // timestamp arrays.
-        let schema = Arc::new(Schema::new_with_metadata(
-            vec![
-                QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field(),
-                QueryDatasetDataframe::COLUMN_CHUNK_ENTITY_PATH.arrow_field(),
-                QueryDatasetDataframe::COLUMN_CHUNK_IS_STATIC.arrow_field(),
-                Field::new(
-                    "time:start",
-                    arrow::datatypes::DataType::Timestamp(
-                        arrow::datatypes::TimeUnit::Nanosecond,
-                        None,
-                    ),
-                    true,
-                ),
-            ],
-            HashMap::default(),
-        ));
-
-        let rb = RecordBatch::try_new_with_options(
-            schema,
-            vec![
-                Arc::new(segment_ids),
-                Arc::new(entity_paths),
-                Arc::new(is_static),
-                Arc::new(starts),
-            ],
-            &RecordBatchOptions::new().with_row_count(Some(num_rows)),
-        )
-        .unwrap();
-
-        let manifests = build_segment_manifests(
-            &re_uri::Origin::test(),
-            &[rb],
-            Some(TimelineName::from("time")),
-        )
-        .unwrap();
-        let m = manifests
-            .get(&SegmentId::from("seg1"))
-            .expect("seg1 has temporal chunks");
-        assert_eq!(m.outstanding_count(), 2);
-        // safe_horizon = laggard.predecessor → 100 - 1 = 99.
-        assert_eq!(m.safe_horizon(), Some(TimeInt::new_temporal(99)));
     }
 }

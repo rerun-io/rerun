@@ -432,6 +432,9 @@ pub struct AgentTurnUsage {
     /// Which agent handled the prompt, e.g. "Claude Code".
     pub agent: Option<String>,
 
+    /// Which model handled the prompt, e.g. "Opus 5.5".
+    pub model: Option<String>,
+
     /// From sending the prompt to the agent finishing.
     pub duration_secs: f64,
 
@@ -462,6 +465,7 @@ impl Properties for AgentTurnUsage {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
             agent,
+            model,
             duration_secs,
             outcome,
             tool_calls,
@@ -474,6 +478,9 @@ impl Properties for AgentTurnUsage {
         } = self;
         if let Some(agent) = agent {
             event.insert("agent", agent);
+        }
+        if let Some(model) = model {
+            event.insert("model", model);
         }
         event.insert("duration_secs", duration_secs);
         event.insert("outcome", outcome);
@@ -499,7 +506,7 @@ impl Properties for AgentTurnUsage {
 ///
 /// This event is only emitted by the agent panel, not by standalone users of `re_agent`.
 /// It carries the full prompt and response text, which is processed according to the
-/// [redaction instructions](https://github.com/rerun-io/rerun/blob/main/crates/top/re_viewer/src/agent_analytics/redactor.rs)
+/// [redaction instructions](https://github.com/rerun-io/rerun/blob/main/crates/panels/re_agent_panel/src/agent_analytics/redactor.rs)
 /// before sending. The agent settings explain this and ask the user to opt in.
 pub struct AgentTurn {
     /// Non-content statistics about the turn.
@@ -565,28 +572,9 @@ impl FeedbackAuthor {
     }
 }
 
-/// What a [`Feedback`] is about.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum FeedbackSubject {
-    /// One agent session: how the agent did in that conversation.
-    Session,
-
-    /// Rerun itself: its tools, docs, and API.
-    Product,
-}
-
-impl FeedbackSubject {
-    pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Session => "session",
-            Self::Product => "product",
-        }
-    }
-}
-
-/// Feedback sent from the Rerun Viewer.
+/// Feedback sent from the Rerun Viewer or the `rerun` CLI.
 ///
-/// All feedback is one event. [`Self::author`] says who wrote it, [`Self::subject`] says what it
+/// All feedback is one event. [`Self::author`] says who wrote it, [`Self::about`] says what it
 /// is about, and [`Self::source`] says where it came from.
 ///
 /// ## User feedback on an agent session
@@ -613,17 +601,23 @@ pub struct Feedback {
     /// Who wrote the feedback.
     pub author: FeedbackAuthor,
 
-    /// What the feedback is about.
-    pub subject: FeedbackSubject,
-
     /// Where the feedback was given, e.g. `viewer_panel`.
     pub source: &'static str,
 
-    /// The feedback text.
-    pub feedback: String,
-
     /// Which agent handled the conversation or wrote the feedback, e.g. "Claude Code".
     pub agent: String,
+
+    pub about: FeedbackAbout,
+}
+
+pub enum FeedbackAbout {
+    Session(SessionFeedback),
+    Product(ProductFeedback),
+}
+
+pub struct SessionFeedback {
+    /// The feedback text.
+    pub feedback: String,
 
     /// The conversation as ATIF JSON, or `None` when there is none or it was too large to send.
     ///
@@ -641,6 +635,104 @@ pub struct Feedback {
     pub image_count: Option<usize>,
 }
 
+/// Feedback from an agent about Rerun, modeled after the feedback.now protocol.
+///
+/// The fields and their limits use the names of the protocol, flattened into event properties:
+/// `signal.category`, `signal.severity`, `subject.surface`, `content.title`, and `content.summary`.
+pub struct ProductFeedback {
+    pub category: Option<FeedbackCategory>,
+    pub severity: Option<FeedbackSeverity>,
+    pub surface: Option<String>,
+    pub content: Option<ProductFeedbackContent>,
+}
+
+pub struct ProductFeedbackContent {
+    pub title: String,
+    pub summary: Option<String>,
+}
+
+impl ProductFeedback {
+    pub const MAX_SURFACE_CHARS: usize = 64;
+    pub const MAX_TITLE_CHARS: usize = 256;
+    pub const MAX_SUMMARY_CHARS: usize = 4096;
+
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            category,
+            severity,
+            surface,
+            content,
+        } = self;
+        event.insert_opt("category", category.map(FeedbackCategory::as_str));
+        event.insert_opt("severity", severity.map(FeedbackSeverity::as_str));
+        event.insert_opt("surface", surface.filter(|name| is_surface(name)));
+        if let Some(ProductFeedbackContent { title, summary }) = content {
+            event.insert("title", truncate(title, Self::MAX_TITLE_CHARS));
+            event.insert_opt(
+                "summary",
+                summary.map(|summary| truncate(summary, Self::MAX_SUMMARY_CHARS)),
+            );
+        }
+    }
+}
+
+fn is_surface(name: &str) -> bool {
+    !name.is_empty()
+        && name.chars().count() <= ProductFeedback::MAX_SURFACE_CHARS
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | ':' | '-'))
+}
+
+fn truncate(text: String, max_chars: usize) -> String {
+    match text.char_indices().nth(max_chars) {
+        Some((end, _)) => text[..end].to_owned(),
+        None => text,
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeedbackCategory {
+    Bug,
+    DocsMismatch,
+    Friction,
+    FeatureGap,
+    QualityDegradation,
+    Other,
+}
+
+impl FeedbackCategory {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Bug => "bug",
+            Self::DocsMismatch => "docs_mismatch",
+            Self::Friction => "friction",
+            Self::FeatureGap => "feature_gap",
+            Self::QualityDegradation => "quality_degradation",
+            Self::Other => "other",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FeedbackSeverity {
+    Critical,
+    High,
+    Medium,
+    Low,
+}
+
+impl FeedbackSeverity {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Critical => "critical",
+            Self::High => "high",
+            Self::Medium => "medium",
+            Self::Low => "low",
+        }
+    }
+}
+
 impl Event for Feedback {
     const NAME: &'static str = "feedback";
 }
@@ -650,29 +742,38 @@ impl Properties for Feedback {
         let Self {
             feedback_id,
             author,
-            subject,
             source,
-            feedback,
             agent,
-            trajectory,
-            trajectory_bytes,
-            image_count,
+            about,
         } = self;
         event.insert("feedback_id", feedback_id.to_string());
         event.insert("author", author.as_str());
-        event.insert("subject", subject.as_str());
         event.insert("source", source);
-        event.insert("feedback", feedback);
         event.insert("agent", agent);
-        event.insert_opt("trajectory", trajectory);
-        event.insert_opt(
-            "trajectory_bytes",
-            trajectory_bytes.and_then(|bytes| i64::try_from(bytes).ok()),
-        );
-        event.insert_opt(
-            "image_count",
-            image_count.and_then(|count| i64::try_from(count).ok()),
-        );
+        match about {
+            FeedbackAbout::Session(SessionFeedback {
+                feedback,
+                trajectory,
+                trajectory_bytes,
+                image_count,
+            }) => {
+                event.insert("subject", "session");
+                event.insert("feedback", feedback);
+                event.insert_opt("trajectory", trajectory);
+                event.insert_opt(
+                    "trajectory_bytes",
+                    trajectory_bytes.and_then(|bytes| i64::try_from(bytes).ok()),
+                );
+                event.insert_opt(
+                    "image_count",
+                    image_count.and_then(|count| i64::try_from(count).ok()),
+                );
+            }
+            FeedbackAbout::Product(product) => {
+                event.insert("subject", "product");
+                product.serialize(event);
+            }
+        }
     }
 }
 
@@ -911,6 +1012,8 @@ impl Properties for WelcomeScreenNavigation {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use super::*;
 
     /// The text fields must not overwrite the counts that [`AgentTurnUsage`] already inserted.
@@ -918,6 +1021,7 @@ mod tests {
     fn agent_turn_keeps_both_the_counts_and_the_text() {
         let usage = AgentTurnUsage {
             agent: None,
+            model: None,
             duration_secs: 1.0,
             outcome: "completed".to_owned(),
             tool_calls: 3,
@@ -938,19 +1042,77 @@ mod tests {
         }
         .serialize(&mut event);
 
+        assert_matches!(event.props["failed_tool_calls"], Property::Integer(2));
+        assert_matches!(event.props["errors"], Property::Integer(1));
+        assert_matches!(&event.props["failed_tool_call_text"],
+            Property::String(text) if text == "a: boom\nb: bang");
+        assert_matches!(&event.props["error_text"],
+            Property::String(text) if text == "oh no");
+    }
+
+    fn product_event(product: ProductFeedback) -> AnalyticsEvent {
+        let mut event = AnalyticsEvent::new(Feedback::NAME, Feedback::KIND);
+        Feedback {
+            feedback_id: Uuid::nil(),
+            author: FeedbackAuthor::Agent,
+            source: "mcp",
+            agent: "Test Agent".to_owned(),
+            about: FeedbackAbout::Product(product),
+        }
+        .serialize(&mut event);
+        event
+    }
+
+    #[test]
+    fn product_feedback_without_content_sends_no_text() {
+        let event = product_event(ProductFeedback {
+            category: Some(FeedbackCategory::DocsMismatch),
+            severity: None,
+            surface: Some("rerun_set_blueprint".to_owned()),
+            content: None,
+        });
+        assert!(matches!(&event.props["subject"], Property::String(s) if s == "product"));
+        assert!(matches!(&event.props["category"], Property::String(s) if s == "docs_mismatch"));
+        assert!(
+            matches!(&event.props["surface"], Property::String(s) if s == "rerun_set_blueprint")
+        );
+        assert!(!event.props.contains_key("severity"));
+        assert!(!event.props.contains_key("title"));
+        assert!(!event.props.contains_key("summary"));
+    }
+
+    #[test]
+    fn product_feedback_content_is_cut_to_the_limits() {
+        let event = product_event(ProductFeedback {
+            category: None,
+            severity: Some(FeedbackSeverity::Low),
+            surface: None,
+            content: Some(ProductFeedbackContent {
+                title: "é".repeat(ProductFeedback::MAX_TITLE_CHARS + 1),
+                summary: Some("x".repeat(ProductFeedback::MAX_SUMMARY_CHARS + 1)),
+            }),
+        });
         assert!(matches!(
-            event.props["failed_tool_calls"],
-            Property::Integer(2)
-        ));
-        assert!(matches!(event.props["errors"], Property::Integer(1)));
-        assert!(matches!(
-            &event.props["failed_tool_call_text"],
-            Property::String(text) if text == "a: boom\nb: bang"
+            &event.props["title"],
+            Property::String(s) if s.chars().count() == ProductFeedback::MAX_TITLE_CHARS
         ));
         assert!(matches!(
-            &event.props["error_text"],
-            Property::String(text) if text == "oh no"
+            &event.props["summary"],
+            Property::String(s) if s.chars().count() == ProductFeedback::MAX_SUMMARY_CHARS
         ));
+    }
+
+    #[test]
+    fn a_surface_that_is_not_a_name_is_left_out() {
+        for surface in ["", "rr.log(\"/home/me/data\")", "a tool", &"x".repeat(65)] {
+            let event = product_event(ProductFeedback {
+                category: None,
+                severity: None,
+                surface: Some(surface.to_owned()),
+                content: None,
+            });
+            assert!(!event.props.contains_key("surface"), "{surface}");
+        }
     }
 
     #[test]

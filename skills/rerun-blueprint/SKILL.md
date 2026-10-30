@@ -1,19 +1,103 @@
 ---
 name: rerun-blueprint
-description: Design a Rerun blueprint from the data, then iterate on it from headless screenshots. Read this when laying out a recording or dataset in the viewer, designing a default blueprint, or deciding which views show which entities. Covers archetype-to-view mapping, layout reasoning, the rrb construction API, the contents grammar, and the screenshot loop.
+description: Change how the Rerun viewer looks by writing a blueprint, for a recording or for a table. Read this whenever asked to change the look of the viewer, such as laying out a recording or dataset, designing a default blueprint, deciding which views show which entities, or making a segment or catalog table look nice by hiding columns, changing column order or filtering rows. Covers archetype-to-view mapping, layout reasoning, the rrb construction API, the contents grammar, table blueprints, and the screenshot loop.
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
 
 # Rerun blueprint
 
-A blueprint decides how a recording is shown; the recording decides what exists.
-Read the data, design a first layout, then **iterate from screenshots** until it
-reads at a glance. The constructors are discoverable (`dir(rrb)`,
+**To change how the viewer looks, change the blueprint.** This holds for a
+recording's layout, views and their properties, and for a table's columns, row
+filters and cards. Don't click through the viewer's menus to do it. With the
+viewer MCP, read and write the blueprint with `rerun_get_blueprint` and
+`rerun_set_blueprint` rather than the low-level click tools.
+
+A blueprint decides how a recording is shown, and the recording decides what exists.
+Read the data, design a first layout, then **verify state before assessing screenshots** until it reads at a glance.
+The constructors are discoverable (`dir(rrb)`,
 `help(rrb.Spatial3DView)`); this skill covers what you can't guess. Import as
 `import rerun.blueprint as rrb`.
 
+## Editing a recording's blueprint through MCP
+
+Use `{"recording": {}}` to target the active recording.
+`rerun_set_blueprint` accepts `mode: "full"` (default) or `mode: "partial"`.
+Use partial mode for focused edits: send only changed fields, leaving the layout and all omitted fields untouched.
+Full mode clears omitted fields and entities; use it for a complete layout, reading the existing blueprint first to preserve settings you intend to keep.
+Both modes replace arrays and struct-valued fields as a whole, so preserve other entries when changing lists such as `component_map` or `instruction_ids`.
+Set a field to `null` to clear it; an empty object is a no-op in partial mode.
+Reuse view and container UUIDs when editing them.
+For a deliberate layout, set `root_container` to the root container UUID and set both `auto_layout` and `auto_views` to `false` in `/viewport` → `ViewportBlueprint`.
+Automatic layout can rearrange the supplied tree, and automatic views can add unwanted panes.
+In full mode, an explicit root defaults omitted automatic options to `false`, but values copied from the previous blueprint are preserved.
+Partial mode preserves omitted automatic options, even when changing the root.
+A write that would break a reference is rejected, and nothing is written.
+That covers a missing or unreferenced view, container, or visualizer instruction, and a loop of containers.
+So add a new view and the reference to it in the same call, and delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.
+
+After each write, check the views and their `reports` in `rerun_get_state`, plus logs appended to tool results.
+If the structure differs, inspect `rerun_get_blueprint` before retrying.
+Then check a screenshot for framing and readability before reporting completion.
+
+### Component overrides
+
+For component overrides like colors or colormaps, follow the [MCP component override example](https://rerun.io/docs/reference/viewer/mcp#component-overrides).
+Verify the effective value in the entity's Visualizers section and the visual result, not just stored rows.
+
+## Tables
+
+A dataset's segment table and catalog tables have a table blueprint of their
+own, separate from a recording's. It sets which columns show, their order and
+names, the row filters, and whether rows show as a table or as cards. When asked
+to make a table look nice, hide columns or filter rows, write this blueprint.
+
+This hides two columns and shows three others first. Listed columns come first,
+the rest keep their default order and visibility:
+
+```python
+blueprint = rrb.TableBlueprint(
+    table_layout=rrb.table.TableLayout(
+        columns=[
+            rrb.table.Column("recording link"),
+            rrb.table.Column("property:episode:current_task", name="Task"),
+            rrb.table.Column("property:episode:success"),
+            rrb.table.Column("property:episode:ext1_cam_serial", visible=False),
+            rrb.table.Column("property:episode:ext2_cam_serial", visible=False),
+        ],
+    ),
+)
+blueprint.save("my_app", path)
+dataset.register_blueprint(path.as_uri(), segment_table=True)
+```
+
+`Column` takes the column's name as the table has it, such as
+`property:episode:uuid`, not its header. Registering makes it the default for
+everyone who opens the table, and the server must be able to read `path`.
+
+Row filters are SQL expressions, one per string, all of which must be true for a
+row: `rrb.TableBlueprint(filters=["\"task\" ILIKE '%pick%'", '"duration" > 10'])`.
+Double quotes for column names, single quotes for strings, and
+`any_match("column", x -> …)` for list columns.
+
+With the viewer MCP, change the table on screen directly:
+`rerun_get_table_schema` names the columns, `rerun_get_blueprint` with
+`{"table": {}}` reads the table blueprint, and `rerun_set_blueprint` with
+`{"table": {}, "mode": "partial"}` updates only supplied fields.
+Omitting `mode` or choosing `"full"` replaces the table blueprint.
+`rerun_set_blueprint` returns an error for a filter
+that fails. A column's entry sits at `/table/layouts/table/columns/<column name>`,
+with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
+as `\\:` and `\\ `. The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints)
+have a worked example of the JSON. For the whole Python API, including cards
+and segment previews, see
+[Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints).
+
 ## 1. Read the data
+
+With viewer MCP, start with `rerun_get_recording_schema` for compact entity → archetype lists (the default).
+Check `omitted_entities`; narrow with `entity_path` or raise `max_entities` to cover the remaining entities.
+Request detailed schema only for entities that need it, by setting `with_components: true` and `entity_path`.
 
 Enumerate every `(entity_path, archetype)` pair first — the archetype picks the
 view, the entity path scopes it. For a dataset (see `rerun-catalog-queries`):
@@ -25,6 +109,14 @@ for c in dataset.schema().component_columns():
 
 For a local recording, stream it with `RrdReader` and read `entity_path` and
 the archetype off each chunk (see `rerun-chunk-processing`).
+
+The dataset schema alone doesn't list every entity a view can show. Assets are
+static data such as URDF robot meshes, which the viewer applies to every segment,
+but they don't appear in the segment entities. When `rerun_get_dataset_schema`
+lists `asset_ids` next to `entities`, call `rerun_get_dataset_assets_schema` to
+get the entities in each asset, and read it before choosing between a 2D and a
+3D view or preview. For example, `asset_ids: ["urdf-model-left", "urdf-model-right"]`
+means the robot models can go in a `Spatial3DView`.
 
 ## 2. Map archetype to view
 
@@ -38,6 +130,8 @@ the archetype off each chunk (see `rerun-chunk-processing`).
 | `GeoPoints`, `GeoLineStrings`                                                         | `MapView`                                           |
 | `GraphNodes`, `GraphEdges`                                                            | `GraphView`                                         |
 | tabular / catalog data                                                                | `DataframeView`                                     |
+
+Asset entities, such as `Asset3D` and URDF meshes, go in a `Spatial3DView`.
 
 ## 3. Group entities into views
 

@@ -16,7 +16,6 @@ use re_log_types::external::re_tuid::Tuid;
 use re_log_types::{ApplicationId, EntityPath, EntityPathPart, StoreId, StoreKind, TimeReal};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::{Component as _, ComponentDescriptor};
-use re_types_core::reflection::Reflection;
 use re_ui::Help;
 use re_viewer_context::{
     AppContext, AppOptions, ApplicationSelectionState, BlueprintContext, CommandReceiver,
@@ -96,7 +95,7 @@ pub struct TestContext {
     pub blueprint_query: LatestAtQuery,
     pub component_ui_registry: ComponentUiRegistry,
     pub component_fallback_registry: FallbackProviderRegistry,
-    pub reflection: Reflection,
+    pub reflection: re_viewer_context::SharedReflection,
 
     pub connection_registry: re_redap_client::ConnectionRegistryHandle,
 
@@ -331,7 +330,10 @@ impl TestContext {
         let component_fallback_registry =
             re_component_fallbacks::create_component_fallback_registry();
 
-        let reflection = re_sdk_types::reflection::reflection().clone();
+        let mut reflection = re_sdk_types::reflection::reflection().clone();
+        re_lenses::register_heuristic_mappings(&mut reflection.component_identifiers)
+            .expect("built-in lenses must build");
+        let reflection = Arc::new(RwLock::new(reflection));
 
         Self {
             app_options: AppOptions::test(),
@@ -624,10 +626,10 @@ impl TestContext {
         active_recording.mark_rrd_manifest_complete();
 
         // Pretend like we are connected to a real redap server:
-        active_recording.data_source = Some(re_log_channel::LogSource::RedapGrpcStream {
+        active_recording.add_data_source(&Arc::new(re_log_channel::LogSource::RedapGrpcStream {
             uri: "rerun+http://localhost:51234/dataset/187A3200CAE4DD795748a7ad187e21a3?segment_id=6977dcfd524a45b3b786c9a5a0bde4e1".parse().unwrap(),
             open_behavior: re_log_channel::RecordingOpenBehavior::OpenAndSelect,
-        });
+        }));
     }
 
     /// Register a view class.
@@ -721,13 +723,14 @@ impl TestContext {
                 is_test: true,
 
                 app_options: &self.app_options,
-                reflection: &self.reflection,
+                reflection: &self.reflection.read(),
 
                 egui_ctx,
                 command_sender: &self.command_sender,
                 render_ctx,
 
                 connection_registry: &self.connection_registry,
+                registering_files: &Default::default(),
                 last_loading_error: &Default::default(),
 
                 storage_context: &storage_context,
@@ -963,8 +966,7 @@ impl TestContext {
                             .get(&store_id)
                             .expect("Invalid store id in `SystemCommand::TimeControlCommands`");
 
-                        let blueprint_ctx =
-                            Some(&blueprint_ctx).filter(|_| store_id.is_recording());
+                        let blueprint_ctx = store_id.is_recording().then_some(&blueprint_ctx);
 
                         // We can ignore the response in the test context.
                         let res = time_ctrl.handle_time_commands(
@@ -1001,6 +1003,8 @@ impl TestContext {
                 | SystemCommand::EditRedapServerModal { .. }
                 | SystemCommand::RedapServer(_)
                 | SystemCommand::Table(_)
+                | SystemCommand::EnsureTableBlueprint(_)
+                | SystemCommand::EnsureRecordingBlueprint(_)
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries

@@ -3,8 +3,8 @@ title = "3D line mapping revisited"
 description = "Visual walkthrough of \"3D Line Mapping Revisited\": detection, matching, triangulation, and joint optimization."
 source = "https://github.com/rerun-io/limap"
 tags = ["2D", "3D", "Structure from motion", "Time series", "Line detection", "Pinhole camera", "Paper walkthrough"]
-thumbnail = "https://static.rerun.io/3d-line-mapping-revisited/be0a3b8ac0836036862d773b4276ea9d7ffb27b8/480w.png" # NOLINT
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/limap_thumbnail/c0ecf5a88f65dd0aaf84460e4395a8b0390afde9/768w.png" # NOLINT
+thumbnail_dimensions = [768, 576]
 -->
 
 This example is a visual walkthrough of the paper "3D Line Mapping Revisited".

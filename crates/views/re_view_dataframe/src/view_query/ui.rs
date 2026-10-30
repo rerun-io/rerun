@@ -204,7 +204,7 @@ impl Query {
 
         let before_active = active;
         ui.add_enabled_ui(timeline.is_some(), |ui| {
-            ui.re_checkbox(&mut active, "Filter rows where column is not null")
+            ui.checkbox(&mut active, "Filter rows where column is not null")
                 .on_disabled_hover_text("Select an existing timeline to edit this property");
         });
 
@@ -398,7 +398,10 @@ impl Query {
             let mut all_enabled = hidden_count == 0;
 
             if ui
-                .checkbox_indeterminate(&mut all_enabled, &visible_count_label, indeterminate)
+                .add(
+                    egui::Checkbox::new(&mut all_enabled, &visible_count_label)
+                        .indeterminate(indeterminate),
+                )
                 .changed()
             {
                 if all_enabled {
@@ -416,7 +419,7 @@ impl Query {
                     .iter()
                     .any(|d| matches!(d, ColumnDescriptor::RowId(_)));
                 if ui
-                    .re_checkbox(&mut show_row_id, "RowID")
+                    .checkbox(&mut show_row_id, "RowID")
                     .on_disabled_hover_text("The query timeline must always be visible")
                     .changed()
                 {
@@ -455,7 +458,7 @@ impl Query {
 
                 ui.add_enabled_ui(is_enabled, |ui| {
                     if ui
-                        .re_checkbox(&mut is_visible, column.display_name())
+                        .checkbox(&mut is_visible, column.display_name())
                         .on_disabled_hover_text("The query timeline must always be visible")
                         .changed()
                     {
@@ -472,7 +475,7 @@ impl Query {
             // Component columns (with drag-and-drop entity group reordering)
             //
 
-            let response = egui_dnd::dnd(ui, "entity_group_dnd").show(
+            let response = egui_dnd::dnd(ui, ui.make_persistent_id("entity_group_dnd")).show(
                 entity_groups.iter_mut(),
                 |ui, group, handle, _state| {
                     ui.add_space(4.0);
@@ -488,7 +491,7 @@ impl Query {
                         let mut is_visible = selected_columns.contains(&column_selector);
 
                         if ui
-                            .re_checkbox(&mut is_visible, column.display_name())
+                            .checkbox(&mut is_visible, column.display_name())
                             .changed()
                         {
                             if is_visible {
@@ -560,7 +563,7 @@ impl Query {
     ) -> Result<(), ViewSystemExecutionError> {
         let mut auto_scroll = self.auto_scroll_enabled()?;
         if ui
-            .re_checkbox(&mut auto_scroll, "Auto-scroll with time cursor")
+            .checkbox(&mut auto_scroll, "Auto-scroll with time cursor")
             .changed()
         {
             self.save_auto_scroll_enabled(ctx, auto_scroll);

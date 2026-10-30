@@ -165,7 +165,7 @@ Reference:
 
 [`rr.send_dataframe`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_dataframe) and the related [`Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.Chunk.from_dataframe) extend the single record batch equivalent and accept a full PyArrow [`Table`](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html) (or a [`RecordBatchReader`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html), or any Arrow-C-stream object such as a `datafusion.DataFrame`) carrying any number of entities, and yields the chunks of each record batch in turn.
 
-To map columns of the dataframe to Rerun timelines and components, the dataframe must carry the same `rerun:*` metadata as above.
+To map columns of the dataframe to Rerun timelines and components, either pass `index` and `entity_path` (see [Send dataframes to a recording](../../howto/logging-and-ingestion/send-dataframe.md)), or have the dataframe carry the same `rerun:*` metadata as above.
 For example, here we hand-craft a dataframe containing a Points3D entity:
 
 snippet: concepts/send_dataframe[build_table]
@@ -180,8 +180,8 @@ snippet: concepts/send_dataframe[send_dataframe]
 
 Like `send_columns`, it bypasses the time context and the [micro-batcher](../../reference/sdk/micro-batching.md) — only timelines explicitly present in the table are added.
 
-Manually crafting the required metadata is obviously inconvenient.
-This API is instead designed to compose with [dataframe queries](../query-and-transform/dataframe-queries.md), which produce dataframes already populated with metadata derived from the originally queried data.
+Manually crafting this metadata is inconvenient.
+It is instead meant to come from [dataframe queries](../query-and-transform/dataframe-queries.md), which produce dataframes already populated with metadata derived from the originally queried data.
 
 Reference:
 * [🐍 Python `Chunk.from_dataframe`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.Chunk.from_dataframe)

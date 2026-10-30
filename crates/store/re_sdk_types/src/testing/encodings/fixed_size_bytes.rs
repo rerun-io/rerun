@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -54,10 +51,8 @@ impl ::re_types_core::ToArrowOpt for FixedSizeBytes {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, expand_validity, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![Field::new(
@@ -75,10 +70,7 @@ impl ::re_types_core::ToArrowOpt for FixedSizeBytes {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let validity = validity_from_bools(somes);
             as_array_ref(StructArray::new(
                 fields,
                 vec![{
@@ -90,10 +82,7 @@ impl ::re_types_core::ToArrowOpt for FixedSizeBytes {
                             (datum.is_some(), datum)
                         })
                         .unzip();
-                    let fixed_sized_native_validity: Option<arrow::buffer::NullBuffer> = {
-                        let any_nones = somes.iter().any(|some| !*some);
-                        any_nones.then(|| somes.into())
-                    };
+                    let fixed_sized_native_validity = validity_from_bools(somes);
                     {
                         let fixed_sized_native_inner_data: Vec<_> = fixed_sized_native
                             .into_iter()
@@ -105,15 +94,8 @@ impl ::re_types_core::ToArrowOpt for FixedSizeBytes {
                                 )),
                             })
                             .collect();
-                        let fixed_sized_native_inner_validity: Option<arrow::buffer::NullBuffer> =
-                            fixed_sized_native_validity.as_ref().map(|validity| {
-                                validity
-                                    .iter()
-                                    .map(|b| std::iter::repeat_n(b, 4usize))
-                                    .flatten()
-                                    .collect::<Vec<_>>()
-                                    .into()
-                            });
+                        let fixed_sized_native_inner_validity =
+                            expand_validity(fixed_sized_native_validity.as_ref(), 4usize);
                         as_array_ref(FixedSizeListArray::new(
                             std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
                             4,
@@ -149,22 +131,13 @@ impl ::re_types_core::FromArrowOpt for FixedSizeBytes {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
+                let fields = StructFields::new(
+                    arrow_data,
+                    Self::arrow_data_type,
+                    "rerun.testing.encodings.FixedSizeBytes",
+                );
                 let fixed_sized_native = {
-                    if !arrays_by_name.contains_key("fixed_sized_native") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "fixed_sized_native",
-                        ))
-                        .with_context("rerun.testing.encodings.FixedSizeBytes");
-                    }
-                    let arrow_data = &**arrays_by_name["fixed_sized_native"];
+                    let arrow_data = fields.required("fixed_sized_native")?;
                     {
                         let arrow_data = arrow_data
                             .try_cast::<arrow::array::FixedSizeListArray>(|| {

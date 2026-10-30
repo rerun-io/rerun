@@ -183,6 +183,39 @@ async fn debug_tools_toggle_top_bar_diagnostics() {
     assert!(harness.state().app_options().show_metrics);
 }
 
+/// Checks that an unconfigured agent requires explicit setup instead of accepting a palette prompt.
+#[tokio::test]
+async fn command_palette_agent_mode() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        window_size: Some(egui::vec2(1200.0, 768.0)),
+        app_options_editor: Some(Box::new(|options| options.experimental.agent_panel = true)),
+        ..Default::default()
+    });
+    harness
+        .get_by_label_contains("Search commands or ask agent…")
+        .click();
+    harness.run_ok();
+    harness.get_by_label("Press Tab to switch to agent mode");
+    harness.snapshot("command_palette_agent_hint");
+    harness
+        .get_by_label("Search commands")
+        .type_text("About Rerun");
+    harness.run_ok();
+    assert!(harness.query_by_label("Ask agent: About Rerun").is_none());
+    harness.key_press(egui::Key::Tab);
+    harness.run_ok();
+    harness.get_by_label("Prompt");
+    assert!(harness.query_by_label("About Rerun…").is_none());
+    harness.snapshot("command_palette_agent_mode");
+    harness.key_press(egui::Key::Enter);
+    harness.run_ok();
+    assert!(!harness.state().agent_panel_open());
+    harness.get_by_label("Set up an agent to send prompts.");
+    harness.get_by_label("Set up agent").click();
+    harness.run_ok();
+    assert!(harness.state().agent_panel_open());
+}
+
 /// Tests the colormap selector UI with snapshot testing.
 /// This is defined here instead of in `re_viewer/tests` because it depends on `re_test_context`,
 /// which depends on `re_viewer_context`.

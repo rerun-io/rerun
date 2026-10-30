@@ -1,36 +1,24 @@
-use re_sdk_types::blueprint::components::ColumnName;
+use re_sdk_types::blueprint::components::{ColumnName, SortBy as BlueprintSortBy};
+use re_sdk_types::blueprint::encodings::SortBy as BlueprintSortByEncoding;
+pub use re_sdk_types::blueprint::encodings::SortDirection;
 use re_ui::UiExt as _;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SortDirection {
-    Ascending,
-    Descending,
+pub trait SortDirectionUiExt {
+    fn icon(&self) -> &'static re_ui::Icon;
+
+    fn menu_item_ui(&self, ui: &mut egui::Ui) -> egui::Response;
 }
 
-impl SortDirection {
-    pub fn iter() -> impl Iterator<Item = Self> {
-        [Self::Ascending, Self::Descending].into_iter()
-    }
-
-    pub fn is_ascending(&self) -> bool {
-        matches!(self, Self::Ascending)
-    }
-
-    pub fn icon(&self) -> &'static re_ui::Icon {
+impl SortDirectionUiExt for SortDirection {
+    fn icon(&self) -> &'static re_ui::Icon {
         match self {
             Self::Ascending => &re_ui::icons::ARROW_DOWN,
             Self::Descending => &re_ui::icons::ARROW_UP,
         }
     }
 
-    pub fn menu_item_ui(&self, ui: &mut egui::Ui) -> egui::Response {
-        ui.icon_and_text_menu_item(
-            self.icon(),
-            match self {
-                Self::Ascending => "Ascending",
-                Self::Descending => "Descending",
-            },
-        )
+    fn menu_item_ui(&self, ui: &mut egui::Ui) -> egui::Response {
+        ui.icon_and_text_menu_item(self.icon(), self.to_string())
     }
 }
 
@@ -38,6 +26,25 @@ impl SortDirection {
 pub struct SortBy {
     pub column_name: ColumnName,
     pub direction: SortDirection,
+}
+
+impl From<BlueprintSortBy> for SortBy {
+    fn from(sort_by: BlueprintSortBy) -> Self {
+        let BlueprintSortByEncoding { column, direction } = sort_by.0;
+        Self {
+            column_name: column.as_str().into(),
+            direction: direction.unwrap_or_default(),
+        }
+    }
+}
+
+impl From<&SortBy> for BlueprintSortByEncoding {
+    fn from(sort_by: &SortBy) -> Self {
+        Self {
+            column: sort_by.column_name.as_str().into(),
+            direction: Some(sort_by.direction),
+        }
+    }
 }
 
 impl SortBy {

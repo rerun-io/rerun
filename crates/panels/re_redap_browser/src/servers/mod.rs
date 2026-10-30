@@ -5,9 +5,8 @@ use std::task::Poll;
 use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
-use re_async::AsyncRuntimeHandle;
-use re_catalog_client::{AssetLayer, AssetRegistrationError};
-use re_dataframe_ui::TableCellKind;
+use re_async::{AsyncRuntimeHandle, UiWaker};
+use re_catalog_client::{AssetLayer, AssetRegistrationError, CatalogClient};
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_protos::cloud::v1alpha1::EntryKind;
@@ -17,23 +16,25 @@ use re_redap_client::{
     Credentials,
 };
 use re_ui::alert::Alert;
-use re_ui::{UiExt as _, icons};
-use re_uri::DATASET_HIERARCHY_SEPARATOR;
+use re_ui::{ContextExt as _, UiExt as _, icons};
 use re_viewer_context::{
     AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender as _, TableReference as ViewerTableReference, ViewStates,
 };
 
+use crate::asset_coverage_modal::{AssetCoverageModal, AssetTarget};
 use crate::asset_registration::{AssetRegistrations, AssetUnregistrations};
 use crate::asset_source_modal::AssetSourceModal;
 use crate::context::Context;
 use crate::entries::{Entries, Entry, Table};
-use crate::entry_meta::EntryMetaQuery;
-use crate::register_asset_modal::{AssetTarget, RegisterAssetModal};
+use crate::entry_meta::{DatasetSegments, EntryMetaQuery};
+use crate::register_asset_modal::RegisterAssetModal;
 use crate::server_modal::{LoginFlow, LoginFlowResult, ServerModal, ServerModalMode};
 use crate::unregister_asset_modal::UnregisterAssetModal;
 
 mod dataset;
+
+pub use dataset::PILL_MARGIN;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ServerKind {
@@ -42,7 +43,7 @@ enum ServerKind {
 }
 
 pub struct Server {
-    connection: ConnectionHandle,
+    client: CatalogClient,
     entries: Entries,
 
     /// The pending and failed asset registrations of this server's datasets.
@@ -54,7 +55,6 @@ pub struct Server {
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: Arc<SessionContext>,
 
-    runtime: AsyncRuntimeHandle,
     kind: ServerKind,
 
     /// Dropping this cancels the background task that listens for catalog events.
@@ -65,14 +65,14 @@ impl Server {
     fn new_remote(
         connection: ConnectionHandle,
         runtime: AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
+        waker: UiWaker,
         command_sender: crossbeam::channel::Sender<Command>,
     ) -> Self {
         Self::new(
             connection,
             ServerKind::Remote,
             runtime,
-            egui_ctx,
+            waker,
             command_sender,
         )
     }
@@ -80,14 +80,14 @@ impl Server {
     fn new_internal(
         connection: ConnectionHandle,
         runtime: AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
+        waker: UiWaker,
         command_sender: crossbeam::channel::Sender<Command>,
     ) -> Self {
         Self::new(
             connection,
             ServerKind::Internal,
             runtime,
-            egui_ctx,
+            waker,
             command_sender,
         )
     }
@@ -96,7 +96,7 @@ impl Server {
         connection: ConnectionHandle,
         kind: ServerKind,
         runtime: AsyncRuntimeHandle,
-        egui_ctx: &egui::Context,
+        waker: UiWaker,
         command_sender: crossbeam::channel::Sender<Command>,
     ) -> Self {
         let tables_session_ctx = Self::session_context();
@@ -104,19 +104,18 @@ impl Server {
         let entries = Entries::default();
 
         let (cancel_tx, cancel_rx) = futures::channel::oneshot::channel();
-        let listener = watch_events_loop(connection.clone(), command_sender, egui_ctx.clone());
+        let listener = watch_events_loop(connection.clone(), command_sender, waker);
         runtime.spawn_future(async move {
             futures::pin_mut!(listener);
             futures::future::select(listener, cancel_rx).await;
         });
 
         Self {
-            connection,
+            client: CatalogClient::new(connection, runtime),
             entries,
             asset_registrations: Default::default(),
             asset_unregistrations: Default::default(),
             tables_session_ctx,
-            runtime,
             kind,
             _watch_events_guard: cancel_tx,
         }
@@ -144,7 +143,7 @@ impl Server {
 
     #[inline]
     pub fn origin(&self) -> &re_uri::Origin {
-        self.connection.origin()
+        self.client.origin()
     }
 
     #[inline]
@@ -168,9 +167,9 @@ impl Server {
         viewer_command_sender: &ViewerCommandSender,
     ) {
         self.entries.on_frame_start(
-            &self.connection,
+            self.client.connection(),
             &self.tables_session_ctx,
-            &self.runtime,
+            self.client.runtime(),
             egui_ctx,
             viewer_command_sender,
         );
@@ -178,11 +177,10 @@ impl Server {
         // A registration or unregistration the server answered is listed until the dataset's asset
         // list has caught up with it, so the asset is never missing from both.
         let Self {
-            connection,
+            client,
             entries,
             asset_registrations,
             asset_unregistrations,
-            runtime,
             ..
         } = self;
 
@@ -195,9 +193,8 @@ impl Server {
 
         for dataset_id in waiting_datasets {
             entries.request_entry_assets(EntryMetaQuery {
-                runtime,
+                client,
                 egui_ctx,
-                connection,
                 dataset_id,
             });
         }
@@ -276,10 +273,6 @@ impl Server {
                 column = column.with_default_visibility(false);
             }
 
-            if desc.display_name().as_str() == ENTRY_LINK_COLUMN_NAME {
-                column = column.with_default_cell_kind(TableCellKind::Link);
-            }
-
             column
         })
         .generate_entry_links(
@@ -295,7 +288,13 @@ impl Server {
                 )
                 .and(col("name").not_eq(lit("__entries"))),
         )
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+        .show(
+            app_ctx,
+            self.client.runtime(),
+            ui,
+            table_blueprints,
+            view_states,
+        );
     }
 
     fn folder_ui(
@@ -305,38 +304,11 @@ impl Server {
         origin: &re_uri::Origin,
         path_prefix: &str,
     ) {
-        use re_viewer_context::{Route, SystemCommand, SystemCommandSender as _};
-
-        let command_sender = app_ctx.command_sender().clone();
+        let command_sender = app_ctx.command_sender();
 
         Frame::new().inner_margin(Margin::same(16)).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                // Navigate up one level.
-                if ui
-                    .small_icon_button(&icons::ARROW_UP, "Go to parent folder")
-                    .on_hover_text("Go to parent folder")
-                    .clicked()
-                {
-                    let parent_route = if let Some((parent, _)) =
-                        path_prefix.rsplit_once(DATASET_HIERARCHY_SEPARATOR)
-                    {
-                        Route::RedapFolder {
-                            origin: origin.clone(),
-                            path: parent.to_owned(),
-                        }
-                    } else {
-                        Route::RedapServer(origin.clone())
-                    };
-                    if let Some(parent_item) = parent_route.item() {
-                        command_sender.send_system(SystemCommand::set_selection(parent_item));
-                    }
-                    command_sender.send_system(SystemCommand::SetRoute(parent_route));
-                }
-
-                ui.horizontal_centered(|ui| {
-                    ui.heading(RichText::new(path_prefix.to_owned()).strong());
-                });
-            });
+            crate::breadcrumbs::hierarchy_breadcrumbs_ui(ui, origin, path_prefix, command_sender);
+            ui.heading(RichText::new(re_uri::dataset_hierarchy_leaf_name(path_prefix)).strong());
 
             ui.add_space(12.0);
 
@@ -357,7 +329,7 @@ impl Server {
                         origin,
                         entries,
                         path_prefix,
-                        &command_sender,
+                        command_sender,
                     );
                 }
             }
@@ -381,7 +353,13 @@ impl Server {
             },
         )
         .title(table.name().to_string())
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+        .show(
+            app_ctx,
+            self.client.runtime(),
+            ui,
+            table_blueprints,
+            view_states,
+        );
     }
 }
 
@@ -597,6 +575,8 @@ pub struct RedapServers {
 
     register_asset_modal_ui: RegisterAssetModal,
 
+    asset_coverage_modal_ui: AssetCoverageModal,
+
     asset_source_modal_ui: AssetSourceModal,
 
     unregister_asset_modal_ui: UnregisterAssetModal,
@@ -652,6 +632,7 @@ impl Default for RedapServers {
             command_receiver,
             server_modal_ui: Default::default(),
             register_asset_modal_ui: Default::default(),
+            asset_coverage_modal_ui: Default::default(),
             asset_source_modal_ui: Default::default(),
             unregister_asset_modal_ui: Default::default(),
             inline_login_flow: None,
@@ -697,6 +678,12 @@ pub enum Command {
 
     /// Open a modal to register an asset with a dataset.
     OpenRegisterAssetModal(AssetTarget),
+
+    /// Open a modal to pick which segments of a dataset load an asset.
+    OpenAssetCoverageModal {
+        target: AssetTarget,
+        asset_id: SegmentId,
+    },
 
     /// Open a modal asking whether to unregister an asset.
     OpenUnregisterAssetModal {
@@ -859,7 +846,7 @@ impl RedapServers {
             Server::new_internal(
                 connection_registry.connection_handle(origin),
                 runtime.clone(),
-                egui_ctx,
+                egui_ctx.ui_waker(),
                 self.command_sender.clone(),
             ),
         );
@@ -909,7 +896,7 @@ impl RedapServers {
         }
 
         re_dataframe_ui::DataFusionTableWidget::refresh(
-            &server.runtime,
+            server.client.runtime(),
             egui_ctx.clone(),
             server.tables_session_ctx.clone(),
             TableReference::bare(entry.name().to_string()),
@@ -932,9 +919,9 @@ impl RedapServers {
             return;
         };
         crate::entries::refresh_default_table_blueprint(
-            server.connection.clone(),
+            server.client.connection().clone(),
             entry,
-            &server.runtime,
+            server.client.runtime(),
             command_sender,
         );
     }
@@ -985,7 +972,13 @@ impl RedapServers {
     pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {
         self.servers
             .get(origin)
-            .and_then(|server| server.connection.connection_registry().credentials(origin))
+            .and_then(|server| {
+                server
+                    .client
+                    .connection()
+                    .connection_registry()
+                    .credentials(origin)
+            })
             .is_some()
     }
 
@@ -995,7 +988,7 @@ impl RedapServers {
         // Log out from the servers that used the accounts token.
         let mut origins = Vec::new();
         for server in self.servers.values() {
-            let registry = server.connection.connection_registry();
+            let registry = server.client.connection().connection_registry();
             if matches!(
                 registry.credentials(server.origin()),
                 Some(Credentials::Stored)
@@ -1092,9 +1085,15 @@ impl RedapServers {
             }
 
             Command::OpenRegisterAssetModal(target) => {
-                self.register_asset_modal_ui.open(
+                self.register_asset_modal_ui
+                    .open(target, connection_registry, runtime.clone());
+            }
+
+            Command::OpenAssetCoverageModal { target, asset_id } => {
+                self.asset_coverage_modal_ui.open(
                     target,
-                    connection_registry.clone(),
+                    asset_id,
+                    connection_registry,
                     runtime.clone(),
                 );
             }
@@ -1122,9 +1121,9 @@ impl RedapServers {
                     return;
                 };
 
-                let connection = server.connection.clone();
+                let client = server.client.clone();
                 let command_sender = self.command_sender.clone();
-                let egui_ctx = egui_ctx.clone();
+                let waker = egui_ctx.ui_waker();
 
                 send_crossbeam(
                     &command_sender,
@@ -1136,9 +1135,9 @@ impl RedapServers {
                 )
                 .ok();
 
-                server.runtime.spawn_future(async move {
+                server.client.runtime().spawn_future(async move {
                     let unregistered = crate::servers::dataset::unregister_asset(
-                        connection,
+                        client,
                         entry_id,
                         asset_id.clone(),
                         has_failed,
@@ -1155,7 +1154,7 @@ impl RedapServers {
                         },
                     )
                     .ok();
-                    egui_ctx.request_repaint();
+                    waker.wake();
                 });
             }
 
@@ -1304,7 +1303,7 @@ impl RedapServers {
                         Server::new_remote(
                             connection_registry.connection_handle(origin.clone()),
                             runtime.clone(),
-                            egui_ctx,
+                            egui_ctx.ui_waker(),
                             self.command_sender.clone(),
                         ),
                     );
@@ -1401,43 +1400,52 @@ impl RedapServers {
             return;
         }
 
-        for server in self.servers.values() {
-            if let Some(entry) = server.find_entry(active_entry) {
-                match entry.inner() {
-                    Ok(crate::entries::EntryInner::Dataset(dataset)) => {
-                        server.dataset_entry_ui(
-                            ctx,
-                            &browser_ctx,
-                            ui,
-                            dataset,
-                            table_blueprints,
-                            view_states,
-                            kind,
-                        );
+        // The same server can be connected under two origins, such as `localhost` and
+        // `127.0.0.1`, with the same entry ids. The entry is shown from the server of `origin`.
+        let Some(server) = self.servers.get(origin) else {
+            return;
+        };
+        let Some(entry) = server.find_entry(active_entry) else {
+            return;
+        };
 
-                        // If we're connected twice to the same server, we will find this entry
-                        // multiple times. We avoid it by returning here.
-                        return;
-                    }
-                    Ok(crate::entries::EntryInner::Table(table)) => {
-                        server.table_entry_ui(ctx, ui, table, table_blueprints, view_states);
-
-                        // If we're connected twice to the same server, we will find this entry
-                        // multiple times. We avoid it by returning here.
-                        return;
-                    }
-                    Err(err) => {
-                        Frame::new().inner_margin(16.0).show(ui, |ui| {
-                            Alert::error().show_text(
-                                ui,
-                                format!("Error loading entry {}", entry.name()),
-                                Some(err.to_string()),
-                            );
-                        });
-                    }
-                }
+        match entry.inner() {
+            Ok(crate::entries::EntryInner::Dataset(dataset)) => {
+                server.dataset_entry_ui(
+                    ctx,
+                    &browser_ctx,
+                    ui,
+                    dataset,
+                    table_blueprints,
+                    view_states,
+                    kind,
+                );
+            }
+            Ok(crate::entries::EntryInner::Table(table)) => {
+                server.table_entry_ui(ctx, ui, table, table_blueprints, view_states);
+            }
+            Err(err) => {
+                Frame::new().inner_margin(16.0).show(ui, |ui| {
+                    Alert::error().show_text(
+                        ui,
+                        format!("Error loading entry {}", entry.name()),
+                        Some(err.to_string()),
+                    );
+                });
             }
         }
+    }
+
+    /// The segments of the dataset an asset modal points at, as the modal names and searches them.
+    fn asset_target_segments(
+        &self,
+        egui_ctx: &egui::Context,
+        target: &AssetTarget,
+    ) -> DatasetSegments {
+        self.servers
+            .get(&target.origin)
+            .map(|server| server.dataset_segments(egui_ctx, target.dataset_id))
+            .unwrap_or_default()
     }
 
     pub fn modals_ui(&mut self, app_ctx: &AppContext<'_>, ui: &egui::Ui) {
@@ -1458,7 +1466,46 @@ impl RedapServers {
             })
             .unwrap_or_default();
 
-        self.register_asset_modal_ui.ui(&ctx, ui, &asset_slots);
+        let register_segments = self
+            .register_asset_modal_ui
+            .target()
+            .map(|target| self.asset_target_segments(ui.ctx(), target))
+            .unwrap_or_default();
+        let stores_coverage = self
+            .register_asset_modal_ui
+            .target()
+            .and_then(|target| {
+                let server = self.servers.get(&target.origin)?;
+                Some(server.dataset_stores_coverage(ui.ctx(), target.dataset_id))
+            })
+            .unwrap_or(true);
+        let coverage_segments = self
+            .asset_coverage_modal_ui
+            .target()
+            .map(|target| self.asset_target_segments(ui.ctx(), target))
+            .unwrap_or_default();
+
+        let stored_coverage = Option::zip(
+            self.asset_coverage_modal_ui.target(),
+            self.asset_coverage_modal_ui.asset_id(),
+        )
+        .and_then(|(target, asset_id)| {
+            self.servers.get(&target.origin)?.dataset_asset_coverage(
+                ui.ctx(),
+                target.dataset_id,
+                asset_id,
+            )
+        });
+
+        self.register_asset_modal_ui.ui(
+            &ctx,
+            ui,
+            &asset_slots,
+            &register_segments,
+            stores_coverage,
+        );
+        self.asset_coverage_modal_ui
+            .ui(&ctx, ui, &coverage_segments, stored_coverage.as_ref());
         self.asset_source_modal_ui.ui(ui);
         self.unregister_asset_modal_ui.ui(&ctx, ui);
     }
@@ -1480,7 +1527,7 @@ impl RedapServers {
 async fn watch_events_loop(
     connection: ConnectionHandle,
     command_sender: crossbeam::channel::Sender<Command>,
-    egui_ctx: egui::Context,
+    waker: UiWaker,
 ) {
     let mut backoff = re_backoff::BackoffGenerator::new(
         std::time::Duration::from_secs(1),
@@ -1489,7 +1536,7 @@ async fn watch_events_loop(
     .expect("valid backoff range");
 
     loop {
-        match run_event_listener(&connection, &command_sender, &egui_ctx, &mut backoff).await {
+        match run_event_listener(&connection, &command_sender, &waker, &mut backoff).await {
             Ok(()) => {}
             Err(err) if err.kind == re_redap_client::ApiErrorKind::Unimplemented => {
                 // Permanent condition (e.g. an older server), so don't keep reconnecting.
@@ -1522,7 +1569,7 @@ async fn watch_events_loop(
 async fn run_event_listener(
     connection: &ConnectionHandle,
     command_sender: &crossbeam::channel::Sender<Command>,
-    egui_ctx: &egui::Context,
+    waker: &UiWaker,
     backoff: &mut re_backoff::BackoffGenerator,
 ) -> re_redap_client::ApiResult<()> {
     use futures::StreamExt as _;
@@ -1540,7 +1587,7 @@ async fn run_event_listener(
             Command::RefreshCollection(connection.origin().clone()),
         )
         .ok();
-        egui_ctx.request_repaint();
+        waker.wake();
     }
 
     Ok(())

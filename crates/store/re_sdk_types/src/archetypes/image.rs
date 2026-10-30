@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A monochrome or color image.
@@ -440,24 +440,14 @@ impl Image {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.buffer
-                .map(|buffer| buffer.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.format
-                .map(|format| format.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.opacity
-                .map(|opacity| opacity.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.draw_order
-                .map(|draw_order| draw_order.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.magnification_filter
-                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.buffer,
+            self.format,
+            self.opacity,
+            self.draw_order,
+            self.magnification_filter,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -468,19 +458,16 @@ impl Image {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_buffer = self.buffer.as_ref().map(|b| b.array.len());
-        let len_format = self.format.as_ref().map(|b| b.array.len());
-        let len_opacity = self.opacity.as_ref().map(|b| b.array.len());
-        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
-        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_buffer)
-            .or(len_format)
-            .or(len_opacity)
-            .or(len_draw_order)
-            .or(len_magnification_filter)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.buffer,
+            self.format,
+            self.opacity,
+            self.draw_order,
+            self.magnification_filter,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The raw image data.

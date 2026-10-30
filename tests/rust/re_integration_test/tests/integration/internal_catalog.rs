@@ -16,7 +16,7 @@ use re_log_channel::{UiCallback, ViewerControlCommand};
 use re_log_types::{EntityPath, EntryName, TimelineName};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::viewer_control::v1alpha1::{
-    OpenUrlRequest, OpenUrlResponse, ViewerControlRequest, viewer_control_request,
+    OpenRequest, OpenResponse, ViewerControlRequest, viewer_control_request,
     viewer_control_response,
 };
 use re_sdk::RecordingStreamBuilder;
@@ -26,7 +26,7 @@ use re_sdk_types::blueprint::archetypes::ViewportBlueprint;
 use re_sdk_types::blueprint::components::AutoLayout;
 use re_sdk_types::components::{Color, Radius};
 use re_sdk_types::encodings::Bool;
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _};
+use re_viewer::viewer_test_utils;
 use re_viewer_context::Route;
 
 // TODO(RR-4929): We should properly show the application id,
@@ -116,15 +116,23 @@ fn test_rbl() -> (tempfile::TempDir, PathBuf) {
     (dir, path)
 }
 
-fn mask_source_rrd_version(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
+/// Mask the values of the selection panel rows that name the Rerun and rustc versions.
+fn mask_source_versions(harness: &mut egui_kittest::Harness<'_, re_viewer::App>) {
     let selection_panel = harness.selection_panel();
     let selection_panel_rect = selection_panel.root().rect();
-    if let Some(label) = selection_panel.root().query_by_label("Source RRD version") {
-        let label_rect = label.rect();
-        harness.mask(egui::Rect::from_min_max(
-            egui::pos2(label_rect.right(), label_rect.top()),
-            egui::pos2(selection_panel_rect.right(), label_rect.bottom()),
-        ));
+    let value_rects: Vec<egui::Rect> = ["Source", "Source RRD version"]
+        .into_iter()
+        .filter_map(|row| selection_panel.root().query_by_label(row))
+        .map(|label| {
+            let label_rect = label.rect();
+            egui::Rect::from_min_max(
+                egui::pos2(label_rect.right(), label_rect.top()),
+                egui::pos2(selection_panel_rect.right(), label_rect.bottom()),
+            )
+        })
+        .collect();
+    for rect in value_rects {
+        harness.mask(rect);
     }
 }
 
@@ -232,23 +240,23 @@ async fn internal_catalog_load_rbl() {
         .open_url_or_file(&rbl_path.display().to_string());
 
     viewer_test_utils::step_until("blueprint catalog entry opened", &mut harness, |harness| {
-        matches!(
-            harness.state().testonly_get_route(),
-            Route::RedapEntry { .. }
-        )
+        matches!(harness.state().route(), Route::RedapEntry { .. })
     });
 
     let Route::RedapEntry {
         origin, entry_id, ..
-    } = harness.state().testonly_get_route()
+    } = harness.state().route()
     else {
         panic!("expected a catalog entry route");
     };
     let origin = origin.clone();
     let entry_id = *entry_id;
     let connection_registry = harness.state().connection_registry().clone();
-    let catalog =
-        re_catalog_client::CatalogClient::new(connection_registry.connection_handle(origin));
+    let catalog = re_catalog_client::CatalogClient::new(
+        connection_registry.connection_handle(origin),
+        re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+            .expect("test runtime is running"),
+    );
     let mut client = catalog
         .client()
         .await
@@ -306,8 +314,7 @@ async fn internal_catalog_load_rbl() {
                     .hub
                     .entity_db(&store_id)
                     .is_some_and(|db| {
-                        db.data_source
-                            .as_ref()
+                        db.primary_data_source()
                             .is_some_and(|source| source.is_redap())
                             && db
                                 .storage_engine()
@@ -357,8 +364,7 @@ async fn internal_catalog_load_rrd() {
                     .hub
                     .entity_db(&store_id)
                     .is_some_and(|db| {
-                        db.data_source
-                            .as_ref()
+                        db.primary_data_source()
                             .is_some_and(|source| source.is_redap() == use_viewer_catalog)
                             && db
                                 .storage_engine()
@@ -393,7 +399,7 @@ async fn internal_catalog_load_rrd() {
 
         harness.set_time_panel_opened(false);
 
-        mask_source_rrd_version(&mut harness);
+        mask_source_versions(&mut harness);
 
         if use_viewer_catalog {
             mask_internal_catalog_app_id(&mut harness);
@@ -450,10 +456,10 @@ async fn internal_catalog_load_rrd() {
     run_with_catalog(&mut snapshot_results, false);
 }
 
-/// A caller reads the recording as soon as `open_url` answers, so the answer must wait for it,
+/// A caller reads the recording as soon as `open` answers, so the answer must wait for it,
 /// including when the file first has to be registered with the viewer catalog.
 #[tokio::test(flavor = "multi_thread")]
-async fn open_url_answers_once_the_recording_has_arrived() {
+async fn open_answers_once_the_recording_has_arrived() {
     for use_viewer_catalog in [false, true] {
         let (_dir, rrd_path) = test_rrd(false);
         let mut harness = viewer_test_utils::viewer_harness(&Default::default());
@@ -464,8 +470,9 @@ async fn open_url_answers_once_the_recording_has_arrived() {
 
         let answer = Arc::new(parking_lot::Mutex::new(None));
         let request = ViewerControlRequest {
-            kind: Some(viewer_control_request::Kind::OpenUrl(OpenUrlRequest {
+            kind: Some(viewer_control_request::Kind::Open(OpenRequest {
                 url: rrd_path.display().to_string(),
+                navigate: None,
             })),
         };
         let on_done = UiCallback::new({
@@ -475,22 +482,46 @@ async fn open_url_answers_once_the_recording_has_arrived() {
         tx.send(ViewerControlCommand::ViewerControl { request, on_done }.into())
             .expect("the viewer holds the receiver");
 
-        viewer_test_utils::step_until("open_url answered", &mut harness, |_| {
-            answer.lock().is_some()
-        });
+        viewer_test_utils::step_until("open answered", &mut harness, |_| answer.lock().is_some());
 
         let response = answer.lock().take().map(|response| {
             response
                 .map(|response| response.kind)
                 .map_err(|err| err.message)
         });
+        let Some(Ok(Some(viewer_control_response::Kind::Open(OpenResponse {
+            store_ids,
+            loading,
+        })))) = response
+        else {
+            panic!("expected an open response, got {response:?}");
+        };
         assert_eq!(
-            response,
-            Some(Ok(Some(viewer_control_response::Kind::OpenUrl(
-                OpenUrlResponse {
-                    still_loading: false
-                }
-            )))),
+            loading,
+            Vec::<String>::new(),
+            "use_viewer_catalog: {use_viewer_catalog}"
+        );
+        let application_id = if use_viewer_catalog {
+            let catalog = re_catalog_client::CatalogClient::new(
+                harness
+                    .state()
+                    .connection_registry()
+                    .internal_connection_handle()
+                    .expect("internal catalog should be configured"),
+                re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+                    .expect("test runtime is running"),
+            );
+            catalog
+                .find_or_create_dataset(&EntryName::new(RRD_APP_ID).expect("valid entry name"))
+                .await
+                .expect("failed to find the file's dataset")
+                .to_string()
+        } else {
+            RRD_APP_ID.to_owned()
+        };
+        assert_eq!(
+            store_ids,
+            vec![format!("Recording:{application_id}:{RRD_RECORDING_ID}")],
             "use_viewer_catalog: {use_viewer_catalog}"
         );
 

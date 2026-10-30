@@ -74,6 +74,8 @@ impl Navigation {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use std::path::PathBuf;
 
     use re_log_channel::LogSource;
@@ -95,7 +97,7 @@ mod tests {
         navigation.replace(stable_route.clone());
 
         navigation.replace(loading_route("first.rrd"));
-        assert!(matches!(navigation.current(), Route::Loading(_)));
+        assert_matches!(navigation.current(), Route::Loading(_));
         assert_eq!(navigation.history_route(), &stable_route);
 
         navigation.replace(loading_route("second.rrd"));

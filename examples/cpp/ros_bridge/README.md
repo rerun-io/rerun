@@ -3,8 +3,8 @@ title = "ROS bridge"
 description = "A C++ ROS 1 bridge that subscribes to all supported topics and logs the messages into Rerun (Linux only)."
 source = "https://github.com/rerun-io/cpp-example-ros-bridge"
 tags = ["2D", "3D", "Mesh", "Pinhole camera", "ROS", "Time series", "C++"]
-thumbnail = "https://static.rerun.io/ros_bridge/121f72ebaea57a1b895196a5587fd1a428a9fd0e/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/ros_bridge_thumbnail/d2bd1e68c168a9d6d213e09215ca9d18765b9430/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 A proof-of-concept Rerun bridge for ROS 1 that subscribes to all supported topics and visualizes the messages in Rerun.

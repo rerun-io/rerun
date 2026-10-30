@@ -38,10 +38,6 @@ impl ViewClass for BarChartView {
         &re_ui::icons::VIEW_HISTOGRAM
     }
 
-    fn new_state(&self) -> Box<dyn ViewState> {
-        Box::<()>::default()
-    }
-
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
         let egui::InputOptions {
             zoom_modifier,
@@ -260,11 +256,7 @@ impl ViewClass for BarChartView {
                 .filter(|_| !legend_hovered)
                 .and_then(|prev_transform| find_nearest_bar(ui, &prev_transform, &resolved_bars));
 
-            let egui_plot::PlotResponse {
-                response,
-                hovered_plot_item: _,
-                ..
-            } = plot.show(ui, |plot_ui| {
+            let egui_plot::PlotResponse { response, .. } = plot.show(ui, |plot_ui| {
                 for resolved in &resolved_bars {
                     let egui_color = resolved.color;
                     let base_fill = if background_color.intensity() < 0.5 {

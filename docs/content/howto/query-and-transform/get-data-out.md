@@ -95,7 +95,7 @@ DatasetInfo(robot_episodes: 3 segments, 41.1 KiB)
 ```
 
 The same information is available as fields, e.g. `{layer.name: layer.num_segments for layer in dataset.info().layers}`.
-See [`DatasetInfo`](https://ref.rerun.io/docs/python/stable/catalog/?speculative-link#rerun.catalog.DatasetInfo) for the full list.
+See [`DatasetInfo`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetInfo) for the full list.
 
 ## Inspecting the schema
 
@@ -149,25 +149,47 @@ See [Where a query runs](query_performance_tuning.md#where-a-query-runs) for wha
 
 ## Querying a subset of a dataset
 
-In general, datasets can be arbitrarily large, and it is often useful to query only a subset of it. This is achieved using `DatasetView` objects:
+In general, datasets can be arbitrarily large, and it is often useful to query only a subset of it. This is achieved using `DatasetSelection` objects:
 
 ```python
 # Filter by entity paths
-dataset_view = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
+selection = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
 
 # Filter by segment IDs (recording IDs)
-dataset_view = dataset.filter_segments(["recording_001", "recording_002"])
+selection = dataset.filter_segments(["recording_001", "recording_002"])
 
 # Chain filters
-dataset_view = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
+selection = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
 ```
 
 `filter_contents()` takes [entity path filter](../../concepts/logging-and-ingestion/entity-path.md#entity-path-filters) expressions.
 
-`DatasetView` instances have the exact same `reader()` method as the original dataset:
+Chained filters narrow the selection: an entity or segment is kept only if every call selects it.
+To combine several subtrees, or includes with excludes, pass all the expressions to a single `filter_contents()` call.
+To exclude entities from an existing selection, start from everything and exclude from there.
 
 ```python
-df = dataset_view.reader(index="frame_nr")
+# Selects `/world/robot/arm/**` only
+selection = dataset.filter_contents("/world/robot/**").filter_contents("/world/robot/arm/**")
+
+# Selects nothing, since no entity is in both subtrees
+selection = dataset.filter_contents("/world/robot/**").filter_contents("/sensors/**")
+
+# Selects both subtrees
+selection = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
+
+# Selects `/world/robot/**` without `/world/robot/debug/**`
+selection = dataset.filter_contents(["/world/robot/**", "-/world/robot/debug/**"])
+
+# Same, but narrowing an existing selection
+robot = dataset.filter_contents("/world/robot/**")
+selection = robot.filter_contents(ContentFilter.everything().exclude("/world/robot/debug/**"))
+```
+
+`DatasetSelection` instances have the exact same `reader()` method as the original dataset:
+
+```python
+df = selection.reader(index="frame_nr")
 
 print(df)
 ```

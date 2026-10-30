@@ -252,7 +252,7 @@ fn paint_grid(painter: &Painter, camera: &OrbitCamera, alpha: f32) {
             let across = half_extent * (2.0 * cell as f32 / num_cells as f32 - 1.0);
             for segment in 0..num_segments {
                 let (a, b) = (along(segment), along(segment + 1));
-                let distance = Vec2::new(0.5 * (a + b), across).length() / half_extent;
+                let distance = Vec2::new(f32::midpoint(a, b), across).length() / half_extent;
                 let fade = (1.0 - distance).max(0.0).powi(2);
                 if fade <= 0.0 {
                     continue;

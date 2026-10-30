@@ -18,9 +18,6 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
-use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
@@ -60,10 +57,8 @@ impl ::re_types_core::ToArrow for RotationAxisAngle {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use ::re_types_core::arrow_helpers::{as_array_ref, expand_validity, validity_from_bools};
+        use ::re_types_core::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -89,25 +84,15 @@ impl ::re_types_core::ToArrow for RotationAxisAngle {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let axis_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let axis_validity = validity_from_bools(somes);
                         {
                             let axis_inner_data: Vec<_> = axis
                                 .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
-                            let axis_inner_validity: Option<arrow::buffer::NullBuffer> =
-                                axis_validity.as_ref().map(|validity| {
-                                    validity
-                                        .iter()
-                                        .map(|b| std::iter::repeat_n(b, 3usize))
-                                        .flatten()
-                                        .collect::<Vec<_>>()
-                                        .into()
-                                });
+                            let axis_inner_validity =
+                                expand_validity(axis_validity.as_ref(), 3usize);
                             as_array_ref(FixedSizeListArray::new(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
                                 3,
@@ -127,10 +112,7 @@ impl ::re_types_core::ToArrow for RotationAxisAngle {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let angle_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let angle_validity = validity_from_bools(somes);
                         as_array_ref(PrimitiveArray::<Float32Type>::new(
                             angle
                                 .into_iter()
@@ -162,22 +144,13 @@ impl ::re_types_core::FromArrow for RotationAxisAngle {
                 if arrow_data.is_empty() {
                     Vec::new()
                 } else {
-                    let (arrow_data_fields, arrow_data_arrays) =
-                        (arrow_data.fields(), arrow_data.columns());
-                    let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                        arrow_data_fields.iter().map(|field| field.name().as_str()),
-                        arrow_data_arrays,
-                    )
-                    .collect();
+                    let fields = StructFields::new(
+                        arrow_data,
+                        Self::arrow_data_type,
+                        "rerun.encodings.RotationAxisAngle",
+                    );
                     let axis = {
-                        if !arrays_by_name.contains_key("axis") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "axis",
-                            ))
-                            .with_context("rerun.encodings.RotationAxisAngle");
-                        }
-                        let arrow_data = &**arrays_by_name["axis"];
+                        let arrow_data = fields.required("axis")?;
                         {
                             let arrow_data = arrow_data
                                 .try_cast::<arrow::array::FixedSizeListArray>(|| {
@@ -246,14 +219,7 @@ impl ::re_types_core::FromArrow for RotationAxisAngle {
                         }
                     };
                     let angle = {
-                        if !arrays_by_name.contains_key("angle") {
-                            return Err(DeserializationError::missing_struct_field(
-                                Self::arrow_data_type(),
-                                "angle",
-                            ))
-                            .with_context("rerun.encodings.RotationAxisAngle");
-                        }
-                        let arrow_data = &**arrays_by_name["angle"];
+                        let arrow_data = fields.required("angle")?;
                         arrow_data
                             .try_cast::<Float32Array>(|| DataType::Float32)
                             .with_context("rerun.encodings.RotationAxisAngle#angle")?

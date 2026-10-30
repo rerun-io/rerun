@@ -8,14 +8,13 @@ use arrow::error::ArrowError;
 use itertools::Itertools as _;
 use re_auth::client::AuthDecorator;
 use re_byte_size::SizeBytes as _;
-use re_chunk::{Chunk, ChunkId};
+use re_chunk::Chunk;
 use re_chunk_index::{RawRrdManifest, RrdManifest};
 use re_log_channel::{
     BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, ViewerControlCommand,
 };
 use re_log_msg::{BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreInfo, StoreSource};
 use re_log_types::{EntryId, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::ext;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::DatasetKind;
 use re_types_core::SegmentId;
@@ -24,8 +23,7 @@ use tokio_stream::StreamExt as _;
 
 use crate::asset::{AssetSegments, asset_manifest, asset_segments};
 use crate::{
-    ApiError, ApiErrorKind, ApiResult, BoxedRedapClientStack, ConnectionClient,
-    MAX_DECODING_MESSAGE_SIZE, SegmentQueryParams,
+    ApiError, ApiResult, BoxedRedapClientStack, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
 };
 
 #[cfg(target_arch = "wasm32")]
@@ -707,6 +705,26 @@ async fn stream_blueprint_segment(
     }
 }
 
+/// Logs a blueprint that failed to load, which its caller then skips.
+///
+/// Messages already streamed for the blueprint stay in the viewer, but the caller must not
+/// register or activate the blueprint.
+fn warn_blueprint_skipped(
+    err: &ApiError,
+    blueprint_dataset: EntryId,
+    blueprint_segment: &SegmentId,
+) {
+    re_log::warn!(
+        "{}",
+        re_error::format_with_details(
+            format!("Failed to load the blueprint, skipping it: {err}"),
+            format!(
+                "Blueprint dataset id: {blueprint_dataset}\nBlueprint segment id: {blueprint_segment}"
+            ),
+        )
+    );
+}
+
 /// Create a log channel for streaming a table blueprint from a catalog server.
 pub fn table_blueprint_log_channel(
     origin: re_uri::Origin,
@@ -733,6 +751,11 @@ pub fn table_blueprint_log_channel(
 /// quit marker on the same channel.
 /// It does not emit a [`LogMsg::BlueprintActivationCommand`], so the blueprint is not activated as
 /// an application default blueprint.
+///
+/// Loading is best effort: if the blueprint fails to load, this logs a warning, skips the
+/// registration, and still sends the quit marker. Blueprint data streamed before the failure
+/// stays in the viewer. It returns early without the quit marker only when the receiver
+/// disconnects.
 pub async fn stream_table_blueprint_segment_from_server(
     mut client: ConnectionClient,
     tx: re_log_channel::LogSender,
@@ -741,31 +764,34 @@ pub async fn stream_table_blueprint_segment_from_server(
     blueprint_dataset: EntryId,
     blueprint_segment: SegmentId,
 ) -> ApiResult {
-    if stream_blueprint_segment(
+    match stream_blueprint_segment(
         &mut client,
         &tx,
         blueprint_store_id.clone(),
         blueprint_dataset,
-        blueprint_segment,
+        blueprint_segment.clone(),
     )
-    .await?
-    .is_break()
+    .await
     {
-        return Ok(());
-    }
+        Ok(ControlFlow::Break(())) => return Ok(()),
 
-    if tx
-        .send(
-            DefaultBlueprintRegistration {
-                blueprint_id: blueprint_store_id,
-                target: BlueprintTarget::Table(table_ref),
+        Ok(ControlFlow::Continue(())) => {
+            if tx
+                .send(
+                    DefaultBlueprintRegistration {
+                        blueprint_id: blueprint_store_id,
+                        target: BlueprintTarget::Table(table_ref),
+                    }
+                    .into(),
+                )
+                .is_err()
+            {
+                re_log::debug!("Receiver disconnected");
+                return Ok(());
             }
-            .into(),
-        )
-        .is_err()
-    {
-        re_log::debug!("Receiver disconnected");
-        return Ok(());
+        }
+
+        Err(err) => warn_blueprint_skipped(&err, blueprint_dataset, &blueprint_segment),
     }
 
     if tx.quit(None).is_err() {
@@ -780,7 +806,9 @@ pub async fn stream_table_blueprint_segment_from_server(
 /// If the dataset has a default blueprint, this first streams that `.rbl` segment and emits a
 /// [`LogMsg::BlueprintActivationCommand`] with `make_default = true` for the recording's
 /// application id.
-/// It then streams the requested recording segment.
+/// The blueprint is best effort: if it fails to load, this logs a warning and sends no activation
+/// command.
+/// It then streams the requested recording segment, whose errors this returns.
 ///
 /// Use [`stream_table_blueprint_segment_from_server`] instead when a registered blueprint should
 /// be streamed for a table without changing the active/default blueprint.
@@ -826,6 +854,13 @@ pub async fn stream_blueprint_and_segment_from_server(
 
             (asset_dataset, DatasetKind::Asset)
         }
+
+        re_uri::DatasetResource::Schema => {
+            return Err(ApiError::invalid_arguments(
+                client.origin(),
+                format!("Cannot stream a dataset schema\nUri: {uri}"),
+            ));
+        }
     };
 
     // An asset shows something else entirely than the dataset's own segments, so the dataset's
@@ -842,32 +877,37 @@ pub async fn stream_blueprint_and_segment_from_server(
                 recording_store_id.application_id().clone(),
             );
 
-            if stream_blueprint_segment(
+            match stream_blueprint_segment(
                 &mut client,
                 &tx,
                 blueprint_store_id.clone(),
                 blueprint_dataset,
-                blueprint_segment,
+                blueprint_segment.clone(),
             )
-            .await?
-            .is_break()
+            .await
             {
-                return Ok(());
-            }
+                Ok(ControlFlow::Break(())) => return Ok(()),
 
-            if tx
-                .send(
-                    LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
-                        blueprint_id: blueprint_store_id,
-                        make_active: false,
-                        make_default: true,
-                    })
-                    .into(),
-                )
-                .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(());
+                Ok(ControlFlow::Continue(())) => {
+                    if tx
+                        .send(
+                            LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+                                blueprint_id: blueprint_store_id,
+                                make_active: false,
+                                make_default: true,
+                            })
+                            .into(),
+                        )
+                        .is_err()
+                    {
+                        re_log::debug!("Receiver disconnected");
+                        return Ok(());
+                    }
+                }
+
+                // Without its blueprint the recording still loads, with the viewer's default
+                // layout.
+                Err(err) => warn_blueprint_skipped(&err, blueprint_dataset, &blueprint_segment),
             }
         } else {
             re_log::debug!("No blueprint dataset found for {uri}");
@@ -967,35 +1007,32 @@ async fn stream_segment_from_server(
         for asset_segment_id in asset_segment_ids {
             // TODO(RR-5399): Cache asset manifests?
             // We don't support assets without manifests.
-            match stream_manifest(
-                client,
-                tx,
-                asset_dataset_id,
-                &asset_segment_id,
-                options,
-                &store_id,
-                ManifestKind::Asset,
-            )
-            .await
+            let streamed = match client
+                .get_rrd_manifest_stream(asset_dataset_id, asset_segment_id.clone())
+                .await
             {
+                Ok(manifest_stream) => {
+                    stream_manifest(
+                        client,
+                        tx,
+                        manifest_stream,
+                        options,
+                        &store_id,
+                        ManifestKind::Asset,
+                    )
+                    .await
+                }
+                Err(err) => Err(err),
+            };
+            match streamed {
                 Ok(ManifestOutcome::Loaded) => {}
 
                 Ok(ManifestOutcome::ReceiverDisconnected) => {
                     return Ok(ControlFlow::Break(()));
                 }
 
-                Ok(ManifestOutcome::NoManifest { .. }) => {
-                    re_log::warn_once!(
-                        "{}",
-                        re_error::format_with_details(
-                            "The server has no manifest for this asset, skipping it",
-                            format!("Asset segment id: {asset_segment_id}"),
-                        )
-                    );
-                }
-
                 Err(err) => {
-                    re_log::warn!(
+                    re_log::warn_once!(
                         "{}",
                         re_error::format_with_details(
                             format!("Failed to stream asset manifest, skipping it: {err}"),
@@ -1012,161 +1049,22 @@ async fn stream_segment_from_server(
     // of client's HTTP2 connection window, and ultimately to a complete stall of the entire system.
     // See the attached issues for more information.
 
-    let trace_id = match stream_manifest(
+    let manifest_stream = client
+        .get_rrd_manifest_stream(dataset_id, segment_id)
+        .await?;
+
+    match stream_manifest(
         client,
         tx,
-        dataset_id,
-        &segment_id,
+        manifest_stream,
         options,
         &store_id,
         ManifestKind::Segment,
     )
     .await?
     {
-        ManifestOutcome::Loaded => return Ok(ControlFlow::Continue(())),
-        ManifestOutcome::ReceiverDisconnected => return Ok(ControlFlow::Break(())),
-        ManifestOutcome::NoManifest { trace_id } => trace_id,
-    };
-
-    // Fallback for servers that does not support the RRD manifests:
-
-    let mut already_loaded_chunk_ids: ahash::HashSet<ChunkId> = Default::default();
-
-    if let Some(time_selection) = fragment.time_selection {
-        // Start by loading only the chunks required for the time selection:
-        let time_selection_batches = client
-            .query_dataset_chunk_index(SegmentQueryParams {
-                dataset_id,
-                segment_id: segment_id.clone(),
-                include_static_data: true,
-                include_temporal_data: true,
-                query: Some(
-                    ext::Query::latest_at_range(
-                        *time_selection.timeline.name(),
-                        time_selection.range,
-                    )
-                    .into(),
-                ),
-                generate_direct_urls: false,
-                unsigned_direct_urls: false,
-            })
-            .await?;
-
-        if time_selection_batches.is_empty() {
-            re_log::debug!(
-                "No chunks found for time selection {:?} in recording {:?}",
-                time_selection,
-                store_id
-            );
-        } else {
-            let batch = arrow::compute::concat_batches(
-                &time_selection_batches[0].schema(),
-                &time_selection_batches,
-            )
-            .map_err(|err| {
-                ApiError::invalid_arguments_with_source(
-                    client.origin(),
-                    None,
-                    err,
-                    "Failed to concat chunk index batches",
-                )
-            })?;
-
-            // Prioritize the chunks:
-            let batch = sort_batch(&batch).map_err(|err| {
-                ApiError::invalid_arguments_with_source(
-                    client.origin(),
-                    trace_id,
-                    err,
-                    "Failed to sort chunk index",
-                )
-            })?;
-
-            if let Some(chunk_id_col) = RrdManifest::col_chunk_ids_of(&batch) {
-                already_loaded_chunk_ids = chunk_id_col.iter_owned().collect();
-            } else {
-                re_log::warn_once!(
-                    "Failed to find 'chunk_id' column in chunk index response. Schema: {}",
-                    batch.schema()
-                );
-            }
-
-            if load_chunks(client, tx, &store_id, batch, options)
-                .await?
-                .is_break()
-            {
-                return Ok(ControlFlow::Break(()));
-            }
-        }
-
-        // Now load the rest (chunks outside the time range):
-    }
-
-    let batches = client
-        .query_dataset_chunk_index(SegmentQueryParams {
-            dataset_id,
-            segment_id: segment_id.clone(),
-            include_static_data: true,
-            include_temporal_data: true,
-            query: None, // everything
-            generate_direct_urls: false,
-            unsigned_direct_urls: false,
-        })
-        .await?;
-
-    if batches.is_empty() {
-        re_log::info!("Empty recording"); // We likely won't get here even on empty recording
-        return Ok(ControlFlow::Continue(()));
-    }
-
-    let batch = arrow::compute::concat_batches(&batches[0].schema(), &batches).map_err(|err| {
-        ApiError::invalid_arguments_with_source(
-            client.origin(),
-            trace_id,
-            err,
-            "Failed to concat chunk index batches",
-        )
-    })?;
-
-    // Prioritize the chunks:
-    let batch = sort_batch(&batch).map_err(|err| {
-        ApiError::invalid_arguments_with_source(
-            client.origin(),
-            trace_id,
-            err,
-            "Failed to sort chunk index",
-        )
-    })?;
-
-    if let Some(chunk_id_col) = RrdManifest::col_chunk_ids_of(&batch)
-        && !already_loaded_chunk_ids.is_empty()
-    {
-        // Filter out already loaded chunk IDs:
-        let filtered_indices: Vec<usize> = chunk_id_col
-            .iter_owned()
-            .enumerate()
-            .filter_map(|(idx, chunk_id)| {
-                if already_loaded_chunk_ids.contains(&chunk_id) {
-                    None
-                } else {
-                    Some(idx)
-                }
-            })
-            .collect();
-
-        let filtered_batch =
-            re_arrow_util::take_record_batch(&batch, &filtered_indices).map_err(|err| {
-                ApiError::invalid_arguments_with_source(
-                    client.origin(),
-                    trace_id,
-                    err,
-                    "take_record_batch",
-                )
-            })?;
-
-        load_chunks(client, tx, &store_id, filtered_batch, options).await
-    } else {
-        load_chunks(client, tx, &store_id, batch, options).await
+        ManifestOutcome::Loaded => Ok(ControlFlow::Continue(())),
+        ManifestOutcome::ReceiverDisconnected => Ok(ControlFlow::Break(())),
     }
 }
 
@@ -1185,169 +1083,142 @@ enum ManifestOutcome {
     /// The manifest was streamed, and any chunks it covers have been handled.
     Loaded,
 
-    /// The server has no manifest for this segment, so the caller should fall back to listing
-    /// chunks itself.
-    NoManifest {
-        trace_id: Option<opentelemetry::TraceId>,
-    },
-
     /// The log channel receiver went away, so there is nobody left to stream to.
     ReceiverDisconnected,
 }
 
 async fn stream_manifest(
-    client: &mut ConnectionClient,
+    client: &ConnectionClient,
     tx: &re_log_channel::LogSender,
-    dataset_id: EntryId,
-    segment_id: &SegmentId,
+    manifest_stream: crate::ApiResponseStream<RawRrdManifest>,
     options: &StreamingOptions,
     store_id: &StoreId,
     manifest_kind: ManifestKind,
 ) -> ApiResult<ManifestOutcome> {
     let start_time = web_time::Instant::now();
-    let manifest_stream_result = client
-        .get_rrd_manifest_stream(dataset_id, segment_id.clone())
-        .await;
-    let trace_id = manifest_stream_result
-        .as_ref()
-        .ok()
-        .and_then(|s| s.trace_id());
-    match manifest_stream_result {
-        Ok(manifest_stream) => {
-            let mut manifest_stream = std::pin::pin!(manifest_stream);
+    let trace_id = manifest_stream.trace_id();
+    let mut manifest_stream = std::pin::pin!(manifest_stream);
 
-            let mut raw_rrd_manifest_parts = Vec::new();
-            let mut rrd_manifest_parts: Vec<Arc<RrdManifest>> = Vec::new();
+    let mut raw_rrd_manifest_parts = Vec::new();
+    let mut rrd_manifest_parts: Vec<Arc<RrdManifest>> = Vec::new();
 
-            while let Some(part_result) = manifest_stream.next().await {
-                let raw_rrd_manifest_part = part_result?;
+    while let Some(part_result) = manifest_stream.next().await {
+        let raw_rrd_manifest_part = part_result?;
 
-                let (raw_rrd_manifest_part, rrd_manifest) = if manifest_kind == ManifestKind::Asset
-                {
-                    asset_manifest(client, raw_rrd_manifest_part).map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            client.origin(),
-                            trace_id,
-                            err,
-                            "Invalid asset manifest part",
-                        )
-                    })?
-                } else {
-                    let rrd_manifest =
-                        RrdManifest::try_new(&raw_rrd_manifest_part).map_err(|err| {
-                            ApiError::invalid_arguments_with_source(
-                                client.origin(),
-                                trace_id,
-                                err,
-                                "Invalid RRD manifest part",
-                            )
-                        })?;
-
-                    (raw_rrd_manifest_part, rrd_manifest)
-                };
-
-                let part_nr = rrd_manifest_parts.len() + 1;
-                re_log::debug!(
-                    "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
-                    re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
-                    start_time.elapsed().as_secs_f32(),
-                );
-
-                let rrd_manifest = Arc::new(rrd_manifest);
-
-                if tx
-                    .send(DataSourceMessage::RrdManifest(
-                        store_id.clone(),
-                        rrd_manifest.clone(),
-                    ))
-                    .is_err()
-                {
-                    re_log::debug!("Receiver disconnected");
-                    return Ok(ManifestOutcome::ReceiverDisconnected);
-                }
-
-                raw_rrd_manifest_parts.push(raw_rrd_manifest_part);
-                rrd_manifest_parts.push(rrd_manifest);
-            }
-
-            if rrd_manifest_parts.is_empty() {
-                return Err(ApiError::deserialization(
+        let (raw_rrd_manifest_part, rrd_manifest) = if manifest_kind == ManifestKind::Asset {
+            asset_manifest(client, raw_rrd_manifest_part).map_err(|err| {
+                ApiError::invalid_arguments_with_source(
                     client.origin(),
                     trace_id,
-                    "failed to parse the response for /GetRrdManifest (no data)",
-                ));
-            }
+                    err,
+                    "Invalid asset manifest part",
+                )
+            })?
+        } else {
+            let rrd_manifest = RrdManifest::try_new(&raw_rrd_manifest_part).map_err(|err| {
+                ApiError::invalid_arguments_with_source(
+                    client.origin(),
+                    trace_id,
+                    err,
+                    "Invalid RRD manifest part",
+                )
+            })?;
 
-            let part_nr = rrd_manifest_parts.len();
-            re_log::debug!(
-                "Full RRD manifest loaded in {:.1}s in {}",
-                start_time.elapsed().as_secs_f32(),
-                re_format::format_plural_s(part_nr, "part")
-            );
+            (raw_rrd_manifest_part, rrd_manifest)
+        };
 
-            // An asset manifest is only a part of what the store will receive, so the store is not
-            // done until its own manifest has arrived.
-            if manifest_kind == ManifestKind::Segment
-                && tx
-                    .send(DataSourceMessage::RrdManifestComplete(store_id.clone()))
-                    .is_err()
-            {
-                re_log::debug!("Receiver disconnected");
-                return Ok(ManifestOutcome::ReceiverDisconnected);
-            }
+        let part_nr = rrd_manifest_parts.len() + 1;
+        re_log::trace!(
+            "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
+            re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
+            start_time.elapsed().as_secs_f32(),
+        );
 
-            match store_id.kind() {
-                StoreKind::Recording if !options.force_full_download => {
-                    re_log::debug!("Letting the viewer load chunks on-demand");
-                    return Ok(ManifestOutcome::Loaded);
-                }
-                StoreKind::Recording | StoreKind::Blueprint => {
-                    re_log::debug!("Loading all of the chunks in one go; most important first");
-                    let combined = RawRrdManifest::merge(store_id.clone(), raw_rrd_manifest_parts)
-                        .map_err(|err| {
-                            ApiError::invalid_arguments_with_source(
-                                client.origin(),
-                                trace_id,
-                                err,
-                                "Failed to merge RRD manifest parts",
-                            )
-                        })?;
-                    let combined = RrdManifest::try_new(&combined).map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            client.origin(),
-                            trace_id,
-                            err,
-                            "Invalid merged RRD manifest",
-                        )
-                    })?;
-                    let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
-                        ApiError::invalid_arguments_with_source(
-                            client.origin(),
-                            trace_id,
-                            err,
-                            "Failed to sort chunk index",
-                        )
-                    })?;
+        let rrd_manifest = Arc::new(rrd_manifest);
 
-                    // TODO(isse): Make sure full download works for assets.
-                    return load_chunks(client, tx, store_id, batch, options)
-                        .await
-                        .map(|flow| match flow {
-                            ControlFlow::Continue(()) => ManifestOutcome::Loaded,
-                            ControlFlow::Break(()) => ManifestOutcome::ReceiverDisconnected,
-                        });
-                }
-            }
+        if tx
+            .send(DataSourceMessage::RrdManifest(
+                store_id.clone(),
+                rrd_manifest.clone(),
+            ))
+            .is_err()
+        {
+            re_log::debug!("Receiver disconnected");
+            return Ok(ManifestOutcome::ReceiverDisconnected);
         }
-        Err(err) => {
-            if err.kind == ApiErrorKind::Unimplemented {
-                re_log::debug_once!("The server does not support on-demand streaming"); // Legacy server
-            } else {
-                re_log::warn!("{err}");
-            }
+
+        raw_rrd_manifest_parts.push(raw_rrd_manifest_part);
+        rrd_manifest_parts.push(rrd_manifest);
+    }
+
+    if rrd_manifest_parts.is_empty() {
+        return Err(ApiError::deserialization(
+            client.origin(),
+            trace_id,
+            "failed to parse the response for /GetRrdManifest (no data)",
+        ));
+    }
+
+    let part_nr = rrd_manifest_parts.len();
+    re_log::trace!(
+        "Full RRD manifest loaded in {:.1}s in {}",
+        start_time.elapsed().as_secs_f32(),
+        re_format::format_plural_s(part_nr, "part")
+    );
+
+    // An asset manifest is only a part of what the store will receive, so the store is not
+    // done until its own manifest has arrived.
+    if manifest_kind == ManifestKind::Segment
+        && tx
+            .send(DataSourceMessage::RrdManifestComplete(store_id.clone()))
+            .is_err()
+    {
+        re_log::debug!("Receiver disconnected");
+        return Ok(ManifestOutcome::ReceiverDisconnected);
+    }
+
+    match store_id.kind() {
+        StoreKind::Recording if !options.force_full_download => {
+            re_log::trace!("Letting the viewer load chunks on-demand");
+            Ok(ManifestOutcome::Loaded)
+        }
+        StoreKind::Recording | StoreKind::Blueprint => {
+            re_log::debug!("Loading all of the chunks in one go; most important first");
+            let combined = RawRrdManifest::merge(store_id.clone(), raw_rrd_manifest_parts)
+                .map_err(|err| {
+                    ApiError::invalid_arguments_with_source(
+                        client.origin(),
+                        trace_id,
+                        err,
+                        "Failed to merge RRD manifest parts",
+                    )
+                })?;
+            let combined = RrdManifest::try_new(&combined).map_err(|err| {
+                ApiError::invalid_arguments_with_source(
+                    client.origin(),
+                    trace_id,
+                    err,
+                    "Invalid merged RRD manifest",
+                )
+            })?;
+            let batch = sort_batch(combined.chunk_fetcher_rb()).map_err(|err| {
+                ApiError::invalid_arguments_with_source(
+                    client.origin(),
+                    trace_id,
+                    err,
+                    "Failed to sort chunk index",
+                )
+            })?;
+
+            // TODO(isse): Make sure full download works for assets.
+            load_chunks(client, tx, store_id, batch, options)
+                .await
+                .map(|flow| match flow {
+                    ControlFlow::Continue(()) => ManifestOutcome::Loaded,
+                    ControlFlow::Break(()) => ManifestOutcome::ReceiverDisconnected,
+                })
         }
     }
-    Ok(ManifestOutcome::NoManifest { trace_id })
 }
 
 /// Takes a dataframe that looks like an [`RrdManifest`] (has a `chunk_key` column).

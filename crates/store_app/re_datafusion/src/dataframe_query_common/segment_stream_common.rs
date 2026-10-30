@@ -14,7 +14,7 @@ use datafusion::physical_plan::PlanProperties;
 use datafusion::physical_plan::execution_plan::{Boundedness, EmissionType};
 use itertools::Itertools as _;
 use re_dataframe::Index;
-use re_protos::cloud::v1alpha1::ext::{QueryDatasetDataframe, ScanSegmentTableDataframe};
+use re_protos::cloud::v1alpha1::ext::{ChunkCandidatesDataframe, ScanSegmentTableDataframe};
 use re_protos::common::v1alpha1::ext::SegmentId;
 use std::collections::BTreeMap;
 use std::sync::Arc;
@@ -202,7 +202,7 @@ pub(crate) fn group_chunk_infos_by_segment_id(
     let mut results: BTreeMap<SegmentId, Vec<RecordBatch>> = BTreeMap::new();
 
     for batch in chunk_info_batches {
-        let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+        let segment_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
             .extract(batch)
             .map_err(|err| exec_datafusion_err!("{err}"))?;
 
@@ -275,13 +275,13 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
     let chunks = batch.num_rows();
 
     // Lenient: these are analytics aggregates — a missing or mistyped column yields zeros.
-    let segment_ids = QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID
+    let segment_ids = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
         .extract(batch)
         .ok();
-    let layer_names = QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER
+    let layer_names = ChunkCandidatesDataframe::COLUMN_RERUN_SEGMENT_LAYER
         .extract(batch)
         .ok();
-    let byte_lens = QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN
+    let byte_lens = ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_LEN
         .extract(batch)
         .ok();
 
@@ -324,6 +324,8 @@ pub(crate) fn compute_chunk_info_aggregates(batch: &RecordBatch) -> ChunkInfoAgg
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use std::collections::HashMap;
 
     use arrow::array::{FixedSizeBinaryBuilder, StringArray};
@@ -450,10 +452,10 @@ mod tests {
         let props = segment_stream_plan_properties(&schema, Some(Index::from("log_time")), 4);
 
         assert_eq!(ordering_columns(&props), Vec::<String>::new());
-        assert!(matches!(
+        assert_matches!(
             props.partitioning,
             datafusion::physical_expr::Partitioning::UnknownPartitioning(4)
-        ));
+        );
     }
 
     #[test]
@@ -483,10 +485,10 @@ mod tests {
         let props = segment_stream_plan_properties(&schema, Some(Index::from("log_time")), 4);
 
         assert_eq!(ordering_columns(&props), Vec::<String>::new());
-        assert!(matches!(
+        assert_matches!(
             props.partitioning,
             datafusion::physical_expr::Partitioning::UnknownPartitioning(4)
-        ));
+        );
     }
 
     #[test]
@@ -660,8 +662,8 @@ mod tests {
     fn test_batches_grouping() {
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field_ref(),
-                ext::QueryDatasetDataframe::COLUMN_CHUNK_ID.arrow_field_ref(),
+                ext::ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field_ref(),
+                ext::ChunkCandidatesDataframe::COLUMN_CHUNK_ID.arrow_field_ref(),
             ],
             HashMap::default(),
         ));
@@ -713,7 +715,7 @@ mod tests {
         assert_eq!(grouped.len(), 4);
 
         fn chunk_ids_of(batch: &RecordBatch) -> Vec<re_types_core::ChunkId> {
-            QueryDatasetDataframe::COLUMN_CHUNK_ID
+            ChunkCandidatesDataframe::COLUMN_CHUNK_ID
                 .extract(batch)
                 .unwrap()
                 .to_vec()
@@ -766,9 +768,9 @@ mod tests {
 
         let schema = Arc::new(Schema::new_with_metadata(
             vec![
-                ext::QueryDatasetDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field_ref(),
-                ext::QueryDatasetDataframe::COLUMN_RERUN_SEGMENT_LAYER.arrow_field_ref(),
-                ext::QueryDatasetDataframe::COLUMN_CHUNK_BYTE_LEN.arrow_field_ref(),
+                ext::ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID.arrow_field_ref(),
+                ext::ChunkCandidatesDataframe::COLUMN_RERUN_SEGMENT_LAYER.arrow_field_ref(),
+                ext::ChunkCandidatesDataframe::COLUMN_CHUNK_BYTE_LEN.arrow_field_ref(),
             ],
             HashMap::default(),
         ));

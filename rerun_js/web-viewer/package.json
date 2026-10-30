@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.40.0-alpha.1+dev",
+  "version": "0.42.0-alpha.1+dev",
   "description": "Embed the Rerun web viewer in your app",
   "licenses": [
     {
@@ -12,12 +12,13 @@
   ],
   "scripts": {
     "build:wasm": "node build-wasm.mjs --mode release",
-    "build:js": "tsc",
+    "build:js": "tsc --emitDeclarationOnly && esbuild index.ts --bundle --format=esm --platform=browser --target=esnext --external:./re_viewer.js --legal-comments=inline --keep-names --sourcemap --outfile=index.js",
     "build": "npm run build:wasm && npm run build:js",
     "build:wasm:debug": "node build-wasm.mjs --mode debug",
     "build:debug": "npm run build:wasm:debug && npm run build:js",
-    "pack": "yarn pack --filename web-viewer.tar.gz",
-    "docs": "typedoc"
+    "pack": "npm pack && mv rerun-io-web-viewer-*.tgz web-viewer.tar.gz",
+    "docs": "typedoc",
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
@@ -47,22 +48,34 @@
     }
   },
   "files": [
+    "exact_json.d.ts",
+    "exact_json.d.ts.map",
+    "exact_json.ts",
     "index.d.ts",
     "index.d.ts.map",
     "index.js",
     "index.js.map",
     "index.ts",
     "package.json",
+    "proto/**/*.d.ts",
     "re_viewer_bg.wasm",
     "re_viewer_bg.wasm.d.ts",
     "re_viewer.d.ts",
     "re_viewer.js",
+    "store_id.d.ts",
+    "store_id.d.ts.map",
+    "store_id.ts",
     "tsconfig.json"
   ],
   "devDependencies": {
-    "dts-buddy": "^0.3.0",
+    "@bufbuild/protoc-gen-es": "^2.16.0",
+    "dts-buddy": "^0.8.3",
+    "esbuild": "^0.25.0",
     "typedoc": "^0.28.20",
     "typedoc-github-theme": "^0.3.0",
-    "typescript": "^5.2.2"
+    "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "^2.16.0"
   }
 }

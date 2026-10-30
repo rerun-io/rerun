@@ -2,8 +2,8 @@
 title = "LLM embedding-based named entity recognition"
 description = "BERT-based named-entity recognition with UMAP-projected embeddings: text, tokens, entities, and 3D space in one view."
 tags = ["LLM", "Embeddings", "Classification", "Hugging Face", "Text"]
-thumbnail = "https://static.rerun.io/llm-embedding/999737b3b78d762e70116bc23929ebfde78e18c6/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/llm_embedding_ner_thumbnail/f50193bd01d36168b40d1f82c22f4c75f8517c8e/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 Visualize the [BERT-based named entity recognition (NER)](https://huggingface.co/dslim/bert-base-NER) with UMAP Embeddings.

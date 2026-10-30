@@ -45,6 +45,10 @@ impl Segment {
         self.inner.sources.len()
     }
 
+    pub fn has_layer(&self, layer_name: &LayerName) -> bool {
+        self.inner.sources.contains_key(layer_name)
+    }
+
     /// Iterate over the layers in this segments.
     ///
     /// Layers are iterated in (registration time, layer name) order,

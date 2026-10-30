@@ -2,6 +2,7 @@ import {
   type LogChannel,
   type Panel,
   type PanelState,
+  parse_store_id,
   WebViewer,
   type AppOptions,
 } from "@rerun-io/web-viewer";
@@ -52,6 +53,13 @@ function _resize(el: HTMLElement, width: number | string, height: number | strin
 
 class ViewerWidget {
   viewer: WebViewer = new WebViewer();
+
+  /**
+   * The viewer operations from Python, run one at a time in the order they arrived.
+   *
+   * A recording switch reads the viewer state first, so a seek sent right after it must wait for it.
+   */
+  operations: Promise<void> = Promise.resolve();
   url: Opt<string> = null;
   panel_states: Opt<PanelStates> = null;
   options: AppOptions = {
@@ -89,7 +97,7 @@ class ViewerWidget {
       model.send("ready");
     });
 
-    this.viewer.start(this.url ?? null, el, this.options);
+    void this.viewer.start(this.url ?? null, el, this.options);
     this.on_resize(el, model.get("_width"), model.get("_height"));
   }
 
@@ -127,7 +135,7 @@ class ViewerWidget {
         break;
       }
       case "time_ctrl": {
-        this.set_time_ctrl(msg.timeline ?? null, msg.time ?? null, msg.play ?? false);
+        this.set_time_ctrl(msg);
         break;
       }
       case "recording_id": {
@@ -135,11 +143,17 @@ class ViewerWidget {
         break;
       }
       case "open_url": {
-        this.viewer.open(msg.url)
+        this.queue_operation("Failed to open URL:", async () => {
+          // `open` sends its request right away, but only answers once the URL has loaded.
+          // Waiting for that would hold back a `close_url` meant to cancel the load.
+          this.viewer.open(msg.url).catch((err) => console.warn("Failed to open URL:", err));
+        });
         break;
       }
       case "close_url": {
-        this.viewer.close(msg.url)
+        this.queue_operation("Failed to close URL:", async () => {
+          await this.viewer.close(msg.url);
+        });
         break;
       }
       case "set_credentials": {
@@ -153,44 +167,58 @@ class ViewerWidget {
     }
   };
 
-  set_time_ctrl(
-    timeline: string | null,
-    time: number | null,
-    play: boolean,
-  ) {
-    let recording_id = this.viewer.get_active_recording_id();
-    if (recording_id === null) {
-      return;
-    }
-
-    let active_timeline = this.viewer.get_active_timeline(recording_id);
-
-    if (timeline === null) {
-      timeline = active_timeline;
-    }
-
-    if (timeline === null) {
-      return;
-    }
-
-    if (timeline !== active_timeline) {
-      this.viewer.set_active_timeline(recording_id, timeline);
-    }
-
-    this.viewer.set_playing(recording_id, play);
-
-    if (time !== null) {
-      this.viewer.set_current_time(recording_id, timeline, time);
-    }
+  /**
+   * Seek, switch timeline, and play or pause, on the active recording.
+   *
+   * Python sends integer times as strings, since a JSON number loses nanosecond precision.
+   */
+  set_time_ctrl(msg: {
+    timeline?: string | null;
+    sequence?: string | null;
+    duration_nanos?: string | null;
+    timestamp_nanos?: string | null;
+    play?: boolean;
+  }) {
+    const time =
+      msg.sequence != null
+        ? { sequence: BigInt(msg.sequence) }
+        : msg.duration_nanos != null
+          ? { duration_nanos: BigInt(msg.duration_nanos) }
+          : msg.timestamp_nanos != null
+            ? { timestamp_nanos: BigInt(msg.timestamp_nanos) }
+            : {};
+    this.queue_operation("Failed to set the time:", () =>
+      this.viewer.set_time({
+        timeline: msg.timeline ?? undefined,
+        ...time,
+        play_state: msg.play ? "playing" : "paused",
+      }),
+    );
   };
 
+  /** Show the open recording with this recording id. */
   set_recording_id(recording_id: string | null) {
     if (recording_id === null) {
       return;
     }
 
-    this.viewer.set_active_recording_id(recording_id);
+    this.queue_operation("Failed to switch recording:", async () => {
+      const state = await this.viewer.get_state();
+      const recording = state.recordings.find(
+        (recording) => parse_store_id(recording.store_id).recording_id === recording_id,
+      );
+      if (recording) {
+        await this.viewer.set_location(recording.location);
+      }
+    });
   };
+
+  /** Run `operation` once the earlier operations are done, and log if it fails. */
+  queue_operation(failure: string, operation: () => Promise<void>) {
+    this.operations = this.operations
+      .then(operation)
+      .catch((err) => console.warn(failure, err));
+  }
 }
 
 
@@ -212,7 +240,7 @@ function error_boundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
     } catch (e) {
       const el = document.querySelector(".rerun_notebook");
       if (el) {
-        el.innerHTML = `<div class="error">${e}</div>`;
+        el.innerHTML = `<div class="error">${String(e)}</div>`;
       }
     }
   };

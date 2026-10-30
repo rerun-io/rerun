@@ -2,8 +2,8 @@
 title = "Face tracking"
 description = "Detect and track faces, landmarks, and blendshapes from images, video, or a live camera using MediaPipe."
 tags = ["2D", "3D", "Camera", "Face tracking", "Live", "MediaPipe", "Time series"]
-thumbnail = "https://static.rerun.io/face-tracking/f798733b72c703ee82cc946df39f32fa1145c23b/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/face_tracking_thumbnail/1df60201447ea00af773e6e7cbf63845ba7bf4c5/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 Use the [MediaPipe](https://github.com/google-ai-edge/mediapipe) Face Detector and Landmarker solutions to detect and track a human face in image, video, and camera stream.

@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A depth image encoded with a codec (e.g. RVL, PNG, or TIFF).
@@ -472,33 +472,17 @@ impl EncodedDepthImage {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.blob
-                .map(|blob| blob.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.media_type
-                .map(|media_type| media_type.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.meter
-                .map(|meter| meter.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.colormap
-                .map(|colormap| colormap.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.depth_range
-                .map(|depth_range| depth_range.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.point_fill_ratio
-                .map(|point_fill_ratio| point_fill_ratio.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.draw_order
-                .map(|draw_order| draw_order.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.magnification_filter
-                .map(|magnification_filter| magnification_filter.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.blob,
+            self.media_type,
+            self.meter,
+            self.colormap,
+            self.depth_range,
+            self.point_fill_ratio,
+            self.draw_order,
+            self.magnification_filter,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -509,25 +493,19 @@ impl EncodedDepthImage {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_blob = self.blob.as_ref().map(|b| b.array.len());
-        let len_media_type = self.media_type.as_ref().map(|b| b.array.len());
-        let len_meter = self.meter.as_ref().map(|b| b.array.len());
-        let len_colormap = self.colormap.as_ref().map(|b| b.array.len());
-        let len_depth_range = self.depth_range.as_ref().map(|b| b.array.len());
-        let len_point_fill_ratio = self.point_fill_ratio.as_ref().map(|b| b.array.len());
-        let len_draw_order = self.draw_order.as_ref().map(|b| b.array.len());
-        let len_magnification_filter = self.magnification_filter.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_blob)
-            .or(len_media_type)
-            .or(len_meter)
-            .or(len_colormap)
-            .or(len_depth_range)
-            .or(len_point_fill_ratio)
-            .or(len_draw_order)
-            .or(len_magnification_filter)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.blob,
+            self.media_type,
+            self.meter,
+            self.colormap,
+            self.depth_range,
+            self.point_fill_ratio,
+            self.draw_order,
+            self.magnification_filter,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// The encoded depth payload.

@@ -11,7 +11,7 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_viewer::external::re_log_types::TimelineName;
 use re_viewer::external::re_ui::notifications::NotificationLevel;
-use re_viewer::viewer_test_utils::{self, AppTestingExt as _, HarnessOptions};
+use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewer::{SystemCommand, SystemCommandSender as _};
 use re_viewer_context::TimeControlCommand;
 use std::io::Write as _;
@@ -357,7 +357,7 @@ async fn test_old_rrds_in_current_viewer() {
         let mut bad_notifications = vec![];
         for n in harness
             .state()
-            .testonly_get_notifications()
+            .notifications()
             .notifications()
             .iter()
             .filter(|n| {

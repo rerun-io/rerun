@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use agent_client_protocol::schema::v1::{
+use agent_client_protocol_schema::v1::{
     AvailableCommand, ContentBlock, Plan, SessionConfigId, SessionConfigKind, SessionConfigOption,
     SessionConfigOptionCategory, SessionConfigSelect, SessionConfigSelectOption,
     SessionConfigSelectOptions, SessionModeId, SessionUpdate, TextContent, ToolCall,
@@ -143,11 +143,32 @@ pub enum TranscriptItem {
     },
 }
 
+impl TranscriptItem {
+    /// The prompt, if the user wrote this.
+    pub fn user_prompt(&self) -> Option<&Prompt> {
+        match self {
+            Self::User(prompt) => Some(prompt),
+            _ => None,
+        }
+    }
+
+    /// The text of an error note.
+    pub fn error_text(&self) -> Option<&str> {
+        match self {
+            Self::Note {
+                text,
+                is_error: true,
+            } => Some(text),
+            _ => None,
+        }
+    }
+}
+
 /// A transcript item plus when it first appeared.
 #[derive(Clone, Debug)]
 pub struct TranscriptEntry {
     /// When the item was first added. Later updates to the item do not move it.
-    pub created_at: std::time::SystemTime,
+    pub created_at: web_time::SystemTime,
 
     /// The item itself.
     pub item: TranscriptItem,
@@ -184,7 +205,7 @@ pub struct Transcript {
 impl Transcript {
     fn push(&mut self, item: TranscriptItem) {
         self.items.push(TranscriptEntry {
-            created_at: std::time::SystemTime::now(),
+            created_at: web_time::SystemTime::now(),
             item,
         });
     }
@@ -287,7 +308,7 @@ impl Transcript {
                 self.usage = Some(usage);
             }
             SessionUpdate::SessionInfoUpdate(info) => {
-                if let agent_client_protocol::schema::MaybeUndefined::Value(title) = info.title {
+                if let agent_client_protocol_schema::MaybeUndefined::Value(title) = info.title {
                     self.title = Some(title);
                 }
             }
@@ -535,7 +556,7 @@ fn describe_agent_block(block: &ContentBlock) -> String {
 
 /// An attached image, named rather than embedded, the way agent images are in a dump.
 fn describe_prompt_image(image: &PromptImage) -> String {
-    let [width, height] = image.size;
+    let [width, height] = image.resolution;
     format!("`[image {} {width}×{height}]`", image.mime_type)
 }
 
@@ -632,7 +653,7 @@ pub fn model_name(model: &SessionConfigSelectOption) -> &str {
 mod tests {
     use std::sync::Arc;
 
-    use agent_client_protocol::schema::v1::{
+    use agent_client_protocol_schema::v1::{
         ConfigOptionUpdate, ContentChunk, Diff, SessionConfigSelectGroup,
         SessionConfigSelectOption, ToolCall,
     };
@@ -758,7 +779,7 @@ mod tests {
             images: vec![PromptImage {
                 bytes: Arc::from([0_u8].as_slice()),
                 mime_type: "image/png".to_owned(),
-                size: [800, 600],
+                resolution: [800, 600],
             }],
         });
 

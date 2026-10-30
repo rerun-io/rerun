@@ -1,0 +1,17 @@
+{
+  "name": "viewer-control-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "test": "playwright test"
+  },
+  "dependencies": {
+    "@rerun-io/web-viewer": "file:../../../rerun_js/web-viewer"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0",
+    "typescript": "6.0.3",
+    "vite": "8.3.3"
+  }
+}

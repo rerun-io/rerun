@@ -77,19 +77,14 @@ __trailing_web_viewer = []
 ## WARNING: Creating a `WebViewerServer` without an assets archive path will fail in such builds.
 __external_web_viewer = []
 
-## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics"]
-
 [dependencies]
+re_analytics.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 
 document-features.workspace = true
 tiny_http.workspace = true
 thiserror.workspace = true
 zip.workspace = true
-
-# Optional dependencies:
-re_analytics = { workspace = true, optional = true }
 
 [dev-dependencies]
 tempfile.workspace = true

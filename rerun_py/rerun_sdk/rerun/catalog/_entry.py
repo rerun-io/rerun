@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 from abc import ABC
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from enum import StrEnum
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
 
 import pyarrow as pa
@@ -17,7 +18,7 @@ from rerun_bindings import (
     ASSET_PROPERTY,
     ASSET_SEGMENTS_COMPONENT,
     DatasetEntryInternal,
-    DatasetViewInternal,
+    DatasetSelectionInternal,
     TableEntryInternal,
     TableInsertModeInternal,
     _IndexValuesLikeInternal,
@@ -32,6 +33,7 @@ _BatchesType: TypeAlias = (
 
 if TYPE_CHECKING:
     from datetime import datetime, timedelta
+    from typing import BinaryIO
 
     import datafusion
     import numpy as np
@@ -45,11 +47,12 @@ if TYPE_CHECKING:
         EntryKind,
         IndexValuesLike,
         Layer,
-        RegistrationHandle,
+        RegistrationOperation,
         Schema,
         Segment,
         UnregistrationHandle,
     )
+    from ._write_operation import WriteOperation
 
 
 class OnDuplicateSegmentLayer(StrEnum):
@@ -742,6 +745,113 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.segment_url(segment_id, timeline, start, end)
 
+    # TODO(RR-2168): Allow selecting an arbitrary recording from the RRD and add a segment_id
+    # parameter once registration supports overriding encoded recording IDs.
+    @with_tracing("DatasetEntry._write_segments")
+    def _write_segments(
+        self,
+        source: str | Path | bytes | bytearray | memoryview | BinaryIO | Iterable[bytes],
+        storage_prefix: str | None = None,
+        *,
+        layer_name: str = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> WriteOperation:
+        """
+        Upload a complete RRD and register its first recording.
+
+        Experimental API. Only the first recording in the RRD is registered.
+        Its recording ID becomes the segment ID; selecting another recording is not yet supported.
+        Duplicate handling follows `register()`.
+        `storage_prefix` is relative to catalog storage.
+        An invalid `storage_prefix` raises `ValueError` immediately.
+
+        Keep files unchanged until the operation finishes.
+        Readers are consumed synchronously from their current position and are not closed.
+        Call `wait()` on the returned operation to confirm registration or raise the failure.
+        """
+        return self._write_recording(
+            source, storage_prefix, "segment", layer_name=layer_name, on_duplicate=on_duplicate
+        )
+
+    @with_tracing("DatasetEntry._write_blueprint")
+    def _write_blueprint(
+        self,
+        source: str | Path | bytes | bytearray | memoryview | BinaryIO | Iterable[bytes],
+        storage_prefix: str | None = None,
+        *,
+        layer_name: str = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> WriteOperation:
+        """
+        Upload a complete RBL and register its first recording in the associated blueprint dataset.
+
+        Experimental API. The recording ID becomes the blueprint's segment ID.
+        This does not change the dataset's default blueprints.
+        `storage_prefix` is relative to catalog storage.
+        An invalid `storage_prefix` raises `ValueError` immediately.
+        Duplicate handling follows `register()`.
+
+        Keep files unchanged until the operation finishes.
+        Readers are consumed synchronously from their current position and are not closed.
+        Call `wait()` on the returned operation to confirm registration or raise the failure.
+        """
+        return self._write_recording(
+            source, storage_prefix, "blueprint", layer_name=layer_name, on_duplicate=on_duplicate
+        )
+
+    @with_tracing("DatasetEntry._write_asset")
+    def _write_asset(
+        self,
+        source: str | Path | bytes | bytearray | memoryview | BinaryIO | Iterable[bytes],
+        storage_prefix: str | None = None,
+        *,
+        layer_name: str = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> WriteOperation:
+        """
+        Upload a complete RRD and register its first recording in the associated asset dataset.
+
+        Experimental API. The recording ID becomes the asset's segment ID.
+        This preserves existing asset coverage; new assets apply to every segment.
+        The server enforces the same static-data and size limits as `register_asset()`.
+        `storage_prefix` is relative to catalog storage.
+        An invalid `storage_prefix` raises `ValueError` immediately.
+        Duplicate handling follows `register()`.
+
+        Keep files unchanged until the operation finishes.
+        Readers are consumed synchronously from their current position and are not closed.
+        Call `wait()` on the returned operation to confirm registration or raise the failure.
+        """
+        return self._write_recording(source, storage_prefix, "asset", layer_name=layer_name, on_duplicate=on_duplicate)
+
+    def _write_recording(
+        self,
+        source: str | Path | bytes | bytearray | memoryview | BinaryIO | Iterable[bytes],
+        storage_prefix: str | None,
+        kind: Literal["segment", "blueprint", "asset"],
+        *,
+        layer_name: str,
+        on_duplicate: OnDuplicateSegmentLayer,
+    ) -> WriteOperation:
+        from ._write_operation import WriteOperation
+
+        if isinstance(source, (str, Path)):
+            return WriteOperation(
+                self._internal.write_path(str(source), storage_prefix, kind, layer_name, on_duplicate)
+            )
+        elif isinstance(source, (bytes, bytearray, memoryview)):
+            data = bytes(source)
+        elif callable(read := getattr(source, "read", None)):
+            data = read()
+            if not isinstance(data, bytes):
+                raise TypeError("binary readers must return bytes")
+        else:
+            # TODO(RR-5715): Pass sequential sources through the bounded streaming upload path.
+            data = b"".join(source)
+        return WriteOperation(self._internal.write_bytes(data, storage_prefix, kind, layer_name, on_duplicate))
+
+    # TODO(RR-2168): Allow selecting an arbitrary recording from each RRD and add a segment_id
+    # parameter once registration supports overriding encoded recording IDs.
     @with_tracing("DatasetEntry.register")
     def register(
         self,
@@ -751,12 +861,15 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         layer_name: str | Sequence[str] = "base",
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
         object_store_config: str | None = None,
-    ) -> RegistrationHandle:
+    ) -> RegistrationOperation:
         """
         Register RRD URIs to the dataset and return a handle to track progress.
 
         This method initiates the registration of recordings to the dataset, and returns
         a handle that can be used to wait for completion or iterate over results.
+
+        Only the first recording in each RRD is registered.
+        Its recording ID becomes the segment ID; selecting another recording is not yet supported.
 
         Prefer batching many URIs into a single `register` call rather than calling
         `register` repeatedly in a loop, which is much slower.
@@ -773,8 +886,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             Defaults to `"base"`.
 
         on_duplicate:
-            How to handle the cases where the segment id and layer name already exist in the dataset?
-            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+            How to handle a segment layer that already exists in the dataset.
+            Defaults to `OnDuplicateSegmentLayer.ERROR`, which fails that segment's registration; the failure is
+            reported by `wait()`, and the other segments in the call still register. Servers older than Rerun 0.41
+            and Rerun Hub 0.20 reject the whole call with `AlreadyExistsError` instead.
 
         object_store_config:
             Use a custom object store configuration for the registration.
@@ -782,13 +897,13 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Returns
         -------
-        RegistrationHandle
+        RegistrationOperation
             A handle to track and wait on the registration tasks.
 
         """
         from rerun.error_utils import _send_warning_or_raise
 
-        from ._registration_handle import RegistrationHandle
+        from ._registration_handle import RegistrationOperation
 
         if isinstance(recording_uri, str):
             _send_warning_or_raise(
@@ -809,7 +924,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             if len(layer_names) != len(recording_uris):
                 raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
-        return RegistrationHandle(
+        return RegistrationOperation(
             self._internal.register(
                 recording_uris,
                 recording_layers=layer_names,
@@ -899,7 +1014,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
         *,
         object_store_config: str | None = None,
-    ) -> RegistrationHandle:
+    ) -> RegistrationOperation:
         """
         Register all RRDs under a given prefix to the dataset and return a handle to track progress.
 
@@ -919,8 +1034,10 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             If `None`, this defaults to `"base"`.
 
         on_duplicate:
-            How to handle the cases where the segment id and layer name already exist in the dataset?
-            Defaults to `OnDuplicateSegmentLayer.ERROR`.
+            How to handle a segment layer that already exists in the dataset.
+            Defaults to `OnDuplicateSegmentLayer.ERROR`, which fails that segment's registration; the failure is
+            reported by `wait()`, and the other segments in the call still register. Servers older than Rerun 0.41
+            and Rerun Hub 0.20 reject the whole call with `AlreadyExistsError` instead.
 
         object_store_config:
             Use a custom object store configuration for the registration.
@@ -931,12 +1048,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         A handle to track and wait on the registration tasks.
 
         """
-        from ._registration_handle import RegistrationHandle
+        from ._registration_handle import RegistrationOperation
 
         if layer_name is None:
             layer_name = "base"
 
-        return RegistrationHandle(
+        return RegistrationOperation(
             self._internal.register_prefix(
                 recordings_prefix, layer_name, on_duplicate, object_store_config=object_store_config
             )
@@ -995,9 +1112,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         return LazyStore(self._internal.segment_store(segment_id, include_assets=include_assets))
 
     @with_tracing("DatasetEntry.filter_segments")
-    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
+    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetSelection:
         """
-        Return a new DatasetView filtered to the given segment IDs.
+        Return a new DatasetSelection filtered to the given segment IDs.
 
         Parameters
         ----------
@@ -1008,24 +1125,24 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Returns
         -------
-        DatasetView
-            A new view filtered to the given segments.
+        DatasetSelection
+            A new selection filtered to the given segments.
 
         Examples
         --------
         ```python
         # Filter to a single segment
-        view = dataset.filter_segments("recording_0")
+        selection = dataset.filter_segments("recording_0")
 
         # Filter to specific segments
-        view = dataset.filter_segments(["recording_0", "recording_1"])
+        selection = dataset.filter_segments(["recording_0", "recording_1"])
 
         # Filter using a DataFrame
         good_segments = segment_table.filter(col("property:episode:success")[0])
-        view = dataset.filter_segments(good_segments)
+        selection = dataset.filter_segments(good_segments)
 
-        # Read data from the filtered view
-        df = view.reader(index="timeline")
+        # Read data from the filtered selection
+        df = selection.reader(index="timeline")
         ```
 
         """
@@ -1037,18 +1154,21 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         elif isinstance(segment_ids, datafusion.DataFrame):
             segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
-        return DatasetView(self._internal.filter_segments(list(segment_ids)))
+        return DatasetSelection(self._internal.filter_segments(list(segment_ids)))
 
     @with_tracing("DatasetEntry.filter_contents")
-    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
+    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetSelection:
         """
-        Return a new DatasetView filtered to the given entity paths.
+        Return a new DatasetSelection filtered to the given entity paths.
 
         Entity path expressions support wildcards:
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
         See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
+
+        Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
+        call's expressions select it. To combine includes and excludes, pass them in a single call.
 
         Parameters
         ----------
@@ -1058,32 +1178,32 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         Returns
         -------
-        DatasetView
-            A new view filtered to the matching entity paths.
+        DatasetSelection
+            A new selection filtered to the matching entity paths.
 
         Examples
         --------
         ```python
         # Filter to a single entity path
-        view = dataset.filter_contents("/points/**")
-        view = dataset.filter_contents(
+        selection = dataset.filter_contents("/points/**")
+        selection = dataset.filter_contents(
             ContentFilter.nothing()
             .include("/points/**")
         )
 
         # Filter to specific entity paths
-        view = dataset.filter_contents(["/points/**"])
+        selection = dataset.filter_contents(["/points/**"])
 
         # Exclude certain paths
-        view = dataset.filter_contents(["/points/**", "-/text/**"])
-        view = dataset.filter_contents(
+        selection = dataset.filter_contents(["/points/**", "-/text/**"])
+        selection = dataset.filter_contents(
             ContentFilter.nothing()
             .include("/points", subtree=True)
             .exclude("/text/**")
         )
 
         # Chain with segment filters
-        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
+        selection = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
@@ -1092,7 +1212,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         elif isinstance(exprs, str):
             exprs = [exprs]
 
-        return DatasetView(self._internal.filter_contents(list(exprs)))
+        return DatasetSelection(self._internal.filter_contents(list(exprs)))
 
     def reader(
         self,
@@ -1126,7 +1246,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Parameters
         ----------
         index
-            The index (timeline) to use for the view.
+            The index (timeline) to use for the query.
             Pass `None` to read only static data.
             The reader leaves out properties for every index unless the contents include `/__properties/**`,
             for example with `ContentFilter.include_properties()`.
@@ -1229,46 +1349,46 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     @with_tracing("DatasetEntry.get_index_ranges")
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
-        view = self.filter_contents(["/**"])
-        return view.get_index_ranges()
+        selection = self.filter_contents(["/**"])
+        return selection.get_index_ranges()
 
 
-class DatasetView:
+class DatasetSelection:
     """
-    A filtered view over a dataset in the catalog.
+    A selection of a dataset in the catalog: the dataset plus segment and content filters.
 
-    A `DatasetView` provides lazy filtering over a dataset's segments and entity paths.
+    A `DatasetSelection` provides lazy filtering over a dataset's segments and entity paths.
     Filters are composed lazily and only applied when data is actually read.
 
-    Create a `DatasetView` by calling `filter_segments()` or `filter_contents()` on a
+    Create a `DatasetSelection` by calling `filter_segments()` or `filter_contents()` on a
     `DatasetEntry`.
 
     Examples
     --------
     ```python
     # Filter to specific segments
-    view = dataset.filter_segments(["recording_0", "recording_1"])
+    selection = dataset.filter_segments(["recording_0", "recording_1"])
 
     # Filter to specific entity paths
-    view = dataset.filter_contents(["/points/**"])
+    selection = dataset.filter_contents(["/points/**"])
 
     # Chain filters
-    view = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
+    selection = dataset.filter_segments(["recording_0"]).filter_contents(["/points/**"])
 
     # Read data
-    df = view.reader(index="timeline")
+    df = selection.reader(index="timeline")
     ```
 
     """
 
-    def __init__(self, internal: DatasetViewInternal) -> None:
+    def __init__(self, internal: DatasetSelectionInternal) -> None:
         """
-        Create a new DatasetView wrapper.
+        Create a new DatasetSelection wrapper.
 
         Parameters
         ----------
         internal:
-            The internal Rust-side DatasetView object.
+            The internal Rust-side DatasetSelection object.
 
         """
         self._internal = internal
@@ -1279,9 +1399,9 @@ class DatasetView:
 
     def schema(self) -> Schema:
         """
-        Return the filtered schema for this view.
+        Return the filtered schema for this selection.
 
-        The schema reflects any content filters applied to the view.
+        The schema reflects any content filters applied to the selection.
 
         Returns
         -------
@@ -1295,7 +1415,7 @@ class DatasetView:
 
     def arrow_schema(self) -> pa.Schema:
         """
-        Return the filtered Arrow schema for this view.
+        Return the filtered Arrow schema for this selection.
 
         Returns
         -------
@@ -1305,10 +1425,10 @@ class DatasetView:
         """
         return self._internal.arrow_schema()
 
-    @with_tracing("DatasetView.segment_ids")
+    @with_tracing("DatasetSelection.segment_ids")
     def segment_ids(self) -> list[str]:
         """
-        Return the segment IDs for this view.
+        Return the segment IDs for this selection.
 
         If segment filters have been applied, only matching segments are returned.
 
@@ -1331,7 +1451,7 @@ class DatasetView:
         The segment table contains metadata about each segment in the dataset,
         including segment IDs, layer names, storage URLs, and size information.
 
-        Only segments matching this view's filters are included.
+        Only segments matching this selection's filters are included.
 
         Parameters
         ----------
@@ -1371,7 +1491,7 @@ class DatasetView:
         fill_latest_at: bool = False,
     ) -> datafusion.DataFrame:
         """
-        Create a reader over this DatasetView.
+        Create a reader over this DatasetSelection.
 
         Returns a DataFusion DataFrame.
 
@@ -1393,7 +1513,7 @@ class DatasetView:
         Parameters
         ----------
         index
-            The index (timeline) to use for the view.
+            The index (timeline) to use for the query.
             Pass `None` to read only static data.
             The reader leaves out properties for every index unless the contents include `/__properties/**`,
             for example with `ContentFilter.include_properties()`.
@@ -1449,6 +1569,72 @@ class DatasetView:
         A DataFusion DataFrame.
 
         """
+        selection, index_values_dict = self._resolve_using_index_values(index, using_index_values)
+
+        return selection.reader(
+            index=index,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+            fill_latest_at=fill_latest_at,
+            using_index_values=index_values_dict,
+        )
+
+    def _read_arrow(
+        self,
+        index: str | None,
+        *,
+        include_semantically_empty_columns: bool = False,
+        include_tombstone_columns: bool = False,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | IndexValuesLike | None = None,
+        fill_latest_at: bool = False,
+    ) -> pa.RecordBatchReader:
+        """
+        Read this DatasetSelection as a stream of Arrow record batches.
+
+        Rows are ordered by `rerun_segment_id` ascending, then by `index` ascending within
+        each segment.
+        This is not a global chronological order across segments.
+        The order of rows with equal `(rerun_segment_id, index)` is unspecified.
+
+        The returned reader is single-pass.
+        Use `read_all()` on it to collect the full result into a `pyarrow.Table`.
+
+        Parameters
+        ----------
+        index
+            The index (timeline) to order by within each segment.
+            Pass `None` to read only static data, ordered by segment.
+        include_semantically_empty_columns
+            Whether to include columns that are semantically empty.
+        include_tombstone_columns
+            Whether to include tombstone columns.
+        using_index_values
+            Index values at which to resample data.
+            Same semantics as in [`DatasetSelection.reader`][rerun.catalog.DatasetSelection.reader].
+        fill_latest_at
+            Whether to fill null values with the latest valid data.
+
+        Returns
+        -------
+        pa.RecordBatchReader
+            A single-pass reader over the ordered record batches.
+
+        """
+        selection, index_values_dict = self._resolve_using_index_values(index, using_index_values)
+
+        return selection.read_arrow(
+            index=index,
+            include_semantically_empty_columns=include_semantically_empty_columns,
+            include_tombstone_columns=include_tombstone_columns,
+            fill_latest_at=fill_latest_at,
+            using_index_values=index_values_dict,
+        )
+
+    def _resolve_using_index_values(
+        self,
+        index: str | None,
+        using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | IndexValuesLike | None,
+    ) -> tuple[DatasetSelectionInternal, dict[str, IndexValuesLike] | None]:
         import datafusion as dfn
 
         index_values_dict = None
@@ -1477,22 +1663,14 @@ class DatasetView:
                 index_values_dict = self._dataframe_to_index_values_dict(df, index)
 
         if index_values_dict is not None:
-            view = self._internal.filter_segments(list(index_values_dict.keys()))
-        else:
-            view = self._internal
+            return self._internal.filter_segments(list(index_values_dict.keys())), index_values_dict
 
-        return view.reader(
-            index=index,
-            include_semantically_empty_columns=include_semantically_empty_columns,
-            include_tombstone_columns=include_tombstone_columns,
-            fill_latest_at=fill_latest_at,
-            using_index_values=index_values_dict,
-        )
+        return self._internal, None
 
-    @with_tracing("DatasetView.filter_segments")
-    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetView:
+    @with_tracing("DatasetSelection.filter_segments")
+    def filter_segments(self, segment_ids: str | Sequence[str] | datafusion.DataFrame) -> DatasetSelection:
         """
-        Return a new DatasetView filtered to the given segment IDs.
+        Return a new DatasetSelection filtered to the given segment IDs.
 
         Parameters
         ----------
@@ -1503,24 +1681,24 @@ class DatasetView:
 
         Returns
         -------
-        DatasetView
-            A new view filtered to the given segments.
+        DatasetSelection
+            A new selection filtered to the given segments.
 
         Examples
         --------
         ```python
         # Filter to a single segment
-        view = dataset.filter_segments("recording_0")
+        selection = dataset.filter_segments("recording_0")
 
         # Filter to specific segments
-        view = dataset.filter_segments(["recording_0", "recording_1"])
+        selection = dataset.filter_segments(["recording_0", "recording_1"])
 
         # Filter using a DataFrame
         good_segments = segment_table.filter(col("property:episode:success")[0])
-        view = dataset.filter_segments(good_segments)
+        selection = dataset.filter_segments(good_segments)
 
-        # Read data from the filtered view
-        df = view.reader(index="timeline")
+        # Read data from the filtered selection
+        df = selection.reader(index="timeline")
         ```
 
         """
@@ -1532,18 +1710,21 @@ class DatasetView:
         elif isinstance(segment_ids, datafusion.DataFrame):
             segment_ids = segment_ids.select("rerun_segment_id").to_pydict()["rerun_segment_id"]
 
-        return DatasetView(self._internal.filter_segments(list(segment_ids)))
+        return DatasetSelection(self._internal.filter_segments(list(segment_ids)))
 
-    @with_tracing("DatasetView.filter_contents")
-    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetView:
+    @with_tracing("DatasetSelection.filter_contents")
+    def filter_contents(self, exprs: ContentFilter | str | Sequence[str]) -> DatasetSelection:
         """
-        Return a new DatasetView filtered to the given entity paths.
+        Return a new DatasetSelection filtered to the given entity paths.
 
         Entity path expressions support wildcards:
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
         See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
+
+        Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
+        call's expressions select it. To combine includes and excludes, pass them in a single call.
 
         Parameters
         ----------
@@ -1553,30 +1734,30 @@ class DatasetView:
 
         Returns
         -------
-        DatasetView
-            A new view filtered to the matching entity paths.
+        DatasetSelection
+            A new selection filtered to the matching entity paths.
 
         Examples
         --------
         ```python
         # Filter to a single entity path
-        view = dataset.filter_contents("/points/**")
+        selection = dataset.filter_contents("/points/**")
 
         # Filter to specific entity paths
-        view = dataset.filter_contents(["/points/**"])
+        selection = dataset.filter_contents(["/points/**"])
 
         # Exclude certain paths
-        view = dataset.filter_contents(["/points/**", "-/text/**"])
+        selection = dataset.filter_contents(["/points/**", "-/text/**"])
 
         # Using ContentFilter builder
-        view = dataset.filter_contents(
+        selection = dataset.filter_contents(
             ContentFilter.everything()
             .exclude("/robot/raw/**")
             .include("/robot/raw/i_need_this")
         )
 
         # Chain with segment filters
-        view = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
+        selection = dataset.filter_segments(["recording_0"]).filter_contents("/points/**")
         ```
 
         """
@@ -1585,10 +1766,10 @@ class DatasetView:
         elif isinstance(exprs, str):
             exprs = [exprs]
 
-        return DatasetView(self._internal.filter_contents(list(exprs)))
+        return DatasetSelection(self._internal.filter_contents(list(exprs)))
 
     def __repr__(self) -> str:
-        """Return a string representation of the DatasetView."""
+        """Return a string representation of the DatasetSelection."""
 
         dataset_str = str(self.dataset)
 
@@ -1604,9 +1785,9 @@ class DatasetView:
         else:
             content_str = "no content filter"
 
-        return f"DatasetView({dataset_str}, {segment_str}, {content_str})"
+        return f"DatasetSelection({dataset_str}, {segment_str}, {content_str})"
 
-    @with_tracing("DatasetView.get_index_ranges")
+    @with_tracing("DatasetSelection.get_index_ranges")
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
         exprs = ["rerun_segment_id"]

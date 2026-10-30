@@ -23,12 +23,20 @@ pub fn timestamp_to_proto(ts: jiff::Timestamp) -> prost_types::Timestamp {
 }
 
 /// Compression format used.
+///
+/// When passed to an encoder, this is a request: the encoder may store a payload uncompressed if
+/// compressing it would not pay off (see [`compress_lz4_if_worthwhile`]).
+/// What was actually applied is recorded per payload in its `compression` field, which is the
+/// only thing decoders consult.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Compression {
     Off = 0,
 
     /// Very fast compression and decompression, but not very good compression ratio.
+    ///
+    /// As a request, this means "LZ4 if it shrinks the payload to at most
+    /// [`MAX_LZ4_COMPRESSED_FRACTION_PERCENT`] of its size"; see [`compress_lz4_if_worthwhile`].
     LZ4 = 1,
 }
 
@@ -166,6 +174,64 @@ impl From<&str> for crate::common::v1alpha1::SegmentId {
     fn from(id: &str) -> Self {
         Self {
             id: Some(id.to_owned()),
+        }
+    }
+}
+
+// --- SchemaId ---
+
+/// Identifies an Arrow schema by the SHA-256 of its canonical form.
+///
+/// See `rerun.common.v1alpha1.SchemaId` for the canonical form.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
+pub struct SchemaId([u8; 32]);
+
+impl SchemaId {
+    #[inline]
+    pub fn from_sha256(sha256: [u8; 32]) -> Self {
+        Self(sha256)
+    }
+
+    #[inline]
+    pub fn sha256(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl std::fmt::Display for SchemaId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.iter().try_for_each(|byte| write!(f, "{byte:02x}"))
+    }
+}
+
+impl std::fmt::Debug for SchemaId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "SchemaId({self})")
+    }
+}
+
+impl TryFrom<crate::common::v1alpha1::SchemaId> for SchemaId {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::common::v1alpha1::SchemaId) -> Result<Self, Self::Error> {
+        let sha256 = value
+            .sha256
+            .ok_or(missing_field!(crate::common::v1alpha1::SchemaId, "sha256"))?;
+        let sha256 = <[u8; 32]>::try_from(sha256.as_ref()).map_err(|_err| {
+            invalid_field!(
+                crate::common::v1alpha1::SchemaId,
+                "sha256",
+                format!("expected 32 bytes, got {}", sha256.len())
+            )
+        })?;
+        Ok(Self(sha256))
+    }
+}
+
+impl From<SchemaId> for crate::common::v1alpha1::SchemaId {
+    fn from(value: SchemaId) -> Self {
+        Self {
+            sha256: Some(value.0.to_vec().into()),
         }
     }
 }
@@ -857,8 +923,9 @@ impl From<ScanParametersOrderClause> for crate::common::v1alpha1::ScanParameters
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IfMissingBehavior {
-    Skip,
-    Error,
+    // Discriminants match the proto enum, so a raw `as i32` cast is the proto value.
+    Skip = 1,
+    Error = 2,
 }
 
 impl Default for IfMissingBehavior {
@@ -888,9 +955,10 @@ impl From<IfMissingBehavior> for crate::common::v1alpha1::IfMissingBehavior {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum IfDuplicateBehavior {
-    Overwrite,
-    Skip,
-    Error,
+    // Discriminants match the proto enum, so a raw `as i32` cast is the proto value.
+    Overwrite = 1,
+    Skip = 2,
+    Error = 3,
 }
 
 impl Default for IfDuplicateBehavior {
@@ -1185,8 +1253,9 @@ impl From<arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart 
 impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart {
     fn from(value: &arrow::array::RecordBatch) -> Self {
         let version = crate::common::v1alpha1::EncoderVersion::V0;
-        let compression = crate::common::v1alpha1::Compression::Lz4;
-        let (payload, uncompressed_size) = record_batch_to_ipc_bytes(value, compression.into());
+        let (payload, compression, uncompressed_size) =
+            record_batch_to_ipc_bytes(value, Compression::LZ4);
+        let compression = crate::common::v1alpha1::Compression::from(compression);
         Self {
             encoder_version: version as i32, // make sure `version` is using the transport type!!
             payload: Some(payload.into()),
@@ -1197,11 +1266,15 @@ impl From<&arrow::array::RecordBatch> for crate::common::v1alpha1::DataframePart
 }
 
 /// `RecordBatch` to IPC bytes. No I/O, no failures.
+///
+/// Returns the payload, the compression actually applied to it (which may be [`Compression::Off`]
+/// even though [`Compression::LZ4`] was requested, see [`compress_lz4_if_worthwhile`]), and the
+/// size of the IPC bytes before compression.
 #[tracing::instrument(level = "debug", skip_all)]
 fn record_batch_to_ipc_bytes(
     batch: &arrow::array::RecordBatch,
     compression: Compression,
-) -> (Vec<u8>, u64) {
+) -> (Vec<u8>, Compression, u64) {
     let schema = batch.schema_ref().as_ref();
 
     let mut uncompressed = Vec::new();
@@ -1225,16 +1298,41 @@ fn record_batch_to_ipc_bytes(
 
     let uncompressed_size = uncompressed.len() as u64;
 
-    let data = match compression {
-        Compression::Off => uncompressed,
-        Compression::LZ4 => {
-            re_tracing::profile_scope!("lz4::compress");
-            let _span = tracing::trace_span!("lz4::compress").entered();
-            lz4_flex::block::compress(&uncompressed)
-        }
+    let (data, compression) = match compression {
+        Compression::Off => (uncompressed, Compression::Off),
+        Compression::LZ4 => compress_lz4_if_worthwhile(uncompressed),
     };
 
-    (data, uncompressed_size)
+    (data, compression, uncompressed_size)
+}
+
+/// An LZ4-compressed payload is kept only if it is at most this percentage of the uncompressed
+/// size, otherwise the payload is stored uncompressed.
+///
+/// Every read of a compressed payload pays for an allocation of the uncompressed size plus a
+/// decompression pass over it, whereas an uncompressed payload can be used in place.
+/// Below a 10% saving, fetching the extra bytes is cheaper than that, and incompressible data
+/// such as encoded video or images lands here.
+pub const MAX_LZ4_COMPRESSED_FRACTION_PERCENT: u64 = 90;
+
+/// LZ4-compresses `uncompressed` and returns the compressed bytes if they are at most
+/// [`MAX_LZ4_COMPRESSED_FRACTION_PERCENT`] of the input, otherwise returns the input untouched.
+///
+/// The returned [`Compression`] says which one it is, and must be what gets recorded alongside
+/// the payload.
+pub fn compress_lz4_if_worthwhile(uncompressed: Vec<u8>) -> (Vec<u8>, Compression) {
+    re_tracing::profile_function!();
+    let _span = tracing::trace_span!("lz4::compress").entered();
+
+    let compressed = lz4_flex::block::compress(&uncompressed);
+
+    if (compressed.len() as u64) * 100
+        <= (uncompressed.len() as u64) * MAX_LZ4_COMPRESSED_FRACTION_PERCENT
+    {
+        (compressed, Compression::LZ4)
+    } else {
+        (uncompressed, Compression::Off)
+    }
 }
 
 /// Largest payload one message may declare, and the largest size one compressed buffer may
@@ -1311,6 +1409,35 @@ fn record_batch_from_ipc_bytes(
 
 #[cfg(test)]
 mod tests {
+    /// A raw `as i32` cast of an ext behavior enum must yield the proto value, because
+    /// request builders cast it straight into a proto field.
+    #[test]
+    fn behavior_enums_cast_to_their_proto_values() {
+        use crate::common::v1alpha1 as proto;
+
+        for behavior in [
+            super::IfDuplicateBehavior::Overwrite,
+            super::IfDuplicateBehavior::Skip,
+            super::IfDuplicateBehavior::Error,
+        ] {
+            assert_eq!(
+                behavior as i32,
+                proto::IfDuplicateBehavior::from(behavior) as i32,
+                "{behavior:?}"
+            );
+        }
+        for behavior in [
+            super::IfMissingBehavior::Skip,
+            super::IfMissingBehavior::Error,
+        ] {
+            assert_eq!(
+                behavior as i32,
+                proto::IfMissingBehavior::from(behavior) as i32,
+                "{behavior:?}"
+            );
+        }
+    }
+
     use super::*;
 
     #[test]
@@ -1324,7 +1451,9 @@ mod tests {
         )
         .unwrap();
 
-        let (payload, uncompressed_size) = record_batch_to_ipc_bytes(&batch, Compression::Off);
+        let (payload, compression, uncompressed_size) =
+            record_batch_to_ipc_bytes(&batch, Compression::Off);
+        assert_eq!(compression, Compression::Off);
         let payload = prost::bytes::Bytes::from(payload);
 
         let decoded = record_batch_from_ipc_bytes(&payload, Compression::Off, uncompressed_size)
@@ -1336,6 +1465,94 @@ mod tests {
         assert!(
             record_batch_from_ipc_bytes(&truncated, Compression::Off, uncompressed_size).is_err()
         );
+    }
+
+    /// Deterministic bytes that LZ4 cannot shrink, standing in for encoded video.
+    fn incompressible_bytes(len: usize) -> Vec<u8> {
+        let mut state = 0x9E37_79B9_7F4A_7C15_u64;
+        (0..len)
+            .map(|_| {
+                state ^= state << 13;
+                state ^= state >> 7;
+                state ^= state << 17;
+                (state >> 56) as u8
+            })
+            .collect()
+    }
+
+    fn blob_batch(bytes: Vec<u8>) -> arrow::array::RecordBatch {
+        use arrow::array::{BinaryArray, RecordBatch};
+        use arrow::datatypes::{DataType, Field, Schema};
+
+        RecordBatch::try_new(
+            std::sync::Arc::new(Schema::new(vec![Field::new(
+                "blob",
+                DataType::Binary,
+                false,
+            )])),
+            vec![std::sync::Arc::new(BinaryArray::from_vec(vec![
+                bytes.as_slice(),
+            ]))],
+        )
+        .unwrap()
+    }
+
+    /// Requesting LZ4 on an incompressible batch stores it uncompressed, and the part records
+    /// that, so decoders never run LZ4 on it.
+    #[test]
+    fn lz4_request_falls_back_to_uncompressed_when_it_does_not_pay_off() {
+        let batch = blob_batch(incompressible_bytes(256 * 1024));
+
+        let (payload, compression, uncompressed_size) =
+            record_batch_to_ipc_bytes(&batch, Compression::LZ4);
+        assert_eq!(compression, Compression::Off);
+        assert_eq!(payload.len() as u64, uncompressed_size);
+        let (plain, _, _) = record_batch_to_ipc_bytes(&batch, Compression::Off);
+        assert_eq!(payload, plain);
+
+        let part = crate::common::v1alpha1::DataframePart::from(&batch);
+        assert_eq!(
+            part.compression,
+            crate::common::v1alpha1::Compression::None as i32
+        );
+        assert_eq!(part.uncompressed_size, uncompressed_size);
+        let decoded = record_batch_from_ipc_bytes(
+            part.payload.as_ref().unwrap(),
+            part.compression().into(),
+            part.uncompressed_size,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(decoded, batch);
+    }
+
+    /// A batch that does compress well is still stored as LZ4.
+    #[test]
+    fn lz4_request_is_honored_when_it_pays_off() {
+        let batch = blob_batch(vec![0xAB; 256 * 1024]);
+
+        let (payload, compression, uncompressed_size) =
+            record_batch_to_ipc_bytes(&batch, Compression::LZ4);
+        assert_eq!(compression, Compression::LZ4);
+        assert!(
+            (payload.len() as u64) * 100 <= uncompressed_size * MAX_LZ4_COMPRESSED_FRACTION_PERCENT,
+            "a kept LZ4 payload must be at most {MAX_LZ4_COMPRESSED_FRACTION_PERCENT}% of the {uncompressed_size} uncompressed bytes, got {}",
+            payload.len()
+        );
+
+        let part = crate::common::v1alpha1::DataframePart::from(&batch);
+        assert_eq!(
+            part.compression,
+            crate::common::v1alpha1::Compression::Lz4 as i32
+        );
+        let decoded = record_batch_from_ipc_bytes(
+            part.payload.as_ref().unwrap(),
+            part.compression().into(),
+            part.uncompressed_size,
+        )
+        .unwrap()
+        .unwrap();
+        assert_eq!(decoded, batch);
     }
 
     /// A size the compressed bytes could not possibly expand to is rejected before allocating.

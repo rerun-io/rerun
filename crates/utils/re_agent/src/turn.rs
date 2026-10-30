@@ -1,9 +1,11 @@
 //! Reports describing completed agent turns.
 
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use agent_client_protocol::schema::v1::{ContentBlock, ToolCallContent};
+use web_time::Instant;
+
+use agent_client_protocol_schema::v1::{ContentBlock, ToolCallContent};
 
 use crate::transcript::ToolCallState;
 
@@ -70,8 +72,11 @@ impl TurnOutcome {
 /// What happened during one prompt, for hosts that want to log or record it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TurnReport {
-    /// The agent's self-reported name, if it had introduced itself by then.
+    /// The agent's self-reported name, e.g. "Claude Code", if it had introduced itself by then.
     pub agent: Option<String>,
+
+    /// The model the agent used, e.g. "Opus 5.5".
+    pub model: Option<String>,
 
     /// What the user typed, without the preamble.
     pub prompt: String,

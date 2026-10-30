@@ -3,8 +3,8 @@ title = "Eigen and OpenCV C++ integration"
 description = "Minimal CMake project combining Rerun with Eigen for point and pose math and OpenCV for image reading and conversion."
 source = "https://github.com/rerun-io/cpp-example-opencv-eigen"
 tags = ["2D", "3D", "C++", "Eigen", "OpenCV"]
-thumbnail = "https://static.rerun.io/eigen-and-opencv-c-integration/5d271725bb9215b55f53767c9dc0db980c73dade/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/eigen_opencv_thumbnail/4ca4125a7f9004afb9c572d9a4e87709b0b98e25/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 

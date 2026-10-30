@@ -16,7 +16,7 @@ mod dataframe_rendering;
 mod datafusion_catalog;
 mod dataset_entry;
 mod dataset_info;
-mod dataset_view;
+mod dataset_selection;
 mod entry;
 mod errors;
 mod index_columns;
@@ -30,6 +30,7 @@ mod table_entry;
 mod table_provider_adapter;
 mod type_aliases;
 mod unregistration_handle;
+mod write_operation;
 
 use errors::{AlreadyExistsError, NotFoundError};
 use pyo3::prelude::*;
@@ -44,7 +45,7 @@ pub(crate) use self::connection_handle::PyConnectionHandle;
 pub use self::dataframe_rendering::PyRerunHtmlTable;
 pub use self::dataset_entry::PyDatasetEntryInternal;
 pub use self::dataset_info::PyDatasetInfoInternal;
-pub use self::dataset_view::PyDatasetViewInternal;
+pub use self::dataset_selection::{PyDatasetSelectionInternal, parse_content_filter};
 pub use self::entry::{PyEntryDetails, PyEntryId, PyEntryKind};
 pub use self::errors::to_py_err;
 pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};
@@ -75,10 +76,11 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyTableInsertModeInternal>()?;
     m.add_class::<PyRegistrationHandleInternal>()?;
     m.add_class::<PyUnregistrationHandleInternal>()?;
+    m.add_class::<write_operation::PyWriteOperationInternal>()?;
     m.add_class::<PyRegistrationIterator>()?;
     m.add_class::<PyTableProviderAdapterInternal>()?;
     m.add_class::<PySegmentUrlUdfInternal>()?;
-    m.add_class::<PyDatasetViewInternal>()?;
+    m.add_class::<PyDatasetSelectionInternal>()?;
     m.add_class::<PyRerunHtmlTable>()?;
 
     // schema
@@ -89,6 +91,10 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyComponentColumnSelector>()?;
 
     // testing
+    m.add_function(wrap_pyfunction!(
+        catalog_client::_get_write_access_grant,
+        m
+    )?)?;
     m.add_class::<PyIndexValuesLikeInternal>()?;
 
     // register exceptions generated with the [`pyo3::create_exception!`] macro

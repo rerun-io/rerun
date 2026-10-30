@@ -1,30 +1,29 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
-use re_catalog_client::{Asset, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
-use re_dataframe_ui::{TableCellKind, TableLayoutKind};
+use re_catalog_client::{Asset, AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
+use re_dataframe_ui::TableLayoutKind;
 use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
 use re_log_types::{EntityPathPart, EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
-use re_redap_client::{ApiError, ConnectionHandle};
+use re_redap_client::ApiError;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
-use re_ui::{
-    DesignTokens, ReButton, ServerValue, TabBar, TableCommand, TableCommandKind,
-    TableCommandSender as _, UiExt as _, icons,
-};
+use re_ui::{DesignTokens, ReButton, ServerValue, TabBar, UiExt as _, icons};
 use re_uri::DatasetResource;
 use re_viewer_context::{
     AppContext, SystemCommand, SystemCommandSender as _, TableReference as ViewerTableReference,
     ViewStates,
 };
+use re_viewer_context::{TableCommand, TableCommandKind, TableCommandSender as _};
 
+use crate::asset_coverage_modal::{ASSETS_DOCS_URL, AssetTarget, card_frame};
 use crate::asset_registration::{AssetRegistration, RegistrationState};
 use crate::context::Context;
-use crate::entry_meta::{AssetsRef, EntryMeta, EntryMetaQuery};
-use crate::register_asset_modal::{AssetSlots, AssetSourcesCapabilities, AssetTarget};
+use crate::entry_meta::{AssetsRef, DatasetSegments, EntryMeta, EntryMetaQuery, StoredCoverage};
+use crate::register_asset_modal::{AssetSlots, AssetSourcesCapabilities};
 use crate::servers::Command;
 use crate::{
     Server,
@@ -62,6 +61,12 @@ const NAME_TO_REFRESH_SPACE: f32 = 8.0;
 /// cannot be part of the text.
 const META_WORD_SPACE: f32 = 4.0;
 
+/// The margin around the text of a pill.
+pub const PILL_MARGIN: egui::Margin = egui::Margin::symmetric(6, 1);
+
+/// How much of the outline color fills a pill, matching what the alert tokens use.
+const PILL_FILL_ALPHA: u8 = 50;
+
 impl Server {
     /// Where to fetch metadata about one of this server's datasets from.
     fn entry_meta_query<'a>(
@@ -70,9 +75,8 @@ impl Server {
         dataset: &'a Dataset,
     ) -> EntryMetaQuery<'a> {
         EntryMetaQuery {
-            runtime: &self.runtime,
+            client: &self.client,
             egui_ctx,
-            connection: &self.connection,
             dataset_id: dataset.id(),
         }
     }
@@ -101,11 +105,7 @@ impl Server {
             ui.spacing_mut().item_spacing.y = 0.0;
 
             let name = dataset.name();
-
-            let path = name
-                .as_str()
-                .split(re_uri::DATASET_HIERARCHY_SEPARATOR)
-                .collect::<Vec<_>>();
+            let leaf_name = re_uri::dataset_hierarchy_leaf_name(name.as_str());
 
             ui.horizontal(|ui| {
                 ui.add_space(PADDING);
@@ -114,39 +114,34 @@ impl Server {
                     ui.spacing_mut().item_spacing.y = 0.0;
                     ui.add_space(PADDING);
 
-                    if path.len() > 1 {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 0.0;
-                            for (idx, part) in path.iter().enumerate() {
-                                let last = idx == path.len() - 1;
-                                if last {
-                                    ui.strong(*part);
-                                } else {
-                                    ui.label(format!("{part} / "));
-                                }
-                            }
-                        });
+                    if leaf_name != name.as_str() {
+                        crate::breadcrumbs::hierarchy_breadcrumbs_ui(
+                            ui,
+                            &dataset.origin,
+                            name.as_str(),
+                            app_ctx.command_sender(),
+                        );
                         ui.add_space(BREADCRUMB_TO_NAME_SPACE);
                     }
 
-                    if let Some(name) = path.last() {
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(ui.available_width(), HEADER_HEIGHT),
-                            egui::Layout::left_to_right(egui::Align::Center),
-                            |ui| {
-                                ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
-                                ui.label(
-                                    egui::RichText::new(*name).size(HEADER_FONT_SIZE).strong(),
-                                );
-                                refresh_button_ui(
-                                    ui,
-                                    app_ctx,
-                                    dataset,
-                                    self.segments_queried_at(ui, dataset),
-                                );
-                            },
-                        );
-                    }
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(ui.available_width(), HEADER_HEIGHT),
+                        egui::Layout::left_to_right(egui::Align::Center),
+                        |ui| {
+                            ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
+                            ui.label(
+                                egui::RichText::new(leaf_name)
+                                    .size(HEADER_FONT_SIZE)
+                                    .strong(),
+                            );
+                            refresh_button_ui(
+                                ui,
+                                app_ctx,
+                                dataset,
+                                self.segments_queried_at(ui, dataset),
+                            );
+                        },
+                    );
 
                     ui.add_space(NAME_TO_TABS_SPACE);
                 });
@@ -155,7 +150,8 @@ impl Server {
             let mut new_resource = resource;
             TabBar::new(ui)
                 .selectable_value(&mut new_resource, DatasetResource::Segments, "Segments")
-                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets");
+                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets")
+                .selectable_value(&mut new_resource, DatasetResource::Schema, "Schema");
 
             if new_resource != resource {
                 app_ctx
@@ -175,6 +171,12 @@ impl Server {
                 }
                 DatasetResource::Assets => {
                     self.assets_ui(ui, app_ctx, ctx, dataset, &asset_sources);
+                }
+                DatasetResource::Schema => {
+                    let schema = dataset
+                        .requests()
+                        .schema(self.entry_meta_query(ui.ctx(), dataset));
+                    crate::dataset_schema::schema_ui(ui, &schema);
                 }
             }
         });
@@ -250,11 +252,6 @@ impl Server {
 
                 column = column.with_default_visibility(default_visible);
             }
-
-            if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
-                column = column.with_default_cell_kind(TableCellKind::Link);
-            }
-
             column
         })
         .generate_segment_links(
@@ -263,7 +260,13 @@ impl Server {
             self.origin().clone(),
             dataset.id(),
         )
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+        .show(
+            app_ctx,
+            self.client.runtime(),
+            ui,
+            table_blueprints,
+            view_states,
+        );
     }
 
     /// Lists the assets of a dataset, or says why there is nothing to list.
@@ -378,6 +381,74 @@ impl Server {
         self.asset_slots(dataset_id, &assets)
     }
 
+    pub fn dataset_asset_coverage(
+        &self,
+        egui_ctx: &egui::Context,
+        dataset_id: EntryId,
+        asset_id: &SegmentId,
+    ) -> Option<ServerValue<std::sync::Arc<StoredCoverage>, ApiError>> {
+        let Some(Ok(EntryInner::Dataset(dataset))) = self.find_entry(dataset_id).map(Entry::inner)
+        else {
+            return None;
+        };
+
+        Some(
+            dataset
+                .requests()
+                .asset_coverage(self.entry_meta_query(egui_ctx, dataset), asset_id),
+        )
+    }
+
+    /// Whether this server stores asset coverage, judged from the first registered asset of one of
+    /// its datasets.
+    ///
+    /// True while that is unknown, such as before the dataset has a registered asset.
+    pub(super) fn dataset_stores_coverage(
+        &self,
+        egui_ctx: &egui::Context,
+        dataset_id: EntryId,
+    ) -> bool {
+        let Some(Ok(EntryInner::Dataset(dataset))) = self.find_entry(dataset_id).map(Entry::inner)
+        else {
+            return true;
+        };
+
+        let query = self.entry_meta_query(egui_ctx, dataset);
+        let assets = dataset.requests().assets(query, dataset.asset_dataset());
+        let Some(asset) = assets
+            .get()
+            .and_then(|assets| assets.iter().find(|asset| asset.is_registered()))
+        else {
+            return true;
+        };
+
+        dataset
+            .requests()
+            .asset_coverage(query, &asset.id)
+            .get()
+            .is_none_or(|stored| stored.is_editable)
+    }
+
+    /// The segments of one of this server's datasets, as the asset modals name and search them.
+    pub(super) fn dataset_segments(
+        &self,
+        egui_ctx: &egui::Context,
+        dataset_id: EntryId,
+    ) -> DatasetSegments {
+        let Some(Ok(EntryInner::Dataset(dataset))) = self.find_entry(dataset_id).map(Entry::inner)
+        else {
+            return DatasetSegments::default();
+        };
+
+        let query = self.entry_meta_query(egui_ctx, dataset);
+        let EntryMeta { segments } = dataset.requests().meta(query);
+
+        DatasetSegments {
+            count: segments.get().copied(),
+            ids: dataset.requests().segment_ids(query),
+        }
+    }
+
     /// One card per asset and per pending or failed registration, with the register button and the
     /// limits that apply to them.
     fn asset_card_list(
@@ -463,13 +534,7 @@ impl Server {
                 None => {}
 
                 Some(assets) => {
-                    let inner_margin =
-                        egui::Margin::same(tokens.table_grid_view_card_inner_margin as i8);
-                    let card_frame = egui::Frame::new()
-                        .inner_margin(inner_margin)
-                        .fill(tokens.card_fill)
-                        .stroke(tokens.card_stroke)
-                        .corner_radius(tokens.table_grid_view_card_corner_radius);
+                    let card_frame = card_frame(tokens);
 
                     egui::ScrollArea::vertical().show(ui, |ui| {
                         let old_item_spacing = std::mem::replace(
@@ -508,7 +573,7 @@ impl Server {
                         let clicked = CardLayout::new(items, card_frame)
                             .hover_fill(tokens.card_hover_fill)
                             .hover_stroke(tokens.card_hover_stroke)
-                            .show(ui, |ui, idx, _hovered| {
+                            .show(ui, |ui, idx, hovered| {
                                 // The page zeroes `item_spacing` to keep its own gaps explicit,
                                 // but a card lays out its own lines and needs vertical spacing.
                                 ui.spacing_mut().item_spacing = old_item_spacing;
@@ -517,7 +582,7 @@ impl Server {
                                 if let Some(registration) = registrations.get(idx) {
                                     asset_registration_ui(ui, ctx, dataset, registration);
                                 } else if let Some(asset) = assets.get(idx - registrations.len()) {
-                                    self.asset_ui(ui, app_ctx, ctx, dataset, asset);
+                                    self.asset_ui(ui, app_ctx, ctx, dataset, asset, hovered);
                                 }
                             });
 
@@ -547,6 +612,7 @@ impl Server {
         ctx: &Context<'_>,
         dataset: &Dataset,
         asset: &Asset,
+        is_card_hovered: bool,
     ) {
         egui::Sides::new()
             .shrink_left()
@@ -615,8 +681,27 @@ impl Server {
                         let more_response =
                             ui.small_icon_button(&re_ui::icons::MORE_VERTICAL, "more");
 
+                        let coverage = dataset
+                            .requests()
+                            .asset_coverage(self.entry_meta_query(ui.ctx(), dataset), &asset.id);
+
+                        // Only a registered asset has a coverage to edit, and only a server that
+                        // stores coverage accepts a new one. Editing is enabled while the coverage
+                        // is loading.
+                        let is_editable = coverage.get().is_none_or(|stored| stored.is_editable);
+
                         egui::Popup::menu(&more_response).show(|ui| {
                             asset_source_menu_ui(ui, ctx, asset);
+
+                            if asset.is_registered()
+                                && ui
+                                    .add_enabled(is_editable, egui::Button::new("Edit coverage"))
+                                    .on_disabled_hover_text(COVERAGE_NOT_EDITABLE)
+                                    .clicked()
+                            {
+                                open_asset_coverage_modal(ctx, dataset, asset);
+                                ui.close();
+                            }
 
                             if ui
                                 .button(
@@ -667,6 +752,30 @@ impl Server {
                         } else if open_button.clicked() {
                             open_asset_ui(ui, dataset, asset, false);
                         }
+
+                        ui.add_space(16.0);
+                        ui.allocate_ui_with_layout(
+                            egui::vec2(74.0, card_height(ui)),
+                            egui::Layout::top_down(egui::Align::RIGHT),
+                            |ui| {
+                                ui.spacing_mut().item_spacing.y = 3.0;
+                                ui.label(egui::RichText::new("SIZE").monospace().size(10.0).weak());
+                                ui.label(
+                                    egui::RichText::new(re_format::format_bytes(asset.size as _))
+                                        .monospace()
+                                        .size(14.0)
+                                        .strong(),
+                                );
+                            },
+                        );
+                        ui.add_space(22.0);
+                        let segments = self.dataset_segments(ui.ctx(), dataset.id());
+                        let labels = asset_coverage_ui(ui, &coverage, &segments);
+                        if let Some(labels) = labels.filter(|_| is_card_hovered)
+                            && edit_coverage_button_ui(ui, &labels, is_editable).clicked()
+                        {
+                            open_asset_coverage_modal(ctx, dataset, asset);
+                        }
                     });
                 },
             );
@@ -712,7 +821,7 @@ fn tab_meta_line_ui(ui: &mut egui::Ui, terms: &[MetaTerm<'_>]) {
 
 /// Opens an asset, from its card or from its "Open" button.
 fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool) {
-    let url = re_viewer_context::open_url::ViewerOpenUrl::RedapDataset(re_uri::DatasetUri {
+    let url = re_viewer_context::viewer_url::ViewerUrl::RedapDataset(re_uri::DatasetUri {
         origin: dataset.origin.clone(),
         dataset_id: dataset.id().id,
         resource: DatasetResource::Assets,
@@ -724,6 +833,22 @@ fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool)
     if let Ok(url) = url {
         ui.open_url(egui::OpenUrl { url, new_tab });
     }
+}
+
+const COVERAGE_NOT_EDITABLE: &str = "This server does not support editing coverage";
+
+fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &Asset) {
+    send_crossbeam(
+        ctx.command_sender,
+        Command::OpenAssetCoverageModal {
+            target: AssetTarget {
+                origin: dataset.origin.clone(),
+                dataset_id: dataset.id(),
+            },
+            asset_id: asset.id.clone(),
+        },
+    )
+    .ok();
 }
 
 /// Menu item opening [`crate::asset_source_modal::AssetSourceModal`] on an asset.
@@ -742,18 +867,14 @@ fn asset_source_menu_ui(ui: &mut egui::Ui, ctx: &Context<'_>, asset: &Asset) {
     }
 }
 
-/// The line under an asset's name: its size, when it was registered, and when it was last updated
-/// if that differs.
+/// The line under an asset's name: when it was registered, and when it was last updated if that differs.
 fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
     ui.horizontal_wrapped(|ui| {
         let date_format = app_ctx.app_options.timestamp_format;
         ui.spacing_mut().item_spacing.x = 0.0;
 
         short_duration_ui(ui, asset.registered_at, date_format, |ui, registered_at| {
-            ui.label(format!(
-                "{} · Registered {registered_at}",
-                re_format::format_bytes(asset.size as _)
-            ))
+            ui.label(format!("Registered {registered_at}"))
         });
 
         // Registering an asset sets both timestamps, and the manifest rows of one asset can be
@@ -769,6 +890,146 @@ fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
             });
         }
     });
+}
+
+/// Where the text in the coverage column of an asset card is.
+struct CoverageLabelRects {
+    /// The `SEGMENTS` header.
+    header: egui::Rect,
+
+    /// The segment count under it.
+    count: egui::Rect,
+}
+
+/// The segment count and coverage bar of an asset card.
+///
+/// Returns where the header and the count are, or `None` until the count is known.
+fn asset_coverage_ui(
+    ui: &mut egui::Ui,
+    coverage: &ServerValue<std::sync::Arc<StoredCoverage>, ApiError>,
+    segments: &DatasetSegments,
+) -> Option<CoverageLabelRects> {
+    let counts = Option::zip(coverage.get(), segments.ids.get()).map(|(stored, ids)| {
+        let AssetCoverage { mode, segments } = &stored.coverage;
+        (ids.count_covered(*mode, segments), ids.len())
+    });
+
+    ui.allocate_ui_with_layout(
+        egui::vec2(104.0, card_height(ui)),
+        egui::Layout::top_down(egui::Align::RIGHT),
+        |ui| {
+            ui.spacing_mut().item_spacing.y = 3.0;
+            let header = ui
+                .label(
+                    egui::RichText::new("SEGMENTS")
+                        .monospace()
+                        .size(10.0)
+                        .weak(),
+                )
+                .rect;
+            let mut labels = None;
+            if let Some((covered, total)) = counts {
+                let mut text = egui::text::LayoutJob::default();
+                text.append(
+                    &format_uint(covered),
+                    0.0,
+                    egui::TextFormat {
+                        font_id: egui::FontId::monospace(14.0),
+                        color: ui.visuals().strong_text_color(),
+                        ..Default::default()
+                    },
+                );
+                text.append(
+                    &format!(" / {}", format_uint(total)),
+                    0.0,
+                    egui::TextFormat {
+                        font_id: egui::FontId::monospace(14.0),
+                        color: ui.visuals().text_color(),
+                        ..Default::default()
+                    },
+                );
+                labels = Some(CoverageLabelRects {
+                    header,
+                    count: ui.label(text).rect,
+                });
+                let (rect, _) =
+                    ui.allocate_exact_size(egui::vec2(104.0, 3.0), egui::Sense::hover());
+                ui.painter()
+                    .rect_filled(rect, 2.0, ui.tokens().card_bar_track_color);
+                if total > 0 && covered > 0 {
+                    let fill = egui::Rect::from_min_size(
+                        rect.min,
+                        egui::vec2(rect.width() * covered as f32 / total as f32, rect.height()),
+                    );
+                    ui.painter()
+                        .rect_filled(fill, 2.0, ui.visuals().selection.bg_fill);
+                }
+            } else if let Some(err) = coverage.get_err().or_else(|| segments.ids.get_err()) {
+                // The column is too narrow for the message itself, so it goes in the hover text.
+                ui.add(
+                    re_ui::icons::ERROR
+                        .as_image()
+                        .fit_to_exact_size(ui.tokens().small_icon_size)
+                        .tint(ui.tokens().alert_error.icon)
+                        .alt_text("the coverage is unavailable"),
+                )
+                .on_hover_text(err.to_string());
+            } else {
+                ui.inline_loading_indicator("waiting for asset coverage");
+            }
+            labels
+        },
+    )
+    .inner
+}
+
+/// The pen button left of the segment count.
+///
+/// The count and its header are part of the button, so clicking them also opens the editor.
+///
+/// It is painted outside the layout, so showing it on hover does not move the column.
+fn edit_coverage_button_ui(
+    ui: &egui::Ui,
+    labels: &CoverageLabelRects,
+    is_editable: bool,
+) -> egui::Response {
+    let size = ui.tokens().small_icon_size;
+    let rect = egui::Rect::from_min_size(
+        egui::pos2(
+            labels.count.left() - 6.0 - size.x,
+            labels.count.center().y - size.y / 2.0,
+        ),
+        size,
+    );
+
+    let sense = if is_editable {
+        egui::Sense::click()
+    } else {
+        egui::Sense::hover()
+    };
+    let response = ui.interact(
+        rect.union(labels.count).union(labels.header),
+        ui.scope_id().with("edit_coverage"),
+        sense,
+    );
+    response.widget_info(|| {
+        egui::WidgetInfo::labeled(egui::Role::Button, is_editable, "edit coverage")
+    });
+
+    let tint = if !is_editable {
+        ui.visuals().weak_text_color()
+    } else if response.hovered() {
+        ui.visuals().strong_text_color()
+    } else {
+        ui.visuals().text_color()
+    };
+    re_ui::icons::EDIT.as_image().tint(tint).paint_at(ui, rect);
+
+    if is_editable {
+        response.on_hover_text("Edit coverage")
+    } else {
+        response.on_hover_text(COVERAGE_NOT_EDITABLE)
+    }
 }
 
 /// The height of one card in the asset list: a title with one line under it.
@@ -897,12 +1158,6 @@ fn pending_fg_color(tokens: &DesignTokens) -> egui::Color32 {
     tokens.warn_fg_color
 }
 
-/// The margin around the text of a pill.
-const PILL_MARGIN: egui::Margin = egui::Margin::symmetric(6, 1);
-
-/// How much of the outline color fills a pill, matching what the alert tokens use.
-const PILL_FILL_ALPHA: u8 = 50;
-
 /// The title of a card, with a pill after it saying what the card is waiting on.
 fn title_with_pill_ui(
     ui: &mut egui::Ui,
@@ -969,9 +1224,6 @@ fn no_assets_ui(
 
     /// Space between the word a link is made of and the icon that marks it as one.
     const LINK_ICON_GAP: f32 = 4.0;
-
-    const DOC_URL: &str =
-        "https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets";
 
     let tokens = ui.tokens();
 
@@ -1098,7 +1350,7 @@ fn no_assets_ui(
                         .on_hover_cursor(egui::CursorIcon::PointingHand)
                         .clicked()
                     {
-                        ui.open_url(egui::OpenUrl::new_tab(DOC_URL));
+                        ui.open_url(egui::OpenUrl::new_tab(ASSETS_DOCS_URL));
                     }
                 };
 
@@ -1284,12 +1536,12 @@ fn register_asset_button(
 ///
 /// Returns whether the server dropped it.
 pub(crate) async fn unregister_asset(
-    connection: ConnectionHandle,
+    client: CatalogClient,
     dataset_id: EntryId,
     asset_id: SegmentId,
     has_failed: bool,
 ) -> bool {
-    match CatalogClient::new(connection)
+    match client
         .unregister_asset(
             dataset_id,
             asset_id.clone(),

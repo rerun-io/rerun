@@ -1,4 +1,6 @@
 use re_sdk_types::components::EntityPath;
+use re_ui::Size;
+use re_ui::text_edit::ReTextEdit;
 use re_viewer_context::{AppContext, MaybeMutRef, StoreViewContext};
 
 pub(crate) fn edit_or_view_entity_path(
@@ -9,8 +11,7 @@ pub(crate) fn edit_or_view_entity_path(
     if let Some(path) = path.as_mut() {
         // A suggestion mechanism similar to the one in `view_space_origin_widget_ui` would be nice.
         let mut string = path.to_string();
-        let response =
-            re_ui::text_edit::text_edit_scope(ui, |ui| ui.text_edit_singleline(&mut string));
+        let response = ui.add(ReTextEdit::singleline(&mut string).size(Size::Tiny));
         *path = string.into();
 
         response

@@ -6,9 +6,10 @@ use re_log_types::{EntryId, StoreId};
 use re_uri::DatasetUri;
 use re_viewer_context::{Route, StoreHub, SystemCommand, SystemCommandSender as _};
 
-use super::App;
+use super::AppCore;
 
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use anyhow::Context as _;
@@ -17,12 +18,12 @@ use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_types_core::LayerName;
 
-use crate::catalog_handle::CatalogHandle;
+use crate::catalog_handle::InternalCatalog;
 use crate::registrations_in_flight::InFlightRegistration;
 
 const REGISTRATION_TIMEOUT: Duration = Duration::from_mins(1);
 
-impl App {
+impl AppCore {
     pub fn add_log_receiver(&mut self, rx: LogReceiver) {
         re_log::debug!("Adding new log receiver: {}", rx.source());
         self.state
@@ -30,14 +31,14 @@ impl App {
             .retain(|source, _| !source.is_same_ignoring_uri_fragments(rx.source()));
 
         // Make sure we wake up when a new message is available:
-        rx.set_waker({
+        rx.set_waker(re_async::UiWaker::new({
             let egui_ctx = self.egui_ctx.clone();
             move || {
                 // Spend a few more milliseconds decoding incoming messages,
                 // then trigger a repaint (https://github.com/rerun-io/rerun/issues/963):
                 egui_ctx.request_repaint_after(std::time::Duration::from_millis(10));
             }
-        });
+        }));
 
         // Add unknown redap servers.
         //
@@ -89,7 +90,7 @@ impl App {
         let store_sources = store_hub
             .store_bundle()
             .recordings()
-            .filter_map(|db| db.data_source.as_ref());
+            .flat_map(|db| db.data_sources().iter().map(|source| &**source));
         let mut all_sources =
             std::iter::chain(store_sources, active_sources.iter().map(|s| s.as_ref()));
 
@@ -281,9 +282,9 @@ impl App {
             return;
         }
 
-        let Some(LogSource::RedapGrpcStream { uri, .. }) = store_hub
+        let Some(uri) = store_hub
             .entity_db(store_id)
-            .and_then(|db| db.data_source.clone())
+            .and_then(|db| db.redap_uri().cloned())
         else {
             return;
         };
@@ -321,19 +322,37 @@ impl App {
         dataset_id: EntryId,
         unregistered_asset: Option<&SegmentId>,
     ) {
-        let mut segments: Vec<(DatasetUri, StoreId, RecordingOpenBehavior)> = Vec::new();
+        // Per segment: the uri to stream from, its store, and every source streaming into it.
+        let mut segments: Vec<(
+            DatasetUri,
+            RecordingOpenBehavior,
+            StoreId,
+            Vec<Arc<LogSource>>,
+        )> = Vec::new();
 
         // The recording of the unregistered asset, if the viewer has it open.
         let mut asset_to_close: Option<StoreId> = None;
 
         for db in store_hub.store_bundle().recordings() {
-            let Some(LogSource::RedapGrpcStream { uri, open_behavior }) = &db.data_source else {
+            // One segment opened through several origins shares one store, so look past the first.
+            let sources: Vec<Arc<LogSource>> = db
+                .data_sources()
+                .iter()
+                .filter(|source| {
+                    matches!(
+                        source.as_ref(),
+                        LogSource::RedapGrpcStream { uri, .. }
+                            if uri.origin == *origin && EntryId::from(uri.dataset_id) == dataset_id
+                    )
+                })
+                .cloned()
+                .collect();
+
+            let Some(LogSource::RedapGrpcStream { uri, open_behavior }) =
+                sources.first().map(|source| source.as_ref())
+            else {
                 continue;
             };
-
-            if uri.origin != *origin || EntryId::from(uri.dataset_id) != dataset_id {
-                continue;
-            }
 
             // A uri that names no segment is the dataset itself, which has nothing to reload.
             let Some(store_id) = uri.store_id() else {
@@ -348,7 +367,7 @@ impl App {
                 continue;
             }
 
-            segments.push((uri.clone(), store_id, *open_behavior));
+            segments.push((uri.clone(), *open_behavior, store_id, sources));
         }
 
         // The server dropped the segment the asset was streamed from, so there is nothing left to
@@ -358,14 +377,9 @@ impl App {
                 .send_system(SystemCommand::CloseRecordingOrTable(store_id.into()));
         }
 
-        for (uri, store_id, open_behavior) in segments {
-            // Reusing the source keeps this one segment where the viewer keys off it, like the
+        for (uri, open_behavior, store_id, sources) in segments {
+            // Reusing the uri keeps this one segment where the viewer keys off its source, like the
             // recording panel.
-            let source = LogSource::RedapGrpcStream {
-                uri: uri.clone(),
-                open_behavior,
-            };
-
             let data_source = LogDataSource::RedapDatasetSegment {
                 uri: uri.clone(),
                 open_behavior,
@@ -383,7 +397,9 @@ impl App {
             ) {
                 Ok(rx) => {
                     // Anything still streaming into this store started before the change.
-                    self.rx_log.remove(&source);
+                    for source in &sources {
+                        self.rx_log.remove(source);
+                    }
                     store_hub.clear_recording_data(&store_id);
                     self.add_log_receiver(rx);
                 }
@@ -429,12 +445,13 @@ impl App {
         #[cfg(not(target_arch = "wasm32"))] assets: &[std::path::PathBuf],
         #[cfg(target_arch = "wasm32")] file: web_sys::File,
     ) {
-        let connection_registry = self.connections.registry.clone();
         let sender = self.command_sender.clone();
         let path = path.to_owned();
         #[cfg(not(target_arch = "wasm32"))]
         let assets = assets.to_vec();
-        let catalog = CatalogHandle::internal(&connection_registry);
+        #[cfg(not(target_arch = "wasm32"))]
+        let registered_files = self.connections.registered_files.clone();
+        let catalog = InternalCatalog::new(&self.connections.registry, self.async_runtime.clone());
         // Count it before spawning, so that whatever checks for it right after cannot miss it.
         let registration_guard = catalog.as_ref().map(|catalog| {
             self.connections
@@ -445,10 +462,10 @@ impl App {
                 })
         });
         self.async_runtime.spawn_future(async move {
-            let registration = match catalog {
+            let registration = match &catalog {
                 Some(catalog) => {
                     register_file(
-                        &catalog,
+                        catalog,
                         &path,
                         #[cfg(target_arch = "wasm32")]
                         file,
@@ -461,14 +478,15 @@ impl App {
             // Register the assets before opening the segment, so the segment streams with its
             // asset layers.
             #[cfg(not(target_arch = "wasm32"))]
-            if let Ok(target) = &registration {
-                super::assets::register_assets(&connection_registry, &sender, target, &assets)
-                    .await;
+            if let (Some(catalog), Ok(target)) = (&catalog, &registration) {
+                super::assets::register_assets(catalog.client(), &sender, target, &assets).await;
             }
 
             match registration {
                 Ok(RegistrationTarget::DatasetSegment(uri)) => {
                     record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
+                    #[cfg(not(target_arch = "wasm32"))]
+                    registered_files.insert(&path, (*uri).clone());
                     sender.send_system(SystemCommand::RefreshRedapEntry {
                         origin: uri.origin.clone(),
                         entry_id: uri.dataset_id.into(),
@@ -489,7 +507,8 @@ impl App {
                 }
                 Ok(RegistrationTarget::Entry(entry_id)) => {
                     record_catalog_load_analytics(data_source_analytics, Some("internal"), true);
-                    if let Some(origin) = connection_registry.internal_origin() {
+                    if let Some(catalog) = &catalog {
+                        let origin = catalog.client().origin().clone();
                         sender.send_system(SystemCommand::RefreshRedapEntry {
                             origin: origin.clone(),
                             entry_id,
@@ -544,9 +563,9 @@ fn record_catalog_load_analytics(
 ///
 /// Staging lets the internal catalog read the original file in place on native, or a copy in
 /// OPFS in the browser. Only the OPFS path reuses an existing copy based on its fingerprint
-/// and size; remote uploads follow the server's existing-key policy.
+/// and size.
 async fn register_file(
-    catalog: &CatalogHandle,
+    catalog: &InternalCatalog,
     path: &Path,
     #[cfg(target_arch = "wasm32")] file: web_sys::File,
 ) -> anyhow::Result<RegistrationTarget> {
@@ -584,15 +603,10 @@ async fn register_file(
         .file_name()
         .unwrap_or(path.as_os_str())
         .to_string_lossy();
-    let layer = catalog
-        .is_internal()
-        .then(|| {
-            LayerName::try_new(format!(
-                "{filename}-{}",
-                re_chunk_index::sha256_to_hex(fingerprint.as_bytes())
-            ))
-        })
-        .transpose()?;
+    let layer = LayerName::try_new(format!(
+        "{filename}-{}",
+        re_chunk_index::sha256_to_hex(fingerprint.as_bytes())
+    ))?;
 
     let file_url = catalog
         .stage_file(
@@ -639,7 +653,7 @@ async fn register_rrd_file_url(
     catalog_client: &CatalogClient,
     file_url: url::Url,
     rrd_metadata: re_log_encoding::RrdMetadata,
-    layer: Option<LayerName>,
+    layer: LayerName,
 ) -> anyhow::Result<RegistrationTarget> {
     let application_id = rrd_metadata
         .store_ids
@@ -661,9 +675,7 @@ async fn register_rrd_file_url(
     // The hidden blueprint dataset keeps its base layer; only recordings get per-file layers.
     let blueprint_data_source = DataSource::new_rrd_url(file_url.clone(), None);
     let mut data_source = DataSource::new_rrd_url(file_url, None);
-    if let Some(layer) = layer {
-        data_source.layer = layer;
-    }
+    data_source.layer = layer;
     let dataset_name = re_log_types::EntryName::from(application_id.clone());
 
     // If there are recordings in the file, register them with the dataset.

@@ -47,9 +47,12 @@ impl PyServerInternal {
             .map_err(|err| PyValueError::new_err(format!("Invalid IP: {host:?}: {err}")))?;
 
         crate::utils::wait_for_future(py, async {
-            let handle = args.create_server_handle().await.map_err(|err| {
-                PyValueError::new_err(format!("Failed to start Rerun server: {err:#}"))
-            })?;
+            let handle = args
+                .create_server_handle(re_build_info::build_info!())
+                .await
+                .map_err(|err| {
+                    PyValueError::new_err(format!("Failed to start Rerun server: {err:#}"))
+                })?;
 
             // Ask the running server for the address to connect to:
             // the requested port may have been 0, in which case the OS picked a free port for us,

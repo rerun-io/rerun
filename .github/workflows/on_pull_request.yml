@@ -18,7 +18,7 @@ permissions: write-all
 jobs:
   checks:
     name: Checks
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && !startsWith(github.head_ref, 'prepare-release-')
     uses: ./.github/workflows/reusable_checks.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -26,7 +26,7 @@ jobs:
     secrets: inherit
 
   paths-filter:
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && !startsWith(github.head_ref, 'prepare-release-')
     runs-on: ubuntu-latest
     outputs:
       cpp_changes: ${{ steps.filter.outputs.cpp_changes }}
@@ -110,7 +110,6 @@ jobs:
               - "**/*.json"
               - "**/*.rs"
               - "**/*.toml"
-              - "**/yarn.lock"
               - "crates/viewer_support/re_ui/data/**"
 
   protobuf-checks:

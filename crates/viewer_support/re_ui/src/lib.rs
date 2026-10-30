@@ -25,6 +25,7 @@ pub mod modal;
 mod motion;
 pub mod notifications;
 mod panel_title_bar;
+mod progress_ring;
 mod relative_time_range;
 mod requested_object;
 mod section_collapsing_header;
@@ -41,6 +42,7 @@ mod url_decorator;
 mod wayland;
 
 mod button;
+mod checkbox;
 mod combo_item;
 pub mod re_form;
 #[cfg(feature = "testing")]
@@ -52,12 +54,8 @@ use egui::{NumExt as _, Style};
 pub use self::button::*;
 pub use self::combo_item::*;
 pub use self::command::{
-    BoundCommand, CommandEnvironment, CommandKind, CommandScope, ListedCommand, RecordingCommand,
-    RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
-    RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
-    UICommand, UICommandSender, conflicts_with_text_editing, consume_timeline_shortcut,
-    format_shortcut, key_symbol_or_name, listen_for_kb_shortcuts, palette_commands,
-    refresh_shortcuts,
+    UICommand, UICommandSender, conflicts_with_text_editing, consume_best_shortcut,
+    format_shortcut, key_symbol_or_name,
 };
 pub use self::command_palette::{
     CmdRow, CommandPalette, CommandPaletteProvider, MatchGroup, MatchedCmd, RowState,
@@ -65,8 +63,8 @@ pub use self::command_palette::{
 };
 pub use self::context_ext::ContextExt;
 pub use self::design_tokens::{
-    AlertVisuals, ButtonVisuals, DesignTokens, MetaLineVisuals, Outlines, TabVisuals, TableStyle,
-    TextEditVisuals, WindowFrameConfig,
+    AlertVisuals, ButtonVisuals, DesignTokens, ListItemDensity, MetaLineVisuals, Outlines,
+    TabVisuals, TableStyle, TextEditVisuals, WindowFrameConfig,
 };
 pub use self::egui_ext::widget_ext::*;
 pub use self::fuzzy::{FuzzyMatch, FuzzyQuery};
@@ -78,6 +76,7 @@ pub use self::link_button::LinkButton;
 pub use self::markdown_utils::*;
 pub use self::notifications::Link;
 pub use self::panel_title_bar::PanelTitleBar;
+pub use self::progress_ring::ProgressRing;
 pub use self::relative_time_range::{
     RelativeTimeRange, relative_time_range_boundary_label_text, relative_time_range_label_text,
 };
@@ -245,7 +244,7 @@ pub fn try_set_design_tokens(
 pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     re_tracing::profile_function!();
 
-    egui_ctx.add_plugin(motion::PopupAnimationPlugin::default());
+    egui_ctx.add_plugin(motion::PopupAnimationPlugin);
     egui_extras::install_image_loaders(egui_ctx);
 
     egui_ctx.include_bytes(
@@ -262,8 +261,10 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     });
 
     set_themes(egui_ctx);
-    // Replaces egui's own text edit theme, which `Context::default` registers.
+    // Replaces egui's own themes, which `Context::default` registers.
+    egui_ctx.replace_widget_theme(checkbox::CheckboxTheme);
     egui_ctx.replace_widget_theme(text_edit::TextEditTheme);
+    egui_ctx.replace_widget_theme(text_edit::CompletionButtonTheme);
 
     #[cfg(hot_reload_design_tokens)]
     {
@@ -376,22 +377,30 @@ fn format_with_decimals_in_range(
     format_with_decimals(value, max_decimals)
 }
 
-/// Is this Ui in a resizable panel?
+/// Is this Ui in a resizable container?
 ///
 /// Used as a heuristic to figure out if it is safe to truncate text.
 ///
-/// In a resizable panel, it is safe to truncate text if it doesn't fit,
-/// because the user can just make the panel wider to see the full text.
+/// In a resizable container, it is safe to truncate text if it doesn't fit,
+/// because the user can just make the container wider to see the full text.
 ///
 /// In other places, we should never truncate text, because then the user
-/// cannot read it all. In those places (when this functions returns `false`)
+/// cannot read it all. In those places (when this function returns `false`)
 /// you should either wrap the text or let it grow the Ui it is in.
-fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
+///
+/// Side panels and scopes marked with [`UiExt::resizable_container_scope`] qualify.
+fn is_in_resizable_container(ui: &egui::Ui) -> bool {
+    use crate::ui_ext::RESIZABLE_CONTAINER_TAG;
+
     re_tracing::profile_function!();
 
     let mut is_in_side_panel = false;
 
     for frame in ui.stack().iter() {
+        if frame.tags().contains(RESIZABLE_CONTAINER_TAG) {
+            return true;
+        }
+
         if let Some(kind) = frame.kind() {
             if kind.is_area() {
                 return false; // Our popups (tooltips etc) aren't resizable

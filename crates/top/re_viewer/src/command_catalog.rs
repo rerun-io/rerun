@@ -1,15 +1,17 @@
 //! Commands shared by the command palette, web menu, and native menu.
 
 use egui::{KeyboardShortcut, os::OperatingSystem};
-use re_ui::{
-    BoundCommand, CommandEnvironment, CommandKind, RecordingCommandKind, RedapServerCommandKind,
-    TableCommandKind, UICommand,
-};
-use re_viewer_context::open_url::ViewerOpenUrl;
+use re_ui::UICommand;
+use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{ActiveStoreContext, CommandSender, StoreHub};
+use re_viewer_context::{
+    BoundCommand, CommandEnvironment, CommandKind, RecordingCommandKind, RedapServerCommandKind,
+    TableCommandKind,
+};
 
-use crate::App;
+use crate::AppCore;
 
+/// A top-level menu, shared by the web menu and the native macOS menu bar.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuGroup {
     Application,
@@ -23,6 +25,7 @@ pub enum MenuGroup {
 }
 
 impl MenuGroup {
+    /// All groups, in menu bar order.
     pub const ALL: [Self; 8] = [
         Self::Application,
         Self::File,
@@ -34,6 +37,7 @@ impl MenuGroup {
         Self::Developer,
     ];
 
+    /// Every item of this group, before filtering by [`CommandContext::visible_items`].
     pub fn items(self) -> &'static [MenuItem] {
         use CommandKind::{Recording, RedapServer, Table, Ui};
         use MenuItem::{Command, Separator};
@@ -179,6 +183,7 @@ impl MenuGroup {
         }
     }
 
+    /// The menu title.
     pub fn text(self) -> &'static str {
         match self {
             Self::Application => "Rerun",
@@ -193,9 +198,13 @@ impl MenuGroup {
     }
 }
 
+/// An entry in a [`MenuGroup`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MenuItem {
+    /// A command, shown with its shortcut.
     Command(CommandKind),
+
+    /// A divider, hidden when it would lead, trail, or follow another divider.
     Separator,
 }
 
@@ -210,15 +219,37 @@ pub fn catalog_commands() -> impl Iterator<Item = CommandKind> {
         })
 }
 
+/// The shortcut shown next to the command in menus.
 pub fn primary_shortcut(kind: CommandKind, os: OperatingSystem) -> Option<KeyboardShortcut> {
     kind.kb_shortcuts(os).first().copied()
 }
 
+/// Viewer state that decides which commands are visible and which are enabled.
 pub struct CommandContext {
+    /// The targets that commands bind to.
     pub environment: CommandEnvironment,
+
+    /// Whether the active recording has any chunks to save.
     pub has_recording_data: bool,
+
+    /// Whether the active recording has a time selection.
     pub has_time_selection: bool,
+
+    /// Whether a file is being saved right now.
     pub file_save_in_progress: bool,
+
+    /// Whether there is an earlier entry in the navigation history.
+    pub can_navigate_back: bool,
+
+    /// Whether there is a later entry in the navigation history.
+    pub can_navigate_forward: bool,
+
+    /// Whether the UI zoom factor is 1.
+    pub ui_zoom_is_default: bool,
+
+    /// Graphics backend of the wgpu adapter.
+    pub graphics_backend: wgpu::Backend,
+
     links: LinkAvailability,
 }
 
@@ -230,7 +261,7 @@ enum LinkAvailability {
 }
 
 impl LinkAvailability {
-    fn from_url(url: Option<ViewerOpenUrl>) -> Self {
+    fn from_url(url: Option<ViewerUrl>) -> Self {
         match url {
             Some(mut url) => {
                 if url.fragment_mut().is_some() {
@@ -245,6 +276,7 @@ impl LinkAvailability {
 }
 
 impl CommandContext {
+    /// Whether the command is shown in menus and the command palette.
     pub fn is_visible(&self, kind: CommandKind) -> bool {
         match kind {
             CommandKind::Ui(UICommand::OpenShareDialog | UICommand::CopyDirectLinkToClipboard) => {
@@ -257,6 +289,14 @@ impl CommandContext {
                 UICommand::ImportFileIntoCurrentRecording
                 | UICommand::CopyEntityHierarchyToClipboard,
             ) => self.environment.recording.is_some(),
+            #[cfg(target_arch = "wasm32")]
+            CommandKind::Ui(UICommand::RestartWithWebGl) => {
+                self.graphics_backend == wgpu::Backend::BrowserWebGpu
+            }
+            #[cfg(target_arch = "wasm32")]
+            CommandKind::Ui(UICommand::RestartWithWebGpu) => {
+                self.graphics_backend == wgpu::Backend::Gl
+            }
             _ => kind.bind(&self.environment).is_some(),
         }
     }
@@ -284,6 +324,7 @@ impl CommandContext {
         items.into_iter()
     }
 
+    /// The command bound to its target, or `None` if it is hidden or disabled.
     pub fn resolve(&self, kind: CommandKind) -> Option<BoundCommand> {
         if !self.is_visible(kind) {
             return None;
@@ -298,13 +339,22 @@ impl CommandContext {
             {
                 return None;
             }
+            CommandKind::Ui(UICommand::NavigateBackInHistory) if !self.can_navigate_back => {
+                return None;
+            }
+            CommandKind::Ui(UICommand::NavigateForwardInHistory) if !self.can_navigate_forward => {
+                return None;
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            CommandKind::Ui(UICommand::ResetUiZoom) if self.ui_zoom_is_default => return None,
             _ => {}
         }
         kind.bind(&self.environment)
     }
 }
 
-impl App {
+impl AppCore {
+    /// Whether commands are shown in the native macOS menu bar instead of the in-app menu.
     pub fn uses_native_menu(&self) -> bool {
         cfg!(target_os = "macos")
             && !matches!(
@@ -313,24 +363,31 @@ impl App {
             )
     }
 
+    /// Snapshot of the viewer state that commands depend on.
     pub fn command_context(
         &self,
         store_hub: &StoreHub,
         store_context: Option<&ActiveStoreContext<'_>>,
     ) -> CommandContext {
+        let (can_navigate_back, can_navigate_forward) = self.navigation_availability();
         CommandContext {
             environment: self.command_environment(),
             has_recording_data: store_context
                 .is_some_and(|ctx| ctx.recording.num_physical_chunks() > 0),
             has_time_selection: store_context.is_some_and(|ctx| ctx.loop_selection().is_some()),
             file_save_in_progress: self.background_tasks.is_file_save_in_progress(),
+            can_navigate_back,
+            can_navigate_forward,
+            ui_zoom_is_default: self.egui_ctx.zoom_factor() == 1.0,
+            graphics_backend: self.adapter_backend(),
             links: LinkAvailability::from_url(
-                ViewerOpenUrl::from_route(store_hub, self.state.navigation.current()).ok(),
+                ViewerUrl::from_route(store_hub, self.state.navigation.current()).ok(),
             ),
         }
     }
 }
 
+/// Queue the command for execution.
 pub fn dispatch(command: BoundCommand, sender: &CommandSender) {
     sender.send_command(command);
 }
@@ -353,6 +410,10 @@ mod tests {
             has_recording_data: false,
             has_time_selection: false,
             file_save_in_progress: false,
+            can_navigate_back: false,
+            can_navigate_forward: false,
+            ui_zoom_is_default: true,
+            graphics_backend: wgpu::Backend::Noop,
             links: LinkAvailability::Unavailable,
         }
     }
@@ -397,7 +458,7 @@ mod tests {
             Route::Loading(Box::new(re_log_channel::LogSource::Sdk)),
         ] {
             context.links =
-                LinkAvailability::from_url(ViewerOpenUrl::from_route(&store_hub, &route).ok());
+                LinkAvailability::from_url(ViewerUrl::from_route(&store_hub, &route).ok());
             for kind in [share, direct, selection] {
                 assert!(!context.is_visible(kind));
                 assert!(context.resolve(kind).is_none());
@@ -406,7 +467,7 @@ mod tests {
 
         let origin = "rerun://localhost:51234".parse().expect("valid server URL");
         context.links = LinkAvailability::from_url(
-            ViewerOpenUrl::from_route(&store_hub, &Route::RedapServer(origin)).ok(),
+            ViewerUrl::from_route(&store_hub, &Route::RedapServer(origin)).ok(),
         );
         assert!(context.resolve(share).is_some());
         assert!(context.resolve(direct).is_some());
@@ -415,7 +476,7 @@ mod tests {
 
         let entry_id = re_log_types::EntryId::new();
         let url = format!("rerun://localhost:51234/dataset/{entry_id}?segment_id=test");
-        context.links = LinkAvailability::from_url(Some(ViewerOpenUrl::RedapDataset(
+        context.links = LinkAvailability::from_url(Some(ViewerUrl::RedapDataset(
             url.parse().expect("valid segment URL"),
         )));
         assert!(context.resolve(selection).is_some());
@@ -488,6 +549,44 @@ mod tests {
         }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn commands_disabled_without_effect() {
+        let mut context = context();
+        let back = CommandKind::Ui(UICommand::NavigateBackInHistory);
+        let forward = CommandKind::Ui(UICommand::NavigateForwardInHistory);
+        let reset_zoom = CommandKind::Ui(UICommand::ResetUiZoom);
+
+        for kind in [back, forward, reset_zoom] {
+            assert!(context.is_visible(kind));
+            assert!(context.resolve(kind).is_none());
+        }
+        context.can_navigate_back = true;
+        context.can_navigate_forward = true;
+        context.ui_zoom_is_default = false;
+        for kind in [back, forward, reset_zoom] {
+            assert!(context.resolve(kind).is_some());
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    #[test]
+    fn restart_offers_only_the_other_backend() {
+        let mut context = context();
+        let web_gl = CommandKind::Ui(UICommand::RestartWithWebGl);
+        let web_gpu = CommandKind::Ui(UICommand::RestartWithWebGpu);
+        assert!(!context.is_visible(web_gl));
+        assert!(!context.is_visible(web_gpu));
+
+        context.graphics_backend = wgpu::Backend::BrowserWebGpu;
+        assert!(context.is_visible(web_gl));
+        assert!(!context.is_visible(web_gpu));
+
+        context.graphics_backend = wgpu::Backend::Gl;
+        assert!(!context.is_visible(web_gl));
+        assert!(context.is_visible(web_gpu));
+    }
+
     #[cfg(feature = "testing")]
     #[tokio::test]
     async fn removed_server_selection_is_not_a_command_target() {
@@ -497,7 +596,7 @@ mod tests {
         app.state
             .selection_state
             .set_selection(re_viewer_context::Item::RedapServer(origin));
-        let context = app.command_context(app.store_hub.as_ref().expect("store hub"), None);
+        let context = app.command_context(&app.store_hub, None);
         assert!(context.environment.redap_server.is_none());
         assert!(!context.environment.has_editable_redap_server);
     }

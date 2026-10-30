@@ -3,8 +3,8 @@ title = "TAPIR: tracking any point with per-frame initialization and temporal re
 description = "Visual walkthrough of TAPIR's per-point video tracking: cost volumes, predicted tracks, and occlusion maps per frame."
 source = "https://github.com/rerun-io/tapnet"
 tags = ["2D", "Point tracking", "Time series", "Tensor", "JAX", "Paper walkthrough"]
-thumbnail = "https://static.rerun.io/tapir/35e5cdca6938d6d26a901f9345b1c331ea8ca96c/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/tapir_thumbnail/4a3297eeed111d83858b3652bf945269271b71d1/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 

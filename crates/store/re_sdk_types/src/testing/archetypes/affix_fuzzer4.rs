@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 #[derive(Clone, Debug, PartialEq, Default, ::re_byte_size::SizeBytes)]
@@ -641,63 +641,27 @@ impl AffixFuzzer4 {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.fuzz2101
-                .map(|fuzz2101| fuzz2101.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2102
-                .map(|fuzz2102| fuzz2102.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2103
-                .map(|fuzz2103| fuzz2103.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2104
-                .map(|fuzz2104| fuzz2104.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2105
-                .map(|fuzz2105| fuzz2105.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2106
-                .map(|fuzz2106| fuzz2106.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2107
-                .map(|fuzz2107| fuzz2107.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2108
-                .map(|fuzz2108| fuzz2108.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2109
-                .map(|fuzz2109| fuzz2109.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2110
-                .map(|fuzz2110| fuzz2110.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2111
-                .map(|fuzz2111| fuzz2111.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2112
-                .map(|fuzz2112| fuzz2112.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2113
-                .map(|fuzz2113| fuzz2113.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2114
-                .map(|fuzz2114| fuzz2114.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2115
-                .map(|fuzz2115| fuzz2115.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2116
-                .map(|fuzz2116| fuzz2116.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2117
-                .map(|fuzz2117| fuzz2117.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.fuzz2118
-                .map(|fuzz2118| fuzz2118.partitioned(_lengths.clone()))
-                .transpose()?,
+        let batches = [
+            self.fuzz2101,
+            self.fuzz2102,
+            self.fuzz2103,
+            self.fuzz2104,
+            self.fuzz2105,
+            self.fuzz2106,
+            self.fuzz2107,
+            self.fuzz2108,
+            self.fuzz2109,
+            self.fuzz2110,
+            self.fuzz2111,
+            self.fuzz2112,
+            self.fuzz2113,
+            self.fuzz2114,
+            self.fuzz2115,
+            self.fuzz2116,
+            self.fuzz2117,
+            self.fuzz2118,
         ];
-        Ok(columns.into_iter().flatten())
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -708,45 +672,29 @@ impl AffixFuzzer4 {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_fuzz2101 = self.fuzz2101.as_ref().map(|b| b.array.len());
-        let len_fuzz2102 = self.fuzz2102.as_ref().map(|b| b.array.len());
-        let len_fuzz2103 = self.fuzz2103.as_ref().map(|b| b.array.len());
-        let len_fuzz2104 = self.fuzz2104.as_ref().map(|b| b.array.len());
-        let len_fuzz2105 = self.fuzz2105.as_ref().map(|b| b.array.len());
-        let len_fuzz2106 = self.fuzz2106.as_ref().map(|b| b.array.len());
-        let len_fuzz2107 = self.fuzz2107.as_ref().map(|b| b.array.len());
-        let len_fuzz2108 = self.fuzz2108.as_ref().map(|b| b.array.len());
-        let len_fuzz2109 = self.fuzz2109.as_ref().map(|b| b.array.len());
-        let len_fuzz2110 = self.fuzz2110.as_ref().map(|b| b.array.len());
-        let len_fuzz2111 = self.fuzz2111.as_ref().map(|b| b.array.len());
-        let len_fuzz2112 = self.fuzz2112.as_ref().map(|b| b.array.len());
-        let len_fuzz2113 = self.fuzz2113.as_ref().map(|b| b.array.len());
-        let len_fuzz2114 = self.fuzz2114.as_ref().map(|b| b.array.len());
-        let len_fuzz2115 = self.fuzz2115.as_ref().map(|b| b.array.len());
-        let len_fuzz2116 = self.fuzz2116.as_ref().map(|b| b.array.len());
-        let len_fuzz2117 = self.fuzz2117.as_ref().map(|b| b.array.len());
-        let len_fuzz2118 = self.fuzz2118.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_fuzz2101)
-            .or(len_fuzz2102)
-            .or(len_fuzz2103)
-            .or(len_fuzz2104)
-            .or(len_fuzz2105)
-            .or(len_fuzz2106)
-            .or(len_fuzz2107)
-            .or(len_fuzz2108)
-            .or(len_fuzz2109)
-            .or(len_fuzz2110)
-            .or(len_fuzz2111)
-            .or(len_fuzz2112)
-            .or(len_fuzz2113)
-            .or(len_fuzz2114)
-            .or(len_fuzz2115)
-            .or(len_fuzz2116)
-            .or(len_fuzz2117)
-            .or(len_fuzz2118)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [
+            self.fuzz2101,
+            self.fuzz2102,
+            self.fuzz2103,
+            self.fuzz2104,
+            self.fuzz2105,
+            self.fuzz2106,
+            self.fuzz2107,
+            self.fuzz2108,
+            self.fuzz2109,
+            self.fuzz2110,
+            self.fuzz2111,
+            self.fuzz2112,
+            self.fuzz2113,
+            self.fuzz2114,
+            self.fuzz2115,
+            self.fuzz2116,
+            self.fuzz2117,
+            self.fuzz2118,
+        ];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     #[inline]

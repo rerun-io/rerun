@@ -23,7 +23,7 @@ impl crate::AppUi for re_log_channel::LogSource {
         for other in ctx
             .store_bundle()
             .entity_dbs()
-            .filter(|db| db.data_source.as_ref() == Some(self))
+            .filter(|db| db.data_sources().iter().any(|source| **source == *self))
         {
             match other.store_kind() {
                 StoreKind::Recording => {

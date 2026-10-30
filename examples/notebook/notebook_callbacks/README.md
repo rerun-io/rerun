@@ -2,8 +2,8 @@
 title = "Notebook: viewer callbacks"
 description = "React to timeline, time, and selection events from an embedded Rerun viewer widget in Jupyter, surfaced as live Jupyter widgets."
 tags = ["Notebook", "Interactive", "Callbacks", "3D"]
-thumbnail = "https://static.rerun.io/notebook_callbacks/0daba8485bc0d589cfda3411db450db4bf2e8818/480w.png"
-thumbnail_dimensions = [480, 339]
+thumbnail = "https://static.rerun.io/notebook_callbacks_thumbnail/849f57fd4ef78a34ef49cedd1c2df89abb9ef92b/768w.png"
+thumbnail_dimensions = [768, 576]
 channel = "nightly"
 -->
 

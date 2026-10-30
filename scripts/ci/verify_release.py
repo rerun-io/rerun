@@ -7,8 +7,11 @@ Checks:
 - registries: rerun-sdk and rerun-notebook on PyPI, @rerun-io/web-viewer on npm, rerun on crates.io.
   conda-forge lags behind by hours to days, so a missing conda-forge version is only a warning.
 - github-release: published, not a prerelease, marked latest, with assets.
-- website: rerun.io/docs and rerun.io/viewer serve the release, and app.rerun.io, the changeset page,
-  and the Python reference docs exist for it.
+- website: rerun.io/docs and rerun.io/viewer serve the release, rerun.io/docs/changelog redirects to its changeset,
+  and app.rerun.io, the changeset page, and the Python reference docs exist for it.
+- landing: rerun-io/landing embeds the released @rerun-io/web-viewer.
+  Dependabot opens that bump PR some time after the npm publish and it needs a manual merge,
+  so an outdated or unreadable (private repo) version is only a warning.
 - docs-latest: the `docs-latest` branch contains the release tag.
 - gradio: rerun-io/gradio-rerun-viewer has a published release with the same version tag.
 
@@ -41,6 +44,7 @@ from typing import Any, Literal
 REPO = "rerun-io/rerun"
 GRADIO_REPO = "rerun-io/gradio-rerun-viewer"
 GRADIO_WORKFLOW_URL = f"https://github.com/{GRADIO_REPO}/actions/workflows/auto_release_on_rerun.yml"
+LANDING_REPO = "rerun-io/landing"
 USER_AGENT = "rerun-release-verification"
 # The website redeploy and the gradio release each take tens of minutes; polling faster only adds log noise.
 POLL_INTERVAL_SECS = 120
@@ -74,6 +78,19 @@ def http_get(url: str, *, headers: dict[str, str] | None = None) -> tuple[int, s
     except (urllib.error.URLError, TimeoutError) as err:
         print(f"  {url}: {err}")
         return 0, ""
+
+
+def redirect_target(url: str) -> str:
+    """Where `url` lands after following up to 10 redirects; empty on more redirects or no response."""
+    if not url.startswith("https://"):
+        raise ValueError(f"Not an https URL: {url}")
+    request = urllib.request.Request(url, method="HEAD", headers={"User-Agent": USER_AGENT})  # noqa: S310
+    try:
+        with urllib.request.urlopen(request, timeout=60) as response:  # noqa: S310
+            return str(response.geturl())
+    except (urllib.error.URLError, TimeoutError) as err:
+        print(f"  {url}: {err}")
+        return ""
 
 
 def gh_headers() -> dict[str, str]:
@@ -185,9 +202,35 @@ def check_website(version: str) -> str:
         print(f"  {url}: HTTP {status}")
         if status != 200:
             problems.append(f"HTTP {status} for {url}")
+
+    # Ensure that our changelog page redirects to the latest release
+    changelog = redirect_target("https://rerun.io/docs/changelog")
+    print(f"  rerun.io/docs/changelog redirects to: {changelog or '?'}")
+    if not changelog.endswith(f"/docs/changelog/changeset-{major}-{minor}"):
+        problems.append(
+            f"rerun.io/docs/changelog redirects to {changelog or 'nowhere'}: redeploy the website to refresh it"
+        )
+
     if problems:
         raise CheckFailed("; ".join(problems))
-    return "rerun.io/docs, rerun.io/viewer, app.rerun.io"
+    return "rerun.io/docs, rerun.io/docs/changelog, rerun.io/viewer, app.rerun.io"
+
+
+def check_landing(version: str) -> str:
+    status, body = http_get(
+        f"https://api.github.com/repos/{LANDING_REPO}/contents/package.json",
+        headers={**gh_headers(), "Accept": "application/vnd.github.raw"},
+    )
+    if status != 200:
+        raise CheckWarning(f"HTTP {status} reading {LANDING_REPO}/package.json: check its web-viewer version by hand")
+    embedded = json.loads(body).get("dependencies", {}).get("@rerun-io/web-viewer")
+    print(f"  {LANDING_REPO} @rerun-io/web-viewer: {embedded}")
+    if embedded != version:
+        raise CheckWarning(
+            f"{LANDING_REPO} embeds @rerun-io/web-viewer {embedded}: "
+            f"merge the Dependabot bump at https://github.com/{LANDING_REPO}/pulls"
+        )
+    return f"embeds @rerun-io/web-viewer {version}"
 
 
 def check_docs_latest(version: str) -> str:
@@ -217,6 +260,7 @@ CHECKS: dict[str, Callable[[str], str]] = {
     "conda-forge": check_conda,
     "github-release": check_github_release,
     "website": check_website,
+    "landing": check_landing,
     "docs-latest": check_docs_latest,
     "gradio": check_gradio,
 }

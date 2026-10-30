@@ -1,5 +1,5 @@
 use re_chunk::{Chunk, EntityPath, RowId, TimePoint};
-use re_int::SaturatingCast as _;
+use re_int::SaturatingInto as _;
 use re_sdk_types::archetypes::RecordingInfo;
 
 use super::{Decoder, DecoderContext, MCAP_PROPERTIES_ENTITY_PATH};
@@ -24,7 +24,7 @@ impl Decoder for McapRecordingInfoDecoder {
             .stats
             .as_ref()
             .map(|s| {
-                RecordingInfo::new().with_start_time(s.message_start_time.saturating_cast::<i64>())
+                RecordingInfo::new().with_start_time(s.message_start_time.saturating_into::<i64>())
             })
             .unwrap_or_default();
 

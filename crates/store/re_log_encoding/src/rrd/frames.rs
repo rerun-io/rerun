@@ -30,6 +30,10 @@ impl EncodingOptions {
 }
 
 impl EncodingOptions {
+    /// Requests LZ4 for every message, which the encoder applies only where it saves enough bytes.
+    ///
+    /// The compression actually used is recorded in each message, which is what decoders read;
+    /// see [`Compression::LZ4`].
     pub const PROTOBUF_COMPRESSED: Self = Self {
         compression: Compression::LZ4,
         serializer: Serializer::Protobuf,
@@ -568,6 +572,8 @@ impl Decodable for MessageHeader {
 
 #[cfg(test)]
 mod tests {
+    use std::assert_matches;
+
     use re_span::Span;
 
     use crate::rrd::{Decodable as _, Encodable as _, StreamFooter, StreamFooterEntry};
@@ -579,10 +585,10 @@ mod tests {
             len: crate::rrd::MessageHeader::MAX_PAYLOAD_SIZE_BYTES + 1,
         };
         let mut out = Vec::new();
-        assert!(matches!(
+        assert_matches!(
             header.to_rrd_bytes(&mut out),
             Err(crate::rrd::CodecError::MessagePayloadTooLarge { .. })
-        ));
+        );
         assert!(
             out.is_empty(),
             "nothing may be written for a rejected header"
@@ -617,8 +623,9 @@ mod tests {
 
         let err = StreamFooter::from_rrd_bytes(&bytes)
             .expect_err("a footer announcing more entries than it carries must not decode");
-        assert!(
-            matches!(err, crate::rrd::CodecError::FrameDecoding(_)),
+        assert_matches!(
+            err,
+            crate::rrd::CodecError::FrameDecoding(_),
             "expected a framing error, got {err}"
         );
     }

@@ -7,9 +7,9 @@ from __future__ import annotations
 import subprocess
 import sys
 
-PIXI_VERSION = "0.78.0"
-CARGO_VERSION = "1.96.0"
-RUST_VERSION = "1.96.0"
+PIXI_VERSION = "0.82.1"
+CARGO_VERSION = "1.98.1"
+RUST_VERSION = "1.98.1"
 
 
 def check_version(cmd: str, expected: str, update: str, install: str) -> bool:

@@ -201,9 +201,6 @@ pub fn quote_arrow_deserializer(
         // These branches always produce `Vec<Option<Self>>`; a non-nullable caller unwraps below.
         let quoted_deserializer = match datatype.to_logical_type() {
             DataType::Struct(_) => {
-                let data_src_fields = format_ident!("{data_src}_fields");
-                let data_src_arrays = format_ident!("{data_src}_arrays");
-
                 let quoted_field_deserializers = obj.fields.iter().map(|obj_field| {
                     let field_name = &obj_field.name;
                     let data_dst = format_ident!("{}", obj_field.name);
@@ -221,18 +218,7 @@ pub fn quote_arrow_deserializer(
 
                     quote! {
                         let #data_dst = {
-                            // NOTE: `arrays_by_name` is a runtime collection of all of the input's
-                            // payload's struct fields, while `#field_name` is the field we're
-                            // looking for at comptime… there's no guarantee it's actually there at
-                            // runtime!
-                            if !arrays_by_name.contains_key(#field_name) {
-                                return Err(DeserializationError::missing_struct_field(
-                                    #quoted_self_datatype, #field_name,
-                                )).with_context(#obj_fqname);
-                            }
-
-                            // NOTE: The indexing by name is safe: checked above.
-                            let #data_src = &**arrays_by_name[#field_name];
+                            let #data_src = fields.required(#field_name)?;
                              #quoted_deserializer
                         }
                     }
@@ -272,13 +258,9 @@ pub fn quote_arrow_deserializer(
                         // datastructures for all of our children.
                         Vec::new()
                     } else {
-                        let (#data_src_fields, #data_src_arrays) = (#data_src.fields(), #data_src.columns());
-
-                        let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                            #data_src_fields.iter().map(|field| field.name().as_str()),
-                            #data_src_arrays,
-                        )
-                        .collect();
+                        let fields = StructFields::new(
+                            #data_src, Self::arrow_data_type, #obj_fqname,
+                        );
 
                         #(#quoted_field_deserializers;)*
 
@@ -578,7 +560,7 @@ fn quote_arrow_field_deserializer(
                 IteratorKind::Value
             };
             let quoted_iter_transparency =
-                quote_iterator_transparency(objects, datatype, iter_kind, None);
+                quote_iterator_transparency(objects, datatype, iter_kind);
 
             let quoted_downcast = {
                 let cast_as = atomic.to_string();
@@ -676,56 +658,19 @@ fn quote_arrow_field_deserializer(
         }
 
         DataType::Utf8 => {
-            let quoted_downcast = {
-                let cast_as = quote!(StringArray);
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
-            };
-
-            let quoted_iter_transparency = quote_iterator_transparency(
-                objects,
-                datatype,
-                IteratorKind::ResultOptionValue,
-                quote!(::re_types_core::ArrowString::from).into(),
+            let quoted_downcast = quote_array_downcast(
+                obj_field_fqname,
+                data_src,
+                quote!(StringArray),
+                quoted_datatype,
             );
-
-            let data_src_buf = format_ident!("{data_src}_buf");
-
+            let quoted_iter_transparency =
+                quote_iterator_transparency(objects, datatype, IteratorKind::OptionValue);
             quote! {{
-                let #data_src = #quoted_downcast?;
-                let #data_src_buf = #data_src.values();
-
-                let offsets = #data_src.offsets();
-                ZipValidity::new_with_validity(
-                    offsets.array_windows(),
-                    #data_src.nulls(),
-                )
-                .map(|elem| elem.map(|&[start, end]| {
-                        // NOTE: Do _not_ use `Buffer::sliced`, it panics on malformed inputs.
-
-                        let start = start as usize;
-                        let end = end as usize;
-                        let len = end - start;
-
-                        // NOTE: It is absolutely crucial we explicitly handle the
-                        // boundchecks manually first, otherwise rustc completely chokes
-                        // when slicing the data (as in: a 100x perf drop)!
-                        if #data_src_buf.len() < end {
-                            // error context is appended below during final collection
-                            return Err(DeserializationError::offset_slice_oob(
-                                (start, end), #data_src_buf.len(),
-                            ));
-                        }
-                        // TODO(apache/arrow-rs#6900): slice_with_length_unchecked unsafe when https://github.com/apache/arrow-rs/pull/6901 is merged and released
-                        let data = #data_src_buf.slice_with_length(start, len);
-
-                        Ok(data)
-                    }).transpose()
-                )
-                #quoted_iter_transparency
-                // NOTE: implicit Vec<Result> to Result<Vec>
-                .collect::<DeserializationResult<Vec<Option<_>>>>()
-                .with_context(#obj_field_fqname)?
-                .into_iter()
+                deserialize_strings(#quoted_downcast?)
+                    .with_context(#obj_field_fqname)?
+                    .into_iter()
+                    #quoted_iter_transparency
             }}
         }
 
@@ -746,12 +691,8 @@ fn quote_arrow_field_deserializer(
                 quote_array_downcast(obj_field_fqname, data_src, cast_as, quoted_datatype)
             };
 
-            let quoted_iter_transparency = quote_iterator_transparency(
-                objects,
-                datatype,
-                IteratorKind::ResultOptionValue,
-                None,
-            );
+            let quoted_iter_transparency =
+                quote_iterator_transparency(objects, datatype, IteratorKind::ResultOptionValue);
 
             let is_enum = inner.data_type().enum_obj(objects).is_some();
             let quoted_enum_missing_check = if is_enum {
@@ -1035,17 +976,12 @@ enum IteratorKind {
 /// fallibility, nullability, transparency, tuple structs…
 /// This function will just do the right thing.
 ///
-/// If `extra_wrapper` is specified, this will also wrap the resulting data in `$extra_wrapper(data)`.
-///
 /// Have a look around in this file for examples of use.
 fn quote_iterator_transparency(
     objects: &Objects,
     datatype: &DataType,
     iter_kind: IteratorKind,
-    extra_wrapper: Option<TokenStream>,
 ) -> TokenStream {
-    #![expect(clippy::collapsible_else_if)]
-
     let inner_obj = if let DataType::Object { fqname, .. } = datatype {
         Some(&objects[fqname])
     } else {
@@ -1069,17 +1005,9 @@ fn quote_iterator_transparency(
         );
 
         let quoted_binding = if is_tuple_struct {
-            if let Some(extra_wrapper) = extra_wrapper {
-                quote!(|v| #quoted_inner_obj_type(#extra_wrapper(v)))
-            } else {
-                quote!(#quoted_inner_obj_type)
-            }
+            quote!(#quoted_inner_obj_type)
         } else {
-            if let Some(extra_wrapper) = extra_wrapper {
-                quote!(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst: #extra_wrapper(v) })
-            } else {
-                quote!(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst })
-            }
+            quote!(|#quoted_data_dst| #quoted_inner_obj_type { #quoted_data_dst })
         };
 
         match iter_kind {
@@ -1092,20 +1020,7 @@ fn quote_iterator_transparency(
             IteratorKind::Value => quote!(.map(#quoted_binding)),
         }
     } else {
-        if let Some(extra_wrapper) = extra_wrapper {
-            let quoted_binding = quote!(|v| #extra_wrapper(v));
-            match iter_kind {
-                IteratorKind::ResultOptionValue => {
-                    quote!(.map(|res_or_opt| res_or_opt.map(|res_or_opt| res_or_opt.map(#quoted_binding))))
-                }
-                IteratorKind::OptionValue => {
-                    quote!(.map(|res_or_opt| res_or_opt.map(#quoted_binding)))
-                }
-                IteratorKind::Value => quote!(.map(#quoted_binding)),
-            }
-        } else {
-            quote!()
-        }
+        quote!()
     }
 }
 
@@ -1162,7 +1077,7 @@ pub fn quote_arrow_deserializer_buffer_slice(
         );
 
         let quoted_iter_transparency =
-            quote_iterator_transparency(objects, &datatype, IteratorKind::Value, None);
+            quote_iterator_transparency(objects, &datatype, IteratorKind::Value);
         let quoted_iter_transparency = quote!(.copied() #quoted_iter_transparency);
 
         let quoted_remapping = if is_tuple_struct {
@@ -1238,27 +1153,14 @@ fn quote_arrow_field_deserializer_buffer_slice(
             let quoted_length = proc_macro2::Literal::i32_suffixed(
                 i32::try_from(*length).expect("fixed-size-list length must fit in an i32"),
             );
-            let quoted_downcast = {
-                let cast_as = quote!(arrow::array::FixedSizeListArray);
-                quote_array_downcast(obj_field_fqname, data_src, cast_as, &quoted_datatype)
-            };
-
             // Fully spell out the target type of the cast: type inference fails for
             // nested fixed-size lists, where only the outermost type is pinned down.
             let quoted_elem_type = quote_buffer_slice_element_type(datatype);
 
             quote! {{
-                let #data_src = #quoted_downcast?;
-
-                // Downcasting to `FixedSizeListArray` succeeds for _any_ list width,
-                // so check the width explicitly rather than let the cast below trip over it.
-                if #data_src.value_length() != #quoted_length {
-                    return Err(DeserializationError::datatype_mismatch(
-                        #quoted_datatype, #data_src.data_type().clone(),
-                    )).with_context(#obj_field_fqname);
-                }
-
-                let #data_src_inner = &**#data_src.values();
+                let #data_src_inner = fixed_size_list_values(
+                    #data_src, #quoted_length, || #quoted_datatype, #obj_field_fqname,
+                )?;
 
                 // NOTE: `try_cast_slice` rather than `cast_slice`: the child buffer of a
                 // `FixedSizeListArray` may be longer than `len * width`, and deserializers

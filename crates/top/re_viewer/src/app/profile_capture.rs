@@ -7,7 +7,7 @@ use re_protos::viewer_control::v1alpha1::{
 };
 use re_tracing::reexports::puffin::FrameView;
 
-use super::App;
+use super::AppCore;
 
 /// How many frames a profile capture records by default.
 const DEFAULT_PROFILE_CAPTURE_FRAMES: u32 = 5;
@@ -18,7 +18,7 @@ const DEFAULT_PROFILE_CAPTURE_FRAMES: u32 = 5;
 /// viewer-control request.
 const MAX_PROFILE_CAPTURE_FRAMES: u32 = 300;
 
-impl App {
+impl AppCore {
     /// Start recording a profile of the next frames, and answer `on_done` once it has been written.
     pub(super) fn begin_profile_capture(
         &mut self,
@@ -30,7 +30,7 @@ impl App {
             num_frames,
         } = request;
 
-        if self.profile_capture.is_some() {
+        if self.profiling.capture.is_some() {
             on_done.call(Err(ViewerControlError::failed_precondition(
                 "Another profile capture is still running",
             )));
@@ -46,12 +46,22 @@ impl App {
             return;
         }
 
-        self.profile_capture = Some(PendingProfileCapture::to_path(
+        self.profiling.capture = Some(PendingProfileCapture::to_path(
             num_frames,
             file_path.into(),
             on_done,
         ));
     }
+}
+
+/// The viewer's profiler, and any in-memory capture of it that is running.
+#[derive(Default)]
+pub struct Profiling {
+    /// Opened by [`re_ui::UICommand::OpenProfiler`].
+    pub profiler: re_tracing::Profiler,
+
+    /// Active in-memory profile capture, if any.
+    pub capture: Option<PendingProfileCapture>,
 }
 
 /// An in-memory profile capture, and where its result goes once enough frames are recorded.

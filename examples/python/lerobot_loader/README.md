@@ -2,8 +2,8 @@
 title = "LeRobot loader"
 description = "Rerun's built-in importer for LeRobot datasets: point the viewer at a directory and it loads like any other recording."
 tags = ["2D", "Video", "Loader", "Hugging Face", "LeRobot"]
-thumbnail = "https://static.rerun.io/LeRobot/ec638243c38d01c0d9e27ef4e52e62c43c6e4ba4/480w.png"
-thumbnail_dimensions = [480, 275]
+thumbnail = "https://static.rerun.io/lerobot_loader_thumbnail/d9607ced7f694733328c1609b763b38261a8896b/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 <picture>

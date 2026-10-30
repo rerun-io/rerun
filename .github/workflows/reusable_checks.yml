@@ -17,8 +17,9 @@ concurrency:
 env:
   PYTHON_VERSION: "3.11"
 
-  RUSTFLAGS: --deny warnings
-  RUSTDOCFLAGS: --deny warnings
+  # Empty, so that `.cargo/config.toml` doesn't enable `re_workspace_hack`.
+  RUSTFLAGS: ""
+  CARGO_BUILD_WARNINGS: deny
 
 defaults:
   run:
@@ -49,7 +50,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Codegen check
         run: pixi run codegen --force --check --warnings-as-errors
@@ -76,7 +77,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -105,7 +106,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Toml format check
         run: pixi run toml-fmt-check
@@ -120,7 +121,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Check uv.lock
         run: pixi run uv-lock-check
@@ -135,7 +136,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Check for too large files
         run: pixi run check-large-files
@@ -150,7 +151,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Check for wrong publish flags
         run: pixi run check-publish-flags
@@ -165,7 +166,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Check example thumbnails
         # Use uv run --frozen python instead of uvpy.
@@ -183,7 +184,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Check docs order
         run: pixi run uv run --frozen python ./scripts/ci/check_doc_order.py
@@ -198,7 +199,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Check for D2 code blocks
         # Use uv run --frozen python instead of uvpy.
@@ -216,7 +217,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -239,7 +240,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: Set up Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
@@ -280,7 +281,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       - name: prettier --check
         run: pixi run misc-fmt-check
@@ -303,7 +304,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        if: github.event_name == 'pull_request'
+        if: ${{ inputs.CHANNEL == 'pr' }}
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.11"
@@ -316,31 +317,43 @@ jobs:
           key: cache-lychee-${{ github.sha }}
           restore-keys: cache-lychee-
 
-      - name: Set up pixi for PR Link Checker
-        if: ${{ inputs.CHANNEL == 'pr' }}
+      - name: Set up pixi
         uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
-          pixi-version: v0.78.0
+          pixi-version: v0.82.1
 
       # For PRs: Check only links in added lines
       - name: PR Link Checker (added lines only)
         if: ${{ inputs.CHANNEL == 'pr' }}
+        env:
+          # Release branches run this on `push`, which has no base ref: they compare against `main`.
+          BASE_REF: ${{ github.base_ref || 'main' }}
         run: |
           # Fetch the base branch
-          git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
+          git fetch origin "$BASE_REF:$BASE_REF"
 
           # Run our custom PR link checker
-          pixi run link-check-pr origin/${{ github.base_ref }}
+          pixi run link-check-pr "origin/$BASE_REF"
 
       # For nightly: Check all links in the entire codebase
       - name: Full Link Checker
         if: ${{ inputs.CHANNEL == 'nightly' }}
-        id: lychee
-        uses: lycheeverse/lychee-action@8646ba30535128ac92d33dfc9133794bfdd9b411 # v2.8.0
+        run: pixi run link-check
+
+      # The links codegen builds point at the docs of each type, which only go live with its release.
+      # `docs-latest` holds the latest release, so all of its generated links must resolve.
+      - name: Check out docs-latest
+        if: ${{ !cancelled() && inputs.CHANNEL == 'nightly' }}
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
-          fail: true
-          lycheeVersion: "v0.23.0"
-          # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
-          # If updating version or args update the pixi.toml to match.
-          args: |
-            --cache --max-cache-age 1d . --root-dir $(pwd) "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+          ref: docs-latest
+          path: docs-latest
+
+      - name: Link Checker for generated files on docs-latest
+        if: ${{ !cancelled() && inputs.CHANNEL == 'nightly' }}
+        working-directory: docs-latest
+        # Only checks actually generated code and not e.g. pixi.lock
+        run: |
+          git ls-files ':(attr:linguist-generated=true)' \
+            | grep -E '\.(md|py|rs|h|hpp|cpp)$' \ 
+            | pixi run --manifest-path ../pixi.toml lychee --cache --max-cache-age 1d --files-from -

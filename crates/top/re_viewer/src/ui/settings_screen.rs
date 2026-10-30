@@ -8,7 +8,14 @@ use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::{DesignTokens, UiExt as _};
 use re_viewer_context::{AppOptions, ExperimentalAppOptions, VideoOptions};
 
-pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
+use crate::StartupOptions;
+
+pub fn settings_screen_ui(
+    ui: &mut egui::Ui,
+    app_options: &mut AppOptions,
+    startup_options: &StartupOptions,
+    keep_open: &mut bool,
+) {
     egui::Frame {
         inner_margin: egui::Margin::same(5),
         ..Default::default()
@@ -25,7 +32,7 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
             .auto_shrink(false)
             .show(&mut child_ui, |ui| {
                 ui.set_min_width(MIN_WIDTH);
-                settings_screen_ui_impl(ui, app_options, keep_open);
+                settings_screen_ui_impl(ui, app_options, startup_options, keep_open);
             });
 
         if ui.input_mut(|ui| ui.consume_key(egui::Modifiers::NONE, egui::Key::Escape)) {
@@ -34,7 +41,12 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
     });
 }
 
-fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
+fn settings_screen_ui_impl(
+    ui: &mut egui::Ui,
+    app_options: &mut AppOptions,
+    startup_options: &StartupOptions,
+    keep_open: &mut bool,
+) {
     //
     // Title
     //
@@ -85,7 +97,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         show_notification_toasts,
         check_for_updates_on_startup,
         custom_window_decorations,
-        include_rerun_examples_button_in_recordings_panel,
+        enable_welcome_screen,
         show_picking_debug_overlay: _, // not yet exposed
         inspect_blueprint_timeline: _, // not yet exposed
         blueprint_gc: _,               // not yet exposed
@@ -125,12 +137,13 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.add_space(8.0);
 
-    ui.re_checkbox(
-        include_rerun_examples_button_in_recordings_panel,
-        "Show 'Rerun examples' button",
-    );
+    // The startup option hides the welcome screen regardless of this setting.
+    if !startup_options.hide_welcome_screen {
+        ui.checkbox(enable_welcome_screen, "Enable welcome screen")
+            .on_hover_text("Show the Rerun examples when no data is loaded.");
+    }
 
-    ui.re_checkbox(
+    ui.checkbox(
         visualizer_limits_enabled,
         "Limit number of primitives in a view",
     )
@@ -149,23 +162,23 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("Title bar");
 
     if re_ui::supports_custom_decorations(ui.os()) {
-        ui.re_checkbox(custom_window_decorations, "Use custom window decorations")
+        ui.checkbox(custom_window_decorations, "Use custom window decorations")
             .on_hover_text(
                 "Hide the native title bar and draw Rerun's top bar as the window frame.\n\n\
             Opt out of this if you experience any issues with the window's behavior.",
             );
     }
 
-    ui.re_checkbox(show_metrics, "Show top bar diagnostics")
+    ui.checkbox(show_metrics, "Show top bar diagnostics")
         .on_hover_text(
             "Show the debug-build warning, milliseconds/frame, RAM usage, FPS, and connection \
              diagnostics in the top bar",
         );
 
-    ui.re_checkbox(show_notification_toasts, "Show notification toasts")
+    ui.checkbox(show_notification_toasts, "Show notification toasts")
         .on_hover_text("Show toasts for log messages and other notifications");
 
-    ui.re_checkbox(check_for_updates_on_startup, "Check for updates on startup");
+    ui.checkbox(check_for_updates_on_startup, "Check for updates on startup");
 
     separator_with_some_space(ui);
     ui.strong("Map view");
@@ -177,7 +190,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     separator_with_some_space(ui);
     ui.strong("Viewer catalog");
-    ui.re_checkbox(use_viewer_catalog, "Load files via Viewer catalog")
+    ui.checkbox(use_viewer_catalog, "Load files via Viewer catalog")
         .on_hover_text(
             "Load .rrd files through the Viewer catalog instead of importing them as a live \
              recording. Takes effect for files opened after enabling.",
@@ -198,21 +211,21 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         } = experimental;
         separator_with_some_space(ui);
         ui.strong("Experimental");
-        ui.re_checkbox(point_cloud_transparency, "Point cloud transparency")
+        ui.checkbox(point_cloud_transparency, "Point cloud transparency")
             .on_hover_text(
                 "Alpha-blend semi-transparent point clouds, sorting them back-to-front.\n\n\
                  Sorting happens on the CPU every frame, so this is very slow for large point clouds.",
             );
+        ui.checkbox(agent_panel, "Agent panel").on_hover_text(
+            "Experimental: chat with an AI agent that can drive the viewer, in a panel on the right.",
+        );
         cfg_select! {
             target_arch = "wasm32" => {
-                let _ = (agent_panel, gamepad_navigation);
+                let _ = gamepad_navigation;
             }
             _ => {
-                ui.re_checkbox(agent_panel, "Agent panel").on_hover_text(
-                    "Experimental: chat with your own coding agent in a panel on the right.",
-                );
                 let gamepad_navigation_response = ui
-                    .re_checkbox(gamepad_navigation, "Gamepad navigation")
+                    .checkbox(gamepad_navigation, "Gamepad navigation")
                     .on_hover_text("Enable gamepad navigation in 3D spatial views.");
                 if gamepad_navigation_response.changed() && !*gamepad_navigation {
                     re_gamepad::clear_event_waker();
@@ -482,7 +495,7 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
             });
         }
         _ => {
-            ui.re_checkbox(
+            ui.checkbox(
                 &mut options.override_ffmpeg_path,
                 "Override the FFmpeg binary path",
             )
@@ -501,10 +514,11 @@ fn video_section_ui(ui: &mut Ui, options: &mut VideoOptions) {
 
                     let label = ui.label("Path");
 
-                    re_ui::text_edit::text_edit_scope(ui, |ui| {
-                        ui.add(egui::TextEdit::singleline(&mut options.ffmpeg_path))
-                            .labelled_by(label.id)
-                    });
+                    ui.add(
+                        re_ui::text_edit::ReTextEdit::singleline(&mut options.ffmpeg_path)
+                            .size(re_ui::Size::Tiny),
+                    )
+                    .labelled_by(label.id);
                 });
             });
 

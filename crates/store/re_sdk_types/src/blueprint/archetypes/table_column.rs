@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: Blueprint for a column used by a table or card layout.
@@ -41,7 +41,7 @@ pub struct TableColumn {
     ///
     /// If unset, editing is disabled.
     /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-    /// ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
+    /// A column can only be edited when its component type has an editor in the Viewer.
     pub editable: Option<SerializedComponentBatch>,
 
     /// Whether the column is visible in this layout.
@@ -51,10 +51,12 @@ pub struct TableColumn {
     /// Unlisted columns use the viewer default for table layouts and are hidden in card layouts.
     pub visible: Option<SerializedComponentBatch>,
 
-    /// How to render the column's values.
+    /// Overrides the component the column's values are shown as.
     ///
-    /// If unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.
-    pub cell_kind: Option<SerializedComponentBatch>,
+    /// This picks the component UI for every value of the column.
+    /// The column's Arrow datatype must match the datatype of the component type.
+    /// If unset, the component of the source column is used, or the Viewer infers one from the column's datatype.
+    pub column_type: Option<SerializedComponentBatch>,
 }
 
 impl TableColumn {
@@ -100,16 +102,16 @@ impl TableColumn {
         (*DESCRIPTOR).clone()
     }
 
-    /// Returns the [`ComponentDescriptor`] for [`Self::cell_kind`].
+    /// Returns the [`ComponentDescriptor`] for [`Self::column_type`].
     ///
-    /// The corresponding component is [`crate::blueprint::components::TableCellKind`].
+    /// The corresponding component is [`crate::blueprint::components::ColumnType`].
     #[inline]
-    pub fn descriptor_cell_kind() -> ComponentDescriptor {
+    pub fn descriptor_column_type() -> ComponentDescriptor {
         static DESCRIPTOR: std::sync::LazyLock<ComponentDescriptor> =
             std::sync::LazyLock::new(|| ComponentDescriptor {
                 archetype: Some("rerun.blueprint.archetypes.TableColumn".into()),
-                component: "TableColumn:cell_kind".into(),
-                component_type: Some("rerun.blueprint.components.TableCellKind".into()),
+                component: "TableColumn:column_type".into(),
+                component_type: Some("rerun.blueprint.components.ColumnType".into()),
             });
         (*DESCRIPTOR).clone()
     }
@@ -127,7 +129,7 @@ static OPTIONAL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
             TableColumn::descriptor_name(),
             TableColumn::descriptor_editable(),
             TableColumn::descriptor_visible(),
-            TableColumn::descriptor_cell_kind(),
+            TableColumn::descriptor_column_type(),
         ]
     });
 
@@ -137,7 +139,7 @@ static ALL_COMPONENTS: std::sync::LazyLock<[ComponentDescriptor; 4usize]> =
             TableColumn::descriptor_name(),
             TableColumn::descriptor_editable(),
             TableColumn::descriptor_visible(),
-            TableColumn::descriptor_cell_kind(),
+            TableColumn::descriptor_column_type(),
         ]
     });
 
@@ -198,16 +200,16 @@ impl ::re_types_core::Archetype for TableColumn {
         let visible = arrays_by_descr
             .get(&Self::descriptor_visible())
             .map(|array| SerializedComponentBatch::new(array.clone(), Self::descriptor_visible()));
-        let cell_kind = arrays_by_descr
-            .get(&Self::descriptor_cell_kind())
+        let column_type = arrays_by_descr
+            .get(&Self::descriptor_column_type())
             .map(|array| {
-                SerializedComponentBatch::new(array.clone(), Self::descriptor_cell_kind())
+                SerializedComponentBatch::new(array.clone(), Self::descriptor_column_type())
             });
         Ok(Self {
             name,
             editable,
             visible,
-            cell_kind,
+            column_type,
         })
     }
 }
@@ -220,7 +222,7 @@ impl ::re_types_core::AsComponents for TableColumn {
             self.name.clone(),
             self.editable.clone(),
             self.visible.clone(),
-            self.cell_kind.clone(),
+            self.column_type.clone(),
         ]
         .into_iter()
         .flatten()
@@ -238,7 +240,7 @@ impl TableColumn {
             name: None,
             editable: None,
             visible: None,
-            cell_kind: None,
+            column_type: None,
         }
     }
 
@@ -265,9 +267,9 @@ impl TableColumn {
                 crate::components::Visible::arrow_empty(),
                 Self::descriptor_visible(),
             )),
-            cell_kind: Some(SerializedComponentBatch::new(
-                crate::blueprint::components::TableCellKind::arrow_empty(),
-                Self::descriptor_cell_kind(),
+            column_type: Some(SerializedComponentBatch::new(
+                crate::blueprint::components::ColumnType::arrow_empty(),
+                Self::descriptor_column_type(),
             )),
         }
     }
@@ -285,7 +287,7 @@ impl TableColumn {
     ///
     /// If unset, editing is disabled.
     /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
-    /// ⚠ Currently only boolean values with `cell_kind` set to `Flag` are supported.
+    /// A column can only be edited when its component type has an editor in the Viewer.
     #[inline]
     pub fn with_editable(
         mut self,
@@ -306,15 +308,17 @@ impl TableColumn {
         self
     }
 
-    /// How to render the column's values.
+    /// Overrides the component the column's values are shown as.
     ///
-    /// If unset or `Auto`, the viewer infers the renderer from the component or Arrow datatype.
+    /// This picks the component UI for every value of the column.
+    /// The column's Arrow datatype must match the datatype of the component type.
+    /// If unset, the component of the source column is used, or the Viewer infers one from the column's datatype.
     #[inline]
-    pub fn with_cell_kind(
+    pub fn with_column_type(
         mut self,
-        cell_kind: impl Into<crate::blueprint::components::TableCellKind>,
+        column_type: impl Into<crate::blueprint::components::ColumnType>,
     ) -> Self {
-        self.cell_kind = try_serialize_field(Self::descriptor_cell_kind(), [cell_kind]);
+        self.column_type = try_serialize_field(Self::descriptor_column_type(), [column_type]);
         self
     }
 }

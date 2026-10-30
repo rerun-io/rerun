@@ -4,12 +4,11 @@
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 
 use arrow::array::RecordBatch;
-use pyo3::exceptions::PyRuntimeError;
+use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
 use pyo3::{Bound, PyResult};
 use re_grpc_client::write_table::channel;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
-use re_protos::viewer_control::v1alpha1::ViewerControlOp as _;
 use re_protos::viewer_control::v1alpha1::viewer_control_service_client::ViewerControlServiceClient;
 
 use crate::catalog::to_py_err;
@@ -53,70 +52,15 @@ impl PyViewerClientInternal {
         conn.send_table(py, id, table)
     }
 
-    #[pyo3(signature = (target = None, store_ids = None))]
-    fn close_recordings(
-        self_: Py<Self>,
-        target: Option<&str>,
-        store_ids: Option<Vec<String>>,
-        py: Python<'_>,
-    ) -> PyResult<String> {
+    /// Send any viewer-control operation, as a `ViewerControlRequest` in canonical protobuf JSON,
+    /// and return the `ViewerControlResponse` in the same form.
+    ///
+    /// Blocks until the viewer answers, for at most `re_log_channel::VIEWER_CONTROL_TIMEOUT`
+    /// (15 seconds), after which it fails.
+    fn viewer_control(self_: Py<Self>, request_json: &str, py: Python<'_>) -> PyResult<String> {
         let mut conn = self_.borrow(py).conn.clone();
 
-        conn.close_recordings(py, target, store_ids)
-    }
-
-    fn open_url(self_: Py<Self>, url: String, py: Python<'_>) -> PyResult<bool> {
-        let mut conn = self_.borrow(py).conn.clone();
-
-        conn.open_url(py, url)
-    }
-
-    fn save_screenshot(
-        self_: Py<Self>,
-        file_path: String,
-        view_id: Option<Bound<'_, pyo3::PyAny>>,
-        py: Python<'_>,
-    ) -> PyResult<()> {
-        let mut conn = self_.borrow(py).conn.clone();
-
-        let view_id_str = view_id
-            .map(|v| {
-                v.extract::<String>()
-                    .or_else(|_| v.str()?.extract::<String>())
-            })
-            .transpose()?;
-
-        conn.save_screenshot(py, file_path, view_id_str)
-    }
-
-    #[pyo3(signature = (timeline, time, play, store_id = None))]
-    fn set_time_cursor(
-        self_: Py<Self>,
-        timeline: Option<String>,
-        time: i64,
-        play: bool,
-        store_id: Option<String>,
-        py: Python<'_>,
-    ) -> PyResult<()> {
-        let mut conn = self_.borrow(py).conn.clone();
-
-        conn.set_time_cursor(py, timeline, time, play, store_id)
-    }
-
-    fn viewer_logs(
-        self_: Py<Self>,
-        after_sequence: Option<u64>,
-        py: Python<'_>,
-    ) -> PyResult<String> {
-        let mut conn = self_.borrow(py).conn.clone();
-
-        conn.viewer_logs(py, after_sequence)
-    }
-
-    fn viewer_state(self_: Py<Self>, py: Python<'_>) -> PyResult<String> {
-        let mut conn = self_.borrow(py).conn.clone();
-
-        conn.viewer_state(py)
+        conn.viewer_control(py, request_json)
     }
 }
 
@@ -164,146 +108,15 @@ impl ViewerConnectionHandle {
         Ok(())
     }
 
-    fn close_recordings(
-        &mut self,
-        py: Python<'_>,
-        target: Option<&str>,
-        store_ids: Option<Vec<String>>,
-    ) -> PyResult<String> {
-        use re_protos::viewer_control::v1alpha1::{
-            ViewerRecordingIds, close_recordings_request::Target,
-        };
+    fn viewer_control(&mut self, py: Python<'_>, request_json: &str) -> PyResult<String> {
+        let request: re_protos::viewer_control::v1alpha1::ViewerControlRequest =
+            re_protos::json::from_json_str(request_json)
+                .map_err(|err| PyValueError::new_err(err.to_string()))?;
 
-        let target = match (target, store_ids) {
-            (Some(target), None) => match target {
-                "current" => Target::Current(true),
-                "all" => Target::All(true),
-                other => {
-                    return Err(PyRuntimeError::new_err(format!(
-                        "unknown close target {other:?}, expected \"current\" or \"all\""
-                    )));
-                }
-            },
+        let response =
+            wait_for_future(py, self.control_client.viewer_control(request)).map_err(to_py_err)?;
 
-            (None, Some(store_ids)) => Target::StoreIds(ViewerRecordingIds { store_ids }),
-
-            (None, None) | (Some(_), Some(_)) => {
-                return Err(PyRuntimeError::new_err(
-                    "pass exactly one of `target` or `store_ids`",
-                ));
-            }
-        };
-        let response = self.execute(
-            py,
-            re_protos::viewer_control::v1alpha1::CloseRecordingsRequest {
-                target: Some(target),
-            },
-        )?;
-
-        to_json(&response)
-    }
-
-    fn open_url(&mut self, py: Python<'_>, url: String) -> PyResult<bool> {
-        let re_protos::viewer_control::v1alpha1::OpenUrlResponse { still_loading } =
-            self.execute::<re_protos::viewer_control::v1alpha1::OpenUrlRequest>(
-                py,
-                re_protos::viewer_control::v1alpha1::OpenUrlRequest { url },
-            )?;
-
-        Ok(!still_loading)
-    }
-
-    fn save_screenshot(
-        &mut self,
-        py: Python<'_>,
-        file_path: String,
-        view_id: Option<String>,
-    ) -> PyResult<()> {
-        let response = wait_for_future(
-            py,
-            self.control_client.viewer_control(
-                re_protos::viewer_control::v1alpha1::SaveScreenshotRequest {
-                    view_id,
-                    file_path,
-                    max_size: None,
-                }
-                .into_envelope(),
-            ),
-        )
-        .map_err(to_py_err)?;
-
-        re_protos::viewer_control::v1alpha1::SaveScreenshotRequest::from_envelope(
-            response.into_inner(),
-        )
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-        Ok(())
-    }
-
-    fn set_time_cursor(
-        &mut self,
-        py: Python<'_>,
-        timeline: Option<String>,
-        time: i64,
-        play: bool,
-        store_id: Option<String>,
-    ) -> PyResult<()> {
-        let response = wait_for_future(
-            py,
-            self.control_client.viewer_control(
-                re_protos::viewer_control::v1alpha1::SetTimeCursorRequest {
-                    store_id,
-                    timeline: timeline.map(|name| re_protos::common::v1alpha1::Timeline { name }),
-                    time: Some(time.into()),
-                    play: Some(play),
-                }
-                .into_envelope(),
-            ),
-        )
-        .map_err(to_py_err)?;
-
-        re_protos::viewer_control::v1alpha1::SetTimeCursorRequest::from_envelope(
-            response.into_inner(),
-        )
-        .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
-
-        Ok(())
-    }
-
-    fn viewer_logs(&mut self, py: Python<'_>, after_sequence: Option<u64>) -> PyResult<String> {
-        let response = self.execute(
-            py,
-            re_protos::viewer_control::v1alpha1::GetViewerLogsRequest { after_sequence },
-        )?;
-
-        to_json(&response)
-    }
-
-    fn viewer_state(&mut self, py: Python<'_>) -> PyResult<String> {
-        let response = self.execute(
-            py,
-            re_protos::viewer_control::v1alpha1::GetViewerStateRequest {},
-        )?;
-
-        to_json(&response)
-    }
-
-    /// Send one viewer-control operation and unwrap the matching response.
-    ///
-    /// Every operation goes through here, so the response variant is checked in one place rather
-    /// than in each method.
-    fn execute<Op>(&mut self, py: Python<'_>, request: Op) -> PyResult<Op::Response>
-    where
-        Op: re_protos::viewer_control::v1alpha1::ViewerControlOp,
-    {
-        let response = wait_for_future(
-            py,
-            self.control_client.viewer_control(request.into_envelope()),
-        )
-        .map_err(to_py_err)?;
-
-        Op::from_envelope(response.into_inner())
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+        to_json(&response.into_inner())
     }
 }
 

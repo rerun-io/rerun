@@ -26,10 +26,10 @@ use arrow::array::{
 use arrow::datatypes::{DataType, Field, Schema};
 use re_dataframe::external::re_chunk::{Chunk, ChunkId, RowId};
 use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
-use re_protos::cloud::v1alpha1::ext::QueryDatasetDataframe;
+use re_protos::cloud::v1alpha1::ext::{ChunkCandidatesDataframe, QueryDatasetDataframe};
 use re_protos::cloud::v1alpha1::{
-    FetchChunksRequest, FetchChunksResponse, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
-    QueryDatasetRequest, QueryDatasetResponse,
+    FetchChunksRequest, FetchChunksResponse, FindChunksRequest, FindChunksResponse,
+    GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetRequest, QueryDatasetResponse,
 };
 use tonic::codec::DecodeBuf;
 use tonic::{Request, Response, Status};
@@ -50,10 +50,12 @@ pub fn chunk_id_for(segment_id: &str, i: usize) -> ChunkId {
     ChunkId::from_tuid(re_log_types::external::re_tuid::Tuid::from_bytes(bytes))
 }
 
-/// Chunk-info batch with `:start`, `chunk_is_static`, and uncompressed sizes.
+/// Chunk-info batch with `chunk_timeline_start`, `chunk_is_static`, and
+/// uncompressed sizes.
 ///
-/// `starts[i] = None` → null `:start`. Passing `timeline: None` omits the
-/// `:start` column entirely (the "old server" shape that forces `BufferAll`).
+/// `starts[i] = None` → null `chunk_timeline_start`. Passing `timeline: None`
+/// omits the start column entirely (the "old server" shape that forces
+/// `BufferAll`).
 pub fn chunk_info_batch(
     segment_id: &str,
     timeline: Option<&str>,
@@ -123,12 +125,8 @@ pub fn chunk_info_batch_sized(
         Arc::new(static_col),
         Arc::new(uncompressed_col),
     ];
-    if let Some(timeline) = timeline {
-        fields.push(Field::new(
-            format!("{timeline}:start"),
-            DataType::Int64,
-            true,
-        ));
+    if timeline.is_some() {
+        fields.push(ChunkCandidatesDataframe::COLUMN_CHUNK_TIMELINE_START.arrow_field());
         columns.push(Arc::new(Int64Array::from(starts.to_vec())));
     }
 
@@ -312,6 +310,13 @@ impl DataframeClientAPI for MockFetchClient {
         Err(Status::unimplemented("unused by pipeline_v2 tests"))
     }
 
+    async fn find_chunks(
+        &mut self,
+        _request: Request<FindChunksRequest>,
+    ) -> tonic::Result<Response<tonic::codec::Streaming<FindChunksResponse>>> {
+        Err(Status::unimplemented("unused by pipeline_v2 tests"))
+    }
+
     async fn fetch_chunks(
         &mut self,
         _request: Request<FetchChunksRequest>,
@@ -482,6 +487,7 @@ pub async fn run_driver_projected(
         &origin,
         chunk_infos,
         query_expression.filtered_index,
+        true,
         &None,
         crate::dataframe_query_provider::fetch_plan::TARGET_BATCH_SIZE_BYTES as u64,
     )
@@ -576,6 +582,7 @@ pub async fn run_bridge(
         index_values: None,
         projected_schema: segment_id_only_schema(),
         limit_rows: None,
+        starts_eligible: true,
         client: MockFetchClient::new(responses),
         object_store_auth: Arc::new(crate::chunk_fetcher::NoOpObjectStoreAuthenticator {}),
         io_handle: tokio::runtime::Handle::current(),

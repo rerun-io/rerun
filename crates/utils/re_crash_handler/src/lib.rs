@@ -25,7 +25,7 @@ pub fn install_crash_handlers(build_info: BuildInfo) {
     install_signal_handler(build_info);
 }
 
-fn install_panic_hook(_build_info: BuildInfo) {
+fn install_panic_hook(build_info: BuildInfo) {
     let previous_panic_hook = std::panic::take_hook();
 
     std::panic::set_hook(Box::new(
@@ -68,9 +68,8 @@ fn install_panic_hook(_build_info: BuildInfo) {
             Report bugs: https://github.com/rerun-io/rerun/issues"
             );
 
-            #[cfg(feature = "analytics")]
             re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashPanic {
-                build_info: _build_info.clone(),
+                build_info: build_info.clone(),
                 callstack,
                 message: None,
                 file_line,
@@ -86,7 +85,6 @@ fn install_panic_hook(_build_info: BuildInfo) {
 #[cfg(not(target_arch = "wasm32"))]
 #[cfg(not(target_os = "windows"))]
 #[expect(unsafe_code)]
-#[expect(clippy::fn_to_numeric_cast_any)]
 pub fn install_signal_handler(build_info: BuildInfo) {
     *BUILD_INFO.lock() = Some(build_info); // Share it with the signal handler
 
@@ -154,7 +152,6 @@ pub fn install_signal_handler(build_info: BuildInfo) {
         print_problem_and_links(signal_name);
 
         // Send analytics - this also sleeps a while to give the analytics time to send the event.
-        #[cfg(feature = "analytics")]
         if let Some(build_info) = BUILD_INFO.lock().clone() {
             re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashSignal {
                 build_info,

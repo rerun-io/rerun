@@ -2,6 +2,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
+use std::assert_matches;
+
 use std::time::Duration;
 
 use re_catalog_client::{CatalogClient, StagingError};
@@ -20,21 +22,24 @@ const REGISTRATION_TIMEOUT: Duration = Duration::from_secs(30);
 #[tokio::test(flavor = "multi_thread")]
 async fn stage_and_register_roundtrip() -> anyhow::Result<()> {
     let rrd = bytes::Bytes::from(encode_rrd()?);
+    let runtime = re_async::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?;
 
     let listener = re_grpc_server::ServerListener::bind((std::net::Ipv4Addr::LOCALHOST, 0).into())?;
     let (handler, write_upload_route) =
-        RerunCloudHandlerBuilder::new().build_with_write_access()?;
+        RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!())
+            .build_with_write_access()?;
     let handle = ServerBuilder::default()
         .with_listener(listener)
         .with_service(RerunCloudServiceServer::new(handler))
         .with_http_route("/upload/{grant}", write_upload_route)
         .build()
-        .start(&re_async::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()?)
+        .start(&runtime)
         .await?;
 
     let origin = format!("rerun+http://{}", handle.connect_addr()).parse()?;
     let catalog_client = CatalogClient::new(
         ConnectionRegistry::new_without_stored_credentials().connection_handle(origin),
+        runtime,
     );
 
     let dataset_name = EntryName::new("uploads")?;
@@ -48,10 +53,10 @@ async fn stage_and_register_roundtrip() -> anyhow::Result<()> {
             .await?
             .is_empty()
     );
-    assert!(matches!(
+    assert_matches!(
         catalog_client.stage(key, rrd).await,
-        Err(StagingError::Rejected { status: 409, .. })
-    ));
+        Err(StagingError::Api(err)) if err.kind == re_redap_client::ApiErrorKind::AlreadyExists
+    );
 
     let segment_ids = catalog_client
         .register_with_dataset(

@@ -18,10 +18,10 @@
 
 use ::arrow::array::ArrayRef;
 use ::re_types_core::SerializationResult;
-use ::re_types_core::SerializedComponentBatch;
 use ::re_types_core::try_serialize_field;
-use ::re_types_core::{ComponentDescriptor, ComponentType};
+use ::re_types_core::{ComponentDescriptor, SerializedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
+use ::re_types_core::{partition_batches, partition_batches_of_unit_length};
 use ::std::borrow::Cow;
 
 /// **Archetype**: A channel within an MCAP file that defines how messages are structured and encoded.
@@ -305,21 +305,8 @@ impl McapChannel {
     where
         I: IntoIterator<Item = usize> + Clone,
     {
-        let columns = [
-            self.id
-                .map(|id| id.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.topic
-                .map(|topic| topic.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.message_encoding
-                .map(|message_encoding| message_encoding.partitioned(_lengths.clone()))
-                .transpose()?,
-            self.metadata
-                .map(|metadata| metadata.partitioned(_lengths.clone()))
-                .transpose()?,
-        ];
-        Ok(columns.into_iter().flatten())
+        let batches = [self.id, self.topic, self.message_encoding, self.metadata];
+        Ok(partition_batches(batches, _lengths)?.into_iter().flatten())
     }
 
     /// Helper to partition the component data into unit-length sub-batches.
@@ -330,17 +317,10 @@ impl McapChannel {
     pub fn columns_of_unit_batches(
         self,
     ) -> SerializationResult<impl Iterator<Item = ::re_types_core::SerializedComponentColumn>> {
-        let len_id = self.id.as_ref().map(|b| b.array.len());
-        let len_topic = self.topic.as_ref().map(|b| b.array.len());
-        let len_message_encoding = self.message_encoding.as_ref().map(|b| b.array.len());
-        let len_metadata = self.metadata.as_ref().map(|b| b.array.len());
-        let len = None
-            .or(len_id)
-            .or(len_topic)
-            .or(len_message_encoding)
-            .or(len_metadata)
-            .unwrap_or(0);
-        self.columns(std::iter::repeat_n(1, len))
+        let batches = [self.id, self.topic, self.message_encoding, self.metadata];
+        Ok(partition_batches_of_unit_length(batches)?
+            .into_iter()
+            .flatten())
     }
 
     /// Unique identifier for this channel within the MCAP file.

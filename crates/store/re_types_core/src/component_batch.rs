@@ -326,6 +326,57 @@ impl From<&SerializedComponentBatch> for arrow::datatypes::Field {
     }
 }
 
+/// Partitions present batches in field order, sharing one offsets buffer across columns.
+///
+/// If no batches are present, the `lengths` iterator is not advanced.
+/// Absent batches retain their positions as `None` in the returned array.
+pub fn partition_batches<const N: usize>(
+    mut batches: [Option<SerializedComponentBatch>; N],
+    lengths: impl IntoIterator<Item = usize>,
+) -> SerializationResult<[Option<SerializedComponentColumn>; N]> {
+    let mut columns = [const { None }; N];
+    partition_batches_into(&mut batches, &mut lengths.into_iter(), &mut columns)?;
+    Ok(columns)
+}
+
+fn partition_batches_into(
+    batches: &mut [Option<SerializedComponentBatch>],
+    lengths: &mut dyn Iterator<Item = usize>,
+    columns: &mut [Option<SerializedComponentColumn>],
+) -> SerializationResult<()> {
+    assert_eq!(batches.len(), columns.len());
+    columns.fill(None);
+    if batches.iter().all(Option::is_none) {
+        return Ok(());
+    }
+    let offsets = OffsetBuffer::from_lengths(lengths);
+    for (batch, column) in std::iter::zip(batches, columns) {
+        if let Some(batch) = batch.take() {
+            let field =
+                arrow::datatypes::Field::new_list_field(batch.array.data_type().clone(), true);
+            *column = Some(SerializedComponentColumn::new(
+                ListArray::try_new(field.into(), offsets.clone(), batch.array, None)?,
+                batch.descriptor,
+            ));
+        }
+    }
+    Ok(())
+}
+
+/// Uses the first present batch's length for every column's unit partitioning.
+/// Absent batches retain their positions as `None` in the returned array.
+pub fn partition_batches_of_unit_length<const N: usize>(
+    batches: [Option<SerializedComponentBatch>; N],
+) -> SerializationResult<[Option<SerializedComponentColumn>; N]> {
+    let len = batches
+        .iter()
+        .flatten()
+        .next()
+        .map_or(0, |batch| batch.array.len());
+    // NOTE: Partitioning fails if a batch is shorter than the first present batch.
+    partition_batches(batches, std::iter::repeat_n(1, len))
+}
+
 // --- Unary ---
 
 impl<L: Clone + ToArrow> ComponentBatch for L {
@@ -404,5 +455,38 @@ impl<L: ToArrowOpt> ComponentBatch for [Option<L>] {
             self.iter()
                 .map(|opt| opt.as_ref().map(|v| std::borrow::Cow::Borrowed(v))),
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn shared_batch_partitioning() {
+        use crate::arrow_helpers::as_array_ref;
+        use arrow::array::Int32Array;
+
+        let batch = SerializedComponentBatch::new(
+            as_array_ref(Int32Array::from(vec![1, 2, 3])),
+            ComponentDescriptor::partial("test"),
+        );
+        let expected = batch.clone().partitioned([1, 0, 2]).unwrap();
+        let columns =
+            partition_batches([None, Some(batch.clone()), Some(batch.clone())], [1, 0, 2]).unwrap();
+        assert_eq!(columns, [None, Some(expected.clone()), Some(expected)]);
+        assert_eq!(
+            columns[1].as_ref().unwrap().list_array.offsets().as_ptr(),
+            columns[2].as_ref().unwrap().list_array.offsets().as_ptr(),
+        );
+        let columns = partition_batches(
+            [None, None, None],
+            std::iter::from_fn(|| panic!("empty batches must not consume lengths")),
+        )
+        .unwrap();
+        assert!(columns.iter().all(Option::is_none));
+        assert!(partition_batches([Some(batch.clone())], std::iter::once(4)).is_err());
+        let unary = partition_batches_of_unit_length([None, Some(batch.clone())]).unwrap();
+        assert_eq!(unary, [None, Some(batch.column_of_unit_batches().unwrap())]);
     }
 }

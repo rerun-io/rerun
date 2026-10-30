@@ -17,9 +17,6 @@
 #![allow(clippy::wildcard_imports)]
 
 use crate::SerializationResult;
-use crate::SerializedComponentBatch;
-use crate::try_serialize_field;
-use crate::{ComponentDescriptor, ComponentType};
 use crate::{DeserializationError, DeserializationResult};
 use ::arrow::array::ArrayRef;
 use ::std::borrow::Cow;
@@ -63,10 +60,8 @@ impl crate::ToArrowOpt for TimeRange {
         Self: Clone + 'a,
     {
         #![allow(clippy::manual_is_variant_and)]
-        use crate::{
-            ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _,
-            arrow_helpers::as_array_ref,
-        };
+        use crate::arrow_helpers::{as_array_ref, validity_from_bools};
+        use crate::{ArrowDataType as _, ResultExt as _, ToArrow as _, ToArrowOpt as _};
         use arrow::{array::*, buffer::*, datatypes::*};
         Ok({
             let fields = Fields::from(vec![
@@ -88,10 +83,7 @@ impl crate::ToArrowOpt for TimeRange {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let validity: Option<arrow::buffer::NullBuffer> = {
-                let any_nones = somes.iter().any(|some| !*some);
-                any_nones.then(|| somes.into())
-            };
+            let validity = validity_from_bools(somes);
             as_array_ref(StructArray::new(
                 fields,
                 vec![
@@ -103,10 +95,7 @@ impl crate::ToArrowOpt for TimeRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let start_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let start_validity = validity_from_bools(somes);
                         {
                             let _ = start_validity;
                             crate::encodings::TimeRangeBoundary::to_arrow_opt(start)?
@@ -120,10 +109,7 @@ impl crate::ToArrowOpt for TimeRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let end_validity: Option<arrow::buffer::NullBuffer> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
+                        let end_validity = validity_from_bools(somes);
                         {
                             let _ = end_validity;
                             crate::encodings::TimeRangeBoundary::to_arrow_opt(end)?
@@ -154,35 +140,19 @@ impl crate::FromArrowOpt for TimeRange {
             if arrow_data.is_empty() {
                 Vec::new()
             } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.columns());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = ::std::iter::zip(
-                    arrow_data_fields.iter().map(|field| field.name().as_str()),
-                    arrow_data_arrays,
-                )
-                .collect();
+                let fields = StructFields::new(
+                    arrow_data,
+                    Self::arrow_data_type,
+                    "rerun.encodings.TimeRange",
+                );
                 let start = {
-                    if !arrays_by_name.contains_key("start") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "start",
-                        ))
-                        .with_context("rerun.encodings.TimeRange");
-                    }
-                    let arrow_data = &**arrays_by_name["start"];
+                    let arrow_data = fields.required("start")?;
                     crate::encodings::TimeRangeBoundary::from_arrow_opt(arrow_data)
                         .with_context("rerun.encodings.TimeRange#start")?
                         .into_iter()
                 };
                 let end = {
-                    if !arrays_by_name.contains_key("end") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_data_type(),
-                            "end",
-                        ))
-                        .with_context("rerun.encodings.TimeRange");
-                    }
-                    let arrow_data = &**arrays_by_name["end"];
+                    let arrow_data = fields.required("end")?;
                     crate::encodings::TimeRangeBoundary::from_arrow_opt(arrow_data)
                         .with_context("rerun.encodings.TimeRange#end")?
                         .into_iter()

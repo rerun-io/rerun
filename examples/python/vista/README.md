@@ -3,8 +3,8 @@ title = "Vista driving world model"
 description = "Vista is a generative driving world model built on Stable Video Diffusion. Visualizes latent diffusion steps and outputs."
 tags = ["2D", "Diffusion", "Hugging Face", "Video"]
 source = "https://github.com/rerun-io/hf-example-vista"
-thumbnail = "https://static.rerun.io/vista/1db07fa2bffee2351066e1768be5c7c72f9af0aa/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/vista_thumbnail/7ad77f9f403fec838aac5eef6e2928051eafc070/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 

@@ -2,8 +2,8 @@
 title = "RRT*"
 description = "Visualize the RRT* sampling-based path planner: watch the tree expand and re-wire toward an optimal route."
 tags = ["2D"]
-thumbnail= "https://static.rerun.io/rrt-star/fbbda33bdbbfa469ec95c905178ac3653920473a/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/rrt_star_thumbnail/93099c1e4034f18df21ec3977a28f5181f8b309b/768w.jpg"
+thumbnail_dimensions = [768, 576]
 channel = "main"
 include_in_manifest = true
 -->

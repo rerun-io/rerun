@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../archetype_utils.hpp"
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
@@ -57,6 +58,8 @@ namespace rerun::archetypes {
         /// Unless your stream consists entirely of key-frames (in which case you should consider `archetypes::EncodedImage`)
         /// never log this component as static data as this means that you loose all information of
         /// previous samples which may be required to decode an image.
+        ///
+        /// Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
         ///
         /// See `components::VideoCodec` for codec specific requirements.
         std::optional<ComponentBatch> sample;
@@ -171,6 +174,8 @@ namespace rerun::archetypes {
         /// never log this component as static data as this means that you loose all information of
         /// previous samples which may be required to decode an image.
         ///
+        /// Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
+        ///
         /// See `components::VideoCodec` for codec specific requirements.
         VideoStream with_sample(const rerun::components::VideoSample& _sample) && {
             sample = ComponentBatch::from_loggable(_sample, Descriptor_sample).value_or_throw();
@@ -259,13 +264,24 @@ namespace rerun::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&codec, &sample, &is_keyframe, &opacity, &draw_order},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length(
+                       {&codec, &sample, &is_keyframe, &opacity, &draw_order}
+            )
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::archetypes
@@ -281,6 +297,14 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const archetypes::VideoStream& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.codec,
+                 &archetype.sample,
+                 &archetype.is_keyframe,
+                 &archetype.opacity,
+                 &archetype.draw_order}
+            );
+        }
     };
 } // namespace rerun

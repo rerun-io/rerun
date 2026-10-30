@@ -3,8 +3,8 @@ title = "ROS 2 bridge"
 description = "A C++ ROS 2 bridge that subscribes to all supported topics and logs the messages into Rerun, with topic remapping."
 source = "https://github.com/rerun-io/cpp-example-ros2-bridge"
 tags = ["2D", "3D", "Pinhole camera", "ROS", "Time series", "C++"]
-thumbnail = "https://static.rerun.io/carla_thumbnail/8ec07c28f8eb901b8246afdd0b6d2b97ff75fb8d/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/ros2_bridge_thumbnail/9c0df95b6d63afa802674ddf16327c19ab516329/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 A proof-of-concept Rerun bridge for ROS 2 that subscribes to all supported topics and visualizes the messages in Rerun.

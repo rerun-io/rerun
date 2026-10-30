@@ -10,7 +10,7 @@ import warnings
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field as dataclass_field, replace
 from functools import partial
 from typing import TYPE_CHECKING, Any, TypeVar
 
@@ -29,15 +29,25 @@ from rerun._tracing import (
 from rerun.catalog import CatalogClient
 from rerun_bindings import CatalogClientInternal
 
-from ._sample_index import IndexValue, _index_value_to_int, _ns_to_datetime64, _ns_to_timedelta64
+from ._config import TimeAlignedSampling
+from ._sample_index import (
+    IndexValue,
+    _index_value_to_int,
+    _ns_to_datetime64,
+    _ns_to_timedelta64,
+    _validate_timeline_sampling,
+    _window_trims_ns,
+)
 from .decoders import DecodeRequest, FieldBatch
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Generator, Iterable, Iterator, Sequence
+    from collections.abc import Callable, Generator, Iterable, Iterator, Mapping, Sequence
+
+    from datafusion.expr import Expr
 
     from rerun.catalog._entry import DatasetEntry
 
-    from ._config import DataSource, Field
+    from ._config import DataSource, Field, FixedRateSampling
     from ._sample_index import SampleIndex, SegmentMetadata
     from .decoders._base import ColumnDecoder, DecodedResult, DecodedSample, DecodedValue
 
@@ -53,6 +63,7 @@ class QueryPlan:
     query_indices: dict[str, np.ndarray | pa.Array]
     query_ranges: dict[str, list[tuple[IndexValue, IndexValue]]]
     fill_latest_at: bool
+    keyframe_columns: dict[str, str] = dataclass_field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,6 +73,7 @@ class FetchedGroup:
     fields: dict[str, Field]
     fetch_requests: dict[str, list[FieldFetchRequest]]
     table: pa.Table
+    keyframe_columns: dict[str, str] = dataclass_field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,6 +123,7 @@ class IndexedGroup:
     fields: dict[str, Field]
     fetch_requests: dict[str, list[FieldFetchRequest]]
     indexed_table: IndexedTable
+    keyframe_columns: dict[str, str] = dataclass_field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,10 +189,12 @@ class _WorkerConnection:
         self,
         *,
         catalog_url: str,
+        token: str | None,
         dataset_name: str,
         fields: dict[str, Field],
     ) -> None:
         self._catalog_url = catalog_url
+        self._token = token
         self._dataset_name = dataset_name
         self._fields = fields
         self._initialized: bool = False
@@ -190,7 +205,13 @@ class _WorkerConnection:
     @classmethod
     def from_source(cls, source: DataSource, fields: dict[str, Field]) -> _WorkerConnection:
         """Build a connection for a [`DataSource`][rerun.experimental.dataloader.DataSource]'s catalog."""
-        return cls(catalog_url=source.dataset.catalog.url, dataset_name=source.dataset.name, fields=fields)
+        catalog = source.dataset.catalog
+        return cls(
+            catalog_url=catalog.url,
+            token=catalog._internal.token,
+            dataset_name=source.dataset.name,
+            fields=fields,
+        )
 
     @with_tracing("RerunDataset._ensure_initialized")
     def ensure(self) -> tuple[DatasetEntry, dict[str, ColumnDecoder[DecodedValue]]]:
@@ -201,14 +222,21 @@ class _WorkerConnection:
             return self._view, self._decoders
 
         client = CatalogClient._from_internal(
-            CatalogClientInternal(self._catalog_url, client_name=_DATALOADER_CLIENT_NAME)
+            CatalogClientInternal(self._catalog_url, self._token, client_name=_DATALOADER_CLIENT_NAME)
         )
         dataset = client.get_dataset(self._dataset_name)
+        keyframe_fields = {
+            key: path for key, field in self._fields.items() if (path := field.prior_keyframe_path) is not None
+        }
+        if keyframe_fields:
+            schema_columns = set(dataset.schema().column_names())
+            missing = {key: path for key, path in keyframe_fields.items() if path not in schema_columns}
+            if missing:
+                details = ", ".join(f"{key!r}: {path!r}" for key, path in sorted(missing.items()))
+                raise ValueError(f"Video fields require an is_keyframe column; missing {details}")
         self._decoders = {k: f.decode for k, f in self._fields.items()}
         # Leave the dataset unscoped here: each query plan narrows contents to its own
-        # entities at query time (`_fetch_query`, `_fetch_prior_keyframes`). A shared
-        # union filter here would defeat that, since `filter_contents` only ever widens,
-        # so a group could never exclude the other groups' (heavy video) entities.
+        # entities at query time (`_fetch_query`, `_fetch_prior_keyframes`).
         self._view = dataset
         self._initialized = True
         self._init_pid = pid
@@ -251,24 +279,34 @@ def _build_targets(
     *,
     fields: dict[str, Field],
     sample_index: SampleIndex,
+    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
 ) -> list[Target]:
-    """Match samples with prior video keyframes and compute each field's index ranges."""
+    """Compute each sample's output and decode ranges."""
+    _validate_timeline_sampling(timeline_sampling, sample_index)
+    keyframe_interval = (
+        timeline_sampling.keyframe_interval if isinstance(timeline_sampling, TimeAlignedSampling) else None
+    )
+    video_keys = (
+        [key for key, field in fields.items() if is_video_field(field)] if keyframe_interval is not None else keyframes
+    )
     targets: list[Target] = []
     for seg, idx_val in located:
         earliest_outputs = {
-            key: min(sample_index.output_index_values(idx_val, fields[key]), key=_index_value_to_int)
-            for key in keyframes
+            key: min(_index_value_to_int(value) for value in sample_index.output_index_values(idx_val, fields[key]))
+            for key in video_keys
         }
-        prior_keyframes = {
-            key: prior_keyframe
-            for key, by_seg in keyframes.items()
-            if (
-                prior_keyframe := _prior_keyframe(
-                    by_seg.get(seg.segment_id), _index_value_to_int(earliest_outputs[key])
-                )
-            )
-            is not None
-        }
+        if keyframe_interval is not None:
+            prior_keyframes = {
+                key: earliest // keyframe_interval * keyframe_interval
+                for key, earliest in earliest_outputs.items()
+                if earliest >= 0
+            }
+        else:
+            prior_keyframes = {
+                key: prior_keyframe
+                for key, by_seg in keyframes.items()
+                if (prior_keyframe := _prior_keyframe(by_seg.get(seg.segment_id), earliest_outputs[key])) is not None
+            }
         targets.append(
             _build_target(
                 sample_position=len(targets),
@@ -382,13 +420,14 @@ def _fetch_queries_parallel(
                 index=index,
                 plan=plan,
             ),
+            keyframe_columns=plan.keyframe_columns,
         )
 
     return _run_parallel([partial(fetch_group, plan) for plan in plans])
 
 
 def is_video_field(field: Field) -> bool:
-    """Whether a field's decoder requires explicit keyframe metadata."""
+    """Whether a field's decoder needs a keyframe to start decoding."""
     return field.prior_keyframe_path is not None
 
 
@@ -397,6 +436,8 @@ def _build_query_plans(
     fields: dict[str, Field],
     *,
     sample_index: SampleIndex,
+    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
+    index: str | None = None,
 ) -> list[QueryPlan]:
     """
     Partition `fields` and fully resolve one server-query plan per partition.
@@ -411,7 +452,12 @@ def _build_query_plans(
     - `Field.window`: a windowed field fetches its whole window per sample. An
       unwindowed field (e.g. an image) sharing its query would be shipped at
       every index value in that window instead of once per sample.
+
+    Time-aligned sampling disables latest-at filling for every field and expands
+    dense video ranges into exact indices, retaining the original decode requests.
     """
+    _validate_timeline_sampling(timeline_sampling, sample_index)
+    aligned = isinstance(timeline_sampling, TimeAlignedSampling)
     groups: dict[tuple[bool, bool, tuple[int | float, ...] | None], dict[str, Field]] = defaultdict(dict)
     for key, field in fields.items():
         field_requests = [target.fetch_requests[key] for target in targets]
@@ -421,7 +467,7 @@ def _build_query_plans(
         if any(request.fill_latest_at != fill_latest_at for request in field_requests):
             raise RuntimeError(f"Inconsistent fill_latest_at policy for field {key!r}")
         contiguous = any(request.requires_contiguous_fetch for request in field_requests)
-        query_fill_latest_at = fill_latest_at if not contiguous else False
+        query_fill_latest_at = fill_latest_at if not contiguous and not aligned else False
         groups[(query_fill_latest_at, contiguous, field.window)][key] = field
     decode_order = _decode_order(targets)
     plans: list[QueryPlan] = []
@@ -430,21 +476,53 @@ def _build_query_plans(
             key: [targets[position].fetch_requests[key] for positions in decode_order for position in positions]
             for key in group_fields
         }
+        if aligned and not contiguous:
+            group_fetch_requests = {
+                key: [replace(request, fill_latest_at=False) for request in requests]
+                for key, requests in group_fetch_requests.items()
+            }
+        query_ranges = _build_query_ranges(group_fetch_requests) if contiguous else {}
+        query_indices: dict[str, np.ndarray | pa.Array] = {}
+        if contiguous and aligned:
+            frame_indices = _expand_frame_ranges(query_ranges)
+            if frame_indices is not None:
+                query_indices.update(frame_indices)
+                query_ranges = {}
+        elif not contiguous:
+            query_indices = _build_query_indices(group_fetch_requests, sample_index=sample_index)
+        keyframe_columns: dict[str, str] = {}
+        if aligned:
+            reserved = {*group_fields, "rerun_segment_id", index}
+            for key, field in group_fields.items():
+                if is_video_field(field):
+                    alias = f"__rerun_keyframe_{len(keyframe_columns)}"
+                    while alias in reserved:
+                        alias += "_"
+                    reserved.add(alias)
+                    keyframe_columns[key] = alias
         plans.append(
             QueryPlan(
                 fields=group_fields,
                 fetch_requests=group_fetch_requests,
-                query_indices=_build_query_indices(
-                    group_fetch_requests,
-                    sample_index=sample_index,
-                )
-                if not contiguous
-                else {},
-                query_ranges=_build_query_ranges(group_fetch_requests) if contiguous else {},
+                query_indices=query_indices,
+                query_ranges=query_ranges,
                 fill_latest_at=fill_latest_at if not contiguous else False,
+                keyframe_columns=keyframe_columns,
             )
         )
     return plans
+
+
+def _or_predicates(predicates: list[Expr]) -> Expr:
+    """Combine predicates with logarithmic depth for recursive native query planners."""
+    if not predicates:
+        raise ValueError("At least one predicate is required")
+    while len(predicates) > 1:
+        predicates = [
+            predicates[i] | predicates[i + 1] if i + 1 < len(predicates) else predicates[i]
+            for i in range(0, len(predicates), 2)
+        ]
+    return predicates[0]
 
 
 def _fetch_query(
@@ -476,16 +554,18 @@ def _fetch_query(
         # The server's projection-based entity narrowing is disabled under `fill_latest_at`,
         # so narrow explicitly here. `using_index_values` pins the row set, so restricting
         # entities cannot change the returned rows or their latest-at fills.
-        scoped = view.filter_contents(_derive_content_filter(fields)).filter_segments(segment_ids)
+        content_paths = [field.path for field in fields.values()]
+        content_paths.extend(
+            path for key in plan.keyframe_columns if (path := fields[key].prior_keyframe_path) is not None
+        )
+        scoped = view.filter_contents(_content_filter_for_paths(content_paths)).filter_segments(segment_ids)
         if is_range_query:
-            predicate = None
+            predicates = []
             for segment_id, ranges in query_ranges.items():
                 segment = col("rerun_segment_id") == segment_id
                 for lo, hi in ranges:
-                    span = segment & (col(index) >= lo) & (col(index) <= hi)
-                    predicate = span if predicate is None else predicate | span
-            assert predicate is not None
-            df = scoped.reader(index=index).filter(predicate)
+                    predicates.append(segment & (col(index) >= lo) & (col(index) <= hi))
+            df = scoped.reader(index=index).filter(_or_predicates(predicates))
         else:
             df = scoped.reader(
                 index=index,
@@ -496,6 +576,10 @@ def _fetch_query(
         # `index` and `rerun_segment_id` are preserved because `_find_segment_boundaries` reads them.
         select_exprs = [col(index), col("rerun_segment_id")]
         select_exprs.extend(col(field.path).alias(key) for key, field in fields.items())
+        for key, alias in plan.keyframe_columns.items():
+            path = fields[key].prior_keyframe_path
+            assert path is not None
+            select_exprs.append(col(path).alias(alias))
 
         with tracing_scope(f"RerunDataset._fetch_query.to_arrow_table[{label}]"):
             arrow_table = df.select(*select_exprs).to_arrow_table()
@@ -587,6 +671,7 @@ def _index_fetched_block(fetched: FetchedBlock, index: str) -> IndexedBlock:
                 fields=group.fields,
                 fetch_requests=group.fetch_requests,
                 indexed_table=_find_segment_boundaries(group.table, index),
+                keyframe_columns=group.keyframe_columns,
             )
             for group in fetched.fetched_groups
         ],
@@ -615,6 +700,8 @@ def _resolve_decode_requests(
     fetch_requests: Sequence[FieldFetchRequest],
     *,
     indexed_table: IndexedTable,
+    keyframe_column: pa.ChunkedArray | None = None,
+    data_column: pa.Array | None = None,
 ) -> list[DecodeRequest]:
     """
     Resolve one field's timeline-level fetch requests to physical Arrow rows.
@@ -667,6 +754,18 @@ def _resolve_decode_requests(
             }
 
         for position, fetch_request in enumerate(segment_requests):
+            if keyframe_column is not None and fetch_request.starts_at_keyframe:
+                start = decode_spans[position][0]
+                expected = _index_value_to_int(fetch_request.decode_index_range[0])
+                if start >= span_stop or indexed_table.index_values[start] != expected:
+                    continue
+                marker = keyframe_column[start].as_py()
+                if not isinstance(marker, list) or not marker or marker[0] is not True:
+                    continue
+                if data_column is not None:
+                    value = data_column[start]
+                    if not value.is_valid or len(value) == 0:
+                        continue
             output_values = np.fromiter(
                 (_index_value_to_int(value) for value in fetch_request.output_index_values),
                 dtype=np.int64,
@@ -674,6 +773,12 @@ def _resolve_decode_requests(
             output_rows = span_start + np.searchsorted(rows, output_values, side="right") - 1
             minimum_row = decode_spans[position][0] if fetch_request.requires_contiguous_fetch else span_start
             if output_rows.size == 0 or np.any(output_rows < minimum_row):
+                continue
+            if (
+                not fetch_request.fill_latest_at
+                and not fetch_request.requires_contiguous_fetch
+                and np.any(indexed_table.index_values[output_rows] != output_values)
+            ):
                 continue
             output_row_indices = tuple(output_rows.tolist())
             decode_row_indices = (
@@ -698,15 +803,22 @@ def _resolve_decode_requests_in_block(indexed: IndexedBlock) -> PreparedBlock:
     for group in indexed.groups:
         for key, field in group.fields.items():
             fetch_requests = group.fetch_requests[key]
+            column = group.indexed_table.table.column(key).combine_chunks()
             prepared_fields[key] = PreparedField(
                 batch=FieldBatch(
-                    column=group.indexed_table.table.column(key),
+                    column=column,
                     select=field.select,
                     is_windowed=field.window is not None,
                 ),
                 requests=_resolve_decode_requests(
                     fetch_requests,
                     indexed_table=group.indexed_table,
+                    keyframe_column=(
+                        group.indexed_table.table.column(group.keyframe_columns[key])
+                        if key in group.keyframe_columns
+                        else None
+                    ),
+                    data_column=column,
                 ),
                 num_segments=len(group.indexed_table.segment_spans),
             )
@@ -898,6 +1010,35 @@ def _build_query_indices(
     return result
 
 
+_MAX_FRAME_QUERY_INDICES = 65_536
+"""Bound each expanded query to 512 KiB of int64 indices before wire encoding."""
+
+_INITIAL_KEYFRAME_LOOKBACK_SAMPLES = 16
+"""Keep the first read local to random targets; doubling discovers longer GOPs without a spacing assumption."""
+
+
+def _expand_frame_ranges(
+    query_ranges: Mapping[str, Sequence[tuple[IndexValue, IndexValue]]],
+) -> dict[str, np.ndarray] | None:
+    """Return exact integer indices, or `None` when the query would be too large."""
+    total = 0
+    for ranges in query_ranges.values():
+        for lo, hi in ranges:
+            lower, upper = int(lo), int(hi)
+            if not -(1 << 63) <= lower <= upper < (1 << 63):
+                raise ValueError("Dense frame ranges must have ordered bounds within signed int64")
+            total += upper - lower + 1
+            if total > _MAX_FRAME_QUERY_INDICES:
+                return None
+
+    return {
+        segment_id: np.concatenate([
+            np.arange(int(hi) - int(lo) + 1, dtype=np.int64) + np.int64(lo) for lo, hi in ranges
+        ])
+        for segment_id, ranges in query_ranges.items()
+    }
+
+
 def _build_query_ranges(
     fetch_requests: dict[str, list[FieldFetchRequest]],
 ) -> dict[str, list[tuple[IndexValue, IndexValue]]]:
@@ -923,6 +1064,181 @@ def _build_query_ranges(
         result[segment_id] = [(_index_value_like(lo, example), _index_value_like(hi, example)) for lo, hi in merged]
 
     return result
+
+
+def _merge_integer_ranges(ranges: Iterable[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Merge overlapping or adjacent inclusive ranges without overflowing int64."""
+    merged: list[tuple[int, int]] = []
+    for lo, hi in sorted(ranges):
+        if merged and lo <= merged[-1][1] + 1:
+            merged[-1] = (merged[-1][0], max(merged[-1][1], hi))
+        else:
+            merged.append((lo, hi))
+    return merged
+
+
+def _uncovered_integer_ranges(ranges: list[tuple[int, int]], covered: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    """Subtract previously queried ranges from merged, ordered inclusive ranges."""
+    result: list[tuple[int, int]] = []
+    for lo, hi in ranges:
+        for covered_lo, covered_hi in covered:
+            if covered_hi < lo:
+                continue
+            if covered_lo > hi:
+                break
+            if lo < covered_lo:
+                result.append((lo, covered_lo - 1))
+            lo = max(lo, covered_hi + 1)
+            if lo > hi:
+                break
+        if lo <= hi:
+            result.append((lo, hi))
+    return result
+
+
+@with_tracing("RerunDataset._fetch_keyframe_ranges")
+def _fetch_keyframe_ranges(
+    *,
+    view: DatasetEntry,
+    index: str,
+    paths: list[str],
+    ranges: dict[str, list[tuple[int, int]]],
+    sample_index: SampleIndex,
+) -> dict[str, dict[str, np.ndarray]]:
+    """Read true markers inside bounded ranges, retaining their original timeline values."""
+    scoped = view.filter_contents(_content_filter_for_paths(paths)).filter_segments(list(ranges))
+    # Integer indices can be enumerated exactly. Time-based sample grids cannot:
+    # an actual keyframe may lie between two requested sampling timestamps.
+    exact = _expand_frame_ranges(ranges) if sample_index.ns_dtype is None else None
+    if exact is not None:
+        df = scoped.reader(index=index, using_index_values=exact, fill_latest_at=False)
+    else:
+        example = (
+            _ns_to_datetime64(0)
+            if sample_index.is_timestamp
+            else _ns_to_timedelta64(0)
+            if sample_index.is_duration
+            else 0
+        )
+        predicates = []
+        for segment_id, segment_ranges in ranges.items():
+            segment = col("rerun_segment_id") == segment_id
+            for lo, hi in segment_ranges:
+                predicates.append(
+                    segment
+                    & (col(index) >= _index_value_like(lo, example))
+                    & (col(index) <= _index_value_like(hi, example))
+                )
+        df = scoped.reader(index=index, fill_latest_at=False).filter(_or_predicates(predicates))
+
+    path_filter = col(paths[0]).is_not_null()
+    for path in paths[1:]:
+        path_filter = path_filter | col(path).is_not_null()
+    with tracing_scope("RerunDataset._fetch_keyframe_ranges.to_arrow_table"):
+        table = (
+            df
+            .filter(path_filter)
+            .select(col(index), col("rerun_segment_id"), *[col(p) for p in paths])
+            .to_arrow_table()
+        )
+
+    by_path: dict[str, dict[str, np.ndarray]] = {}
+    for path in paths:
+        # list_element raises for empty lists; null and empty marker rows carry
+        # no keyframe evidence and must be removed before extracting the flag.
+        nonempty = pc.fill_null(pc.greater(pc.list_value_length(table.column(path)), 0), False)
+        present = table.filter(nonempty)
+        marked = present.filter(pc.list_element(present.column(path), 0))
+        segments = marked.column("rerun_segment_id").to_pylist()
+        values = marked.column(index).to_numpy(zero_copy_only=False).astype(np.int64)
+        by_segment: dict[str, list[int]] = defaultdict(list)
+        for segment_id, value in zip(segments, values, strict=True):
+            by_segment[segment_id].append(int(value))
+        by_path[path] = {segment_id: np.unique(values) for segment_id, values in by_segment.items()}
+    return by_path
+
+
+@with_tracing("RerunDataset._discover_prior_keyframes")
+def _discover_prior_keyframes(
+    *,
+    view: DatasetEntry,
+    index: str,
+    fields: dict[str, Field],
+    located: Sequence[tuple[SegmentMetadata, IndexValue]],
+    sample_index: SampleIndex,
+) -> dict[str, dict[str, np.ndarray]]:
+    """
+    Discover the nearest prior keyframe for each live sample with bounded backward reads.
+
+    Searches expand only while unresolved, down to the untrimmed segment minimum.
+    Each target is resolved only after its entire interval back to a true marker
+    has been read, so sparse markers and unrelated target windows cannot hide a
+    nearer keyframe. Returned arrays need only cover these targets; manifest
+    generation uses `_fetch_prior_keyframes` to obtain the complete history.
+    """
+    keyframe_fields = {key: path for key, field in fields.items() if (path := field.prior_keyframe_path) is not None}
+    if not keyframe_fields or not located:
+        return {}
+    paths = list(dict.fromkeys(keyframe_fields.values()))
+    trim_start = (
+        _window_trims_ns(fields)[0]
+        if sample_index.ns_dtype is not None
+        else -min([0, *(int(min(field.window)) for field in fields.values() if field.window is not None)])
+    )
+    minimum = -(1 << 63) + int(sample_index.ns_dtype is not None)
+    maximum = (1 << 63) - 1
+    floors: dict[str, int] = {}
+    pending: dict[tuple[str, str, int], int] = {}
+    for segment, anchor in located:
+        floor = segment.index_min if segment.index_min is not None else segment.index_start - trim_start
+        floors[segment.segment_id] = max(minimum, floor)
+        for key, path in keyframe_fields.items():
+            target = min(_index_value_to_int(value) for value in sample_index.output_index_values(anchor, fields[key]))
+            if target >= floors[segment.segment_id]:
+                pending[(path, segment.segment_id, target)] = min(target, maximum) + 1
+
+    found: dict[str, dict[str, np.ndarray]] = {path: {} for path in paths}
+    covered: dict[str, list[tuple[int, int]]] = {}
+    width = _INITIAL_KEYFRAME_LOOKBACK_SAMPLES * (sample_index.ns_per_sample or 1)
+    rounds = 0
+    while pending:
+        requested: dict[str, list[tuple[int, int]]] = defaultdict(list)
+        for (_path, segment_id, target), previous_lo in pending.items():
+            lo = max(floors[segment_id], min(target, maximum) - width + 1)
+            if lo < previous_lo:
+                requested[segment_id].append((lo, previous_lo - 1))
+        ranges = {
+            segment_id: remaining
+            for segment_id, spans in requested.items()
+            if (remaining := _uncovered_integer_ranges(_merge_integer_ranges(spans), covered.get(segment_id, [])))
+        }
+        if ranges:
+            # Active paths only shrink: every remaining path was projected by
+            # every earlier query, so their searched-range coverage is shared.
+            pending_paths = {path for path, _segment_id, _target in pending}
+            active_paths = [path for path in paths if path in pending_paths]
+            fetched = _fetch_keyframe_ranges(
+                view=view, index=index, paths=active_paths, ranges=ranges, sample_index=sample_index
+            )
+            rounds += 1
+            for path, by_segment in fetched.items():
+                for segment_id, values in by_segment.items():
+                    previous = found[path].get(segment_id)
+                    found[path][segment_id] = values if previous is None else np.union1d(previous, values)
+            for segment_id, spans in ranges.items():
+                covered[segment_id] = _merge_integer_ranges([*covered.get(segment_id, []), *spans])
+
+        unresolved: dict[tuple[str, str, int], int] = {}
+        for (path, segment_id, target), _previous_lo in pending.items():
+            lo = max(floors[segment_id], min(target, maximum) - width + 1)
+            prior = _prior_keyframe(found[path].get(segment_id), target)
+            if (prior is None or prior < lo) and lo > floors[segment_id]:
+                unresolved[(path, segment_id, target)] = lo
+        pending = unresolved
+        width *= 2
+
+    set_current_span_attributes({"rerun.dataloader.keyframes.discovery_rounds": rounds})
+    return {key: found[path] for key, path in keyframe_fields.items()}
 
 
 @with_tracing("RerunDataset._fetch_prior_keyframes")
@@ -957,11 +1273,6 @@ def _fetch_prior_keyframes(
     if not keyframe_fields:
         return {}
 
-    schema_columns = set(view.schema().column_names())
-    missing = {key: path for key, path in keyframe_fields.items() if path not in schema_columns}
-    if missing:
-        details = ", ".join(f"{key!r}: {path!r}" for key, path in sorted(missing.items()))
-        raise ValueError(f"Video fields require an is_keyframe column; missing {details}")
     if not located:
         return {}
 
@@ -987,14 +1298,9 @@ def _fetch_prior_keyframes(
             return np.timedelta64(value, "ns")
         return value
 
-    # Filter to keyframes at or before the largest target across all segments, in a
-    # single predicate. A per-segment OR (`(seg==A & idx<=tA) | (seg==B & idx<=tB) | …`)
-    # is expanded server-side into one `QueryDataset` request per segment, each planned
-    # serially, so the cost scales with segment count. Using the global max instead
-    # collapses that to a single request; segments whose own target is lower over-fetch
-    # a few extra keyframe rows (sparse, tiny), and the client-side `_prior_keyframe`
-    # bisect still selects the correct keyframe per segment per target. Segments are
-    # already restricted by `filter_segments` below.
+    # Manifest generation needs every preceding keyframe, not only the nearest
+    # one for each representative target. A global upper bound includes that
+    # complete history; per-sample bisects select the appropriate prior marker.
     global_max = max(max_per_segment.values())
     index_filter = col(index) <= idx_lit(global_max)
 

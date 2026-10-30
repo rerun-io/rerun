@@ -15,7 +15,7 @@ pub fn test_modal_normal_should_match_snapshot() {
             ui.label("Test content");
             ui.separator();
             let mut boolean = true;
-            ui.re_checkbox(&mut boolean, "Checkbox");
+            ui.checkbox(&mut boolean, "Checkbox");
         },
         "modal_normal",
     );

@@ -9,7 +9,6 @@ static SIGINT_RECEIVED: AtomicBool = AtomicBool::new(false);
 /// You can then call [`was_sigint_ever_caught`] at any point in time.
 #[cfg(not(any(target_os = "windows", target_arch = "wasm32")))]
 #[expect(unsafe_code)]
-#[expect(clippy::fn_to_numeric_cast_any)]
 pub fn track_sigint() {
     static ONCE: std::sync::Once = std::sync::Once::new();
 

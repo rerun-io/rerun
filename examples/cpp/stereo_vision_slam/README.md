@@ -3,8 +3,8 @@ title = "Stereo vision SLAM"
 description = "Stereo-vision SLAM on the KITTI self-driving dataset: vehicle trajectory plus the surrounding point cloud."
 source = "https://github.com/rerun-io/StereoVision-SLAM"
 tags = ["3D", "Point cloud", "C++"]
-thumbnail = "https://static.rerun.io/stereovision_slam/c36cfcf8bc7ec9f03b40559d596d7fee97907ba8/480w.png"
-thumbnail_dimensions = [480, 273]
+thumbnail = "https://static.rerun.io/stereo_vision_slam_thumbnail/d7a1cac4876f10f9b068e08ae805fd1cd3fdb8bf/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 Visualizes stereo vision SLAM on the [KITTI dataset](https://www.cvlibs.net/datasets/kitti/).

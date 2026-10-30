@@ -239,7 +239,7 @@ impl Stream {
         let (left_channel, right_channel): (u32, u32) =
             if num_channels == 1 { (0, 0) } else { (0, 1) };
 
-        for frame in out.chunks_exact_mut(OUTPUT_CHANNELS) {
+        for frame in out.as_chunks_mut::<OUTPUT_CHANNELS>().0 {
             if *gain < *target_gain {
                 *gain = (*gain + gain_step).min(*target_gain);
             } else if *target_gain < *gain {
@@ -486,7 +486,7 @@ mod tests {
 
         let mut out = vec![0.0; OUTPUT_CHANNELS * FILL_FRAMES];
         mixer.fill(&mut out);
-        for (i, frame) in out.chunks_exact(OUTPUT_CHANNELS).enumerate() {
+        for (i, frame) in out.as_chunks::<OUTPUT_CHANNELS>().0.iter().enumerate() {
             assert_eq!(frame[0], (10 + i) as f32);
         }
         assert_eq!(
@@ -508,7 +508,7 @@ mod tests {
         assert_eq!(mixer.streams[&StreamId(1)].cursor, 2400.0);
 
         // After the gain ramp, left and right are equal and increase by 0.5 per frame.
-        let frames: Vec<_> = out.chunks_exact(2).collect();
+        let frames: Vec<_> = out.as_chunks::<2>().0.iter().collect();
         let a = frames[4000];
         let b = frames[4001];
         assert_eq!(a[0], a[1]);

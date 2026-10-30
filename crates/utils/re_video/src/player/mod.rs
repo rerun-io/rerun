@@ -290,6 +290,9 @@ pub struct PlayerFrameStatus {
 
     /// Meta information about the decoded frame.
     pub frame_info: Option<FrameInfo>,
+
+    /// Whether the sample at the requested time is a clear. Nothing is shown then.
+    pub cleared: bool,
 }
 
 // --- VideoPlayer ---
@@ -363,6 +366,7 @@ pub fn request_keyframe_before(
         .rev()
         .find(|(_, s)| match s {
             crate::SampleMetadataState::Present(s) => s.is_sync,
+            crate::SampleMetadataState::Clear { .. } => false,
             // We don't know if this is a keyframe or not. So we stop here and wait for it
             // to be loaded.
             crate::SampleMetadataState::Unloaded { .. } => true,
@@ -397,17 +401,19 @@ pub fn request_keyframe_before(
         }
 
         match s {
-            crate::SampleMetadataState::Present(_) => video_description
-                .keyframe_indices
-                .binary_search(&from_idx)
-                .map_err(|_idx| {
-                    if cfg!(debug_assertions) {
-                        re_log::error_once!(
-                            "[DEBUG] Not tracking the keyframe at sample idx {from_idx}"
-                        );
-                    }
-                    VideoPlayerError::BadData
-                }),
+            crate::SampleMetadataState::Present(_) | crate::SampleMetadataState::Clear { .. } => {
+                video_description
+                    .keyframe_indices
+                    .binary_search(&from_idx)
+                    .map_err(|_idx| {
+                        if cfg!(debug_assertions) {
+                            re_log::error_once!(
+                                "[DEBUG] Not tracking the keyframe at sample idx {from_idx}"
+                            );
+                        }
+                        VideoPlayerError::BadData
+                    })
+            }
             crate::SampleMetadataState::Unloaded { .. } => {
                 Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into())
             }
@@ -471,6 +477,11 @@ impl<T: Default> VideoPlayer<T> {
         }
     }
 
+    pub fn with_config(mut self, config: PlayerConfiguration) -> Self {
+        self.config = config;
+        self
+    }
+
     pub fn debug_name(&self) -> &str {
         self.sample_decoder.debug_name()
     }
@@ -520,6 +531,20 @@ impl<T: Default> VideoPlayer<T> {
                 }
             };
 
+        // A clear shows nothing and leaves the decoder and the last output as they are.
+        if video_description
+            .samples
+            .get(requested_sample_idx)
+            .is_some_and(|s| s.is_clear())
+        {
+            return Ok(PlayerFrameStatus {
+                decoder_delay_state: DecoderDelayState::UpToDate,
+                show_loading_indicator: false,
+                frame_info: None,
+                cleared: true,
+            });
+        }
+
         let requested_sample = video_description
             .samples
             .get(requested_sample_idx)
@@ -546,17 +571,29 @@ impl<T: Default> VideoPlayer<T> {
                 &decoded_frame.info,
             );
 
-            // Update the output if it isn't already up to date and we're not waiting for the decoder to catch up.
+            // On a live stream, a decoder that is slower than the incoming samples is always `Behind`.
+            // It still shows every frame that is newer than the current output, and each of them
+            // counts as catching up for the loading indicator.
             let current_frame_info = self.frame_info.as_ref();
+            let is_newer_live_frame = treat_video_as_live_stream(&self.config, video_description)
+                && current_frame_info.is_none_or(|current| {
+                    current.presentation_timestamp < decoded_frame.info.presentation_timestamp
+                });
+
+            // Update the output if it isn't already up to date and we're not waiting for the decoder to catch up.
             if !is_frame_of_sample(
                 current_frame_info,
                 requested_sample_pts,
                 requested_sample_source,
-            ) && self.decoder_delay_state != DecoderDelayState::Behind
+            ) && (self.decoder_delay_state != DecoderDelayState::Behind || is_newer_live_frame)
             {
                 let output = self.output.get_or_insert_with(T::default);
                 update_output(output, decoded_frame)?; // Update errors are very unusual, error out on those immediately.
                 self.frame_info = Some(decoded_frame.info.clone());
+
+                if is_newer_live_frame {
+                    self.last_time_caught_up = Some(Instant::now());
+                }
             }
 
             // We apparently recovered from any errors we had previously!
@@ -614,6 +651,7 @@ impl<T: Default> VideoPlayer<T> {
             decoder_delay_state: self.decoder_delay_state,
             show_loading_indicator,
             frame_info: self.frame_info.clone(),
+            cleared: false,
         })
     }
 
@@ -957,6 +995,11 @@ impl<T: Default> VideoPlayer<T> {
         {
             let sample = match sample {
                 crate::SampleMetadataState::Present(sample) => sample,
+                crate::SampleMetadataState::Clear { .. } => {
+                    self.sample_decoder.skip(sample_idx)?;
+                    self.last_enqueued = Some(sample_idx);
+                    continue;
+                }
                 crate::SampleMetadataState::Unloaded { .. } => {
                     // We handle unloaded samples in `Self::enqueue_samples`
                     return Ok(());
@@ -983,7 +1026,13 @@ impl<T: Default> VideoPlayer<T> {
         self.last_requested = None;
         self.last_enqueued = None;
         self.signaled_end_of_video = false;
-        self.last_time_caught_up = None;
+
+        // A live stream resets on each new keyframe, so the grace period for the loading
+        // indicator keeps running across resets.
+        if !treat_video_as_live_stream(&self.config, video_descr) {
+            self.last_time_caught_up = None;
+        }
+
         // Do *not* reset the error state or last output.
         //
         // We want to keep track of the last error, and also be able to display

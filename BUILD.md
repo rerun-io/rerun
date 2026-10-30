@@ -24,7 +24,7 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.96.0` once you are done.
+Make sure `cargo --version` prints `1.98.1` once you are done.
 
 ### Python/PyO3 configuration (important!)
 
@@ -53,7 +53,7 @@ For more details, see [Python build configuration](#python-build-configuration-a
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.96.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.98.1
 ```
 
 ## Git-lfs
@@ -124,7 +124,10 @@ In debug builds, it will spawn `target/debug/rerun` if it exists, otherwise look
 
 Rerun is available as a package on PyPi and can be installed with `pip install rerun-sdk`.
 
-Additionally, nightly dev wheels from head of `main` are available at <https://github.com/rerun-io/rerun/releases/tag/prerelease>.
+Additionally, wheels are built for every commit on `main`:
+```sh
+uv pip install --index https://build.rerun.io/version/main/simple --reinstall-package rerun-sdk rerun-sdk
+```
 
 
 ### Building from source

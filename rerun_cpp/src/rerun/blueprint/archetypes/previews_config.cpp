@@ -11,40 +11,19 @@ namespace rerun::blueprint::archetypes {
         archetype.timeline =
             ComponentBatch::empty<rerun::blueprint::components::TimelineName>(Descriptor_timeline)
                 .value_or_throw();
+        archetype.play_state =
+            ComponentBatch::empty<rerun::blueprint::components::PlayState>(Descriptor_play_state)
+                .value_or_throw();
+        archetype.playback_speed =
+            ComponentBatch::empty<rerun::blueprint::components::PlaybackSpeed>(
+                Descriptor_playback_speed
+            )
+                .value_or_throw();
+        archetype.start_point =
+            ComponentBatch::empty<rerun::blueprint::components::TimelineFraction>(
+                Descriptor_start_point
+            )
+                .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> PreviewsConfig::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(1);
-        if (timeline.has_value()) {
-            columns.push_back(timeline.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> PreviewsConfig::columns() {
-        if (timeline.has_value()) {
-            return columns(std::vector<uint32_t>(timeline.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::PreviewsConfig>::as_batches(
-            const blueprint::archetypes::PreviewsConfig& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(1);
-
-        if (archetype.timeline.has_value()) {
-            cells.push_back(archetype.timeline.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

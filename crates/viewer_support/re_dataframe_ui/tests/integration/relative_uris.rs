@@ -13,8 +13,9 @@ use re_async::AsyncRuntimeHandle;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints};
 use re_log_types::{StoreId, StoreKind};
+use re_sdk_types::Component as _;
 use re_sdk_types::blueprint::archetypes::{TableColumn, TableLayout};
-use re_sdk_types::blueprint::components::TableCellKind;
+use re_sdk_types::components::Url;
 use re_test_context::TestContext;
 use re_viewer_context::{Route, TableReference, blueprint_timepoint_for_writes};
 
@@ -119,7 +120,7 @@ fn setup_uri_blueprint(test_context: &TestContext, table_ref: &TableReference) -
         Chunk::builder("table/layouts/table/columns/uri")
             .with_archetype_auto_row(
                 timepoint.clone(),
-                &TableColumn::new().with_cell_kind(TableCellKind::Link),
+                &TableColumn::new().with_column_type(Url::name()),
             )
             .build()
             .expect("column chunk should build"),

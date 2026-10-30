@@ -3,8 +3,8 @@ title = "Learning to render novel views from wide-baseline stereo pairs"
 description = "Visual walkthrough of \"Learning to Render Novel Views from Wide-Baseline Stereo Pairs\" via cross-attention along rays."
 source = "https://github.com/rerun-io/cross_attention_renderer/"
 tags = ["2D", "3D", "View synthesis", "Time series", "Pinhole camera", "Paper walkthrough"]
-thumbnail = "https://static.rerun.io/learning-to-render/75c96220e356938037dce35fcb5349f5f8064d8f/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/widebaseline_thumbnail/08743d35551707f2bf5e1ee5e0d12d67d60f1d74/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This example is a visual walkthrough of the paper "Learning to render novel views from wide-baseline stereo pairs".

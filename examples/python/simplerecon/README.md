@@ -3,8 +3,8 @@ title = "SimpleRecon: 3D reconstruction without 3D convolutions"
 description = "Visual walkthrough of \"SimpleRecon: 3D reconstruction without 3D convolutions\", showing cost volumes, depth, and normals per frame."
 source = "https://github.com/rerun-io/simplerecon"
 tags = ["3D", "Depth", "Time series", "Pinhole camera", "Mesh", "Paper walkthrough"]
-thumbnail = "https://static.rerun.io/simplecon/e0f234159cc0f934e6d4a26886b751579f5191f0/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/simplerecon_thumbnail/5da759fab8f1c12dc582f80b9e4d945eddc585cb/768w.png"
+thumbnail_dimensions = [768, 576]
 -->
 
 This example is a visual walkthrough of the paper "SimpleRecon: 3D reconstruction without 3D convolutions".

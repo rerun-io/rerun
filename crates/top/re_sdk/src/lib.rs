@@ -174,11 +174,6 @@ pub use web_viewer::serve_web_viewer;
 // -----
 // Misc:
 
-/// The version of the Rerun SDK.
-pub fn build_info() -> re_build_info::BuildInfo {
-    re_build_info::build_info!()
-}
-
 const RERUN_ENV_VAR: &str = "RERUN";
 
 /// Helper to get the value of the `RERUN` environment variable.

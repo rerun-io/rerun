@@ -39,9 +39,7 @@ impl LogSender {
                 SmartMessagePayload::Msg(msg) => SendError(Box::new(msg)),
                 SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => unreachable!(),
             })?;
-        if let Some(waker) = self.channel.waker.read().as_ref() {
-            (waker)();
-        }
+        self.channel.waker.read().wake();
 
         Ok(())
     }
@@ -71,9 +69,7 @@ impl LogSender {
             }
         })?;
 
-        if let Some(waker) = self.channel.waker.read().as_ref() {
-            (waker)();
-        }
+        self.channel.waker.read().wake();
 
         Ok(())
     }
@@ -103,9 +99,7 @@ impl LogSender {
             std::sync::mpsc::RecvTimeoutError::Disconnected => FlushError::Closed,
         })?;
 
-        if let Some(waker) = self.channel.waker.read().as_ref() {
-            (waker)();
-        }
+        self.channel.waker.read().wake();
 
         Ok(())
     }
@@ -133,9 +127,7 @@ impl LogSender {
             })
             .map_err(|SendError(msg)| SendError(Box::new(msg)))?;
 
-        if let Some(waker) = self.channel.waker.read().as_ref() {
-            (waker)();
-        }
+        self.channel.waker.read().wake();
 
         Ok(())
     }

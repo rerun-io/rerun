@@ -7,11 +7,12 @@ use std::{
     ops::Range,
     sync::{
         Arc,
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicBool, AtomicUsize, Ordering},
     },
 };
 
 use crossbeam::channel::{Receiver, Sender};
+use parking_lot::Mutex;
 use re_chunk::{Chunk, RowId, TimeInt, Timeline};
 use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRange, external::re_tuid::Tuid};
@@ -41,6 +42,15 @@ struct TestDecoder {
     /// Shared with the [`TestVideoPlayer`] so that a test can set it after construction.
     output_delay: Arc<AtomicUsize>,
 
+    /// If set, each submitted sample stays in `in_flight` until the test calls
+    /// [`TestVideoPlayer::finish_decode`] for it.
+    slow_decodes: Arc<AtomicBool>,
+
+    /// Frames of decodes that have started but not finished.
+    ///
+    /// Like on a decoder thread, a started decode still finishes when the decoder is reset.
+    in_flight: Arc<Mutex<Vec<re_video::Frame>>>,
+
     pending: std::collections::VecDeque<re_video::Frame>,
 }
 
@@ -48,7 +58,7 @@ impl AsyncDecoder for TestDecoder {
     fn submit_chunk(&mut self, chunk: re_video::Chunk) -> re_video::DecodeResult<()> {
         re_quota_channel::send_crossbeam(&self.sample_tx, chunk.sample_idx).unwrap();
 
-        self.pending.push_back(re_video::Frame {
+        let frame = re_video::Frame {
             content: re_video::FrameContent {
                 data: Vec::new(),
                 width: 0,
@@ -56,7 +66,14 @@ impl AsyncDecoder for TestDecoder {
                 format: re_video::PixelFormat::Rgb8Unorm,
             },
             info: chunk.frame_info(),
-        });
+        };
+
+        if self.slow_decodes.load(Ordering::Relaxed) {
+            self.in_flight.lock().push(frame);
+            return Ok(());
+        }
+
+        self.pending.push_back(frame);
 
         if self.output_delay.load(Ordering::Relaxed) < self.pending.len()
             && let Some(frame) = self.pending.pop_front()
@@ -119,6 +136,9 @@ pub(super) struct TestVideoPlayer {
     time: f64,
     last_status: Option<re_video::player::PlayerFrameStatus>,
     output_delay: Arc<AtomicUsize>,
+    slow_decodes: Arc<AtomicBool>,
+    in_flight: Arc<Mutex<Vec<re_video::Frame>>>,
+    decoder_output: re_video::Sender<Result<re_video::Frame, re_video::DecodeError>>,
 }
 
 impl TestVideoPlayer {
@@ -126,15 +146,23 @@ impl TestVideoPlayer {
         #![expect(clippy::disallowed_methods)] // it's a test
         let (sample_tx, sample_rx) = crossbeam::channel::unbounded();
         let output_delay = Arc::new(AtomicUsize::new(0));
+        let slow_decodes = Arc::new(AtomicBool::new(false));
+        let in_flight = Arc::new(Mutex::new(Vec::new()));
+        let mut decoder_output = None;
         let video = VideoPlayer::new_with_decoder(
             VideoSampleDecoder::new("test_decoder".to_owned(), {
                 let output_delay = output_delay.clone();
+                let slow_decodes = slow_decodes.clone();
+                let in_flight = in_flight.clone();
                 |sender| {
+                    decoder_output = Some(sender.clone());
                     Ok(Box::new(TestDecoder {
                         sample_tx,
                         min_num_samples_to_enqueue_ahead: 2,
                         sender,
                         output_delay,
+                        slow_decodes,
+                        in_flight,
                         pending: Default::default(),
                     }))
                 }
@@ -150,6 +178,9 @@ impl TestVideoPlayer {
             time: 0.0,
             last_status: None,
             output_delay,
+            slow_decodes,
+            in_flight,
+            decoder_output: decoder_output.expect("the decoder is created in `new`"),
         }
     }
 
@@ -157,6 +188,65 @@ impl TestVideoPlayer {
     fn with_output_delay(self, output_delay: usize) -> Self {
         self.output_delay.store(output_delay, Ordering::Relaxed);
         self
+    }
+
+    fn with_player_config(mut self, config: re_video::player::PlayerConfiguration) -> Self {
+        self.video = self.video.with_config(config);
+        self
+    }
+
+    /// Make every decode of the fake decoder wait for [`Self::finish_decode`].
+    fn with_slow_decodes(self) -> Self {
+        self.slow_decodes.store(true, Ordering::Relaxed);
+        self
+    }
+
+    /// Finish the decode of the given sample and hand its frame to the player.
+    #[track_caller]
+    fn finish_decode(&self, sample_idx: SampleIndex) {
+        let mut in_flight = self.in_flight.lock();
+        let pos = in_flight
+            .iter()
+            .position(|frame| {
+                frame.info.source.and_then(|source| {
+                    self.video_descr
+                        .sample_index_of_source(frame.info.presentation_timestamp, source)
+                }) == Some(sample_idx)
+            })
+            .unwrap_or_else(|| panic!("sample {sample_idx} is not being decoded"));
+        let frame = in_flight.remove(pos);
+        self.decoder_output.send(Ok(frame)).unwrap();
+    }
+
+    /// Append a sample to the end of the video, like a live stream does.
+    fn push_sample(&mut self, mut sample: SampleMetadataState) {
+        let idx = self.video_descr.samples.next_index();
+        if let Some(sample) = sample.sample_mut() {
+            sample.frame_nr = idx as u32;
+            sample.decode_timestamp = re_video::Time::from_secs(
+                sample
+                    .decode_timestamp
+                    .into_secs(re_video::Timescale::NANOSECOND)
+                    - 0.1,
+                re_video::Timescale::NANOSECOND,
+            );
+            if sample.is_sync {
+                self.video_descr.keyframe_indices.push(idx);
+            }
+        }
+        self.video_descr.samples.push_back(sample);
+
+        super::update_sample_durations(
+            re_video::Span::from_start_len(idx, 1),
+            &mut self.video_descr.samples,
+        )
+        .unwrap();
+
+        self.video_descr.samples_statistics =
+            re_video::SamplesStatistics::new(&self.video_descr.samples);
+        self.video_descr.delivery_method = re_video::VideoDeliveryMethod::Stream {
+            last_time_updated_samples: std::time::Instant::now(),
+        };
     }
 
     fn from_stream(stream: SharablePlayableVideoStream) -> Self {
@@ -222,6 +312,20 @@ impl TestVideoPlayer {
     /// How far behind the player reported to be for the last requested frame.
     fn delay_state(&self) -> Option<re_video::player::DecoderDelayState> {
         Some(self.last_status.as_ref()?.decoder_delay_state)
+    }
+
+    /// Whether the player asked for a loading indicator on the last requested frame.
+    fn show_loading_indicator(&self) -> bool {
+        self.last_status
+            .as_ref()
+            .is_some_and(|status| status.show_loading_indicator)
+    }
+
+    /// Whether the sample at the last requested time is a clear.
+    fn cleared(&self) -> bool {
+        self.last_status
+            .as_ref()
+            .is_some_and(|status| status.cleared)
     }
 
     #[track_caller]
@@ -307,6 +411,14 @@ fn frame(time: f64) -> SampleMetadataState {
         // Not relevant for these tests.
         source: re_video::VideoSource::id(Tuid::new(), Tuid::new()),
     })
+}
+
+fn clear(time: f64) -> SampleMetadataState {
+    let time = Time::from_secs(time, re_video::Timescale::NANOSECOND);
+    SampleMetadataState::Clear {
+        source_id: Tuid::new(),
+        timestamp: time,
+    }
 }
 
 fn keyframe(time: f64) -> SampleMetadataState {
@@ -418,6 +530,60 @@ fn player_survives_a_decoder_that_holds_back_more_than_it_declares() {
     );
 }
 
+/// Images of a live stream arrive faster than the decoder can decode them, while the player follows
+/// the newest sample. Each new image resets the decoder, but decodes that already started still
+/// finish. The player shows each finished frame that is newer than the one on screen, and doesn't
+/// show a loading indicator for it.
+#[test]
+fn player_live_stream_with_slow_decoder() {
+    use re_video::player::DecoderDelayState;
+
+    let dt = 0.1;
+    let source = TestVideoSource::new(|_| {});
+    // The video counts as live and the loading indicator waits for the grace period, however slow
+    // the test runs.
+    let mut video = create_video([keyframe(0.0)])
+        .unwrap()
+        .with_slow_decodes()
+        .with_player_config(re_video::player::PlayerConfiguration {
+            decoding_grace_delay_before_reporting: std::time::Duration::from_hours(1),
+            time_until_video_assumed_ended: std::time::Duration::from_hours(1),
+            ..Default::default()
+        });
+
+    let follow = |video: &mut TestVideoPlayer, idx: SampleIndex| {
+        video.frame_at(idx as f64 * dt, &source).unwrap();
+    };
+
+    follow(&mut video, 0);
+    for idx in 1..10 {
+        video.push_sample(keyframe(idx as f64 * dt));
+        follow(&mut video, idx);
+    }
+    assert_eq!(video.shown_sample_idx(), None);
+    assert!(video.show_loading_indicator());
+
+    // The first decode finishes far behind the newest sample.
+    video.finish_decode(0);
+    follow(&mut video, 9);
+    assert_eq!(video.delay_state(), Some(DecoderDelayState::Behind));
+    assert_eq!(video.shown_sample_idx(), Some(0));
+    assert!(!video.show_loading_indicator());
+
+    for idx in 10..15 {
+        video.push_sample(keyframe(idx as f64 * dt));
+        follow(&mut video, idx);
+    }
+    assert_eq!(video.shown_sample_idx(), Some(0));
+    assert!(!video.show_loading_indicator());
+
+    // A later decode replaces the frame on screen.
+    video.finish_decode(12);
+    follow(&mut video, 14);
+    assert_eq!(video.shown_sample_idx(), Some(12));
+    assert!(!video.show_loading_indicator());
+}
+
 #[test]
 fn player_all_keyframes() {
     let count = 10;
@@ -483,6 +649,38 @@ fn player_irregular() {
     let video = create_video(samples).unwrap();
 
     test_simple_video(video, count, 0.1, 2500.0);
+}
+
+/// A clear between frames of one group of pictures shows nothing for its time. The decoder never
+/// gets the clear, and the frames after it decode without starting over at the keyframe.
+#[test]
+fn player_clear_within_gop() {
+    let mut video = create_video([
+        keyframe(0.0),
+        frame(0.1),
+        frame(0.2),
+        clear(0.3),
+        frame(0.4),
+        frame(0.5),
+    ])
+    .unwrap();
+    let source = TestVideoSource::new(|_| {});
+
+    video.frame_at(0.25, &source).unwrap();
+    assert!(!video.cleared());
+    assert_eq!(video.shown_sample_idx(), Some(2));
+
+    video.frame_at(0.35, &source).unwrap();
+    assert!(video.cleared());
+
+    video.frame_at(0.45, &source).unwrap();
+    assert!(!video.cleared());
+    assert_eq!(video.shown_sample_idx(), Some(4));
+
+    assert_eq!(
+        video.sample_rx.try_iter().collect::<Vec<_>>(),
+        [0, 1, 2, 4, 5]
+    );
 }
 
 /// All samples of a video share one timestamp, and more keep streaming in on it. The frame on

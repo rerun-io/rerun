@@ -482,7 +482,7 @@ fn setup_target_config(
     // TODO(andreas): `re_tf` represents crossing a pinhole as an affine image-plane transform,
     // conflating projecting 3D into 2D with embedding 2D on a display plane in 3D.
     // We should preserve these distinct semantics in `re_tf` instead.
-    let focal_length = 0.5 * (focal_length.x + focal_length.y);
+    let focal_length = f32::midpoint(focal_length.x, focal_length.y);
     let vertical_fov = 2.0 * (0.5 * pinhole.resolution.y / focal_length).atan();
 
     let projection_from_view = re_renderer::view_builder::Projection::Perspective {
@@ -586,7 +586,7 @@ fn show_projections_from_3d_space(
                 shapes.push(Shape::circle_filled(pos_in_ui, radius, circle_fill_color));
 
                 let text_color = ui.visuals().strong_text_color();
-                let text = format!("Depth: {:.3} m", pos_2d.z);
+                let text = format!("Depth: {}", re_format::format_f32(pos_2d.z));
                 let font_id = egui::TextStyle::Body.resolve(ui.style());
                 let galley = ui.fonts_mut(|fonts| fonts.layout_no_wrap(text, font_id, text_color));
                 let rect = Align2::CENTER_TOP.anchor_rect(Rect::from_min_size(

@@ -71,3 +71,21 @@ def test_positional_args_handling() -> None:
     assert result == "positional_value"
 
     set_strict_mode(was_strict_mode)
+
+
+def test_dataset_view_alias() -> None:
+    import rerun.catalog
+
+    with pytest.warns(DeprecationWarning, match="DatasetSelection"):
+        alias = rerun.catalog.DatasetView
+
+    assert alias is rerun.catalog.DatasetSelection
+
+
+def test_registration_handle_alias() -> None:
+    import rerun.catalog
+
+    with pytest.warns(DeprecationWarning, match="RegistrationOperation"):
+        alias = rerun.catalog.RegistrationHandle
+
+    assert alias is rerun.catalog.RegistrationOperation
