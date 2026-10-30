@@ -29,7 +29,6 @@ re_agent.workspace = true
 re_async.workspace = true
 re_format.workspace = true
 re_log.workspace = true
-re_log_types.workspace = true
 re_tracing.workspace = true
 re_ui.workspace = true
 

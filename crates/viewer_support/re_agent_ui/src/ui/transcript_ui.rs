@@ -1,6 +1,6 @@
 use egui::RichText;
 use re_agent::acp::schema::v1::{Plan, PlanEntryStatus, ToolCallStatus};
-use re_log_types::{DateVisibility, Timestamp, TimestampFormat};
+use re_format::{DateVisibility, TimestampFormat};
 use re_ui::{ButtonExt as _, UiExt as _, icons};
 use web_time::SystemTime;
 
@@ -247,10 +247,10 @@ fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str, answered_at: S
         {
             ui.copy_text(answer.to_owned());
         }
-        if hovered && let Ok(answered_at) = Timestamp::try_from(answered_at) {
+        if hovered && let Some(answered_at) = to_jiff(answered_at) {
             re_ui::time::short_duration_ui(
                 ui,
-                answered_at.into(),
+                answered_at,
                 TimestampFormat::local_timezone()
                     .with_short(true)
                     .with_date_visibility(DateVisibility::ShowDate),
@@ -342,9 +342,15 @@ fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
     });
 }
 
+/// `jiff` only converts from `std::time::SystemTime`, which is a different type on the web.
+fn to_jiff(time: SystemTime) -> Option<jiff::Timestamp> {
+    let since_epoch = time.duration_since(web_time::UNIX_EPOCH).ok()?;
+    jiff::Timestamp::from_duration(since_epoch.try_into().ok()?).ok()
+}
+
 /// Local wall-clock time, e.g. `14:03:12`, with the date in front when it isn't today.
 fn format_timestamp(time: SystemTime) -> String {
-    let Ok(timestamp) = Timestamp::try_from(time).map(jiff::Timestamp::from) else {
+    let Some(timestamp) = to_jiff(time) else {
         return "unknown time".to_owned();
     };
     let zoned = timestamp.to_zoned(jiff::tz::TimeZone::system());

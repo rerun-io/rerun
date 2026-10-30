@@ -9091,7 +9091,6 @@ dependencies = [
  "re_async",
  "re_format",
  "re_log",
- "re_log_types",
  "re_tracing",
  "re_ui",
  "re_workspace_hack",
