@@ -20,8 +20,8 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "crates/store/re_sdk_types/src/reflection/mod.rs",
     "crates/top/re_sdk/src/recording_stream.rs",
     "crates/top/re_viewer/src/app/viewer_control/mod.rs",
-    "crates/viewer_support/re_ui/data/Inter-Variable.ttf",
-    "crates/viewer_support/re_ui/data/JetBrainsMono-Variable.ttf",
+    "crates/ui_tools/re_ui/data/Inter-Variable.ttf",
+    "crates/ui_tools/re_ui/data/JetBrainsMono-Variable.ttf",
     "crates/top/re_viewer/data/app_icon_mac.png",
     "docs/snippets/INDEX.md",
     "pixi.lock",
@@ -36,9 +36,9 @@ FILES_ALLOWED_TO_BE_LARGE = {
 
 # Paths with the following prefixes are allowed to contain PNG files that are not checked into LFS
 PATH_PREFIXES_ALLOWED_TO_CONTAIN_NON_LFS_PNGS = (
-    "crates/viewer_support/re_ui/data/icons/",
-    "crates/viewer_support/re_ui/data/logo_dark_mode.png",
-    "crates/viewer_support/re_ui/data/logo_light_mode.png",
+    "crates/ui_tools/re_ui/data/icons/",
+    "crates/ui_tools/re_ui/data/logo_dark_mode.png",
+    "crates/ui_tools/re_ui/data/logo_light_mode.png",
     "crates/top/re_viewer/data/app_icon.png",
     "crates/top/re_viewer/data/app_icon_mac.png",
     "crates/top/re_web_viewer_server/web_viewer/apple-touch-icon.png",

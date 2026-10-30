@@ -1,6 +1,6 @@
 use re_agent::RedactionAgent;
-use re_agent_ui::acp::schema::v1::{ContentBlock, ToolCallContent, ToolCallStatus};
-use re_agent_ui::{
+use re_agent::acp::schema::v1::{ContentBlock, ToolCallContent, ToolCallStatus};
+use re_agent::{
     AgentSession, ToolCallState, Transcript, TranscriptItem, message_text, truncate_bytes,
 };
 use re_sdk_types::external::uuid::Uuid;
@@ -55,6 +55,8 @@ impl FeedbackModal {
     ///
     /// Sending needs analytics to be enabled, and the Send button is disabled otherwise.
     pub fn ui(&mut self, ctx: &egui::Context) {
+        crate::agent_analytics::update_redactor(&mut self.redactor, ctx);
+
         let Self { modal, text, .. } = self;
         let send_clicked = modal.ui(
             ctx,
@@ -201,9 +203,9 @@ struct Step {
     /// Counts from 1, in transcript order.
     step_id: usize,
 
-    /// RFC 3339, in UTC.
+    /// Serialized as RFC 3339, in UTC.
     #[serde(skip_serializing_if = "Option::is_none")]
-    timestamp: Option<String>,
+    timestamp: Option<jiff::Timestamp>,
 
     source: Source,
     message: String,
@@ -257,17 +259,19 @@ impl Trajectory {
         let mut steps: Vec<Step> = Vec::new();
         let mut image_count = 0;
         for entry in &transcript.items {
-            let timestamp = jiff::Timestamp::try_from(entry.created_at)
-                .ok()
-                .map(|timestamp| timestamp.to_string());
             match &entry.item {
                 TranscriptItem::User(prompt) => {
                     image_count += prompt.images.len();
-                    steps.push(Step::new(Source::User, prompt.text.clone(), timestamp));
+                    steps.push(Step::new(
+                        Source::User,
+                        prompt.text.clone(),
+                        entry.created_at,
+                    ));
                 }
                 TranscriptItem::Agent { content, thoughts } => {
                     image_count += content.iter().filter(|block| is_image(block)).count();
-                    let mut step = Step::new(Source::Agent, message_text(content), timestamp);
+                    let mut step =
+                        Step::new(Source::Agent, message_text(content), entry.created_at);
                     step.reasoning_content = (!thoughts.is_empty()).then(|| thoughts.clone());
                     steps.push(step);
                 }
@@ -280,7 +284,7 @@ impl Trajectory {
                         })
                         .count();
                     if steps.last().is_none_or(|step| step.source != Source::Agent) {
-                        steps.push(Step::new(Source::Agent, String::new(), timestamp));
+                        steps.push(Step::new(Source::Agent, String::new(), entry.created_at));
                     }
                     if let Some(step) = steps.last_mut() {
                         step.push_tool_call(call);
@@ -293,11 +297,11 @@ impl Trajectory {
                             "MCP server `{}` failed to start: {}",
                             failure.server_name, failure.error
                         ),
-                        timestamp,
+                        entry.created_at,
                     ));
                 }
                 TranscriptItem::Note { text, .. } => {
-                    steps.push(Step::new(Source::System, text.clone(), timestamp));
+                    steps.push(Step::new(Source::System, text.clone(), entry.created_at));
                 }
             }
         }
@@ -322,11 +326,18 @@ impl Trajectory {
     }
 }
 
+/// `time` as a [`jiff::Timestamp`], or `None` when it is out of range.
+fn jiff_timestamp(time: web_time::SystemTime) -> Option<jiff::Timestamp> {
+    let since_epoch = time.duration_since(web_time::UNIX_EPOCH).ok()?;
+    let nanoseconds = i128::try_from(since_epoch.as_nanos()).ok()?;
+    jiff::Timestamp::from_nanosecond(nanoseconds).ok()
+}
+
 impl Step {
-    fn new(source: Source, message: String, timestamp: Option<String>) -> Self {
+    fn new(source: Source, message: String, created_at: web_time::SystemTime) -> Self {
         Self {
             step_id: 0,
-            timestamp,
+            timestamp: jiff_timestamp(created_at),
             source,
             message,
             reasoning_content: None,
@@ -387,7 +398,7 @@ fn tool_output(call: &ToolCallState) -> String {
 
 #[cfg(test)]
 mod tests {
-    use re_agent_ui::acp::schema::v1::{
+    use re_agent::acp::schema::v1::{
         ContentChunk, SessionUpdate, TextContent, ToolCall as AcpToolCall,
     };
 
@@ -425,7 +436,7 @@ mod tests {
         ))));
         transcript.push_note("Turn cancelled", false);
 
-        let start = std::time::SystemTime::UNIX_EPOCH + std::time::Duration::from_hours(500_000);
+        let start = web_time::UNIX_EPOCH + std::time::Duration::from_hours(500_000);
         for (index, entry) in transcript.items.iter_mut().enumerate() {
             entry.created_at = start + std::time::Duration::from_secs(index as u64);
         }
@@ -529,8 +540,8 @@ mod tests {
 
     #[test]
     fn images_are_counted_but_not_sent() {
-        use re_agent_ui::acp::schema::v1::ImageContent;
-        use re_agent_ui::{Prompt, PromptImage};
+        use re_agent::acp::schema::v1::ImageContent;
+        use re_agent::{Prompt, PromptImage};
 
         let mut transcript = Transcript::default();
         transcript.push_user(Prompt {

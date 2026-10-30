@@ -1,14 +1,19 @@
 //! Removes sensitive data from JSON with a fresh, tool-less agent session.
 
 use std::collections::VecDeque;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
+#[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::{Receiver, RecvTimeoutError, Sender, TrySendError};
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use serde_json::Value;
+#[cfg(agent_harness_backend)]
 use tempfile::TempDir;
+use web_time::Instant;
 
-use crate::{AgentHarnessConfig, AgentLaunch, AgentSession, HostedTools};
+#[cfg(agent_harness_backend)]
+use crate::AgentHarnessConfig;
+use crate::{AgentLaunch, AgentSession, HostedTools};
 
 /// How long the redacting agent gets before the redaction fails.
 const REDACTION_TIMEOUT: Duration = Duration::from_mins(2);
@@ -21,6 +26,7 @@ const REDACTION_QUEUE_CAPACITY: usize = 1024;
 /// Redaction is mechanical work on one short JSON object, so the cheapest capable model of each
 /// family is enough, and the user should not pay flagship prices for a background task.
 /// An agent that offers none of these keeps its default model.
+#[cfg(agent_harness_backend)]
 const REDACTION_MODELS: &[&str] = &["sonnet", "flash", "mini", "haiku"];
 
 /// Instructions for removing sensitive data from agent analytics.
@@ -61,9 +67,14 @@ The redacted JSON object only, on one line or pretty-printed, starting with `{` 
 /// Why a redaction produced no redacted value.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RedactionError {
+    #[cfg(agent_harness_backend)]
     NoScratchDirectory,
+    #[cfg(not(agent_harness_backend))]
+    NoHarness,
+    #[cfg(not(target_arch = "wasm32"))]
     NoThread,
     QueueFull,
+    #[cfg(not(target_arch = "wasm32"))]
     ThreadGone,
     TimedOut,
     AskedForPermission,
@@ -74,9 +85,14 @@ pub enum RedactionError {
 impl std::fmt::Display for RedactionError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
+            #[cfg(agent_harness_backend)]
             Self::NoScratchDirectory => "no scratch directory",
+            #[cfg(not(agent_harness_backend))]
+            Self::NoHarness => "agent harnesses cannot run here",
+            #[cfg(not(target_arch = "wasm32"))]
             Self::NoThread => "no redaction thread",
             Self::QueueFull => "queue full",
+            #[cfg(not(target_arch = "wasm32"))]
             Self::ThreadGone => "redaction thread gone",
             Self::TimedOut => "timed out",
             Self::AskedForPermission => "redactor asked for permission",
@@ -108,28 +124,94 @@ struct InFlight {
     prompt_sent: bool,
 }
 
-/// Work sent to the redaction thread.
+/// Work waiting for the redacting agent.
 struct RedactionRequest {
     json: Value,
     agent: RedactionAgent,
     on_redacted: OnRedacted,
 }
 
-/// Redacts JSON on a background thread, where a fresh, tool-less agent session redacts each one.
-/// Requests are handled one at a time, and nothing carries over between sessions.
+/// Requests waiting for redaction, and the one being redacted.
+///
+/// Requests are handled one at a time, each by a fresh session, so nothing carries over.
+#[derive(Default)]
+struct RedactionQueue {
+    waiting: VecDeque<RedactionRequest>,
+    in_flight: Option<InFlight>,
+}
+
+impl RedactionQueue {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn is_idle(&self) -> bool {
+        self.in_flight.is_none() && self.waiting.is_empty()
+    }
+
+    /// Start the next request if none is in flight, and finish the one in flight once its
+    /// answer is in. Returns whether one finished, so the next can start.
+    ///
+    /// `waker` is woken when the redacting agent has news.
+    fn step(&mut self, waker: UiWaker) -> bool {
+        if self.in_flight.is_none()
+            && let Some(RedactionRequest {
+                json,
+                agent,
+                on_redacted,
+            }) = self.waiting.pop_front()
+        {
+            let RedactionAgent {
+                launch,
+                async_runtime,
+            } = agent;
+            let redactor = AgentSession::start(launch, async_runtime.as_ref(), waker);
+            self.in_flight = Some(InFlight {
+                redactor,
+                json,
+                on_redacted,
+                started: Instant::now(),
+                prompt_sent: false,
+            });
+        }
+
+        let finished = self.in_flight.as_mut().and_then(InFlight::update);
+        if let Some(answer) = finished
+            && let Some(finished) = self.in_flight.take()
+        {
+            let InFlight {
+                redactor,
+                on_redacted,
+                ..
+            } = finished;
+            drop(redactor);
+            on_redacted(answer);
+            true
+        } else {
+            false
+        }
+    }
+}
+
+/// Redacts JSON with a fresh, tool-less agent session per request.
+///
+/// On native, this runs on a background thread. The web has no threads, so there the owner
+/// drives it with [`Self::update`].
 #[derive(Default)]
 pub struct Redactor {
     /// Declared before `scratch` so that dropping this ends the redaction thread before
     /// the directory it runs in is removed.
+    #[cfg(not(target_arch = "wasm32"))]
     requests: Option<Sender<RedactionRequest>>,
 
-    /// An empty directory to run the redacting agents in.
+    #[cfg(target_arch = "wasm32")]
+    queue: RedactionQueue,
+
+    /// An empty directory to run the redacting agent harnesses in.
     ///
     /// Never the user's project: an agent started there loads its instruction files, settings,
     /// and hooks, none of which have any business in a session that only rewrites one JSON
     /// object.
     ///
     /// Made once and shared, since the sessions run one at a time.
+    #[cfg(agent_harness_backend)]
     scratch: Option<TempDir>,
 }
 
@@ -137,44 +219,91 @@ impl Redactor {
     /// Queue `json` for redaction.
     ///
     /// `on_redacted` gets `json` with its sensitive data replaced, in the same shape, or the
-    /// reason there is none. It runs on the redaction thread, or right away when the redaction
-    /// cannot start, and never for a request that [`Self::discard_pending`] dropped.
+    /// reason there is none. It runs on the redaction thread (in [`Self::update`] on the web),
+    /// or right away when the redaction cannot start, and never for a request that
+    /// [`Self::discard_pending`] dropped.
     pub fn redact(&mut self, json: Value, agent: RedactionAgent, on_redacted: OnRedacted) {
-        let Some(agent) = self.redacting_agent(agent) else {
-            on_redacted(Err(RedactionError::NoScratchDirectory));
-            return;
+        let agent = match self.redacting_agent(agent) {
+            Ok(agent) => agent,
+            Err(err) => {
+                on_redacted(Err(err));
+                return;
+            }
         };
         let request = RedactionRequest {
             json,
             agent,
             on_redacted,
         };
-        let Some(requests) = self.requests() else {
-            (request.on_redacted)(Err(RedactionError::NoThread));
-            return;
-        };
-        if let Err(err) = requests.try_send(request) {
-            let (request, reason) = match err {
-                TrySendError::Full(request) => {
+        cfg_select! {
+            target_arch = "wasm32" => {
+                if REDACTION_QUEUE_CAPACITY <= self.queue.waiting.len() {
                     re_log::warn_once!("Analytics redaction queue is full");
-                    (request, RedactionError::QueueFull)
+                    (request.on_redacted)(Err(RedactionError::QueueFull));
+                } else {
+                    self.queue.waiting.push_back(request);
                 }
-                TrySendError::Disconnected(request) => {
-                    self.requests = None;
-                    (request, RedactionError::ThreadGone)
+            }
+            _ => {
+                let Some(requests) = self.requests() else {
+                    (request.on_redacted)(Err(RedactionError::NoThread));
+                    return;
+                };
+                if let Err(err) = requests.try_send(request) {
+                    let (request, reason) = match err {
+                        TrySendError::Full(request) => {
+                            re_log::warn_once!("Analytics redaction queue is full");
+                            (request, RedactionError::QueueFull)
+                        }
+                        TrySendError::Disconnected(request) => {
+                            self.requests = None;
+                            (request, RedactionError::ThreadGone)
+                        }
+                    };
+                    (request.on_redacted)(Err(reason));
                 }
-            };
-            (request.on_redacted)(Err(reason));
+            }
+        }
+    }
+
+    /// Drive the redaction on the web, where there is no thread to run it on.
+    ///
+    /// Call this every frame, and again when `waker` is woken, which the redacting agent does
+    /// when it has news. Returns how soon to call this again regardless, so that a redaction
+    /// can time out. Does nothing on native, and returns `None` there.
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        expect(clippy::unused_self, clippy::needless_pass_by_ref_mut)
+    )]
+    pub fn update(&mut self, waker: &UiWaker) -> Option<Duration> {
+        cfg_select! {
+            target_arch = "wasm32" => {
+                while self.queue.step(waker.clone()) {}
+                self.queue.in_flight.is_some().then_some(Duration::from_secs(1))
+            }
+            _ => {
+                let _ = waker;
+                None
+            }
         }
     }
 
     /// Stop redaction and drop the requests that are not done.
     ///
-    /// Dropping the sender ends the thread, so this is free to call on every frame.
+    /// This is free to call on every frame.
     pub fn discard_pending(&mut self) {
-        self.requests = None;
+        cfg_select! {
+            target_arch = "wasm32" => {
+                self.queue = RedactionQueue::default();
+            }
+            _ => {
+                // Dropping the sender ends the thread.
+                self.requests = None;
+            }
+        }
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     fn requests(&mut self) -> Option<&Sender<RedactionRequest>> {
         if self.requests.is_none() {
             self.requests = spawn_redaction_thread();
@@ -184,17 +313,26 @@ impl Redactor {
 
     /// The redacting session: the same agent as the panel, but without any tools, so it has
     /// nothing but the prompt.
-    ///
-    /// `None` when an agent harness has no scratch directory to run in.
-    fn redacting_agent(&mut self, agent: RedactionAgent) -> Option<RedactionAgent> {
+    #[cfg_attr(
+        not(agent_harness_backend),
+        expect(clippy::unused_self, clippy::needless_pass_by_ref_mut)
+    )]
+    fn redacting_agent(&mut self, agent: RedactionAgent) -> Result<RedactionAgent, RedactionError> {
         let RedactionAgent {
             launch,
             async_runtime,
         } = agent;
         let launch = match launch {
-            AgentLaunch::AgentHarness(config) => {
-                AgentLaunch::AgentHarness(self.harness_config(config)?)
-            }
+            AgentLaunch::AgentHarness(config) => cfg_select! {
+                agent_harness_backend => AgentLaunch::AgentHarness(
+                    self.harness_config(config)
+                        .ok_or(RedactionError::NoScratchDirectory)?,
+                ),
+                _ => {{
+                    drop(config);
+                    return Err(RedactionError::NoHarness);
+                }}
+            },
             AgentLaunch::ModelApi(mut config) => {
                 config.hosted_tools = HostedTools::NONE;
                 config.model = config.provider.default_model().to_owned();
@@ -203,7 +341,7 @@ impl Redactor {
                 AgentLaunch::ModelApi(config)
             }
         };
-        Some(RedactionAgent {
+        Ok(RedactionAgent {
             launch,
             async_runtime,
         })
@@ -212,6 +350,7 @@ impl Redactor {
     /// The agent harness to redact with, without MCP servers and in an empty directory.
     ///
     /// `None` when there is no scratch directory to run it in.
+    #[cfg(agent_harness_backend)]
     fn harness_config(&mut self, mut config: AgentHarnessConfig) -> Option<AgentHarnessConfig> {
         if self.scratch.is_none() {
             match TempDir::with_prefix("rerun-redaction-") {
@@ -235,6 +374,7 @@ impl Redactor {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn spawn_redaction_thread() -> Option<Sender<RedactionRequest>> {
     let (requests, receiver) = crossbeam::channel::bounded(REDACTION_QUEUE_CAPACITY);
     match std::thread::Builder::new()
@@ -249,12 +389,11 @@ fn spawn_redaction_thread() -> Option<Sender<RedactionRequest>> {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn redaction_thread(requests: &Receiver<RedactionRequest>) {
-    let mut queue = VecDeque::new();
-    let mut in_flight: Option<InFlight> = None;
-
+    let mut queue = RedactionQueue::default();
     loop {
-        let request = if in_flight.is_none() && queue.is_empty() {
+        let request = if queue.is_idle() {
             match requests.recv() {
                 Ok(request) => Some(request),
                 Err(_) => return,
@@ -266,40 +405,9 @@ fn redaction_thread(requests: &Receiver<RedactionRequest>) {
                 Err(RecvTimeoutError::Disconnected) => return,
             }
         };
-        if let Some(request) = request {
-            queue.push_back(request);
-        }
-        queue.extend(requests.try_iter());
-
-        if in_flight.is_none()
-            && let Some(RedactionRequest {
-                json,
-                agent,
-                on_redacted,
-            }) = queue.pop_front()
-        {
-            let RedactionAgent {
-                launch,
-                async_runtime,
-            } = agent;
-            let mut redactor = AgentSession::default();
-            redactor.start(launch, async_runtime.as_ref(), UiWaker::noop());
-            in_flight = Some(InFlight {
-                redactor,
-                json,
-                on_redacted,
-                started: Instant::now(),
-                prompt_sent: false,
-            });
-        }
-
-        let finished = in_flight.as_mut().and_then(InFlight::update);
-        if let Some(answer) = finished
-            && let Some(mut finished) = in_flight.take()
-        {
-            finished.redactor.stop();
-            (finished.on_redacted)(answer);
-        }
+        queue.waiting.extend(request);
+        queue.waiting.extend(requests.try_iter());
+        while queue.step(UiWaker::noop()) {}
     }
 }
 
@@ -381,8 +489,6 @@ fn same_shape(original: &Value, redacted: &Value) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
     use super::*;
 
     #[test]
@@ -428,9 +534,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(agent_harness_backend)]
     fn the_redactor_runs_outside_the_users_project() {
         let config = AgentHarnessConfig {
-            command: PathBuf::from("agent"),
+            command: std::path::PathBuf::from("agent"),
             args: Vec::new(),
             env: Vec::new(),
             cwd: std::env::current_dir().expect("cwd"),
@@ -438,7 +545,7 @@ mod tests {
             off_limits_directories: Vec::new(),
             mcp_servers: vec![crate::McpStdioServer {
                 name: "rerun".to_owned(),
-                command: PathBuf::from("rerun"),
+                command: std::path::PathBuf::from("rerun"),
                 args: vec!["viewer-mcp".to_owned()],
             }],
             log_protocol: false,
@@ -477,7 +584,7 @@ mod tests {
             launch: AgentLaunch::ModelApi(config),
             async_runtime: None,
         };
-        let Some(RedactionAgent {
+        let Ok(RedactionAgent {
             launch: AgentLaunch::ModelApi(config),
             ..
         }) = Redactor::default().redacting_agent(agent)

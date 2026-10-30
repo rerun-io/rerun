@@ -3,12 +3,13 @@
 """
 Check that the folders under `crates/` form layers, each depending only on the ones below it.
 
-The layers, top to bottom, are `LAYERS` below. A crate may depend on crates in its own folder,
+The layers, top to bottom, are `LAYERS` in `crate_layers.py`. A crate may depend on crates in its own folder,
 or in any folder in a lower layer. `dev-dependencies` are exempt: a test may reach anywhere.
 
-A layer can hold more than one folder, and those are siblings: independent of each other, so
+A layer can hold more than one column, and those are siblings: independent of each other, so
 neither may depend on the other in either direction. That is what lets `ARCHITECTURE.md` draw
-them side by side.
+them side by side. A column can in turn stack several folders, each depending only on itself
+and the ones under it.
 
 The same layering is what `ARCHITECTURE.md` draws, one band per folder, so a violation here is
 an arrow pointing the wrong way in that diagram.
@@ -25,18 +26,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# Top to bottom. Each folder may only depend on itself and the ones after it.
-LAYERS = [
-    ["crates/tests"],
-    ["crates/top"],
-    ["crates/views", "crates/panels"],  # Siblings: a view is not a panel, and neither uses the other.
-    ["crates/viewer_support"],
-    ["crates/store_app"],
-    ["crates/data_flow"],
-    ["crates/store"],
-    ["crates/build"],
-    ["crates/utils"],
-]
+from crate_layers import FOLDERS, LAYERS
 
 FORBIDDEN_DEPENDENCIES = [
     # re_agent_ui is a generic chat UI for coding agents; everything that ties it to the
@@ -68,6 +58,17 @@ def cargo_metadata() -> dict[str, Any]:
     return metadata
 
 
+def allowed_and_siblings(folder: str) -> tuple[set[str], set[str]]:
+    """The folders `folder` may depend on, and the sibling folders it must not."""
+    for index, layer in enumerate(LAYERS):
+        for column in layer:
+            if folder in column:
+                below = {f for lower in LAYERS[index + 1 :] for col in lower for f in col}
+                siblings = {f for other in layer if other is not column for f in other}
+                return set(column[column.index(folder) :]) | below, siblings
+    raise ValueError(f"{folder} is not in LAYERS")
+
+
 def dependency_chain(normal_deps: dict[str, set[str]], start: str, target: str) -> list[str] | None:
     """The shortest chain of non-dev dependencies from `start` to `target`, if there is one."""
     parent: dict[str, str] = {}
@@ -97,7 +98,7 @@ def main() -> int:
     layer_of_crate = {}
     for package in metadata["packages"]:
         folder = str(Path(package["manifest_path"]).parent.relative_to(workspace_root).parent)
-        if folder in {f for layer in LAYERS for f in layer}:
+        if folder in FOLDERS:
             layer_of_crate[package["name"]] = folder
 
     errors = set()  # Target-specific sections can repeat a dependency.
@@ -105,10 +106,7 @@ def main() -> int:
         layer = layer_of_crate.get(package["name"])
         if layer is None:
             continue
-        index = next(i for i, folders in enumerate(LAYERS) if layer in folders)
-        # Its own folder, plus everything in a lower layer. Never a sibling.
-        allowed = {layer} | {folder for folders in LAYERS[index + 1 :] for folder in folders}
-        siblings = set(LAYERS[index]) - {layer}
+        allowed, siblings = allowed_and_siblings(layer)
         for dep in package["dependencies"]:
             if dep["kind"] == "dev":
                 continue
@@ -135,10 +133,10 @@ def main() -> int:
         for error in sorted(errors):
             print(f"  {error}")
         print("\nEither move a crate to a lower folder, or make the dependency a dev-dependency.")
-        print("Sibling folders, listed together below, must not depend on each other at all.")
+        print("Sibling columns, listed together below, must not depend on each other at all.")
         print("Layers, top to bottom:")
-        for folders in LAYERS:
-            print(f"  {' + '.join(folders)}")
+        for columns in LAYERS:
+            print(f"  {' + '.join(' > '.join(column) for column in columns)}")
         print("Forbidden dependencies:")
         for crate, dependency in FORBIDDEN_DEPENDENCIES:
             print(f"  {crate} → {dependency}")

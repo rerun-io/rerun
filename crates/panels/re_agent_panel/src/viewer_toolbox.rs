@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use re_agent_ui::{AgentToolbox, ToolDefinition, ToolOutput};
+use re_agent::{AgentToolbox, ToolDefinition, ToolOutput};
 use re_async::UiWaker;
 use re_log_channel::{UiCallback, ViewerControlError};
 use re_protos::viewer_control::v1alpha1::{
@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn calls_the_agent_stopped_waiting_for_do_not_run() {
-        let (calls_tx, calls_rx) = crossbeam::channel::bounded(MAX_WAITING_CALLS);
+        let (calls_tx, calls_rx) = calls_channel();
         let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
 
         let _waiting = toolbox.send("get_state", Map::new());

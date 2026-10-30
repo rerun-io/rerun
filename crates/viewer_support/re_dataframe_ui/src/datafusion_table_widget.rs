@@ -1414,7 +1414,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
                             re_ui::time::short_duration_ui(
                                 ui,
-                                queried_at,
+                                queried_at.into(),
                                 ctx.app_options.timestamp_format,
                                 Ui::strong,
                             );

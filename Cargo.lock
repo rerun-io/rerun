@@ -9070,6 +9070,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "thiserror 2.0.19",
+ "web-time",
 ]
 
 [[package]]
@@ -9090,7 +9091,6 @@ dependencies = [
  "re_async",
  "re_format",
  "re_log",
- "re_log_types",
  "re_tracing",
  "re_ui",
  "re_workspace_hack",
@@ -11505,7 +11505,6 @@ dependencies = [
  "re_error",
  "re_format",
  "re_log",
- "re_log_types",
  "re_mutex",
  "re_quota_channel",
  "re_redap_client",
@@ -12009,8 +12008,8 @@ dependencies = [
  "parking_lot",
  "poll-promise",
  "rand 0.9.5",
+ "re_agent",
  "re_agent_panel",
- "re_agent_ui",
  "re_analytics",
  "re_arrow_json",
  "re_async",

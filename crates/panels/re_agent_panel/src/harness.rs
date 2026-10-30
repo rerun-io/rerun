@@ -1,14 +1,14 @@
 //! The parts of the agent panel that only exist where agent harnesses (Claude Code, Codex, …)
 //! can run: the `rerun viewer-mcp` server they drive the viewer through, the skills and docs we
-//! unpack for them, self-improvement, and feedback and prompt sharing, which redact with a second
-//! session of the panel's agent.
+//! unpack for them, and self-improvement.
 
 use std::path::Path;
 
-use re_agent_ui::{AgentPanel, AgentSettings, McpServerConfig, SessionContext, TurnReport};
+use re_agent::{AgentSettings, McpServerConfig, SessionContext};
+use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
 
-use super::{DOCS_SUBDIR, SKILLS_SUBDIR, feedback, preamble, self_improve};
+use super::{DOCS_SUBDIR, SKILLS_SUBDIR, preamble, self_improve};
 
 /// The MCP server name the agent sees the viewer under. Tools show up as `mcp__rerun__<tool>`.
 const MCP_SERVER_NAME: &str = "rerun";
@@ -41,13 +41,6 @@ pub struct Harness {
 
     /// Counts the self-improvement conversations started, so their transcripts get separate files.
     self_improvements_started: usize,
-
-    feedback: feedback::FeedbackModal,
-
-    /// Feedback that agents send about Rerun through the `submit_feedback` viewer control operation.
-    product_feedback: super::product_feedback::ProductFeedback,
-
-    analytics: crate::agent_analytics::TurnAnalytics,
 }
 
 impl Harness {
@@ -103,7 +96,6 @@ impl Harness {
         let off_limits_directories: Vec<_> = rerun_workspace.iter().cloned().collect();
 
         let mut panel = AgentPanel::new(settings, async_runtime);
-        panel.set_feedback_enabled(true);
         panel.set_self_improve_available(rerun_workspace.is_some());
         panel.set_context(SessionContext {
             agent_harness_preamble: Some(
@@ -125,16 +117,11 @@ impl Harness {
         panel
     }
 
-    /// Self-improvement and the feedback modal, after the panel's own `ui`.
-    pub fn ui(&mut self, panel: &mut AgentPanel, ui: &egui::Ui) {
+    /// Start a self-improvement conversation if the user asked for one in the panel's `ui`.
+    pub fn handle_self_improve_request(&mut self, panel: &mut AgentPanel) {
         if panel.self_improve_requested() {
             self.start_self_improvement(panel);
         }
-        if panel.feedback_requested() {
-            let agent = panel.redaction_agent().ok();
-            self.feedback.open(panel.session(), agent);
-        }
-        self.feedback.ui(ui.ctx());
     }
 
     /// Open a conversation that reviews the active session and improves what let it down.
@@ -197,48 +184,6 @@ impl Harness {
         );
     }
 
-    /// Queue feedback that an agent sent about Rerun, to be sent.
-    ///
-    /// Its text is only sent when `share_text` is set, after `panel`'s agent has redacted it.
-    pub fn submit_product_feedback(
-        &mut self,
-        panel: Option<&AgentPanel>,
-        request: re_protos::viewer_control::v1alpha1::SubmitFeedbackRequest,
-        share_text: bool,
-    ) {
-        let redact_with = if share_text {
-            match panel.map(AgentPanel::redaction_agent) {
-                Some(Ok(agent)) => Some(agent),
-                Some(Err(err)) => {
-                    re_log::warn!("The text of an agent's feedback on Rerun is not sent: {err}");
-                    None
-                }
-                None => None,
-            }
-        } else {
-            None
-        };
-        self.product_feedback.submit(request, redact_with);
-    }
-
-    /// Record non-content usage for every turn and, when enabled, share its redacted text.
-    pub fn record_finished_turns(&mut self, panel: &AgentPanel, turns: Vec<TurnReport>) {
-        // Redaction spawns an agent session per turn, so it must not run when the
-        // event it prepares would be dropped anyway.
-        let share_redacted_prompts =
-            panel.settings().share_redacted_prompts && re_analytics::is_enabled();
-        for turn in turns {
-            crate::agent_analytics::record_usage(&turn);
-            if share_redacted_prompts {
-                self.analytics.queue(turn, panel.redaction_agent().ok());
-            }
-        }
-        if !share_redacted_prompts {
-            // The user may have just unticked the box: drop what is still queued.
-            self.analytics.discard_pending();
-        }
-    }
-
     /// Point the agent at an empty scratch directory instead of the Rerun checkout, and return
     /// the checkout it was spared.
     ///
@@ -289,7 +234,7 @@ fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
             exe.clone()
         }
         _ => {
-            let rerun = re_agent_ui::find_executable("rerun")?;
+            let rerun = re_agent::find_executable("rerun")?;
             let current_exe = match &current_exe {
                 Ok(exe) => exe.display().to_string(),
                 Err(err) => format!("unknown ({err})"),

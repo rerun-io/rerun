@@ -29,8 +29,10 @@ impl framework::Example for Render2D {
     }
 
     fn new(re_ctx: &re_renderer::RenderContext) -> Self {
-        let rerun_logo =
-            image::load_from_memory(include_bytes!("../re_ui/data/logo_dark_mode.png")).unwrap();
+        let rerun_logo = image::load_from_memory(include_bytes!(
+            "../../ui_tools/re_ui/data/logo_dark_mode.png"
+        ))
+        .unwrap();
 
         let image_data = rerun_logo.as_rgba8().unwrap().to_vec();
 
