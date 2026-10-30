@@ -189,7 +189,6 @@ impl Ellipses2DVisualizer {
                     bbox_center,
                     glam::vec2(rx, ry),
                 );
-                re_log::debug!("{entity_path} ellipse {i}: {segments} segments");
                 let delta = std::f32::consts::TAU / segments as f32;
                 #[expect(clippy::range_plus_one)] // `RangeInclusive` is not an `ExactSizeIterator`
                 let points = (0..segments + 1).map(|n| {
