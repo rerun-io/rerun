@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
 
 use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
-use crate::model_api_backend::{ApiKey, ModelApiConfig, ModelApiProvider};
+use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProvider};
 
 /// Fast models to select, best first, unless the user has picked a model for the profile.
 ///
@@ -113,6 +113,9 @@ pub struct AgentSettings {
 
     /// Show every JSON-RPC line exchanged with the agent in the log view.
     pub log_protocol: bool,
+
+    /// The tools a model-API agent's provider runs for it on its own servers.
+    pub model_api_hosted_tools: HostedTools,
 
     /// Session mode to restore when an agent offers it.
     pub preferred_mode: Option<SessionModeId>,
@@ -242,6 +245,7 @@ impl AgentSettings {
             api_key,
             model,
             system_prompt: context.model_api_preamble.clone(),
+            hosted_tools: self.model_api_hosted_tools,
             toolbox: None,
         }))
     }
@@ -272,6 +276,7 @@ impl Default for AgentSettings {
             mcp_servers: Vec::new(),
             show_thoughts: true,
             log_protocol: false,
+            model_api_hosted_tools: HostedTools::default(),
             preferred_mode: None,
             preferred_models: BTreeMap::new(),
             share_redacted_prompts: false,
@@ -286,7 +291,7 @@ impl Default for AgentSettings {
 mod tests {
     use agent_client_protocol_schema::v1::SessionConfigValueId;
 
-    use super::{AgentProfileId, AgentSettings};
+    use super::{AgentProfileId, AgentSettings, HostedTools};
 
     #[test]
     fn old_settings_use_new_defaults() {
@@ -294,6 +299,7 @@ mod tests {
             panic!("empty settings should deserialize");
         };
         assert!(!settings.share_redacted_prompts);
+        assert_eq!(settings.model_api_hosted_tools, HostedTools::default());
         assert_eq!(settings.preferred_mode, None);
         assert!(settings.preferred_models.is_empty());
     }

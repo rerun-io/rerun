@@ -6,7 +6,9 @@ use re_ui::{ReButton, UiExt as _, icons};
 
 use super::Screen;
 use re_agent::AgentEntry;
-use re_agent::{API_KEYS_IN_SETTINGS, AgentProfileId, AgentSettings, ModelApiProvider};
+use re_agent::{
+    API_KEYS_IN_SETTINGS, AgentProfileId, AgentSettings, HostedTools, ModelApiProvider,
+};
 
 #[cfg(agent_harness_backend)]
 mod agent_harness;
@@ -111,6 +113,7 @@ fn setup_ui_inner(
             &mut settings.log_protocol,
             "Log every protocol message (for debugging)",
         );
+        hosted_tools_ui(ui, &mut settings.model_api_hosted_tools);
     });
 
     next_screen
@@ -124,6 +127,33 @@ pub fn default_model_api(available_model_apis: &[ModelApiProvider]) -> ModelApiP
         .first()
         .copied()
         .unwrap_or(ModelApiProvider::ALL[0])
+}
+
+/// Checkboxes for the tools the model provider runs on its own servers.
+fn hosted_tools_ui(ui: &mut egui::Ui, hosted_tools: &mut HostedTools) {
+    let HostedTools {
+        code_execution,
+        web_fetch,
+        web_search,
+    } = hosted_tools;
+    ui.add_space(8.0);
+    ui.label(RichText::new("Model-API tools").strong())
+        .on_hover_text(
+            "Tools that the Anthropic or OpenAI API runs on its own servers, \
+             not in the viewer.",
+        );
+    let openai_web_note = "OpenAI has one web tool that both searches and reads pages. \
+                           It is on if either of these two options is on.";
+    ui.checkbox(web_fetch, "Read web pages")
+        .on_hover_text(openai_web_note);
+    ui.checkbox(web_search, "Search the web")
+        .on_hover_text(openai_web_note);
+    ui.checkbox(code_execution, "Run code in a sandbox")
+        .on_hover_text(
+            "For math, statistics, and plots. The sandbox has no direct access to the viewer, \
+             but the model can put anything from the conversation into its code. \
+             The provider bills its use.",
+        );
 }
 
 /// One radio button per model-API provider.

@@ -18,7 +18,8 @@ use futures::future::Either;
 use re_async::AsyncRuntimeHandle;
 use rig_core::DynModel;
 use rig_core::completion::{
-    CompletionRequest, CompletionResponse, FinishReason, Message, ToolDefinition as RigTool,
+    AssistantContent, CompletionRequest, CompletionResponse, FinishReason, Message,
+    ProviderToolDefinition, ToolDefinition as RigTool,
 };
 use rig_core::message::{
     DocumentSourceKind, Image, ImageMediaType, MimeType as _, ToolCall, ToolName, ToolResult,
@@ -72,6 +73,27 @@ const MAX_IMAGES_IN_HISTORY: usize = 3;
 /// What a pruned tool result image is replaced with.
 const PRUNED_IMAGE_PLACEHOLDER: &str =
     "[screenshot removed to save context; take a new one if needed]";
+
+// Anthropic's hosted tool types are the tool name plus the date of that version. A version never
+// changes once released, but newer models can reject older versions, so check these when adding
+// a model to `ModelApiProvider::models`.
+
+/// <https://platform.claude.com/docs/en/agents-and-tools/tool-use/code-execution-tool>
+const ANTHROPIC_CODE_EXECUTION: &str = "code_execution_20260521";
+
+/// <https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-fetch-tool>
+const ANTHROPIC_WEB_FETCH: &str = "web_fetch_20260209";
+
+/// <https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool>
+const ANTHROPIC_WEB_SEARCH: &str = "web_search_20260209";
+
+// OpenAI's hosted tool types have no versions.
+
+/// <https://platform.openai.com/docs/guides/tools-code-interpreter>
+const OPENAI_CODE_INTERPRETER: &str = "code_interpreter";
+
+/// <https://platform.openai.com/docs/guides/tools-web-search>
+const OPENAI_WEB_SEARCH: &str = "web_search";
 
 /// A one-line message for a failed provider request, for the user to read.
 ///
@@ -211,6 +233,48 @@ impl ModelApiProvider {
         }
     }
 
+    /// The definitions of the `hosted` tools that this provider runs on its own servers during
+    /// a reply. Web access that way also works in the browser, where a fetch of our own would be
+    /// stopped by CORS.
+    fn hosted_tool_definitions(self, hosted: HostedTools) -> Vec<ProviderToolDefinition> {
+        let HostedTools {
+            code_execution,
+            web_fetch,
+            web_search,
+        } = hosted;
+        let named = |tool_type: &str, name: &str| {
+            ProviderToolDefinition::new(tool_type)
+                .with_config("name", serde_json::Value::from(name))
+        };
+        let mut tools = Vec::new();
+        match self {
+            Self::Anthropic => {
+                if code_execution {
+                    tools.push(named(ANTHROPIC_CODE_EXECUTION, "code_execution"));
+                }
+                if web_fetch {
+                    tools.push(named(ANTHROPIC_WEB_FETCH, "web_fetch"));
+                }
+                if web_search {
+                    tools.push(named(ANTHROPIC_WEB_SEARCH, "web_search"));
+                }
+            }
+            Self::OpenAi => {
+                if code_execution {
+                    tools.push(
+                        ProviderToolDefinition::new(OPENAI_CODE_INTERPRETER)
+                            .with_config("container", serde_json::json!({ "type": "auto" })),
+                    );
+                }
+                // OpenAI has no fetch-only tool: `web_search` both searches and opens pages.
+                if web_fetch || web_search {
+                    tools.push(ProviderToolDefinition::new(OPENAI_WEB_SEARCH));
+                }
+            }
+        }
+        tools
+    }
+
     /// Models offered in the model selector, best first. Includes [`Self::default_model`].
     fn models(self) -> &'static [&'static str] {
         match self {
@@ -225,6 +289,46 @@ impl ModelApiProvider {
             ],
         }
     }
+}
+
+/// Which tools the model provider runs on its own servers during a reply.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct HostedTools {
+    /// Run code in the provider's sandbox, e.g. for math, statistics, or plots.
+    ///
+    /// The sandbox has no direct access to the viewer, but the model can put anything from the
+    /// conversation into its code. The provider bills its use.
+    pub code_execution: bool,
+
+    /// Read web pages.
+    ///
+    /// `OpenAI` has one tool for both web options, which is on if either is.
+    pub web_fetch: bool,
+
+    /// Search the web.
+    ///
+    /// `OpenAI` has one tool for both web options, which is on if either is.
+    pub web_search: bool,
+}
+
+impl Default for HostedTools {
+    fn default() -> Self {
+        Self {
+            code_execution: false,
+            web_fetch: true,
+            web_search: true,
+        }
+    }
+}
+
+impl HostedTools {
+    /// Nothing hosted: the model can only use the tools the viewer gives it.
+    pub const NONE: Self = Self {
+        code_execution: false,
+        web_fetch: false,
+        web_search: false,
+    };
 }
 
 /// Everything needed to run an agent loop against a model API.
@@ -242,6 +346,9 @@ pub struct ModelApiConfig {
     /// Sent as the system prompt of every request.
     pub system_prompt: Option<String>,
 
+    /// The tools the provider runs for the model on its own servers.
+    pub hosted_tools: HostedTools,
+
     /// The tools the agent may call. `None` means it can only chat.
     pub toolbox: Option<Arc<dyn AgentToolbox>>,
 }
@@ -253,18 +360,25 @@ impl std::fmt::Debug for ModelApiConfig {
             api_key: _,
             model,
             system_prompt,
+            hosted_tools,
             toolbox,
         } = self;
         f.debug_struct("ModelApiConfig")
             .field("provider", provider)
             .field("model", model)
             .field("system_prompt", system_prompt)
+            .field("hosted_tools", hosted_tools)
             .field("toolbox", &toolbox.is_some())
             .finish_non_exhaustive()
     }
 }
 
 impl ModelApiConfig {
+    /// The provider-hosted tools every request offers.
+    fn provider_tools(&self) -> Vec<ProviderToolDefinition> {
+        self.provider.hosted_tool_definitions(self.hosted_tools)
+    }
+
     fn model(&self, http: &reqwest::Client, model: &str) -> DynModel<Completion> {
         let Self {
             provider, api_key, ..
@@ -408,6 +522,7 @@ async fn run(
     events: &EventSender,
 ) {
     let mut selection = ModelSelection::new(config.provider, make_model, config.model.clone());
+    let provider_tools = config.provider_tools();
     let mut history: Vec<Message> = Vec::new();
 
     events.send(AgentEvent::Initialized {
@@ -440,6 +555,7 @@ async fn run(
                         selection.model.clone(),
                         config.system_prompt.as_deref(),
                         config.toolbox.as_deref(),
+                        &provider_tools,
                         &mut history,
                         events,
                     ));
@@ -510,6 +626,7 @@ async fn run_turn(
     model: DynModel<Completion>,
     system_prompt: Option<&str>,
     toolbox: Option<&dyn AgentToolbox>,
+    provider_tools: &[ProviderToolDefinition],
     history: &mut Vec<Message>,
     events: &EventSender,
 ) -> Result<StopReason, ModelApiError> {
@@ -517,11 +634,22 @@ async fn run_turn(
 
     for _ in 0..MAX_REPLIES_PER_TURN {
         prune_old_tool_images(history, MAX_IMAGES_IN_HISTORY);
-        let reply = stream_reply(&model, system_prompt, &tools, history, events).await?;
+        let reply = stream_reply(
+            &model,
+            system_prompt,
+            &tools,
+            provider_tools,
+            history,
+            events,
+        )
+        .await?;
         let calls: Vec<ToolCall> = reply.tool_calls().cloned().collect();
         history.extend(reply.message());
 
         if calls.is_empty() {
+            if is_paused(&reply) {
+                continue;
+            }
             let stop_reason = match reply.finish_reason() {
                 Some(FinishReason::Length) => StopReason::MaxTokens,
                 Some(FinishReason::ContentFilter) => StopReason::Refusal,
@@ -550,6 +678,17 @@ async fn run_turn(
     Ok(StopReason::MaxTurnRequests)
 }
 
+/// Whether Anthropic paused the reply because its hosted tools ran for too long.
+///
+/// Sending the paused reply back as it is resumes it.
+fn is_paused(reply: &CompletionResponse) -> bool {
+    reply
+        .extras_lossy::<rig_core::providers::anthropic::extension::AnthropicExt>()
+        .stop_reason
+        .as_deref()
+        == Some("pause_turn")
+}
+
 /// Replaces every image in a tool result, except the `keep` most recent ones, with a placeholder.
 ///
 /// Images the user sent in a prompt are kept.
@@ -573,15 +712,21 @@ fn prune_old_tool_images(history: &mut [Message], keep: usize) {
     }
 }
 
-/// Streams one reply, forwarding text and reasoning as they arrive.
+/// Streams one reply, forwarding text, reasoning, and hosted tool steps as they arrive.
+///
+/// Hosted tools run on the provider's servers within the reply, so they arrive as opaque items,
+/// never as tool calls for the loop to run.
 async fn stream_reply(
     model: &DynModel<Completion>,
     system_prompt: Option<&str>,
     tools: &[Arc<RigTool>],
+    provider_tools: &[ProviderToolDefinition],
     history: &[Message],
     events: &EventSender,
 ) -> Result<CompletionResponse, ModelApiError> {
-    let mut request = CompletionRequest::from(history.to_vec()).tools(tools.iter().cloned());
+    let mut request = CompletionRequest::from(history.to_vec())
+        .tools(tools.iter().cloned())
+        .provider_tools(provider_tools.to_vec());
     if let Some(system_prompt) = system_prompt {
         request = request.preamble(system_prompt);
     }
@@ -601,6 +746,14 @@ async fn stream_reply(
                     text_chunk(text),
                 )));
             }
+            Item::Event(StreamEvent::End {
+                content: AssistantContent::Opaque(opaque),
+                ..
+            }) => {
+                if let Some(update) = hosted_tool_update(&opaque.item) {
+                    events.send(AgentEvent::Update(update));
+                }
+            }
             Item::Event(_) | Item::Unknown(_) => {}
         }
     }
@@ -618,6 +771,115 @@ async fn stream_reply(
         });
     }
     Ok(reply)
+}
+
+/// How the transcript shows a step of a provider-hosted tool. `None` for any other item.
+fn hosted_tool_update(item: &serde_json::Value) -> Option<SessionUpdate> {
+    let str_at = |pointer: &str| item.pointer(pointer).and_then(serde_json::Value::as_str);
+    match str_at("/type")? {
+        // Anthropic: a failed step is a result with an `error_code` or a nonzero `return_code`,
+        // not a failed request.
+        "bash_code_execution_tool_result"
+        | "code_execution_tool_result"
+        | "text_editor_code_execution_tool_result"
+        | "web_fetch_tool_result"
+        | "web_search_tool_result" => {
+            let failed = item.pointer("/content/error_code").is_some()
+                || item
+                    .pointer("/content/return_code")
+                    .and_then(serde_json::Value::as_i64)
+                    .is_some_and(|code| code != 0);
+            let status = if failed {
+                ToolCallStatus::Failed
+            } else {
+                ToolCallStatus::Completed
+            };
+            Some(SessionUpdate::ToolCallUpdate(ToolCallUpdate::new(
+                ToolCallId::new(str_at("/tool_use_id")?),
+                ToolCallUpdateFields::new().status(status),
+            )))
+        }
+        // OpenAI: one finished item per run.
+        "code_interpreter_call" => {
+            let status = if str_at("/status") == Some("failed") {
+                ToolCallStatus::Failed
+            } else {
+                ToolCallStatus::Completed
+            };
+            Some(SessionUpdate::ToolCall(
+                AcpToolCall::new(ToolCallId::new(str_at("/id")?), "Run Python")
+                    .kind(ToolKind::Execute)
+                    .status(status),
+            ))
+        }
+        // Anthropic: the call, answered by a later `…_tool_result` with the same id.
+        "server_tool_use" => {
+            let (kind, title) = match str_at("/name")? {
+                "bash_code_execution" => (
+                    ToolKind::Execute,
+                    format!("Run `{}`", str_at("/input/command").unwrap_or_default()),
+                ),
+                "code_execution" => (ToolKind::Execute, "Run code".to_owned()),
+                "text_editor_code_execution" => (
+                    ToolKind::Edit,
+                    format!(
+                        "{} {} in the sandbox",
+                        str_at("/input/command").unwrap_or("edit"),
+                        str_at("/input/path").unwrap_or_default()
+                    ),
+                ),
+                "web_fetch" => (
+                    ToolKind::Fetch,
+                    format!("Fetch {}", str_at("/input/url").unwrap_or_default()),
+                ),
+                "web_search" => (
+                    ToolKind::Search,
+                    format!(
+                        "Search the web for {:?}",
+                        str_at("/input/query").unwrap_or_default()
+                    ),
+                ),
+                _ => return None,
+            };
+            Some(SessionUpdate::ToolCall(
+                AcpToolCall::new(ToolCallId::new(str_at("/id")?), title)
+                    .kind(kind)
+                    .status(ToolCallStatus::InProgress),
+            ))
+        }
+        // OpenAI: one finished item per search or page visit.
+        "web_search_call" => {
+            let url = str_at("/action/url").unwrap_or_default();
+            let (kind, title) = match str_at("/action/type") {
+                Some("open_page") => (ToolKind::Fetch, format!("Fetch {url}")),
+                Some("find") => (
+                    ToolKind::Search,
+                    format!(
+                        "Find {:?} in {url}",
+                        str_at("/action/pattern").unwrap_or_default()
+                    ),
+                ),
+                _ => (
+                    ToolKind::Search,
+                    format!(
+                        "Search the web for {:?}",
+                        str_at("/action/query").unwrap_or_default()
+                    ),
+                ),
+            };
+            let status = if str_at("/status") == Some("failed") {
+                ToolCallStatus::Failed
+            } else {
+                ToolCallStatus::Completed
+            };
+            Some(SessionUpdate::ToolCall(
+                AcpToolCall::new(ToolCallId::new(str_at("/id")?), title)
+                    .kind(kind)
+                    .status(status),
+            ))
+        }
+        _ => None,
+    }
 }
 
 /// The toolbox's tools, as the model is told about them.
@@ -935,6 +1197,7 @@ mod tests {
             api_key: ApiKey("mock".to_owned()),
             model: "mock".to_owned(),
             system_prompt: Some("Be brief".to_owned()),
+            hosted_tools: HostedTools::NONE,
             toolbox,
         };
         let (command_tx, command_rx) = futures::channel::mpsc::unbounded();
@@ -1083,6 +1346,7 @@ mod tests {
                 model.erase(),
                 None,
                 Some(&TestToolbox),
+                &[],
                 &mut history,
                 &events
             )
@@ -1149,6 +1413,68 @@ mod tests {
             [ToolResultContent::text(PRUNED_IMAGE_PLACEHOLDER)]
         );
         assert!(!results[0].is_error);
+    }
+
+    #[test]
+    fn hosted_tool_definitions() {
+        let all = HostedTools {
+            code_execution: true,
+            web_fetch: true,
+            web_search: true,
+        };
+        let json = |provider: ModelApiProvider| {
+            serde_json::to_value(provider.hosted_tool_definitions(all)).ok()
+        };
+        assert_eq!(
+            json(ModelApiProvider::Anthropic),
+            Some(serde_json::json!([
+                { "type": "code_execution_20260521", "name": "code_execution" },
+                { "type": "web_fetch_20260209", "name": "web_fetch" },
+                { "type": "web_search_20260209", "name": "web_search" },
+            ]))
+        );
+        // One `web_search` for both web options.
+        assert_eq!(
+            json(ModelApiProvider::OpenAi),
+            Some(serde_json::json!([
+                { "type": "code_interpreter", "container": { "type": "auto" } },
+                { "type": "web_search" },
+            ]))
+        );
+    }
+
+    #[test]
+    fn hosted_tool_steps_show_as_tool_calls() {
+        let anthropic_call = serde_json::json!({
+            "type": "server_tool_use", "id": "srvtoolu_1", "name": "web_fetch",
+            "input": { "url": "https://rerun.io" },
+        });
+        let Some(SessionUpdate::ToolCall(call)) = hosted_tool_update(&anthropic_call) else {
+            panic!("a web fetch is a tool call");
+        };
+        assert_eq!(call.title, "Fetch https://rerun.io");
+        assert_eq!(call.status, ToolCallStatus::InProgress);
+
+        let failed_command = serde_json::json!({
+            "type": "bash_code_execution_tool_result", "tool_use_id": "srvtoolu_1",
+            "content": { "type": "bash_code_execution_result", "return_code": 1 },
+        });
+        let Some(SessionUpdate::ToolCallUpdate(update)) = hosted_tool_update(&failed_command)
+        else {
+            panic!("a command result updates its call");
+        };
+        assert_eq!(update.tool_call_id.to_string(), "srvtoolu_1");
+        assert_eq!(update.fields.status, Some(ToolCallStatus::Failed));
+
+        let openai_page = serde_json::json!({
+            "type": "web_search_call", "id": "ws_1", "status": "completed",
+            "action": { "type": "open_page", "url": "https://rerun.io" },
+        });
+        let Some(SessionUpdate::ToolCall(call)) = hosted_tool_update(&openai_page) else {
+            panic!("a page visit is a tool call");
+        };
+        assert_eq!(call.title, "Fetch https://rerun.io");
+        assert_eq!(call.status, ToolCallStatus::Completed);
     }
 
     #[test]

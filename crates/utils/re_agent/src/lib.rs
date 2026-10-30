@@ -61,7 +61,7 @@ pub use agent_harness::{
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection};
 pub use error::McpStartupFailure;
-pub use model_api_backend::{ApiKey, ModelApiConfig, ModelApiError, ModelApiProvider};
+pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,
