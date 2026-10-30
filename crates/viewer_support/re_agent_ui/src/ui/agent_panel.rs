@@ -34,7 +34,7 @@ const SELF_IMPROVE_TOOLTIP: &str = "Rerun development builds only.\n\n\
 ///
 /// `COMMAND` is Cmd on Mac and Ctrl everywhere else, so this reads as the platform's own
 /// new-tab shortcut. Only fires while the panel holds the pointer or the keyboard focus.
-const NEW_CONVERSATION_SHORTCUT: egui::KeyboardShortcut =
+pub const NEW_CONVERSATION_SHORTCUT: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::T);
 
 /// Identifies one conversation for as long as the panel lives. Never reused.
@@ -456,9 +456,12 @@ impl AgentPanel {
         }
     }
 
-    /// Shows the conversation list, with the input focused to start a new conversation.
+    /// Opens a blank conversation, with its input focused.
+    ///
+    /// It is the draft, which becomes a conversation of its own when the user sends its first
+    /// prompt.
     pub fn new_conversation(&mut self) {
-        self.view = View::List;
+        self.view = View::Conversation(self.draft.id);
         if self.user_opened_draft_setup {
             self.user_opened_draft_setup = false;
             if *self.draft.session.phase() != Phase::Idle {
@@ -506,7 +509,8 @@ impl AgentPanel {
 
     /// Once the draft has a prompt, it becomes a conversation of its own, and is shown.
     fn promote_started_draft(&mut self) {
-        if self.view != View::List || !self.draft.has_started() {
+        let draft_shown = self.view == View::List || self.view == View::Conversation(self.draft.id);
+        if !draft_shown || !self.draft.has_started() {
             return;
         }
         let next = self.fresh_conversation();
@@ -593,6 +597,10 @@ impl AgentPanel {
                     if conversation.screen == Screen::Chat {
                         conversation.mark_seen();
                     }
+                } else if id == draft.id {
+                    ui.push_id(id, |ui| {
+                        draft.ui(ui, settings, context, agents, example_prompts, None);
+                    });
                 } else {
                     *view = View::List;
                 }

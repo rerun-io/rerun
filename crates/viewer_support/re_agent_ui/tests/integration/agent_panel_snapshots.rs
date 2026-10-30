@@ -845,6 +845,8 @@ fn conversation_list() {
 
     let mut harness = harness(panel);
     harness.run_steps(4);
+    harness.get_by_label("Back to conversations").click();
+    harness.run_steps(4);
     // Hovering shows the close button next to the status.
     harness
         .get_by_role_and_label(egui::accesskit::Role::Button, "Make the rectangle green")

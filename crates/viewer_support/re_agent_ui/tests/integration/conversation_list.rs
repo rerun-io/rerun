@@ -1,7 +1,7 @@
 //! Moving between the conversation list and the conversations in it.
 
 use egui::Vec2;
-use egui_kittest::kittest::Queryable as _;
+use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_agent_ui::AgentPanel;
 
 use super::chat_input::ready_panel;
@@ -28,7 +28,14 @@ fn harness() -> egui_kittest::Harness<'static, AgentPanel> {
             panel,
         );
     harness.run_steps(2);
+    back_to_list(&mut harness);
     harness
+}
+
+/// Leaves the new conversation that the panel shows after the last one was started.
+fn back_to_list(harness: &mut egui_kittest::Harness<'static, AgentPanel>) {
+    harness.get_by_label("Back to conversations").click();
+    harness.run_steps(2);
 }
 
 #[test]
@@ -64,6 +71,25 @@ fn closing_a_row_removes_it() {
     harness.get_by_role_and_label(egui::accesskit::Role::Button, "Second question");
 }
 
+#[test]
+fn the_add_button_opens_a_new_conversation() {
+    let mut harness = harness();
+    // With setup done, the draft offers an input instead of the setup screen.
+    harness.state_mut().settings_mut().setup_done = true;
+    harness.run_steps(2);
+    harness.get_by_label("More options").focus();
+    harness.run_steps(2);
+    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    assert!(!input.accesskit_node().is_focused());
+
+    harness.get_by_label("New conversation").click();
+    harness.run_steps(2);
+
+    harness.get_by_label("Back to conversations");
+    let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
+    assert!(input.accesskit_node().is_focused());
+}
+
 /// The running turn of a closed conversation still reaches the host, as aborted.
 #[test]
 fn closing_a_running_conversation_reports_its_turn() {
@@ -84,6 +110,7 @@ fn closing_a_running_conversation_reports_its_turn() {
             panel,
         );
     harness.run_steps(2);
+    back_to_list(&mut harness);
     harness
         .get_by_role_and_label(egui::accesskit::Role::Button, "Running question")
         .hover();

@@ -1,4 +1,4 @@
-//! Cmd-T / Ctrl-T goes back to the conversation list, to start a new conversation.
+//! Cmd-T / Ctrl-T opens a new conversation.
 
 use std::path::PathBuf;
 
@@ -22,8 +22,12 @@ fn panel() -> AgentPanel {
         ..Default::default()
     };
     let mut panel = AgentPanel::with_agents(settings, None, agents, Vec::new());
-    // A prompt makes it a conversation of its own, which the panel then shows.
-    panel.queue_prompt("Hello".to_owned());
+    // A prompt makes it a conversation of its own, titled after it, which the panel then shows.
+    panel
+        .session_mut()
+        .transcript_mut()
+        .push_user("Hello".into());
+    panel.poll_events();
     panel
 }
 
@@ -51,15 +55,16 @@ fn focus_panel(harness: &mut egui_kittest::Harness<'_, AgentPanel>) {
 }
 
 #[test]
-fn shortcut_shows_the_conversation_list() {
+fn shortcut_opens_a_new_conversation() {
     let mut harness = harness();
     focus_panel(&mut harness);
-    assert!(shows_a_conversation(&harness));
+    assert!(harness.query_by_label("Hello").is_some());
 
     harness.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::T);
     harness.run_steps(3);
 
-    assert!(!shows_a_conversation(&harness));
+    assert!(shows_a_conversation(&harness));
+    assert!(harness.query_by_label("Hello").is_none());
 }
 
 /// The panel is one widget among many in its host: with the focus and the pointer elsewhere,

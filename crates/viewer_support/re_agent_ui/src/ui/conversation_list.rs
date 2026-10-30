@@ -4,7 +4,7 @@ use re_ui::list_item::{CustomContent, ListItemContentButtonsExt as _};
 use re_ui::{UiExt as _, icons};
 use web_time::SystemTime;
 
-use super::agent_panel::{ConversationId, PanelAction};
+use super::agent_panel::{ConversationId, NEW_CONVERSATION_SHORTCUT, PanelAction};
 
 /// What a conversation needs from the user, for its row in the conversation list.
 #[derive(Clone, PartialEq, Eq)]
@@ -53,9 +53,22 @@ pub struct ConversationRow {
 
 /// Returns what the user picked: a conversation to open, or one to close.
 pub fn conversation_list_ui(ui: &mut egui::Ui, rows: &[ConversationRow]) -> Option<PanelAction> {
-    ui.weak("Conversations");
-
     let mut action = None;
+    egui::containers::Sides::new().show(
+        ui,
+        |ui| ui.weak("Conversations"),
+        |ui| {
+            let shortcut = re_ui::format_shortcut(ui.ctx(), &NEW_CONVERSATION_SHORTCUT);
+            if ui
+                .small_icon_button(&icons::ADD, "New conversation")
+                .on_hover_text(format!("New conversation ({shortcut})"))
+                .clicked()
+            {
+                action = Some(PanelAction::NewConversation);
+            }
+        },
+    );
+
     egui::ScrollArea::vertical()
         .id_salt("conversation_list")
         .auto_shrink([false, true])
