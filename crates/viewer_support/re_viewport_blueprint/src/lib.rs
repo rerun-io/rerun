@@ -5,6 +5,9 @@
 mod auto_layout;
 mod container;
 mod data_query_result_cache;
+mod duplicate;
+#[cfg(test)]
+mod duplicate_tests;
 mod entity_add_info;
 pub mod ui;
 mod view;

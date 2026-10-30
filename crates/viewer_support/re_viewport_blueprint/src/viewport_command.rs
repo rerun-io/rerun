@@ -10,6 +10,12 @@ pub enum ViewportCommand {
     /// Set the whole viewport tree.
     SetTree(egui_tiles::Tree<ViewId>),
 
+    /// Independently copy a configured container hierarchy next to its source.
+    DuplicateContainer {
+        source: ContainerId,
+        target: ContainerId,
+    },
+
     /// Add a new view to the provided container (or the root if `None`).
     AddView {
         view: ViewBlueprint,

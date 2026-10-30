@@ -288,7 +288,7 @@ impl ViewportBlueprint {
         }
     }
 
-    fn enqueue_command(&self, action: ViewportCommand) {
+    pub(super) fn enqueue_command(&self, action: ViewportCommand) {
         self.deferred_commands.lock().push(action);
     }
 
@@ -821,13 +821,8 @@ impl ViewportBlueprint {
         }
     }
 
-    /// Save the current state of the viewport to the blueprint store.
-    /// This should only be called if the tree was edited.
-    pub fn save_tree_as_containers(&self, ctx: &ViewerContext<'_>) {
-        re_tracing::profile_function!();
-
-        re_log::trace!("Saving tree: {:#?}", self.tree);
-
+    /// Map live tiles to blueprint contents, including new containers and temporary tab wrappers.
+    pub(super) fn contents_from_tile_id(&self) -> HashMap<TileId, Contents> {
         // First, update the mapping for all the previously known containers.
         // These were inserted with their ids, so we want to keep these
         // constant if we find them again.
@@ -877,6 +872,18 @@ impl ViewportBlueprint {
                 }
             }
         }
+
+        contents_from_tile_id
+    }
+
+    /// Save the current state of the viewport to the blueprint store.
+    /// This should only be called if the tree was edited.
+    pub fn save_tree_as_containers(&self, ctx: &ViewerContext<'_>) {
+        re_tracing::profile_function!();
+
+        re_log::trace!("Saving tree: {:#?}", self.tree);
+
+        let contents_from_tile_id = self.contents_from_tile_id();
 
         // Clear any existing container blueprints that aren't referenced by any tiles,
         // allowing the GC to remove the previous (non-clear) data from the store (saving RAM).
@@ -984,6 +991,10 @@ fn apply_viewport_command(
     match command {
         ViewportCommand::SetTree(new_tree) => {
             bp.tree = new_tree;
+        }
+
+        ViewportCommand::DuplicateContainer { source, target } => {
+            crate::duplicate::apply_duplicate_container(ctx, bp, source, target);
         }
 
         ViewportCommand::AddView {
