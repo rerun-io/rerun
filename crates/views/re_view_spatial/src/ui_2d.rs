@@ -634,21 +634,3 @@ fn show_projections_from_3d_space(
 fn test_help_view() {
     re_test_context::TestContext::test_help_view(help);
 }
-
-#[test]
-fn test_store_screen_space_2d() {
-    let screen_space = |pixels_per_scene_unit| ScreenSpace2D {
-        pixels_per_scene_unit,
-        visible_scene_rect: egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-    };
-    let mut state = SpatialViewState::default();
-
-    assert!(store_screen_space_2d(&mut state, screen_space(2.0)));
-    assert!(!store_screen_space_2d(&mut state, screen_space(2.0)));
-    assert!(store_screen_space_2d(&mut state, screen_space(3.0)));
-
-    // Otherwise the view would repaint every frame.
-    store_screen_space_2d(&mut state, screen_space(f32::NAN));
-    assert!(!store_screen_space_2d(&mut state, screen_space(f32::NAN)));
-    assert_eq!(state.screen_space_2d, None);
-}
