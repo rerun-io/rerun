@@ -22,7 +22,7 @@ use crate::visualizers::UiLabelTarget;
 /// Minimum number of segments used to tessellate each ellipse outline.
 ///
 /// The polyline closes, so we emit `segments + 1` vertices per ellipse.
-const MIN_ELLIPSE_SEGMENTS: usize = 64;
+const MIN_ELLIPSE_SEGMENTS: usize = 32;
 
 /// Only reached at a radius of about 13 000 pixels, so it just bounds the cost of extreme zoom.
 const MAX_ELLIPSE_SEGMENTS: usize = 512;
@@ -167,6 +167,7 @@ impl Ellipses2DVisualizer {
                     bbox_center,
                     glam::vec2(rx, ry),
                 );
+                re_log::debug!("{entity_path} ellipse {i}: {segments} segments");
                 let delta = std::f32::consts::TAU / segments as f32;
                 #[expect(clippy::range_plus_one)] // `RangeInclusive` is not an `ExactSizeIterator`
                 let points = (0..segments + 1).map(|n| {
@@ -380,16 +381,22 @@ mod tests {
     }
 
     #[test]
-    fn small_ellipses_never_use_fewer_segments_than_before() {
-        assert_eq!(ellipse_segment_count(0.0), 64);
-        assert_eq!(ellipse_segment_count(0.5), 64);
-        assert_eq!(ellipse_segment_count(100.0), 64);
-        assert_eq!(ellipse_segment_count(-3.0), 64);
-        assert_eq!(ellipse_segment_count(f32::MIN), 64);
-        assert_eq!(ellipse_segment_count(f32::NEG_INFINITY), 64);
-        assert_eq!(ellipse_segment_count(f32::MIN_POSITIVE), 64);
-        assert_eq!(ellipse_segment_count(1e-30), 64);
-        assert_eq!(ellipse_segment_count(f32::NAN), 64);
+    fn small_ellipses_use_minimum_segment_count() {
+        assert_eq!(ellipse_segment_count(0.0), MIN_ELLIPSE_SEGMENTS);
+        assert_eq!(ellipse_segment_count(0.5), MIN_ELLIPSE_SEGMENTS);
+        assert_eq!(ellipse_segment_count(10.0), MIN_ELLIPSE_SEGMENTS);
+        assert_eq!(ellipse_segment_count(-3.0), MIN_ELLIPSE_SEGMENTS);
+        assert_eq!(ellipse_segment_count(f32::MIN), MIN_ELLIPSE_SEGMENTS);
+        assert_eq!(
+            ellipse_segment_count(f32::NEG_INFINITY),
+            MIN_ELLIPSE_SEGMENTS
+        );
+        assert_eq!(
+            ellipse_segment_count(f32::MIN_POSITIVE),
+            MIN_ELLIPSE_SEGMENTS
+        );
+        assert_eq!(ellipse_segment_count(1e-30), MIN_ELLIPSE_SEGMENTS);
+        assert_eq!(ellipse_segment_count(f32::NAN), MIN_ELLIPSE_SEGMENTS);
     }
 
     #[test]
