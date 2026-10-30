@@ -4,6 +4,7 @@ use re_log_types::{DateVisibility, Timestamp, TimestampFormat};
 use re_ui::{ReButton, UiExt as _, icons};
 use web_time::SystemTime;
 
+use super::conversation_list::status_dot_ui;
 use super::tool_call_ui::{content_block_ui, tool_call_ui};
 use re_agent::{
     AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptEntry, TranscriptItem,
@@ -164,7 +165,7 @@ fn entry_ui(
 
 /// Consecutive tool calls of an ended turn, folded into one collapsed header.
 ///
-/// The header is red only if the last call failed: earlier failures the agent recovered from are noise.
+/// The header shows a red dot only if the last call failed: earlier failures the agent recovered from are noise.
 /// Returns the rect of the header, which shows the time of the first call on hover.
 fn tool_call_group_ui(
     ui: &mut egui::Ui,
@@ -184,31 +185,45 @@ fn tool_call_group_ui(
         .is_some_and(|(_, call)| call.status == ToolCallStatus::Failed);
 
     let tokens = ui.tokens();
-    let color = if last_failed {
-        tokens.error_fg_color
-    } else {
-        tokens.text_subdued
-    };
     // Keyed by its first call, not its position, so it never inherits another group's open state.
     let first_call_id = calls.first().map(|(_, call)| &call.id.0);
-    egui::CollapsingHeader::new(RichText::new(format!("Used {} tools", calls.len())).color(color))
-        .id_salt(transcript_id.with(("tool_call_group", first_call_id)))
-        .default_open(false)
-        .show(ui, |ui| {
-            for (entry, call) in &calls {
-                let rect = ui
-                    .scope(|ui| {
-                        tool_call_ui(ui, session, call, transcript_id.with(&call.id.0));
-                    })
-                    .response
-                    .rect;
-                if ui.rect_contains_pointer(rect) {
-                    timestamp_overlay(ui, rect, entry);
-                }
+    let mut label_clicked = false;
+    let mut header = egui::collapsing_header::CollapsingState::load_with_default_open(
+        ui.ctx(),
+        transcript_id.with(("tool_call_group", first_call_id)),
+        false,
+    )
+    .show_header(ui, |ui| {
+        if last_failed {
+            status_dot_ui(ui, tokens.error_fg_color);
+        }
+        label_clicked = ui
+            .add(
+                egui::Label::new(
+                    RichText::new(format!("Used {} tools", calls.len())).color(tokens.text_subdued),
+                )
+                .selectable(false)
+                .sense(egui::Sense::click()),
+            )
+            .clicked();
+    });
+    if label_clicked {
+        header.toggle();
+    }
+    let (_, header_response, _) = header.body(|ui| {
+        for (entry, call) in &calls {
+            let rect = ui
+                .scope(|ui| {
+                    tool_call_ui(ui, session, call, transcript_id.with(&call.id.0));
+                })
+                .response
+                .rect;
+            if ui.rect_contains_pointer(rect) {
+                timestamp_overlay(ui, rect, entry);
             }
-        })
-        .header_response
-        .rect
+        }
+    });
+    header_response.response.rect
 }
 
 /// The copy button and the answer time show only while the pointer is over the turn, from `turn_top` down to the footer itself.

@@ -4,9 +4,11 @@ use re_ui::{UiExt as _, icons};
 
 use re_agent::{AgentSession, ToolCallState};
 
+use super::conversation_list::status_dot_ui;
+
 /// A collapsible row for one tool call: status, kind, title, and the details underneath.
 ///
-/// Only running and failed calls show a status icon, so the transcript stays quiet.
+/// Only running and failed calls show a status indicator, so the transcript stays quiet.
 /// `id` keeps the open state, so it must not change when the row moves into a group.
 pub fn tool_call_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, id: egui::Id) {
     let default_open = call.status == ToolCallStatus::Failed;
@@ -43,7 +45,7 @@ fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is
             ui.inline_loading_indicator("Running the tool call");
         }
         ToolCallStatus::Failed => {
-            ui.small_icon(&icons::ERROR, Some(tokens.error_fg_color));
+            status_dot_ui(ui, tokens.error_fg_color);
         }
         _ => {}
     }
@@ -52,11 +54,6 @@ fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is
         ui.small_icon(icon, Some(tokens.text_subdued));
     }
 
-    let title_color = if call.status == ToolCallStatus::Failed {
-        tokens.error_fg_color
-    } else {
-        tokens.text_subdued
-    };
     let title = if call.title.is_empty() {
         kind_name(call.kind).to_owned()
     } else {
@@ -68,7 +65,7 @@ fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is
         egui::TextWrapMode::Truncate
     };
     ui.add(
-        egui::Label::new(RichText::new(title).color(title_color))
+        egui::Label::new(RichText::new(title).color(tokens.text_subdued))
             .wrap_mode(wrap_mode)
             .show_tooltip_when_elided(false)
             .selectable(false),

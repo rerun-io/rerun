@@ -132,7 +132,7 @@ fn conversation_row_ui(ui: &mut egui::Ui, row: &ConversationRow) {
         );
 }
 
-fn status_dot_ui(ui: &mut egui::Ui, color: egui::Color32) -> egui::Response {
+pub fn status_dot_ui(ui: &mut egui::Ui, color: egui::Color32) -> egui::Response {
     let radius = ui.tokens().status_dot_radius();
     let (rect, response) =
         ui.allocate_exact_size(egui::Vec2::splat(4.0 * radius), egui::Sense::hover());
