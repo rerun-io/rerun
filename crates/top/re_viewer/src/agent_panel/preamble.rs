@@ -199,7 +199,7 @@ pub fn model_api_text() -> String {
     text
 }
 
-#[cfg(all(test, not(target_arch = "wasm32")))]
+#[cfg(test)]
 mod tests {
     #[test]
     fn model_api_instructions_name_available_tools() {

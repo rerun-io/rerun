@@ -65,6 +65,14 @@ const REJECT_OPTION_ID: &str = "reject";
 /// Viewer tasks take a handful of calls; this leaves ample room for longer ones.
 const MAX_REPLIES_PER_TURN: usize = 50;
 
+/// How many tool result images the model is sent, newest first. Every request resends the whole
+/// history, so older screenshots are replaced with [`PRUNED_IMAGE_PLACEHOLDER`] to bound its cost.
+const MAX_IMAGES_IN_HISTORY: usize = 3;
+
+/// What a pruned tool result image is replaced with.
+const PRUNED_IMAGE_PLACEHOLDER: &str =
+    "[screenshot removed to save context; take a new one if needed]";
+
 /// A one-line message for a failed provider request, for the user to read.
 ///
 /// A provider reply is summarized from its HTTP status and the `error.message` in its body,
@@ -508,6 +516,7 @@ async fn run_turn(
     let tools = toolbox.map(rig_tools).unwrap_or_default();
 
     for _ in 0..MAX_REPLIES_PER_TURN {
+        prune_old_tool_images(history, MAX_IMAGES_IN_HISTORY);
         let reply = stream_reply(&model, system_prompt, &tools, history, events).await?;
         let calls: Vec<ToolCall> = reply.tool_calls().cloned().collect();
         history.extend(reply.message());
@@ -539,6 +548,29 @@ async fn run_turn(
     }
 
     Ok(StopReason::MaxTurnRequests)
+}
+
+/// Replaces every image in a tool result, except the `keep` most recent ones, with a placeholder.
+///
+/// Images the user sent in a prompt are kept.
+fn prune_old_tool_images(history: &mut [Message], keep: usize) {
+    let tool_images = history
+        .iter_mut()
+        .rev()
+        .filter_map(|message| match message {
+            Message::User { content } => Some(content.iter_mut().rev()),
+            Message::System { .. } | Message::Assistant(_) => None,
+        })
+        .flatten()
+        .filter_map(|content| match content {
+            UserContent::ToolResult(result) => Some(result.content.iter_mut().rev()),
+            _ => None,
+        })
+        .flatten()
+        .filter(|content| matches!(content, ToolResultContent::Image(_)));
+    for image in tool_images.skip(keep) {
+        *image = ToolResultContent::text(PRUNED_IMAGE_PLACEHOLDER);
+    }
 }
 
 /// Streams one reply, forwarding text and reasoning as they arrive.
@@ -857,6 +889,39 @@ mod tests {
         }
     }
 
+    /// Returns a one-pixel image from every call.
+    struct ScreenshotToolbox;
+
+    impl AgentToolbox for ScreenshotToolbox {
+        fn definitions(&self) -> Vec<crate::ToolDefinition> {
+            vec![crate::ToolDefinition {
+                name: "screenshot".to_owned(),
+                description: "Takes a screenshot".to_owned(),
+                input_schema: serde_json::Map::new(),
+            }]
+        }
+
+        fn requires_approval(&self, _name: &str) -> bool {
+            false
+        }
+
+        fn call(
+            &self,
+            _name: &str,
+            _arguments: serde_json::Map<String, serde_json::Value>,
+        ) -> futures::future::BoxFuture<
+            'static,
+            Result<Vec<ToolOutput>, Box<dyn std::error::Error + Send + Sync>>,
+        > {
+            Box::pin(async {
+                Ok(vec![ToolOutput::Image {
+                    bytes: Arc::from([0_u8].as_slice()),
+                    mime_type: "image/png".to_owned(),
+                }])
+            })
+        }
+    }
+
     /// Runs the loop on `model`, feeding it one prompt at a time and waiting for each turn.
     /// Allows every tool call that asks for permission if `allow`, else rejects it.
     fn run_prompts(
@@ -1038,6 +1103,52 @@ mod tests {
         assert!(!results[0].is_error);
         assert!(results[1].is_error);
         assert_eq!(results[1].call.to_string(), "call-2");
+    }
+
+    #[test]
+    fn only_the_most_recent_tool_images_are_sent() {
+        let screenshot_count = MAX_IMAGES_IN_HISTORY + 1;
+        let screenshot_turns = (0..screenshot_count).map(|i| {
+            vec![
+                MockStreamEvent::tool_call(
+                    format!("call-{i}"),
+                    "screenshot",
+                    serde_json::json!({}),
+                ),
+                MockStreamEvent::final_response_with_default_usage(),
+            ]
+        });
+        let final_turn = vec![
+            MockStreamEvent::text("Done"),
+            MockStreamEvent::final_response_with_default_usage(),
+        ];
+        let model = MockCompletionModel::from_stream_turns(std::iter::chain(
+            screenshot_turns,
+            [final_turn],
+        ));
+
+        run_prompts(&model, Some(Arc::new(ScreenshotToolbox)), false, &["Go"]);
+
+        let requests = model.requests();
+        let image_counts: Vec<usize> = requests
+            .iter()
+            .map(|request| {
+                tool_results(request)
+                    .iter()
+                    .flat_map(|result| &result.content)
+                    .filter(|content| matches!(content, ToolResultContent::Image(_)))
+                    .count()
+            })
+            .collect();
+        assert_eq!(image_counts, [0, 1, 2, 3, 3]);
+
+        let results = tool_results(&requests[screenshot_count]);
+        assert_eq!(results.len(), screenshot_count);
+        assert_eq!(
+            results[0].content,
+            [ToolResultContent::text(PRUNED_IMAGE_PLACEHOLDER)]
+        );
+        assert!(!results[0].is_error);
     }
 
     #[test]

@@ -67,6 +67,18 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
 
         index = next_index;
     }
+
+    // A running tool call already shows its own indicator.
+    let tool_call_running = items.iter().any(|entry| {
+        matches!(
+            &entry.item,
+            TranscriptItem::ToolCall(call)
+                if matches!(call.status, ToolCallStatus::Pending | ToolCallStatus::InProgress)
+        )
+    });
+    if session.turn_in_progress() && !session.is_waiting_on_user() && !tool_call_running {
+        ui.inline_loading_indicator("The agent is working");
+    }
 }
 
 /// What the turn footer needs to know about the turn shown so far.

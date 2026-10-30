@@ -14,9 +14,10 @@ use serde_json::{Map, Value};
 /// A model-API agent sees images directly. See [`ScreenshotDelivery::Inline`].
 const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::Inline;
 
-/// How many calls may wait for the UI thread. The agent runs its tool calls one at a time, so
-/// more than one waiting means the viewer has stopped serving them.
-pub const MAX_WAITING_CALLS: usize = 4;
+/// How many calls may wait for the UI thread on native. The agent runs its tool calls one at a
+/// time, so more than one waiting means the viewer has stopped serving them.
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_WAITING_CALLS: usize = 4;
 
 /// Why a viewer-control tool call failed. The message is sent back to the model.
 #[derive(Debug, thiserror::Error)]
@@ -45,6 +46,20 @@ enum ViewerToolError {
 
 /// What the viewer answers to one viewer-control operation.
 type ViewerControlResult = Result<ViewerControlResponse, ViewerControlError>;
+
+/// The channel that a [`ViewerToolbox`] queues its calls on, for the UI thread to run.
+///
+/// Unbounded on the web: there the agent and the UI share one thread, so a call cannot pile up
+/// behind a stalled UI.
+pub fn calls_channel() -> (
+    crossbeam::channel::Sender<QueuedCall>,
+    crossbeam::channel::Receiver<QueuedCall>,
+) {
+    cfg_select! {
+        target_arch = "wasm32" => crossbeam::channel::unbounded(),
+        _ => crossbeam::channel::bounded(MAX_WAITING_CALLS),
+    }
+}
 
 /// One viewer-control operation the agent asked for, waiting for the UI thread to run it.
 pub struct ViewerControlCall {
@@ -211,7 +226,7 @@ mod tests {
 
     #[test]
     fn screenshots_cannot_be_written_to_disk() {
-        let (calls_tx, calls_rx) = crossbeam::channel::bounded(MAX_WAITING_CALLS);
+        let (calls_tx, calls_rx) = calls_channel();
         let toolbox = ViewerToolbox::new(calls_tx, egui::Context::default());
 
         let schema = toolbox

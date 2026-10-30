@@ -42,7 +42,6 @@ impl AppCore {
         {
             // Download/ingest data:
             self.receive_messages(store_hub, egui_ctx);
-            #[cfg(not(target_arch = "wasm32"))]
             for crate::agent_panel::ViewerControlCall { request, on_done } in
                 self.agent_panel.take_viewer_control_calls()
             {

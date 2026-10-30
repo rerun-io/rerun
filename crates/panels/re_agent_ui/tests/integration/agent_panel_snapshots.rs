@@ -874,6 +874,23 @@ fn chat_queued_prompts() {
     snapshot("chat_queued_prompts", panel);
 }
 
+/// Right after the user sends a prompt, before the agent's first reply, the transcript shows that
+/// the agent is working.
+#[test]
+fn chat_waiting_for_the_first_reply() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+
+    session
+        .transcript_mut()
+        .push_user("Make the left camera show up in the viewer.".into());
+    session.begin_test_turn();
+
+    snapshot("chat_waiting_for_the_first_reply", panel);
+}
+
 /// The footer names the concrete model behind the agent's default, and opens a list of the others.
 #[test]
 fn chat_model_picker() {

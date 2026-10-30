@@ -540,7 +540,6 @@ fn footer_ui(
         .filter(|_| *session.phase() == Phase::Ready)
         .map(|usage| (usage.used, usage.size));
     let turn_in_progress = session.turn_in_progress();
-    let waiting_on_user = session.is_waiting_on_user();
     let can_send = session.is_ready()
         && (!input.prompt.text.trim().is_empty() || !input.prompt.images.is_empty());
 
@@ -583,14 +582,9 @@ fn footer_ui(
             },
             |ui| {
                 let clicked = if turn_in_progress {
-                    let stop = ui
-                        .add(ReButton::icon(icons::STOP, "Stop").primary().small())
+                    ui.add(ReButton::icon(icons::STOP, "Stop").primary().small())
                         .on_hover_text("Cancel the current turn (Esc)")
-                        .clicked();
-                    if !waiting_on_user {
-                        ui.inline_loading_indicator("The agent is working");
-                    }
-                    stop
+                        .clicked()
                 } else {
                     ui.add_enabled(
                         can_send,
