@@ -910,7 +910,7 @@ impl BlueprintTree {
             &item_desc,
             response.rect,
             None,
-            DesignTokens::list_item_height(),
+            DesignTokens::list_item_height(re_ui::ListItemDensity::Spacious),
         );
 
         if let Some(drop_target) = drop_target {
@@ -990,7 +990,7 @@ impl BlueprintTree {
             &item_desc,
             response.rect,
             body_response.map(|r| r.rect),
-            DesignTokens::list_item_height(),
+            DesignTokens::list_item_height(re_ui::ListItemDensity::Spacious),
         );
 
         if let Some(drop_target) = drop_target {

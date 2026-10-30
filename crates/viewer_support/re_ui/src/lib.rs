@@ -63,8 +63,8 @@ pub use self::command_palette::{
 };
 pub use self::context_ext::ContextExt;
 pub use self::design_tokens::{
-    AlertVisuals, ButtonVisuals, DesignTokens, MetaLineVisuals, Outlines, TabVisuals, TableStyle,
-    TextEditVisuals, WindowFrameConfig,
+    AlertVisuals, ButtonVisuals, DesignTokens, ListItemDensity, MetaLineVisuals, Outlines,
+    TabVisuals, TableStyle, TextEditVisuals, WindowFrameConfig,
 };
 pub use self::egui_ext::widget_ext::*;
 pub use self::fuzzy::{FuzzyMatch, FuzzyQuery};
@@ -377,22 +377,30 @@ fn format_with_decimals_in_range(
     format_with_decimals(value, max_decimals)
 }
 
-/// Is this Ui in a resizable panel?
+/// Is this Ui in a resizable container?
 ///
 /// Used as a heuristic to figure out if it is safe to truncate text.
 ///
-/// In a resizable panel, it is safe to truncate text if it doesn't fit,
-/// because the user can just make the panel wider to see the full text.
+/// In a resizable container, it is safe to truncate text if it doesn't fit,
+/// because the user can just make the container wider to see the full text.
 ///
 /// In other places, we should never truncate text, because then the user
-/// cannot read it all. In those places (when this functions returns `false`)
+/// cannot read it all. In those places (when this function returns `false`)
 /// you should either wrap the text or let it grow the Ui it is in.
-fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
+///
+/// Side panels and scopes marked with [`UiExt::resizable_container_scope`] qualify.
+fn is_in_resizable_container(ui: &egui::Ui) -> bool {
+    use crate::ui_ext::RESIZABLE_CONTAINER_TAG;
+
     re_tracing::profile_function!();
 
     let mut is_in_side_panel = false;
 
     for frame in ui.stack().iter() {
+        if frame.tags().contains(RESIZABLE_CONTAINER_TAG) {
+            return true;
+        }
+
         if let Some(kind) = frame.kind() {
             if kind.is_area() {
                 return false; // Our popups (tooltips etc) aren't resizable

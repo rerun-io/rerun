@@ -31,6 +31,9 @@ pub struct ListItemStyle {
 
     /// Whether label icons are tinted with the label text color.
     pub label_icon_matches_text: bool,
+
+    /// Density of items that don't set their own.
+    pub density: crate::ListItemDensity,
 }
 
 impl ListItemStyle {
@@ -70,6 +73,13 @@ impl ListItemStyle {
     #[inline]
     pub fn with_label_icon_matching_text(mut self, matching: bool) -> Self {
         self.label_icon_matches_text = matching;
+        self
+    }
+
+    /// Set the density of items that don't set their own with [`super::ListItem::with_density`].
+    #[inline]
+    pub fn with_density(mut self, density: crate::ListItemDensity) -> Self {
+        self.density = density;
         self
     }
 

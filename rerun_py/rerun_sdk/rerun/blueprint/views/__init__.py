@@ -7,6 +7,7 @@ from .bar_chart_view import BarChartView
 from .dataframe_view import DataframeView
 from .graph_view import GraphView
 from .map_view import MapView
+from .raw_data_view import RawDataView
 from .spatial2d_view import Spatial2DView
 from .spatial3d_view import Spatial3DView
 from .state_timeline_view import StateTimelineView
@@ -21,6 +22,7 @@ __all__ = [
     "DataframeView",
     "GraphView",
     "MapView",
+    "RawDataView",
     "Spatial2DView",
     "Spatial3DView",
     "StateTimelineView",

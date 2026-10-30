@@ -15,6 +15,10 @@ pub fn arrow_ui(
 ) {
     re_tracing::profile_function!();
 
+    // Should always be able to copy out raw arrow values!
+    let previous_selectable_labels = ui.style().interaction.selectable_labels;
+    ui.style_mut().interaction.selectable_labels = true;
+
     let previous_wrap_mode = ui.style().wrap_mode;
     if ui_layout != UiLayout::Inline {
         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
@@ -63,6 +67,7 @@ pub fn arrow_ui(
         }
     }
     ui.style_mut().wrap_mode = previous_wrap_mode;
+    ui.style_mut().interaction.selectable_labels = previous_selectable_labels;
 }
 
 /// The full tree of `array`, shown on hover when its one-line summary leaves something out.

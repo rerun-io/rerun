@@ -10,6 +10,7 @@ pub use arrow_ui::arrow_ui;
 pub use datatype_ui::{
     data_type_nesting_depth, data_type_syntax_highlighted, data_type_syntax_highlighted_to_depth,
 };
+pub use show_index::{ArrayUi, DisplayOptions};
 
 pub fn arrow_syntax_highlighted(
     data: &dyn arrow::array::Array,

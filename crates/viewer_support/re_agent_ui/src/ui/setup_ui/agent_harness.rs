@@ -296,7 +296,9 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
     for (index, server) in servers.iter_mut().enumerate() {
         ui.horizontal(|ui| {
             // Set first for centering
-            ui.set_min_height(re_ui::DesignTokens::list_item_height());
+            ui.set_min_height(re_ui::DesignTokens::list_item_height(
+                re_ui::ListItemDensity::Spacious,
+            ));
 
             let response = ui
                 .checkbox(&mut server.enabled, "")

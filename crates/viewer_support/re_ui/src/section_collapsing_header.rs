@@ -56,8 +56,8 @@ impl SectionCollapsingHeader<'_> {
         let resp = list_item::ListItem::new()
             .interactive(true)
             .force_background(ui.tokens().section_header_color)
-            .with_height(ui.tokens().section_header_height())
-            .with_content_top_padding(ui.tokens().section_header_top_padding())
+            .with_density(crate::ListItemDensity::Spacious)
+            .with_top_padding(ui.tokens().section_header_top_padding())
             .with_collapse_button_placement(CollapseButtonPlacement::AfterLabel)
             .show_hierarchical_with_children_unindented(ui, id, default_open, content, |ui| {
                 //TODO(ab): this space is not desirable when the content actually is list items

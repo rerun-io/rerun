@@ -135,8 +135,6 @@ impl SelectionPanel {
             return;
         }
 
-        let tokens = ui.tokens();
-
         // no gap before the first item title
         ui.add_space(-ui.spacing().item_spacing.y);
 
@@ -160,17 +158,13 @@ impl SelectionPanel {
             }
         } else {
             let response = list_item::list_item_scope(ui, "selections_panel", |ui| {
-                ui.list_item()
-                    .with_height(tokens.title_bar_height())
-                    .interactive(false)
-                    .selected(true)
-                    .show_flat(
-                        ui,
-                        list_item::LabelContent::new(format!(
-                            "{} selected items",
-                            re_format::format_uint(selection.len())
-                        )),
-                    );
+                ui.list_item().interactive(false).selected(true).show_flat(
+                    ui,
+                    list_item::LabelContent::new(format!(
+                        "{} selected items",
+                        re_format::format_uint(selection.len())
+                    )),
+                );
 
                 for item in selection.iter_items() {
                     ui.add_space(4.0);

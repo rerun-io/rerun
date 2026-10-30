@@ -150,7 +150,8 @@ fn segment_list(
 
     // A list short enough to show in full collapsed has nothing to expand.
     if expanded && segments.len() > COLLAPSED_SHOWN_COUNT {
-        let min_list_height = MIN_LIST_ROWS * DesignTokens::list_item_height();
+        let min_list_height =
+            MIN_LIST_ROWS * DesignTokens::list_item_height(re_ui::ListItemDensity::Spacious);
         egui::ScrollArea::vertical()
             .id_salt(("asset_coverage_segments", mode))
             .max_height(max_list_height.clamp(min_list_height, MAX_LIST_HEIGHT))

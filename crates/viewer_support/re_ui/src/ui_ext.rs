@@ -11,6 +11,7 @@ use crate::list_item::{self, LabelContent};
 use crate::{ContextExt as _, DesignTokens, Icon, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
+pub static RESIZABLE_CONTAINER_TAG: &str = "rerun_resizable_container";
 
 fn error_label_bg_color(fg_color: Color32) -> Color32 {
     fg_color.gamma_multiply(0.35)
@@ -1181,6 +1182,21 @@ pub trait UiExt {
                 });
             });
         response.response
+    }
+
+    /// Declare that the user can make this content wider, e.g. by dragging a splitter.
+    ///
+    /// List items inside truncate long values to the width they are given, instead of asking for
+    /// the width their content wants.
+    fn resizable_container_scope<R>(&mut self, content: impl FnOnce(&mut egui::Ui) -> R) -> R {
+        self.ui_mut()
+            .scope_builder(
+                egui::UiBuilder::new().ui_stack_info(
+                    egui::UiStackInfo::default().with_tag_value(RESIZABLE_CONTAINER_TAG, true),
+                ),
+                content,
+            )
+            .inner
     }
 
     /// Use the provided range as full span for the nested content.

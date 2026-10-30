@@ -243,6 +243,17 @@ pub enum TableStyle {
     Spacious,
 }
 
+/// Row spacing for list items.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum ListItemDensity {
+    /// Present content with more spacing and visual structure.
+    #[default]
+    Spacious,
+
+    /// Present content using less space.
+    Compact,
+}
+
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
@@ -1259,12 +1270,11 @@ impl DesignTokens {
         4.0
     }
 
-    pub fn section_header_height(&self) -> f32 {
-        Self::list_item_height() + self.section_header_top_padding()
-    }
-
-    pub fn list_item_height() -> f32 {
-        24.0
+    pub fn list_item_height(density: ListItemDensity) -> f32 {
+        match density {
+            ListItemDensity::Spacious => 24.0,
+            ListItemDensity::Compact => 20.0,
+        }
     }
 
     pub fn list_header_vertical_offset() -> f32 {

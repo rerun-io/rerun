@@ -137,6 +137,7 @@ re_view.workspace = true
 re_view_bar_chart.workspace = true
 re_view_dataframe.workspace = true
 re_view_graph.workspace = true
+re_view_raw_data.workspace = true
 re_view_spatial.workspace = true
 re_view_state_timeline.workspace = true
 re_view_tensor.workspace = true

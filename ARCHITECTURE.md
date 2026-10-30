@@ -165,6 +165,7 @@ A sibling of `crates/panels`: neither depends on the other.
 | re_view_dataframe      | A view that shows the data contained in entities in a table.                |
 | re_view_graph          | A view that shows a graph (node-link diagram).                              |
 | re_view_map            | A view that shows a map.                                                    |
+| re_view_raw_data       | A view that shows the raw component data of a single entity.                |
 | re_view_spatial        | Views that show entities in a 2D or 3D spatial relationship.                |
 | re_view_state_timeline | A view that shows state transitions as horizontal lanes over time.          |
 | re_view_tensor         | A view dedicated to visualizing tensors with arbitrary dimensionality.      |

@@ -84,6 +84,7 @@ re_view_bar_chart = { path = "crates/views/re_view_bar_chart", version = "=0.42.
 re_view_dataframe = { path = "crates/views/re_view_dataframe", version = "=0.42.0-alpha.1", default-features = false }
 re_view_graph = { path = "crates/views/re_view_graph", version = "=0.42.0-alpha.1", default-features = false }
 re_view_map = { path = "crates/views/re_view_map", version = "=0.42.0-alpha.1", default-features = false }
+re_view_raw_data = { path = "crates/views/re_view_raw_data", version = "=0.42.0-alpha.1", default-features = false }
 re_view_spatial = { path = "crates/views/re_view_spatial", version = "=0.42.0-alpha.1", default-features = false }
 re_view_state_timeline = { path = "crates/views/re_view_state_timeline", version = "=0.42.0-alpha.1", default-features = false }
 re_view_tensor = { path = "crates/views/re_view_tensor", version = "=0.42.0-alpha.1", default-features = false }
@@ -718,6 +719,7 @@ debug = false
 "re_view_dataframe".debug = true
 "re_view_graph".debug = true
 "re_view_map".debug = true
+"re_view_raw_data".debug = true
 "re_view_spatial".debug = true
 "re_view_state_timeline".debug = true
 "re_view_tensor".debug = true

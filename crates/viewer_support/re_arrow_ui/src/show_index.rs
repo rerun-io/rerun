@@ -61,7 +61,7 @@ pub struct DisplayOptions<'a> {
 
     /// Where should strings ([`arrow::array::StringArray`] etc.) be truncated?
     ///
-    /// [`usize::MAX`] by default, will be set to [`Self::max_nested_string_chars`] by [`DisplayOptions::nested`].
+    /// [`usize::MAX`] by default; nested items use [`Self::max_nested_string_chars`] instead.
     pub max_string_chars: usize,
 
     /// Where should strings inside nested items be truncated?
