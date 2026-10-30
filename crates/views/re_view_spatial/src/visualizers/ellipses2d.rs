@@ -35,7 +35,7 @@ const MAX_OUTLINE_ERROR_IN_PIXELS: f32 = 0.25;
 /// `radius_in_pixels` within [`MAX_OUTLINE_ERROR_IN_PIXELS`].
 fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
     if radius_in_pixels.is_nan() || radius_in_pixels <= 0.0 {
-        return ELLIPSE_SEGMENTS;
+        return MIN_ELLIPSE_SEGMENTS;
     }
 
     // Chord error is `r * (1 - cos(PI / n)) = 2 * r * sin²(PI / 2n)`.
@@ -47,12 +47,12 @@ fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
             .asin();
     let segments = (std::f32::consts::PI / half_angle).ceil();
     (segments as usize)
-        .clamp(ELLIPSE_SEGMENTS, MAX_ELLIPSE_SEGMENTS)
+        .clamp(MIN_ELLIPSE_SEGMENTS, MAX_ELLIPSE_SEGMENTS)
         .next_multiple_of(4)
 }
 
 /// Like [`ellipse_segment_count`],
-/// but ellipses outside last frame's view keep [`ELLIPSE_SEGMENTS`].
+/// but ellipses outside last frame's view keep [`MIN_ELLIPSE_SEGMENTS`].
 fn ellipse_segment_count_in_view(
     screen_space: Option<&ScreenSpace2D>,
     world_from_obj: &glam::Affine3A,
@@ -64,7 +64,7 @@ fn ellipse_segment_count_in_view(
         visible_scene_rect,
     }) = screen_space
     else {
-        return ELLIPSE_SEGMENTS;
+        return MIN_ELLIPSE_SEGMENTS;
     };
 
     let padded_half_size = half_size.abs() * BOUNDING_BOX_PADDING_FACTOR;
@@ -81,7 +81,7 @@ fn ellipse_segment_count_in_view(
         }),
     );
     if !visible_scene_rect.intersects(bbox_in_scene) {
-        return ELLIPSE_SEGMENTS;
+        return MIN_ELLIPSE_SEGMENTS;
     }
 
     let obj_scale = world_from_obj
@@ -304,9 +304,9 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                     return Ok(());
                 }
 
-                // Each ellipse is one closed strip with at least `ELLIPSE_SEGMENTS + 1` vertices.
+                // Each ellipse is one closed strip with at least `MIN_ELLIPSE_SEGMENTS + 1` vertices.
                 line_builder.reserve_strips(num_ellipses)?;
-                line_builder.reserve_vertices(num_ellipses * (ELLIPSE_SEGMENTS + 1))?;
+                line_builder.reserve_vertices(num_ellipses * (MIN_ELLIPSE_SEGMENTS + 1))?;
 
                 let all_centers = results.iter_optional(Ellipses2D::descriptor_centers().component);
                 let all_colors = results.iter_optional(Ellipses2D::descriptor_colors().component);
@@ -396,7 +396,7 @@ mod tests {
             glam::Vec2::ZERO,
             glam::vec2(100.0, 100.0),
         );
-        assert_eq!(segments, ELLIPSE_SEGMENTS);
+        assert_eq!(segments, MIN_ELLIPSE_SEGMENTS);
     }
 
     #[test]
@@ -442,11 +442,11 @@ mod tests {
 
         assert_eq!(
             segments(glam::Affine3A::IDENTITY, glam::vec2(1000.0, 0.0)),
-            ELLIPSE_SEGMENTS
+            MIN_ELLIPSE_SEGMENTS
         );
         assert_eq!(
             segments(glam::Affine3A::IDENTITY, glam::vec2(0.0, -1000.0)),
-            ELLIPSE_SEGMENTS
+            MIN_ELLIPSE_SEGMENTS
         );
         // Moved off screen by the entity transform.
         assert_eq!(
@@ -454,7 +454,7 @@ mod tests {
                 glam::Affine3A::from_translation(glam::vec3(1000.0, 0.0, 0.0)),
                 glam::Vec2::ZERO
             ),
-            ELLIPSE_SEGMENTS
+            MIN_ELLIPSE_SEGMENTS
         );
     }
 
