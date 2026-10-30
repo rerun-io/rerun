@@ -426,11 +426,14 @@ impl AppCore {
                             }
 
                             // If the viewer is in the background, tell the user that it has received something new.
-                            egui_ctx.send_viewport_cmd(
-                                egui::ViewportCommand::RequestUserAttention(
-                                    egui::UserAttentionType::Informational,
-                                ),
-                            );
+                            // Not on web: eframe's web backend doesn't implement this and logs a warning.
+                            if !cfg!(target_arch = "wasm32") {
+                                egui_ctx.send_viewport_cmd(
+                                    egui::ViewportCommand::RequestUserAttention(
+                                        egui::UserAttentionType::Informational,
+                                    ),
+                                );
+                            }
                         }
                     } else {
                         re_log::warn!(
@@ -489,9 +492,12 @@ impl AppCore {
                 ));
 
             // If the viewer is in the background, tell the user that it has received something new.
-            egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
-                egui::UserAttentionType::Informational,
-            ));
+            // Not on web: eframe's web backend doesn't implement this and logs a warning.
+            if !cfg!(target_arch = "wasm32") {
+                egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+                    egui::UserAttentionType::Informational,
+                ));
+            }
         }
     }
 
@@ -765,9 +771,12 @@ impl AppCore {
         }
 
         // If the viewer is in the background, tell the user that it has received something new.
-        egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
-            egui::UserAttentionType::Informational,
-        ));
+        // Not on web: eframe's web backend doesn't implement this and logs a warning.
+        if !cfg!(target_arch = "wasm32") {
+            egui_ctx.send_viewport_cmd(egui::ViewportCommand::RequestUserAttention(
+                egui::UserAttentionType::Informational,
+            ));
+        }
     }
 
     /// The source of a connected stream for the given dataset segment, if any.
