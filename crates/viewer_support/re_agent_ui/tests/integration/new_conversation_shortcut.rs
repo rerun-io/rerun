@@ -4,7 +4,8 @@ use std::path::PathBuf;
 
 use egui::Vec2;
 use egui_kittest::kittest::Queryable as _;
-use re_agent_ui::{AgentEntry, AgentPanel, AgentProfile, AgentProfileId, AgentSettings};
+use re_agent::{AgentEntry, AgentProfile, AgentProfileId, AgentSettings};
+use re_agent_ui::AgentPanel;
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 

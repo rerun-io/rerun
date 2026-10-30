@@ -23,9 +23,8 @@
 use std::time::{Duration, Instant};
 
 use clap::Parser;
-use re_agent_ui::{
-    AgentPanel, AgentProfile, AgentProfileId, AgentSettings, McpServerConfig, SessionContext,
-};
+use re_agent::{AgentProfile, AgentProfileId, AgentSettings, McpServerConfig, SessionContext};
+use re_agent_ui::AgentPanel;
 use re_ui::UiExt as _;
 
 const SETTINGS_KEY: &str = "agent_settings";
@@ -139,7 +138,7 @@ fn default_settings() -> AgentSettings {
         mcp_servers: vec![McpServerConfig {
             name: "rerun".to_owned(),
             command_line: command,
-            enabled: re_agent_ui::find_executable("rerun").is_some() || dev_rerun.is_file(),
+            enabled: re_agent::find_executable("rerun").is_some() || dev_rerun.is_file(),
         }],
         ..Default::default()
     }

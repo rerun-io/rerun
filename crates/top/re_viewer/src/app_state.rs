@@ -55,7 +55,7 @@ pub struct AppState {
     /// Settings shared by all conversations in the agent panel.
     ///
     /// This stays in `re_viewer` so `re_viewer_context` does not depend on the agent UI.
-    pub(crate) agent_settings: re_agent_ui::AgentSettings,
+    pub(crate) agent_settings: re_agent::AgentSettings,
 
     /// Whether the agent panel is open. Persisted, so it comes back on the next run.
     pub(crate) agent_panel_open: bool,

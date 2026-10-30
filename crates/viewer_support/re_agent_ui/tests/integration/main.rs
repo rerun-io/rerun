@@ -34,7 +34,7 @@ fn use_utc() {
 
 /// Gives every transcript entry the same fixed creation time, on another day than today, so
 /// hover timestamps in snapshots do not depend on when the test runs.
-fn pin_entry_times(session: &mut re_agent_ui::AgentSession) {
+fn pin_entry_times(session: &mut re_agent::AgentSession) {
     let created_at = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
     for entry in &mut session.transcript_mut().items {
         entry.created_at = created_at;

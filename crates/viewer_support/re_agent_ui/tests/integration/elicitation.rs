@@ -1,7 +1,8 @@
 use egui::{Role, Vec2};
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
-use re_agent_ui::acp::schema::v1::CreateElicitationRequest;
-use re_agent_ui::{AgentPanel, AgentSession, TranscriptItem};
+use re_agent::acp::schema::v1::CreateElicitationRequest;
+use re_agent::{AgentSession, TranscriptItem};
+use re_agent_ui::AgentPanel;
 use serde_json::json;
 
 use super::chat_input::ready_panel;
@@ -231,8 +232,8 @@ fn enter_in_a_text_field_sends_the_answer() {
 /// that asked.
 #[test]
 fn no_progress_indicator_while_a_question_is_open() {
-    use re_agent_ui::AgentEvent;
-    use re_agent_ui::acp::schema::v1::{SessionUpdate, ToolCall, ToolCallStatus};
+    use re_agent::AgentEvent;
+    use re_agent::acp::schema::v1::{SessionUpdate, ToolCall, ToolCallStatus};
 
     let mut harness = harness(question(
         "What is the URL of latest-eu?",

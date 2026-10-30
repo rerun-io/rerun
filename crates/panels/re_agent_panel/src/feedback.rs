@@ -1,6 +1,6 @@
 use re_agent::RedactionAgent;
-use re_agent_ui::acp::schema::v1::{ContentBlock, ToolCallContent, ToolCallStatus};
-use re_agent_ui::{
+use re_agent::acp::schema::v1::{ContentBlock, ToolCallContent, ToolCallStatus};
+use re_agent::{
     AgentSession, ToolCallState, Transcript, TranscriptItem, message_text, truncate_bytes,
 };
 use re_sdk_types::external::uuid::Uuid;
@@ -398,7 +398,7 @@ fn tool_output(call: &ToolCallState) -> String {
 
 #[cfg(test)]
 mod tests {
-    use re_agent_ui::acp::schema::v1::{
+    use re_agent::acp::schema::v1::{
         ContentChunk, SessionUpdate, TextContent, ToolCall as AcpToolCall,
     };
 
@@ -540,8 +540,8 @@ mod tests {
 
     #[test]
     fn images_are_counted_but_not_sent() {
-        use re_agent_ui::acp::schema::v1::ImageContent;
-        use re_agent_ui::{Prompt, PromptImage};
+        use re_agent::acp::schema::v1::ImageContent;
+        use re_agent::{Prompt, PromptImage};
 
         let mut transcript = Transcript::default();
         transcript.push_user(Prompt {

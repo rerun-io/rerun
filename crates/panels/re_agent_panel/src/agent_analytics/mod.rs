@@ -1,8 +1,8 @@
 //! Sends finished agent turns as analytics, after a fresh agent session has removed
 //! sensitive data from them.
 
+use re_agent::TurnReport;
 use re_agent::{RedactionAgent, RedactionError, Redactor};
-use re_agent_ui::TurnReport;
 
 /// Used for text that could not be redacted. The reason follows the colon.
 const REDACTION_FAILED: &str = "<redaction failed";
@@ -151,7 +151,7 @@ mod tests {
             model: None,
             prompt: "hello".to_owned(),
             duration: Duration::ZERO,
-            outcome: re_agent_ui::TurnOutcome::Error,
+            outcome: re_agent::TurnOutcome::Error,
             response: String::new(),
             tool_calls: 0,
             tokens_used: Some(123),

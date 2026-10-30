@@ -75,8 +75,8 @@ testing = ["dep:tokio", "re_ui/testing", "re_analytics/testing"]
 
 [dependencies]
 # Internal:
+re_agent.workspace = true
 re_agent_panel.workspace = true
-re_agent_ui.workspace = true
 re_analytics.workspace = true
 re_arrow_json.workspace = true
 re_async.workspace = true

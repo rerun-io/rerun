@@ -50,7 +50,7 @@ pub struct Preamble<'a> {
 
     /// Directories to ask the agent to stay out of, named in the instructions.
     ///
-    /// The same list the session is given as [`re_agent_ui::SessionContext::off_limits_directories`],
+    /// The same list the session is given as [`re_agent::SessionContext::off_limits_directories`],
     /// so that what is asked for and what is reported as a breach cannot drift apart.
     ///
     /// Holds the Rerun checkout in our own development builds, where the viewer is usually started

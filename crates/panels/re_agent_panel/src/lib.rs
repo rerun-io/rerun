@@ -9,7 +9,8 @@
 use std::collections::VecDeque;
 use std::path::Path;
 
-use re_agent_ui::{AgentPanel, AgentSettings};
+use re_agent::AgentSettings;
+use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
@@ -237,7 +238,7 @@ impl ViewerAgentPanel {
             _ => {{
                 let _ = (viewer_endpoint, cache_dir, is_in_rerun_workspace);
                 let mut panel = AgentPanel::new(settings, async_runtime.clone());
-                panel.set_context(re_agent_ui::SessionContext {
+                panel.set_context(re_agent::SessionContext {
                     model_api_preamble: Some(preamble::model_api_text()),
                     ..Default::default()
                 });

@@ -5,14 +5,13 @@ use std::path::PathBuf;
 use egui::Role;
 use egui::Vec2;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
-use re_agent_ui::acp::schema::v1::{
+use re_agent::acp::schema::v1::{
     AvailableCommand, AvailableCommandsUpdate, CurrentModeUpdate, PermissionOption,
     PermissionOptionKind, RequestPermissionRequest, SessionId, SessionMode, SessionModeState,
     SessionUpdate, ToolCallUpdate, ToolCallUpdateFields,
 };
-use re_agent_ui::{
-    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSettings,
-};
+use re_agent::{AgentEntry, AgentEvent, AgentProfile, AgentProfileId, AgentSettings};
+use re_agent_ui::AgentPanel;
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 

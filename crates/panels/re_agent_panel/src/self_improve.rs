@@ -7,8 +7,8 @@
 use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
-use re_agent_ui::LineDirection;
-use re_agent_ui::{AgentSession, SessionContext};
+use re_agent::LineDirection;
+use re_agent::{AgentSession, SessionContext};
 
 /// Linear issue the agents keep their own wish list in.
 const WISH_LIST_ISSUE: &str = "RR-5712";
@@ -310,11 +310,11 @@ mod tests {
     #[test]
     fn session_dump_includes_stderr_without_protocol_traffic() {
         let mut session = AgentSession::default();
-        session.handle_event(re_agent_ui::AgentEvent::Log {
+        session.handle_event(re_agent::AgentEvent::Log {
             direction: LineDirection::Stderr,
             line: "Failed to connect to viewer: transport error".to_owned(),
         });
-        session.handle_event(re_agent_ui::AgentEvent::Log {
+        session.handle_event(re_agent::AgentEvent::Log {
             direction: LineDirection::Stdout,
             line: "large protocol message".to_owned(),
         });

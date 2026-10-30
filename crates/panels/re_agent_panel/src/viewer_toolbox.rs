@@ -3,7 +3,7 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use re_agent_ui::{AgentToolbox, ToolDefinition, ToolOutput};
+use re_agent::{AgentToolbox, ToolDefinition, ToolOutput};
 use re_async::UiWaker;
 use re_log_channel::{UiCallback, ViewerControlError};
 use re_protos::viewer_control::v1alpha1::{

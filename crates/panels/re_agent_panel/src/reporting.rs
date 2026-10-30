@@ -2,7 +2,8 @@
 //! about Rerun, and shared prompts. Text is only sent after a second session of the panel's own
 //! agent has redacted it.
 
-use re_agent_ui::{AgentPanel, TurnReport};
+use re_agent::TurnReport;
+use re_agent_ui::AgentPanel;
 
 use crate::feedback;
 

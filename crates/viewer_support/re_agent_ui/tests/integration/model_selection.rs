@@ -1,13 +1,14 @@
 use egui::Vec2;
 use egui_kittest::kittest::Queryable as _;
-use re_agent_ui::acp::schema::v1::{
+use re_agent::acp::schema::v1::{
     ConfigOptionUpdate, SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectGroup,
     SessionConfigSelectOption, SessionConfigValueId, SessionUpdate,
 };
-use re_agent_ui::{
-    AgentEntry, AgentEvent, AgentLaunch, AgentPanel, AgentProfile, AgentProfileId, AgentSettings,
+use re_agent::{
+    AgentEntry, AgentEvent, AgentLaunch, AgentProfile, AgentProfileId, AgentSettings,
     SessionContext,
 };
+use re_agent_ui::AgentPanel;
 
 use super::chat_input::ready_panel;
 

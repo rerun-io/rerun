@@ -4,8 +4,8 @@ use std::path::PathBuf;
 
 use egui::Vec2;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
-use re_agent_ui::LineDirection;
-use re_agent_ui::acp::schema::v1::{
+use re_agent::LineDirection;
+use re_agent::acp::schema::v1::{
     AuthMethod, AuthMethodTerminal, ConfigOptionUpdate, ContentBlock, ContentChunk, Diff,
     PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,
     RequestPermissionRequest, SessionConfigOption, SessionConfigOptionCategory,
@@ -13,10 +13,11 @@ use re_agent_ui::acp::schema::v1::{
     TextContent, ToolCall, ToolCallContent, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
     ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
-use re_agent_ui::{
-    AgentEntry, AgentEvent, AgentPanel, AgentProfile, AgentProfileId, AgentSession, AgentSettings,
-    McpServerConfig, ModelApiProvider, Prompt, PromptImage, RECOMMENDED_WIDTH,
+use re_agent::{
+    AgentEntry, AgentEvent, AgentProfile, AgentProfileId, AgentSession, AgentSettings,
+    McpServerConfig, ModelApiProvider, Prompt, PromptImage,
 };
+use re_agent_ui::{AgentPanel, RECOMMENDED_WIDTH};
 
 /// As wide as a host is meant to make the panel, so the snapshots show what users see.
 const SIZE: Vec2 = Vec2::new(RECOMMENDED_WIDTH, 800.0);

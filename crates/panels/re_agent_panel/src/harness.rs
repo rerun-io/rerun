@@ -4,7 +4,8 @@
 
 use std::path::Path;
 
-use re_agent_ui::{AgentPanel, AgentSettings, McpServerConfig, SessionContext};
+use re_agent::{AgentSettings, McpServerConfig, SessionContext};
+use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
 
 use super::{DOCS_SUBDIR, SKILLS_SUBDIR, preamble, self_improve};
@@ -233,7 +234,7 @@ fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
             exe.clone()
         }
         _ => {
-            let rerun = re_agent_ui::find_executable("rerun")?;
+            let rerun = re_agent::find_executable("rerun")?;
             let current_exe = match &current_exe {
                 Ok(exe) => exe.display().to_string(),
                 Err(err) => format!("unknown ({err})"),
