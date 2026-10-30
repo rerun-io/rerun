@@ -208,7 +208,7 @@ mod tests {
 
     #[test]
     fn calls_the_agent_stopped_waiting_for_do_not_run() {
-        let (calls_tx, calls_rx) = crossbeam::channel::bounded(MAX_WAITING_CALLS);
+        let (calls_tx, calls_rx) = calls_channel();
         let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
 
         let _waiting = toolbox.send("get_state", Map::new());

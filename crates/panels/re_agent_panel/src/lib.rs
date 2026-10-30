@@ -13,20 +13,17 @@ use re_agent_ui::{AgentPanel, AgentSettings};
 use re_async::AsyncRuntimeHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
-#[cfg(agent_harness_backend)]
 mod agent_analytics;
-#[cfg(agent_harness_backend)]
 mod feedback;
 #[cfg(agent_harness_backend)]
 mod harness;
 mod preamble;
 mod product_feedback;
+mod reporting;
 #[cfg(agent_harness_backend)]
 mod self_improve;
 mod viewer_toolbox;
 
-#[cfg(not(agent_harness_backend))]
-pub use product_feedback::record_without_text as record_feedback_without_text;
 pub use viewer_toolbox::ViewerControlCall;
 
 /// Where the skills are unpacked inside the agent directory.
@@ -72,6 +69,8 @@ pub struct ViewerAgentPanel {
     #[cfg(agent_harness_backend)]
     harness: harness::Harness,
 
+    reporting: reporting::Reporting,
+
     /// Viewer-control operations that a model-API agent asked for, to be run on the UI thread.
     /// Set up with the panel.
     viewer_control_calls: Option<crossbeam::channel::Receiver<viewer_toolbox::QueuedCall>>,
@@ -94,13 +93,12 @@ impl ViewerAgentPanel {
     /// Queue feedback that an agent sent about Rerun, to be sent.
     ///
     /// Its text is only sent when `share_text` is set, after the panel's agent has redacted it.
-    #[cfg(agent_harness_backend)]
     pub fn submit_product_feedback(
         &mut self,
         request: re_protos::viewer_control::v1alpha1::SubmitFeedbackRequest,
         share_text: bool,
     ) {
-        self.harness
+        self.reporting
             .submit_product_feedback(self.panel.as_ref(), request, share_text);
     }
 
@@ -201,16 +199,13 @@ impl ViewerAgentPanel {
         let Some(panel) = &mut self.panel else {
             return;
         };
+        #[cfg(agent_harness_backend)]
+        self.harness.handle_self_improve_request(panel);
+        // Before the redactors run, so that turning sharing off drops what is queued before any
+        // of it can be sent.
         let turns = panel.take_finished_turns();
-        cfg_select! {
-            agent_harness_backend => {
-                self.harness.ui(panel, ui);
-                self.harness.record_finished_turns(panel, turns);
-            }
-            _ => {
-                drop(turns);
-            }
-        }
+        self.reporting.record_finished_turns(panel, turns);
+        self.reporting.ui(panel, ui);
     }
 
     /// Initialize the inner panel.
@@ -249,6 +244,8 @@ impl ViewerAgentPanel {
                 panel
             }}
         };
+
+        panel.set_feedback_enabled(true);
 
         let (calls_tx, calls_rx) = viewer_toolbox::calls_channel();
         self.viewer_control_calls = Some(calls_rx);

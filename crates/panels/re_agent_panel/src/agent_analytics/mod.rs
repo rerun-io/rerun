@@ -80,12 +80,23 @@ impl TurnAnalytics {
         );
     }
 
+    /// Drive the redaction. Call every frame.
+    pub fn update(&mut self, egui_ctx: &egui::Context) {
+        update_redactor(&mut self.redactor, egui_ctx);
+    }
+
     /// Stop redaction and discard the reports that have not been sent.
     ///
-    /// Dropping the sender ends the thread, so this is free to call on every frame that
-    /// sharing is off.
+    /// This is free to call on every frame that sharing is off.
     pub fn discard_pending(&mut self) {
         self.redactor.discard_pending();
+    }
+}
+
+/// Drive `redactor`, repainting `egui_ctx` whenever it has news or a timeout to check.
+pub fn update_redactor(redactor: &mut Redactor, egui_ctx: &egui::Context) {
+    if let Some(delay) = redactor.update(&re_ui::ContextExt::ui_waker(egui_ctx)) {
+        egui_ctx.request_repaint_after(delay);
     }
 }
 

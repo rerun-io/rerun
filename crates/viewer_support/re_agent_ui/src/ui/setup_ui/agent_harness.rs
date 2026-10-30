@@ -11,18 +11,7 @@ use re_agent::{
 
 use super::{default_model_api, model_api_list_ui, tag_ui};
 
-/// What prompt sharing actually does, behind the checkbox and the "Details" link.
-const ANALYTICS_DETAILS: &str = "Prompts and the agent's answers go to Rerun only after a second \
-     session of your own agent has removed names, identifiers, paths, and secrets, which spends \
-     your own quota.\n\
-     Analytics are processed on Rerun's behalf by PostHog, on servers in the EU. They are not \
-     sold, and not shared with anyone else.\n\
-     Content-free usage statistics are sent whether or not this is on. `rerun analytics disable` turns off all analytics.";
-
-/// The width the analytics details wrap at, in both the menu and the tooltip.
-const ANALYTICS_DETAILS_WIDTH: f32 = 340.0;
-
-/// The two choice cards, an agent on this machine or a model API, and prompt sharing.
+/// The two choice cards: an agent on this machine, or a model API.
 pub fn agent_choice_ui(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
@@ -54,10 +43,6 @@ pub fn agent_choice_ui(
     if picked_model_api && !model_api_selected {
         settings.profile_id = default_model_api(available_model_apis).profile_id();
     }
-
-    // Sharing redacts with a second session of an agent harness.
-    ui.add_space(8.0);
-    prompt_analytics_ui(ui, &mut settings.share_redacted_prompts);
 }
 
 /// The working directory, environment, and MCP servers of an agent harness.
@@ -218,59 +203,6 @@ fn custom_agent_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, selected: bo
         })
         .inner;
     radio_clicked || field_used
-}
-
-/// The prompt-sharing opt-in, and one line on why it helps.
-///
-/// The particulars stay in the tooltip that the checkbox and "Details" share.
-fn prompt_analytics_ui(ui: &mut egui::Ui, share_redacted_prompts: &mut bool) {
-    ui.scope(|ui| {
-        // The explanation belongs to the checkbox above it, closer than the panel's rhythm.
-        ui.spacing_mut().item_spacing.y = 2.0;
-
-        ui.checkbox(
-            share_redacted_prompts,
-            "Share anonymized prompts with Rerun",
-        )
-        .on_hover_ui(analytics_details_ui);
-
-        ui.horizontal(|ui| {
-            ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
-            ui.horizontal_wrapped(|ui| {
-                ui.label(
-                    RichText::new("This helps us make the feature better.")
-                        .small()
-                        .weak(),
-                );
-                analytics_details_button(ui);
-            });
-        });
-    });
-}
-
-/// "Details": the particulars of what is shared, on hover and on click.
-///
-/// Clickable as well as hoverable, like [`re_ui::UiExt::help_button`]: hover alone cannot be
-/// reached without a pointer, and it gives the reader no way to keep the text open.
-fn analytics_details_button(ui: &mut egui::Ui) -> egui::Response {
-    let label = RichText::new("Details")
-        .small()
-        .underline()
-        .color(ui.visuals().weak_text_color());
-    let response = ui.link(label);
-    let menu = egui::Popup::menu(&response).show(analytics_details_ui);
-
-    if menu.is_some() {
-        // Don't stack a tooltip on top of the open menu.
-        response
-    } else {
-        response.on_hover_ui(analytics_details_ui)
-    }
-}
-
-fn analytics_details_ui(ui: &mut egui::Ui) {
-    ui.set_max_width(ANALYTICS_DETAILS_WIDTH);
-    ui.label(ANALYTICS_DETAILS);
 }
 
 fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {

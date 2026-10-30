@@ -12,6 +12,7 @@ use re_agent::{
 
 #[cfg(agent_harness_backend)]
 mod agent_harness;
+mod prompt_sharing;
 
 /// Returns [`Screen::Chat`] when the user clicked "OK", so the caller should start the agent.
 ///
@@ -72,6 +73,9 @@ fn setup_ui_inner(
             model_api_list_ui(ui, settings, available_model_apis);
         }
     }
+
+    ui.add_space(8.0);
+    prompt_sharing::prompt_analytics_ui(ui, &mut settings.share_redacted_prompts);
 
     ui.add_space(8.0);
     let ready = selected_agent_ready(settings, agents, available_model_apis);

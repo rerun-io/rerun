@@ -25,14 +25,17 @@ pub fn record_without_text(request: SubmitFeedbackRequest) {
 }
 
 /// Sends feedback, with its text once a second session of the panel's agent has redacted it.
-#[cfg(agent_harness_backend)]
 #[derive(Default)]
 pub struct ProductFeedback {
     redactor: re_agent::Redactor,
 }
 
-#[cfg(agent_harness_backend)]
 impl ProductFeedback {
+    /// Drive the redaction. Call every frame.
+    pub fn update(&mut self, egui_ctx: &egui::Context) {
+        crate::agent_analytics::update_redactor(&mut self.redactor, egui_ctx);
+    }
+
     pub fn submit(
         &mut self,
         request: SubmitFeedbackRequest,

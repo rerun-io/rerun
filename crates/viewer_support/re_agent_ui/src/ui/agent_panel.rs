@@ -411,7 +411,6 @@ impl AgentPanel {
     }
 
     /// The agent that the current settings would launch, to redact with.
-    #[cfg(agent_harness_backend)]
     pub fn redaction_agent(&self) -> Result<re_agent::RedactionAgent, AgentLaunchError> {
         Ok(re_agent::RedactionAgent {
             launch: self.agent_launch(&SessionContext::default())?,

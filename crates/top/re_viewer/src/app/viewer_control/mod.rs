@@ -602,15 +602,9 @@ impl AppCore {
                             on_done.call(Err(err));
                         } else {
                             // The text is only sent with "Share redacted prompts with Rerun",
-                            // after an agent harness has redacted it. The web has no harness.
-                            cfg_select! {
-                                agent_harness_backend => {
-                                    let share_text =
-                                        self.state.agent_settings.share_redacted_prompts;
-                                    self.agent_panel.submit_product_feedback(request, share_text);
-                                }
-                                _ => re_agent_panel::record_feedback_without_text(request),
-                            }
+                            // after the panel's agent has redacted it.
+                            let share_text = self.state.agent_settings.share_redacted_prompts;
+                            self.agent_panel.submit_product_feedback(request, share_text);
                             on_done.call(Ok(SubmitFeedbackResponse {}.into()));
                         }
                     }
