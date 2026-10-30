@@ -14,4 +14,4 @@ It configures the generic chat UI of `re_agent_ui` for the viewer.
 ## What goes here, and what does not
 
 This crate is everything that ties the agent to the Rerun Viewer specifically.
-UI that any egui app could use for talking to an agent goes in [`re_agent_ui`](../../viewer_support/re_agent_ui) instead, and the protocol and session state in `re_agent`.
+UI that any egui app could use for talking to an agent goes in [`re_agent_ui`](../../ui_tools/re_agent_ui) instead, and the protocol and session state in `re_agent`.

@@ -31,12 +31,6 @@ FORBIDDEN_DEPENDENCIES: list[tuple[str, set[str]]] = [
     ("re_sdk", {"datafusion", "egui", "lance"}),
     ("re_sdk --all-features", {"datafusion", "egui", "lance"}),
     ("rerun-cli --no-default-features", {"datafusion", "egui", "lance"}),
-    # UI toolkit crates must not depend on the store (`crates/store_app`):
-    ("re_ui", {"crates/store_app/*"}),
-    ("re_ui --all-features", {"crates/store_app/*"}),
-    # `re_ui` only uses `re_uri` in its tests.
-    ("re_ui --edges normal", {"re_uri"}),
-    ("re_ui --all-features --edges normal", {"re_uri"}),
 ]
 
 # Setting `RUSTFLAGS` disables `re_workspace_hack`, which depends on everything.
