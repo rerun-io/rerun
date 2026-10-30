@@ -1,10 +1,10 @@
 use std::collections::BTreeMap;
 
-use re_agent::AgentSession;
 use re_agent::acp::schema::v1::{
     CreateElicitationResponse, ElicitationAcceptAction, ElicitationAction, ElicitationContentValue,
     ElicitationMode, ElicitationPropertySchema, ElicitationSchema, EnumOption, MultiSelectItems,
 };
+use re_agent::{AgentSession, ElicitationId};
 use re_ui::text_edit::ReTextEdit;
 use re_ui::{ButtonExt as _, UiExt as _};
 
@@ -13,7 +13,7 @@ use super::MAX_REQUEST_CONTENT_HEIGHT;
 /// Draft answers retained across frames until their session-local question IDs leave the queue.
 #[derive(Default)]
 pub struct ElicitationUi {
-    forms: BTreeMap<u64, BTreeMap<String, FieldInput>>,
+    forms: BTreeMap<ElicitationId, BTreeMap<String, FieldInput>>,
 }
 
 /// Editable drafts; text also holds incomplete numeric input and single-select wire values.

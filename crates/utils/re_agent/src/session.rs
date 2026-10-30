@@ -6,6 +6,7 @@
 use std::collections::{BTreeSet, VecDeque};
 use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use agent_client_protocol_schema::v1::{
     AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest, CreateElicitationResponse,
@@ -126,12 +127,25 @@ impl PendingPermission {
     }
 }
 
+/// Identifies a [`PendingElicitation`], for the UI to key its drafts by.
+///
+/// Distinct from the JSON-RPC request ID, and unique across sessions, so a cached draft cannot
+/// attach to a question of another session.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ElicitationId(u64);
+
+impl ElicitationId {
+    fn next() -> Self {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        Self(NEXT.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
 /// A structured question awaiting an explicit user answer, independent of tool permissions.
 ///
 /// Questions are never auto-approved. Dropping an unanswered request responds with cancellation.
 pub struct PendingElicitation {
-    /// Session-local UI key, distinct from the JSON-RPC request ID and unique across restarts.
-    pub id: u64,
+    pub id: ElicitationId,
 
     /// The agent's question message and requested input schema.
     pub request: CreateElicitationRequest,
@@ -191,9 +205,6 @@ pub struct AgentSession {
     pending_permissions: Vec<PendingPermission>,
     pending_elicitations: Vec<PendingElicitation>,
 
-    /// Preserved across restarts so cached UI drafts cannot attach to a different request.
-    next_elicitation_id: u64,
-
     /// Reject questions racing with cancellation until another prompt or session starts.
     cancel_requested: bool,
     log: VecDeque<LogLine>,
@@ -243,36 +254,39 @@ pub struct AgentSession {
     cwd: PathBuf,
 }
 
+impl Drop for AgentSession {
+    fn drop(&mut self) {
+        // Pending elicitations cancel themselves on drop, and the connection shuts the agent down.
+        for pending in self.pending_permissions.drain(..) {
+            pending.answer(None).ok();
+        }
+    }
+}
+
 impl AgentSession {
     /// Starts whichever kind of agent `launch` describes.
     ///
     /// A model-API agent runs on `async_runtime`, and fails to start without one.
     /// `waker` is woken whenever new events arrive, so that the UI can
     /// call [`Self::poll_events`].
+    ///
+    /// Dropping the session shuts the agent down and cancels its pending requests.
     pub fn start(
-        &mut self,
         launch: AgentLaunch,
         async_runtime: Option<&AsyncRuntimeHandle>,
         waker: UiWaker,
-    ) {
-        self.stop();
-        let mut fresh = Self {
-            auto_approve: self.auto_approve,
-            finished_turns: std::mem::take(&mut self.finished_turns),
-            next_elicitation_id: self.next_elicitation_id,
-            ..Default::default()
-        };
+    ) -> Self {
+        let mut session = Self::default();
         let connection = match launch {
             AgentLaunch::AgentHarness(config) => {
-                fresh.phase = Phase::Connecting {
+                session.phase = Phase::Connecting {
                     status: format!("Starting {}…", config.command.display()),
                 };
-                fresh.requested_mcp_servers = config.mcp_servers.clone();
-                fresh.preamble = config.preamble.clone();
-                fresh.readable_directories = config.additional_directories.clone();
-                fresh.off_limits_directories = config.off_limits_directories.clone();
-                fresh.cwd = config.cwd.clone();
-                *self = fresh;
+                session.requested_mcp_servers = config.mcp_servers.clone();
+                session.preamble = config.preamble.clone();
+                session.readable_directories = config.additional_directories.clone();
+                session.off_limits_directories = config.off_limits_directories.clone();
+                session.cwd = config.cwd.clone();
                 cfg_select! {
                     agent_harness_backend => Ok(crate::agent_harness::spawn(config, waker)),
                     _ => {{
@@ -282,10 +296,9 @@ impl AgentSession {
                 }
             }
             AgentLaunch::ModelApi(config) => {
-                fresh.phase = Phase::Connecting {
+                session.phase = Phase::Connecting {
                     status: format!("Connecting to {}…", config.model),
                 };
-                *self = fresh;
                 match async_runtime {
                     Some(async_runtime) => {
                         crate::model_api_backend::spawn(config, async_runtime, waker)
@@ -296,31 +309,32 @@ impl AgentSession {
             }
         };
         match connection {
-            Ok(connection) => self.connection = Some(connection),
+            Ok(connection) => session.connection = Some(connection),
             Err(err) => {
                 let reason = err.to_string();
-                self.report_error(reason.clone());
-                self.phase = Phase::Disconnected { reason };
+                session.report_error(reason.clone());
+                session.phase = Phase::Disconnected { reason };
             }
         }
+        session
     }
 
-    /// Shuts the agent down. Pending permission and elicitation requests are cancelled.
-    pub fn stop(&mut self) {
-        self.cancel_requested = true;
-        for pending in self.pending_permissions.drain(..) {
-            pending.answer(None).ok();
-        }
-        self.pending_elicitations.clear();
-        self.connection = None;
+    /// Ends the session and returns every turn report that the host has not taken yet,
+    /// including the running turn, reported as aborted.
+    pub fn into_finished_turns(mut self) -> Vec<TurnReport> {
         self.finish_turn(TurnOutcome::Aborted, "Stopped");
-        self.phase = Phase::Idle;
+        std::mem::take(&mut self.finished_turns)
     }
 
     /// Answer every permission request with the first "allow" option, without asking.
     /// Meant for unattended runs; the agent gets to do anything it asks for.
     pub fn set_auto_approve(&mut self, auto_approve: bool) {
         self.auto_approve = auto_approve;
+    }
+
+    /// See [`Self::set_auto_approve`].
+    pub fn auto_approve(&self) -> bool {
+        self.auto_approve
     }
 
     pub fn phase(&self) -> &Phase {
@@ -763,7 +777,7 @@ impl AgentSession {
     ///
     /// The caller must validate accepted content against the request's schema.
     /// Unknown or already-answered IDs are ignored.
-    pub fn answer_elicitation(&mut self, id: u64, response: CreateElicitationResponse) {
+    pub fn answer_elicitation(&mut self, id: ElicitationId, response: CreateElicitationResponse) {
         if let Some(index) = self
             .pending_elicitations
             .iter()
@@ -784,11 +798,10 @@ impl AgentSession {
         responder: Option<Responder<CreateElicitationResponse>>,
     ) {
         let pending = PendingElicitation {
-            id: self.next_elicitation_id,
+            id: ElicitationId::next(),
             request,
             responder,
         };
-        self.next_elicitation_id += 1;
         if self.cancel_requested {
             return;
         }
@@ -1205,7 +1218,7 @@ mod tests {
                         let mut session = AgentSession::default();
                         session.handle_event(AgentEvent::ElicitationRequest { request, responder });
                         if cancel {
-                            session.stop();
+                            drop(session);
                         } else {
                             let id = session.pending_elicitations()[0].id;
                             session.answer_elicitation(
@@ -1347,6 +1360,31 @@ mod tests {
     }
 
     #[test]
+    fn dropping_the_session_cancels_pending_permissions() {
+        let mut session = AgentSession::default();
+        let (responder, mut answer) = Responder::channel();
+        session.handle_event(AgentEvent::PermissionRequest {
+            request: permission_request(),
+            responder,
+        });
+        drop(session);
+        let answer = answer.try_recv().expect("answered").expect("answered");
+        assert!(matches!(
+            answer.outcome,
+            RequestPermissionOutcome::Cancelled
+        ));
+    }
+
+    #[test]
+    fn ending_a_session_reports_its_running_turn_as_aborted() {
+        let mut session = AgentSession::default();
+        session.begin_turn("do the thing".into());
+        let turns = session.into_finished_turns();
+        assert_eq!(turns.len(), 1);
+        assert_eq!(turns[0].outcome, TurnOutcome::Aborted);
+    }
+
+    #[test]
     fn permission_requests_the_agent_gave_up_on_are_dropped() {
         let mut session = AgentSession::default();
         let (responder, answer) = Responder::channel();
@@ -1361,12 +1399,11 @@ mod tests {
     }
 
     #[test]
-    fn questions_are_cleared_when_the_session_or_turn_ends() {
-        for end in ["stop", "finish", "disconnect"] {
+    fn questions_are_cleared_when_the_turn_ends() {
+        for end in ["finish", "disconnect"] {
             let mut session = AgentSession::default();
             session.push_elicitation(form_question(), None);
             match end {
-                "stop" => session.stop(),
                 "finish" => session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn))),
                 _ => session.handle_event(AgentEvent::Disconnected),
             }
@@ -1376,10 +1413,8 @@ mod tests {
 
     #[test]
     fn turn_report() {
-        let mut session = AgentSession {
-            agent_name: Some("Test Agent".to_owned()),
-            ..Default::default()
-        };
+        let mut session = AgentSession::default();
+        session.agent_name = Some("Test Agent".to_owned());
         session.begin_turn("do the thing".into());
         if let Some(turn) = &mut session.current_turn {
             turn.permissions_requested = 2;
@@ -1447,10 +1482,8 @@ mod tests {
             command: PathBuf::from("/Applications/Rerun.app/Contents/MacOS/rerun"),
             args: vec!["viewer-mcp".to_owned()],
         };
-        let mut session = AgentSession {
-            requested_mcp_servers: vec![requested.clone()],
-            ..Default::default()
-        };
+        let mut session = AgentSession::default();
+        session.requested_mcp_servers = vec![requested.clone()];
         session.begin_turn("show the recording".into());
 
         let error = "[codex-acp forwarded startup error] MCP server rerun failed to start";
@@ -1737,10 +1770,8 @@ mod tests {
 
     #[test]
     fn unfinished_tool_calls_fail_when_the_turn_ends() {
-        let mut session = AgentSession {
-            current_turn: Some(TurnStart::testing(0)),
-            ..Default::default()
-        };
+        let mut session = AgentSession::default();
+        session.current_turn = Some(TurnStart::testing(0));
         for (id, status) in [
             ("done", ToolCallStatus::Completed),
             ("running", ToolCallStatus::InProgress),

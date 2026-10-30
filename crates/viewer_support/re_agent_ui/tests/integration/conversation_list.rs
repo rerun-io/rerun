@@ -64,6 +64,38 @@ fn closing_a_row_removes_it() {
     harness.get_by_role_and_label(egui::accesskit::Role::Button, "Second question");
 }
 
+/// The running turn of a closed conversation still reaches the host, as aborted.
+#[test]
+fn closing_a_running_conversation_reports_its_turn() {
+    let mut panel = ready_panel();
+    panel
+        .session_mut()
+        .transcript_mut()
+        .push_user("Running question".into());
+    panel.session_mut().begin_test_turn();
+    panel.poll_events();
+    panel.new_conversation();
+
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
+        .build_ui_state(
+            |ui, panel: &mut AgentPanel| {
+                panel.ui(ui);
+            },
+            panel,
+        );
+    harness.run_steps(2);
+    harness
+        .get_by_role_and_label(egui::accesskit::Role::Button, "Running question")
+        .hover();
+    harness.run_steps(2);
+    harness.get_by_label("Close conversation").click();
+    harness.run_steps(2);
+
+    let turns = harness.state_mut().take_finished_turns();
+    assert_eq!(turns.len(), 1);
+    assert_eq!(turns[0].outcome, re_agent::TurnOutcome::Aborted);
+}
+
 /// The draft has no row of its own, so its startup error shows above the list, with a way to
 /// fix the setup.
 #[test]

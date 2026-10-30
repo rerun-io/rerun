@@ -66,8 +66,8 @@ pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, 
 pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
-    AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,
-    PromptImage,
+    AgentSession, AuthPrompt, ElicitationId, LogLine, PendingElicitation, PendingPermission, Phase,
+    Prompt, PromptImage,
 };
 pub use settings::{AgentLaunch, AgentLaunchError, AgentSettings, McpServerConfig, SessionContext};
 pub use transcript::{

@@ -162,8 +162,7 @@ impl RedactionQueue {
                 launch,
                 async_runtime,
             } = agent;
-            let mut redactor = AgentSession::default();
-            redactor.start(launch, async_runtime.as_ref(), waker);
+            let redactor = AgentSession::start(launch, async_runtime.as_ref(), waker);
             self.in_flight = Some(InFlight {
                 redactor,
                 json,
@@ -175,10 +174,15 @@ impl RedactionQueue {
 
         let finished = self.in_flight.as_mut().and_then(InFlight::update);
         if let Some(answer) = finished
-            && let Some(mut finished) = self.in_flight.take()
+            && let Some(finished) = self.in_flight.take()
         {
-            finished.redactor.stop();
-            (finished.on_redacted)(answer);
+            let InFlight {
+                redactor,
+                on_redacted,
+                ..
+            } = finished;
+            drop(redactor);
+            on_redacted(answer);
             true
         } else {
             false
