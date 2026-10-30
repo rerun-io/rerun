@@ -72,8 +72,11 @@ impl TurnOutcome {
 /// What happened during one prompt, for hosts that want to log or record it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TurnReport {
-    /// The agent's self-reported name, if it had introduced itself by then.
+    /// The agent's self-reported name, e.g. "Claude Code", if it had introduced itself by then.
     pub agent: Option<String>,
+
+    /// The model the agent used, e.g. "Opus 5.5".
+    pub model: Option<String>,
 
     /// What the user typed, without the preamble.
     pub prompt: String,

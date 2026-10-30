@@ -97,6 +97,7 @@ pub fn record_usage(report: &TurnReport) {
 fn usage_from_report(report: &TurnReport) -> re_analytics::event::AgentTurnUsage {
     re_analytics::event::AgentTurnUsage {
         agent: report.agent.clone(),
+        model: report.model.clone(),
         duration_secs: report.duration.as_secs_f64(),
         outcome: report.outcome.name().to_owned(),
         tool_calls: report.tool_calls,
@@ -136,6 +137,7 @@ mod tests {
     fn redactable_text_carries_the_reports_text() {
         let report = TurnReport {
             agent: None,
+            model: None,
             prompt: "hello".to_owned(),
             duration: Duration::ZERO,
             outcome: re_agent_ui::TurnOutcome::Error,

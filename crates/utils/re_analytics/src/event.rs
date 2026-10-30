@@ -432,6 +432,9 @@ pub struct AgentTurnUsage {
     /// Which agent handled the prompt, e.g. "Claude Code".
     pub agent: Option<String>,
 
+    /// Which model handled the prompt, e.g. "Opus 5.5".
+    pub model: Option<String>,
+
     /// From sending the prompt to the agent finishing.
     pub duration_secs: f64,
 
@@ -462,6 +465,7 @@ impl Properties for AgentTurnUsage {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
             agent,
+            model,
             duration_secs,
             outcome,
             tool_calls,
@@ -474,6 +478,9 @@ impl Properties for AgentTurnUsage {
         } = self;
         if let Some(agent) = agent {
             event.insert("agent", agent);
+        }
+        if let Some(model) = model {
+            event.insert("model", model);
         }
         event.insert("duration_secs", duration_secs);
         event.insert("outcome", outcome);
@@ -1014,6 +1021,7 @@ mod tests {
     fn agent_turn_keeps_both_the_counts_and_the_text() {
         let usage = AgentTurnUsage {
             agent: None,
+            model: None,
             duration_secs: 1.0,
             outcome: "completed".to_owned(),
             tool_calls: 3,

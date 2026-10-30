@@ -682,6 +682,7 @@ impl AgentSession {
 
         self.finished_turns.push(TurnReport {
             agent: self.agent_name.clone(),
+            model: self.transcript.current_model().map(str::to_owned),
             prompt,
             duration: started.elapsed(),
             outcome,
