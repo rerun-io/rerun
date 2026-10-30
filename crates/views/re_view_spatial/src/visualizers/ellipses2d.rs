@@ -24,6 +24,9 @@ use crate::visualizers::UiLabelTarget;
 /// The polyline closes, so we emit `segments + 1` vertices per ellipse.
 const MIN_ELLIPSE_SEGMENTS: usize = 32;
 
+/// Used outside a 2D view (e.g. in 3D views), where the on-screen size is unknown.
+const FIXED_ELLIPSE_SEGMENTS_IN_3D: usize = 64;
+
 /// Reached at a radius of about 3300 pixels.
 /// Beyond that the outline error grows, to one pixel at a radius of 13 000 pixels,
 /// in exchange for bounding the cost of many large ellipses crossing the view.
@@ -55,6 +58,7 @@ fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
 
 /// Like [`ellipse_segment_count`],
 /// but ellipses outside last frame's view keep [`MIN_ELLIPSE_SEGMENTS`].
+/// Without a 2D view, ellipses use [`FIXED_ELLIPSE_SEGMENTS_IN_3D`].
 fn ellipse_segment_count_in_view(
     screen_space: Option<&ScreenSpace2D>,
     world_from_obj: &glam::Affine3A,
@@ -66,7 +70,7 @@ fn ellipse_segment_count_in_view(
         visible_scene_rect,
     }) = screen_space
     else {
-        return MIN_ELLIPSE_SEGMENTS;
+        return FIXED_ELLIPSE_SEGMENTS_IN_3D;
     };
 
     let padded_half_size = half_size.abs() * BOUNDING_BOX_PADDING_FACTOR;
@@ -421,14 +425,14 @@ mod tests {
     }
 
     #[test]
-    fn without_a_2d_view_use_the_default_count() {
+    fn without_a_2d_view_keep_the_fixed_count() {
         let segments = ellipse_segment_count_in_view(
             None,
             &glam::Affine3A::IDENTITY,
             glam::Vec2::ZERO,
             glam::vec2(100.0, 100.0),
         );
-        assert_eq!(segments, MIN_ELLIPSE_SEGMENTS);
+        assert_eq!(segments, FIXED_ELLIPSE_SEGMENTS_IN_3D);
     }
 
     #[test]
