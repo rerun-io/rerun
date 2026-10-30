@@ -16,47 +16,4 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> TextDocumentFormat::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (monospace.has_value()) {
-            columns.push_back(monospace.value().partitioned(lengths_).value_or_throw());
-        }
-        if (word_wrap.has_value()) {
-            columns.push_back(word_wrap.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> TextDocumentFormat::columns() {
-        if (monospace.has_value()) {
-            return columns(std::vector<uint32_t>(monospace.value().length(), 1));
-        }
-        if (word_wrap.has_value()) {
-            return columns(std::vector<uint32_t>(word_wrap.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::TextDocumentFormat>::as_batches(
-            const blueprint::archetypes::TextDocumentFormat& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.monospace.has_value()) {
-            cells.push_back(archetype.monospace.value());
-        }
-        if (archetype.word_wrap.has_value()) {
-            cells.push_back(archetype.word_wrap.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

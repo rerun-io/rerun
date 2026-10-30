@@ -282,6 +282,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ComponentIdentifier as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "Identifies a component by fully qualified name.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ComponentIdentifier::default().to_arrow()?),
+                datatype: ComponentIdentifier::arrow_data_type(),
+                encoding: Some("rerun.encodings.Utf8"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: ComponentIdentifier::verify_arrow_array,
+            },
+        ),
+        (
             <ContainerKind as Component>::name(),
             ComponentTypeReflection {
                 docstring_md: "The kind of a blueprint container (tabs, grid, …).",
@@ -925,6 +938,28 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 enum_variants: None,
                 own_chunk: false,
                 verify_arrow_array: ViewClass::verify_arrow_array,
+            },
+        ),
+        (
+            <ViewDensity as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "How densely a view presents its content.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(ViewDensity::default().to_arrow()?),
+                datatype: ViewDensity::arrow_data_type(),
+                encoding: None,
+                enum_variants: Some(&[
+                    EnumVariantReflection {
+                        value: 1,
+                        name: "Spacious",
+                    },
+                    EnumVariantReflection {
+                        value: 2,
+                        name: "Compact",
+                    },
+                ]),
+                own_chunk: false,
+                verify_arrow_array: ViewDensity::verify_arrow_array,
             },
         ),
         (
@@ -5785,6 +5820,45 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::from("rerun.blueprint.archetypes.RawDataRows"),
+            ArchetypeReflection {
+                display_name: "Raw data rows",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                fields: vec![ArchetypeFieldReflection {
+                    name: "data_rows",
+                    display_name: "Data rows",
+                    component_type: "rerun.blueprint.components.ComponentIdentifier".into(),
+                    docstring_md: "The components to display.\n\nIf specified, components not listed are hidden.\nIf not specified, all components of the entity are shown.",
+                    flags: ArchetypeFieldFlags::UI_EDITABLE,
+                }],
+            },
+        ),
+        (
+            ArchetypeName::from("rerun.blueprint.archetypes.RawDataViewFormat"),
+            ArchetypeReflection {
+                display_name: "Raw data view format",
+                deprecation_summary: None,
+                scope: Some("blueprint"),
+                fields: vec![
+                    ArchetypeFieldReflection {
+                        name: "show_time_navigation",
+                        display_name: "Show time navigation",
+                        component_type: "rerun.components.Visible".into(),
+                        docstring_md: "Show the bar carrying the time cursor and the step-to-next-event buttons.\n\nDefaults to true.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                    ArchetypeFieldReflection {
+                        name: "style",
+                        display_name: "Style",
+                        component_type: "rerun.blueprint.components.ViewDensity".into(),
+                        docstring_md: "How densely the rows are packed.\n\nDefaults to spacious.",
+                        flags: ArchetypeFieldFlags::UI_EDITABLE,
+                    },
+                ],
+            },
+        ),
+        (
             ArchetypeName::from("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
@@ -6437,6 +6511,16 @@ fn generate_view_reflection() -> ViewReflectionMap {
                 property_archetypes: vec![
                     ArchetypeName::from("rerun.blueprint.archetypes.MapZoom"),
                     ArchetypeName::from("rerun.blueprint.archetypes.MapBackground"),
+                ],
+            },
+        ),
+        (
+            ViewClassIdentifier::from_static_str("RawData"),
+            ViewReflection {
+                applicability: ViewApplicability::AllArchetypes,
+                property_archetypes: vec![
+                    ArchetypeName::from("rerun.blueprint.archetypes.RawDataRows"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.RawDataViewFormat"),
                 ],
             },
         ),

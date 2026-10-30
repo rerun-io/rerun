@@ -250,7 +250,9 @@ pub trait ViewClass: Send + Sync {
     /// Called once for every new view instance of this class.
     ///
     /// The state is *not* persisted across viewer sessions, only shared frame-to-frame.
-    fn new_state(&self) -> Box<dyn ViewState>;
+    fn new_state(&self) -> Box<dyn ViewState> {
+        Box::new(())
+    }
 
     /// Preferred aspect ratio for the ui tiles of this view.
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {

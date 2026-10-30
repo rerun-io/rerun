@@ -42,12 +42,7 @@ default = [
 auth = ["re_auth/cli", "dep:jiff", "dep:url"]
 
 ## Enable anonymized telemetry using our analytics SDK.
-analytics = [
-  "dep:re_analytics",
-  "re_crash_handler?/analytics",
-  "re_viewer?/analytics",
-  "re_web_viewer_server?/analytics",
-]
+analytics = ["re_viewer?/analytics"]
 
 ## Integration with `clap`.
 clap = ["dep:clap"]
@@ -179,6 +174,7 @@ web_viewer = ["server", "dep:re_web_viewer_server", "re_sdk?/web_viewer"]
 
 
 [dependencies]
+re_analytics.workspace = true
 re_async.workspace = true
 re_arrow_util.workspace = true
 re_build_info.workspace = true
@@ -221,7 +217,6 @@ tokio = { workspace = true, features = ["rt-multi-thread"] }
 walkdir.workspace = true
 
 # Optional dependencies:
-re_analytics = { workspace = true, optional = true }
 re_auth = { workspace = true, optional = true }
 re_chunk_optimizer = { workspace = true, optional = true }
 re_chunk_store.workspace = true

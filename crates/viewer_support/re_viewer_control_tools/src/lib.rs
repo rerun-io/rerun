@@ -33,7 +33,18 @@ pub struct ToolDefinition {
 
     /// JSON Schema of the arguments, as [`build_request`] takes them.
     pub input_schema: Map<String, Value>,
+
+    /// Whether an agent should ask the user before running the operation.
+    ///
+    /// True for every operation not known to be harmless, including ones added later.
+    pub requires_approval: bool,
 }
+
+/// Prefix on the name of every viewer-control tool an agent sees, as in `rerun_get_state`.
+///
+/// The same for every agent, however it reaches the viewer, so instructions and transcripts read
+/// alike, and so these tools stand apart from any others the agent has.
+pub const TOOL_NAME_PREFIX: &str = "rerun_";
 
 /// Fully-qualified name of the request envelope whose `oneof` defines the operations.
 ///
@@ -51,6 +62,30 @@ const OPERATION_ONEOF: &str = "kind";
 /// `egui_inspect` carries a MessagePack blob that the `egui_mcp` tools already wrap; handing an
 /// agent the raw bytes would be worse than the tools it backs.
 const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
+
+/// Operations an agent may run without asking the user.
+///
+/// They only read, or change what is shown in a way the user can see and undo. Everything else,
+/// including operations added later, asks first: `open` and `set_location` load data from any
+/// URL, `close` drops recordings, `run_command` runs any UI command, `capture_profile_trace`
+/// writes files, and `submit_feedback` sends text to Rerun.
+const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
+    "describe_commands",
+    "get_blueprint",
+    "get_dataset_assets_schema",
+    "get_dataset_schema",
+    "get_location",
+    "get_logs",
+    "get_recording_schema",
+    "get_state",
+    "get_table_schema",
+    "get_transform_graph",
+    "highlight_rect",
+    "list_commands",
+    "save_screenshot",
+    "set_blueprint",
+    "set_time_cursor",
+];
 
 /// Fully-qualified names of the `oneof`s a caller may leave unset, which the viewer then fills in.
 ///
@@ -363,6 +398,7 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
                     name: field.name().to_owned(),
                     description: "Unsupported operation".to_owned(),
                     input_schema: Map::new(),
+                    requires_approval: true,
                 };
             };
 
@@ -391,6 +427,7 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
                 name: field.name().to_owned(),
                 description,
                 input_schema: schema,
+                requires_approval: !OPERATIONS_WITHOUT_APPROVAL.contains(&field.name()),
             }
         })
         .collect()
@@ -638,6 +675,13 @@ pub fn response_json(operation: &str, response: &ViewerControlResponse) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_operation_without_approval_exists() {
+        for operation in OPERATIONS_WITHOUT_APPROVAL {
+            assert!(is_operation(operation), "{operation:?} is not an operation");
+        }
+    }
 
     /// Checks the public mode names, the omitted default, and rejection of invalid modes.
     #[test]

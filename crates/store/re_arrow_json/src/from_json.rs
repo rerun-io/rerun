@@ -16,6 +16,11 @@ use crate::archetype_key::archetype_by_json_key;
 use crate::arrow_union::array_from_json;
 use crate::special::special_batch_from_json;
 
+/// Accepted alternative spellings of field names, as `(alias, field)`.
+///
+/// Only consulted when the archetype has no field by the given name.
+const FIELD_ALIASES: &[(&str, &str)] = &[("column_shares", "col_shares")];
+
 /// Why one JSON value could not be decoded into a component.
 #[derive(Debug, thiserror::Error)]
 pub enum ValueFromJsonError {
@@ -262,7 +267,13 @@ fn archetype_components_from_json(
 
     let mut components = Vec::with_capacity(fields.len());
     for (field, value) in fields {
-        let Some(field_reflection) = archetype_reflection.field_by_name(field) else {
+        let field_reflection = archetype_reflection.field_by_name(field).or_else(|| {
+            FIELD_ALIASES
+                .iter()
+                .find(|(alias, _)| alias == field)
+                .and_then(|(_, name)| archetype_reflection.field_by_name(name))
+        });
+        let Some(field_reflection) = field_reflection else {
             return Err(ChunksFromJsonError::At {
                 location: location.to_owned(),
                 err: ValueFromJsonError::UnknownField {
@@ -792,6 +803,20 @@ mod tests {
         write(&mut blueprint, &json);
 
         assert_eq!(read(&blueprint), json);
+    }
+
+    #[test]
+    fn field_aliases_are_read_as_their_field() {
+        let mut blueprint = empty_blueprint();
+        write(
+            &mut blueprint,
+            &json!({ "/container/c": { "ContainerBlueprint": { "column_shares": [2.0, 1.0] } } }),
+        );
+
+        assert_eq!(
+            read(&blueprint),
+            json!({ "/container/c": { "ContainerBlueprint": { "col_shares": [2.0, 1.0] } } })
+        );
     }
 
     #[test]

@@ -168,7 +168,7 @@ impl TranscriptItem {
 #[derive(Clone, Debug)]
 pub struct TranscriptEntry {
     /// When the item was first added. Later updates to the item do not move it.
-    pub created_at: std::time::SystemTime,
+    pub created_at: web_time::SystemTime,
 
     /// The item itself.
     pub item: TranscriptItem,
@@ -205,7 +205,7 @@ pub struct Transcript {
 impl Transcript {
     fn push(&mut self, item: TranscriptItem) {
         self.items.push(TranscriptEntry {
-            created_at: std::time::SystemTime::now(),
+            created_at: web_time::SystemTime::now(),
             item,
         });
     }

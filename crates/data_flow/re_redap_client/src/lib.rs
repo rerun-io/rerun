@@ -12,6 +12,7 @@ mod dataset_revisions;
 mod grpc;
 mod registration_response;
 mod rpc_retry;
+mod schema_cache;
 mod tasks;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -27,7 +28,7 @@ pub use self::api_response_stream::ApiResponseStream;
 pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
     BoxedRedapClientStack, Connection, ConnectionClient, DatasetManifest, DatasetSchema,
-    FetchChunksResponseStream, LayerSchemas, RedapClient,
+    FetchChunksResponseStream, RedapClient,
 };
 pub use self::connection_handle::ConnectionHandle;
 pub use self::connection_registry::{

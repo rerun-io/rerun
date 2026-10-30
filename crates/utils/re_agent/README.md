@@ -9,7 +9,10 @@ Runs a coding agent (Claude Code, Codex, Gemini CLI, …) as a subprocess and ta
 [Agent Client Protocol](https://agentclientprotocol.com/): sessions, prompts, permissions, and a
 transcript model. No UI; see `re_agent_ui` for the egui chat panel built on top.
 
-The agent stays the user's agent: it starts with its own system prompt and loads its usual
+It can also run the agent loop itself instead, calling a model API (Anthropic or OpenAI) directly
+with the user's own key.
+
+A subprocess agent stays the user's agent: it starts with its own system prompt and loads its usual
 configuration from the working directory and the user's home (`CLAUDE.md`/`AGENTS.md`, skills,
 slash commands, MCP servers). Whatever the host adds through `SessionContext` and
 `McpServerConfig` comes on top of that.

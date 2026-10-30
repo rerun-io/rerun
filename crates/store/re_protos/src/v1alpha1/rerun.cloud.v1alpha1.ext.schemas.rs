@@ -284,7 +284,10 @@ pub struct ScanDatasetManifestDataframe {
     /// (see [`LayerRegistrationStatus`](crate::cloud::v1alpha1::ext::LayerRegistrationStatus)).
     pub rerun_registration_status: quiver::Column<quiver::Utf8>,
 
-    /// Any per-dataset property columns appended at runtime.
+    /// Any per-dataset property and index-range columns appended at runtime.
+    ///
+    /// Older servers send no index-range columns, see
+    /// [`crate::cloud::v1alpha1::ScanDatasetManifestResponse::data`].
     #[quiver(extra_columns)]
     pub extra_columns: Vec<quiver::DynColumn>,
 }

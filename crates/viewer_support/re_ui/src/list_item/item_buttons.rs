@@ -1,6 +1,8 @@
 use egui::Widget;
+use egui::class::HasClasses as _;
 
 use crate::list_item::ContentContext;
+use crate::theme::class;
 use crate::{OnResponseExt as _, UiExt as _};
 
 type ButtonFn<'a> = Box<dyn FnOnce(&mut egui::Ui) + 'a>;
@@ -72,25 +74,19 @@ impl<'a> ItemButtons<'a> {
         let mut ui = ui.new_child(
             egui::UiBuilder::new()
                 .max_rect(*rect)
-                .layout(egui::Layout::right_to_left(egui::Align::Center)),
+                .layout(egui::Layout::right_to_left(egui::Align::Center))
+                // The buttons sit on the item's accent-filled background, so the theme gives them
+                // their on-primary colors.
+                .with_class_if(class::ON_SELECTED, context.list_item.selected)
+                .with_class_if(
+                    class::ON_HOVERED,
+                    !context.visuals.selected
+                        && (context.visuals.hovered || context.visuals.active),
+                ),
         );
 
         let tokens = ui.tokens();
         ui.spacing_mut().item_spacing.x = tokens.list_item_button_spacing();
-        if context.list_item.selected {
-            // Icons and text get different colors when they are on a selected background:
-            let visuals = ui.visuals_mut();
-
-            visuals.widgets.noninteractive.weak_bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.inactive.weak_bg_fill = egui::Color32::TRANSPARENT;
-            visuals.widgets.active.weak_bg_fill = tokens.surface_on_primary_hovered;
-            visuals.widgets.hovered.weak_bg_fill = tokens.surface_on_primary_hovered;
-
-            visuals.widgets.noninteractive.fg_stroke.color = tokens.icon_color_on_primary;
-            visuals.widgets.inactive.fg_stroke.color = tokens.icon_color_on_primary;
-            visuals.widgets.active.fg_stroke.color = tokens.icon_color_on_primary_hovered;
-            visuals.widgets.hovered.fg_stroke.color = tokens.icon_color_on_primary_hovered;
-        }
 
         for button in self.buttons {
             button(&mut ui);

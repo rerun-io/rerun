@@ -83,10 +83,12 @@ pub struct ArrowMsg {
     /// If the payload is a chunk, this is its ID. Otherwise empty.
     #[prost(message, optional, tag = "6")]
     pub chunk_id: ::core::option::Option<super::super::common::v1alpha1::Tuid>,
-    /// Compression algorithm used.
+    /// Compression algorithm used on this payload.
+    ///
+    /// Decided per message: a stream may mix compressed and uncompressed messages.
     #[prost(enumeration = "super::super::common::v1alpha1::Compression", tag = "2")]
     pub compression: i32,
-    /// Size in bytes of `payload` before it was compressed.
+    /// Size in bytes of `payload` before it was compressed, equal to its length if uncompressed.
     ///
     /// The decoder needs this to size its decompression buffer.
     #[prost(uint64, tag = "3")]

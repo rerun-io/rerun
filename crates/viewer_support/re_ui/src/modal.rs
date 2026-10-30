@@ -402,23 +402,27 @@ impl ModalWrapper {
 
     /// Display a title bar in our own style.
     fn title_bar(ui: &mut egui::Ui, title: &str) {
-        ui.horizontal(|ui| {
-            ui.strong(title);
-
-            ui.add_space(16.0);
-
-            let mut ui = ui.new_child(
-                egui::UiBuilder::new()
-                    .max_rect(ui.max_rect())
-                    .layout(egui::Layout::right_to_left(egui::Align::Center)),
+        // The row is as tall as the close button, so the title centers on it rather than the
+        // button hanging below a shorter row.
+        egui::Sides::new()
+            .height(crate::Size::inherited(ui).height())
+            .spacing(16.0)
+            .shrink_left()
+            .truncate()
+            .show(
+                ui,
+                |ui| {
+                    ui.strong(title);
+                },
+                |ui| {
+                    if ui
+                        .small_icon_button(&crate::icons::CLOSE, "Close")
+                        .clicked()
+                    {
+                        ui.close();
+                    }
+                },
             );
-            if ui
-                .small_icon_button(&crate::icons::CLOSE, "Close")
-                .clicked()
-            {
-                ui.close();
-            }
-        });
     }
 }
 

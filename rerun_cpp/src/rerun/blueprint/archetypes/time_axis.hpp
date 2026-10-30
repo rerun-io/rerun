@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../archetype_utils.hpp"
 #include "../../blueprint/components/link_axis.hpp"
 #include "../../blueprint/components/lock_range_during_zoom.hpp"
 #include "../../blueprint/components/time_range.hpp"
@@ -99,13 +100,19 @@ namespace rerun::blueprint::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches({&link, &view_range, &zoom_lock}, lengths_)
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length({&link, &view_range, &zoom_lock})
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::blueprint::archetypes
@@ -121,6 +128,10 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const blueprint::archetypes::TimeAxis& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.link, &archetype.view_range, &archetype.zoom_lock}
+            );
+        }
     };
 } // namespace rerun

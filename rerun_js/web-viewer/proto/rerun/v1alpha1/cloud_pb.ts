@@ -1411,6 +1411,10 @@ export type ScanDatasetManifestResponse = Message<"rerun.cloud.v1alpha1.ScanData
    * with the columns pinned by
    * [`ScanDatasetManifestDataframe`](crate::cloud::v1alpha1::ext::ScanDatasetManifestDataframe).
    *
+   * Per-timeline `{timeline}:start` / `{timeline}:end` columns hold the index range of each row's layer.
+   * Servers older than Rerun 0.42 / Rerun Hub 0.20 don't send them.
+   * A null means the layer has no data on that timeline.
+   *
    * @generated from field: rerun.common.v1alpha1.DataframePart data = 1;
    */
   data?: DataframePart | undefined;

@@ -3,7 +3,7 @@ use egui::{Ui, Widget};
 use crate::list_item::{
     ContentContext, DesiredWidth, ItemButtons, ListItemContent, ListItemContentButtonsExt,
 };
-use crate::{OnResponseExt as _, UiExt as _};
+use crate::{OnResponseExt as _, Size, UiExt as _};
 
 /// Control how the [`CustomContent`] advertises its width.
 #[derive(Debug, Clone, Copy)]
@@ -173,8 +173,9 @@ impl ListItemContent for CustomContent<'_> {
                 if !self.buttons.is_empty() {
                     let tokens = ui.tokens();
                     let button_count = self.buttons.len() as f32;
-                    let button_width =
-                        tokens.small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
+                    // Reserve what the theme will give the buttons, not what the ambient button
+                    // padding says.
+                    let button_width = Size::inherited(ui).icon_button_size().x;
                     content_width += button_count * button_width
                         + (button_count - 1.0) * tokens.list_item_button_spacing()
                         + tokens.text_to_icon_padding();

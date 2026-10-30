@@ -153,8 +153,7 @@ impl Timestamp {
     ///
     /// Omits the date of same-day timestamps.
     pub fn format(self, timestamp_format: TimestampFormat) -> String {
-        let subsecond_decimals = 0..=6; // NOTE: we currently ignore sub-microsecond
-        self.format_opt(timestamp_format, subsecond_decimals)
+        timestamp_format.format_nanos(self.0)
     }
 
     /// Human-readable timestamp.
@@ -167,73 +166,7 @@ impl Timestamp {
         timestamp_format: TimestampFormat,
         subsecond_decimals: RangeInclusive<usize>,
     ) -> String {
-        let format_fractional_nanos = move |ns: i32| {
-            re_format::DurationFormatOptions::default()
-                .with_always_sign(false)
-                .with_min_decimals(*subsecond_decimals.start())
-                .with_max_decimals(*subsecond_decimals.end())
-                .round_towards_zero()
-                .format_nanos(ns as _)
-                // Turn `0.123s` into `.123`:
-                .trim_start_matches('0')
-                .trim_end_matches('s')
-                .to_owned()
-        };
-
-        let timestamp = jiff::Timestamp::from(self);
-
-        match timestamp_format.kind() {
-            TimestampFormatKind::SecondsSinceUnixEpoch => {
-                format!(
-                    "{}{}",
-                    re_format::format_int(timestamp.as_second()),
-                    format_fractional_nanos(timestamp.subsec_nanosecond())
-                )
-            }
-
-            TimestampFormatKind::LocalTimezone
-            | TimestampFormatKind::LocalTimezoneImplicit
-            | TimestampFormatKind::Utc => {
-                let tz = timestamp_format.to_jiff_time_zone();
-                let zoned = timestamp.to_zoned(tz.clone());
-
-                let hide_date = match timestamp_format.date_visibility() {
-                    // `ShowDate` takes priority over `short`, so a caller can get a date with
-                    // whole seconds, no nanos and no suffix.
-                    DateVisibility::ShowDate => false,
-                    DateVisibility::HideDate => true,
-                    DateVisibility::HideDateToday => {
-                        timestamp_format.short()
-                            || zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date()
-                    }
-                };
-                let formatted = if hide_date {
-                    zoned.strftime("%H:%M:%S").to_string()
-                } else {
-                    zoned.strftime("%Y-%m-%d %H:%M:%S").to_string()
-                };
-
-                let nanos = if timestamp_format.short() {
-                    String::new()
-                } else {
-                    format_fractional_nanos(zoned.subsec_nanosecond())
-                };
-
-                let suffix = if timestamp_format.short() {
-                    String::new()
-                } else {
-                    match timestamp_format.kind() {
-                        TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
-                        TimestampFormatKind::LocalTimezoneImplicit => String::new(),
-                        TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => {
-                            "Z".to_owned()
-                        }
-                    }
-                };
-
-                format!("{formatted}{nanos}{suffix}")
-            }
-        }
+        timestamp_format.format_nanos_opt(self.0, subsecond_decimals)
     }
 
     /// Useful when showing dates/times on a timeline and you want it compact.

@@ -195,7 +195,7 @@ struct Connection {
 /// The egui tools keep their upstream names on purpose: they are the same tools the standalone
 /// `egui-mcp` binary serves, and its `batch` tool re-enters its own router by unprefixed name, so
 /// renaming them here would make a name inside `batch` differ from the same name outside it.
-const RERUN_PREFIX: &str = "rerun_";
+const RERUN_PREFIX: &str = re_viewer_control_tools::TOOL_NAME_PREFIX;
 
 /// Tools whose results cannot include viewer log entries.
 const TOOLS_WITHOUT_LOG: &[&str] = &["rerun_disconnect"];
@@ -325,6 +325,7 @@ impl ViewerMcpServer {
                          name,
                          description,
                          input_schema,
+                         requires_approval: _,
                      }| {
                         Tool::new(
                             name,

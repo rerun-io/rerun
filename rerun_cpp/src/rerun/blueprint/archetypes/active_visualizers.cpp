@@ -15,38 +15,4 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> ActiveVisualizers::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(1);
-        if (instruction_ids.has_value()) {
-            columns.push_back(instruction_ids.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> ActiveVisualizers::columns() {
-        if (instruction_ids.has_value()) {
-            return columns(std::vector<uint32_t>(instruction_ids.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::ActiveVisualizers>::as_batches(
-            const blueprint::archetypes::ActiveVisualizers& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(1);
-
-        if (archetype.instruction_ids.has_value()) {
-            cells.push_back(archetype.instruction_ids.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

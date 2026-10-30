@@ -15,47 +15,4 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> PlotBackground::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (color.has_value()) {
-            columns.push_back(color.value().partitioned(lengths_).value_or_throw());
-        }
-        if (show_grid.has_value()) {
-            columns.push_back(show_grid.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> PlotBackground::columns() {
-        if (color.has_value()) {
-            return columns(std::vector<uint32_t>(color.value().length(), 1));
-        }
-        if (show_grid.has_value()) {
-            return columns(std::vector<uint32_t>(show_grid.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::PlotBackground>::as_batches(
-            const blueprint::archetypes::PlotBackground& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.color.has_value()) {
-            cells.push_back(archetype.color.value());
-        }
-        if (archetype.show_grid.has_value()) {
-            cells.push_back(archetype.show_grid.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

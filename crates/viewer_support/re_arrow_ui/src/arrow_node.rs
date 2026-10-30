@@ -75,8 +75,6 @@ impl<'a> ArrowNode<'a> {
         let data_type = self.values.array().data_type();
         let data_type_ui = DataTypeUi::new(data_type);
 
-        let item = ui.list_item();
-
         // We *don't* use index for the ID, since it might change across timesteps,
         // while referring the same logical data.
         let id = ui.make_persistent_id(label.text());
@@ -93,6 +91,8 @@ impl<'a> ArrowNode<'a> {
                 .ctx()
                 .data(|r| r.get_temp::<bool>(id.with("value_overflow")))
                 .unwrap_or(false);
+
+        let item = ui.list_item().toggle_on_click(expandable);
 
         let content = PropertyContent::new(label)
             .value_fn(|ui, visuals| {
@@ -125,6 +125,8 @@ impl<'a> ArrowNode<'a> {
                                 });
                             }
 
+                            // Should always be able to copy out raw arrow values!
+                            ui.style_mut().interaction.selectable_labels = true;
                             match result {
                                 Ok(()) => UiLayout::List.data_label(ui, value),
                                 Err(err) => ui.error_label(format!("Error: {err}")),

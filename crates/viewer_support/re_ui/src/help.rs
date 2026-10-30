@@ -1,6 +1,6 @@
-use egui::{Atoms, IntoAtoms, OpenUrl, RichText, TextStyle, Ui, WidgetAtom};
+use egui::{Atoms, IntoAtoms, RichText, TextStyle, Ui, WidgetAtom};
 
-use crate::{UiExt as _, icons};
+use crate::UiExt as _;
 
 /// A help popup where you can show markdown text and controls as a table.
 #[derive(Debug, Clone)]
@@ -147,18 +147,7 @@ impl Help {
                 },
                 |ui| {
                     if let Some(docs_link) = &docs_link {
-                        let response = ui.add(
-                            egui::Button::image_and_text(
-                                &icons::EXTERNAL_LINK,
-                                RichText::new("Docs").size(11.0),
-                            )
-                            .image_tint_follows_text_color(true)
-                            .frame(false),
-                        );
-
-                        if response.clicked() {
-                            ui.open_url(OpenUrl::new_tab(docs_link));
-                        }
+                        ui.re_hyperlink(RichText::new("Docs").size(11.0), docs_link, true);
                     }
                 },
             );

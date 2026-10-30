@@ -32,6 +32,7 @@ and the [MCAP specification](https://mcap.dev/) for complete format details.
 
 ## Can be shown in
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `McapStatistics`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapStatistics.html)

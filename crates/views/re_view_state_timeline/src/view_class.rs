@@ -91,10 +91,6 @@ impl ViewClass for StateTimelineView {
         &icons::VIEW_STATE_TIMELINE
     }
 
-    fn new_state(&self) -> Box<dyn ViewState> {
-        Box::new(())
-    }
-
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
         let egui::InputOptions {
             zoom_modifier,

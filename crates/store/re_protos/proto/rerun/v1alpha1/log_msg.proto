@@ -74,10 +74,12 @@ message ArrowMsg {
   // If the payload is a chunk, this is its ID. Otherwise empty.
   optional rerun.common.v1alpha1.Tuid chunk_id = 6;
 
-  // Compression algorithm used.
+  // Compression algorithm used on this payload.
+  //
+  // Decided per message: a stream may mix compressed and uncompressed messages.
   rerun.common.v1alpha1.Compression compression = 2;
 
-  // Size in bytes of `payload` before it was compressed.
+  // Size in bytes of `payload` before it was compressed, equal to its length if uncompressed.
   //
   // The decoder needs this to size its decompression buffer.
   uint64 uncompressed_size = 3;

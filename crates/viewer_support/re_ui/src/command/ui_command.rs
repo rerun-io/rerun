@@ -395,14 +395,6 @@ impl UICommand {
         self.kb_shortcuts(os).first().copied()
     }
 
-    /// Whether this command is supported on the current platform.
-    pub fn is_supported(self) -> bool {
-        match self {
-            Self::ToggleAgentPanel => !cfg!(target_arch = "wasm32"),
-            _ => true,
-        }
-    }
-
     /// Return the keyboard shortcut for this command, nicely formatted
     // TODO(emilk): use Help/IconText instead
     pub fn formatted_kb_shortcut(self, egui_ctx: &egui::Context) -> Option<String> {
@@ -443,13 +435,12 @@ impl UICommand {
 
     /// Listen for keyboard shortcuts of [`UICommand`]s only.
     ///
-    /// The viewer should use [`super::listen_for_kb_shortcuts`] instead,
+    /// The viewer should use `re_viewer_context::listen_for_kb_shortcuts` instead,
     /// which also matches recording commands.
     pub fn listen_for_kb_shortcut(egui_ctx: &egui::Context) -> Option<Self> {
         use strum::IntoEnumIterator as _;
 
         let commands = Self::iter()
-            .filter(|cmd| cmd.is_supported())
             .flat_map(|cmd| {
                 cmd.kb_shortcuts(egui_ctx.os())
                     .into_iter()

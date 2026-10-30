@@ -68,10 +68,6 @@ impl ViewClass for TestViewClass {
         system_registry.register_visualizer::<TestVisualizer>()
     }
 
-    fn new_state(&self) -> Box<dyn ViewState> {
-        Box::<()>::default()
-    }
-
     fn layout_priority(&self) -> ViewClassLayoutPriority {
         ViewClassLayoutPriority::Low
     }

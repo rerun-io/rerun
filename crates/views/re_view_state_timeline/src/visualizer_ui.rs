@@ -168,7 +168,7 @@ fn render_mapping_row_contents(
         // Tone down the locked-in value so it reads as informational rather than editable.
         value_edit = value_edit.text_color(ui.tokens().text_subdued);
     }
-    let value_response = re_ui::text_edit::text_edit_scope(ui, |ui| ui.add(value_edit));
+    let value_response = ui.add(value_edit);
     if value_editable && (value_response.lost_focus() || value_response.changed()) {
         changes.values = true;
     }
@@ -184,13 +184,11 @@ fn render_mapping_row_contents(
         changes.colors = true;
     }
 
-    let label_response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-        ui.add(
-            egui::TextEdit::singleline(&mut mapping.label)
-                .desired_width(f32::INFINITY)
-                .hint_text("label"),
-        )
-    });
+    let label_response = ui.add(
+        egui::TextEdit::singleline(&mut mapping.label)
+            .desired_width(f32::INFINITY)
+            .hint_text("label"),
+    );
     if label_response.lost_focus() || label_response.changed() {
         changes.labels = true;
     }

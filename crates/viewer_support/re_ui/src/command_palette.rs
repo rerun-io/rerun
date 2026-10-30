@@ -19,7 +19,7 @@
 
 use std::collections::BTreeSet;
 
-use crate::UiExt as _;
+use crate::{ButtonExt as _, UiExt as _};
 
 use crate::fuzzy::{FuzzyMatch, FuzzyQuery};
 use egui::text::LayoutJob;
@@ -76,9 +76,8 @@ pub fn paint_command_row(ui: &mut egui::Ui, row: CmdRow, state: RowState) -> egu
     let selected = state == RowState::Selected;
     let enabled = state != RowState::Disabled;
 
-    // Pad the row vertically so the selection background extends a bit beyond the text,
-    // keeping the match-highlighting underline clearly visible on the selected row:
-    ui.spacing_mut().button_padding.y = 2.0;
+    // Keep the rows apart, so the match-highlighting underline on the selected row stays clear
+    // of the row below it:
     ui.spacing_mut().item_spacing.y = 2.0;
 
     // Wrap the (possibly long) text to the available width, so long entity/component
@@ -391,7 +390,7 @@ impl CommandPalette {
                                 ui,
                                 |ui| ui.label("Set up an agent to send prompts."),
                                 |ui| {
-                                    ui.add(crate::ReButton::new("Set up agent").primary())
+                                    ui.add(egui::Button::new("Set up agent").primary().size_small())
                                         .clicked()
                                 },
                             )

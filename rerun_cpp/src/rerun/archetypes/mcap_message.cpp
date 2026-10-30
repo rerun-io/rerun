@@ -12,37 +12,4 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::Blob>(Descriptor_data).value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> McapMessage::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(1);
-        if (data.has_value()) {
-            columns.push_back(data.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> McapMessage::columns() {
-        if (data.has_value()) {
-            return columns(std::vector<uint32_t>(data.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<archetypes::McapMessage>::as_batches(
-        const archetypes::McapMessage& archetype
-    ) {
-        using namespace archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(1);
-
-        if (archetype.data.has_value()) {
-            cells.push_back(archetype.data.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

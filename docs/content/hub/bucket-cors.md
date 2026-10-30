@@ -52,6 +52,9 @@ Other object stores take the same settings in their own format (GCS folds allowe
 For browser clients uploading parts directly to storage, also allow `PUT` and every header required by the presigned requests.
 Expose `ETag` (`"ExposeHeaders": ["ETag"]` in S3) so the client can read each part's receipt and submit it when completing the upload.
 Without this, a part can upload successfully while the browser hides the receipt needed for completion.
+For both single-request and multipart uploads, extend the example above with `"AllowedMethods": ["GET", "HEAD", "PUT"]` and `"AllowedHeaders": ["Range", "If-Match", "If-None-Match"]`.
+Keep the existing exposed headers, including `ETag`.
+Upload failures do not fall back through Rerun Hub; the client aborts the multipart session when possible.
 
 ## Verifying
 

@@ -1,11 +1,32 @@
+use std::sync::LazyLock;
+
 use egui::style::StyleModifier;
-use egui::{Frame, InnerResponse, Ui};
+use egui::{Frame, InnerResponse, Style, TextStyle, Ui};
 
 use crate::DesignTokens;
+
+/// Present in [`Style::text_styles`] of every [`Ui`] styled with [`menu_style`].
+///
+/// [`crate::ReTheme`] sizes buttons from their classes, not from [`Style::spacing`], so this is how
+/// it learns to size them from the menu's spacing instead. Menus egui styles on its own don't
+/// have it.
+// TODO(lucasmerlin): Style menus via a `StyleProvider` instead, once
+// https://github.com/emilk/egui/pull/8456 is released.
+static MENU_TEXT_STYLE: LazyLock<TextStyle> =
+    LazyLock::new(|| TextStyle::Name("rerun::menu".into()));
+
+/// Is this the style of a [`Ui`] styled with [`menu_style`]?
+pub fn is_menu_style(style: &Style) -> bool {
+    style.text_styles.contains_key(&MENU_TEXT_STYLE)
+}
 
 pub fn menu_style() -> StyleModifier {
     StyleModifier::new(|style| {
         egui::containers::menu::menu_style(style);
+        let body = style.text_styles.get(&TextStyle::Body).cloned();
+        style
+            .text_styles
+            .insert(MENU_TEXT_STYLE.clone(), body.unwrap_or_default());
         style.spacing.interact_size.y = 24.0;
         style.spacing.menu_margin = 4.0.into();
         style.spacing.icon_spacing = 6.0;

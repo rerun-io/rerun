@@ -116,7 +116,7 @@ impl MetaLineVisuals {
 }
 
 /// Colors for a single button [`crate::Variant`].
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ButtonVisuals {
     /// Background fill when resting.
     pub fill: Color32,
@@ -243,6 +243,17 @@ pub enum TableStyle {
     Spacious,
 }
 
+/// Row spacing for list items.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum ListItemDensity {
+    /// Present content with more spacing and visual structure.
+    #[default]
+    Spacious,
+
+    /// Present content using less space.
+    Compact,
+}
+
 /// The look and feel of the UI.
 ///
 /// Not everything is covered by this.
@@ -269,6 +280,18 @@ pub struct DesignTokens {
 
     /// Outline for compact controls that need more definition than a divider.
     pub control_stroke: Stroke,
+
+    /// Background of controls whose fill is all that sets them apart from the panel,
+    /// like checkboxes and radio buttons.
+    ///
+    /// Unlike buttons, these have no text or icon on them to make them visible.
+    pub control_fill: Color32,
+
+    /// [`Self::control_fill`] when hovered.
+    pub control_fill_hovered: Color32,
+
+    /// [`Self::control_fill`] when pressed.
+    pub control_fill_pressed: Color32,
 
     pub shadow_gradient_dark_start: Color32,
     pub tab_bar_color: Color32,
@@ -446,6 +469,11 @@ pub struct DesignTokens {
     pub button_blue: ButtonVisuals,
     pub button_opened: ButtonVisuals,
 
+    /// The selection surface as button colors, for buttons marked selected.
+    ///
+    /// Flat like egui's own selection: the same fill whether resting, hovered or pressed.
+    pub selection: ButtonVisuals,
+
     pub text_edit_outlined: TextEditVisuals,
     pub text_edit_filled: TextEditVisuals,
 
@@ -478,6 +506,13 @@ pub struct DesignTokens {
     pub list_item_default_icon: Color32,
     pub list_item_hovered_bg: Color32,
     pub list_item_active_bg: Color32,
+
+    /// Fill of a hovered button on a hovered or active list item.
+    pub list_item_button_hovered_bg: Color32,
+
+    /// Fill of a pressed button on a hovered or active list item.
+    pub list_item_button_pressed_bg: Color32,
+
     pub list_item_collapse_default: Color32,
 
     pub color_swatch_size: f32,
@@ -551,11 +586,6 @@ pub struct DesignTokens {
     pub flag_untoggled_icon: Color32,
     pub flag_untoggled_icon_hover: Color32,
 
-    pub bg_fill_inverse: Color32,
-    pub bg_fill_inverse_hover: Color32,
-    pub text_inverse: Color32,
-    pub icon_inverse: Color32,
-
     /// Background of the small timeline scrubber shown under preview thumbnails.
     pub preview_timeline_track_color: Color32,
 
@@ -575,6 +605,17 @@ const HEADING_2_TYPOGRAPHY_NAME: &str = "Heading 2";
 const HEADING_3_TYPOGRAPHY_NAME: &str = "Heading 3";
 const HEADING_4_TYPOGRAPHY_NAME: &str = "Heading 4";
 const EYEBROW_TYPOGRAPHY_NAME: &str = "Eyebrow";
+
+/// Minimum contrast ratio for UI components against adjacent colors.
+///
+/// WCAG 2.1 SC 1.4.11 (Non-text Contrast) recommends 3:1, but that makes filled checkboxes
+/// too heavy, so we settle for less.
+const MIN_NON_TEXT_CONTRAST_RATIO: f32 = 1.5;
+
+/// Minimum contrast ratio of a hover highlight against the panel.
+///
+/// WCAG sets no number for hover states; but below this the highlight is hard to see.
+const MIN_HOVER_CONTRAST_RATIO: f32 = 1.2;
 
 impl DesignTokens {
     /// Load design tokens from `data/design_tokens_*.ron`.
@@ -636,6 +677,9 @@ impl DesignTokens {
             bottom_bar_color: get_color("bottom_bar_color"),
             divider_stroke,
             control_stroke,
+            control_fill: get_color("control_fill"),
+            control_fill_hovered: get_color("control_fill_hovered"),
+            control_fill_pressed: get_color("control_fill_pressed"),
             shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
             tab_bar_color: get_color("tab_bar_color"),
             viewport_tab_selected_text_color: get_color("viewport_tab_selected_text_color"),
@@ -739,7 +783,13 @@ impl DesignTokens {
             button_outlined,
             button_blue: ButtonVisuals::get(&colors, &theme_value, "button_blue"),
             button_opened: ButtonVisuals::get(&colors, &theme_value, "button_opened"),
-
+            selection: ButtonVisuals {
+                fill: selection_bg_fill,
+                fill_hovered: selection_bg_fill,
+                fill_pressed: selection_bg_fill,
+                text: get_color("selection_stroke_color"),
+                stroke: Stroke::NONE,
+            },
             text_edit_outlined,
             text_edit_filled: TextEditVisuals::get(&colors, &theme_value, "text_edit_filled"),
 
@@ -769,6 +819,8 @@ impl DesignTokens {
             list_item_default_icon: get_color("list_item_default_icon"),
             list_item_hovered_bg: get_color("list_item_hovered_bg"),
             list_item_active_bg: get_color("list_item_active_bg"),
+            list_item_button_hovered_bg: get_color("list_item_button_hovered_bg"),
+            list_item_button_pressed_bg: get_color("list_item_button_pressed_bg"),
             list_item_collapse_default: get_color("list_item_collapse_default"),
 
             color_swatch_size: get_scalar("color_swatch_size")?,
@@ -815,11 +867,6 @@ impl DesignTokens {
             flag_untoggled_icon: get_color("flag_untoggled_icon"),
             flag_untoggled_icon_hover: get_color("flag_untoggled_icon_hover"),
 
-            bg_fill_inverse: get_color("bg_fill_inverse"),
-            bg_fill_inverse_hover: get_color("bg_fill_inverse-hover"),
-            text_inverse: get_color("text_inverse"),
-            icon_inverse: get_color("icon_inverse"),
-
             preview_timeline_track_color: get_color("preview_timeline_track_color"),
             preview_timeline_progress_color: get_color("preview_timeline_progress_color"),
             preview_controls_fill: get_color("preview_controls_fill"),
@@ -833,6 +880,7 @@ impl DesignTokens {
         self.set_text_styles(style);
         self.set_spacing(style);
         self.set_colors(style);
+        self.check_contrast(&style.visuals);
 
         style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
     }
@@ -938,7 +986,9 @@ impl DesignTokens {
         // Add stripes to grids and tables?
         egui_style.visuals.striped = false;
         egui_style.visuals.indent_has_left_vline = false;
-        egui_style.spacing.button_padding = Vec2::new(1.0, 0.0); // Makes the icons in the blueprint panel align
+        // Rerun's own buttons are sized by the theme; this is what is left for the egui widgets
+        // that still read it, such as checkboxes and collapsing headers.
+        egui_style.spacing.button_padding = Vec2::new(1.0, 0.0);
         egui_style.spacing.indent = 14.0; // From figma
 
         egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
@@ -962,6 +1012,45 @@ impl DesignTokens {
         egui_style.visuals.image_loading_spinners = false;
     }
 
+    /// Warn (in debug builds) if interactive widgets don't stand out from the panel behind them.
+    fn check_contrast(&self, visuals: &egui::Visuals) {
+        let panel = self.panel_bg_color;
+
+        // Checkboxes and radio buttons stand out by either their fill or their outline.
+        let inactive = &visuals.widgets.inactive;
+        let fill_contrast = contrast_ratio(self.control_fill, panel);
+        let outline_contrast = if 1.0 <= inactive.bg_stroke.width {
+            contrast_ratio(inactive.bg_stroke.color, panel)
+        } else {
+            1.0
+        };
+        if fill_contrast.max(outline_contrast) < MIN_NON_TEXT_CONTRAST_RATIO {
+            re_log::debug_warn_once!(
+                "Checkboxes and radio buttons have fill contrast {fill_contrast:.2} and outline contrast {outline_contrast:.2} against panel_bg_color; one should be at least {MIN_NON_TEXT_CONTRAST_RATIO}"
+            );
+        }
+
+        let resting = contrast_ratio(self.control_fill, panel);
+        for (name, color) in [
+            ("control_fill_hovered", self.control_fill_hovered),
+            ("control_fill_pressed", self.control_fill_pressed),
+        ] {
+            let contrast = contrast_ratio(color, panel);
+            if contrast < resting {
+                re_log::debug_warn_once!(
+                    "{name:?} has contrast {contrast:.2} against panel_bg_color, less than control_fill ({resting:.2})"
+                );
+            }
+        }
+
+        let hovered = contrast_ratio(self.widget_hovered_color, panel);
+        if hovered < MIN_HOVER_CONTRAST_RATIO {
+            re_log::debug_warn_once!(
+                "widget_hovered_color has contrast {hovered:.2} against panel_bg_color; should be at least {MIN_HOVER_CONTRAST_RATIO}"
+            );
+        }
+    }
+
     fn set_colors(&self, egui_style: &mut egui::Style) {
         // For table zebra stripes.
         egui_style.visuals.faint_bg_color = self.faint_bg_color;
@@ -976,7 +1065,6 @@ impl DesignTokens {
 
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
-        // Fill of unchecked radio buttons, checkboxes, etc.
         egui_style.visuals.widgets.inactive.bg_fill = self.button_secondary.fill;
         egui_style.visuals.disabled_alpha = self.disabled_opacity;
 
@@ -984,7 +1072,7 @@ impl DesignTokens {
             // Background colors for buttons (menu buttons, blueprint buttons, etc)
             // when hovered or pressed. The pressed color is a step stronger, so
             // clicking gives visual feedback (reusing the `button_ghost` pressed fill).
-            let hovered_color = self.widget_hovered_color;
+            let hovered_color = self.button_ghost.fill_hovered;
             let pressed_color = self.button_ghost.fill_pressed;
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
@@ -1166,7 +1254,7 @@ impl DesignTokens {
 
     /// Space between adjacent action buttons in a list item.
     pub fn list_item_button_spacing(&self) -> f32 {
-        6.0
+        2.0
     }
 
     /// Space between a label and a collapse button placed after it.
@@ -1194,12 +1282,11 @@ impl DesignTokens {
         4.0
     }
 
-    pub fn section_header_height(&self) -> f32 {
-        Self::list_item_height() + self.section_header_top_padding()
-    }
-
-    pub fn list_item_height() -> f32 {
-        24.0
+    pub fn list_item_height(density: ListItemDensity) -> f32 {
+        match density {
+            ListItemDensity::Spacious => 24.0,
+            ListItemDensity::Compact => 20.0,
+        }
     }
 
     pub fn list_header_vertical_offset() -> f32 {
@@ -1346,6 +1433,18 @@ impl RonExt for ron::Value {
             _ => None,
         }
     }
+}
+
+/// WCAG 2.1 contrast ratio between two opaque colors, in `[1, 21]`.
+///
+/// See <https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio>.
+fn contrast_ratio(a: Color32, b: Color32) -> f32 {
+    let luminance = |color: Color32| {
+        let rgba = egui::Rgba::from(color);
+        0.2126 * rgba.r() + 0.7152 * rgba.g() + 0.0722 * rgba.b()
+    };
+    let (a, b) = (luminance(a), luminance(b));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
 }
 
 /// Build the [`ColorTable`] based on the content of `design_token.ron`

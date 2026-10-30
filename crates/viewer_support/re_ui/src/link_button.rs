@@ -2,10 +2,10 @@
 
 use egui::IntoAtoms;
 
-use crate::button::ReButton;
+use crate::button::{ButtonExt as _, Size, with_hover_icon_button};
 use crate::{UiExt as _, icons};
 
-/// A component wrapping [`ReButton`], optimized for showing links (has a built-in copy button).
+/// A button optimized for showing links (has a built-in copy button).
 pub struct LinkButton {
     url: String,
     atoms: egui::Atoms<'static>,
@@ -58,15 +58,17 @@ impl LinkButton {
 
         atoms.map_images(|image| image.fit_to_exact_size(icon_size));
 
-        let (mut response, copy_response) = ReButton::with_hover_icon_button(
+        let (mut response, copy_response) = with_hover_icon_button(
             ui,
-            ReButton::icon(icons::COPY, "Copy link").ghost(),
+            egui::Button::icon(icons::COPY, "Copy link").ghost(),
             || {
-                ReButton::from_button(egui::Button::new(atoms.clone()).wrap_mode(wrap_mode))
+                egui::Button::new(atoms.clone())
+                    .wrap_mode(wrap_mode)
                     .ghost()
-                    .tiny()
+                    .size_tiny()
                     .image_tint_follows_text_color(tint_icons)
             },
+            Size::Tiny,
         );
         let copy_response = copy_response.map(|r| r.on_hover_text("Copy link"));
 

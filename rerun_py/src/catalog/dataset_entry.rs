@@ -631,8 +631,7 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_id();
         let storage_prefix = storage_prefix.map(parse_storage_prefix).transpose()?;
-        Ok(PyWriteOperationInternal::new(async move {
-            let client = connection.inner();
+        let operation = connection.inner().start_write(async move |client| {
             let storage_prefix = storage_prefix.as_ref();
             let data = bytes::Bytes::from(data);
             match kind {
@@ -658,7 +657,8 @@ impl PyDatasetEntryInternal {
                         .await
                 }
             }
-        }))
+        });
+        Ok(PyWriteOperationInternal::new(operation))
     }
 
     #[pyo3(signature = (path, storage_prefix, kind, layer, on_duplicate))]
@@ -678,8 +678,7 @@ impl PyDatasetEntryInternal {
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_id();
         let storage_prefix = storage_prefix.map(parse_storage_prefix).transpose()?;
-        Ok(PyWriteOperationInternal::new(async move {
-            let client = connection.inner();
+        let operation = connection.inner().start_write(async move |client| {
             let storage_prefix = storage_prefix.as_ref();
             match kind {
                 WriteKind::Asset => {
@@ -698,7 +697,8 @@ impl PyDatasetEntryInternal {
                         .await
                 }
             }
-        }))
+        });
+        Ok(PyWriteOperationInternal::new(operation))
     }
 
     /// Unregisters segments and layers from the dataset.

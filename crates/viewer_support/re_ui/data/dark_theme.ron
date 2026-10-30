@@ -49,6 +49,17 @@
       "color": "#434242",
       "width": 1
     },
+    // Background of controls whose fill is all that sets them apart from the panel:
+    // checkboxes, radio buttons, etc.
+    "control_fill": {
+      "color": "{Gray.350}"
+    },
+    "control_fill_hovered": {
+      "color": "{Gray.400}"
+    },
+    "control_fill_pressed": {
+      "color": "{Gray.450}"
+    },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
       "alpha": 77
@@ -275,11 +286,8 @@
     "extreme_fg_color": {
       "color": "{Gray.1000}"
     },
-    "widget_inactive_bg_fill": {
-      "color": "{Gray.300}"
-    },
     "widget_hovered_color": {
-      "color": "{Gray.150}"
+      "color": "{Gray.250}"
     },
     // Text in a field the user cannot edit: reads as a value, not as something
     // to type into.
@@ -363,6 +371,12 @@
     "list_item_active_bg": {
       "color": "{Gray.150}"
     },
+    "list_item_button_hovered_bg": {
+      "color": "{Gray.200}"
+    },
+    "list_item_button_pressed_bg": {
+      "color": "{Gray.250}"
+    },
     "list_item_collapse_default": {
       "color": "{Gray.500}"
     },
@@ -435,18 +449,6 @@
       "color": "{Gray.500}"
     },
 
-    "bg_fill_inverse": {
-      "color": "{Gray.800}"
-    },
-    "bg_fill_inverse-hover": {
-      "color": "{Gray.850}"
-    },
-    "text_inverse": {
-      "color": "{Gray.250}"
-    },
-    "icon_inverse": {
-      "color": "{Gray.250}"
-    },
 
     "preview_timeline_track_color": {
       "color": "{Gray.1000}",

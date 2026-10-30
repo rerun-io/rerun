@@ -46,18 +46,15 @@ mod combo_item;
 pub mod re_form;
 #[cfg(feature = "testing")]
 pub mod testing;
+pub mod theme;
 
-use egui::style::WidgetVisuals;
-use egui::{NumExt as _, Style};
+use egui::NumExt as _;
 
 pub use self::button::*;
 pub use self::combo_item::*;
 pub use self::command::{
-    BoundCommand, CommandEnvironment, CommandKind, CommandScope, RecordingCommand,
-    RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
-    RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
-    UICommand, UICommandSender, conflicts_with_text_editing, consume_timeline_shortcut,
-    format_shortcut, key_symbol_or_name, listen_for_kb_shortcuts, refresh_shortcuts,
+    UICommand, UICommandSender, conflicts_with_text_editing, consume_best_shortcut,
+    format_shortcut, key_symbol_or_name,
 };
 pub use self::command_palette::{
     CmdRow, CommandPalette, CommandPaletteProvider, MatchGroup, MatchedCmd, RowState,
@@ -65,8 +62,8 @@ pub use self::command_palette::{
 };
 pub use self::context_ext::ContextExt;
 pub use self::design_tokens::{
-    AlertVisuals, ButtonVisuals, DesignTokens, MetaLineVisuals, Outlines, TabVisuals, TableStyle,
-    TextEditVisuals, WindowFrameConfig,
+    AlertVisuals, ButtonVisuals, DesignTokens, ListItemDensity, MetaLineVisuals, Outlines,
+    TabVisuals, TableStyle, TextEditVisuals, WindowFrameConfig,
 };
 pub use self::egui_ext::widget_ext::*;
 pub use self::fuzzy::{FuzzyMatch, FuzzyQuery};
@@ -86,6 +83,7 @@ pub use self::requested_object::{RequestedObject, ServerValue};
 pub use self::section_collapsing_header::SectionCollapsingHeader;
 pub use self::syntax_highlighting::SyntaxHighlighting;
 pub use self::tab_bar::{TAB_TOOLBAR_HEIGHT, TAB_TOOLBAR_MARGIN_Y, TabBar};
+pub use self::theme::ReTheme;
 pub use self::time_drag_value::TimeDragValue;
 pub use self::ui_ext::UiExt;
 pub use self::ui_layout::UiLayout;
@@ -263,9 +261,6 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     });
 
     set_themes(egui_ctx);
-    // Replaces egui's own text edit theme, which `Context::default` registers.
-    egui_ctx.replace_widget_theme(text_edit::TextEditTheme);
-    egui_ctx.replace_widget_theme(text_edit::CompletionButtonTheme);
 
     #[cfg(hot_reload_design_tokens)]
     {
@@ -315,6 +310,8 @@ fn set_svg_glyphs(egui_ctx: &egui::Context) {
 }
 
 fn set_themes(egui_ctx: &egui::Context) {
+    ReTheme::install(egui_ctx);
+
     // Before the fonts: when no font is loaded yet, egui applies the new fonts right away,
     // and the fonts pick up the rasterizers registered so far.
     set_svg_glyphs(egui_ctx);
@@ -378,22 +375,30 @@ fn format_with_decimals_in_range(
     format_with_decimals(value, max_decimals)
 }
 
-/// Is this Ui in a resizable panel?
+/// Is this Ui in a resizable container?
 ///
 /// Used as a heuristic to figure out if it is safe to truncate text.
 ///
-/// In a resizable panel, it is safe to truncate text if it doesn't fit,
-/// because the user can just make the panel wider to see the full text.
+/// In a resizable container, it is safe to truncate text if it doesn't fit,
+/// because the user can just make the container wider to see the full text.
 ///
 /// In other places, we should never truncate text, because then the user
-/// cannot read it all. In those places (when this functions returns `false`)
+/// cannot read it all. In those places (when this function returns `false`)
 /// you should either wrap the text or let it grow the Ui it is in.
-fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
+///
+/// Side panels and scopes marked with [`UiExt::resizable_container_scope`] qualify.
+fn is_in_resizable_container(ui: &egui::Ui) -> bool {
+    use crate::ui_ext::RESIZABLE_CONTAINER_TAG;
+
     re_tracing::profile_function!();
 
     let mut is_in_side_panel = false;
 
     for frame in ui.stack().iter() {
+        if frame.tags().contains(RESIZABLE_CONTAINER_TAG) {
+            return true;
+        }
+
         if let Some(kind) = frame.kind() {
             if kind.is_area() {
                 return false; // Our popups (tooltips etc) aren't resizable
@@ -409,12 +414,4 @@ fn is_in_resizable_panel(ui: &egui::Ui) -> bool {
     } else {
         false // Safe fallback
     }
-}
-
-fn all_visuals(style: &mut Style, f: impl Fn(&mut WidgetVisuals)) {
-    f(&mut style.visuals.widgets.active);
-    f(&mut style.visuals.widgets.hovered);
-    f(&mut style.visuals.widgets.inactive);
-    f(&mut style.visuals.widgets.noninteractive);
-    f(&mut style.visuals.widgets.open);
 }

@@ -20,6 +20,7 @@ mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
 mod collapsed_id;
+mod command;
 mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
@@ -42,6 +43,7 @@ mod selection_state;
 mod storage_context;
 pub mod store_hub;
 mod store_view_context;
+mod syntax_highlighting;
 mod tables;
 mod tensor;
 mod time_control;
@@ -86,6 +88,13 @@ pub use self::cache::{
     VideoStoreSource, VideoStreamCache, VideoStreamProcessingError, filter_blob_removed_events,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
+pub use self::command::{
+    BoundCommand, CommandEnvironment, CommandKind, CommandScope, RecordingCommand,
+    RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
+    RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
+    consume_timeline_shortcut, listen_for_kb_shortcuts, redo_shortcuts, refresh_shortcuts,
+    undo_shortcuts,
+};
 pub use self::command_sender::{
     CommandReceiver, CommandSender, DownloadAction, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender, command_channel,
@@ -128,6 +137,7 @@ pub use self::selection_state::{
 pub use self::storage_context::StorageContext;
 pub use self::store_hub::{EntityDbUsages, StoreHub};
 pub use self::store_view_context::StoreViewContext;
+pub use self::syntax_highlighting::{InstanceInBrackets, StoreSyntaxHighlighting};
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{

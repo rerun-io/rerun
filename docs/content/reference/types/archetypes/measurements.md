@@ -40,6 +40,7 @@ Changes over time are supported for most but not all styling fields (see respect
 ## Can be shown in
 * [TimeSeriesView](../views/time_series_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Measurements`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Measurements.html)

@@ -184,7 +184,6 @@ async fn debug_tools_toggle_top_bar_diagnostics() {
 }
 
 /// Checks that an unconfigured agent requires explicit setup instead of accepting a palette prompt.
-#[cfg(agent_panel)]
 #[tokio::test]
 async fn command_palette_agent_mode() {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
