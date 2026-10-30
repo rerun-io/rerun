@@ -34,7 +34,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Whether the column's values can be edited.
         ///
-        /// If unset, editing is disabled.
+        /// If unset, the column is editable if its field in the table schema has `rerun:is_editable` metadata.
         /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
         /// A column can only be edited when its component type has an editor in the Viewer.
         std::optional<ComponentBatch> editable;
@@ -102,7 +102,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Whether the column's values can be edited.
         ///
-        /// If unset, editing is disabled.
+        /// If unset, the column is editable if its field in the table schema has `rerun:is_editable` metadata.
         /// Edits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.
         /// A column can only be edited when its component type has an editor in the Viewer.
         TableColumn with_editable(const rerun::blueprint::components::Editable& _editable) && {

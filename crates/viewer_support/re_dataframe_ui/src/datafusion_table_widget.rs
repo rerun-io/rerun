@@ -17,7 +17,7 @@ use re_log::error;
 use re_log_types::{EntryId, Timestamp};
 use re_sdk_types::blueprint::components::{ColumnDisplayMode, ColumnName, TableLayoutKind};
 use re_sdk_types::components::{Thumbnail, Url};
-use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
+use re_sorbet::{ColumnDescriptorRef, MetadataExt as _, SorbetSchema};
 use re_ui::menu::menu_style;
 use re_ui::{ButtonExt as _, UiExt as _, UiLayout, icons};
 use re_viewer_context::{
@@ -77,6 +77,9 @@ pub struct DataColumn<'a> {
 
     /// Reference to the descriptor of this column.
     pub desc: ColumnDescriptorRef<'a>,
+
+    /// Whether the column's field in the table schema has `rerun:is_editable` metadata.
+    pub is_editable: bool,
 }
 
 impl DataColumn<'_> {
@@ -135,12 +138,12 @@ impl<'a> DataColumns<'a> {
             .iter()
             .enumerate()
             .map(|(index, desc)| {
-                let physical_name = original_schema.fields()[index].name().clone().into();
-                let desc = desc.into();
+                let field = &original_schema.fields()[index];
 
                 DataColumn {
-                    physical_name,
-                    desc,
+                    physical_name: field.name().clone().into(),
+                    desc: desc.into(),
+                    is_editable: field.get_bool(re_sorbet::metadata::SORBET_IS_EDITABLE),
                 }
             })
             .collect();
@@ -295,6 +298,7 @@ mod compact_label_tests {
             .map(|name| DataColumn {
                 physical_name: (*name).into(),
                 desc: ColumnDescriptorRef::RowId(&desc),
+                is_editable: false,
             })
             .collect();
         DataColumns { columns }.compute_labels(ColumnDisplayMode::Compact)

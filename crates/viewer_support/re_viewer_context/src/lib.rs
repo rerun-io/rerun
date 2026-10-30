@@ -77,6 +77,7 @@ pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
 pub use self::audio_output::AudioOutput;
 pub use self::blueprint_helpers::{
     AppBlueprintCtx, BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
+    entity_path_for_view_property,
 };
 pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
@@ -170,6 +171,7 @@ pub use self::view::{
     VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionReport,
     VisualizerInstructionsPerType, VisualizerQueryInfo, VisualizerReportContext, VisualizerSystem,
     VisualizerTypeReport, VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
+    default_view_entity_drop,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

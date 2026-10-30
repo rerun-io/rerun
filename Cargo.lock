@@ -11858,7 +11858,6 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
- "re_viewport",
  "re_viewport_blueprint",
  "re_workspace_hack",
 ]
@@ -12233,7 +12232,6 @@ dependencies = [
  "re_context_menu",
  "re_format",
  "re_log",
- "re_log_types",
  "re_sdk_types",
  "re_tracing",
  "re_ui",

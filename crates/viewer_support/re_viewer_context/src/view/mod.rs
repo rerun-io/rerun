@@ -5,6 +5,7 @@
 
 // TODO(andreas): Can we move some of these to the `re_view` crate?
 mod diagnostic;
+mod entity_drop;
 mod highlights;
 mod named_system;
 mod noop_visualizer;
@@ -24,6 +25,7 @@ mod visualizer_system;
 use std::sync::Arc;
 
 pub use diagnostic::{ViewerDiagnostic, ViewerReportSeverity};
+pub use entity_drop::default_view_entity_drop;
 pub use highlights::{
     OptionalViewEntityHighlight, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
 };

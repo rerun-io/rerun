@@ -14,38 +14,56 @@ use crate::display_record_batch::DisplayColumn;
 
 /// Resolved runtime configuration for a table column.
 ///
-/// Values can be loaded from [`archetypes::TableColumn`] and completed from the underlying table
-/// schema and runtime heuristics.
+/// A column is set up in two steps.
+/// [`Self::load`] reads the values from [`archetypes::TableColumn`].
+/// A field is `None` if the blueprint has no value for it.
+/// `resolve_columns` then matches the column with the table schema, and sets defaults from the
+/// schema and the table's heuristics.
+/// It only sets a default on a field that is `None`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TableColumn<'a> {
     /// The physical name of the source column where data is read from.
     source: ColumnName,
 
     /// Sorbet column descriptor if we were able to match the column up with a sorbet column.
+    ///
+    /// [`resolve_columns`] sets it.
     // TODO(andreas): this is always present after resolve, can we make it non-optional?
     sorbet_column_descriptor: Option<ColumnDescriptorRef<'a>>,
 
-    /// Display name if dictated by blueprint.
+    /// Display name.
+    ///
+    /// [`Self::load`] sets it from the blueprint, and the table's heuristics can set a default.
+    /// If it is `None`, [`Self::display_name`] infers it from the column descriptor.
     name: Option<String>,
 
     /// Whether the column's values can be edited.
     ///
-    /// This is false when the blueprint does not configure the field.
-    editable: bool,
+    /// [`Self::load`] sets it from the blueprint.
+    /// If the blueprint has no value, [`resolve_columns`] sets it from the `rerun:is_editable`
+    /// metadata of the column's field in the table schema.
+    /// After [`resolve_columns`] it is never `None`.
+    editable: Option<bool>,
 
     /// Whether the column is visible in the table layout.
     ///
-    /// When unset, the table kind and layout determine visibility.
+    /// [`Self::load`] sets it from the blueprint.
+    /// [`resolve_columns`] sets a default for columns that are not in the layout's column order.
+    /// If it is still `None`, [`Self::is_visible`] uses a default based on the layout kind.
     visible: Option<bool>,
 
     /// The component identifier the column's values are shown as.
     ///
-    /// This is `None` when the blueprint does not configure it.
+    /// Only the blueprint sets it.
+    /// If it is `None`, the column's own component identifier is used.
     component: Option<ComponentIdentifier>,
 
     /// The component type the column's values are shown as.
     ///
-    /// This is `None` when neither the blueprint nor a heuristic sets it.
+    /// [`Self::load`] sets it from the blueprint.
+    /// If the blueprint has no value, [`resolve_columns`] sets it from the table's heuristics
+    /// or infers it from the column descriptor.
+    /// If it is still `None`, [`Self::resolved_component_type`] uses the column's own component type.
     column_type: Option<ComponentType>,
 
     /// Views rendered when this is a preview column, in display order.
@@ -71,6 +89,7 @@ pub fn resolve_columns<'a>(
         };
 
         column.sorbet_column_descriptor = Some(data_column.desc.clone());
+        column.editable.get_or_insert(data_column.is_editable);
         *column = additional_column_heuristics(layout_kind, &data_column.desc, column.clone())
             .with_inferred_component_type();
         true
@@ -91,6 +110,7 @@ pub fn resolve_columns<'a>(
         let mut column =
             TableColumn::load(data_column.physical_name().clone(), blueprint, layout_kind);
         column.sorbet_column_descriptor = Some(data_column.desc.clone()); // TODO(andreas): odd to fill this after the fact.
+        column.editable.get_or_insert(data_column.is_editable);
         column = additional_column_heuristics(layout_kind, &data_column.desc, column)
             .with_inferred_component_type();
 
@@ -156,7 +176,7 @@ impl<'a> TableColumn<'a> {
                 .component_mono::<Editable>(
                     archetypes::TableColumn::descriptor_editable().component,
                 )
-                .is_some_and(|editable| *editable.0),
+                .map(|editable| *editable.0),
             visible: results
                 .component_mono::<Visible>(archetypes::TableColumn::descriptor_visible().component)
                 .map(|visible| *visible.0),
@@ -183,7 +203,7 @@ impl<'a> TableColumn<'a> {
             source,
             name: None,
             sorbet_column_descriptor: Some(desc),
-            editable: false,
+            editable: None,
             visible: None,
             component: None,
             column_type: None,
@@ -266,7 +286,7 @@ impl<'a> TableColumn<'a> {
         let inferred = if column.component == EncodedImage::descriptor_blob().component {
             Some(Thumbnail::name())
         } else if column.component_type.is_none() {
-            untyped_component_type(&column.store_datatype, self.editable)
+            untyped_component_type(&column.store_datatype, self.editable())
         } else {
             None
         };
@@ -338,11 +358,15 @@ impl<'a> TableColumn<'a> {
         !self.preview_views.is_empty()
     }
 
-    /// Whether the blueprint requests editing for this column.
+    /// Whether editing is requested for this column.
+    ///
+    /// This is the blueprint's value if it has one, else the `rerun:is_editable` metadata of the
+    /// column's field in the table schema.
+    /// A `false` in the blueprint disables editing even if the field has `rerun:is_editable` metadata.
     ///
     /// It may not be actually editable depending on the context and various restrictions we have.
     pub fn editable(&self) -> bool {
-        self.editable
+        self.editable.unwrap_or(false)
     }
 
     /// Blueprint paths at which the preview views for this column are configured.

@@ -5976,7 +5976,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                         name: "editable",
                         display_name: "Editable",
                         component_type: "rerun.blueprint.components.Editable".into(),
-                        docstring_md: "Whether the column's values can be edited.\n\nIf unset, editing is disabled.\nEdits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.\nA column can only be edited when its component type has an editor in the Viewer.",
+                        docstring_md: "Whether the column's values can be edited.\n\nIf unset, the column is editable if its field in the table schema has `rerun:is_editable` metadata.\nEdits require a remote table with a column marked by `rerun:is_table_index` metadata and write permission.\nA column can only be edited when its component type has an editor in the Viewer.",
                         flags: ArchetypeFieldFlags::UI_EDITABLE,
                     },
                     ArchetypeFieldReflection {

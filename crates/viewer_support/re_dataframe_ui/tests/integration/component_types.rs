@@ -231,6 +231,76 @@ async fn run_forced_component_types_test() {
     harness.snapshot("forced_component_types_cards_edited");
 }
 
+/// A column with `rerun:is_editable` schema metadata is editable without a table blueprint.
+#[test]
+fn test_schema_editable_column() {
+    // Editable cells require a multi-threaded Tokio runtime for blocking credential access.
+    let runtime = tokio::runtime::Builder::new_multi_thread() // NOLINT: owned by this test
+        .enable_all()
+        .build()
+        .expect("test runtime should build");
+    runtime.block_on(run_schema_editable_column_test());
+}
+
+async fn run_schema_editable_column_test() {
+    let metadata = |key: &str| [(key.to_owned(), "true".to_owned())].into();
+    let schema = Arc::new(Schema::new_with_metadata(
+        vec![
+            Field::new("id", DataType::Int64, false)
+                .with_metadata(metadata(re_sorbet::metadata::SORBET_IS_TABLE_INDEX)),
+            Field::new("notes", DataType::Utf8, false)
+                .with_metadata(metadata(re_sorbet::metadata::SORBET_IS_EDITABLE)),
+        ],
+        Default::default(),
+    ));
+    let (session_context, table_ref) = common::register_test_table(
+        "schema_editable_table",
+        schema,
+        vec![
+            Arc::new(arrow::array::Int64Array::from(vec![1, 2])),
+            Arc::new(StringArray::from(vec!["one", "two"])),
+        ],
+    );
+
+    let mut test_context = TestContext::new();
+    test_context.component_ui_registry = re_component_ui::create_component_ui_registry();
+    let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+        .expect("test should run inside its Tokio runtime");
+    let table_blueprints = TableBlueprints::default();
+    let remote_uri: re_uri::EntryUri =
+        "rerun+http://localhost:1234/entry/00000000000000000000000000000001"
+            .parse()
+            .expect("test entry URI should be valid");
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([600.0, 300.0])
+        .build_ui(|ui| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    TableReference::from(remote_uri.clone()),
+                )
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &table_blueprints,
+                    &mut test_context.view_states.lock(),
+                );
+            });
+        });
+    run_async_harness(&test_context, &mut harness).await;
+
+    assert_eq!(
+        harness
+            .query_all_by_role_and_label(Role::TextInput, "notes")
+            .count(),
+        2,
+        "each row of the column has a text input"
+    );
+}
+
 #[expect(clippy::needless_pass_by_value)]
 fn setup_component_type_blueprint(
     test_context: &TestContext,

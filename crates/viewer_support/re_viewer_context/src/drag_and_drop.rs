@@ -37,6 +37,8 @@
 
 use std::fmt::Formatter;
 
+use vec1::Vec1;
+
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, EntityPath};
 use re_ui::UiExt as _;
@@ -46,13 +48,15 @@ use crate::{Contents, DataResultInteractionAddress, Item, ItemCollection, ItemCo
 #[derive(Debug)]
 pub enum DragAndDropPayload {
     /// The dragged content is made only of [`Contents`].
-    Contents { contents: Vec<Contents> },
+    Contents { contents: Vec1<Contents> },
 
     /// The dragged content is made of entities.
-    Entities { entities: Vec<EntityPath> },
+    Entities { entities: Vec1<EntityPath> },
 
     /// The dragged content is made of components.
-    Components { component_paths: Vec<ComponentPath> },
+    Components {
+        component_paths: Vec1<ComponentPath>,
+    },
 
     /// The dragged content is made of a collection of [`Item`]s we do know how to handle.
     Invalid,
@@ -72,11 +76,16 @@ impl DragAndDropPayload {
     }
 }
 
-fn try_item_collection_to_contents(items: &ItemCollection) -> Option<Vec<Contents>> {
-    items.iter().map(|(item, _)| item.try_into().ok()).collect()
+fn try_item_collection_to_contents(items: &ItemCollection) -> Option<Vec1<Contents>> {
+    items
+        .iter()
+        .map(|(item, _)| item.try_into().ok())
+        .collect::<Option<Vec<_>>>()?
+        .try_into()
+        .ok()
 }
 
-fn try_item_collection_to_entities(items: &ItemCollection) -> Option<Vec<EntityPath>> {
+fn try_item_collection_to_entities(items: &ItemCollection) -> Option<Vec1<EntityPath>> {
     items
         .iter()
         // Note: this is not a filter map, because we rely on the implicit "all" semantics of
@@ -88,17 +97,21 @@ fn try_item_collection_to_entities(items: &ItemCollection) -> Option<Vec<EntityP
                 .then(|| instance_path.entity_path.clone()),
             _ => None,
         })
-        .collect()
+        .collect::<Option<Vec<_>>>()?
+        .try_into()
+        .ok()
 }
 
-fn try_item_collection_to_components(items: &ItemCollection) -> Option<Vec<ComponentPath>> {
+fn try_item_collection_to_components(items: &ItemCollection) -> Option<Vec1<ComponentPath>> {
     items
         .iter()
         .map(|(item, _)| match item {
             Item::ComponentPath(component_path) => Some(component_path.clone()),
             _ => None,
         })
-        .collect()
+        .collect::<Option<Vec<_>>>()?
+        .try_into()
+        .ok()
 }
 
 impl std::fmt::Display for DragAndDropPayload {

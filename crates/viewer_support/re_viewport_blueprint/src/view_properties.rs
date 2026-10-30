@@ -1,6 +1,5 @@
 use arrow::array::ArrayRef;
 use re_chunk::ComponentIdentifier;
-use re_chunk_store::EntityTree;
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_entity_db::external::re_query::LatestAtResults;
@@ -10,7 +9,7 @@ use re_sdk_types::{
 };
 use re_viewer_context::{
     BlueprintContext, ComponentFallbackError, QueryContext, ViewContext, ViewId,
-    ViewSystemExecutionError,
+    ViewSystemExecutionError, entity_path_for_view_property,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -305,22 +304,4 @@ impl ViewProperty {
             annotation_context: None,
         }
     }
-}
-
-/// Entity path in the blueprint store where all components of the given view property archetype are
-/// stored.
-pub fn entity_path_for_view_property(
-    view_id: ViewId,
-    _blueprint_entity_tree: &EntityTree,
-    archetype_name: ArchetypeName,
-) -> EntityPath {
-    // TODO(andreas,jleibs):
-    // We want to search the subtree for occurrences of the property archetype here.
-    // Only if none is found we make up a new (standardized) path.
-    // There's some nuances to figure out what happens when we find the archetype several times.
-    // Also, we need to specify what it means to "find" the archetype.
-    let view_blueprint_path = view_id.as_entity_path();
-
-    // Use short_name instead of full_name since full_name has dots.
-    view_blueprint_path.join(&EntityPath::from_single_string(archetype_name.short_name()))
 }

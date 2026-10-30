@@ -27,9 +27,24 @@ pub fn data_rows(ctx: &ViewerContext<'_>, view_id: ViewId) -> Option<Vec<Compone
     )
 }
 
+/// Add `components` to the configured rows.
+///
+/// Does nothing when the view shows every component.
+pub fn add_data_rows(ctx: &ViewContext<'_>, components: &[ComponentIdentifier]) {
+    let Some(mut rows) = data_rows(ctx.viewer_ctx, ctx.view_id) else {
+        return;
+    };
+    for component in components {
+        if !rows.contains(component) {
+            rows.push(*component);
+        }
+    }
+    save_data_rows(ctx, Some(&rows));
+}
+
 /// Store the components to show, or clear them to show every component.
-fn save_data_rows(ctx: &ViewerContext<'_>, view_id: ViewId, rows: Option<&[ComponentIdentifier]>) {
-    let property = ViewProperty::from_archetype_for_view::<RawDataRows>(ctx, view_id);
+fn save_data_rows(ctx: &ViewContext<'_>, rows: Option<&[ComponentIdentifier]>) {
+    let property = ViewProperty::from_archetype_for_view::<RawDataRows>(ctx, ctx.view_id);
     if let Some(rows) = rows {
         property.save_blueprint_component(
             ctx,
@@ -67,7 +82,7 @@ pub fn entity_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, displayed: Option<&En
             );
 
             if let Some(chosen) = settled {
-                choose_entity(ctx, &chosen);
+                show_entity(ctx, &chosen, None);
             }
         },
     ));
@@ -77,10 +92,16 @@ pub fn entity_ui(ctx: &ViewContext<'_>, ui: &mut egui::Ui, displayed: Option<&En
     }
 }
 
-/// Change the entity and reset its component checklist to show all components.
-fn choose_entity(ctx: &ViewContext<'_>, entity_path: &EntityPath) {
+/// Change the entity and replace its component checklist.
+///
+/// `rows` of `None` shows every component of the new entity.
+pub fn show_entity(
+    ctx: &ViewContext<'_>,
+    entity_path: &EntityPath,
+    rows: Option<&[ComponentIdentifier]>,
+) {
     set_entity(ctx, entity_path);
-    save_data_rows(ctx.viewer_ctx, ctx.view_id, None);
+    save_data_rows(ctx, rows);
 }
 
 /// Set a single-entity path filter.
@@ -203,7 +224,7 @@ pub fn components_section_ui(
             by_archetype.values().flatten().map(|descr| descr.component),
             toggled,
         );
-        save_data_rows(ctx.viewer_ctx, ctx.view_id, rows.as_deref());
+        save_data_rows(ctx, rows.as_deref());
     }
 }
 

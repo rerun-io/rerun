@@ -116,6 +116,7 @@ EXPLICIT_DOC_EXCLUDES: Final[dict[str, set[str]]] = {
         "SORBET_COMPONENT_TYPE",
         "SORBET_ENTITY_PATH",
         "SORBET_INDEX_NAME",
+        "SORBET_IS_EDITABLE",
         "SORBET_IS_TABLE_INDEX",
         # Per-developer profiling; opt-in via env var.
         "tracing_session",

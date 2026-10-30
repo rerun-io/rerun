@@ -1,7 +1,6 @@
 use egui::emath::GuiRounding as _;
 use re_log_types::{
-    AbsoluteTimeRange, ComponentPath, DateVisibility, EntityPath, TimeInt, TimeReal, TimeType,
-    TimestampFormat,
+    AbsoluteTimeRange, DateVisibility, EntityPath, TimeInt, TimeReal, TimeType, TimestampFormat,
 };
 use re_sdk_types::blueprint::archetypes::TimeAxis;
 use re_sdk_types::blueprint::components::{LinkAxis, LockRangeDuringZoom};
@@ -9,10 +8,11 @@ use re_sdk_types::encodings::{TimeRange, TimeRangeBoundary};
 use re_time_ruler::{MAX_ZIG_WIDTH, TimeRangesUi};
 use re_ui::{DesignTokens, Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
 use re_viewer_context::{
-    DataResultInteractionAddress, DragAndDropFeedback, GLOBAL_VIEW_ID, IdentifiedViewSystem as _,
-    Item, QueryRange, TimeControlCommand, TimeView, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics,
-    ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload, GLOBAL_VIEW_ID,
+    IdentifiedViewSystem as _, Item, QueryRange, TimeControlCommand, TimeView, ViewClass,
+    ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewContext, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    default_view_entity_drop,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -202,47 +202,54 @@ impl ViewClass for StateTimelineView {
         })
     }
 
-    /// Only take dropped entities that log a `StateChange`. For any other archetype,
-    /// they should drop the component they are interested in instead.
-    fn reject_entity_drop_reason(
+    /// Take dropped entities only if they log a `StateChange`: for any other archetype, the user
+    /// should drop the component they are interested in instead.
+    /// For each dropped component, a new `StateVisualizer` is added that remaps
+    /// `StateChange.state` from it.
+    fn handle_drop(
         &self,
-        ctx: &ViewerContext<'_>,
-        entity_path: &EntityPath,
-    ) -> Option<&'static str> {
-        let has_state_change = ctx
-            .indicated_entities_per_visualizer
-            .get(&crate::StateVisualizer::identifier())
-            .is_some_and(|entities| entities.contains(entity_path));
-
-        (!has_state_change)
-            .then_some("No `StateChange` data on this entity, try dropping a component instead")
-    }
-
-    /// Accept drops of components onto the state timeline view. For each dropped component, a new
-    /// `StateVisualizer` is added that remaps `StateChange.state` from it.
-    fn handle_component_drop(
-        &self,
-        ctx: &ViewerContext<'_>,
-        view_id: ViewId,
-        component_paths: &[ComponentPath],
+        ctx: &ViewContext<'_>,
+        payload: &DragAndDropPayload,
         released: bool,
     ) -> DragAndDropFeedback {
-        match re_view::handle_component_drop(
-            ctx,
-            view_id,
-            component_paths,
-            released,
-            &[(
-                crate::StateVisualizer::identifier(),
-                re_sdk_types::archetypes::StateChange::descriptor_state().component,
-            )],
-        ) {
-            re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
-            re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {
-                DragAndDropFeedback::Reject(Some("Already visualized"))
+        match payload {
+            DragAndDropPayload::Entities { entities } => {
+                let state_entities = ctx
+                    .viewer_ctx
+                    .indicated_entities_per_visualizer
+                    .get(&crate::StateVisualizer::identifier());
+                default_view_entity_drop(ctx, entities, released, |entity_path| {
+                    let has_state_change =
+                        state_entities.is_some_and(|entities| entities.contains(entity_path));
+                    (!has_state_change).then_some(
+                        "No `StateChange` data on this entity, try dropping a component instead",
+                    )
+                })
             }
-            re_view::ComponentDropResult::Incompatible => {
-                DragAndDropFeedback::Reject(Some("Not a state component"))
+
+            DragAndDropPayload::Components { component_paths } => {
+                match re_view::handle_component_drop(
+                    ctx.viewer_ctx,
+                    ctx.view_id,
+                    component_paths,
+                    released,
+                    &[(
+                        crate::StateVisualizer::identifier(),
+                        re_sdk_types::archetypes::StateChange::descriptor_state().component,
+                    )],
+                ) {
+                    re_view::ComponentDropResult::Accept => DragAndDropFeedback::Accept,
+                    re_view::ComponentDropResult::CompatibleButAlreadyVisualized => {
+                        DragAndDropFeedback::Reject(Some("Already visualized"))
+                    }
+                    re_view::ComponentDropResult::Incompatible => {
+                        DragAndDropFeedback::Reject(Some("Not a state component"))
+                    }
+                }
+            }
+
+            DragAndDropPayload::Contents { .. } | DragAndDropPayload::Invalid => {
+                DragAndDropFeedback::Ignore
             }
         }
     }

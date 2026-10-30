@@ -91,7 +91,9 @@ class Column:
         Display label, overriding `column_display_mode`.
         If unset, the label is derived from `source`.
     editable:
-        Allow editing; disabled by default.
+        Allow editing.
+        If unset, the column is editable when its field in the table schema has `rerun:is_editable` metadata,
+        e.g. from `rr.components.Flag.table_field("reviewed", editable=True)`.
         Requires write permission on a remote table with a column marked by `rerun:is_table_index` metadata.
         A cell can be edited when its component type has an editor.
         Boolean columns are shown as [`rerun.components.Bool`][] unless `column_type` is set, e.g. to [`rerun.components.Flag`][].
