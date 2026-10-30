@@ -1,8 +1,10 @@
 use re_log_types::external::re_types_core::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
 use re_log_types::{AbsoluteTimeRange, TimeType, TimestampFormat};
 
-use crate::list_item::{self, LabelContent};
-use crate::{TimeDragValue, UiExt as _};
+use re_ui::UiExt as _;
+use re_ui::list_item::{self, LabelContent};
+
+use crate::TimeDragValue;
 
 /// A time range that can be relative to the time cursor.
 pub struct RelativeTimeRange<'a> {
@@ -268,8 +270,10 @@ mod tests {
     use re_log_types::external::re_types_core::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
     use re_log_types::{TimeType, TimestampFormat};
 
+    use re_ui::UiExt as _;
+
     use super::RelativeTimeRange;
-    use crate::{TimeDragValue, UiExt as _};
+    use crate::TimeDragValue;
 
     struct SnapshotOptions {
         name: &'static str,
@@ -289,7 +293,7 @@ mod tests {
         snapshot_results: &mut SnapshotResults,
     ) {
         let mut harness = Harness::builder()
-            .with_context_setup(crate::apply_style_and_install_loaders)
+            .with_context_setup(re_ui::apply_style_and_install_loaders)
             .build_ui(|ui| {
                 let start = time_range.start.start_boundary_time(TimeInt(current_time));
                 let end = time_range.end.end_boundary_time(TimeInt(current_time));

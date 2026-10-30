@@ -9,7 +9,8 @@ use re_log_types::{
 use re_sdk_types::blueprint::components;
 use re_sorbet::ColumnSelector;
 use re_ui::list_item::ListItemContentButtonsExt as _;
-use re_ui::{TimeDragValue, UiExt as _, icons, list_item};
+use re_ui::{UiExt as _, icons, list_item};
+use re_viewer_context::TimeDragValue;
 use re_viewer_context::{
     TimeControlCommand, TimeRangeHighlight, TimeRangeHighlightKind, ViewId,
     ViewSystemExecutionError, ViewerContext,
