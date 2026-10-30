@@ -23,7 +23,7 @@ pub fn arrow_syntax_highlighted(
 /// A single value of another type is written without the surrounding list brackets.
 pub fn arrow_full_text(
     data: &dyn arrow::array::Array,
-    timestamp_format: re_log_types::TimestampFormat,
+    timestamp_format: re_format::TimestampFormat,
 ) -> Result<String, arrow::error::ArrowError> {
     use arrow::array::AsArray as _;
 

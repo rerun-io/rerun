@@ -25,7 +25,7 @@ use arrow::error::ArrowError;
 use arrow::util::display::{ArrayFormatter, FormatOptions};
 use egui::{RichText, Ui};
 use itertools::Itertools as _;
-use re_log_types::TimestampFormat;
+use re_format::TimestampFormat;
 use re_span::Span;
 use re_ui::list_item::{CustomContent, LabelContent};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -493,7 +493,7 @@ macro_rules! timestamp_primitive_display {
                     #[allow(clippy::allow_attributes, trivial_numeric_casts)]
                     let timestamp = jiff::Timestamp::$conv_fn(self.value(idx) as _)
                         .map_err(|err| ArrowError::ExternalError(Box::new(err)))?;
-                    f.append_primitive(&re_log_types::Timestamp::from(timestamp).format(*state));
+                    f.append_primitive(&state.format(timestamp));
                 }
 
                 Ok(())

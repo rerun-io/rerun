@@ -9154,7 +9154,6 @@ dependencies = [
  "jiff",
  "re_arrow_util",
  "re_format",
- "re_log_types",
  "re_sdk_types",
  "re_span",
  "re_tracing",
@@ -9941,10 +9940,12 @@ version = "0.42.0-alpha.1+dev"
 dependencies = [
  "half",
  "itertools 0.15.0",
+ "jiff",
  "num-traits",
  "re_int",
  "re_log",
  "re_workspace_hack",
+ "serde",
 ]
 
 [[package]]
