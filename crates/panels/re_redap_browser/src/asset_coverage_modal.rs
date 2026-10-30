@@ -14,7 +14,7 @@ use re_protos::cloud::v1alpha1::ext::AssetMode;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
 use re_ui::{
-    DesignTokens, ReButton, ServerValue, UiExt as _,
+    ButtonExt as _, DesignTokens, ServerValue, UiExt as _,
     modal::{ModalHandler, ModalWrapper},
 };
 
@@ -240,14 +240,14 @@ fn segment_pills(
             let remove_rect = response.rect(remove_id);
             response.response.on_hover_text(segment.as_str());
 
-            // `small` drops egui's minimum button height of `interact_size.y`, so the button is
-            // the size of the icon.
+            // Sized to the icon's rect, so the theme's minimum button height doesn't grow it out of
+            // the pill.
             if let Some(rect) = remove_rect
                 && ui
                     .place(
                         rect,
                         ui.small_icon_button_widget(&re_ui::icons::CLOSE_SMALL, "remove")
-                            .small(),
+                            .size(re_ui::Size::custom(rect.height())),
                     )
                     .clicked()
             {
@@ -798,10 +798,10 @@ impl AssetCoverageModal {
                         },
                         |ui| {
                             let can_save = is_editable && !saving;
-                            let save = ReButton::new("Save coverage").blue().small();
+                            let save = egui::Button::new("Save coverage").blue().size_small();
                             let save_clicked = ui.add_enabled(can_save, save).clicked();
 
-                            if ui.add(ReButton::new("Cancel").small()).clicked() {
+                            if ui.add(egui::Button::new("Cancel").size_small()).clicked() {
                                 ui.close();
                             }
 

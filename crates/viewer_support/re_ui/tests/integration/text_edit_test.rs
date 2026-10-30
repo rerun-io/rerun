@@ -1,8 +1,7 @@
 use egui::accesskit::Role;
 use egui::{Key, Modifiers, Vec2};
 use egui_kittest::kittest::Queryable as _;
-use re_ui::UiExt as _;
-use re_ui::text_edit::{ReTextEdit, TextEditVariant, text_edit_scope};
+use re_ui::text_edit::{ReTextEdit, TextEditExt as _, TextEditVariant};
 
 type AddField = fn(&mut egui::Ui, &mut String) -> egui::Response;
 
@@ -18,10 +17,7 @@ pub fn test_text_edit_selection() {
             ui.add(ReTextEdit::singleline(text).variant(TextEditVariant::Filled))
         }),
         ("invalid", |ui, text| {
-            text_edit_scope(ui, |ui| {
-                ui.style_invalid_field();
-                ui.add(egui::TextEdit::singleline(text))
-            })
+            ui.add(egui::TextEdit::singleline(text).invalid(true))
         }),
     ];
 

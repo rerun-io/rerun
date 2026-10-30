@@ -2,7 +2,7 @@
 
 use egui::RichText;
 use re_ui::alert::Alert;
-use re_ui::{ReButton, UiExt as _, icons};
+use re_ui::{ButtonExt as _, UiExt as _, icons};
 
 use super::Screen;
 use re_agent::AgentEntry;
@@ -79,7 +79,9 @@ fn setup_ui_inner(
         "Start {}",
         selected_agent_name(settings, agents).unwrap_or_else(|| "agent".to_owned())
     );
-    let button = ReButton::new((label, icons::ARROW_RIGHT)).primary();
+    let button = egui::Button::new((label, icons::ARROW_RIGHT))
+        .primary()
+        .size_small();
     let clicked = ui
         .add_enabled_ui(ready.is_ok(), |ui| {
             ui.add_sized([ui.available_width(), 0.0], button).clicked()

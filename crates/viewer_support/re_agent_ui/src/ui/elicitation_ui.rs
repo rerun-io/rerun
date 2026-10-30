@@ -6,7 +6,7 @@ use re_agent::acp::schema::v1::{
     ElicitationMode, ElicitationPropertySchema, ElicitationSchema, EnumOption, MultiSelectItems,
 };
 use re_ui::text_edit::ReTextEdit;
-use re_ui::{ReButton, UiExt as _};
+use re_ui::{ButtonExt as _, UiExt as _};
 
 use super::MAX_REQUEST_CONTENT_HEIGHT;
 
@@ -251,17 +251,23 @@ fn field_ui(
                     }
                 }
             } else {
-                text_field = Some(ui.add_sized(
-                    [ui.available_width(), ui.spacing().interact_size.y],
-                    ReTextEdit::singleline(text).hint_text(label),
-                ));
+                text_field = Some(
+                    ui.add(
+                        ReTextEdit::singleline(text)
+                            .hint_text(label)
+                            .desired_width(f32::INFINITY),
+                    ),
+                );
             }
         }
         (FieldInput::Text(text), _) => {
-            text_field = Some(ui.add_sized(
-                [ui.available_width(), ui.spacing().interact_size.y],
-                ReTextEdit::singleline(text).hint_text(label),
-            ));
+            text_field = Some(
+                ui.add(
+                    ReTextEdit::singleline(text)
+                        .hint_text(label)
+                        .desired_width(f32::INFINITY),
+                ),
+            );
         }
         (FieldInput::Boolean(value), _) => {
             ui.checkbox(value, label);
@@ -379,11 +385,15 @@ fn form_ui(
             }
             // Bound the row height; horizontal centering uses all allocated vertical space.
             ui.allocate_ui_with_layout(
-                egui::vec2(ui.available_width(), ui.spacing().interact_size.y),
+                // The row holds `size_small` buttons.
+                egui::vec2(ui.available_width(), re_ui::Size::Small.height()),
                 egui::Layout::right_to_left(egui::Align::Center),
                 |ui| {
                     let send = ui
-                        .add_enabled(content.is_ok(), ReButton::new("Send").primary())
+                        .add_enabled(
+                            content.is_ok(),
+                            egui::Button::new("Send").primary().size_small(),
+                        )
                         .clicked();
                     if (send || enter_pressed)
                         && let Ok(content) = content
@@ -392,7 +402,10 @@ fn form_ui(
                             ElicitationAcceptAction::new().content(content),
                         ));
                     }
-                    if ui.add(ReButton::new("Skip").outlined()).clicked() {
+                    if ui
+                        .add(egui::Button::new("Skip").outlined().size_small())
+                        .clicked()
+                    {
                         response = Some(CreateElicitationResponse::new(ElicitationAction::Decline));
                     }
                 },

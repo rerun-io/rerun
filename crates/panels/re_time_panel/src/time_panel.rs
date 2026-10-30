@@ -600,11 +600,12 @@ impl TimePanel {
                 ui.full_span_scope(0.0..=time_x_left, |ui| {
                     self.filter_state.section_title_ui(
                         ui,
-                        if self.source == TimePanelSource::Blueprint {
+                        egui::RichText::new(if self.source == TimePanelSource::Blueprint {
                             "Blueprint Streams"
                         } else {
                             "Streams"
-                        },
+                        })
+                        .strong(),
                     );
                 });
             })
@@ -1674,7 +1675,7 @@ fn archetype_label_ui(
                         .map(|a| a.short_name())
                         .unwrap_or("Without archetype"),
                 )
-                .text_style(DesignTokens::small()),
+                .size(10.0),
             ),
         )
 }

@@ -162,20 +162,10 @@ impl FilterState {
                 if let Some(inner_state) = self.inner_state.as_mut() {
                     ui.spacing_mut().text_edit_width = ui.max_rect().width().at_least(0.0);
 
-                    // TODO(ab): ideally _all_ text edits would be styled this way, but we
-                    // require egui support for that (https://github.com/emilk/egui/issues/3284)
-                    ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                    ui.visuals_mut().widgets.active.expansion = 0.0;
-                    ui.visuals_mut().widgets.open.expansion = 0.0;
-                    ui.visuals_mut().widgets.active.fg_stroke.width = 1.0;
-                    ui.visuals_mut().selection.stroke.width = 1.0;
-
-                    let response = crate::text_edit::text_edit_scope(ui, |ui| {
-                        egui::TextEdit::singleline(&mut inner_state.filter_query)
-                            .lock_focus(true)
-                            .ui(ui)
-                            .accessible_name("Filter")
-                    });
+                    let response = egui::TextEdit::singleline(&mut inner_state.filter_query)
+                        .lock_focus(true)
+                        .ui(ui)
+                        .accessible_name("Filter");
 
                     if self.request_focus {
                         self.request_focus = false;

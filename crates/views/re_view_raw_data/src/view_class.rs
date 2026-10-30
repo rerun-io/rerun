@@ -6,7 +6,7 @@ use re_sdk_types::blueprint::archetypes::RawDataViewFormat;
 use re_sdk_types::blueprint::components::ViewDensity;
 use re_sdk_types::components::Visible;
 use re_sdk_types::{ComponentIdentifier, View as _, ViewClassIdentifier};
-use re_ui::{Help, ReButton, UiExt as _};
+use re_ui::{ButtonExt as _, Help, UiExt as _};
 use re_viewer_context::{
     SystemCommandSender as _, TimeControlCommand, ViewClass, ViewClassExt as _,
     ViewClassRegistryError, ViewId, ViewQuery, ViewSpawnHeuristics, ViewState,
@@ -288,16 +288,14 @@ fn navigation_ui(
         } else {
             format!("No {direction} event")
         };
-        let mut button = ReButton::icon(*icon, label)
-            .secondary()
-            .size(re_ui::Size::custom(16.0));
-        button.inner = egui::Button::new(
+        let button = egui::Button::new(
             icon.as_image()
                 .fit_to_exact_size(egui::Vec2::splat(8.0))
                 .alt_text(label),
         )
-        .image_tint_follows_text_color(true)
-        .frame_when_inactive(false);
+        .icon_button()
+        .ghost()
+        .size(re_ui::Size::custom(16.0));
         let response = ui.add_enabled(target.is_some(), button);
         let clicked = response
             .on_hover_text(&hover)

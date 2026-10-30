@@ -5,7 +5,7 @@ use egui::{Align2, AtomKind, IntoAtoms as _, Ui};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_types_core::{ComponentIdentifier, RowId};
 use re_ui::loading_indicator::paint_loading_indicator_inside;
-use re_ui::{ReButton, Size, UiExt as _, Variant, icons};
+use re_ui::{ButtonExt as _, Size, UiExt as _, Variant, icons, with_hover_icon_buttons};
 use re_uri::RedapUri;
 use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
@@ -113,7 +113,7 @@ pub fn redap_uri_button(
     let default_variant = Variant::Ghost;
 
     let button = || {
-        ReButton::new(atoms.clone())
+        egui::Button::new(atoms.clone())
             .size(size)
             .variant(if open {
                 Variant::Opened
@@ -128,17 +128,17 @@ pub fn redap_uri_button(
     let icon_button_width = count * size.height() + ui.spacing().item_spacing.x * (count - 1.0);
 
     let (mut response, icon_responses) =
-        ReButton::with_hover_icon_buttons(ui, button, icon_button_width, |ui| {
+        with_hover_icon_buttons(ui, button, icon_button_width, |ui| {
             (
                 ui.add(
-                    ReButton::icon(icons::COPY, "Copy")
+                    egui::Button::icon(icons::COPY, "Copy")
                         .size(size)
                         .variant(default_variant),
                 )
                 .clicked(),
                 if open {
                     ui.add(
-                        ReButton::icon(
+                        egui::Button::icon(
                             icons::CLOSE_SMALL,
                             if loading { "Cancel" } else { "Close" },
                         )

@@ -1,7 +1,7 @@
 use egui::RichText;
 use re_agent::acp::schema::v1::{Plan, PlanEntryStatus, ToolCallStatus};
 use re_log_types::{DateVisibility, Timestamp, TimestampFormat};
-use re_ui::{ReButton, UiExt as _, icons};
+use re_ui::{ButtonExt as _, UiExt as _, icons};
 use web_time::SystemTime;
 
 use super::conversation_list::status_dot_ui;
@@ -238,7 +238,9 @@ fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str, answered_at: S
         if ui
             .add_visible(
                 hovered,
-                ReButton::icon(icons::COPY, "Copy response").ghost().small(),
+                egui::Button::icon(icons::COPY, "Copy response")
+                    .ghost()
+                    .size_small(),
             )
             .on_hover_text("Copy response")
             .clicked()

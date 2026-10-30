@@ -26,6 +26,7 @@ use re_log_types::TimestampFormat;
 use re_types_core::ArrowDataType as _;
 use re_types_core::encodings::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::text_edit::TextEditExt as _;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 use strum::VariantArray as _;
 
@@ -680,18 +681,14 @@ impl EditableTimestamp {
                     self.timestamp_string.clone().unwrap_or_default()
                 };
 
-                let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-                    ui.scope(|ui| {
-                        let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
-                        if parsed.is_err() {
-                            ui.style_invalid_field();
-                        }
+                let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
 
-                        ui.text_edit_singleline(&mut timestamp_string_to_edit)
-                            .accessible_name("Timestamp")
-                    })
-                    .inner
-                });
+                let response = ui
+                    .add(
+                        egui::TextEdit::singleline(&mut timestamp_string_to_edit)
+                            .invalid(parsed.is_err()),
+                    )
+                    .accessible_name("Timestamp");
 
                 if response.changed() && is_editable {
                     self.update_and_resolve_timestamp(timestamp_string_to_edit, timestamp_format);

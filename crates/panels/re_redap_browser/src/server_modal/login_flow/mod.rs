@@ -5,7 +5,7 @@ mod web;
 
 #[cfg(not(target_arch = "wasm32"))]
 use native::State;
-use re_ui::ReButton;
+use re_ui::ButtonExt as _;
 use re_ui::notifications::{Notification, NotificationLevel};
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 #[cfg(target_arch = "wasm32")]
@@ -152,9 +152,9 @@ impl<'a> ActionButton<'a> {
         };
 
         let response = ui.add(
-            ReButton::new((label, self.icon))
+            egui::Button::new((label, self.icon))
                 .variant(self.variant)
-                .small(),
+                .size_small(),
         );
 
         if response.clicked() {

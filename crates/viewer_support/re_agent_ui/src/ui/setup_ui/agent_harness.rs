@@ -209,10 +209,10 @@ fn custom_agent_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, selected: bo
         .clicked();
     let field_used = ui
         .indent("custom_command", |ui| {
-            let response = ui.add_sized(
-                [ui.available_width(), ui.spacing().interact_size.y],
+            let response = ui.add(
                 ReTextEdit::singleline(&mut settings.custom_command_line)
-                    .hint_text("my-agent --acp"),
+                    .hint_text("my-agent --acp")
+                    .desired_width(f32::INFINITY),
             );
             response.gained_focus() || response.changed()
         })
@@ -257,10 +257,8 @@ fn analytics_details_button(ui: &mut egui::Ui) -> egui::Response {
         .small()
         .underline()
         .color(ui.visuals().weak_text_color());
-    let button = egui::Button::new(label).frame(false);
-
-    let (response, menu) =
-        egui::containers::menu::MenuButton::from_button(button).ui(ui, analytics_details_ui);
+    let response = ui.link(label);
+    let menu = egui::Popup::menu(&response).show(analytics_details_ui);
 
     if menu.is_some() {
         // Don't stack a tooltip on top of the open menu.
@@ -280,8 +278,11 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
         ui,
         |ui| ui.label(RichText::new("MCP servers").strong()),
         |ui| {
-            let add = egui::Button::new(RichText::new("Add").underline()).frame(false);
-            if ui.add(add).on_hover_text("Add an MCP server").clicked() {
+            if ui
+                .link(RichText::new("Add").underline())
+                .on_hover_text("Add an MCP server")
+                .clicked()
+            {
                 servers.push(McpServerConfig {
                     name: "rerun".to_owned(),
                     command_line: "rerun viewer-mcp".to_owned(),

@@ -3,7 +3,9 @@ use re_entity_db::EntityDb;
 use re_log_types::TimeType;
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
 use re_ui::menu::menu_style;
-use re_ui::{ComboItem, ReButton, Size, UiExt as _, Variant, icons, list_item};
+use re_ui::{
+    ButtonExt as _, ComboItem, DragValueExt as _, Size, UiExt as _, Variant, icons, list_item,
+};
 use re_viewer_context::RecordingCommandKind;
 use re_viewer_context::{TimeControl, TimeControlCommand};
 
@@ -24,7 +26,7 @@ impl TimeControlUi {
     ) {
         let response = ui
             .add(
-                ReButton::dropdown(time_ctrl.timeline_name().as_str())
+                egui::Button::dropdown(time_ctrl.timeline_name().as_str())
                     .size(TIME_CONTROL_ROW_SIZE)
                     .ghost(),
             )
@@ -110,16 +112,16 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             && let Some(mut fps) = time_ctrl.fps()
         {
             let old_fps = fps;
-            ReButton::wrap_widget(ui, Variant::Ghost, TIME_CONTROL_ROW_SIZE, false, |ui| {
-                ui.add(
-                    egui::DragValue::new(&mut fps)
-                        .suffix(" FPS")
-                        .speed(1)
-                        .range(0.0..=f32::INFINITY),
-                )
-                .on_hover_text("Frames per second")
-                .accessible_name("Frames per second");
-            });
+            ui.add(
+                egui::DragValue::new(&mut fps)
+                    .variant(Variant::Ghost)
+                    .size(TIME_CONTROL_ROW_SIZE)
+                    .suffix(" FPS")
+                    .speed(1)
+                    .range(0.0..=f32::INFINITY),
+            )
+            .on_hover_text("Frames per second")
+            .accessible_name("Frames per second");
             if old_fps != fps {
                 time_commands.push(TimeControlCommand::SetFps(fps));
             }
@@ -156,7 +158,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         };
         if ui
             .add(
-                ReButton::icon(
+                egui::Button::icon(
                     if is_paused { icons::PLAY } else { icons::PAUSE },
                     RecordingCommandKind::TogglePlayPause.text(),
                 )
@@ -178,7 +180,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
     ) {
         if ui
             .add(
-                ReButton::icon(
+                egui::Button::icon(
                     icons::SKIP_TO_END,
                     RecordingCommandKind::SeekToEndAndFollow.text(),
                 )
@@ -213,29 +215,18 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
             ],
         ];
 
-        let tokens = ui.tokens();
-
         // Keep the button looking hovered while its menu popup is open.
         let popup_id = ui.make_persistent_id("playhead_nav_menu");
         let popup_open = egui::Popup::is_id_open(ui.ctx(), popup_id);
 
-        // Match the height of a `large_button`.
         let button = ui
-            .scope(|ui| {
-                ui.spacing_mut().interact_size.y = tokens.large_button_size.y;
-
-                ui.add(
-                    re_ui::ReButton::new((
-                        re_ui::icons::PLAYHEAD_NAV,
-                        re_ui::icons::DROPDOWN_ARROW,
-                    ))
-                    .accessible_name("Playhead navigation")
+            .add(
+                egui::Button::new((re_ui::icons::PLAYHEAD_NAV, re_ui::icons::DROPDOWN_ARROW))
                     .secondary()
                     .size(TIME_CONTROL_ROW_SIZE)
                     .highlighted(popup_open),
-                )
-            })
-            .inner;
+            )
+            .accessible_name("Playhead navigation");
 
         egui::Popup::menu(&button)
             .style(menu_style())
@@ -269,51 +260,43 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         ui: &mut egui::Ui,
         time_commands: &mut Vec<TimeControlCommand>,
     ) {
-        let button = ReButton::icon(re_ui::icons::LOOP, "Loop")
+        let button = egui::Button::icon(re_ui::icons::LOOP, "Loop")
             .size(TIME_CONTROL_ROW_SIZE)
             .secondary();
 
-        let selected_button = |button: ReButton<'static>| button.selected(true);
-
-        ui.scope(|ui| {
-            // Loop-button cycles between states:
-            match time_ctrl.loop_mode() {
-                LoopMode::Off => {
-                    if ui.add(button).on_hover_text("Looping is off").clicked() {
-                        time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::All));
-                    }
+        // Loop-button cycles between states:
+        match time_ctrl.loop_mode() {
+            LoopMode::Off => {
+                if ui.add(button).on_hover_text("Looping is off").clicked() {
+                    time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::All));
                 }
-                LoopMode::All => {
-                    ui.visuals_mut().selection.bg_fill = ui.tokens().loop_everything_color;
-                    if ui
-                        .add(selected_button(button))
-                        .on_hover_text("Looping is off")
-                        .clicked()
-                    {
-                        // Only go to the selection time selection mode if there's already a selection.
-                        // (otherwise, we'd create a selection as a fail-safe, but that's rather confusing!)
-                        if time_ctrl.time_selection().is_some() {
-                            time_commands
-                                .push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
-                        } else {
-                            time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Off));
-                        }
-                    }
-                }
-                LoopMode::Selection => {
-                    // No need for this - the selection color is already same as the loop color.
-                    // ui.visuals_mut().selection.bg_fill = ui.tokens().loop_selection_color.to_opaque();
-
-                    if ui
-                        .add(selected_button(button))
-                        .on_hover_text("Looping is off")
-                        .clicked()
-                    {
+            }
+            LoopMode::All => {
+                // The second selected look tells "loop everything" apart from "loop selection".
+                if ui
+                    .add(button.selected_variant(true, re_ui::Variant::SelectedAlt))
+                    .on_hover_text("Looping is off")
+                    .clicked()
+                {
+                    // Only go to the selection time selection mode if there's already a selection.
+                    // (otherwise, we'd create a selection as a fail-safe, but that's rather confusing!)
+                    if time_ctrl.time_selection().is_some() {
+                        time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Selection));
+                    } else {
                         time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Off));
                     }
                 }
             }
-        });
+            LoopMode::Selection => {
+                if ui
+                    .add(button.selected(true))
+                    .on_hover_text("Looping is off")
+                    .clicked()
+                {
+                    time_commands.push(TimeControlCommand::SetLoopMode(LoopMode::Off));
+                }
+            }
+        }
     }
 
     #[expect(clippy::unused_self)]
@@ -326,15 +309,15 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
         let mut speed = time_ctrl.speed();
         let drag_speed = (speed * 0.02).at_least(0.01);
 
-        ReButton::wrap_widget(ui, Variant::Ghost, TIME_CONTROL_ROW_SIZE, false, |ui| {
-            ui.add(
-                egui::DragValue::new(&mut speed)
-                    .speed(drag_speed)
-                    .suffix("x"),
-            )
-            .on_hover_text("Playback speed")
-            .accessible_name("Playback speed");
-        });
+        ui.add(
+            egui::DragValue::new(&mut speed)
+                .variant(Variant::Ghost)
+                .size(TIME_CONTROL_ROW_SIZE)
+                .speed(drag_speed)
+                .suffix("x"),
+        )
+        .on_hover_text("Playback speed")
+        .accessible_name("Playback speed");
 
         if speed != time_ctrl.speed() {
             time_commands.push(TimeControlCommand::SetSpeed(speed));

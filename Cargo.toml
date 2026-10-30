@@ -218,6 +218,7 @@ ecolor = "0.37.0"
 eframe = { version = "0.37.0", default-features = false, features = [
   "accesskit",
   "clipboard",
+  "experimental",
   "inspection",
   "links",
   "system_fonts",
@@ -227,6 +228,7 @@ eframe = { version = "0.37.0", default-features = false, features = [
 egui = { version = "0.37.0", default-features = false, features = [
   "callstack",
   "color-hex",
+  "experimental",
   "rayon",
 ] }
 egui_extras = { version = "0.37.0", default-features = false, features = [

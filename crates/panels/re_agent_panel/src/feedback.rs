@@ -4,6 +4,7 @@ use re_agent_ui::{
     AgentSession, ToolCallState, Transcript, TranscriptItem, message_text, truncate_bytes,
 };
 use re_sdk_types::external::uuid::Uuid;
+use re_ui::ButtonExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use serde::Serialize;
 
@@ -76,7 +77,7 @@ impl FeedbackModal {
                 ui.add_space(8.0);
                 ui.add_enabled(
                     can_send && !text.trim().is_empty(),
-                    re_ui::ReButton::new("Send").primary(),
+                    egui::Button::new("Send").primary().size_small(),
                 )
                 .clicked()
             },

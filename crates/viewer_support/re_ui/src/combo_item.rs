@@ -6,6 +6,17 @@ use egui::{
     Pos2, Rect, Response, Sense, TextStyle, Ui, UiBuilder, Vec2, Widget, WidgetAtom, WidgetText,
 };
 
+/// The size of a [`ComboItem`]'s check icon, and of the empty space left for it when unchecked.
+const CHECK_ICON_SIZE: f32 = 12.0;
+
+/// The gap between a [`ComboItem`]'s check icon and its label.
+///
+/// Tighter than a menu item's gap, so the theme's fallback is overridden.
+const CHECK_ICON_GAP: f32 = 2.0;
+
+/// The height of a [`ComboItemHeader`], which is what sets the gap it leaves above and below.
+const HEADER_HEIGHT: f32 = 22.0;
+
 /// The value shown alongside a [`ComboItem`]'s label.
 enum ComboItemValue<'a> {
     /// Plain text. This is the only variant that supports [`ComboItem::value_below`] (stacked
@@ -91,14 +102,13 @@ impl Widget for ComboItem<'_> {
             error,
         } = self;
 
-        ui.spacing_mut().icon_spacing = 2.0;
         ui.spacing_mut().button_padding.x = 0.0;
 
         if error.is_some() {
             label = label.color(ui.tokens().error_fg_color);
         }
 
-        let check_icon_size = Vec2::splat(12.0);
+        let check_icon_size = Vec2::splat(CHECK_ICON_SIZE);
         let check_icon = if selected {
             icons::CHECKED
                 .as_image()
@@ -117,7 +127,7 @@ impl Widget for ComboItem<'_> {
         let mut stacked_accessible_name = None;
 
         let response = if value_below && let Some(ComboItemValue::Text(value)) = &value {
-            let gap = 2.0;
+            let gap = CHECK_ICON_GAP;
             stacked_accessible_name = Some(label.text().to_owned());
 
             let first_line = ContainerAtom::new((
@@ -158,7 +168,9 @@ impl Widget for ComboItem<'_> {
             // spacing (2px space + 2px gap = 4px)
             atoms.push_right(Atom::default().atom_size(Vec2::new(2.0, 0.0)));
 
-            Button::new(atoms).wrap_mode(TextWrapMode::Extend)
+            Button::new(atoms)
+                .gap(CHECK_ICON_GAP)
+                .wrap_mode(TextWrapMode::Extend)
         }
         .atom_ui(ui);
 
@@ -243,11 +255,13 @@ impl Widget for ComboItemHeader {
             WidgetAtom::new(self.label)
                 .frame(Frame::new().inner_margin(Margin {
                     bottom: 0,
-                    left: 14, // 12 for check icon + 2 gap
+                    // Line the header up with the labels of the items it groups, which
+                    // start after their check icon.
+                    left: (CHECK_ICON_SIZE + CHECK_ICON_GAP) as i8,
                     right: 4,
                     top: 4,
                 }))
-                .min_size(Vec2::new(0.0, 22.0))
+                .min_size(Vec2::new(0.0, HEADER_HEIGHT))
                 .fallback_font(DesignTokens::small().resolve(ui.style())),
         )
     }

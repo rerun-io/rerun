@@ -779,8 +779,6 @@ fn cell_with_hover_button_ui(
         };
 
         let mut button_ui = ui.new_child(egui::UiBuilder::new().max_rect(button_rect));
-        button_ui.visuals_mut().widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-        button_ui.visuals_mut().widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
         button_ui.add(
             button_ui.image_button_widget(
                 icon.as_image()

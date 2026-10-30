@@ -1,11 +1,15 @@
-use crate::{ButtonVisuals, DesignTokens, UiExt as _, all_visuals, icons};
-use eframe::emath::Vec2;
-use egui::style::WidgetVisuals;
-use egui::{
-    Button, CornerRadius, IntoAtoms, NumExt as _, Rect, Response, Sense, Style, WidgetAtomResponse,
-};
+use egui::class::{Classes, HasClasses as _};
+use egui::{Button, IntoAtoms, NumExt as _, Rect, Response, Sense, Vec2, WidgetAtomResponse};
 
-#[derive(Default, Clone, Copy)]
+use crate::theme::class;
+use crate::theme::class::{ClassesExt as _, UiStackExt as _};
+use crate::{ButtonVisuals, DesignTokens, icons};
+
+/// The color scheme of a button.
+///
+/// Applied to an [`egui::Button`] via [`ButtonExt::variant`], which stores it as a class name that
+/// [`crate::ReTheme`] resolves back into colors from the design tokens.
+#[derive(Default, Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Variant {
     Primary,
     Secondary,
@@ -18,398 +22,410 @@ pub enum Variant {
 
     /// Indicate that the thing this button represents is opened.
     Opened,
+
+    /// The second selected look, for a button with more than one selected state to tell apart.
+    ///
+    /// Only reachable through [`ButtonExt::selected_variant`], since a selected button takes the
+    /// ordinary selected look unless it says otherwise.
+    SelectedAlt,
 }
 
-#[derive(Debug, Clone, Copy)]
+impl Variant {
+    pub const CLASS_PRIMARY: &'static str = "rerun::button::primary";
+    pub const CLASS_SECONDARY: &'static str = "rerun::button::secondary";
+    pub const CLASS_GHOST: &'static str = "rerun::button::ghost";
+    pub const CLASS_OUTLINED: &'static str = "rerun::button::outlined";
+    pub const CLASS_BLUE: &'static str = "rerun::button::blue";
+    pub const CLASS_OPENED: &'static str = "rerun::button::opened";
+
+    /// The alternate selected fill (green), used by three-state toggle buttons.
+    pub const CLASS_SELECTED_ALT: &'static str = "rerun::button::selected_alt";
+
+    pub const fn class_name(self) -> &'static str {
+        match self {
+            Self::Primary => Self::CLASS_PRIMARY,
+            Self::Secondary => Self::CLASS_SECONDARY,
+            Self::Ghost => Self::CLASS_GHOST,
+            Self::Outlined => Self::CLASS_OUTLINED,
+            Self::Blue => Self::CLASS_BLUE,
+            Self::Opened => Self::CLASS_OPENED,
+            Self::SelectedAlt => Self::CLASS_SELECTED_ALT,
+        }
+    }
+
+    fn from_class_name(name: &str) -> Option<Self> {
+        match name {
+            Self::CLASS_PRIMARY => Some(Self::Primary),
+            Self::CLASS_SECONDARY => Some(Self::Secondary),
+            Self::CLASS_GHOST => Some(Self::Ghost),
+            Self::CLASS_OUTLINED => Some(Self::Outlined),
+            Self::CLASS_BLUE => Some(Self::Blue),
+            Self::CLASS_OPENED => Some(Self::Opened),
+            Self::CLASS_SELECTED_ALT => Some(Self::SelectedAlt),
+            _ => None,
+        }
+    }
+
+    /// The variant a button asks for, if any.
+    ///
+    /// The last variant class wins, so chaining `.ghost().secondary()` yields [`Self::Secondary`].
+    /// Being selected is not a variant of its own:
+    /// egui sets [`egui::Button::CLASS_SELECTED`] on top of whatever the caller asked for, and the
+    /// theme reads it separately.
+    pub fn from_classes(classes: &Classes) -> Option<Self> {
+        classes.last_class(Self::from_class_name)
+    }
+
+    pub fn visuals(self, tokens: &DesignTokens) -> ButtonVisuals {
+        match self {
+            Self::Primary => tokens.button_primary,
+            Self::Secondary => tokens.button_secondary,
+            Self::Ghost => tokens.button_ghost,
+            Self::Outlined => tokens.button_outlined,
+            Self::Blue => tokens.button_blue,
+            Self::Opened => tokens.button_opened,
+            Self::SelectedAlt => ButtonVisuals {
+                // The loop color is one flat opaque token, with no lighter and darker step of its
+                // own, so this fill cannot follow the pointer the way a variant's does.
+                fill: tokens.loop_everything_color,
+                fill_hovered: tokens.loop_everything_color,
+                fill_pressed: tokens.loop_everything_color,
+                ..tokens.selection
+            },
+        }
+    }
+}
+
+/// The height (and thus padding) of a button.
+///
+/// Applied to an [`egui::Button`] via [`ButtonExt::size`], which stores it as a class name that
+/// [`crate::ReTheme`] resolves into the button's padding and minimum size.
+#[derive(Debug, Clone, Default, Copy, PartialEq)]
 pub enum Size {
     Normal,
     Small,
+    #[default]
     Tiny,
-    Custom { height: f32 },
+    Custom {
+        height: f32,
+    },
 }
 
 impl Size {
+    pub const CLASS_NORMAL: &'static str = "rerun::size::normal";
+    pub const CLASS_SMALL: &'static str = "rerun::size::small";
+    pub const CLASS_TINY: &'static str = "rerun::size::tiny";
+
+    /// Present on a button sized with [`Self::Custom`]. Such a button carries its exact height as
+    /// its own `min_size`, so the theme must not impose the borrowed size's minimum on top.
+    pub const CLASS_CUSTOM: &'static str = "rerun::size::custom";
+
     pub const fn custom(height: f32) -> Self {
         Self::Custom { height }
     }
 
-    pub fn height(&self) -> f32 {
+    pub const fn height(self) -> f32 {
         match self {
             Self::Normal => 34.0,
             Self::Small => 26.0,
             Self::Tiny => 20.0,
-            Self::Custom { height } => *height,
+            Self::Custom { height } => height,
         }
     }
 
-    /// What is the size of the button when it's shown as `icon_button`?
-    pub fn icon_button_size(&self) -> Vec2 {
+    /// What is the size of the button when it's shown as an icon button?
+    pub const fn icon_button_size(self) -> Vec2 {
         Vec2::splat(self.height())
     }
 
-    pub fn padding(&self) -> Vec2 {
+    pub const fn padding(self) -> Vec2 {
         let padding_normal = 8.0;
         let padding_small = 4.0;
         let x = match self {
             Self::Normal | Self::Small => padding_normal,
             Self::Tiny => padding_small,
             Self::Custom { height } => {
-                if *height >= Self::Small.height() {
+                if height >= Self::Small.height() {
                     padding_normal
                 } else {
                     padding_small
                 }
             }
         };
-        egui::vec2(x, 0.0)
+        Vec2::new(x, 0.0)
     }
 
-    pub fn apply(&self, style: &mut Style, icon: bool) {
-        style.spacing.button_padding = if icon { Vec2::ZERO } else { self.padding() };
-        // Default interact size is larger than tiny button size, so override it.
-        // We are always at least as wide as we are high:
-        style.spacing.interact_size = self.icon_button_size();
-        all_visuals(style, |vis| {
-            vis.corner_radius = CornerRadius::same(6);
-        });
-    }
-}
-
-impl Variant {
-    fn visuals<'a>(&self, tokens: &'a DesignTokens) -> &'a ButtonVisuals {
+    /// [`Self::Custom`] has no class of its own: its height travels as the button's `min_size`,
+    /// and only its padding needs to reach the theme, so it borrows the class of the standard
+    /// size with the same padding.
+    pub const fn class_name(self) -> &'static str {
         match self {
-            Self::Primary => &tokens.button_primary,
-            Self::Secondary => &tokens.button_secondary,
-            Self::Ghost => &tokens.button_ghost,
-            Self::Outlined => &tokens.button_outlined,
-            Self::Blue => &tokens.button_blue,
-            Self::Opened => &tokens.button_opened,
+            Self::Normal => Self::CLASS_NORMAL,
+            Self::Small => Self::CLASS_SMALL,
+            Self::Tiny => Self::CLASS_TINY,
+            Self::Custom { height } => {
+                if height >= Self::Small.height() {
+                    Self::CLASS_SMALL
+                } else {
+                    Self::CLASS_TINY
+                }
+            }
         }
     }
 
-    pub fn apply(&self, style: &mut Style, tokens: &DesignTokens) {
-        let visuals = self.visuals(tokens);
-
-        all_visuals(style, |vis| {
-            vis.bg_fill = visuals.fill;
-            vis.weak_bg_fill = visuals.fill;
-            vis.fg_stroke.color = visuals.text;
-            vis.bg_stroke = visuals.stroke;
-            vis.expansion = 0.0;
-        });
-
-        let set_fill = |vis: &mut WidgetVisuals, fill| {
-            vis.bg_fill = fill;
-            vis.weak_bg_fill = fill;
-        };
-        set_fill(&mut style.visuals.widgets.hovered, visuals.fill_hovered);
-        // `active` is the pressed state; `open` (e.g. an open menu) uses the same fill.
-        set_fill(&mut style.visuals.widgets.active, visuals.fill_pressed);
-        set_fill(&mut style.visuals.widgets.open, visuals.fill_pressed);
+    fn from_class_name(name: &str) -> Option<Self> {
+        match name {
+            Self::CLASS_NORMAL => Some(Self::Normal),
+            Self::CLASS_SMALL => Some(Self::Small),
+            Self::CLASS_TINY => Some(Self::Tiny),
+            // Only allowed in `theme::class::UNCONTROLLED_EXTERNAL_UI`.
+            _ if name == Button::CLASS_SMALL.as_str() => Some(Self::Small),
+            _ => None,
+        }
     }
-}
 
-pub struct ReButton<'a> {
-    pub variant: Variant,
-    pub size: Size,
-    pub inner: Button<'a>,
+    /// The size a button asks for, if any. The last size class wins.
+    pub fn from_classes(classes: &Classes) -> Option<Self> {
+        classes.last_class(Self::from_class_name)
+    }
 
-    /// If set, the button will be as wide as it is high.
-    pub icon: bool,
-
-    /// Render the button with its hovered fill even when it isn't hovered.
+    /// The size a button in this [`egui::Ui`] gets, unless it asks for another one.
     ///
-    /// Useful to show that the button is engaged, e.g. while its menu popup is open.
-    pub highlighted: bool,
-
-    /// Overrides the name egui derives from the button's text or image alt text.
-    pub accessible_name: Option<String>,
+    /// Use this to reserve room for a button before showing it — the theme sizes it from the same
+    /// classes.
+    pub fn inherited(ui: &egui::Ui) -> Self {
+        ui.stack().inherited(Self::from_classes).unwrap_or_default()
+    }
 }
 
-impl<'a> ReButton<'a> {
-    pub fn new(atoms: impl IntoAtoms<'a>) -> Self {
-        Self::from_button(Button::new(atoms))
-    }
-
-    pub fn dropdown(atoms: impl IntoAtoms<'a>) -> Self
-    where
-        'a: 'static,
-    {
-        Self::from_button(Button::new((atoms, icons::DROPDOWN_ARROW)))
-    }
-
-    /// An icon-only button.
+/// Rerun's button styling, as extensions to [`egui::Button`].
+///
+/// Each method attaches a class name that [`crate::ReTheme`] turns into colors and padding.
+/// A button that calls none of these keeps egui's default styling.
+///
+/// The size helpers are named `size_*` rather than `small`/`tiny`, because [`egui::Button`] has an
+/// inherent `small()` that would silently shadow a trait method of the same name.
+pub trait ButtonExt: Sized {
+    /// A square button showing nothing but an icon.
     ///
     /// `alt_text` is the button's accessible name: what a screen reader announces, what
     /// `Harness::get_by_label` finds, and the only thing the MCP UI tools can search an icon
     /// button by. A button without one is unreachable by name, so it is required here.
-    pub fn icon(icon: crate::icons::Icon, alt_text: impl Into<String>) -> ReButton<'static> {
-        let mut button = ReButton::new(icon.as_image().alt_text(alt_text));
-        button.icon = true;
-        button
+    fn icon(icon: icons::Icon, alt_text: impl Into<String>) -> Button<'static> {
+        Button::new(icon.as_image().alt_text(alt_text)).icon_button()
     }
 
-    pub fn from_button(button: Button<'a>) -> Self {
-        ReButton {
-            inner: button.image_tint_follows_text_color(true),
-            size: Size::Normal,
-            variant: Variant::Ghost,
-            icon: false,
-            highlighted: false,
-            accessible_name: None,
-        }
+    /// A button with a dropdown arrow after its contents.
+    fn dropdown(atoms: impl IntoAtoms<'static>) -> Button<'static> {
+        Button::new((atoms, icons::DROPDOWN_ARROW)).image_tint_follows_text_color(true)
     }
 
-    /// Cut the text with an ellipsis instead of wrapping it to a second line.
-    pub fn truncate(mut self) -> Self {
-        self.inner = self.inner.truncate();
-        self
-    }
+    fn variant(self, variant: Variant) -> Self;
 
-    pub fn image_tint_follows_text_color(mut self, follows: bool) -> Self {
-        self.inner = self.inner.image_tint_follows_text_color(follows);
-        self
-    }
+    fn size(self, size: Size) -> Self;
 
-    pub fn primary(mut self) -> Self {
-        self.variant = Variant::Primary;
-        self
-    }
-
-    pub fn secondary(mut self) -> Self {
-        self.variant = Variant::Secondary;
-        self
-    }
-
-    pub fn selected(mut self, selected: bool) -> Self {
-        self.inner = self.inner.selected(selected);
-        self
-    }
-
-    pub fn opened(mut self) -> Self {
-        self.variant = Variant::Opened;
-        self
-    }
-
-    pub fn ghost(mut self) -> Self {
-        self.variant = Variant::Ghost;
-        self
-    }
-
-    pub fn outlined(mut self) -> Self {
-        self.variant = Variant::Outlined;
-        self
-    }
-
-    pub fn blue(mut self) -> Self {
-        self.variant = Variant::Blue;
-        self
-    }
-
-    pub fn variant(mut self, variant: Variant) -> Self {
-        self.variant = variant;
-        self
-    }
-
-    pub fn small(mut self) -> Self {
-        self.size = Size::Small;
-        self
-    }
-
-    pub fn tiny(mut self) -> Self {
-        self.size = Size::Tiny;
-        self
-    }
-
-    pub fn normal(mut self) -> Self {
-        self.size = Size::Normal;
-        self
-    }
-
-    pub fn size(mut self, size: Size) -> Self {
-        self.size = size;
-        self
-    }
-
-    pub fn stroke(mut self, stroke: egui::Stroke) -> Self {
-        self.inner = self.inner.stroke(stroke);
-        self
-    }
-
-    /// Name the button in the accessibility tree, for a button whose atoms name nothing useful
-    /// (e.g. two icons).
-    #[inline]
-    pub fn accessible_name(mut self, name: impl Into<String>) -> Self {
-        self.accessible_name = Some(name.into());
-        self
-    }
+    /// Make the button square, with no padding around its contents.
+    fn icon_button(self) -> Self;
 
     /// Render the button with its hovered fill even when it isn't hovered.
     ///
     /// Useful to show that the button is engaged, e.g. while its menu popup is open.
-    pub fn highlighted(mut self, highlighted: bool) -> Self {
-        self.highlighted = highlighted;
-        self
+    fn highlighted(self, highlighted: bool) -> Self;
+
+    /// Show the button selected, styled as `variant` rather than with the selection accent.
+    ///
+    /// The button is selected as far as a screen reader is concerned — this only decides its
+    /// colors. For a button with more than one selected look to tell apart, such as the loop
+    /// button. Implies [`egui::Button::selected`], so it replaces that call rather than joining it.
+    fn selected_variant(self, selected: bool, variant: Variant) -> Self;
+
+    fn primary(self) -> Self {
+        self.variant(Variant::Primary)
     }
 
-    /// Show a [`Button`] that reveals more icon buttons (or other content) on hover.
-    ///
-    /// `button` will be called multiple times on frames where the button is hovered.
-    ///
-    /// Pass in the width the hover ui will need (usually this follows the formula
-    /// `count * button_width + (count - 1) * icon_spacing`)
-    pub fn with_hover_icon_buttons<R>(
-        ui: &mut egui::Ui,
-        mut button: impl FnMut() -> Self,
-        mut hover_buttons_width: f32,
-        hover_buttons: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> (WidgetAtomResponse, Option<R>) {
-        // Left and right spacing around the icons + some tolerance
-        hover_buttons_width += ui.spacing().icon_spacing * 2.0 + 1.0;
+    fn secondary(self) -> Self {
+        self.variant(Variant::Secondary)
+    }
 
-        let clip_rect = ui.clip_rect();
+    fn ghost(self) -> Self {
+        self.variant(Variant::Ghost)
+    }
 
-        let calc_rect_with_buttons = |mut button_rect: Rect, available_rect: Rect| {
-            let limit = available_rect
-                .max
-                .x
-                .at_least(button_rect.max.x)
-                .at_most(clip_rect.max.x);
-            button_rect.max.x = (button_rect.max.x + hover_buttons_width).at_most(limit);
-            button_rect
-        };
+    fn outlined(self) -> Self {
+        self.variant(Variant::Outlined)
+    }
 
-        let id = ui.next_auto_id();
-        let hovered = ui.read_response(id).is_some_and(|last| {
-            let rect_with_buttons =
-                calc_rect_with_buttons(last.interact_rect, ui.available_rect_before_wrap());
-            ui.rect_contains_pointer(rect_with_buttons)
-        });
+    fn blue(self) -> Self {
+        self.variant(Variant::Blue)
+    }
 
-        let mut atom_response = None;
-        ui.add_visible(!hovered, |ui: &mut egui::Ui| {
-            let atom_layout_response = button().atom_ui(ui);
-            atom_response = Some(atom_layout_response.clone());
-            atom_layout_response.response
-        });
-        let response = atom_response.expect("Should be set now");
+    fn opened(self) -> Self {
+        self.variant(Variant::Opened)
+    }
 
-        // Due to the interact_radius there would be a couple px where the cursor would trigger the
-        // hover without actually being rect_contains_pointer, which looks confusing (hovered but
-        // the icon button isn't shown). To mask, interact on top of the button so it doesn't get
-        // the hover style:
-        ui.interact(response.rect, id.with("hover_mask"), Sense::click());
+    fn size_normal(self) -> Self {
+        self.size(Size::Normal)
+    }
 
-        if !hovered {
-            ui.skip_ahead_auto_ids(1);
-            return (response, None);
+    fn size_small(self) -> Self {
+        self.size(Size::Small)
+    }
+
+    fn size_tiny(self) -> Self {
+        self.size(Size::Tiny)
+    }
+}
+
+impl ButtonExt for Button<'_> {
+    fn variant(self, variant: Variant) -> Self {
+        self.with_class(variant.class_name())
+            .image_tint_follows_text_color(true)
+    }
+
+    fn size(self, size: Size) -> Self {
+        let button = self
+            .with_class(size.class_name())
+            .image_tint_follows_text_color(true);
+
+        // The class already carries the size to the theme, which is what sizes the button.
+        // `Custom` is the exception: it borrows the class of the nearest standard size, so its
+        // exact height has to travel on the widget.
+        match size {
+            Size::Custom { .. } => button
+                .with_class(Size::CLASS_CUSTOM)
+                .min_size(size.icon_button_size()),
+            _ => button,
         }
+    }
 
+    fn icon_button(self) -> Self {
+        self.with_class(class::ICON)
+            .image_tint_follows_text_color(true)
+    }
+
+    fn highlighted(self, highlighted: bool) -> Self {
+        self.with_class_if(class::HIGHLIGHTED, highlighted)
+    }
+
+    fn selected_variant(self, selected: bool, variant: Variant) -> Self {
+        self.selected(selected)
+            // The variant class goes on last, so it wins over any variant the button already asked
+            // for — the point of the call is to restyle the selected state.
+            .with_class_if(variant.class_name(), selected)
+            .with_class_if(class::SELECTED_VARIANT, selected)
+    }
+}
+
+/// Rerun's styling, as extensions to [`egui::DragValue`].
+///
+/// A drag value is a [`Button`] while dragged and a [`egui::TextEdit`] while typed into, and it
+/// forwards its classes to both, so it is styled just like they are.
+pub trait DragValueExt: Sized {
+    fn variant(self, variant: Variant) -> Self;
+
+    fn size(self, size: Size) -> Self;
+}
+
+impl DragValueExt for egui::DragValue<'_> {
+    fn variant(self, variant: Variant) -> Self {
+        self.with_class(variant.class_name())
+    }
+
+    fn size(self, size: Size) -> Self {
+        self.with_class(size.class_name())
+            .with_class_if(Size::CLASS_CUSTOM, matches!(size, Size::Custom { .. }))
+            .min_size(size.icon_button_size())
+    }
+}
+
+/// Show a [`Button`] that reveals more icon buttons (or other content) on hover.
+///
+/// `button` will be called multiple times on frames where the button is hovered.
+///
+/// Pass in the width the hover ui will need (usually this follows the formula
+/// `count * button_width + (count - 1) * icon_spacing`)
+pub fn with_hover_icon_buttons<'a, R>(
+    ui: &mut egui::Ui,
+    mut button: impl FnMut() -> Button<'a>,
+    mut hover_buttons_width: f32,
+    hover_buttons: impl FnOnce(&mut egui::Ui) -> R,
+) -> (WidgetAtomResponse, Option<R>) {
+    // Left and right spacing around the icons + some tolerance
+    hover_buttons_width += ui.spacing().icon_spacing * 2.0 + 1.0;
+
+    let clip_rect = ui.clip_rect();
+
+    let calc_rect_with_buttons = |mut button_rect: Rect, available_rect: Rect| {
+        let limit = available_rect
+            .max
+            .x
+            .at_least(button_rect.max.x)
+            .at_most(clip_rect.max.x);
+        button_rect.max.x = (button_rect.max.x + hover_buttons_width).at_most(limit);
+        button_rect
+    };
+
+    let id = ui.next_auto_id();
+    let hovered = ui.read_response(id).is_some_and(|last| {
         let rect_with_buttons =
-            calc_rect_with_buttons(response.rect, ui.available_rect_before_wrap());
+            calc_rect_with_buttons(last.interact_rect, ui.available_rect_before_wrap());
+        ui.rect_contains_pointer(rect_with_buttons)
+    });
 
-        let mut extra_ui = ui.new_child(
-            egui::UiBuilder::new()
-                .max_rect(rect_with_buttons)
-                .layout(egui::Layout::right_to_left(egui::Align::Min)),
+    let mut atom_response = None;
+    ui.add_visible(!hovered, |ui: &mut egui::Ui| {
+        let atom_layout_response = button().atom_ui(ui);
+        atom_response = Some(atom_layout_response.clone());
+        atom_layout_response.response
+    });
+    let response = atom_response.expect("Should be set now");
+
+    // Due to the interact_radius there would be a couple px where the cursor would trigger the
+    // hover without actually being rect_contains_pointer, which looks confusing (hovered but
+    // the icon button isn't shown). To mask, interact on top of the button so it doesn't get
+    // the hover style:
+    ui.interact(response.rect, id.with("hover_mask"), Sense::click());
+
+    if !hovered {
+        ui.skip_ahead_auto_ids(1);
+        return (response, None);
+    }
+
+    let rect_with_buttons = calc_rect_with_buttons(response.rect, ui.available_rect_before_wrap());
+
+    let mut extra_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(rect_with_buttons)
+            .layout(egui::Layout::right_to_left(egui::Align::Min)),
+    );
+    extra_ui.spacing_mut().item_spacing.x = ui.spacing().icon_spacing;
+
+    let button = button().truncate();
+
+    let (response, icon_response) = egui::Sides::new()
+        .spacing(ui.spacing().icon_spacing)
+        .shrink_left()
+        .show(
+            &mut extra_ui,
+            |ui| button.atom_ui(ui),
+            |ui| {
+                ui.add_space(ui.spacing().icon_spacing);
+                hover_buttons(ui)
+            },
         );
-        extra_ui.spacing_mut().item_spacing.x = ui.spacing().icon_spacing;
 
-        let mut button = button();
-        button.inner = button.inner.truncate();
-
-        let (response, icon_response) = egui::Sides::new()
-            .spacing(ui.spacing().icon_spacing)
-            .shrink_left()
-            .show(
-                &mut extra_ui,
-                |ui| button.atom_ui(ui),
-                |ui| {
-                    ui.add_space(ui.spacing().icon_spacing);
-                    hover_buttons(ui)
-                },
-            );
-
-        (response, Some(icon_response))
-    }
-
-    /// Show a [`Button`] that reveals an icon button on hover.
-    ///
-    /// `button` will be called multiple times on frames where the button is hovered.
-    pub fn with_hover_icon_button(
-        ui: &mut egui::Ui,
-        icon: ReButton<'static>,
-        mut button: impl FnMut() -> Self,
-    ) -> (WidgetAtomResponse, Option<Response>) {
-        let size = button().size;
-        let icon = icon.size(size);
-        Self::with_hover_icon_buttons(ui, button, size.icon_button_size().x, |ui| ui.add(icon))
-    }
-
-    pub fn atom_ui(self, ui: &mut egui::Ui) -> WidgetAtomResponse {
-        let Self {
-            variant,
-            size,
-            inner,
-            icon,
-            highlighted,
-            accessible_name,
-        } = self;
-
-        Self::wrap_widget(ui, variant, size, icon, |ui| {
-            // We can override here without reverting, since it will be reverted by wrap_widget
-            if highlighted {
-                // Make the resting button look hovered by borrowing the hovered visuals.
-                let style = ui.style_mut();
-                style.visuals.widgets.inactive = style.visuals.widgets.hovered;
-            }
-
-            let mut response = inner.min_size(size.icon_button_size()).atom_ui(ui);
-            if let Some(name) = accessible_name {
-                response.response = response.response.accessible_name(name);
-            }
-            response
-        })
-    }
-
-    /// Helper to get a non-button egui widget in style of a `ReButton` (e.g. `DragValue` or `ComboBox`).
-    ///
-    /// `icon` ensures the button will be square. `highlighted` forces hover style.
-    pub fn wrap_widget<R>(
-        ui: &mut egui::Ui,
-        variant: Variant,
-        size: Size,
-        icon: bool,
-        inner: impl FnOnce(&mut egui::Ui) -> R,
-    ) -> R {
-        let previous_style = ui.style().clone();
-        let tokens = ui.tokens();
-        let style = ui.style_mut();
-        size.apply(style, icon);
-        variant.apply(style, tokens);
-        let response = inner(ui);
-        ui.set_style(previous_style);
-        response
-    }
+    (response, Some(icon_response))
 }
 
-pub trait ReButtonExt<'a> {
-    fn primary(self) -> ReButton<'a>;
-    fn secondary(self) -> ReButton<'a>;
-}
-
-impl<'a> ReButtonExt<'a> for Button<'a> {
-    fn primary(self) -> ReButton<'a> {
-        ReButton::from_button(self).primary()
-    }
-
-    fn secondary(self) -> ReButton<'a> {
-        ReButton::from_button(self).secondary()
-    }
-}
-
-impl egui::Widget for ReButton<'_> {
-    fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        self.atom_ui(ui).response
-    }
+/// Show a [`Button`] that reveals an icon button on hover.
+///
+/// `button` will be called multiple times on frames where the button is hovered.
+pub fn with_hover_icon_button<'a>(
+    ui: &mut egui::Ui,
+    icon: Button<'static>,
+    button: impl FnMut() -> Button<'a>,
+    size: Size,
+) -> (WidgetAtomResponse, Option<Response>) {
+    let icon = icon.size(size);
+    with_hover_icon_buttons(ui, button, size.icon_button_size().x, |ui| ui.add(icon))
 }

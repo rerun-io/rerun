@@ -286,9 +286,6 @@
     "extreme_fg_color": {
       "color": "{Gray.1000}"
     },
-    "widget_inactive_bg_fill": {
-      "color": "{Gray.300}"
-    },
     "widget_hovered_color": {
       "color": "{Gray.250}"
     },
@@ -374,6 +371,12 @@
     "list_item_active_bg": {
       "color": "{Gray.150}"
     },
+    "list_item_button_hovered_bg": {
+      "color": "{Gray.200}"
+    },
+    "list_item_button_pressed_bg": {
+      "color": "{Gray.250}"
+    },
     "list_item_collapse_default": {
       "color": "{Gray.500}"
     },
@@ -446,18 +449,6 @@
       "color": "{Gray.500}"
     },
 
-    "bg_fill_inverse": {
-      "color": "{Gray.800}"
-    },
-    "bg_fill_inverse-hover": {
-      "color": "{Gray.850}"
-    },
-    "text_inverse": {
-      "color": "{Gray.250}"
-    },
-    "icon_inverse": {
-      "color": "{Gray.250}"
-    },
 
     "preview_timeline_track_color": {
       "color": "{Gray.1000}",

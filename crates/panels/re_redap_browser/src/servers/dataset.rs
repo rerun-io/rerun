@@ -8,10 +8,11 @@ use re_log_types::{EntityPathPart, EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::ApiError;
+use re_ui::ButtonExt as _;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
-use re_ui::{DesignTokens, ReButton, ServerValue, TabBar, UiExt as _, icons};
+use re_ui::{DesignTokens, ServerValue, TabBar, UiExt as _, icons};
 use re_uri::DatasetResource;
 use re_viewer_context::{
     AppContext, SystemCommand, SystemCommandSender as _, TableReference as ViewerTableReference,
@@ -744,8 +745,8 @@ impl Server {
                             return;
                         }
 
-                        // `outlined` is the `ReButton` variant with a border.
-                        let open_button = ui.add(re_ui::ReButton::new("Open").outlined().small());
+                        // `outlined` is the button variant with a border.
+                        let open_button = ui.add(egui::Button::new("Open").outlined().size_small());
 
                         if open_button.clicked_with_open_in_background() {
                             open_asset_ui(ui, dataset, asset, true);
@@ -1515,7 +1516,7 @@ fn register_asset_button(
 
     let response = ui.add_enabled(
         no_room_reason.is_none(),
-        ReButton::new("Register asset").blue().small(),
+        egui::Button::new("Register asset").blue().size_small(),
     );
 
     if let Some(reason) = no_room_reason {

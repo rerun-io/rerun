@@ -13,7 +13,7 @@ use re_redap_client::ApiError;
 use re_sorbet::{ColumnError, ColumnKind, ComponentColumnDescriptor};
 use re_ui::filter_widget::{FilterState, PathRanges, format_matching_text};
 use re_ui::list_item;
-use re_ui::{ReButton, ServerValue, TableStyle, UiExt as _, icons};
+use re_ui::{ButtonExt as _, ServerValue, TableStyle, UiExt as _, icons};
 
 #[cfg(test)]
 mod tests;
@@ -266,9 +266,9 @@ impl SchemaUiState {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         let popup_id = ui.make_persistent_id("display_menu");
                         let response = ui.add(
-                            ReButton::new((icons::SETTINGS, "Display"))
+                            egui::Button::new((icons::SETTINGS, "Display"))
                                 .outlined()
-                                .small()
+                                .size_small()
                                 .highlighted(egui::Popup::is_id_open(ui.ctx(), popup_id)),
                         );
 
@@ -633,8 +633,8 @@ fn metadata_cell_ui(ui: &mut egui::Ui, metadata: &BTreeMap<String, String>) {
         return;
     }
 
-    let response =
-        ui.add(ReButton::dropdown(re_format::format_plural_s(metadata.len(), "key")).tiny());
+    let response = ui
+        .add(egui::Button::dropdown(re_format::format_plural_s(metadata.len(), "key")).size_tiny());
 
     egui::Popup::menu(&response)
         .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
@@ -799,7 +799,10 @@ fn cell_galley_label(ui: &mut egui::Ui, galley: Arc<egui::Galley>, full: egui::t
             size,
         );
         if ui
-            .put(rect, ReButton::icon(icons::COPY, "Copy").tiny().ghost())
+            .put(
+                rect,
+                egui::Button::icon(icons::COPY, "Copy").size_tiny().ghost(),
+            )
             .clicked()
         {
             re_log::info!("Copied {:?}", full.text);

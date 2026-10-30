@@ -1,5 +1,3 @@
-use std::mem;
-
 use arrow::datatypes::Schema;
 use egui::{Atom, Atoms, Frame, Margin, Sense, WidgetAtom};
 use re_log_types::TimestampFormat;
@@ -8,7 +6,7 @@ use re_ui::filter_widget::{FilterMatcher, PathRanges, format_matching_text};
 use re_ui::list_item::CustomContent;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::text_edit::{ReTextEdit, TextEditVariant};
-use re_ui::{ReButton, Size, UiExt as _, icons};
+use re_ui::{ButtonExt as _, Size, UiExt as _, icons};
 
 use super::{ColumnFilter, CustomFilter, Filter as _, TableFilter, TimestampFormatted};
 use crate::datafusion_adapter::FilterErrors;
@@ -146,7 +144,7 @@ fn column_picker_ui(
         && ui
             .place(
                 rect,
-                ReButton::icon(icons::CLOSE, "Clear search").size(clear_button_size),
+                egui::Button::icon(icons::CLOSE, "Clear search").size(clear_button_size),
             )
             .on_hover_cursor(egui::CursorIcon::PointingHand)
             .clicked()
@@ -507,8 +505,8 @@ impl FilterState {
                     if let Some(controls) = controls {
                         let popup_id = ui.make_persistent_id("add_filter_menu");
                         let response = ui.add(
-                            ReButton::new(("Add filter", icons::FILTER))
-                                .small()
+                            egui::Button::new(("Add filter", icons::FILTER))
+                                .size_small()
                                 .highlighted(egui::Popup::is_id_open(ui.ctx(), popup_id)),
                         );
 
@@ -533,7 +531,9 @@ impl FilterState {
 
                     if controls.is_some()
                         && !self.filters.is_empty()
-                        && ui.add(ReButton::new("Clear filters").small()).clicked()
+                        && ui
+                            .add(egui::Button::new("Clear filters").size_small())
+                            .clicked()
                     {
                         self.clear();
                         added_filter = None;
@@ -650,10 +650,6 @@ impl ColumnFilter {
             .open_bool(&mut popup_open);
 
         let popup_response = popup.show(|ui| {
-            // The default text edit background is too dark for the (lighter) background of popups,
-            // so we switch to a lighter shade.
-            ui.visuals_mut().text_edit_bg_color = Some(ui.visuals().widgets.inactive.bg_fill);
-
             let action = self
                 .filter
                 .popup_ui(ui, timestamp_format, display_name, popup_was_closed);
@@ -741,23 +737,16 @@ fn filter_pill_ui(
 
     let atom_response = atom_layout.show(ui);
 
-    let mut should_delete_filter = false;
-    if let Some(rect) = atom_response.rect(ColumnFilter::close_button_id()) {
-        // The default padding is (1.0, 0.0), making the button look weird
-        let button_padding = mem::take(&mut ui.style_mut().spacing.button_padding);
-        if ui
-            .place(
+    let should_delete_filter = atom_response
+        .rect(ColumnFilter::close_button_id())
+        .is_some_and(|rect| {
+            ui.place(
                 rect,
                 ui.small_icon_button_widget(&re_ui::icons::CLOSE_SMALL, remove_label)
-                    // Without small the button would grow to interact_size and be off-center
-                    .small(),
+                    .size(Size::custom(rect.height())),
             )
             .clicked()
-        {
-            should_delete_filter = true;
-        }
-        ui.style_mut().spacing.button_padding = button_padding;
-    }
+        });
 
     (
         atom_response.response.accessible_name(label),
@@ -776,7 +765,7 @@ fn custom_filter_ui(
 ) -> DisplayFilterUiResult {
     let has_shown_custom_filter_id = egui::Id::unique("has_shown_custom_table_filter");
     let has_shown_custom_filter = ui.data_mut(|data| {
-        mem::replace(
+        std::mem::replace(
             data.get_temp_mut_or_default::<bool>(has_shown_custom_filter_id),
             true,
         )
@@ -1280,9 +1269,6 @@ mod tests {
                     )
                     .open(true)
                     .show(|ui| {
-                        ui.visuals_mut().text_edit_bg_color =
-                            Some(ui.visuals().widgets.inactive.bg_fill);
-
                         ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
 
                         let _res =

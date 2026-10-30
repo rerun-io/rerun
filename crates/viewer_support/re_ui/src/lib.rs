@@ -42,14 +42,13 @@ mod url_decorator;
 mod wayland;
 
 mod button;
-mod checkbox;
 mod combo_item;
 pub mod re_form;
 #[cfg(feature = "testing")]
 pub mod testing;
+pub mod theme;
 
-use egui::style::WidgetVisuals;
-use egui::{NumExt as _, Style};
+use egui::NumExt as _;
 
 pub use self::button::*;
 pub use self::combo_item::*;
@@ -84,6 +83,7 @@ pub use self::requested_object::{RequestedObject, ServerValue};
 pub use self::section_collapsing_header::SectionCollapsingHeader;
 pub use self::syntax_highlighting::SyntaxHighlighting;
 pub use self::tab_bar::{TAB_TOOLBAR_HEIGHT, TAB_TOOLBAR_MARGIN_Y, TabBar};
+pub use self::theme::ReTheme;
 pub use self::time_drag_value::TimeDragValue;
 pub use self::ui_ext::UiExt;
 pub use self::ui_layout::UiLayout;
@@ -261,10 +261,6 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
     });
 
     set_themes(egui_ctx);
-    // Replaces egui's own themes, which `Context::default` registers.
-    egui_ctx.replace_widget_theme(checkbox::CheckboxTheme);
-    egui_ctx.replace_widget_theme(text_edit::TextEditTheme);
-    egui_ctx.replace_widget_theme(text_edit::CompletionButtonTheme);
 
     #[cfg(hot_reload_design_tokens)]
     {
@@ -314,6 +310,8 @@ fn set_svg_glyphs(egui_ctx: &egui::Context) {
 }
 
 fn set_themes(egui_ctx: &egui::Context) {
+    ReTheme::install(egui_ctx);
+
     // Before the fonts: when no font is loaded yet, egui applies the new fonts right away,
     // and the fonts pick up the rasterizers registered so far.
     set_svg_glyphs(egui_ctx);
@@ -416,12 +414,4 @@ fn is_in_resizable_container(ui: &egui::Ui) -> bool {
     } else {
         false // Safe fallback
     }
-}
-
-fn all_visuals(style: &mut Style, f: impl Fn(&mut WidgetVisuals)) {
-    f(&mut style.visuals.widgets.active);
-    f(&mut style.visuals.widgets.hovered);
-    f(&mut style.visuals.widgets.inactive);
-    f(&mut style.visuals.widgets.noninteractive);
-    f(&mut style.visuals.widgets.open);
 }

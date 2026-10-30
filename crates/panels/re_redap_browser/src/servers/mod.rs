@@ -1,3 +1,4 @@
+use re_ui::ButtonExt as _;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 use std::task::Poll;
@@ -434,8 +435,8 @@ fn error_ui(
                             ui.add_space(8.0);
                             if ui
                                 .add(
-                                    re_ui::ReButton::new(("Cancel", &icons::CLOSE))
-                                        .small()
+                                    egui::Button::new(("Cancel", &icons::CLOSE))
+                                        .size_small()
                                         .primary(),
                                 )
                                 .clicked()
@@ -449,9 +450,9 @@ fn error_ui(
                                 // User is already logged in — offer to use stored credentials
                                 if ui
                                     .add(
-                                        re_ui::ReButton::new(format!("Continue as {}", auth.email))
+                                        egui::Button::new(format!("Continue as {}", auth.email))
                                             .primary()
-                                            .small(),
+                                            .size_small(),
                                     )
                                     .clicked()
                                 {
@@ -467,7 +468,7 @@ fn error_ui(
                                 // required for Safari, which blocks popups not initiated
                                 // by a direct user gesture.
                                 if ui
-                                    .add(re_ui::ReButton::new("Log in").primary().small())
+                                    .add(egui::Button::new("Log in").primary().size_small())
                                     .clicked()
                                 {
                                     match LoginFlow::open_and_start(
@@ -485,7 +486,7 @@ fn error_ui(
                                 }
                             }
                             if ui
-                                .add(re_ui::ReButton::new("Edit connection").small())
+                                .add(egui::Button::new("Edit connection").size_small())
                                 .clicked()
                             {
                                 send_crossbeam(
@@ -536,7 +537,7 @@ fn warning_with_edit_button(
             }
             ui.add_space(8.0);
             if ui
-                .add(re_ui::ReButton::new("Edit connection").small())
+                .add(egui::Button::new("Edit connection").size_small())
                 .clicked()
             {
                 send_crossbeam(

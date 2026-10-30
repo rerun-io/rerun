@@ -454,10 +454,8 @@ fn map_view_section_ui(ui: &mut Ui, mapbox_access_token: &mut String) {
             );
         });
 
-        re_ui::text_edit::text_edit_scope(ui, |ui| {
-            ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true))
-                .labelled_by(label.id)
-        });
+        ui.add(egui::TextEdit::singleline(mapbox_access_token).password(true))
+            .labelled_by(label.id);
     });
 }
 

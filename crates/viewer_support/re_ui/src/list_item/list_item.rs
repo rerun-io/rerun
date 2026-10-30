@@ -5,9 +5,18 @@ use crate::list_item::navigation::ListItemNavigation;
 use crate::list_item::{
     CollapseButtonPlacement, ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent,
 };
-use crate::{DesignTokens, UiExt as _, design_tokens_of};
+use crate::{DesignTokens, Size, UiExt as _, design_tokens_of};
+use egui::class::HasClasses as _;
 use egui::emath::GuiRounding as _;
-use egui::{Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui};
+use egui::{Color32, EventFilter, NumExt as _, Response, Sense, Shape, Ui, UiBuilder};
+
+/// The [`Ui`] a list item's row is drawn in.
+///
+/// A list item is a dense, one-line thing, so everything in it is [`Size::Tiny`]. Stating it once
+/// here means a button inside a row comes out the right size without every call site saying so.
+fn list_item_builder() -> UiBuilder {
+    UiBuilder::new().with_class(Size::Tiny.class_name())
+}
 
 struct ListItemResponse {
     /// Response of the whole [`ListItem`]
@@ -371,9 +380,11 @@ impl ListItem {
     pub fn show_flat<'a>(self, ui: &mut Ui, content: impl ListItemContent + 'a) -> Response {
         // Note: the purpose of the scope is to minimize interferences on subsequent items' id
         ui.sanity_check();
-        ui.scope(|ui| self.ui(ui, None, 0.0, Box::new(content)))
-            .inner
-            .response
+        ui.scope_builder(list_item_builder(), |ui| {
+            self.ui(ui, None, 0.0, Box::new(content))
+        })
+        .inner
+        .response
     }
 
     /// Draw the item as a leaf node from a hierarchical list.
@@ -381,7 +392,7 @@ impl ListItem {
     /// *Important*: must be called while nested in a [`super::list_item_scope`].
     pub fn show_hierarchical(self, ui: &mut Ui, content: impl ListItemContent) -> Response {
         // Note: the purpose of the scope is to minimize interferences on subsequent items' id
-        ui.scope(|ui| {
+        ui.scope_builder(list_item_builder(), |ui| {
             let tokens = ui.tokens();
             let style = LayoutInfoStack::top(ui.ctx()).style;
             let default_indent = tokens.small_icon_size.x + tokens.text_to_icon_padding();
@@ -478,7 +489,9 @@ impl ListItem {
         // Note: the purpose of the scope is to minimize interferences on subsequent items' id
         let toggle_on_click = self.toggle_on_click;
         let response = ui
-            .scope(|ui| self.ui(ui, Some(id), 0.0, Box::new(content)))
+            .scope_builder(list_item_builder(), |ui| {
+                self.ui(ui, Some(id), 0.0, Box::new(content))
+            })
             .inner;
 
         let collapse_clicked = response

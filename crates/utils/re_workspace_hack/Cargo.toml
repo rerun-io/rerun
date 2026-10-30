@@ -62,7 +62,7 @@ datafusion-common = { version = "54", default-features = false, features = ["obj
 datafusion-expr = { version = "54" }
 digest = { version = "0.10", features = ["mac", "std"] }
 ecolor = { version = "0.37", features = ["bytemuck", "color-hex", "serde"] }
-eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
+eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "experimental", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
@@ -225,7 +225,7 @@ datafusion-common = { version = "54", default-features = false, features = ["obj
 datafusion-expr = { version = "54" }
 digest = { version = "0.10", features = ["mac", "std"] }
 ecolor = { version = "0.37", features = ["bytemuck", "color-hex", "serde"] }
-eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
+eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "experimental", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }

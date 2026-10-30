@@ -231,3 +231,29 @@ pub fn test_list_items_should_match_snapshot() {
     harness.run();
     harness.snapshot("list_items");
 }
+
+/// A hovered button must stand out from the hovered row it sits on.
+#[test]
+pub fn test_list_item_button_hover_stands_out() {
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [300.0, 60.0])
+        .build_ui(|ui| {
+            egui::Panel::right("right_panel").show(ui, |ui| {
+                ui.set_width(250.0);
+                list_item::list_item_scope(ui, "list_item_scope", |ui| {
+                    ui.list_item().show_hierarchical(
+                        ui,
+                        list_item::LabelContent::new("Item with buttons")
+                            .with_buttons(|ui| {
+                                ui.small_icon_button(&icons::ADD, "Add");
+                                ui.small_icon_button(&icons::REMOVE, "Remove");
+                            })
+                            .with_always_show_buttons(true),
+                    );
+                });
+            });
+        });
+
+    harness.get_by_label("Remove").hover();
+    harness.run();
+    harness.snapshot("list_item_button_hovered");
+}

@@ -1,10 +1,13 @@
+use egui::class::HasClasses as _;
 use egui::{
-    Align, Atom, Button, Color32, Image, Layout, Popup, RichText, Sense, TextStyle, include_image,
+    Align, Atom, Button, Color32, Image, Layout, Popup, RichText, Sense, TextStyle, UiBuilder,
+    include_image,
 };
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, icons};
+use re_ui::ButtonExt as _;
+use re_ui::{ContextExt as _, Size, UICommand, UICommandSender as _, UiExt as _, icons};
 use re_viewer_context::{
     ActiveStoreContext, RecordingCommandKind, StoreHub, SystemCommand, SystemCommandSender as _,
 };
@@ -85,14 +88,25 @@ pub fn top_panel(
             ui.add_space(top_bar_style.indent);
 
             if show_content {
-                top_bar_ui(
-                    frame,
-                    app,
-                    app_blueprint,
-                    store_context,
-                    store_hub,
-                    ui,
-                    gpu_resource_stats,
+                // The title bar is roomier than a list item, so everything in it is one size up.
+                // The widgets inherit this, and only need to say so if they want something else.
+                ui.scope_builder(
+                    UiBuilder::new().with_class(Size::Small.class_name()),
+                    |ui| {
+                        // The buttons carry their own padding at this size, so the gap between
+                        // them is already wide enough without the full item spacing on top.
+                        ui.spacing_mut().item_spacing.x = 4.0;
+
+                        top_bar_ui(
+                            frame,
+                            app,
+                            app_blueprint,
+                            store_context,
+                            store_hub,
+                            ui,
+                            gpu_resource_stats,
+                        );
+                    },
                 );
             }
         });
@@ -222,8 +236,9 @@ fn top_bar_ui(
                 ui.separator();
             } else {
                 // Make the first button the same distance form the side as from the top,
-                // no matter how high the top bar is.
-                let extra_margin = (ui.available_height() - 24.0) / 2.0;
+                // no matter how high the top bar is. The button's height comes from the theme, so
+                // ask it rather than assuming one.
+                let extra_margin = (ui.available_height() - Size::inherited(ui).height()) / 2.0;
                 ui.add_space(extra_margin);
             }
 
@@ -325,7 +340,8 @@ fn command_palette_trigger_ui(
     let button = Button::image_and_text(
         icons::SEARCH
             .as_image()
-            .fit_to_exact_size(ui.tokens().small_icon_size),
+            .fit_to_exact_size(ui.tokens().small_icon_size)
+            .tint(subdued_color),
         RichText::new(if agent_enabled {
             "Search commands or ask agent…"
         } else {
@@ -335,33 +351,12 @@ fn command_palette_trigger_ui(
     )
     .truncate()
     .right_text(RichText::new(shortcut).color(subdued_color))
-    .image_tint_follows_text_color(true)
-    .corner_radius(ui.tokens().normal_corner_radius())
+    .outlined()
+    // The icon is already tinted like the text; following the variant's text color would darken it.
+    .image_tint_follows_text_color(false)
     .min_size(button_rect.size());
 
-    let top_bar_color = ui.tokens().top_bar_color;
-    let border = ui.visuals().widgets.noninteractive.bg_stroke;
-    let response = ui
-        .scope(|ui| {
-            ui.spacing_mut().button_padding = egui::vec2(8.0, 0.0);
-
-            let widgets = &mut ui.visuals_mut().widgets;
-            widgets.inactive.bg_fill = top_bar_color;
-            widgets.inactive.weak_bg_fill = top_bar_color;
-            for widget in [
-                &mut widgets.inactive,
-                &mut widgets.hovered,
-                &mut widgets.active,
-                &mut widgets.open,
-            ] {
-                widget.bg_stroke = border;
-                widget.fg_stroke.color = subdued_color;
-                widget.expansion = 0.0;
-            }
-
-            ui.place(button_rect, button)
-        })
-        .inner;
+    let response = ui.place(button_rect, button);
 
     if response.clicked() {
         app.command_sender.send_ui(UICommand::ToggleCommandPalette);
@@ -467,7 +462,10 @@ fn navigation_button(
     command: UICommand,
     rect: Rect,
 ) {
-    let button = ui.small_icon_button_widget(icon, alt_text);
+    // The buttons are placed edge to edge in `rect`, so they must not grow to the top bar's size.
+    let button = ui
+        .small_icon_button_widget(icon, alt_text)
+        .size(Size::custom(rect.height()));
     let response = ui
         .add_enabled_ui(enabled, |ui| ui.place(rect, button))
         .inner;
@@ -664,6 +662,11 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
+    // Square icon buttons already leave room around their icons, so the toggles sit closer
+    // together than the rest of the bar.
+    let item_spacing = ui.spacing().item_spacing.x;
+    ui.spacing_mut().item_spacing.x = 2.0;
+
     if app.app_options().experimental.agent_panel {
         let mut open = app.agent_panel_open();
         if ui
@@ -750,6 +753,8 @@ fn panel_buttons_r2l(
 
     app.notifications.notification_toggle_button(ui);
 
+    ui.spacing_mut().item_spacing.x = item_spacing;
+
     let selection = app.state.selection_state.selected_items();
     let time_ctrl = app
         .active_recording_id()
@@ -798,7 +803,7 @@ fn panel_buttons_r2l(
                 if !ui.is_sizing_pass() {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui
-                            .add(re_ui::ReButton::new("Log out").small().primary())
+                            .add(egui::Button::new("Log out").size_small().primary())
                             .clicked()
                         {
                             app.command_sender.send_system(SystemCommand::Logout);

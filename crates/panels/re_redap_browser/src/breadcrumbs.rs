@@ -1,4 +1,4 @@
-use re_ui::{ReButton, Size};
+use re_ui::{ButtonExt as _, Size};
 use re_uri::{DATASET_HIERARCHY_SEPARATOR, split_dataset_hierarchy_path};
 use re_viewer_context::{CommandSender, Route, SystemCommand, SystemCommandSender as _};
 
@@ -66,7 +66,7 @@ fn crumb_ui(
     command_sender: &CommandSender,
 ) {
     if ui
-        .add(ReButton::new(label.into()).ghost().size(CRUMB_SIZE))
+        .add(egui::Button::new(label.into()).ghost().size(CRUMB_SIZE))
         .clicked()
     {
         if let Some(item) = route.item() {

@@ -13,7 +13,7 @@ use re_agent::acp::schema::v1::{
 };
 use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
-use re_ui::{ReButton, UiExt as _, icons};
+use re_ui::{ButtonExt as _, UiExt as _, icons};
 
 use super::MAX_REQUEST_CONTENT_HEIGHT;
 use super::elicitation_ui::ElicitationUi;
@@ -269,7 +269,10 @@ fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput, example_prom
     ui.add_space(ui.spacing().item_spacing.y);
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
     for prompt in example_prompts {
-        if ui.add(ReButton::new(prompt).outlined().small()).clicked() {
+        if ui
+            .add(egui::Button::new(prompt).outlined().size_small())
+            .clicked()
+        {
             input.example_prompt_clicked = Some(prompt.clone());
         }
     }
@@ -582,13 +585,19 @@ fn footer_ui(
             },
             |ui| {
                 let clicked = if turn_in_progress {
-                    ui.add(ReButton::icon(icons::STOP, "Stop").primary().small())
-                        .on_hover_text("Cancel the current turn (Esc)")
-                        .clicked()
+                    ui.add(
+                        egui::Button::icon(icons::STOP, "Stop")
+                            .primary()
+                            .size_small(),
+                    )
+                    .on_hover_text("Cancel the current turn (Esc)")
+                    .clicked()
                 } else {
                     ui.add_enabled(
                         can_send,
-                        ReButton::icon(icons::ARROW_UP, "Send").primary().small(),
+                        egui::Button::icon(icons::ARROW_UP, "Send")
+                            .primary()
+                            .size_small(),
                     )
                     .on_hover_text("Send (⏎)")
                     .clicked()
@@ -640,7 +649,7 @@ fn auth_ui(
                         }
                     }
                     AuthMethod::Agent(method) => {
-                        if ui.add(ReButton::new(&method.name).primary()).clicked() {
+                        if ui.add(egui::Button::new(&method.name).primary().size_small()).clicked() {
                             picked = Some(method.id.clone());
                         }
                         if let Some(description) = &method.description {
@@ -654,7 +663,7 @@ fn auth_ui(
             ui.weak("Restarting clears this conversation and resends your last prompt in a new session, without the previous conversation context.");
             ui.horizontal(|ui| {
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.add(ReButton::new("Restart and resend").primary())
+                if ui.add(egui::Button::new("Restart and resend").primary().size_small())
                     .on_hover_text("Restarts the agent to pick up your credentials and resends your last prompt, including attachments, in the new session.")
                     .clicked()
                 {
@@ -713,8 +722,10 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
             ui.horizontal_wrapped(|ui| {
                 for option in &request.options {
                     let button = match option.kind {
-                        PermissionOptionKind::AllowOnce => ReButton::new(&option.name).primary(),
-                        _ => ReButton::new(&option.name).outlined(),
+                        PermissionOptionKind::AllowOnce => {
+                            egui::Button::new(&option.name).primary().size_small()
+                        }
+                        _ => egui::Button::new(&option.name).outlined().size_small(),
                     };
                     let clicked = ui.add(button).clicked();
                     let shortcut = is_first

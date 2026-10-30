@@ -642,6 +642,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
         ui.add_space(8.0); // margin within the frame
 
+        // Square icon buttons already leave room around their icons. egui_tiles lays out the tabs in
+        // this same `Ui` afterwards, so the spacing is restored at the end.
+        let item_spacing = ui.spacing().item_spacing.x;
+        ui.spacing_mut().item_spacing.x = 4.0;
+
         if *self.maximized == Some(view_id) {
             // Show minimize-button:
             if ui
@@ -732,6 +737,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         });
 
         self.reports_button(ui, view_id);
+
+        ui.spacing_mut().item_spacing.x = item_spacing;
     }
 
     fn tab_bar_left_ui(

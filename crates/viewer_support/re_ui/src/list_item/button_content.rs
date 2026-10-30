@@ -62,7 +62,7 @@ impl ListItemContent for ButtonContent<'_> {
 
         // Compensate for the button padding such that the button text is aligned with other list
         // item contents.
-        ui.add_space(-ui.spacing().button_padding.x);
+        ui.add_space(-crate::Size::inherited(&ui).padding().x);
 
         let response = ui.add_enabled(enabled, egui::Button::new(label));
         if let Some(on_click) = on_click

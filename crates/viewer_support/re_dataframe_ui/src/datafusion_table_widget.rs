@@ -5,6 +5,7 @@ use arrow::array::Array as _;
 use arrow::datatypes::{Field, Schema, SchemaRef};
 use datafusion::prelude::SessionContext;
 use datafusion::sql::TableReference as DataFusionTableReference;
+use egui::class::HasClasses as _;
 use egui::containers::menu::MenuConfig;
 use egui::{Frame, Id, Margin, OpenUrl, Panel, RichText, Ui};
 use egui_table::{CellInfo, HeaderCellInfo};
@@ -18,7 +19,7 @@ use re_sdk_types::blueprint::components::{ColumnDisplayMode, ColumnName, TableLa
 use re_sdk_types::components::{Thumbnail, Url};
 use re_sorbet::{ColumnDescriptorRef, SorbetSchema};
 use re_ui::menu::menu_style;
-use re_ui::{UiExt as _, UiLayout, icons};
+use re_ui::{ButtonExt as _, UiExt as _, UiLayout, icons};
 use re_viewer_context::{
     AppBlueprintCtx, AppContext, BlueprintContext as _, MaybeMutRef, TableReference,
 };
@@ -834,22 +835,28 @@ impl<'a> DataFusionTableWidget<'a> {
         Frame::new()
             .inner_margin(Margin::symmetric(16, 0))
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    ui.error_label(&error);
+                ui.allocate_ui_with_layout(
+                    // As tall as the error alert, so the refresh button centers on it rather than
+                    // hanging from the row's top.
+                    egui::vec2(ui.available_width(), re_ui::Size::Small.height()),
+                    egui::Layout::left_to_right(egui::Align::Center),
+                    |ui| {
+                        ui.error_label(&error);
 
-                    if ui
-                        .small_icon_button(&re_ui::icons::RESET, "Refresh")
-                        .clicked()
-                    {
-                        // This will trigger a fresh query on the next frame.
-                        Self::refresh(
-                            runtime,
-                            ui.ctx().clone(),
-                            Arc::clone(&self.session_ctx),
-                            self.datafusion_table_ref.clone(),
-                        );
-                    }
-                });
+                        if ui
+                            .small_icon_button(&re_ui::icons::RESET, "Refresh")
+                            .clicked()
+                        {
+                            // This will trigger a fresh query on the next frame.
+                            Self::refresh(
+                                runtime,
+                                ui.ctx().clone(),
+                                Arc::clone(&self.session_ctx),
+                                self.datafusion_table_ref.clone(),
+                            );
+                        }
+                    },
+                );
             });
 
         if let Some(new_filters) = &new_filters {
@@ -1323,7 +1330,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     ui.weak("Try changing or removing a filter.");
                     ui.add_space(8.0);
                     if ui
-                        .add(re_ui::ReButton::new("Clear filters").secondary())
+                        .add(egui::Button::new("Clear filters").secondary().size_small())
                         .clicked()
                     {
                         filter_state.clear();
@@ -1568,7 +1575,7 @@ fn toolbar_controls_ui<'a>(
     let row_height = re_ui::TAB_TOOLBAR_HEIGHT;
 
     if let Some(layout_kind) = layout_kind.as_mut() {
-        ui.selectable_toggle_sized(Some(row_height), |ui| {
+        ui.selectable_toggle(|ui| {
             ui.icon_selectable_value(
                 &icons::TABLE_ROW_VIEW,
                 "Table view",
@@ -1584,15 +1591,18 @@ fn toolbar_controls_ui<'a>(
         });
     }
 
-    re_ui::ReButton::wrap_widget(ui, re_ui::Variant::Ghost, re_ui::Size::Small, false, |ui| {
-        columns_edit_menu_ui(
-            ui,
-            blueprint_ctx,
-            *layout_kind,
-            column_display_mode,
-            blueprint_columns,
-        );
-    });
+    ui.scope_builder(
+        egui::UiBuilder::new().with_class(re_ui::Size::Small.class_name()),
+        |ui| {
+            columns_edit_menu_ui(
+                ui,
+                blueprint_ctx,
+                *layout_kind,
+                column_display_mode,
+                blueprint_columns,
+            );
+        },
+    );
 
     if let Some(state) = preview_state {
         ui.add_space(12.0);
@@ -1607,8 +1617,8 @@ fn toolbar_controls_ui<'a>(
         if ui
             .add_sized(
                 egui::vec2(width, row_height),
-                re_ui::ReButton::new((icon.as_image(), label))
-                    .small()
+                egui::Button::new((icon.as_image(), label))
+                    .size_small()
                     .outlined()
                     .selected(playing),
             )
@@ -1631,7 +1641,7 @@ fn toolbar_controls_ui<'a>(
 
         // `Sides` lays its right-hand side out right to left, so the fastest
         // speed is listed first.
-        ui.selectable_toggle_sized(Some(row_height), |ui| {
+        ui.selectable_toggle(|ui| {
             for value in [faster, 1.0, slower] {
                 ui.selectable_value(playback_speed, value, format_playback_speed(value));
             }
