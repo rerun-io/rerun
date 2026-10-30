@@ -14,18 +14,24 @@ mod feedback;
 #[cfg(agent_harness_backend)]
 mod harness;
 mod preamble;
-#[cfg(all(agent_harness_backend, feature = "analytics"))]
+#[cfg(feature = "analytics")]
 mod product_feedback;
 #[cfg(agent_harness_backend)]
 mod self_improve;
+#[cfg(not(target_arch = "wasm32"))]
 mod viewer_toolbox;
 
+#[cfg(all(not(agent_harness_backend), feature = "analytics"))]
+pub use product_feedback::record_without_text as record_feedback_without_text;
+#[cfg(not(target_arch = "wasm32"))]
 pub use viewer_toolbox::ViewerControlCall;
 
 /// Where the skills are unpacked inside the agent directory.
+#[cfg(agent_harness_backend)]
 const SKILLS_SUBDIR: &str = "agent_context/skills";
 
 /// Where the documentation and snippets are unpacked inside the agent directory.
+#[cfg(agent_harness_backend)]
 const DOCS_SUBDIR: &str = "agent_context/docs";
 
 /// Offered in an empty conversation while a recording is open.
@@ -65,11 +71,13 @@ pub struct ViewerAgentPanel {
 
     /// Viewer-control operations that a model-API agent asked for, to be run on the UI thread.
     /// Set up with the panel.
+    #[cfg(not(target_arch = "wasm32"))]
     viewer_control_calls: Option<crossbeam::channel::Receiver<viewer_toolbox::QueuedCall>>,
 }
 
 impl ViewerAgentPanel {
     /// Takes the viewer-control operations that the agent asked for since the last call.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn take_viewer_control_calls(&self) -> Vec<ViewerControlCall> {
         self.viewer_control_calls
             .as_ref()
@@ -220,7 +228,7 @@ impl ViewerAgentPanel {
     ) {
         re_tracing::profile_function!();
 
-        let mut panel = cfg_select! {
+        let panel = cfg_select! {
             agent_harness_backend => {
                 self.harness.new_panel(
                     settings,
@@ -241,18 +249,26 @@ impl ViewerAgentPanel {
             }}
         };
 
-        let (calls_tx, calls_rx) = crossbeam::channel::bounded(viewer_toolbox::MAX_WAITING_CALLS);
-        self.viewer_control_calls = Some(calls_rx);
-        panel.set_toolbox(viewer_toolbox::ViewerToolbox::new(
-            calls_tx,
-            egui_ctx.clone(),
-        ));
+        let panel = cfg_select! {
+            target_arch = "wasm32" => {{
+                let _ = egui_ctx;
+                panel
+            }}
+            _ => {{
+                let mut panel = panel;
+                let (calls_tx, calls_rx) =
+                    crossbeam::channel::bounded(viewer_toolbox::MAX_WAITING_CALLS);
+                self.viewer_control_calls = Some(calls_rx);
+                panel.set_toolbox(viewer_toolbox::ViewerToolbox::new(calls_tx, egui_ctx.clone()));
+                panel
+            }}
+        };
 
         self.panel = Some(panel);
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, agent_harness_backend))]
 mod tests {
     use super::*;
 

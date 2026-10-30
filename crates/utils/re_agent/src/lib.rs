@@ -42,6 +42,12 @@ mod settings;
 mod transcript;
 mod turn;
 
+/// Whether the user types model-API keys into the agent panel, which keeps them with its settings.
+///
+/// Only on the web, which has no environment variables. The desktop reads keys from the
+/// environment only, since there is no secure storage for typed-in keys there yet.
+pub const API_KEYS_IN_SETTINGS: bool = cfg!(target_arch = "wasm32");
+
 /// The Agent Client Protocol vocabulary that every backend speaks.
 pub mod acp {
     pub use agent_client_protocol_schema as schema;
@@ -55,7 +61,7 @@ pub use agent_harness::{
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection};
 pub use error::McpStartupFailure;
-pub use model_api_backend::{ModelApiConfig, ModelApiError, ModelApiProvider};
+pub use model_api_backend::{ApiKey, ModelApiConfig, ModelApiError, ModelApiProvider};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,

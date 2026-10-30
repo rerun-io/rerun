@@ -3,9 +3,12 @@
 //! Only things specific to the agent panel should go into this file.
 //! Anything general to rerun-mcp goes in the `re_viewer_mcp` preamble instead.
 
+#[cfg(agent_harness_backend)]
 use std::fmt::Write as _;
+#[cfg(agent_harness_backend)]
 use std::path::{Path, PathBuf};
 
+#[cfg(agent_harness_backend)]
 use super::{DOCS_SUBDIR, SKILLS_SUBDIR};
 
 /// The start of the instructions, the same for every backend.
@@ -34,6 +37,7 @@ const OUTRO: &str = "- Rerun is open source, and its examples are worth reading 
      - Keep answers short: the panel is narrow. Omit internal tool commentary unless the user asks for it.\n";
 
 /// Everything about the host that changes what the agent is told.
+#[cfg(agent_harness_backend)]
 #[derive(Default)]
 pub struct Preamble<'a> {
     /// The gRPC address of this viewer, so the agent can reconnect if its MCP server is not
@@ -55,6 +59,7 @@ pub struct Preamble<'a> {
     pub off_limits_directories: &'a [PathBuf],
 }
 
+#[cfg(agent_harness_backend)]
 impl Preamble<'_> {
     /// Build the instructions for the viewer agent.
     pub fn text(&self) -> String {

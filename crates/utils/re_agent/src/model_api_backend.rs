@@ -123,6 +123,24 @@ enum ToolCallError {
     UnknownTool { name: String },
 }
 
+/// An API key for a model API backend: never empty, and without surrounding whitespace.
+#[derive(Clone, PartialEq, Eq)]
+pub struct ApiKey(String);
+
+impl std::fmt::Debug for ApiKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ApiKey(…)")
+    }
+}
+
+impl ApiKey {
+    /// Parses a key as typed or read from the environment. `None` if it is blank.
+    pub fn new(text: &str) -> Option<Self> {
+        let key = text.trim();
+        (!key.is_empty()).then(|| Self(key.to_owned()))
+    }
+}
+
 /// A model provider whose API the backend calls directly.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ModelApiProvider {
@@ -143,10 +161,8 @@ impl ModelApiProvider {
     }
 
     /// The API key from [`Self::api_key_env_var`], or `None` if it is unset or blank.
-    pub fn api_key_from_env(self) -> Option<String> {
-        std::env::var(self.api_key_env_var())
-            .ok()
-            .filter(|key| !key.trim().is_empty())
+    pub fn api_key_from_env(self) -> Option<ApiKey> {
+        ApiKey::new(&std::env::var(self.api_key_env_var()).ok()?)
     }
 
     /// Human-readable name, e.g. for the panel title.
@@ -210,7 +226,7 @@ pub struct ModelApiConfig {
     pub provider: ModelApiProvider,
 
     /// Sent to the provider with every request. Never logged.
-    pub api_key: String,
+    pub api_key: ApiKey,
 
     /// The model to start with. The user can switch to another from the model selector.
     pub model: String,
@@ -248,13 +264,13 @@ impl ModelApiConfig {
         let http = rig_reqwest::ReqwestClient::from(http.clone());
         match provider {
             ModelApiProvider::Anthropic => {
-                rig_core::providers::anthropic::wire::AnthropicConfig::new(api_key.clone())
+                rig_core::providers::anthropic::wire::AnthropicConfig::new(api_key.0.clone())
                     .connect(http)
                     .completion(model)
                     .erase()
             }
             ModelApiProvider::OpenAi => {
-                rig_core::providers::openai::OpenAIConfig::new(api_key.clone())
+                rig_core::providers::openai::OpenAIConfig::new(api_key.0.clone())
                     .connect(http)
                     .responses(model)
                     .erase()
@@ -761,6 +777,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn api_key_is_trimmed_and_never_blank() {
+        assert_eq!(ApiKey::new(""), None);
+        assert_eq!(ApiKey::new(" \n\t"), None);
+        assert_eq!(ApiKey::new(" sk-1 \n"), Some(ApiKey("sk-1".to_owned())));
+    }
+
+    #[test]
     fn input_schema_drops_only_top_level_combinators() -> serde_json::Result<()> {
         let nested = serde_json::json!({ "oneOf": [{ "type": "string" }, { "type": "integer" }] });
         let schema = serde_json::from_value(serde_json::json!({
@@ -844,7 +867,7 @@ mod tests {
     ) -> Vec<AgentEvent> {
         let config = ModelApiConfig {
             provider: ModelApiProvider::Anthropic,
-            api_key: String::new(),
+            api_key: ApiKey("mock".to_owned()),
             model: "mock".to_owned(),
             system_prompt: Some("Be brief".to_owned()),
             toolbox,

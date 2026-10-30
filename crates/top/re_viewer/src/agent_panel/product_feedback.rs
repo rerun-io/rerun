@@ -1,6 +1,7 @@
 //! Feedback that an agent sends about Rerun, through the `submit_feedback` viewer control
 //! operation, which `re_viewer_mcp` offers agents as an MCP tool.
 
+#[cfg(agent_harness_backend)]
 use re_agent_ui::AgentHarnessConfig;
 use re_analytics::event::{
     Feedback, FeedbackAbout, FeedbackAuthor, FeedbackCategory, FeedbackSeverity,
@@ -19,23 +20,31 @@ struct RedactableContent {
     summary: Option<String>,
 }
 
+/// Records feedback without its title and summary, which may hold sensitive data.
+pub fn record_without_text(request: SubmitFeedbackRequest) {
+    let (unsent, _text) = Unsent::from_request(request);
+    unsent.record(None);
+}
+
+/// Sends feedback, with its text once an agent harness has redacted it.
+#[cfg(agent_harness_backend)]
 #[derive(Default)]
 pub struct ProductFeedback {
     redactor: crate::agent_analytics::Redactor,
 }
 
+#[cfg(agent_harness_backend)]
 impl ProductFeedback {
     pub fn submit(
         &mut self,
         request: SubmitFeedbackRequest,
         redact_with: Option<AgentHarnessConfig>,
     ) {
-        let (unsent, text) = Unsent::from_request(request);
-
         let Some(config) = redact_with else {
-            unsent.record(None);
+            record_without_text(request);
             return;
         };
+        let (unsent, text) = Unsent::from_request(request);
 
         let json = match serde_json::to_value(&text) {
             Ok(json) => json,

@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
 
 use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
-use crate::model_api_backend::{ModelApiConfig, ModelApiProvider};
+use crate::model_api_backend::{ApiKey, ModelApiConfig, ModelApiProvider};
 
 /// Fast models to select, best first, unless the user has picked a model for the profile.
 ///
@@ -126,6 +126,15 @@ pub struct AgentSettings {
     /// Set once the user has started an agent from the setup screen.
     /// From then on the panel starts the agent right away instead of showing setup again.
     pub setup_done: bool,
+
+    /// API keys as the user typed them, by model-API profile.
+    ///
+    /// Only the web viewer uses these, since on native we want to implement a more secure storage
+    /// first. Web stores all settings in the browser's local storage.
+    ///
+    /// The desktop viewer reads keys from the environment only, and never stores them.
+    #[cfg(target_arch = "wasm32")]
+    pub api_keys: BTreeMap<AgentProfileId, String>,
 }
 
 /// Why [`AgentSettings`] could not be resolved into an agent to start.
@@ -134,6 +143,19 @@ pub enum AgentLaunchError {
     /// The profile runs an agent on the user's machine, which this build cannot do.
     #[error("{profile_id} runs on your machine, which this viewer cannot do. Pick a model API")]
     AgentHarnessUnavailable { profile_id: AgentProfileId },
+
+    /// The user has not entered an API key for the provider. Only on the web, where keys are
+    /// typed in.
+    #[error("Enter your {} API key", .provider.name())]
+    ApiKeyNotEntered { provider: ModelApiProvider },
+
+    /// The provider's API key is unset or blank in the environment. Only on the desktop, where
+    /// keys come from the environment.
+    #[error(
+        "Set {} in the environment the viewer starts from, then restart it",
+        .provider.api_key_env_var()
+    )]
+    ApiKeyNotInEnvironment { provider: ModelApiProvider },
 
     /// The current directory, used when no working directory is set, could not be read.
     #[error("Failed to get current dir: {err}")]
@@ -158,13 +180,6 @@ pub enum AgentLaunchError {
         err: shell_words::ParseError,
     },
 
-    /// The environment variable that holds the provider's API key is unset or blank.
-    #[error(
-        "Set {} in the environment the viewer starts from, then restart it",
-        .provider.api_key_env_var()
-    )]
-    MissingApiKey { provider: ModelApiProvider },
-
     /// The working directory does not exist.
     #[error("Working directory does not exist: {}", .cwd.display())]
     MissingWorkingDirectory { cwd: PathBuf },
@@ -172,6 +187,17 @@ pub enum AgentLaunchError {
     /// No installed agent has the selected profile.
     #[error("Unknown agent profile: {profile_id}")]
     UnknownProfile { profile_id: AgentProfileId },
+}
+
+impl AgentLaunchError {
+    /// The error for a missing key for `provider`, from where [`AgentSettings::api_key`] looks.
+    pub fn missing_api_key(provider: ModelApiProvider) -> Self {
+        if crate::API_KEYS_IN_SETTINGS {
+            Self::ApiKeyNotEntered { provider }
+        } else {
+            Self::ApiKeyNotInEnvironment { provider }
+        }
+    }
 }
 
 /// What to start: an agent subprocess, or an agent loop that calls a provider's API directly.
@@ -204,9 +230,9 @@ impl AgentSettings {
                 }}
             };
         };
-        let api_key = provider
-            .api_key_from_env()
-            .ok_or(AgentLaunchError::MissingApiKey { provider })?;
+        let api_key = self
+            .api_key(provider)
+            .ok_or_else(|| AgentLaunchError::missing_api_key(provider))?;
         let model = self.preferred_models.get(&self.profile_id).map_or_else(
             || provider.default_model().to_owned(),
             |model| model.0.to_string(),
@@ -218,6 +244,21 @@ impl AgentSettings {
             system_prompt: context.model_api_preamble.clone(),
             toolbox: None,
         }))
+    }
+
+    /// The key for `provider`: from the settings or from the environment, as
+    /// [`crate::API_KEYS_IN_SETTINGS`] says.
+    pub fn api_key(&self, provider: ModelApiProvider) -> Option<ApiKey> {
+        cfg_select! {
+            target_arch = "wasm32" => self
+                .api_keys
+                .get(&provider.profile_id())
+                .and_then(|text| ApiKey::new(text)),
+            _ => {{
+                _ = self;
+                provider.api_key_from_env()
+            }}
+        }
     }
 }
 
@@ -235,6 +276,8 @@ impl Default for AgentSettings {
             preferred_models: BTreeMap::new(),
             share_redacted_prompts: false,
             setup_done: false,
+            #[cfg(target_arch = "wasm32")]
+            api_keys: BTreeMap::new(),
         }
     }
 }

@@ -119,6 +119,12 @@ impl ReTextEdit<'_> {
         self
     }
 
+    /// Show each character as a dot, e.g. for a password or an API key.
+    pub fn password(mut self, password: bool) -> Self {
+        self.text_edit = self.text_edit.password(password);
+        self
+    }
+
     pub fn variant(mut self, variant: TextEditVariant) -> Self {
         self.variant = variant;
         self

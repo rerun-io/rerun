@@ -6,7 +6,7 @@ use re_ui::{ReButton, UiExt as _, icons};
 
 use super::Screen;
 use re_agent::AgentEntry;
-use re_agent::{AgentProfileId, AgentSettings, ModelApiProvider};
+use re_agent::{API_KEYS_IN_SETTINGS, AgentProfileId, AgentSettings, ModelApiProvider};
 
 #[cfg(agent_harness_backend)]
 mod agent_harness;
@@ -34,6 +34,13 @@ pub fn setup_ui(
     next_screen
 }
 
+#[cfg_attr(
+    not(agent_harness_backend),
+    expect(
+        clippy::needless_pass_by_ref_mut,
+        reason = "only an agent harness re-checks which agents are installed"
+    )
+)]
 fn setup_ui_inner(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
@@ -41,6 +48,7 @@ fn setup_ui_inner(
     available_model_apis: &[ModelApiProvider],
 ) -> Screen {
     let mut next_screen = Screen::Setup;
+    let available_model_apis = &model_apis_with_key(settings, available_model_apis);
 
     ui.spacing_mut().item_spacing.y = 8.0;
 
@@ -54,6 +62,11 @@ fn setup_ui_inner(
             agent_harness::agent_choice_ui(ui, settings, agents, available_model_apis);
         }
         _ => {
+            ui.label(
+                "Rerun agent calls a model API with your own key. \
+                 The key is kept in this browser's local storage, and sent only to that API.",
+            );
+            ui.add_space(8.0);
             model_api_list_ui(ui, settings, available_model_apis);
         }
     }
@@ -126,7 +139,30 @@ fn model_api_list_ui(
         if model_api_row_ui(ui, provider, available_model_apis, selected).clicked() {
             settings.profile_id = provider.profile_id();
         }
+        #[cfg(target_arch = "wasm32")]
+        if selected {
+            let key = settings.api_keys.entry(provider.profile_id()).or_default();
+            ui.indent(provider.name(), |ui| {
+                ui.add(
+                    re_ui::text_edit::ReTextEdit::singleline(key)
+                        .password(true)
+                        .hint_text(format!("{} API key", provider.name()))
+                        .desired_width(f32::INFINITY),
+                );
+            });
+        }
     }
+}
+
+/// The providers whose key is at hand: from the settings, or `detected` in the environment.
+pub fn model_apis_with_key(
+    settings: &AgentSettings,
+    detected: &[ModelApiProvider],
+) -> Vec<ModelApiProvider> {
+    ModelApiProvider::ALL
+        .into_iter()
+        .filter(|provider| detected.contains(provider) || settings.api_key(*provider).is_some())
+        .collect()
 }
 
 /// Returns the response of the radio button, which is disabled until the API key is set.
@@ -141,13 +177,17 @@ fn model_api_row_ui(
     ui.horizontal(|ui| {
         let radio = ui
             .add_enabled(
-                has_key,
+                API_KEYS_IN_SETTINGS || has_key,
                 egui::RadioButton::new(selected, format!("{} API", provider.name())),
             )
             .on_disabled_hover_text(format!(
                 "Set {key_var} in the environment the viewer starts from, then restart it"
             ));
-        if has_key {
+        if API_KEYS_IN_SETTINGS {
+            if has_key {
+                tag_ui(ui, "Key entered");
+            }
+        } else if has_key {
             tag_ui(ui, "Key found").on_hover_text(format!("Read from {key_var}"));
         } else {
             ui.weak(format!("needs {key_var}"));
@@ -218,10 +258,10 @@ pub fn selected_agent_ready(
     }
 
     if let Some(provider) = settings.profile_id.model_api_provider() {
-        return if available_model_apis.contains(&provider) {
+        return if model_apis_with_key(settings, available_model_apis).contains(&provider) {
             Ok(())
         } else {
-            Err(re_agent::AgentLaunchError::MissingApiKey { provider }.to_string())
+            Err(re_agent::AgentLaunchError::missing_api_key(provider).to_string())
         };
     }
 

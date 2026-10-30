@@ -160,7 +160,6 @@ pub struct AppCore {
 
     dev_panel: crate::dev_panel::DevPanel,
 
-    #[cfg(agent_panel)]
     agent_panel: crate::agent_panel::ViewerAgentPanel,
 
     pub(crate) external_memory_users: crate::external_memory::ExternalMemoryUsers,
@@ -533,7 +532,6 @@ impl App {
 
             dev_panel: Default::default(),
 
-            #[cfg(agent_panel)]
             agent_panel: Default::default(),
             external_memory_users: crate::external_memory::ExternalMemoryUsers::default_users(),
             cached_app_overhead_bytes: None,
@@ -659,12 +657,10 @@ impl AppCore {
     }
 
     /// Whether the agent panel is shown. Requires the experimental setting.
-    #[cfg(agent_panel)]
     pub fn agent_panel_open(&self) -> bool {
         self.app_options().experimental.agent_panel && self.state.agent_panel_open
     }
 
-    #[cfg(agent_panel)]
     pub fn toggle_agent_panel(&mut self) {
         if self.app_options().experimental.agent_panel {
             self.state.agent_panel_open ^= true;
@@ -1613,9 +1609,7 @@ impl AppCore {
             }
 
             let mut cmd_palette_provider = crate::command_palette::CommandPaletteProviderImpl {
-                #[cfg(agent_panel)]
                 agent_enabled: self.app_options().experimental.agent_panel,
-                #[cfg(agent_panel)]
                 agent_setup_done: self.state.agent_settings.setup_done,
                 recording: store_context.as_ref().map(|ctx| ctx.recording()),
                 redap_servers: &self.state.redap_servers,
@@ -1623,12 +1617,10 @@ impl AppCore {
             };
             if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {
-                    #[cfg(agent_panel)]
                     CommandPaletteAction::AskAgent(prompt) => {
                         self.state.agent_panel_open = true;
                         self.agent_panel.submit_prompt(prompt);
                     }
-                    #[cfg(agent_panel)]
                     CommandPaletteAction::SetUpAgent => {
                         self.state.agent_panel_open = true;
                     }

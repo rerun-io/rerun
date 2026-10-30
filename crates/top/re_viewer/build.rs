@@ -12,7 +12,6 @@ const AGENT_SOURCE_FILTER: &[&str] = &[
 
 fn main() {
     cfg_aliases::cfg_aliases! {
-        agent_panel: { not(target_arch = "wasm32") },
         // Agent harnesses (Claude Code, Codex, …) are subprocesses, so only the desktop viewer has them.
         agent_harness_backend: { not(target_arch = "wasm32") },
     }

@@ -1126,7 +1126,6 @@ impl AppCore {
                 }
             }
             UICommand::ToggleAgentPanel => {
-                #[cfg(agent_panel)]
                 self.toggle_agent_panel();
             }
             #[cfg(debug_assertions)]
@@ -1601,6 +1600,9 @@ impl AppCore {
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset_viewer(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         self.state = Default::default();
+        // The panel keeps its own copy of the settings, including typed-in API keys, which it
+        // would otherwise write back into the state.
+        self.agent_panel = Default::default();
 
         store_hub.clear_all_cloned_blueprints();
         self.table_blueprints.clear_all_cloned_blueprints(store_hub);

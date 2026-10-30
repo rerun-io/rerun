@@ -285,7 +285,7 @@ fn command_palette_trigger_ui(
     const NAVIGATION_GAP: f32 = 8.0;
 
     let navigation_buttons_state = navigation_buttons_state(app);
-    let agent_enabled = cfg!(agent_panel) && app.app_options().experimental.agent_panel;
+    let agent_enabled = app.app_options().experimental.agent_panel;
     let navigation_width = if navigation_buttons_state.is_visible() {
         2.0 * NAVIGATION_BUTTON_SIZE + NAVIGATION_GAP
     } else {
@@ -662,7 +662,6 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
-    #[cfg(agent_panel)]
     if app.app_options().experimental.agent_panel {
         let mut open = app.agent_panel_open();
         if ui

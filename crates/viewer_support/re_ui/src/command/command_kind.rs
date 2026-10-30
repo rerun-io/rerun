@@ -361,12 +361,12 @@ impl CommandKind {
 
     /// Pair this command with its target from `env`, making it dispatchable.
     ///
-    /// Returns `None` when the command cannot run in `env`: it is not supported on this
-    /// platform, or there is no target for it (no active recording, no selected server, no
-    /// viewed table), or the target does not allow it (e.g. editing the built-in catalog).
+    /// Returns `None` when the command cannot run in `env`: there is no target for it (no active
+    /// recording, no selected server, no viewed table), or the target does not allow it (e.g.
+    /// editing the built-in catalog).
     pub fn bind(self, env: &CommandEnvironment) -> Option<BoundCommand> {
         match self {
-            Self::Ui(cmd) => cmd.is_supported().then_some(BoundCommand::Ui(cmd)),
+            Self::Ui(cmd) => Some(BoundCommand::Ui(cmd)),
             Self::Recording(kind) => kind.for_environment(env).map(BoundCommand::Recording),
             Self::RedapServer(kind) => kind.for_environment(env).map(BoundCommand::RedapServer),
             Self::Table(kind) => kind.for_environment(env).map(BoundCommand::Table),
