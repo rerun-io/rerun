@@ -495,6 +495,7 @@ pub async fn run_driver_projected(
 
     let window = Arc::new(IssuanceWindow::new(window_bytes));
     let pending_analytics = test_pending_analytics();
+    re_crypto::init();
     let executor = FetchExecutor {
         client: MockFetchClient::new(responses),
         http_client: reqwest::Client::new(),

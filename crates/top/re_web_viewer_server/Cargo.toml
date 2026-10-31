@@ -36,6 +36,14 @@ all-features = true # Will also enable the `__disable_server` feature, meaning t
 
 
 [features]
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = ["re_analytics/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["re_analytics/crypto-aws-lc-rs"]
+
 ## This crate embeds the web viewer `.wasm`, and so before building this crate you must build the `.wasm` using `pixi run rerun-build-web-release`.
 ##
 ## If for some reason you need to build this crate _without_ the `.wasm` being built, then you can do so in one of two ways:

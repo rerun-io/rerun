@@ -158,6 +158,7 @@ async fn fetch_rrd_manifest_via_key(
             .insert(http::header::IF_MATCH.as_str(), etag);
     }
 
+    re_crypto::init();
     cfg_select! {
         target_family = "wasm" => {
             let response = re_async::spawn_local_with_result(ehttp::fetch_async(request))

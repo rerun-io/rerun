@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol, or run an agent loop against a model API"
+description = "Talk to a coding agent (Claude Code, Codex, вЂ¦) over the Agent Client Protocol, or run an agent loop against a model API"
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
@@ -19,13 +19,20 @@ workspace = true
 all-features = true
 
 [features]
-default = []
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = ["re_crypto/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["re_crypto/crypto-aws-lc-rs"]
 
 ## Hooks for feeding an [`AgentSession`] without a running agent, used by UI snapshot tests.
 testing = []
 
 [dependencies]
 re_async.workspace = true
+re_crypto.workspace = true
 re_log.workspace = true
 
 agent-client-protocol-schema.workspace = true
@@ -47,7 +54,6 @@ rig-core = { workspace = true, features = ["test-utils"] }
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 agent-client-protocol.workspace = true
 crossbeam.workspace = true
-rustls = { workspace = true, features = ["ring", "std"] }
 tempfile.workspace = true
 
 [build-dependencies]

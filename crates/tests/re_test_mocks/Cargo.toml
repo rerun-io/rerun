@@ -26,7 +26,13 @@ tokio-stream = { workspace = true, features = ["net"] }
 tonic = { workspace = true, features = ["router", "transport", "gzip"] }
 
 
+[features]
+default = ["crypto-ring"]
+crypto-ring = ["re_crypto/crypto-ring"]
+crypto-aws-lc-rs = ["re_crypto/crypto-aws-lc-rs"]
+
 [dev-dependencies]
+re_crypto.workspace = true
 reqwest.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 

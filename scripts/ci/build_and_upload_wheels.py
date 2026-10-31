@@ -77,11 +77,11 @@ def build_and_upload(
 
     # Grep for these feature names before changing them.
     if mode is BuildMode.PYPI:
-        maturin_feature_flags = "--no-default-features --features perf_telemetry,pypi"
+        maturin_feature_flags = "--no-default-features --features crypto-ring,perf_telemetry,pypi"
     elif mode is BuildMode.PR:
-        maturin_feature_flags = "--no-default-features --features perf_telemetry,extension-module"
+        maturin_feature_flags = "--no-default-features --features crypto-ring,lance,perf_telemetry,extension-module"
     elif mode is BuildMode.EXTRA:
-        maturin_feature_flags = "--no-default-features --features perf_telemetry,pypi,extra"
+        maturin_feature_flags = "--no-default-features --features crypto-ring,perf_telemetry,pypi,extra"
 
     run("pixi run third-party-notices rerun_py/rerun_sdk/rerun_cli/THIRD_PARTY_NOTICES.md")
     run("pixi run py-third-party-notices")

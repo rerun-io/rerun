@@ -222,7 +222,7 @@ def run_viewer_build(web: bool) -> None:
         "-p",
         "rerun-cli",
         "--no-default-features",
-        "--features=web_viewer" if web else "--features=native_viewer",
+        "--features=crypto-ring,web_viewer" if web else "--features=crypto-ring,native_viewer",
     ]).wait()
     assert returncode == 0, f"process exited with error code {returncode}"
 

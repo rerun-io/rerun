@@ -37,11 +37,17 @@ path = "src/bin/rerun.rs"
 doc = false
 
 [features]
+## Use Ring for native cryptography (the default).
+crypto-ring = ["re_server?/crypto-ring", "rerun/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["re_server?/crypto-aws-lc-rs", "rerun/crypto-aws-lc-rs"]
+
 ## The default is what the user gets when they call `cargo install rerun-cli --locked`,
 ## so we have all the bells and wistles here, except those that may require extra tools
 ## (like "nasm").
 ## That is: `cargo install rerun-cli --locked` should work for _everyone_.
-default = ["web_viewer", "base"]
+default = ["crypto-ring", "web_viewer", "base"]
 
 ## Our base feature set, included in `default` and in `release`, but excludes the web viewer.
 base = ["audio", "native_viewer", "map_view", "oss_server", "perf_telemetry"]

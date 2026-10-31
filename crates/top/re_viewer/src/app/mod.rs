@@ -241,11 +241,7 @@ impl App {
             re_analytics::enable_in_this_process();
         }
 
-        // Install ring as the default provider for reqwest 0.13.
-        #[cfg(not(target_arch = "wasm32"))]
-        rustls::crypto::ring::default_provider()
-            .install_default()
-            .ok();
+        re_crypto::init();
 
         let is_test = app_env.is_test();
         let egui_renderer = creation_context

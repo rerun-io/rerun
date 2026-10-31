@@ -39,6 +39,7 @@ pub fn send_native<Req: IntoRequest>(
         Ok(req) => req,
         Err(err) => return on_response(Err(err)),
     };
+    re_crypto::init();
     ehttp::fetch(req, move |res| {
         let res = res.map_err(Error::Request).and_then(move |res| {
             if !res.ok {
@@ -62,6 +63,7 @@ fn is_allowed_error<Req: IntoRequest>(status: u16) -> bool {
 }
 
 pub async fn send_async<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
+    re_crypto::init();
     let req = req.into_request()?;
 
     // `fetch_async` holds a `JsValue` across an await point, which is not `Send`.
@@ -87,6 +89,7 @@ pub async fn send_async<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
 ///
 /// The `Req::Res` type must handle deserializing the error response.
 pub async fn send_async_allow_4xx<Req: IntoRequest>(req: Req) -> Result<Req::Res, Error> {
+    re_crypto::init();
     let req = req.into_request()?;
 
     // `fetch_async` holds a `JsValue` across an await point, which is not `Send`.

@@ -31,6 +31,7 @@ async fn stream_async(
     uri: re_uri::ProxyUri,
     tx: &re_log_channel::LogSender,
 ) -> Result<(), StreamError> {
+    re_crypto::init();
     let mut client = {
         let url = uri.origin.as_url();
 

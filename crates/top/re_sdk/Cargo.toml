@@ -22,7 +22,25 @@ all-features = true
 
 
 [features]
-default = []
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_grpc_client/crypto-ring",
+  "re_grpc_server?/crypto-ring",
+  "re_importer?/crypto-ring",
+  "re_log_encoding/crypto-ring",
+  "re_web_viewer_server?/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_grpc_client/crypto-aws-lc-rs",
+  "re_grpc_server?/crypto-aws-lc-rs",
+  "re_importer?/crypto-aws-lc-rs",
+  "re_log_encoding/crypto-aws-lc-rs",
+  "re_web_viewer_server?/crypto-aws-lc-rs",
+]
+
+default = ["crypto-ring"]
 
 ## Support for using Rerun's importers directly from the SDK.
 ##

@@ -9,7 +9,7 @@ on:
       MATURIN_FEATURE_FLAGS:
         required: false
         type: string
-        default: "--no-default-features --features pypi"
+        default: "--no-default-features --features crypto-ring,pypi"
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-build-wheels

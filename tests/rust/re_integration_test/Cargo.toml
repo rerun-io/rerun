@@ -14,7 +14,35 @@ publish = false
 test-binaries = ["inspection", "integration"]
 
 [features]
-default = []
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_catalog_client/crypto-ring",
+  "re_log_encoding/crypto-ring",
+  "re_redap_client/crypto-ring",
+  "re_sdk/crypto-ring",
+  "re_server/crypto-ring",
+  "re_ui/crypto-ring",
+  "re_viewer/crypto-ring",
+  "re_viewer_context/crypto-ring",
+  "re_viewport_blueprint/crypto-ring",
+  "re_web_viewer_server?/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_catalog_client/crypto-aws-lc-rs",
+  "re_log_encoding/crypto-aws-lc-rs",
+  "re_redap_client/crypto-aws-lc-rs",
+  "re_sdk/crypto-aws-lc-rs",
+  "re_server/crypto-aws-lc-rs",
+  "re_ui/crypto-aws-lc-rs",
+  "re_viewer/crypto-aws-lc-rs",
+  "re_viewer_context/crypto-aws-lc-rs",
+  "re_viewport_blueprint/crypto-aws-lc-rs",
+  "re_web_viewer_server?/crypto-aws-lc-rs",
+]
+
+default = ["crypto-ring"]
 
 ## Enable the browser based integration tests
 browser = ["dep:base64", "dep:headless_chrome", "dep:re_web_viewer_server", "dep:url"]

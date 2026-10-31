@@ -16,7 +16,31 @@ include.workspace = true
 workspace = true
 
 [features]
-default = []
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_chunk_store/crypto-ring",
+  "re_data_source/crypto-ring",
+  "re_entity_db/crypto-ring",
+  "re_log_encoding/crypto-ring",
+  "re_query/crypto-ring",
+  "re_redap_client/crypto-ring",
+  "re_tf/crypto-ring",
+  "re_ui/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_chunk_store/crypto-aws-lc-rs",
+  "re_data_source/crypto-aws-lc-rs",
+  "re_entity_db/crypto-aws-lc-rs",
+  "re_log_encoding/crypto-aws-lc-rs",
+  "re_query/crypto-aws-lc-rs",
+  "re_redap_client/crypto-aws-lc-rs",
+  "re_tf/crypto-aws-lc-rs",
+  "re_ui/crypto-aws-lc-rs",
+]
+
+default = ["crypto-ring"]
 testing = []
 
 [dependencies]

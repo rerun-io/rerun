@@ -552,6 +552,7 @@ const MAX_MESH_DOWNLOAD_SIZE: u64 = 512 * 1024 * 1024;
 fn fetch_http_resource(url: &str) -> anyhow::Result<Vec<u8>> {
     re_log::debug!("Fetching mesh resource from {url}");
 
+    re_crypto::init();
     let agent = ureq::Agent::new_with_config(
         ureq::config::Config::builder()
             // Connect-only: a global timeout would abort large meshes mid-download.

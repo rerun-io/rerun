@@ -179,6 +179,7 @@ impl CatalogClient {
                 .collect(),
         };
 
+        re_crypto::init();
         cfg_select! {
             target_family = "wasm" => {
                 let response = re_async::spawn_local_with_result(ehttp::fetch_async(request))

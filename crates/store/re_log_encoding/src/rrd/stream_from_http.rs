@@ -43,6 +43,7 @@ pub enum Error {
 pub type HttpMessageCallback = dyn Fn(HttpMessage) -> ControlFlow<()> + Send + Sync;
 
 pub fn stream_from_http(url: String, on_msg: Arc<HttpMessageCallback>) {
+    re_crypto::init();
     re_log::debug!("Downloading .rrd file from {url:?}…");
 
     ehttp::streaming::fetch(ehttp::Request::get(&url), {

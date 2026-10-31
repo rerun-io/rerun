@@ -403,7 +403,7 @@ impl ModelApiConfig {
 
 /// The HTTP client every model of a session sends through.
 ///
-/// Natively it uses ring as the TLS provider. In the browser it goes through `fetch`, and
+/// Natively it uses the selected TLS provider. In the browser it goes through `fetch`, and
 /// Anthropic only answers a browser that says it knows the key is exposed to the page.
 fn http_client() -> Result<reqwest::Client, ModelApiError> {
     let builder = cfg_select! {
@@ -416,10 +416,7 @@ fn http_client() -> Result<reqwest::Client, ModelApiError> {
             reqwest::Client::builder().default_headers(headers)
         }}
         _ => {{
-            // Fails harmlessly when the host already installed a provider.
-            rustls::crypto::ring::default_provider()
-                .install_default()
-                .ok();
+            re_crypto::init();
             reqwest::Client::builder()
         }}
     };
@@ -1069,6 +1066,13 @@ mod tests {
     use agent_client_protocol_schema::v1::{RequestPermissionResponse, SelectedPermissionOutcome};
 
     use super::*;
+
+    #[cfg(any(feature = "crypto-ring", feature = "crypto-aws-lc-rs"))]
+    #[test]
+    fn model_http_client_uses_the_selected_provider() {
+        // Building the client also exercises Rustls when both providers are enabled.
+        assert!(http_client().is_ok());
+    }
 
     #[test]
     fn api_key_is_trimmed_and_never_blank() {

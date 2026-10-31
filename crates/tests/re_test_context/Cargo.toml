@@ -14,6 +14,33 @@ version.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_arrow_ui/crypto-ring",
+  "re_chunk_store/crypto-ring",
+  "re_component_fallbacks/crypto-ring",
+  "re_entity_db/crypto-ring",
+  "re_log_encoding/crypto-ring",
+  "re_redap_client/crypto-ring",
+  "re_ui/crypto-ring",
+  "re_viewer_context/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_arrow_ui/crypto-aws-lc-rs",
+  "re_chunk_store/crypto-aws-lc-rs",
+  "re_component_fallbacks/crypto-aws-lc-rs",
+  "re_entity_db/crypto-aws-lc-rs",
+  "re_log_encoding/crypto-aws-lc-rs",
+  "re_redap_client/crypto-aws-lc-rs",
+  "re_ui/crypto-aws-lc-rs",
+  "re_viewer_context/crypto-aws-lc-rs",
+]
+
 [dependencies]
 re_arrow_ui.workspace = true
 re_audio = { workspace = true, default-features = false }
