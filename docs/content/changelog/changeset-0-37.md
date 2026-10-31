@@ -472,10 +472,10 @@ This bites hardest in a `map` that rewrites the time column (e.g. retagging mp4 
 
 ### Experimental dataloader decoders now process fetch blocks
 
-The experimental PyTorch dataloader now calls each field decoder once per fetch block, passing a [`FieldBatch`][rerun.experimental.dataloader.FieldBatch] and a sequence of [`DecodeRequest`][rerun.experimental.dataloader.DecodeRequest] objects.
+The experimental PyTorch dataloader now calls each field decoder once per fetch block, passing a [`FieldBatch`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.FieldBatch) and a sequence of [`DecodeRequest`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.DecodeRequest) objects.
 This lets numeric decoders gather samples in a vectorized operation and video decoders share work across requests from the same GOP.
 
-Custom [`ColumnDecoder`][rerun.experimental.dataloader.ColumnDecoder] implementations must update their `decode` method from the per-sample API:
+Custom [`ColumnDecoder`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/#rerun.experimental.dataloader.ColumnDecoder) implementations must update their `decode` method from the per-sample API:
 
 ```python
 def decode(self, raw, index_value, segment_id):
