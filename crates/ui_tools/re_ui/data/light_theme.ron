@@ -1,0 +1,651 @@
+{
+  "large_button_size": 22,
+  "large_button_icon_size": 12,
+  "large_button_corner_radius": 6,
+  "small_icon_size": 14,
+  "color_swatch_size": 14,
+  "modal_button_width": 50,
+  "default_modal_width": 400,
+
+  "spatial_label_bg_opacity": 0.5,
+  "disabled_opacity": 0.5,
+  "slow_animation_duration_sec": 0.2,
+  "plot_grid_fade": 0.3,
+
+  "table_grid_view_card_min_width": 350,
+  "table_grid_view_card_spacing": 8,
+  "table_grid_view_card_inner_margin": 16,
+  "table_grid_view_card_corner_radius": 12,
+
+  "loop_selection_alpha": 0.55, // Multiplied with selection_bg_fill
+  "loop_selection_alpha_inactive": 0.20, // Multiplied with selection_bg_fill
+
+  "Alias": {
+    "native_frame_stroke": {
+      "color": "{Gray.750}",
+      "width": 0.5
+    },
+    "windows_close_button_hover_color": {
+      "color": "#C42B1C"
+    },
+    "top_bar_color": {
+      "color": "{Gray.1000}"
+    },
+    "tab_bar_color": {
+      "color": "{Gray.1000}"
+    },
+    "viewport_tab_selected_text_color": {
+      "color": "{Gray.1000}"
+    },
+    "bottom_bar_color": {
+      "color": "{Gray.1000}"
+    },
+    "divider_stroke": {
+      "color": "{Gray.700}",
+      "width": 0.5
+    },
+    "control_stroke": {
+      "color": "{Gray.675}",
+      "width": 0.5
+    },
+    // Background of controls whose fill is all that sets them apart from the panel:
+    // checkboxes, radio buttons, etc.
+    "control_fill": {
+      "color": "{Gray.750}"
+    },
+    "control_fill_hovered": {
+      "color": "{Gray.600}"
+    },
+    "control_fill_pressed": {
+      "color": "{Gray.550}"
+    },
+    "shadow_gradient_dark_start": {
+      "color": "{Gray.0}",
+      "alpha": 10
+    },
+    "strong_fg_color": {
+      "color": "{Gray.0}"
+    },
+    "info_log_text_color": {
+      "color": "{Green.500}"
+    },
+    "debug_log_text_color": {
+      "color": "{Blue.500}"
+    },
+    "trace_log_text_color": {
+      "color": "{Gray.300}"
+    },
+
+    "success_text_color": {
+      "color": "{Green.300}"
+    },
+    "info_text_color": {
+      "color": "{Blue.300}"
+    },
+
+    "viewport_background": {
+      "color": "{Gray.1000}"
+    },
+
+
+    "highlight_color": {
+      // Background color for widgets that should catch the user's attention
+      "color": "{Blue.750}"
+    },
+
+    "label_button_icon_color": {
+      "color": "{Gray.250}"
+    },
+    "section_header_color": {
+      "color": "{Gray.1000}"
+    },
+
+    "loop_everything_color": {
+      "color": "#06A35C"
+    },
+    "thumbnail_background_color": {
+      "color": "{Gray.800}"
+    },
+
+    "example_card_background_color": {
+      "color": "{Gray.850}"
+    },
+    "example_tag_bg_fill": {
+      "color": "{Gray.700}",
+    },
+    "example_tag_stroke": {
+      "color": "{Gray.800}",
+      "width": 0.5
+    },
+
+    "search_match_bg_fill": {
+      "color": "{Blue.600}"
+    },
+
+    // Colors for content rendered on the selection surface:
+    "surface_on_primary_hovered": {"color": "{Gray.1000}", "alpha": 25},
+    "text_color_on_primary": {"color": "{Blue.900}"},
+    "text_color_on_primary_hovered": {"color": "{Gray.1000}"},
+    "icon_color_on_primary": {"color": "{Blue.750}"},
+    "icon_color_on_primary_hovered": {"color": "{Gray.1000}"},
+    "selection_bg_fill": {
+      "color": "{Blue.500}"
+    },
+    "selection_stroke_color": {
+      "color": "{Blue.900}"
+    },
+    // Selection-panel history back/forward buttons:
+    "history_button_fill": {"color": "{Gray.800}"},
+    "history_button_fill_hovered": {"color": "{Gray.750}"},
+    "history_button_icon_active": {"color": "{Gray.250}"},
+    "history_button_icon_inactive": {"color": "{Gray.600}"},
+    "focus_outline_stroke": {
+      "color": "{Blue.400}",
+      "width": 1
+    },
+    "focus_halo_stroke": {
+      "color": "{Blue.350}",
+      "alpha": 75,
+      "width": 2
+    },
+
+    // Background of the page on the right: the catalog, a dataset, a table.
+    // Separate from `panel_bg_color`, so the page is set off from the panels around it.
+    "page_bg_color": {
+      "color": "{Gray.975}"
+    },
+    "panel_bg_color": {
+      "color": "{Gray.1000}"
+    },
+    "text_edit_bg_color": {
+      "color": "{Gray.1000}"
+    },
+
+    "form_field_bg_color": {
+      "color": "{Gray.1000}"
+    },
+    "form_selectable_bg_color": {
+      "color": "{Gray.975}"
+    },
+    "blueprint_time_panel_bg_fill": {
+      "color": "{Blue.900}"
+    },
+
+    "notification_panel_background_color": {
+      "color": "{Gray.1000}"
+    },
+    "notification_background_color": {
+      "color": "{Gray.800}"
+    },
+
+    "table_header_bg_fill": {
+      "color": "{Gray.850}"
+    },
+    "table_header_stroke_color": {
+      "color": "{Gray.700}"
+    },
+    "table_interaction_hovered_bg_stroke": {
+      "color": "{Gray.700}"
+    },
+    "table_interaction_active_bg_stroke": {
+      "color": "{Gray.650}"
+    },
+    "table_interaction_noninteractive_bg_stroke": {
+      "color": "{Gray.800}"
+    },
+    "table_interaction_row_selection_fill": {
+      "color": "{Gray.900}"
+    },
+    "table_sort_icon_color": {
+      "color": "{Blue.250}"
+    },
+    // A card is lighter than its background in both themes, whichever way the gray
+    // scale runs, so it looks raised above it.
+    "card_fill": {
+      "color": "{Gray.1000}"
+    },
+    "card_stroke": {
+      "color": "{Gray.900}",
+      "width": 1
+    },
+
+    // How an asset card marks that the pointer is over it.
+    // In light mode the hover fill equals the resting fill, so only the outline changes
+    // and the text on the card keeps the same contrast.
+    "card_hover_fill": {
+      "color": "{Gray.1000}"
+    },
+    "card_hover_stroke": {
+      "color": "{Gray.750}",
+      "width": 1
+    },
+
+    // How a card marks that its flag is set.
+    "card_marked_fill": {
+      "color": "{Gray.950}"
+    },
+    // How a card marks that it is the selected one of a set, e.g. a coverage mode.
+    "card_selected_fill": {
+      "color": "{Blue.500}",
+      "alpha": 10
+    },
+    "card_selected_stroke": {
+      "color": "{Blue.500}",
+      "alpha": 100,
+      "width": 1
+    },
+    // The unfilled part of a bar on a card, e.g. the segments an asset doesn't cover.
+    "card_bar_track_color": {
+      "color": "{Gray.900}"
+    },
+    // A text field on a card, e.g. the segment search of a coverage mode.
+    "card_text_edit_bg_color": {
+      "color": "{Gray.1000}"
+    },
+    // A link on a card, e.g. expanding the segment list of a coverage mode.
+    "card_link_color": {
+      "color": "{Blue.500}"
+    },
+
+    "drag_pill_droppable_fill": {
+      "color": "{Blue.725}"
+    },
+    "drag_pill_droppable_stroke": {
+      "color": "{Blue.775}"
+    },
+    "drag_pill_nondroppable_fill": {
+      "color": "{Gray.800}"
+    },
+    "drag_pill_nondroppable_stroke": {
+      "color": "{Gray.700}"
+    },
+    "drop_target_container_stroke": {
+      "color": "{Blue.150}",
+      "width": 2
+    },
+    "tile_drag_preview_stroke" : {
+      "color": "{Gray.0}",
+      "alpha": 127,
+      "width": 1
+    },
+    "tile_drag_preview_color": {
+      "color": "{Gray.0}",
+      "alpha": 26
+    },
+
+    "faint_bg_color": {
+      "color": "{Gray.900}"
+    },
+    "plot_grid_color": {
+      "color": "{Gray.850}"
+    },
+    "extreme_bg_color": {
+      "color": "{Gray.1000}"
+    },
+    "extreme_fg_color": {
+      "color": "{Gray.0}"
+    },
+    // Text in a field the user cannot edit: reads as a value, not as something
+    // to type into.
+    "text_readonly": {
+      "color": "{Gray.600}"
+    },
+    "text_subdued": {
+      "color": "{Gray.250}"
+    },
+    "text_default": {
+      "color": "{Gray.250}"
+    },
+    "text_strong": {
+      "color": "{Gray.0}"
+    },
+    "error_fg_color": {
+      "color": "#AB0116"
+    },
+    "warn_fg_color": {
+      "color": "#FF7A0C"
+    },
+    "widget_hovered_color": {
+      "color": "{Gray.850}"
+    },
+    // Dims the page behind an open modal. Lighter than the dark theme's dim, since the
+    // page behind it is light to begin with.
+    "modal_backdrop_color": {
+      "color": "#00000064"
+    },
+    "popup_shadow_color": {
+      "color": "#00000020"
+    },
+
+    "density_graph_selected": {
+      "color": "{Blue.200}"
+    },
+    "density_graph_unselected": {
+      "color": "{Gray.300}"
+    },
+    "density_graph_outside_valid_ranges": {
+      "color": "{Gray.700}"
+    },
+
+    "axis_color_x": {
+      "color": "{Red.550}"
+    },
+    "axis_color_y": {
+      "color": "{Green.550}"
+    },
+    "axis_color_z": {
+      "color": "{Blue.550}"
+    },
+    "frustum_color": {
+      "color": "{Gray.300}"
+    },
+
+    "list_item_active_text": {
+      "color": "{Gray.0}"
+    },
+    "list_item_noninteractive_text": {
+      "color": "{Gray.250}"
+    },
+    "list_item_hovered_text": {
+      "color": "{Gray.0}"
+    },
+    "list_item_default_text": {
+      "color": "{Gray.250}"
+    },
+    "list_item_strong_text": {
+      "color": "{Gray.250}"
+    },
+    "list_item_active_icon": {
+      "color": "{Gray.300}"
+    },
+    "list_item_hovered_icon": {
+      "color": "{Gray.0}"
+    },
+    "list_item_default_icon": {
+      "color": "{Gray.550}"
+    },
+    "list_item_hovered_bg": {
+      "color": "{Gray.950}"
+    },
+    "list_item_active_bg": {
+      "color": "{Gray.950}"
+    },
+    "list_item_button_hovered_bg": {
+      "color": "{Gray.900}"
+    },
+    "list_item_button_pressed_bg": {
+      "color": "{Gray.850}"
+    },
+    "list_item_collapse_default": {
+      "color": "{Gray.550}"
+    },
+
+    "color_swatch_interactive_stroke": {
+      "color": "{Gray.0}",
+      "width": 1,
+      // 51/255 ≈ 20%
+      "alpha": 200
+    },
+    "color_swatch_noninteractive_stroke": {
+      "color": "{Gray.0}",
+      "width": 1,
+      // 51/255 ≈ 20%
+      "alpha": 51
+    },
+
+    "visualizer_list_title_text_color": {
+      "color": "{Gray.100}"
+    },
+    "visualizer_list_title_text_invisible_color": {
+      "color": "{Gray.500}"
+    },
+    "visualizer_list_path_text_color": {
+      "color": "{Gray.500}"
+    },
+    "visualizer_list_path_text_invisible_color": {
+      "color": "{Gray.700}"
+    },
+    "visualizer_list_pill_bg_color": {
+      "color": "{Gray.900}"
+    },
+    "visualizer_list_pill_bg_color_hovered": {
+      "color": "{Gray.850}"
+    },
+    "code_index_color": {
+      "color": "#894783"
+    },
+    "code_null_color": {
+      "color": "#855E00"
+    },
+    "code_primitive_color": {
+      "color": "#007745"
+    },
+    "code_string_color": {
+      "color": "#545AA6"
+    },
+
+    // TODO(ab, katya): review these
+    "code_keyword_color": {
+      "color": "#855E00",
+    },
+    "flag_untoggled_bg": {
+      "color": "{Gray.800}"
+    },
+    "flag_untoggled_bg_hover": {
+      "color": "{Gray.750}"
+    },
+    "flag_untoggled_icon": {
+      "color": "{Gray.600}"
+    },
+    "flag_untoggled_icon_hover": {
+      "color": "{Gray.500}"
+    },
+
+
+    "preview_timeline_track_color": {
+      "color": "{Gray.0}",
+      "alpha": 100
+    },
+    "preview_timeline_progress_color": {
+      "color": "{Blue.500}"
+    },
+    "preview_controls_fill": {
+      "color": "{Gray.1000}",
+      "alpha": 230
+    },
+  },
+
+  "alert_success": {
+    "fill": {
+       "color": "{Green.500}",
+       "alpha": 25,
+    },
+    "icon": {
+       "color": "{Green.500}"
+    },
+    "text": {
+       "color": "{Green.100}"
+    },
+  },
+  "alert_info": {
+    "fill": {
+       "color": "{Blue.500}",
+       "alpha": 25,
+    },
+    "icon": {
+       "color": "{Blue.500}"
+    },
+    "text": {
+       "color": "{Blue.100}"
+    },
+  },
+  "alert_warning": {
+    "fill": {
+       "color": "#DF7700",
+       "alpha": 25,
+    },
+    "icon": {
+       "color": "#DF7700"
+    },
+    "text": {
+       "color": "#542d00"
+    },
+  },
+  "outlines": {
+    "pending": {
+       "color": "{Gray.150}"
+    },
+    "error": {
+       "color": "#EDDCD7"
+    },
+  },
+
+  "alert_error": {
+    "fill": {
+       "color": "{Red.500}",
+       "alpha": 25,
+    },
+    "icon": {
+       "color": "{Red.500}"
+    },
+    "text": {
+       "color": "{Red.100}"
+    },
+  },
+
+  "button_primary": {
+    "fill": { "color": "{Gray.250}" },
+    "fill_hovered": { "color": "{Gray.150}" },
+    "fill_pressed": { "color": "{Gray.100}" },
+    "text": { "color": "{Gray.1000}" },
+  },
+  "button_secondary": {
+    "fill": { "color": "{Gray.800}" },
+    "fill_hovered": { "color": "{Gray.700}" },
+    "fill_pressed": { "color": "{Gray.650}" },
+    "text": { "color": "{Gray.250}" },
+  },
+  "button_ghost": {
+    "fill": { "color": "{Gray.900}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.950}" },
+    "fill_pressed": { "color": "{Gray.900}" },
+    "text": { "color": "{Gray.250}" },
+  },
+  "button_outlined": {
+    "fill": { "color": "{Gray.900}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.950}" },
+    "fill_pressed": { "color": "{Gray.900}" },
+    "text": { "color": "{Gray.250}" },
+  },
+  "button_blue": {
+    "fill": { "color": "{Blue.500}" },
+    "fill_hovered": { "color": "{Blue.425}" },
+    "fill_pressed": { "color": "{Blue.375}" },
+    "text": { "color": "{Gray.1000}" },
+  },
+  "button_opened": {
+    "fill": { "color": "{Blue.500}", "alpha": 40 },
+    "fill_hovered": { "color": "{Blue.500}", "alpha": 70 },
+    "fill_pressed": { "color": "{Blue.500}", "alpha": 100 },
+    "text": { "color": "{Gray.250}" },
+  },
+  // The accent selection surface (selected items, selection badge, play button).
+  // Hover/press step away from the background, like "button_primary".
+  "selection": {
+    "fill": { "color": "{Blue.500}", "alpha": 25 }, // Subtle tint — the badge pill rests at ~10% blue.
+    "fill_hovered": { "color": "{Blue.500}", "alpha": 50 },
+    "fill_pressed": { "color": "{Blue.500}", "alpha": 100 },
+    "text": { "color": "{Blue.500}" },
+  },
+  // Tab bar labels. Hover steps one level toward the selected color and changes nothing
+  // else. The underline belongs to the selected tab and does not follow the pointer.
+  "tab": {
+    "text": { "color": "{Gray.400}" },
+    "text_hovered": { "color": "{Gray.300}" },
+    "text_selected": { "color": "{Gray.200}" },
+  },
+  // Two-tone metadata lines: the label is dimmer than the value next to it.
+  "meta_line": {
+    "label": { "color": "{Gray.400}" },
+    "value": { "color": "{Gray.200}" },
+  },
+
+  "text_edit_outlined": {
+    "fill": { "color": "{Gray.1000}", "alpha": 0 },
+    "fill_hovered": { "color": "{Gray.1000}", "alpha": 0 },
+    "fill_focused": { "color": "{Gray.1000}", "alpha": 0 },
+    "text": { "color": "{Gray.250}" },
+    "text_placeholder": { "color": "{Gray.500}" },
+    "stroke_hovered": { "color": "{Gray.650}", "width": 0.5 },
+    "stroke_focused": { "color": "{Blue.500}", "width": 1 },
+  },
+  "text_edit_filled": {
+    "fill": { "color": "{Gray.1000}" },
+    "fill_hovered": { "color": "{Gray.950}" },
+    "fill_focused": { "color": "{Gray.1000}" },
+    "text": { "color": "{Gray.250}" },
+    "text_placeholder": { "color": "{Gray.500}" },
+    "stroke_focused": { "color": "{Gray.200}", "width": 1 },
+  },
+
+  "Global": {
+    "Typography": {
+      "Body": {
+        "value": {
+          "fontSize": "12.5px",
+          "fontWeight": "400",
+          "fontFamily": "Inter"
+        },
+        "type": "typography"
+      },
+      "Small": {
+        "value": {
+          "fontSize": "10.5px",
+          "fontWeight": "400",
+          "fontFamily": "Inter"
+        },
+        "type": "typography"
+      },
+      "Heading 1": {
+        "value": {
+          "fontSize": "41px",
+          "fontWeight": "400",
+          "fontFamily": "Inter"
+        },
+        "type": "typography"
+      },
+      "Heading 2": {
+        "value": {
+          "fontSize": "27px",
+          "fontWeight": "400",
+          "fontFamily": "Inter"
+        },
+        "type": "typography"
+      },
+      "Heading 3": {
+        "value": {
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "fontFamily": "Inter"
+        },
+        "type": "typography"
+      },
+      "Heading 4": {
+        "value": {
+          "fontSize": "13px",
+          "fontWeight": "400",
+          "fontFamily": "Inter"
+        },
+        "type": "typography"
+      },
+      "Eyebrow": {
+        "value": {
+          "fontSize": "11px",
+          "fontWeight": "475",
+          "fontFamily": "Inter"
+        },
+        "type": "typography"
+      }
+    }
+  }
+}

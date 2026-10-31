@@ -27,6 +27,11 @@ pub const SORBET_IS_STATIC: &str = "rerun:is_static";
 /// associated as a primary index.
 pub const SORBET_IS_TABLE_INDEX: &str = "rerun:is_table_index";
 
+/// The field-level metadata key that makes a table column editable in the Viewer.
+///
+/// A table blueprint that sets `editable` for the column overrides it.
+pub const SORBET_IS_EDITABLE: &str = "rerun:is_editable";
+
 /// Arrow metadata for an arrow record batch.
 pub type ArrowBatchMetadata = HashMap<String, String>;
 

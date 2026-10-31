@@ -21,25 +21,20 @@ all-features = true
 
 [features]
 ## Use Ring for native cryptography (the default).
-crypto-ring = ["re_analytics?/crypto-ring"]
+crypto-ring = ["re_analytics/crypto-ring"]
 
 ## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
-crypto-aws-lc-rs = ["re_analytics?/crypto-aws-lc-rs"]
+crypto-aws-lc-rs = ["re_analytics/crypto-aws-lc-rs"]
 
-default = ["crypto-ring", "analytics"]
-
-## Send analytics to Rerun on crashes
-analytics = ["dep:re_analytics"]
+default = ["crypto-ring"]
 
 [dependencies]
+re_analytics.workspace = true
 re_build_info.workspace = true
 
 econtext.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
-
-# Optional dependencies:
-re_analytics = { workspace = true, optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

@@ -991,9 +991,9 @@ dependencies = [
 
 [[package]]
 name = "aws-lc-rs"
-version = "1.18.2"
+version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "faac5829c2b74c28f830747e7818ccfb684261b5f48a1118b1e2a13d36dfab13"
+checksum = "048006790404103c488e6c5616b3e7e702a71292aadda08e8f7698a9e0d2eb53"
 dependencies = [
  "aws-lc-sys",
  "untrusted 0.7.1",
@@ -1002,9 +1002,9 @@ dependencies = [
 
 [[package]]
 name = "aws-lc-sys"
-version = "0.46.0"
+version = "0.47.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1622d8446a2d4b2ce0c7eefc73dd43a99779028d5ee5c2dd8073a658ba8a2bc"
+checksum = "8bfbe32ac36b3c428696ce315464181bc4029d689fd58e3f2a4e58c252242f52"
 dependencies = [
  "cc",
  "cmake",
@@ -3373,7 +3373,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3777,7 +3777,7 @@ dependencies = [
 [[package]]
 name = "ehttp"
 version = "0.7.2"
-source = "git+https://github.com/emilk/ehttp?rev=3286a6fee4e05d20a80388e1058c0d7bee240a42#3286a6fee4e05d20a80388e1058c0d7bee240a42"
+source = "git+https://github.com/emilk/ehttp.git?branch=main#3286a6fee4e05d20a80388e1058c0d7bee240a42"
 dependencies = [
  "async-channel",
  "document-features",
@@ -3972,7 +3972,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -7825,7 +7825,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8829,7 +8829,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -9069,6 +9069,7 @@ dependencies = [
  "agent-client-protocol-schema",
  "base64 0.23.1",
  "cfg_aliases",
+ "crossbeam",
  "futures",
  "http",
  "re_async",
@@ -9083,6 +9084,38 @@ dependencies = [
  "shell-words",
  "tempfile",
  "thiserror 2.0.19",
+ "web-time",
+]
+
+[[package]]
+name = "re_agent_panel"
+version = "0.42.0-alpha.1+dev"
+dependencies = [
+ "cfg_aliases",
+ "crossbeam",
+ "egui",
+ "futures",
+ "insta",
+ "jiff",
+ "re_agent",
+ "re_agent_ui",
+ "re_analytics",
+ "re_async",
+ "re_build_tools",
+ "re_entity_db",
+ "re_log",
+ "re_log_channel",
+ "re_protos",
+ "re_sdk_types",
+ "re_tracing",
+ "re_ui",
+ "re_viewer_control_tools",
+ "re_workspace_hack",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.19",
+ "web-time",
 ]
 
 [[package]]
@@ -9090,6 +9123,7 @@ name = "re_agent_ui"
 version = "0.42.0-alpha.1+dev"
 dependencies = [
  "base64 0.23.1",
+ "cfg_aliases",
  "clap",
  "eframe",
  "egui",
@@ -9102,7 +9136,6 @@ dependencies = [
  "re_async",
  "re_format",
  "re_log",
- "re_log_types",
  "re_tracing",
  "re_ui",
  "re_workspace_hack",
@@ -9167,7 +9200,6 @@ dependencies = [
  "jiff",
  "re_arrow_util",
  "re_format",
- "re_log_types",
  "re_sdk_types",
  "re_span",
  "re_tracing",
@@ -9968,10 +10000,12 @@ version = "0.42.0-alpha.1+dev"
 dependencies = [
  "half",
  "itertools 0.15.0",
+ "jiff",
  "num-traits",
  "re_int",
  "re_log",
  "re_workspace_hack",
+ "serde",
 ]
 
 [[package]]
@@ -9981,6 +10015,7 @@ dependencies = [
  "gilrs",
  "glam",
  "parking_lot",
+ "re_async",
  "re_log",
  "re_workspace_hack",
 ]
@@ -10281,6 +10316,7 @@ version = "0.42.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "parking_lot",
+ "re_async",
  "re_byte_size",
  "re_chunk_index",
  "re_log_msg",
@@ -11294,7 +11330,6 @@ version = "0.42.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
- "re_byte_size",
  "re_chunk",
  "re_context_menu",
  "re_entity_db",
@@ -11521,7 +11556,6 @@ dependencies = [
  "egui_kittest",
  "egui_tiles",
  "getrandom 0.3.4",
- "insta",
  "itertools 0.15.0",
  "jiff",
  "notify",
@@ -11536,7 +11570,6 @@ dependencies = [
  "re_error",
  "re_format",
  "re_log",
- "re_log_types",
  "re_mutex",
  "re_quota_channel",
  "re_redap_client",
@@ -11555,7 +11588,6 @@ dependencies = [
  "url",
  "wayland-client",
  "wayland-protocols",
- "web-time",
 ]
 
 [[package]]
@@ -11793,6 +11825,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_view_raw_data"
+version = "0.42.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "egui",
+ "itertools 0.15.0",
+ "re_arrow_ui",
+ "re_chunk",
+ "re_chunk_store",
+ "re_component_ui",
+ "re_data_ui",
+ "re_entity_db",
+ "re_log_types",
+ "re_query",
+ "re_sdk_types",
+ "re_test_context",
+ "re_test_viewport",
+ "re_tracing",
+ "re_ui",
+ "re_view",
+ "re_viewer_context",
+ "re_viewport_blueprint",
+ "re_workspace_hack",
+]
+
+[[package]]
 name = "re_view_spatial"
 version = "0.42.0-alpha.1+dev"
 dependencies = [
@@ -11864,7 +11922,6 @@ dependencies = [
  "re_ui",
  "re_view",
  "re_viewer_context",
- "re_viewport",
  "re_viewport_blueprint",
  "re_workspace_hack",
 ]
@@ -12016,7 +12073,8 @@ dependencies = [
  "parking_lot",
  "poll-promise",
  "rand 0.9.5",
- "re_agent_ui",
+ "re_agent",
+ "re_agent_panel",
  "re_analytics",
  "re_arrow_json",
  "re_async",
@@ -12078,6 +12136,7 @@ dependencies = [
  "re_view_dataframe",
  "re_view_graph",
  "re_view_map",
+ "re_view_raw_data",
  "re_view_spatial",
  "re_view_state_timeline",
  "re_view_tensor",
@@ -12085,7 +12144,6 @@ dependencies = [
  "re_view_text_log",
  "re_view_time_series",
  "re_viewer_context",
- "re_viewer_control_tools",
  "re_viewport",
  "re_viewport_blueprint",
  "re_web",
@@ -12132,6 +12190,7 @@ dependencies = [
  "half",
  "image",
  "indexmap 2.14.0",
+ "insta",
  "itertools 0.15.0",
  "linked-hash-map",
  "ndarray",
@@ -12181,12 +12240,14 @@ dependencies = [
  "slotmap",
  "smallvec",
  "static_assertions",
+ "strum 0.26.3",
  "strum_macros 0.26.4",
  "thiserror 2.0.19",
  "tiff",
  "tokio",
  "uuid",
  "vec1",
+ "web-time",
  "wgpu",
 ]
 
@@ -12235,7 +12296,6 @@ dependencies = [
  "re_context_menu",
  "re_format",
  "re_log",
- "re_log_types",
  "re_sdk_types",
  "re_tracing",
  "re_ui",
@@ -12888,8 +12948,7 @@ dependencies = [
 [[package]]
 name = "rerun-tonic-web-wasm-client"
 version = "0.8.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d575ddc5299e483786d536f80d247c40f855e3c82f45b086969de1c87f871e15"
+source = "git+https://github.com/rerun-io/tonic-web-wasm-client.git?branch=patch-0.8.2#2a2c3d6e31aa61289fdc388f048044dc1c878e1d"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -12906,7 +12965,7 @@ dependencies = [
  "tower-service",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams 0.4.2",
+ "wasm-streams 0.5.0",
  "web-sys",
 ]
 
@@ -13303,7 +13362,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -13362,7 +13421,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -14014,7 +14073,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -14529,10 +14588,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -16206,7 +16265,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -16568,7 +16627,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

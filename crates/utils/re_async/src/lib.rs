@@ -5,8 +5,10 @@ use std::future::Future;
 use std::time::Duration;
 
 mod read_at;
+mod ui_waker;
 
 pub use read_at::{AsyncReadAt, span_len_usize};
+pub use ui_waker::UiWaker;
 
 /// The timeout elapsed before the future completed.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]

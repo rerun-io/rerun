@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol, or run an agent loop against a model API"
+description = "Talk to a coding agent (Claude Code, Codex, вЂ¦) over the Agent Client Protocol, or run an agent loop against a model API"
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
@@ -44,8 +44,8 @@ rig-reqwest.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 shell-words.workspace = true
-tempfile.workspace = true
 thiserror.workspace = true
+web-time.workspace = true
 
 [dev-dependencies]
 http.workspace = true
@@ -53,6 +53,8 @@ rig-core = { workspace = true, features = ["test-utils"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 agent-client-protocol.workspace = true
+crossbeam.workspace = true
+tempfile.workspace = true
 
 [build-dependencies]
 cfg_aliases.workspace = true

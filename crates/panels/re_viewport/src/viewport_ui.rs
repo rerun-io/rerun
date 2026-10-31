@@ -8,7 +8,6 @@ use ahash::HashMap;
 use egui::{Key, KeyboardShortcut, Modifiers, remap_clamp};
 use egui_tiles::{Behavior as _, EditAction};
 use re_context_menu::{SelectionUpdateBehavior, context_menu_ui_for_item};
-use re_log_types::{EntityPath, ResolvedEntityPathRule, RuleEffect};
 use re_ui::{
     ContextExt as _, Help, Icon, IconText, UICommandSender as _, UiExt as _,
     design_tokens_of_visuals, icons,
@@ -18,9 +17,7 @@ use re_viewer_context::{
     MissingChunkReporter, PublishedViewInfo, SystemCommand, SystemCommandSender as _,
     SystemExecutionOutput, ViewId, ViewQuery, ViewStates, ViewerContext, icon_for_container_kind,
 };
-use re_viewport_blueprint::{
-    CanAddToView, ViewBlueprint, ViewportBlueprint, ViewportCommand, create_entity_add_info,
-};
+use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
 
 use re_view::execute_systems_for_view;
 
@@ -162,36 +159,32 @@ impl ViewportUi {
                     }
 
                     // Handle drag-and-drop if this is a view.
-                    let should_display_drop_destination_frame = if pointer_in_rect
-                        && let Some(view_id) = contents.as_view_id()
-                        && let Some(view_blueprint) = self.blueprint.view(&view_id)
-                        && let Some(payload) = dragged_payload.as_ref()
-                    {
-                        let feedback = match payload.as_ref() {
-                            DragAndDropPayload::Entities { entities } => {
-                                Self::handle_drop_entities_to_view(
-                                    ctx,
-                                    view_blueprint,
-                                    entities,
-                                    released,
-                                )
-                            }
-                            DragAndDropPayload::Components { component_paths } => view_blueprint
+                    let should_display_drop_destination_frame =
+                        if pointer_in_rect
+                            && let Some(view_id) = contents.as_view_id()
+                            && let Some(view_blueprint) = self.blueprint.view(&view_id)
+                            && let Some(payload) = dragged_payload.as_ref()
+                        {
+                            let view_ctx = view_blueprint
+                                .bundle_context_with_states(ctx, egui_tiles_delegate.view_states);
+                            let feedback = view_blueprint
                                 .class(ctx.view_class_registry())
-                                .handle_component_drop(ctx, view_id, component_paths, released),
-                            DragAndDropPayload::Contents { .. } | DragAndDropPayload::Invalid => {
-                                DragAndDropFeedback::Ignore
+                                .handle_drop(&view_ctx, payload.as_ref(), released);
+
+                            if released && feedback == DragAndDropFeedback::Accept {
+                                egui::DragAndDrop::clear_payload(ctx.egui_ctx());
+                                ctx.command_sender()
+                                    .send_system(SystemCommand::set_selection(Item::View(view_id)));
                             }
+
+                            if feedback != DragAndDropFeedback::Ignore {
+                                ctx.drag_and_drop_manager().set_feedback(feedback);
+                            }
+
+                            feedback == DragAndDropFeedback::Accept
+                        } else {
+                            false
                         };
-
-                        if feedback != DragAndDropFeedback::Ignore {
-                            ctx.drag_and_drop_manager().set_feedback(feedback);
-                        }
-
-                        feedback == DragAndDropFeedback::Accept
-                    } else {
-                        false
-                    };
 
                     if matches!(contents, Contents::View(_))
                         && !should_display_drop_destination_frame
@@ -277,103 +270,6 @@ impl ViewportUi {
             }
         });
         self.blueprint.set_maximized(maximized, ctx);
-    }
-
-    /// Handle the entities being dragged over a view.
-    ///
-    /// A dragged entity is added with an including-subtree rule, so it is worth dropping as soon
-    /// as one entity of its subtree, possibly itself, is:
-    /// - visualizable,
-    /// - not part of the view yet,
-    /// - and accepted by the view class.
-    ///
-    /// All three must hold for the *same* entity: a subtree whose only additions would be
-    /// entities the view can't show has nothing to contribute.
-    ///
-    /// Design decisions:
-    /// - We accept the drop as soon as one of the dragged entities is worth dropping.
-    /// - When the drop happens, of all dragged entities, we only add those.
-    /// - If nothing is left to accept, we show the most specific reason we have.
-    ///
-    /// This is public so that view crates can test how their class handles entity drops.
-    pub fn handle_drop_entities_to_view(
-        ctx: &ViewerContext<'_>,
-        view_blueprint: &ViewBlueprint,
-        entities: &[EntityPath],
-        released: bool,
-    ) -> DragAndDropFeedback {
-        let recording_engine = ctx.recording_engine();
-        let entity_tree = recording_engine.store().entity_tree();
-        let add_info = create_entity_add_info(
-            ctx,
-            entity_tree,
-            view_blueprint,
-            ctx.lookup_query_result(view_blueprint.id),
-        );
-        let view_class = view_blueprint.class(ctx.view_class_registry());
-
-        let mut acceptable_entities = Vec::new();
-
-        // Why we had to turn an entity down, in decreasing order of specificity. Only shown if
-        // nothing is acceptable in the end.
-        let mut class_rejection = None;
-        let mut any_already_in_view = false;
-
-        for entity in entities {
-            let Some(subtree) = entity_tree.subtree(entity) else {
-                continue;
-            };
-
-            let mut is_acceptable = false;
-            subtree.visit_children_recursively(|entity_path| {
-                // Entities no visualizer of this class can show are silently ignored: that is
-                // evident enough from the streams panel.
-                let Some(CanAddToView::Compatible { already_added }) =
-                    add_info.get(entity_path).map(|info| &info.can_add)
-                else {
-                    return;
-                };
-
-                if let Some(reason) = view_class.reject_entity_drop_reason(ctx, entity_path) {
-                    class_rejection.get_or_insert(reason);
-                } else if *already_added {
-                    any_already_in_view = true;
-                } else {
-                    is_acceptable = true;
-                }
-            });
-
-            if is_acceptable {
-                acceptable_entities.push(entity);
-            }
-        }
-
-        if acceptable_entities.is_empty() {
-            let reason =
-                class_rejection.or_else(|| any_already_in_view.then_some("Already in this view"));
-            return DragAndDropFeedback::Reject(reason);
-        }
-
-        // drop incoming!
-        if released {
-            egui::DragAndDrop::clear_payload(ctx.egui_ctx());
-
-            view_blueprint
-                .contents
-                .mutate_entity_path_filter(ctx, |filter| {
-                    for entity in acceptable_entities {
-                        filter.add_rule(
-                            RuleEffect::Include,
-                            ResolvedEntityPathRule::including_subtree(entity),
-                        );
-                    }
-                });
-
-            ctx.command_sender()
-                .send_system(SystemCommand::set_selection(Item::View(view_blueprint.id)));
-        }
-
-        DragAndDropFeedback::Accept
     }
 
     pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
@@ -642,6 +538,11 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
         ui.add_space(8.0); // margin within the frame
 
+        // Square icon buttons already leave room around their icons. egui_tiles lays out the tabs in
+        // this same `Ui` afterwards, so the spacing is restored at the end.
+        let item_spacing = ui.spacing().item_spacing.x;
+        ui.spacing_mut().item_spacing.x = 4.0;
+
         if *self.maximized == Some(view_id) {
             // Show minimize-button:
             if ui
@@ -732,6 +633,8 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
         });
 
         self.reports_button(ui, view_id);
+
+        ui.spacing_mut().item_spacing.x = item_spacing;
     }
 
     fn tab_bar_left_ui(

@@ -107,11 +107,13 @@ serde.workspace = true
 slotmap.workspace = true
 smallvec.workspace = true
 static_assertions.workspace = true
+strum.workspace = true
 strum_macros.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
-wgpu.workspace = true
 vec1.workspace = true
+web-time.workspace = true
+wgpu.workspace = true
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -126,6 +128,7 @@ re_log = { workspace = true, features = ["setup"] }
 re_ui = { workspace = true, features = ["testing"] }
 
 egui_kittest.workspace = true
+insta.workspace = true
 rand = { workspace = true, features = ["std_rng"] }
 tiff.workspace = true
 

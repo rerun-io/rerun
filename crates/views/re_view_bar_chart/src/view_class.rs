@@ -38,10 +38,6 @@ impl ViewClass for BarChartView {
         &re_ui::icons::VIEW_HISTOGRAM
     }
 
-    fn new_state(&self) -> Box<dyn ViewState> {
-        Box::<()>::default()
-    }
-
     fn help(&self, os: egui::os::OperatingSystem) -> Help {
         let egui::InputOptions {
             zoom_modifier,

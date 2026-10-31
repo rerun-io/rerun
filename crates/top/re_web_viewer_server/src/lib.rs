@@ -559,7 +559,6 @@ impl WebViewerServerInner {
     fn on_serve_wasm(&self) {
         self.num_wasm_served.fetch_add(1, Ordering::Relaxed);
 
-        #[cfg(feature = "analytics")]
         re_analytics::record(|| re_analytics::event::ServeWasm);
     }
 

@@ -5,7 +5,7 @@ use std::sync::Arc;
 use crossbeam::channel::Receiver;
 use egui::AtomExt as _;
 
-use re_async::AsyncRuntimeHandle;
+use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_catalog_client::{AssetCoverage, CatalogClient};
 use re_format::{format_plural_s, format_uint};
 use re_log_types::EntryId;
@@ -14,7 +14,7 @@ use re_protos::cloud::v1alpha1::ext::AssetMode;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::{ApiError, ConnectionRegistryHandle};
 use re_ui::{
-    DesignTokens, ReButton, ServerValue, UiExt as _,
+    ButtonExt as _, DesignTokens, ServerValue, UiExt as _,
     modal::{ModalHandler, ModalWrapper},
 };
 
@@ -150,7 +150,8 @@ fn segment_list(
 
     // A list short enough to show in full collapsed has nothing to expand.
     if expanded && segments.len() > COLLAPSED_SHOWN_COUNT {
-        let min_list_height = MIN_LIST_ROWS * DesignTokens::list_item_height();
+        let min_list_height =
+            MIN_LIST_ROWS * DesignTokens::list_item_height(re_ui::ListItemDensity::Spacious);
         egui::ScrollArea::vertical()
             .id_salt(("asset_coverage_segments", mode))
             .max_height(max_list_height.clamp(min_list_height, MAX_LIST_HEIGHT))
@@ -239,14 +240,14 @@ fn segment_pills(
             let remove_rect = response.rect(remove_id);
             response.response.on_hover_text(segment.as_str());
 
-            // `small` drops egui's minimum button height of `interact_size.y`, so the button is
-            // the size of the icon.
+            // Sized to the icon's rect, so the theme's minimum button height doesn't grow it out of
+            // the pill.
             if let Some(rect) = remove_rect
                 && ui
                     .place(
                         rect,
                         ui.small_icon_button_widget(&re_ui::icons::CLOSE_SMALL, "remove")
-                            .small(),
+                            .size(re_ui::Size::custom(rect.height())),
                     )
                     .clicked()
             {
@@ -626,7 +627,7 @@ struct State {
 
 impl State {
     /// Starts writing the edited coverage to the server.
-    fn save(&mut self, ctx: &Context<'_>, egui_ctx: egui::Context) {
+    fn save(&mut self, ctx: &Context<'_>, waker: UiWaker) {
         let Some(revision) = self.stored.as_ref().map(|stored| stored.revision) else {
             return;
         };
@@ -668,7 +669,7 @@ impl State {
             }
 
             send_crossbeam(&tx, result).ok();
-            egui_ctx.request_repaint();
+            waker.wake();
         });
     }
 }
@@ -797,10 +798,10 @@ impl AssetCoverageModal {
                         },
                         |ui| {
                             let can_save = is_editable && !saving;
-                            let save = ReButton::new("Save coverage").blue().small();
+                            let save = egui::Button::new("Save coverage").blue().size_small();
                             let save_clicked = ui.add_enabled(can_save, save).clicked();
 
-                            if ui.add(ReButton::new("Cancel").small()).clicked() {
+                            if ui.add(egui::Button::new("Cancel").size_small()).clicked() {
                                 ui.close();
                             }
 
@@ -810,7 +811,7 @@ impl AssetCoverageModal {
                 });
 
                 if footer.inner.1 {
-                    state.save(ctx, ui.ctx().clone());
+                    state.save(ctx, ui.ui_waker());
                 }
 
                 remember_footer_height(ui, footer_id, footer.response.rect);

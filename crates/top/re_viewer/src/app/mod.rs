@@ -20,10 +20,10 @@ use re_ui::{ContextExt as _, UiExt as _, notifications};
 use re_viewer_context::store_hub::{BlueprintPersistence, StoreHub};
 use re_viewer_context::viewer_url::{OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{
-    AppBlueprintCtx, AppOptions, AuthContext, CommandReceiver, CommandSender, ComponentUiRegistry,
-    EditRedapServerModalCommand, Item, NeedsRepaint, Route, SystemCommand,
-    SystemCommandSender as _, TimeControlCommand, ViewClass, ViewClassRegistryError,
-    command_channel,
+    AppBlueprintCtx, AppOptions, AuthContext, CommandEnvironment, CommandReceiver, CommandSender,
+    ComponentUiRegistry, EditRedapServerModalCommand, Item, NeedsRepaint, RecordingCommandKind,
+    Route, SystemCommand, SystemCommandSender as _, TimeControlCommand, ViewClass,
+    ViewClassRegistryError, command_channel,
 };
 
 use self::registries::Registries;
@@ -160,8 +160,7 @@ pub struct AppCore {
 
     dev_panel: crate::dev_panel::DevPanel,
 
-    #[cfg(agent_panel)]
-    agent_panel: crate::agent_panel::ViewerAgentPanel,
+    agent_panel: re_agent_panel::ViewerAgentPanel,
 
     pub(crate) external_memory_users: crate::external_memory::ExternalMemoryUsers,
 
@@ -237,6 +236,10 @@ impl App {
         command_channel: (CommandSender, CommandReceiver),
     ) -> Self {
         re_tracing::profile_function!();
+
+        if cfg!(feature = "analytics") {
+            re_analytics::enable_in_this_process();
+        }
 
         re_crypto::init();
 
@@ -477,7 +480,7 @@ impl App {
                     // uses them for focus/scroll. We only stash which command was pressed; it is
                     // paired with the live active recording and dispatched later, in `App::ui`, so
                     // it can never target a stale recording.
-                    if let Some(kind) = re_ui::consume_timeline_shortcut(ctx) {
+                    if let Some(kind) = re_viewer_context::consume_timeline_shortcut(ctx) {
                         ctx.data_mut(|data| {
                             data.insert_temp(pending_timeline_shortcut_key(), kind);
                         });
@@ -529,7 +532,6 @@ impl App {
 
             dev_panel: Default::default(),
 
-            #[cfg(agent_panel)]
             agent_panel: Default::default(),
             external_memory_users: crate::external_memory::ExternalMemoryUsers::default_users(),
             cached_app_overhead_bytes: None,
@@ -655,12 +657,10 @@ impl AppCore {
     }
 
     /// Whether the agent panel is shown. Requires the experimental setting.
-    #[cfg(agent_panel)]
     pub fn agent_panel_open(&self) -> bool {
         self.app_options().experimental.agent_panel && self.state.agent_panel_open
     }
 
-    #[cfg(agent_panel)]
     pub fn toggle_agent_panel(&mut self) {
         if self.app_options().experimental.agent_panel {
             self.state.agent_panel_open ^= true;
@@ -698,7 +698,7 @@ impl AppCore {
     ///
     /// Keyboard shortcuts, the command palette, and `ViewerControlService` all bind commands
     /// against this, so they agree on what a command does.
-    pub fn command_environment(&self) -> re_ui::CommandEnvironment {
+    pub fn command_environment(&self) -> CommandEnvironment {
         let active_recording = self.state.navigation.current().recording_id().cloned();
         let table = self.state.navigation.current().table_reference();
 
@@ -710,7 +710,7 @@ impl AppCore {
             _ => None,
         };
 
-        re_ui::CommandEnvironment {
+        CommandEnvironment {
             recording: active_recording,
             has_editable_redap_server: selected_redap_server
                 .as_ref()
@@ -1586,10 +1586,10 @@ impl AppCore {
 
             // Handle keyboard shortcuts, now that we have a live `CommandEnvironment`:
             {
-                use re_ui::RecordingCommandSender as _;
+                use re_viewer_context::RecordingCommandSender as _;
 
                 // Non-timeline shortcuts, resolved against the current environment:
-                if let Some(bound) = re_ui::listen_for_kb_shortcuts(ui.ctx(), cmd_env)
+                if let Some(bound) = re_viewer_context::listen_for_kb_shortcuts(ui.ctx(), cmd_env)
                     .and_then(|command| commands.resolve(command.kind()))
                 {
                     self.command_sender.send_command(bound);
@@ -1599,8 +1599,8 @@ impl AppCore {
                 // `on_begin_pass` and stashed; pair them with the live recording here:
                 let pending_timeline = ui.ctx().data_mut(|data| {
                     let key = pending_timeline_shortcut_key();
-                    let kind = data.get_temp::<re_ui::RecordingCommandKind>(key);
-                    data.remove::<re_ui::RecordingCommandKind>(key);
+                    let kind = data.get_temp::<RecordingCommandKind>(key);
+                    data.remove::<RecordingCommandKind>(key);
                     kind
                 });
                 if let Some(cmd) = pending_timeline.and_then(|kind| kind.for_environment(cmd_env)) {
@@ -1609,9 +1609,7 @@ impl AppCore {
             }
 
             let mut cmd_palette_provider = crate::command_palette::CommandPaletteProviderImpl {
-                #[cfg(agent_panel)]
                 agent_enabled: self.app_options().experimental.agent_panel,
-                #[cfg(agent_panel)]
                 agent_setup_done: self.state.agent_settings.setup_done,
                 recording: store_context.as_ref().map(|ctx| ctx.recording()),
                 redap_servers: &self.state.redap_servers,
@@ -1619,12 +1617,10 @@ impl AppCore {
             };
             if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {
-                    #[cfg(agent_panel)]
                     CommandPaletteAction::AskAgent(prompt) => {
                         self.state.agent_panel_open = true;
                         self.agent_panel.submit_prompt(prompt);
                     }
-                    #[cfg(agent_panel)]
                     CommandPaletteAction::SetUpAgent => {
                         self.state.agent_panel_open = true;
                     }

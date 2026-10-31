@@ -8,18 +8,17 @@ use re_log_types::{EntityPathPart, EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
 use re_redap_client::ApiError;
+use re_ui::ButtonExt as _;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
-use re_ui::{
-    DesignTokens, ReButton, ServerValue, TabBar, TableCommand, TableCommandKind,
-    TableCommandSender as _, UiExt as _, icons,
-};
+use re_ui::{DesignTokens, ServerValue, TabBar, UiExt as _, icons};
 use re_uri::DatasetResource;
 use re_viewer_context::{
     AppContext, SystemCommand, SystemCommandSender as _, TableReference as ViewerTableReference,
     ViewStates,
 };
+use re_viewer_context::{TableCommand, TableCommandKind, TableCommandSender as _};
 
 use crate::asset_coverage_modal::{ASSETS_DOCS_URL, AssetTarget, card_frame};
 use crate::asset_registration::{AssetRegistration, RegistrationState};
@@ -746,8 +745,8 @@ impl Server {
                             return;
                         }
 
-                        // `outlined` is the `ReButton` variant with a border.
-                        let open_button = ui.add(re_ui::ReButton::new("Open").outlined().small());
+                        // `outlined` is the button variant with a border.
+                        let open_button = ui.add(egui::Button::new("Open").outlined().size_small());
 
                         if open_button.clicked_with_open_in_background() {
                             open_asset_ui(ui, dataset, asset, true);
@@ -875,21 +874,27 @@ fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
         let date_format = app_ctx.app_options.timestamp_format;
         ui.spacing_mut().item_spacing.x = 0.0;
 
-        short_duration_ui(ui, asset.registered_at, date_format, |ui, registered_at| {
-            ui.label(format!("Registered {registered_at}"))
-        });
+        short_duration_ui(
+            ui,
+            asset.registered_at.into(),
+            date_format,
+            |ui, registered_at| ui.label(format!("Registered {registered_at}")),
+        );
 
         // Registering an asset sets both timestamps, and the manifest rows of one asset can be
         // written a few milliseconds apart, so the two differ slightly even for an asset that was
         // never updated. Comparing the formatted text instead of the raw timestamps keeps the line
         // from showing the same moment twice. A re-registration is seconds or more later, see
         // `CatalogClient::register_asset`.
-        if short_duration_text(asset.last_updated_at, date_format)
-            != short_duration_text(asset.registered_at, date_format)
+        if short_duration_text(asset.last_updated_at.into(), date_format)
+            != short_duration_text(asset.registered_at.into(), date_format)
         {
-            short_duration_ui(ui, asset.last_updated_at, date_format, |ui, updated_at| {
-                ui.label(format!(" · Updated {updated_at}"))
-            });
+            short_duration_ui(
+                ui,
+                asset.last_updated_at.into(),
+                date_format,
+                |ui, updated_at| ui.label(format!(" · Updated {updated_at}")),
+            );
         }
     });
 }
@@ -1517,7 +1522,7 @@ fn register_asset_button(
 
     let response = ui.add_enabled(
         no_room_reason.is_none(),
-        ReButton::new("Register asset").blue().small(),
+        egui::Button::new("Register asset").blue().size_small(),
     );
 
     if let Some(reason) = no_room_reason {
@@ -1591,7 +1596,7 @@ fn refresh_button_ui(
             if let Some(queried_at) = queried_at {
                 ui.horizontal(|ui| {
                     ui.label("Last updated:");
-                    short_duration_ui(ui, queried_at, timestamp_format, egui::Ui::strong);
+                    short_duration_ui(ui, queried_at.into(), timestamp_format, egui::Ui::strong);
                 });
             }
         })

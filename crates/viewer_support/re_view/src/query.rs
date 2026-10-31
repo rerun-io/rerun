@@ -1134,10 +1134,6 @@ mod tests {
             registry.register_visualizer::<AnnotationTestVisualizer>()
         }
 
-        fn new_state(&self) -> Box<dyn re_viewer_context::ViewState> {
-            Box::new(())
-        }
-
         fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
             re_viewer_context::ViewClassLayoutPriority::Low
         }

@@ -12,7 +12,7 @@ use re_protos::common::v1alpha1::ext::{DatasetKind, DatasetLimits};
 use re_quota_channel::send_crossbeam;
 use re_redap_client::ConnectionRegistryHandle;
 use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{ReButton, UiExt as _, icons};
+use re_ui::{ButtonExt as _, UiExt as _, icons};
 
 use crate::asset_coverage_modal::{
     AssetEditState, AssetTarget, COVERAGE_MODAL_WIDTH, COVERAGE_NOT_STORED, assets_docs_link,
@@ -121,13 +121,12 @@ impl AssetSourcesCapabilities {
 /// this machine.
 ///
 /// The frame is drawn here rather than by the [`egui::TextEdit`], so that the picker sits inside
-/// it. Its stroke follows the field's state, and [`re_ui::text_edit::TextEditTheme::focus_stroke`] while focused,
-/// which keeps [`re_ui::UiExt::style_invalid_field`] working.
+/// it. An `invalid` source is outlined in the error color, whatever the field's state.
 fn source_uri_field(
     ui: &mut egui::Ui,
     source_uri: &mut String,
-    hint_text: &str,
-    with_picker: bool,
+    sources: &AssetSourcesCapabilities,
+    invalid: bool,
 ) -> egui::Response {
     /// Tall enough for the picker, so the field does not change height with it.
     const FIELD_HEIGHT: f32 = 19.0;
@@ -140,13 +139,16 @@ fn source_uri_field(
         .map(|response| ui.style().interact(response))
         .unwrap_or_else(|| &ui.visuals().widgets.inactive);
 
-    let width = ui.visuals().selection.stroke.width;
-    let mut stroke = if response.is_some_and(|response| response.has_focus()) {
-        re_ui::text_edit::TextEditTheme::focus_stroke(ui.visuals())
+    let selection_stroke = ui.visuals().selection.stroke;
+    let stroke = if invalid {
+        egui::Stroke::new(selection_stroke.width, ui.visuals().error_fg_color)
+    } else if response.is_some_and(|response| response.has_focus()) {
+        selection_stroke
     } else {
-        visuals.bg_stroke
+        let mut stroke = visuals.bg_stroke;
+        stroke.width = selection_stroke.width;
+        stroke
     };
-    stroke.width = width;
 
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(12, 9))
@@ -158,7 +160,9 @@ fn source_uri_field(
                 ui.set_height(FIELD_HEIGHT);
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    if with_picker && let Some(picked) = pick_asset_file(ui) {
+                    if sources.show_file_picker()
+                        && let Some(picked) = pick_asset_file(ui)
+                    {
                         *source_uri = picked;
                     }
 
@@ -167,7 +171,7 @@ fn source_uri_field(
                             .id(textedit_id)
                             .font(egui::TextStyle::Monospace)
                             .frame(egui::Frame::new())
-                            .hint_text(hint_text)
+                            .hint_text(sources.source_example())
                             .desired_width(ui.available_width()),
                     )
                 })
@@ -394,8 +398,8 @@ impl RegisterAssetModal {
                     &state.edit_state.target.origin,
                 );
 
-                // `style_invalid_field` has to be applied before the field is added, so the outline
-                // lags the text by one frame.
+                // The field is outlined from the text it had before this frame's edits, so the
+                // outline lags the text by one frame.
                 let previous_source_is_invalid =
                     match asset_data_source(&state.edit_state.target.origin, &state.source_uri) {
                         Ok(source) => sources
@@ -416,23 +420,15 @@ impl RegisterAssetModal {
                             ui.weak(egui::RichText::new("SOURCE URI").monospace().size(10.0));
                         ui.add_space(4.0);
 
-                        ui.scope(|ui| {
-                            if previous_source_is_invalid && !state.source_uri.is_empty() {
-                                ui.style_invalid_field();
-                            }
+                        let show_invalid =
+                            previous_source_is_invalid && !state.source_uri.is_empty();
+                        let field =
+                            source_uri_field(ui, &mut state.source_uri, &sources, show_invalid)
+                                .labelled_by(label.id);
 
-                            let field = source_uri_field(
-                                ui,
-                                &mut state.source_uri,
-                                &sources.source_example(),
-                                sources.show_file_picker(),
-                            )
-                            .labelled_by(label.id);
-
-                            if just_opened {
-                                field.request_focus();
-                            }
-                        });
+                        if just_opened {
+                            field.request_focus();
+                        }
 
                         // Parsed after the field, so the register button and what it sends both
                         // use the text the user sees.
@@ -534,8 +530,10 @@ impl RegisterAssetModal {
                                 && no_room_reason.is_none()
                                 && !already_registering;
 
-                            let register_response =
-                                ui.add_enabled(can_register, ReButton::new("Register").blue());
+                            let register_response = ui.add_enabled(
+                                can_register,
+                                egui::Button::new("Register").blue().size_small(),
+                            );
 
                             if can_register
                                 && (register_response.clicked()
@@ -585,7 +583,7 @@ impl RegisterAssetModal {
                                 ui.close();
                             }
 
-                            if ui.add(ReButton::new("Cancel")).clicked() {
+                            if ui.add(egui::Button::new("Cancel").size_small()).clicked() {
                                 ui.close();
                             }
                         },

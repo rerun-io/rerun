@@ -1,6 +1,8 @@
-use re_ui::{ReButton, Size};
+use re_ui::{ButtonExt as _, Size};
 use re_uri::{DATASET_HIERARCHY_SEPARATOR, split_dataset_hierarchy_path};
 use re_viewer_context::{CommandSender, Route, SystemCommand, SystemCommandSender as _};
+
+const CRUMB_SIZE: Size = Size::Tiny;
 
 /// Clickable crumbs for the server and every folder above the entry named `path`, excluding its leaf.
 ///
@@ -15,7 +17,14 @@ pub fn hierarchy_breadcrumbs_ui(
     let segments: Vec<&str> = split_dataset_hierarchy_path(path).collect();
     let parents = &segments[..segments.len().saturating_sub(1)];
 
-    ui.horizontal_wrapped(|ui| {
+    // Shift so the first crumb's text, not its button frame, aligns with the content below.
+    // A detached child keeps the shift from widening the parent's `max_rect`.
+    let shift = egui::vec2(CRUMB_SIZE.padding().x, 0.0);
+    let mut child = ui.new_child(
+        egui::UiBuilder::new().max_rect(ui.available_rect_before_wrap().translate(-shift)),
+    );
+
+    child.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = 0.0;
 
         crumb_ui(
@@ -46,6 +55,8 @@ pub fn hierarchy_breadcrumbs_ui(
 
         ui.weak("/");
     });
+
+    ui.advance_cursor_after_rect(child.min_rect().translate(shift));
 }
 
 fn crumb_ui(
@@ -55,7 +66,7 @@ fn crumb_ui(
     command_sender: &CommandSender,
 ) {
     if ui
-        .add(ReButton::new(label.into()).ghost().size(Size::Tiny))
+        .add(egui::Button::new(label.into()).ghost().size(CRUMB_SIZE))
         .clicked()
     {
         if let Some(item) = route.item() {

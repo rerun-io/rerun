@@ -24,6 +24,7 @@ default = ["crypto-ring"]
 
 ## Use Ring for native cryptography (the default).
 crypto-ring = [
+  "re_arrow_ui/crypto-ring",
   "re_auth/crypto-ring",
   "re_catalog_client/crypto-ring",
   "re_dataframe_ui/crypto-ring",
@@ -35,6 +36,7 @@ crypto-ring = [
 
 ## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
 crypto-aws-lc-rs = [
+  "re_arrow_ui/crypto-aws-lc-rs",
   "re_auth/crypto-aws-lc-rs",
   "re_catalog_client/crypto-aws-lc-rs",
   "re_dataframe_ui/crypto-aws-lc-rs",

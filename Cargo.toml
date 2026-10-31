@@ -8,6 +8,7 @@ members = [
   "crates/store_app/*",
   "crates/tests/*",
   "crates/top/*",
+  "crates/ui_tools/*",
   "crates/utils/*",
   "crates/viewer_support/*",
   "crates/views/*",
@@ -84,6 +85,7 @@ re_view_bar_chart = { path = "crates/views/re_view_bar_chart", version = "=0.42.
 re_view_dataframe = { path = "crates/views/re_view_dataframe", version = "=0.42.0-alpha.1", default-features = false }
 re_view_graph = { path = "crates/views/re_view_graph", version = "=0.42.0-alpha.1", default-features = false }
 re_view_map = { path = "crates/views/re_view_map", version = "=0.42.0-alpha.1", default-features = false }
+re_view_raw_data = { path = "crates/views/re_view_raw_data", version = "=0.42.0-alpha.1", default-features = false }
 re_view_spatial = { path = "crates/views/re_view_spatial", version = "=0.42.0-alpha.1", default-features = false }
 re_view_state_timeline = { path = "crates/views/re_view_state_timeline", version = "=0.42.0-alpha.1", default-features = false }
 re_view_tensor = { path = "crates/views/re_view_tensor", version = "=0.42.0-alpha.1", default-features = false }
@@ -92,7 +94,7 @@ re_view_text_log = { path = "crates/views/re_view_text_log", version = "=0.42.0-
 re_view_time_series = { path = "crates/views/re_view_time_series", version = "=0.42.0-alpha.1", default-features = false }
 
 # crates/panels:
-re_agent_ui = { path = "crates/panels/re_agent_ui", version = "=0.42.0-alpha.1", default-features = false }
+re_agent_panel = { path = "crates/panels/re_agent_panel", version = "=0.42.0-alpha.1", default-features = false }
 re_blueprint_tree = { path = "crates/panels/re_blueprint_tree", version = "=0.42.0-alpha.1", default-features = false }
 re_chunk_store_ui = { path = "crates/panels/re_chunk_store_ui", version = "=0.42.0-alpha.1", default-features = false }
 re_memory_view = { path = "crates/panels/re_memory_view", version = "=0.42.0-alpha.1", default-features = false }
@@ -103,18 +105,14 @@ re_time_panel = { path = "crates/panels/re_time_panel", version = "=0.42.0-alpha
 re_viewport = { path = "crates/panels/re_viewport", version = "=0.42.0-alpha.1", default-features = false }
 
 # crates/viewer_support:
-re_arrow_ui = { path = "crates/viewer_support/re_arrow_ui", version = "=0.42.0-alpha.1", default-features = false }
 re_component_fallbacks = { path = "crates/viewer_support/re_component_fallbacks", version = "=0.42.0-alpha.1", default-features = false }
 re_component_ui = { path = "crates/viewer_support/re_component_ui", version = "=0.42.0-alpha.1", default-features = false }
 re_context_menu = { path = "crates/viewer_support/re_context_menu", version = "=0.42.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/viewer_support/re_data_ui", version = "=0.42.0-alpha.1", default-features = false }
 re_dataframe_ui = { path = "crates/viewer_support/re_dataframe_ui", version = "=0.42.0-alpha.1", default-features = false }
-re_gamepad = { path = "crates/viewer_support/re_gamepad", version = "=0.42.0-alpha.1", default-features = false }
-re_plot = { path = "crates/viewer_support/re_plot", version = "=0.42.0-alpha.1", default-features = false }
 re_renderer = { path = "crates/viewer_support/re_renderer", version = "=0.42.0-alpha.1", default-features = false }
 re_renderer_examples = { path = "crates/viewer_support/re_renderer_examples", version = "=0.42.0-alpha.1", default-features = false }
 re_time_ruler = { path = "crates/viewer_support/re_time_ruler", version = "=0.42.0-alpha.1", default-features = false }
-re_ui = { path = "crates/viewer_support/re_ui", version = "=0.42.0-alpha.1", default-features = false }
 re_view = { path = "crates/viewer_support/re_view", version = "=0.42.0-alpha.1", default-features = false }
 re_viewer_context = { path = "crates/viewer_support/re_viewer_context", version = "=0.42.0-alpha.1", default-features = false }
 re_viewer_control_tools = { path = "crates/viewer_support/re_viewer_control_tools", version = "=0.42.0-alpha.1", default-features = false }
@@ -158,6 +156,13 @@ re_sdk_types = { path = "crates/store/re_sdk_types", version = "=0.42.0-alpha.1"
 re_sorbet = { path = "crates/store/re_sorbet", version = "=0.42.0-alpha.1", default-features = false }
 re_types_core = { path = "crates/store/re_types_core", version = "=0.42.0-alpha.1", default-features = false }
 re_uri = { path = "crates/store/re_uri", version = "=0.42.0-alpha.1", default-features = false }
+
+# crates/ui_tools:
+re_agent_ui = { path = "crates/ui_tools/re_agent_ui", version = "=0.42.0-alpha.1", default-features = false }
+re_arrow_ui = { path = "crates/ui_tools/re_arrow_ui", version = "=0.42.0-alpha.1", default-features = false }
+re_gamepad = { path = "crates/ui_tools/re_gamepad", version = "=0.42.0-alpha.1", default-features = false }
+re_plot = { path = "crates/ui_tools/re_plot", version = "=0.42.0-alpha.1", default-features = false }
+re_ui = { path = "crates/ui_tools/re_ui", version = "=0.42.0-alpha.1", default-features = false }
 
 # crates/build:
 re_build_tools = { path = "crates/build/re_build_tools", version = "=0.42.0-alpha.1", default-features = false }
@@ -217,6 +222,7 @@ ecolor = "0.37.0"
 eframe = { version = "0.37.0", default-features = false, features = [
   "accesskit",
   "clipboard",
+  "experimental",
   "inspection",
   "links",
   "system_fonts",
@@ -226,6 +232,7 @@ eframe = { version = "0.37.0", default-features = false, features = [
 egui = { version = "0.37.0", default-features = false, features = [
   "callstack",
   "color-hex",
+  "experimental",
   "rayon",
 ] }
 egui_extras = { version = "0.37.0", default-features = false, features = [
@@ -459,7 +466,7 @@ reqwest013 = { package = "reqwest", version = "0.13.5", default-features = false
 rexif = "0.7.5"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 rig-core = { version = "0.45.0", default-features = false }
-rig-reqwest = { version = "0.45.0", default-features = false } # No `rustls` feature: it pulls in aws-lc-rs and the banned `cmake`. TLS goes through `reqwest013` with the selected provider.
+rig-reqwest = { version = "0.45.0", default-features = false } # No `rustls` feature: it would force AWS-LC. TLS goes through `reqwest013` with the selected provider.
 rmcp = { version = "3.4", features = ["macros", "schemars", "server", "transport-io"] }
 ron = { version = "0.12.2", features = ["integer128"] }
 roxmltree = "0.20.0" # 0.21 would duplicate the 0.20 that `resvg` (via egui_extras) requires. Bump once egui_extras/resvg move to roxmltree 0.21.
@@ -724,6 +731,7 @@ debug = false
 "re_view_dataframe".debug = true
 "re_view_graph".debug = true
 "re_view_map".debug = true
+"re_view_raw_data".debug = true
 "re_view_spatial".debug = true
 "re_view_state_timeline".debug = true
 "re_view_tensor".debug = true
@@ -979,8 +987,9 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # crates.io has an empty stub of this, used by anyone outside this workspace (see its Cargo.toml):
 re_workspace_hack = { path = "crates/utils/re_workspace_hack" }
 
-# Required for provider-independent TLS; replace with a released ehttp version once available.
-ehttp = { git = "https://github.com/emilk/ehttp", rev = "3286a6fee4e05d20a80388e1058c0d7bee240a42" }
+# Remove once released. Both are needed so that only one `wasm-streams` is linked into the web viewer.
+ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main" } # https://github.com/emilk/ehttp/pull/87
+rerun-tonic-web-wasm-client = { git = "https://github.com/rerun-io/tonic-web-wasm-client.git", branch = "patch-0.8.2" } # https://github.com/rerun-io/tonic-web-wasm-client/pull/2
 
 
 # datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }

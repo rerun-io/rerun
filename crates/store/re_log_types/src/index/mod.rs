@@ -12,7 +12,8 @@ mod time_type;
 mod timeline;
 mod timeline_point;
 mod timestamp;
-mod timestamp_format;
+
+pub use re_format::{DateVisibility, TimestampFormat, TimestampFormatKind};
 
 pub use self::absolute_time_range::{AbsoluteTimeRange, AbsoluteTimeRangeF};
 pub use self::duration::Duration;
@@ -26,4 +27,3 @@ pub use self::time_type::TimeType;
 pub use self::timeline::Timeline;
 pub use self::timeline_point::TimelinePoint;
 pub use self::timestamp::Timestamp;
-pub use self::timestamp_format::{DateVisibility, TimestampFormat, TimestampFormatKind};

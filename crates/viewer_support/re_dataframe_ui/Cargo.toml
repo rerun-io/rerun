@@ -21,7 +21,7 @@ all-features = true
 [features]
 ## Use Ring for native cryptography (the default).
 crypto-ring = [
-  "re_analytics?/crypto-ring",
+  "re_analytics/crypto-ring",
   "re_arrow_ui/crypto-ring",
   "re_chunk_store/crypto-ring",
   "re_data_source/crypto-ring",
@@ -36,7 +36,7 @@ crypto-ring = [
 
 ## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
 crypto-aws-lc-rs = [
-  "re_analytics?/crypto-aws-lc-rs",
+  "re_analytics/crypto-aws-lc-rs",
   "re_arrow_ui/crypto-aws-lc-rs",
   "re_chunk_store/crypto-aws-lc-rs",
   "re_data_source/crypto-aws-lc-rs",
@@ -51,11 +51,8 @@ crypto-aws-lc-rs = [
 
 default = ["crypto-ring"]
 
-## Enable anonymized telemetry using our analytics SDK.
-analytics = ["dep:re_analytics"]
-
 [dependencies]
-re_analytics = { workspace = true, optional = true }
+re_analytics.workspace = true
 re_arrow_ui.workspace = true
 re_arrow_util.workspace = true
 re_async.workspace = true

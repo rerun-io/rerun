@@ -135,8 +135,6 @@ impl SelectionPanel {
             return;
         }
 
-        let tokens = ui.tokens();
-
         // no gap before the first item title
         ui.add_space(-ui.spacing().item_spacing.y);
 
@@ -160,17 +158,13 @@ impl SelectionPanel {
             }
         } else {
             let response = list_item::list_item_scope(ui, "selections_panel", |ui| {
-                ui.list_item()
-                    .with_height(tokens.title_bar_height())
-                    .interactive(false)
-                    .selected(true)
-                    .show_flat(
-                        ui,
-                        list_item::LabelContent::new(format!(
-                            "{} selected items",
-                            re_format::format_uint(selection.len())
-                        )),
-                    );
+                ui.list_item().interactive(false).selected(true).show_flat(
+                    ui,
+                    list_item::LabelContent::new(format!(
+                        "{} selected items",
+                        re_format::format_uint(selection.len())
+                    )),
+                );
 
                 for item in selection.iter_items() {
                     ui.add_space(4.0);
@@ -1009,14 +1003,13 @@ fn entity_path_filter_ui(
         .clone()
     });
 
-    let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-        ui.add(
+    let response = ui
+        .add(
             egui::TextEdit::multiline(&mut filter_string)
                 .desired_width(ui.spacing().text_edit_width.at_least(ui.available_width()))
                 .layouter(&mut text_layouter),
         )
-        .accessible_name("Entity path filter")
-    });
+        .accessible_name("Entity path filter");
 
     if response.has_focus() {
         ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
@@ -1248,7 +1241,7 @@ fn property_with_hover_buttons(
             // Reserve room for the icon buttons, so a long label truncates instead
             // of pushing them out of the row.
             let button_count = if doc_url.is_some() { 2.0 } else { 1.0 };
-            let button_width = ui.tokens().small_icon_size.x + 2.0 * ui.spacing().button_padding.x;
+            let button_width = re_ui::Size::inherited(ui).icon_button_size().x;
             let reserved = button_count * (button_width + ui.spacing().item_spacing.x);
             let label_budget = (ui.available_width() - reserved).max(0.0);
 
@@ -1361,9 +1354,7 @@ fn view_top_level_properties(
             .at_least(ui.available_width());
 
         let mut name = view.display_name.clone().unwrap_or_default();
-        re_ui::text_edit::text_edit_scope(ui, |ui| {
-            ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"))
-        });
+        ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
         view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
@@ -1404,7 +1395,7 @@ fn container_top_level_properties(
             .at_least(ui.available_width());
 
         let mut name = container.display_name.clone().unwrap_or_default();
-        re_ui::text_edit::text_edit_scope(ui, |ui| ui.add(egui::TextEdit::singleline(&mut name)));
+        ui.add(egui::TextEdit::singleline(&mut name));
         container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 

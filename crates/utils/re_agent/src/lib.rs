@@ -30,36 +30,44 @@
 // The workspace has two reqwest versions until it can move to 0.13; see the root `Cargo.toml`.
 extern crate reqwest013 as reqwest;
 
-#[cfg(agent_harness_backend)]
-mod agent_harness_backend;
-mod agent_harness_config;
+mod agent_harness;
 mod agent_toolbox;
 mod backend;
 mod elicitation;
 mod error;
 mod model_api_backend;
-mod profiles;
+mod redactor;
 mod responder;
 mod session;
 mod settings;
 mod transcript;
 mod turn;
 
+/// Whether the user types model-API keys into the agent panel, which keeps them with its settings.
+///
+/// Only on the web, which has no environment variables. The desktop reads keys from the
+/// environment only, since there is no secure storage for typed-in keys there yet.
+pub const API_KEYS_IN_SETTINGS: bool = cfg!(target_arch = "wasm32");
+
 /// The Agent Client Protocol vocabulary that every backend speaks.
 pub mod acp {
     pub use agent_client_protocol_schema as schema;
 }
 
-pub use agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+#[cfg(agent_harness_backend)]
+pub use agent_harness::find_executable;
+pub use agent_harness::{
+    AgentEntry, AgentHarnessConfig, AgentKind, AgentProfile, AgentProfileId, McpStdioServer,
+};
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection};
 pub use error::McpStartupFailure;
-pub use model_api_backend::{ModelApiConfig, ModelApiError, ModelApiProvider};
-pub use profiles::{AgentEntry, AgentProfile, AgentProfileId, find_executable};
+pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
+pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
-    AgentSession, AuthPrompt, LogLine, PendingElicitation, PendingPermission, Phase, Prompt,
-    PromptImage,
+    AgentSession, AuthPrompt, ElicitationId, LogLine, PendingElicitation, PendingPermission, Phase,
+    Prompt, PromptImage,
 };
 pub use settings::{AgentLaunch, AgentLaunchError, AgentSettings, McpServerConfig, SessionContext};
 pub use transcript::{

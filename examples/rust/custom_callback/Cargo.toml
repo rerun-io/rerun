@@ -23,9 +23,6 @@ crypto-aws-lc-rs = ["rerun/crypto-aws-lc-rs"]
 
 default = ["crypto-ring"]
 
-# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
-analytics = ["rerun/analytics"]
-
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",

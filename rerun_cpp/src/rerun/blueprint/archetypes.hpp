@@ -25,6 +25,8 @@
 #include "blueprint/archetypes/plot_interaction.hpp"
 #include "blueprint/archetypes/plot_legend.hpp"
 #include "blueprint/archetypes/previews_config.hpp"
+#include "blueprint/archetypes/raw_data_rows.hpp"
+#include "blueprint/archetypes/raw_data_view_format.hpp"
 #include "blueprint/archetypes/scalar_axis.hpp"
 #include "blueprint/archetypes/spatial_information.hpp"
 #include "blueprint/archetypes/table_blueprint.hpp"

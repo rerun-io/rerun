@@ -53,10 +53,6 @@ impl ViewClass for ColorCoordinatesView {
         system_registry.register_visualizer::<Points3DColorVisualizer>()
     }
 
-    fn new_state(&self) -> Box<dyn ViewState> {
-        Box::new(())
-    }
-
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         // Prefer a square tile if possible.
         Some(1.0)

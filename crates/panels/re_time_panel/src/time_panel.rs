@@ -588,7 +588,10 @@ impl TimePanel {
             ui.response()
                 .widget_info(|| WidgetInfo::labeled(egui::Role::Pane, true, "_streams_tree"));
 
-            let size = egui::vec2(self.prev_col_width, DesignTokens::list_item_height());
+            let size = egui::vec2(
+                self.prev_col_width,
+                DesignTokens::list_item_height(re_ui::ListItemDensity::Spacious),
+            );
             ui.allocate_ui_with_layout(size, egui::Layout::top_down(egui::Align::LEFT), |ui| {
                 ui.set_min_size(size);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -597,11 +600,12 @@ impl TimePanel {
                 ui.full_span_scope(0.0..=time_x_left, |ui| {
                     self.filter_state.section_title_ui(
                         ui,
-                        if self.source == TimePanelSource::Blueprint {
+                        egui::RichText::new(if self.source == TimePanelSource::Blueprint {
                             "Blueprint Streams"
                         } else {
                             "Streams"
-                        },
+                        })
+                        .strong(),
                     );
                 });
             })
@@ -1661,7 +1665,7 @@ fn archetype_label_ui(
 ) -> egui::Response {
     ui.list_item()
         .with_y_offset(1.0)
-        .with_height(20.0)
+        .with_density(re_ui::ListItemDensity::Compact)
         .interactive(false)
         .show_hierarchical(
             ui,
@@ -1671,7 +1675,7 @@ fn archetype_label_ui(
                         .map(|a| a.short_name())
                         .unwrap_or("Without archetype"),
                 )
-                .text_style(DesignTokens::small()),
+                .size(10.0),
             ),
         )
 }

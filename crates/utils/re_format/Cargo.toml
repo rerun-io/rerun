@@ -22,9 +22,11 @@ all-features = true
 [dependencies]
 half.workspace = true
 itertools.workspace = true
+jiff.workspace = true
 num-traits.workspace = true
 re_int.workspace = true
 re_log.workspace = true
+serde = { workspace = true, features = ["derive"] }
 # Do NOT add any complex dependencies here. Keep this crate lightweight!
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]

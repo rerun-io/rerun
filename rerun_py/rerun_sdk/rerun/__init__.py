@@ -86,6 +86,7 @@ from ._send_dataframe import (
     SORBET_COMPONENT_TYPE as SORBET_COMPONENT_TYPE,
     SORBET_ENTITY_PATH as SORBET_ENTITY_PATH,
     SORBET_INDEX_NAME as SORBET_INDEX_NAME,
+    SORBET_IS_EDITABLE as SORBET_IS_EDITABLE,
     SORBET_IS_TABLE_INDEX as SORBET_IS_TABLE_INDEX,
     send_dataframe as send_dataframe,
     send_record_batch as send_record_batch,

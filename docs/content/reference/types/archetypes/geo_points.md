@@ -20,6 +20,7 @@ Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) 
 ## Can be shown in
 * [MapView](../views/map_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GeoPoints`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoPoints.html)

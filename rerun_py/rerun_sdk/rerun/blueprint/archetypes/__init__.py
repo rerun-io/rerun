@@ -25,6 +25,8 @@ from .plot_background import PlotBackground
 from .plot_interaction import PlotInteraction
 from .plot_legend import PlotLegend
 from .previews_config import PreviewsConfig
+from .raw_data_rows import RawDataRows
+from .raw_data_view_format import RawDataViewFormat
 from .scalar_axis import ScalarAxis
 from .spatial_information import SpatialInformation
 from .table_blueprint import TableBlueprint
@@ -71,6 +73,8 @@ __all__ = [
     "PlotInteraction",
     "PlotLegend",
     "PreviewsConfig",
+    "RawDataRows",
+    "RawDataViewFormat",
     "ScalarAxis",
     "SpatialInformation",
     "TableBlueprint",

@@ -183,7 +183,7 @@ impl From<&str> for crate::common::v1alpha1::SegmentId {
 /// Identifies an Arrow schema by the SHA-256 of its canonical form.
 ///
 /// See `rerun.common.v1alpha1.SchemaId` for the canonical form.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
 pub struct SchemaId([u8; 32]);
 
 impl SchemaId {

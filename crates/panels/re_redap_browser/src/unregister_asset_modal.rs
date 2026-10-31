@@ -3,7 +3,7 @@
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_quota_channel::send_crossbeam;
-use re_ui::ReButton;
+use re_ui::ButtonExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 
 use crate::context::Context;
@@ -62,7 +62,7 @@ impl UnregisterAssetModal {
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     // Plain primary, since there is no destructive button variant yet.
-                    let unregister = ui.add(ReButton::new("Unregister").primary().small());
+                    let unregister = ui.add(egui::Button::new("Unregister").primary().size_small());
 
                     if unregister.clicked() {
                         send_crossbeam(
@@ -81,7 +81,7 @@ impl UnregisterAssetModal {
                     }
 
                     // Cancel is the keyboard default, so both Enter and Escape close the modal.
-                    if ui.add(ReButton::new("Cancel").small()).clicked()
+                    if ui.add(egui::Button::new("Cancel").size_small()).clicked()
                         || ui.input(|i| i.key_pressed(egui::Key::Enter))
                     {
                         ui.close();
