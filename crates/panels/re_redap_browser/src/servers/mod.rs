@@ -6,7 +6,7 @@ use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_async::AsyncRuntimeHandle;
-use re_catalog_client::{AssetLayer, AssetRegistrationError};
+use re_catalog_client::{AssetLayer, AssetRegistrationError, CatalogClient};
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_protos::cloud::v1alpha1::EntryKind;
@@ -17,7 +17,6 @@ use re_redap_client::{
 };
 use re_ui::alert::Alert;
 use re_ui::{UiExt as _, icons};
-use re_uri::DATASET_HIERARCHY_SEPARATOR;
 use re_viewer_context::{
     AppContext, CommandSender as ViewerCommandSender, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender as _, TableReference as ViewerTableReference, ViewStates,
@@ -44,7 +43,7 @@ enum ServerKind {
 }
 
 pub struct Server {
-    connection: ConnectionHandle,
+    client: CatalogClient,
     entries: Entries,
 
     /// The pending and failed asset registrations of this server's datasets.
@@ -56,7 +55,6 @@ pub struct Server {
     /// Session context wrapper which holds all the table-like entries of the server.
     tables_session_ctx: Arc<SessionContext>,
 
-    runtime: AsyncRuntimeHandle,
     kind: ServerKind,
 
     /// Dropping this cancels the background task that listens for catalog events.
@@ -113,12 +111,11 @@ impl Server {
         });
 
         Self {
-            connection,
+            client: CatalogClient::new(connection, runtime),
             entries,
             asset_registrations: Default::default(),
             asset_unregistrations: Default::default(),
             tables_session_ctx,
-            runtime,
             kind,
             _watch_events_guard: cancel_tx,
         }
@@ -146,7 +143,7 @@ impl Server {
 
     #[inline]
     pub fn origin(&self) -> &re_uri::Origin {
-        self.connection.origin()
+        self.client.origin()
     }
 
     #[inline]
@@ -170,9 +167,9 @@ impl Server {
         viewer_command_sender: &ViewerCommandSender,
     ) {
         self.entries.on_frame_start(
-            &self.connection,
+            self.client.connection(),
             &self.tables_session_ctx,
-            &self.runtime,
+            self.client.runtime(),
             egui_ctx,
             viewer_command_sender,
         );
@@ -180,11 +177,10 @@ impl Server {
         // A registration or unregistration the server answered is listed until the dataset's asset
         // list has caught up with it, so the asset is never missing from both.
         let Self {
-            connection,
+            client,
             entries,
             asset_registrations,
             asset_unregistrations,
-            runtime,
             ..
         } = self;
 
@@ -197,9 +193,8 @@ impl Server {
 
         for dataset_id in waiting_datasets {
             entries.request_entry_assets(EntryMetaQuery {
-                runtime,
+                client,
                 egui_ctx,
-                connection,
                 dataset_id,
             });
         }
@@ -293,7 +288,13 @@ impl Server {
                 )
                 .and(col("name").not_eq(lit("__entries"))),
         )
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+        .show(
+            app_ctx,
+            self.client.runtime(),
+            ui,
+            table_blueprints,
+            view_states,
+        );
     }
 
     fn folder_ui(
@@ -303,38 +304,11 @@ impl Server {
         origin: &re_uri::Origin,
         path_prefix: &str,
     ) {
-        use re_viewer_context::{Route, SystemCommand, SystemCommandSender as _};
-
-        let command_sender = app_ctx.command_sender().clone();
+        let command_sender = app_ctx.command_sender();
 
         Frame::new().inner_margin(Margin::same(16)).show(ui, |ui| {
-            ui.horizontal(|ui| {
-                // Navigate up one level.
-                if ui
-                    .small_icon_button(&icons::ARROW_UP, "Go to parent folder")
-                    .on_hover_text("Go to parent folder")
-                    .clicked()
-                {
-                    let parent_route = if let Some((parent, _)) =
-                        path_prefix.rsplit_once(DATASET_HIERARCHY_SEPARATOR)
-                    {
-                        Route::RedapFolder {
-                            origin: origin.clone(),
-                            path: parent.to_owned(),
-                        }
-                    } else {
-                        Route::RedapServer(origin.clone())
-                    };
-                    if let Some(parent_item) = parent_route.item() {
-                        command_sender.send_system(SystemCommand::set_selection(parent_item));
-                    }
-                    command_sender.send_system(SystemCommand::SetRoute(parent_route));
-                }
-
-                ui.horizontal_centered(|ui| {
-                    ui.heading(RichText::new(path_prefix.to_owned()).strong());
-                });
-            });
+            crate::breadcrumbs::hierarchy_breadcrumbs_ui(ui, origin, path_prefix, command_sender);
+            ui.heading(RichText::new(re_uri::dataset_hierarchy_leaf_name(path_prefix)).strong());
 
             ui.add_space(12.0);
 
@@ -355,7 +329,7 @@ impl Server {
                         origin,
                         entries,
                         path_prefix,
-                        &command_sender,
+                        command_sender,
                     );
                 }
             }
@@ -379,7 +353,13 @@ impl Server {
             },
         )
         .title(table.name().to_string())
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+        .show(
+            app_ctx,
+            self.client.runtime(),
+            ui,
+            table_blueprints,
+            view_states,
+        );
     }
 }
 
@@ -916,7 +896,7 @@ impl RedapServers {
         }
 
         re_dataframe_ui::DataFusionTableWidget::refresh(
-            &server.runtime,
+            server.client.runtime(),
             egui_ctx.clone(),
             server.tables_session_ctx.clone(),
             TableReference::bare(entry.name().to_string()),
@@ -939,9 +919,9 @@ impl RedapServers {
             return;
         };
         crate::entries::refresh_default_table_blueprint(
-            server.connection.clone(),
+            server.client.connection().clone(),
             entry,
-            &server.runtime,
+            server.client.runtime(),
             command_sender,
         );
     }
@@ -992,7 +972,13 @@ impl RedapServers {
     pub fn is_authenticated(&self, origin: &re_uri::Origin) -> bool {
         self.servers
             .get(origin)
-            .and_then(|server| server.connection.connection_registry().credentials(origin))
+            .and_then(|server| {
+                server
+                    .client
+                    .connection()
+                    .connection_registry()
+                    .credentials(origin)
+            })
             .is_some()
     }
 
@@ -1002,7 +988,7 @@ impl RedapServers {
         // Log out from the servers that used the accounts token.
         let mut origins = Vec::new();
         for server in self.servers.values() {
-            let registry = server.connection.connection_registry();
+            let registry = server.client.connection().connection_registry();
             if matches!(
                 registry.credentials(server.origin()),
                 Some(Credentials::Stored)
@@ -1099,18 +1085,15 @@ impl RedapServers {
             }
 
             Command::OpenRegisterAssetModal(target) => {
-                self.register_asset_modal_ui.open(
-                    target,
-                    connection_registry.clone(),
-                    runtime.clone(),
-                );
+                self.register_asset_modal_ui
+                    .open(target, connection_registry, runtime.clone());
             }
 
             Command::OpenAssetCoverageModal { target, asset_id } => {
                 self.asset_coverage_modal_ui.open(
                     target,
                     asset_id,
-                    connection_registry.clone(),
+                    connection_registry,
                     runtime.clone(),
                 );
             }
@@ -1138,7 +1121,7 @@ impl RedapServers {
                     return;
                 };
 
-                let connection = server.connection.clone();
+                let client = server.client.clone();
                 let command_sender = self.command_sender.clone();
                 let egui_ctx = egui_ctx.clone();
 
@@ -1152,9 +1135,9 @@ impl RedapServers {
                 )
                 .ok();
 
-                server.runtime.spawn_future(async move {
+                server.client.runtime().spawn_future(async move {
                     let unregistered = crate::servers::dataset::unregister_asset(
-                        connection,
+                        client,
                         entry_id,
                         asset_id.clone(),
                         has_failed,

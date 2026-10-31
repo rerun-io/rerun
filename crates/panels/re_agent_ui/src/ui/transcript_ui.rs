@@ -152,7 +152,7 @@ fn entry_ui(
 
 /// Consecutive tool calls of an ended turn, folded into one collapsed header.
 ///
-/// The header is red if any of the calls failed.
+/// The header is red only if the last call failed: earlier failures the agent recovered from are noise.
 /// Returns the rect of the header, which shows the time of the first call on hover.
 fn tool_call_group_ui(
     ui: &mut egui::Ui,
@@ -167,12 +167,12 @@ fn tool_call_group_ui(
             _ => None,
         })
         .collect();
-    let any_failed = calls
-        .iter()
-        .any(|(_, call)| call.status == ToolCallStatus::Failed);
+    let last_failed = calls
+        .last()
+        .is_some_and(|(_, call)| call.status == ToolCallStatus::Failed);
 
     let tokens = ui.tokens();
-    let color = if any_failed {
+    let color = if last_failed {
         tokens.error_fg_color
     } else {
         tokens.text_subdued

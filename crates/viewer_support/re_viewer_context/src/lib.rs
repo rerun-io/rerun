@@ -42,6 +42,7 @@ mod selection_state;
 mod storage_context;
 pub mod store_hub;
 mod store_view_context;
+mod syntax_highlighting;
 mod tables;
 mod tensor;
 mod time_control;
@@ -128,6 +129,7 @@ pub use self::selection_state::{
 pub use self::storage_context::StorageContext;
 pub use self::store_hub::{EntityDbUsages, StoreHub};
 pub use self::store_view_context::StoreViewContext;
+pub use self::syntax_highlighting::{InstanceInBrackets, StoreSyntaxHighlighting};
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{

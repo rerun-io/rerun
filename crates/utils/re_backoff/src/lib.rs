@@ -87,6 +87,22 @@ impl BackoffGenerator {
         Self::new_with_custom_jitter(base, max, Self::DEFAULT_JITTER_FACTOR)
     }
 
+    /// Like [`Self::new`], for bounds known at compile time.
+    ///
+    /// Use it to initialize a `const` item, so that invalid bounds fail the build.
+    pub const fn new_const(base: Duration, max: Duration) -> Self {
+        assert!(
+            base.as_nanos() <= max.as_nanos(),
+            "base duration must be less than or equal to max duration"
+        );
+        Self {
+            base,
+            max,
+            jitter_factor: Self::DEFAULT_JITTER_FACTOR,
+            iteration: 0,
+        }
+    }
+
     /// Create a new `BackoffGenerator` with the given base and max durations and a custom
     /// `jitter_factor` in `[0, 1]`.
     ///

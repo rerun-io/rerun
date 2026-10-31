@@ -48,6 +48,17 @@
       "color": "{Gray.675}",
       "width": 0.5
     },
+    // Background of controls whose fill is all that sets them apart from the panel:
+    // checkboxes, radio buttons, etc.
+    "control_fill": {
+      "color": "{Gray.750}"
+    },
+    "control_fill_hovered": {
+      "color": "{Gray.600}"
+    },
+    "control_fill_pressed": {
+      "color": "{Gray.550}"
+    },
     "shadow_gradient_dark_start": {
       "color": "{Gray.0}",
       "alpha": 10
@@ -295,7 +306,7 @@
       "color": "#FF7A0C"
     },
     "widget_hovered_color": {
-      "color": "{Gray.950}"
+      "color": "{Gray.850}"
     },
     // Dims the page behind an open modal. Lighter than the dark theme's dim, since the
     // page behind it is light to begin with.

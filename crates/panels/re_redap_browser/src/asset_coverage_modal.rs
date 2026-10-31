@@ -12,7 +12,7 @@ use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_protos::cloud::v1alpha1::ext::AssetMode;
 use re_quota_channel::send_crossbeam;
-use re_redap_client::{ApiError, ConnectionHandle, ConnectionRegistryHandle};
+use re_redap_client::{ApiError, ConnectionRegistryHandle};
 use re_ui::{
     DesignTokens, ReButton, ServerValue, UiExt as _,
     modal::{ModalHandler, ModalWrapper},
@@ -119,18 +119,9 @@ impl CoverageEditor {
 
 pub struct AssetEditState {
     pub target: AssetTarget,
-    pub connection_registry: ConnectionRegistryHandle,
-    pub runtime: AsyncRuntimeHandle,
+    pub client: CatalogClient,
 
     pub coverage: CoverageEditor,
-}
-
-impl AssetEditState {
-    /// The connection to the server holding the dataset.
-    fn connection(&self) -> ConnectionHandle {
-        self.connection_registry
-            .connection_handle(self.target.origin.clone())
-    }
 }
 
 /// Collapsed, the list shows up to this many segments.
@@ -640,7 +631,7 @@ impl State {
             return;
         };
         let AssetTarget { origin, dataset_id } = self.edit_state.target.clone();
-        let connection = self.edit_state.connection();
+        let client = self.edit_state.client.clone();
         let coverage = self.edit_state.coverage.coverage();
         let asset_id = self.asset_id.clone();
         let command_sender = ctx.command_sender.clone();
@@ -652,8 +643,8 @@ impl State {
         // The segments the asset covers change, so they are read again. This runs
         // here rather than where the answer is shown, so closing the modal on a
         // write the server is still working on leaves it as it lands.
-        self.edit_state.runtime.spawn_future(async move {
-            let result = CatalogClient::new(connection)
+        self.edit_state.client.runtime().spawn_future(async move {
+            let result = client
                 .set_asset_coverage(dataset_id, asset_id.clone(), &coverage, Some(revision))
                 .await;
 
@@ -687,14 +678,16 @@ impl AssetCoverageModal {
         &mut self,
         target: AssetTarget,
         asset_id: SegmentId,
-        connection_registry: ConnectionRegistryHandle,
+        connection_registry: &ConnectionRegistryHandle,
         runtime: AsyncRuntimeHandle,
     ) {
         self.state = Some(State {
             edit_state: AssetEditState {
+                client: CatalogClient::new(
+                    connection_registry.connection_handle(target.origin.clone()),
+                    runtime,
+                ),
                 target,
-                connection_registry,
-                runtime,
                 coverage: Default::default(),
             },
             asset_id,

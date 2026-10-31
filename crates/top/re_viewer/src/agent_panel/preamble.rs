@@ -8,6 +8,31 @@ use std::path::{Path, PathBuf};
 
 use super::{DOCS_SUBDIR, SKILLS_SUBDIR};
 
+/// The start of the instructions, the same for every backend.
+fn intro() -> String {
+    let p = re_viewer_control_tools::TOOL_NAME_PREFIX;
+    format!(
+        "You are a helpful Rerun agent, running in a chat panel inside the Rerun Viewer \
+         that the user is looking at right now. You help the user understand their data, \
+         use the viewer, set up blueprints, and debug their Rerun logging code.\n\n\
+         - Before calling a tool, inspect its input schema; don't infer argument names or types \
+         from the tool name. If discovery is needed, fetch the schema first.\n\
+         - When working with blueprints, use these tools to understand the context and edit \
+         the blueprint: `{p}get_state`, `{p}get_recording_schema`, `{p}get_blueprint`, and \
+         `{p}set_blueprint`.\n"
+    )
+}
+
+/// The end of the instructions, the same for every backend.
+const OUTRO: &str = "- Rerun is open source, and its examples are worth reading and worth linking: \
+     <https://rerun.io/examples> shows each one, and its code is under `examples/` in \
+     <https://github.com/rerun-io/rerun>. Larger applications — SLAM, gaussian splatting, \
+     segmentation, depth — are one runnable package each in the Pixi workspace at \
+     <https://github.com/rerun-io/examples-monorepo>. Point the user at the example that \
+     matches what they are building rather than describing one in prose.\n\
+     - Teach the user how to do things they could have easily done themselves.\n\
+     - Keep answers short: the panel is narrow. Omit internal tool commentary unless the user asks for it.\n";
+
 /// Everything about the host that changes what the agent is told.
 #[derive(Default)]
 pub struct Preamble<'a> {
@@ -39,11 +64,7 @@ impl Preamble<'_> {
             off_limits_directories,
         } = self;
 
-        let mut text = String::from(
-            "You are a helpful Rerun agent, running in a chat panel inside the Rerun Viewer \
-             that the user is looking at right now. You help the user understand their data, \
-             use the viewer, set up blueprints, and debug their Rerun logging code.\n\n",
-        );
+        let mut text = intro();
 
         // The MCP server only dials the viewer on startup when it was given an endpoint, so without
         // one the agent must be told to connect rather than told not to.
@@ -67,17 +88,6 @@ impl Preamble<'_> {
              drop to the low-level widget tools (`query_tree`, `click`, `screenshot`, …) only for what they do not cover. \
              The panel hands the `rerun` server to this session directly, so it never shows up in your own MCP \
              configuration, with tools as `rerun_*`.\n",
-        );
-
-        text.push_str(
-            "- Before calling a tool, inspect its input schema; don't infer argument names or types \
-             from the tool name. If discovery is needed, fetch the schema first.\n",
-        );
-
-        text.push_str(
-            "- When working with blueprints, use these tools to understand the context and edit \
-             the blueprint: `rerun_get_state`, `rerun_get_recording_schema`, \
-             `rerun_get_blueprint`, and `rerun_set_blueprint`.\n",
         );
 
         if let Some(agent_dir) = *agent_dir {
@@ -133,15 +143,6 @@ impl Preamble<'_> {
         );
 
         text.push_str(
-            "- Rerun is open source, and its examples are worth reading and worth linking: \
-             <https://rerun.io/examples> shows each one, and its code is under `examples/` in \
-             <https://github.com/rerun-io/rerun>. Larger applications — SLAM, gaussian splatting, \
-             segmentation, depth — are one runnable package each in the Pixi workspace at \
-             <https://github.com/rerun-io/examples-monorepo>. Point the user at the example that \
-             matches what they are building rather than describing one in prose.\n",
-        );
-
-        text.push_str(
             "- When a recording has joint angles but no robot model, suggest adding a URDF: \
              fetch one for that robot, solve forward kinematics from the joint states, \
              and layer the transforms onto the recording. The `rerun-urdf` skill has the sources and the pipeline.\n",
@@ -154,14 +155,9 @@ impl Preamble<'_> {
         );
 
         text.push_str(
-            "- Teach the user how to do things they could have easily done themselves.\n",
-        );
-        text.push_str(
             "- Point users to scripts you wrote for them, to teach them how to use the Rerun SDK.\n",
         );
-        text.push_str(
-            "- Keep answers short: the panel is narrow. Omit internal tool commentary unless the user asks for it.\n",
-        );
+        text.push_str(OUTRO);
 
         if !off_limits_directories.is_empty() {
             let directories = off_limits_directories
@@ -180,5 +176,40 @@ impl Preamble<'_> {
         }
 
         text
+    }
+}
+
+/// Instructions for an agent whose tools act on this viewer directly.
+pub fn model_api_text() -> String {
+    let mut text = intro();
+    text.push_str(
+        "- Your `rerun_*` tools act on this viewer directly and are ready to use. Start with \
+         `rerun_get_state` to see the loaded recordings, timelines, and views. Use \
+         `rerun_list_commands` and `rerun_run_command` for anything the command palette can do.\n\
+         - Use `rerun_save_screenshot` to inspect appearance and framing. The result is an image.\n\
+         - Ask for clarification in chat when needed. Provide code for the user to run when a \
+         task needs their local files or Python environment.\n",
+    );
+    text.push_str(OUTRO);
+    text
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    #[test]
+    fn model_api_instructions_name_available_tools() {
+        let quoted = super::model_api_text();
+        let tool_names = quoted
+            .split('`')
+            .skip(1)
+            .step_by(2)
+            .filter_map(|name| name.strip_prefix(re_viewer_control_tools::TOOL_NAME_PREFIX))
+            .filter(|name| name.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
+        for name in tool_names {
+            assert!(
+                re_viewer_control_tools::is_operation(name),
+                "unknown tool: {name}"
+            );
+        }
     }
 }

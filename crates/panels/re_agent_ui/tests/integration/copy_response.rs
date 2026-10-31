@@ -28,7 +28,7 @@ fn panel(turn_in_progress: bool) -> AgentPanel {
         profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
-    let mut panel = AgentPanel::with_agents(settings, agents);
+    let mut panel = AgentPanel::with_agents(settings, None, agents);
     panel.show_chat();
 
     let session = panel.session_mut();

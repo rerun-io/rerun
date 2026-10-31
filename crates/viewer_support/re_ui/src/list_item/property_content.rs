@@ -112,7 +112,7 @@ impl<'a> PropertyContent<'a> {
         } else {
             // This is not readable, which is why it is disabled
             self.value_fn(move |ui: &mut Ui, _| {
-                ui.add_enabled_ui(false, |ui| ui.re_checkbox(&mut b, ""));
+                ui.add_enabled_ui(false, |ui| ui.checkbox(&mut b, ""));
             })
         }
     }
@@ -121,7 +121,7 @@ impl<'a> PropertyContent<'a> {
     #[inline]
     pub fn value_bool_mut(self, b: &'a mut bool) -> Self {
         self.value_fn(|ui: &mut Ui, _| {
-            ui.re_checkbox(b, "");
+            ui.checkbox(b, "");
         })
     }
 

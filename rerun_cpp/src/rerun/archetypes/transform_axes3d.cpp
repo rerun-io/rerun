@@ -16,46 +16,4 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> TransformAxes3D::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (axis_length.has_value()) {
-            columns.push_back(axis_length.value().partitioned(lengths_).value_or_throw());
-        }
-        if (show_frame.has_value()) {
-            columns.push_back(show_frame.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> TransformAxes3D::columns() {
-        if (axis_length.has_value()) {
-            return columns(std::vector<uint32_t>(axis_length.value().length(), 1));
-        }
-        if (show_frame.has_value()) {
-            return columns(std::vector<uint32_t>(show_frame.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<archetypes::TransformAxes3D>::as_batches(
-        const archetypes::TransformAxes3D& archetype
-    ) {
-        using namespace archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.axis_length.has_value()) {
-            cells.push_back(archetype.axis_length.value());
-        }
-        if (archetype.show_frame.has_value()) {
-            cells.push_back(archetype.show_frame.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

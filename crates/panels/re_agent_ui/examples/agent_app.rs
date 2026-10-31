@@ -4,6 +4,15 @@
 //! cargo run -p re_agent_ui --example agent_app -- --mcp "rerun viewer-mcp"
 //! ```
 //!
+//! To skip the agent harness and call a model API directly with your own key, pick the
+//! `anthropic-api` or `openai-api` profile. The key is read from `ANTHROPIC_API_KEY` or
+//! `OPENAI_API_KEY`:
+//!
+//! ```sh
+//! ANTHROPIC_API_KEY=… cargo run -p re_agent_ui --example agent_app -- --agent anthropic-api
+//! OPENAI_API_KEY=… cargo run -p re_agent_ui --example agent_app -- --agent openai-api
+//! ```
+//!
 //! For unattended runs there is a headless mode that renders the same UI through `egui_kittest`.
 //! Drive it with `egui-mcp` (see `AGENTS.md`):
 //!
@@ -32,8 +41,9 @@ const WINDOW_SIZE: [f32; 2] = [700.0, 900.0];
 #[derive(Parser)]
 #[command(about = "Chat with a coding agent from an egui window")]
 struct Args {
-    /// Which agent to use: a profile id (claude, codex, gemini, copilot, opencode, goose, cursor)
-    /// or a custom command line such as `my-agent --acp`.
+    /// Which agent to use: a profile id (claude, codex, gemini, copilot, opencode, goose, cursor),
+    /// `anthropic-api` or `openai-api` to call that API directly with the key from the
+    /// environment, or a custom command line such as `my-agent --acp`.
     #[arg(long)]
     agent: Option<String>,
 
@@ -58,8 +68,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     re_log::setup_logging();
     let args = Args::parse();
 
+    // Runs the model-API agents (`--agent anthropic-api`).
+    let runtime = tokio::runtime::Runtime::new()?; // NOLINT: the example process owns this runtime
+    let async_runtime = re_async::AsyncRuntimeHandle::new_native(runtime.handle().clone());
+
     if args.headless {
-        run_headless(&args);
+        run_headless(&args, async_runtime);
         return Ok(());
     }
 
@@ -81,16 +95,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .and_then(|storage| eframe::get_value::<AgentSettings>(storage, SETTINGS_KEY));
             let settings = apply_args(stored.unwrap_or_else(default_settings), &args);
 
-            Ok(Box::new(App::new(settings)))
+            Ok(Box::new(App::new(settings, async_runtime)))
         }),
     )?;
 
     Ok(())
 }
 
-fn run_headless(args: &Args) {
+fn run_headless(args: &Args, async_runtime: re_async::AsyncRuntimeHandle) {
     let settings = apply_args(default_settings(), args);
-    let app = App::new(settings);
+    let app = App::new(settings, async_runtime);
 
     let mut harness = egui_kittest::Harness::builder()
         .with_size(WINDOW_SIZE)
@@ -143,6 +157,7 @@ fn apply_args(mut settings: AgentSettings, args: &Args) -> AgentSettings {
     if let Some(agent) = agent {
         let profile_id = AgentProfileId::from(agent.clone());
         let is_profile = profile_id == AgentProfileId::CUSTOM
+            || profile_id.model_api_provider().is_some()
             || AgentProfile::builtin()
                 .iter()
                 .any(|profile| profile.id == profile_id);
@@ -180,10 +195,11 @@ struct App {
 }
 
 impl App {
-    fn new(settings: AgentSettings) -> Self {
-        let mut panel = AgentPanel::new(settings);
+    fn new(settings: AgentSettings, async_runtime: re_async::AsyncRuntimeHandle) -> Self {
+        let mut panel = AgentPanel::new(settings, async_runtime);
         panel.set_context(SessionContext {
-            preamble: Some(PREAMBLE.to_owned()),
+            agent_harness_preamble: Some(PREAMBLE.to_owned()),
+            model_api_preamble: Some(PREAMBLE.to_owned()),
             additional_directories: Vec::new(),
             default_cwd: None,
             off_limits_directories: Vec::new(),

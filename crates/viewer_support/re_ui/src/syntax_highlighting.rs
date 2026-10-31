@@ -1,10 +1,5 @@
 use egui::text::{ByteIndex, LayoutJob};
 use egui::{Color32, Style, TextFormat, TextStyle};
-use re_entity_db::InstancePath;
-use re_log_types::external::re_types_core::{
-    ArchetypeName, ComponentDescriptor, ComponentIdentifier, ComponentType,
-};
-use re_log_types::{ComponentPath, EntityPath, EntityPathPart, Instance};
 
 use crate::HasDesignTokens as _;
 
@@ -361,93 +356,6 @@ impl SyntaxHighlightedStyle {
 }
 
 // ----------------------------------------------------------------------------
-
-impl SyntaxHighlighting for EntityPathPart {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(&self.ui_string());
-    }
-}
-
-impl SyntaxHighlighting for Instance {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        if self.is_all() {
-            builder.append_primitive("all");
-        } else {
-            builder.append_index(&re_format::format_uint(self.get()));
-        }
-    }
-}
-
-impl SyntaxHighlighting for EntityPath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_syntax("/");
-
-        for (i, part) in self.iter().enumerate() {
-            if i != 0 {
-                builder.append_syntax("/");
-            }
-            builder.append(part);
-        }
-    }
-}
-
-impl SyntaxHighlighting for InstancePath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append(&self.entity_path);
-        if self.instance.is_specific() {
-            builder.append(&InstanceInBrackets(self.instance));
-        }
-    }
-}
-
-impl SyntaxHighlighting for ComponentType {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.short_name());
-    }
-}
-
-impl SyntaxHighlighting for ArchetypeName {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.short_name());
-    }
-}
-
-impl SyntaxHighlighting for ComponentIdentifier {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.as_ref());
-    }
-}
-
-impl SyntaxHighlighting for ComponentDescriptor {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder.append_identifier(self.display_name());
-    }
-}
-
-impl SyntaxHighlighting for ComponentPath {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        let Self {
-            entity_path,
-            component,
-        } = self;
-        builder
-            .append(entity_path)
-            .append_syntax(":")
-            .append(component);
-    }
-}
-
-/// Formats an instance number enclosed in square brackets: `[123]`
-pub struct InstanceInBrackets(pub Instance);
-
-impl SyntaxHighlighting for InstanceInBrackets {
-    fn syntax_highlight_into(&self, builder: &mut SyntaxHighlightedBuilder) {
-        builder
-            .append_syntax("[")
-            .append(&self.0)
-            .append_syntax("]");
-    }
-}
 
 macro_rules! impl_sh_primitive {
     ($t:ty, $to_string:path) => {

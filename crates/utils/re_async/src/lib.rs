@@ -8,6 +8,37 @@ mod read_at;
 
 pub use read_at::{AsyncReadAt, span_len_usize};
 
+/// The timeout elapsed before the future completed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+#[error("deadline has elapsed")]
+pub struct Elapsed;
+
+/// Waits for a future for at most `duration`, dropping it on timeout.
+///
+/// A future that does not yield can run past the timeout.
+/// Dropping a future does not undo external side effects.
+///
+/// NOTE: On Wasm, durations are clamped to the browser timer limit, like [`sleep`].
+pub async fn timeout<F: Future>(duration: Duration, future: F) -> Result<F::Output, Elapsed> {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        tokio::time::timeout(duration, future)
+            .await
+            .map_err(|_err| Elapsed)
+    }
+    #[cfg(target_arch = "wasm32")]
+    {
+        use futures::future::{Either, select};
+
+        let future = std::pin::pin!(future);
+        let timer = std::pin::pin!(sleep(duration));
+        match select(future, timer).await {
+            Either::Left((output, _)) => Ok(output),
+            Either::Right(((), _)) => Err(Elapsed),
+        }
+    }
+}
+
 /// Waits for at least `duration`.
 #[cfg(not(target_arch = "wasm32"))]
 #[inline]
@@ -189,8 +220,39 @@ where
     receiver.map_err(|_err| TaskCancelled)
 }
 
+#[cfg(test)]
+async fn check_timeout() {
+    assert_eq!(timeout(Duration::ZERO, async { 42 }).await, Ok(42));
+
+    let dropped = std::cell::Cell::new(false);
+
+    struct MarkDropped<'a>(&'a std::cell::Cell<bool>);
+
+    impl Drop for MarkDropped<'_> {
+        fn drop(&mut self) {
+            self.0.set(true);
+        }
+    }
+    let guard = MarkDropped(&dropped);
+    let pending = async move {
+        let _guard = guard;
+        std::future::pending::<()>().await;
+    };
+    assert_eq!(timeout(Duration::ZERO, pending).await, Err(Elapsed));
+    assert!(dropped.get());
+}
+
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod native_tests {
+    #[test]
+    fn timeout_completes_or_cancels() {
+        let runtime = tokio::runtime::Builder::new_current_thread() // NOLINT: the timeout needs a timer-enabled runtime
+            .enable_time()
+            .build()
+            .unwrap();
+        runtime.block_on(super::check_timeout());
+    }
+
     #[test]
     fn supplied_runtime_does_not_need_to_be_entered_when_spawning() {
         let runtime = tokio::runtime::Builder::new_current_thread() // NOLINT: the test must supply a runtime to the handle under test
@@ -217,6 +279,11 @@ mod web_tests {
     #[wasm_bindgen_test]
     async fn returns_result() {
         assert_eq!(super::spawn_local_with_result(async { 42 }).await, Ok(42));
+    }
+
+    #[wasm_bindgen_test]
+    async fn timeout_completes_or_cancels() {
+        super::check_timeout().await;
     }
 
     #[wasm_bindgen_test]

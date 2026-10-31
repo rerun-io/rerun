@@ -236,8 +236,8 @@ def sdk_variations(results: list[Result]) -> None:
         results.append(
             run_cargo(
                 "nextest",
-                f"run -p re_auth -p re_crypto --no-default-features "
-                f"--features re_auth/cli,re_auth/{backend},re_crypto/{backend} --no-fail-fast",
+                f"run -p re_auth -p re_crypto -p re_agent --no-default-features "
+                f"--features re_auth/cli,re_auth/{backend},re_crypto/{backend},re_agent/{backend} --no-fail-fast",
             )
         )
     results.extend([

@@ -84,6 +84,12 @@ fn setup_ui_inner(
     }
     if let Err(problem) = ready {
         ui.error_label(problem);
+        if let Some(provider) = settings.profile_id.model_api_provider() {
+            ui.hyperlink_to(
+                format!("Create a {} API key", provider.name()),
+                provider.api_key_url(),
+            );
+        }
     }
 
     ui.add_space(8.0);
@@ -116,8 +122,8 @@ fn setup_ui_inner(
 
         ui.add_space(8.0);
         ui.label(RichText::new("Options").strong());
-        ui.re_checkbox(&mut settings.show_thoughts, "Show the agent's thinking");
-        ui.re_checkbox(
+        ui.checkbox(&mut settings.show_thoughts, "Show the agent's thinking");
+        ui.checkbox(
             &mut settings.log_protocol,
             "Log every protocol message (for debugging)",
         );
@@ -233,7 +239,7 @@ fn prompt_analytics_ui(ui: &mut egui::Ui, share_redacted_prompts: &mut bool) {
         // The explanation belongs to the checkbox above it, closer than the panel's rhythm.
         ui.spacing_mut().item_spacing.y = 2.0;
 
-        ui.re_checkbox(
+        ui.checkbox(
             share_redacted_prompts,
             "Share anonymized prompts with Rerun",
         )
@@ -285,6 +291,9 @@ fn analytics_details_ui(ui: &mut egui::Ui) {
 
 /// What the start button calls the selected agent.
 fn selected_agent_name(settings: &AgentSettings, agents: &[AgentEntry]) -> String {
+    if let Some(provider) = settings.profile_id.model_api_provider() {
+        return format!("{} API", provider.name());
+    }
     agents
         .iter()
         .find(|agent| agent.profile.id == settings.profile_id)
@@ -298,6 +307,13 @@ pub fn selected_agent_ready(settings: &AgentSettings, agents: &[AgentEntry]) -> 
             return Err("Enter the command that starts your agent".to_owned());
         }
         return Ok(());
+    }
+
+    if let Some(provider) = settings.profile_id.model_api_provider() {
+        return match provider.api_key_from_env() {
+            Some(_) => Ok(()),
+            None => Err(re_agent::AgentLaunchError::MissingApiKey { provider }.to_string()),
+        };
     }
 
     let Some(agent) = agents
@@ -339,7 +355,7 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
             ui.set_min_height(re_ui::DesignTokens::list_item_height());
 
             let response = ui
-                .re_checkbox(&mut server.enabled, "")
+                .checkbox(&mut server.enabled, "")
                 .on_hover_text("Give this server to the agent");
             let enabled = server.enabled;
             response.widget_info(|| {

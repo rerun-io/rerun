@@ -1,5 +1,6 @@
 #[cfg(not(target_arch = "wasm32"))]
 use anyhow::Context as _;
+use re_async::AsyncRuntimeHandle;
 use re_catalog_client::CatalogClient;
 use re_protos::cloud::v1alpha1::ext::ObjectKey;
 use re_redap_client::ConnectionRegistryHandle;
@@ -54,9 +55,9 @@ impl InternalCatalog {
     }
 
     /// The internal catalog, if it is running.
-    pub fn new(registry: &ConnectionRegistryHandle) -> Option<Self> {
+    pub fn new(registry: &ConnectionRegistryHandle, runtime: AsyncRuntimeHandle) -> Option<Self> {
         Some(Self {
-            catalog_client: CatalogClient::new(registry.internal_connection_handle()?),
+            catalog_client: CatalogClient::new(registry.internal_connection_handle()?, runtime),
             storage_dir: registry.internal_storage_dir()?.to_owned(),
         })
     }

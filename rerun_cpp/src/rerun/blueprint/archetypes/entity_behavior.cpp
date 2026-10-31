@@ -15,47 +15,4 @@ namespace rerun::blueprint::archetypes {
             ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> EntityBehavior::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (interactive.has_value()) {
-            columns.push_back(interactive.value().partitioned(lengths_).value_or_throw());
-        }
-        if (visible.has_value()) {
-            columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> EntityBehavior::columns() {
-        if (interactive.has_value()) {
-            return columns(std::vector<uint32_t>(interactive.value().length(), 1));
-        }
-        if (visible.has_value()) {
-            return columns(std::vector<uint32_t>(visible.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::EntityBehavior>::as_batches(
-            const blueprint::archetypes::EntityBehavior& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.interactive.has_value()) {
-            cells.push_back(archetype.interactive.value());
-        }
-        if (archetype.visible.has_value()) {
-            cells.push_back(archetype.visible.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

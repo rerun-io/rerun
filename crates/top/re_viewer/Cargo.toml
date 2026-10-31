@@ -296,6 +296,7 @@ egui_kittest.workspace = true
 poll-promise = { workspace = true, features = ["tokio"] }
 re_agent_ui.workspace = true
 re_perf_telemetry = { workspace = true, optional = true }
+re_viewer_control_tools.workspace = true
 tempfile.workspace = true
 tokio.workspace = true
 

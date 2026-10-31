@@ -271,11 +271,11 @@ impl eframe::App for ExampleApp {
             ui.section_collapsing_header("Blueprint").show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 ui.label("Some blueprint stuff here, that might be wide.");
-                ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
+                ui.checkbox(&mut self.dummy_bool, "Checkbox");
 
                 ui.collapsing_header("Collapsing header", true, |ui| {
                     ui.label("Some data here");
-                    ui.re_checkbox(&mut self.dummy_bool, "Checkbox");
+                    ui.checkbox(&mut self.dummy_bool, "Checkbox");
                 });
             });
 
@@ -299,6 +299,7 @@ impl eframe::App for ExampleApp {
                             ui.ctx(),
                             name,
                             hierarchy_ranges.remove(0).into_iter().flatten(),
+                            &egui::TextStyle::Body,
                             None,
                         );
                         ui.list_item_flat_noninteractive(list_item::LabelContent::new(widget_text));

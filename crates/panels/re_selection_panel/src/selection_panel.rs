@@ -12,15 +12,13 @@ use re_sdk_types::{ComponentDescriptor, components::TransformFrameId};
 use re_tracing::profile_function;
 use re_ui::list_item::{self, ListItemContentButtonsExt as _, PropertyContent};
 use re_ui::text_edit::autocomplete_text_edit;
-use re_ui::{
-    ComboItem, ComboItemHeader, OnResponseExt as _, SyntaxHighlighting as _, UiExt as _, icons,
-};
+use re_ui::{ComboItem, ComboItemHeader, OnResponseExt as _, UiExt as _, icons};
 use re_viewer_context::{
     BlueprintContext as _, ContainerId, Contents, DataQueryResult, DataResult,
-    DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers, StoreViewContext,
-    SystemCommand, SystemCommandSender as _, UiLayout, ViewContext, ViewId, ViewStates,
-    ViewSystemIdentifier, ViewerContext, VisualizerInstruction, VisualizerViewReport,
-    icon_for_container_kind,
+    DataResultInteractionAddress, HoverHighlight, Item, RecommendedVisualizers,
+    StoreSyntaxHighlighting as _, StoreViewContext, SystemCommand, SystemCommandSender as _,
+    UiLayout, ViewContext, ViewId, ViewStates, ViewSystemIdentifier, ViewerContext,
+    VisualizerInstruction, VisualizerViewReport, icon_for_container_kind,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 use re_viewport_blueprint::ui::show_add_view_or_container_modal;

@@ -9,10 +9,10 @@ use re_log_types::EntityPath;
 use re_types_core::ComponentDescriptor;
 use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{OnResponseExt as _, SyntaxHighlighting as _, UiExt as _};
+use re_ui::{OnResponseExt as _, UiExt as _};
 use re_viewer_context::{
-    ComponentUiTypes, QueryContext, StoreViewContext, SystemCommand, SystemCommandSender as _,
-    UiLayout, ViewContext, VisualizerCollection, blueprint_timeline,
+    ComponentUiTypes, QueryContext, StoreSyntaxHighlighting as _, StoreViewContext, SystemCommand,
+    SystemCommandSender as _, UiLayout, ViewContext, VisualizerCollection, blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 

@@ -20,10 +20,10 @@ all-features = true
 
 [features]
 ## Use Ring for native cryptography (the default).
-crypto-ring = ["re_ui/crypto-ring"]
+crypto-ring = ["re_agent/crypto-ring", "re_ui/crypto-ring"]
 
 ## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
-crypto-aws-lc-rs = ["re_ui/crypto-aws-lc-rs"]
+crypto-aws-lc-rs = ["re_agent/crypto-aws-lc-rs", "re_ui/crypto-aws-lc-rs"]
 
 default = ["crypto-ring"]
 
@@ -32,6 +32,7 @@ testing = ["re_agent/testing"]
 
 [dependencies]
 re_agent.workspace = true
+re_async.workspace = true
 re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
@@ -55,6 +56,7 @@ clap.workspace = true
 egui_kittest.workspace = true
 eframe = { workspace = true, features = ["persistence", "wgpu"] }
 egui_inspection.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
 
 [[example]]
 name = "agent_app"

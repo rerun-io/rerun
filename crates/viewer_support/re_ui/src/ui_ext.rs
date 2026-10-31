@@ -1,7 +1,7 @@
 use egui::Role;
 use egui::{
     CollapsingResponse, Color32, IntoAtoms, Margin, NumExt as _, Rangef, Rect, StrokeKind,
-    UiBuilder, Widget as _, WidgetInfo, WidgetText, pos2,
+    UiBuilder, WidgetInfo, WidgetText, pos2,
 };
 use egui::{CornerRadius, emath::GuiRounding as _};
 
@@ -14,6 +14,23 @@ static FULL_SPAN_TAG: &str = "rerun_full_span";
 
 fn error_label_bg_color(fg_color: Color32) -> Color32 {
     fg_color.gamma_multiply(0.35)
+}
+
+/// Style the scope for radio buttons.
+///
+/// Checkboxes get the same fills from [`crate::checkbox::CheckboxTheme`].
+fn set_radio_button_visuals(ui: &mut egui::Ui) {
+    let tokens = ui.tokens();
+    let widgets = &mut ui.visuals_mut().widgets;
+    for (visuals, fill) in [
+        (&mut widgets.inactive, tokens.control_fill),
+        (&mut widgets.hovered, tokens.control_fill_hovered),
+        (&mut widgets.active, tokens.control_fill_pressed),
+        (&mut widgets.open, tokens.control_fill_hovered),
+    ] {
+        visuals.expansion = 0.0;
+        visuals.bg_fill = fill;
+    }
 }
 
 /// Rerun custom extensions to [`egui::Ui`].
@@ -258,34 +275,6 @@ pub trait UiExt {
         self.ui_mut().add(ReButton::new(atoms).secondary())
     }
 
-    fn re_checkbox<'a>(
-        &mut self,
-        checked: &'a mut bool,
-        text: impl IntoAtoms<'a>,
-    ) -> egui::Response {
-        self.checkbox_indeterminate(checked, text.into_atoms(), false)
-    }
-
-    #[expect(clippy::disallowed_types)]
-    fn checkbox_indeterminate<'a>(
-        &mut self,
-        checked: &'a mut bool,
-        text: impl IntoAtoms<'a>,
-        indeterminate: bool,
-    ) -> egui::Response {
-        self.ui_mut()
-            .scope(|ui| {
-                ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                ui.visuals_mut().widgets.active.expansion = 0.0;
-                ui.visuals_mut().widgets.open.expansion = 0.0;
-
-                egui::Checkbox::new(checked, text)
-                    .indeterminate(indeterminate)
-                    .ui(ui)
-            })
-            .inner
-    }
-
     #[expect(clippy::disallowed_methods)]
     fn re_radio_value<'a, Value: PartialEq>(
         &mut self,
@@ -295,9 +284,7 @@ pub trait UiExt {
     ) -> egui::Response {
         self.ui_mut()
             .scope(|ui| {
-                ui.visuals_mut().widgets.hovered.expansion = 0.0;
-                ui.visuals_mut().widgets.active.expansion = 0.0;
-                ui.visuals_mut().widgets.open.expansion = 0.0;
+                set_radio_button_visuals(ui);
 
                 ui.radio_value(current_value, alternative, text)
             })
@@ -1372,7 +1359,6 @@ pub trait UiExt {
     /// Set the current style for a text field that has invalid content.
     fn style_invalid_field(&mut self) {
         let ui = self.ui_mut();
-        ui.visuals_mut().selection.stroke.color = ui.visuals().error_fg_color;
         ui.visuals_mut().widgets.active.bg_stroke =
             egui::Stroke::new(1.0, ui.visuals().error_fg_color);
         ui.visuals_mut().widgets.hovered.bg_stroke =

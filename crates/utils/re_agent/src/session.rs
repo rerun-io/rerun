@@ -17,15 +17,32 @@ use agent_client_protocol_schema::v1::{
     StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
 };
 
-use crate::agent_harness_config::{AgentHarnessConfig, McpStdioServer};
+use re_async::AsyncRuntimeHandle;
+
+use crate::agent_harness_config::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
 use crate::error::McpStartupFailure;
 use crate::responder::{AgentStoppedWaiting, Responder};
+use crate::settings::AgentLaunch;
 use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
+
+/// Why [`AgentSession::start`] could not start an agent.
+#[derive(Debug, thiserror::Error)]
+enum StartError {
+    #[cfg(not(agent_harness_backend))]
+    #[error("Agent subprocesses are not supported on this platform")]
+    HarnessUnsupported,
+
+    #[error(transparent)]
+    ModelApi(crate::ModelApiError),
+
+    #[error("This host cannot run a model-API agent: it has no async runtime")]
+    NoAsyncRuntime,
+}
 
 /// An image the user attached to a prompt, already encoded as `mime_type`.
 #[derive(Clone, Debug)]
@@ -225,34 +242,63 @@ pub struct AgentSession {
 }
 
 impl AgentSession {
-    /// Spawns the agent. `wake` is called whenever new events arrive, so the UI can repaint.
-    pub fn start(&mut self, config: AgentHarnessConfig, wake: impl Fn() + Send + Sync + 'static) {
+    /// Starts whichever kind of agent `launch` describes.
+    ///
+    /// A model-API agent runs on `async_runtime`, and fails to start without one.
+    /// `wake` is called from a background thread whenever new events arrive, so that the UI can
+    /// call [`Self::poll_events`], e.g. via `egui::Context::request_repaint`.
+    pub fn start(
+        &mut self,
+        launch: AgentLaunch,
+        async_runtime: Option<&AsyncRuntimeHandle>,
+        wake: impl Fn() + Send + Sync + 'static,
+    ) {
         self.stop();
-        *self = Self {
-            phase: Phase::Connecting {
-                status: format!("Starting {}…", config.command.display()),
-            },
+        let mut fresh = Self {
             auto_approve: self.auto_approve,
-            requested_mcp_servers: config.mcp_servers.clone(),
-            preamble: config.preamble.clone(),
-            readable_directories: config.additional_directories.clone(),
-            off_limits_directories: config.off_limits_directories.clone(),
-            cwd: config.cwd.clone(),
             finished_turns: std::mem::take(&mut self.finished_turns),
             next_elicitation_id: self.next_elicitation_id,
             ..Default::default()
         };
-        cfg_select! {
-            agent_harness_backend => {
-                self.connection = Some(crate::agent_harness_backend::spawn(config, wake));
-            }
-            _ => {
-                drop((config, wake));
-                let reason = "Agent subprocesses are not supported on this platform";
-                self.report_error(reason);
-                self.phase = Phase::Disconnected {
-                    reason: reason.to_owned(),
+        let connection = match launch {
+            AgentLaunch::AgentHarness(config) => {
+                fresh.phase = Phase::Connecting {
+                    status: format!("Starting {}…", config.command.display()),
                 };
+                fresh.requested_mcp_servers = config.mcp_servers.clone();
+                fresh.preamble = config.preamble.clone();
+                fresh.readable_directories = config.additional_directories.clone();
+                fresh.off_limits_directories = config.off_limits_directories.clone();
+                fresh.cwd = config.cwd.clone();
+                *self = fresh;
+                cfg_select! {
+                    agent_harness_backend => Ok(crate::agent_harness_backend::spawn(config, wake)),
+                    _ => {{
+                        drop((config, wake));
+                        Err(StartError::HarnessUnsupported)
+                    }}
+                }
+            }
+            AgentLaunch::ModelApi(config) => {
+                fresh.phase = Phase::Connecting {
+                    status: format!("Connecting to {}…", config.model),
+                };
+                *self = fresh;
+                match async_runtime {
+                    Some(async_runtime) => {
+                        crate::model_api_backend::spawn(config, async_runtime, wake)
+                            .map_err(StartError::ModelApi)
+                    }
+                    None => Err(StartError::NoAsyncRuntime),
+                }
+            }
+        };
+        match connection {
+            Ok(connection) => self.connection = Some(connection),
+            Err(err) => {
+                let reason = err.to_string();
+                self.report_error(reason.clone());
+                self.phase = Phase::Disconnected { reason };
             }
         }
     }
@@ -736,6 +782,12 @@ impl AgentSession {
 
     /// Applies everything the agent sent since the last call. Call once per frame.
     pub fn poll_events(&mut self) {
+        self.pending_permissions.retain(|pending| {
+            pending
+                .responder
+                .as_ref()
+                .is_none_or(|responder| !responder.is_cancelled())
+        });
         self.pending_elicitations.retain(|pending| {
             pending
                 .responder
@@ -838,6 +890,10 @@ impl AgentSession {
                     request,
                     responder: Some(responder),
                 };
+                if self.cancel_requested {
+                    pending.answer(None).ok();
+                    return;
+                }
                 let is_harmless_read = self
                     .transcript
                     .tool_call(&pending.request.tool_call.tool_call_id)
@@ -1101,7 +1157,8 @@ mod tests {
 
     use agent_client_protocol_schema::v1::{
         ContentChunk, ElicitationAcceptAction, ElicitationContentValue, SessionUpdate, ToolCall,
-        ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
+        ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
+        ToolCallUpdateFields,
     };
 
     use super::*;
@@ -1235,6 +1292,49 @@ mod tests {
         assert!(session.pending_elicitations().is_empty());
         session.push_elicitation(form_question(), None);
         assert!(session.pending_elicitations().is_empty());
+    }
+
+    fn permission_request() -> RequestPermissionRequest {
+        RequestPermissionRequest::new(
+            "test-session",
+            ToolCallUpdate::new("call", ToolCallUpdateFields::new()),
+            vec![PermissionOption::new(
+                "allow",
+                "Allow",
+                PermissionOptionKind::AllowOnce,
+            )],
+        )
+    }
+
+    #[test]
+    fn cancelling_rejects_late_permission_requests() {
+        let mut session = AgentSession::default();
+        session.cancel();
+        let (responder, mut answer) = Responder::channel();
+        session.handle_event(AgentEvent::PermissionRequest {
+            request: permission_request(),
+            responder,
+        });
+        assert!(session.pending_permissions().is_empty());
+        let answer = answer.try_recv().expect("answered").expect("answered");
+        assert!(matches!(
+            answer.outcome,
+            RequestPermissionOutcome::Cancelled
+        ));
+    }
+
+    #[test]
+    fn permission_requests_the_agent_gave_up_on_are_dropped() {
+        let mut session = AgentSession::default();
+        let (responder, answer) = Responder::channel();
+        session.handle_event(AgentEvent::PermissionRequest {
+            request: permission_request(),
+            responder,
+        });
+        assert_eq!(session.pending_permissions().len(), 1);
+        drop(answer);
+        session.poll_events();
+        assert!(session.pending_permissions().is_empty());
     }
 
     #[test]

@@ -82,7 +82,7 @@ did not say.
 These paths are relative to `{workspace}`.
 
 - `crates/top/re_viewer_mcp/` — the MCP tools the agent drives the viewer with.
-- `crates/top/re_viewer/src/app/viewer_control.rs` — what the viewer can be asked to do at all.
+- `crates/top/re_viewer/src/app/viewer_control/mod.rs` — what the viewer can be asked to do at all.
 - `crates/top/re_viewer/src/agent_panel/preamble.rs` — what every panel session is told up front.
 - `skills/` — the skills the agent reads before answering.
 - `docs/content/` — the documentation it greps.
@@ -115,10 +115,11 @@ Disclose that you are an LLM in anything you file.\n"
 /// answers like a released build would; the review exists to change that source tree.
 pub fn session_context(checkout: &Path, transcript_dir: &Path) -> SessionContext {
     SessionContext {
-        preamble: Some(preamble(checkout)),
+        agent_harness_preamble: Some(preamble(checkout)),
         additional_directories: vec![checkout.to_owned(), transcript_dir.to_owned()],
         default_cwd: Some(checkout.to_owned()),
         off_limits_directories: Vec::new(),
+        ..Default::default()
     }
 }
 
@@ -258,7 +259,7 @@ mod tests {
         );
         assert!(
             context
-                .preamble
+                .agent_harness_preamble
                 .unwrap_or_default()
                 .contains(&checkout.display().to_string())
         );

@@ -569,6 +569,7 @@ impl BlueprintTree {
                     ctx.egui_ctx(),
                     &data_result_data.label,
                     data_result_data.highlight_sections.iter().cloned(),
+                    &egui::TextStyle::Body,
                     format_color,
                 ))
                 .with_icon(guess_instance_path_icon(

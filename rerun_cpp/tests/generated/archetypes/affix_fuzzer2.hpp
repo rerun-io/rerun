@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <rerun/archetype_utils.hpp>
 #include <rerun/collection.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/component_column.hpp>
@@ -388,13 +389,58 @@ namespace rerun::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&fuzz1101,
+                        &fuzz1102,
+                        &fuzz1103,
+                        &fuzz1104,
+                        &fuzz1105,
+                        &fuzz1106,
+                        &fuzz1107,
+                        &fuzz1108,
+                        &fuzz1109,
+                        &fuzz1110,
+                        &fuzz1111,
+                        &fuzz1112,
+                        &fuzz1113,
+                        &fuzz1114,
+                        &fuzz1115,
+                        &fuzz1116,
+                        &fuzz1117,
+                        &fuzz1118,
+                        &fuzz1122},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length({&fuzz1101,
+                                                             &fuzz1102,
+                                                             &fuzz1103,
+                                                             &fuzz1104,
+                                                             &fuzz1105,
+                                                             &fuzz1106,
+                                                             &fuzz1107,
+                                                             &fuzz1108,
+                                                             &fuzz1109,
+                                                             &fuzz1110,
+                                                             &fuzz1111,
+                                                             &fuzz1112,
+                                                             &fuzz1113,
+                                                             &fuzz1114,
+                                                             &fuzz1115,
+                                                             &fuzz1116,
+                                                             &fuzz1117,
+                                                             &fuzz1118,
+                                                             &fuzz1122})
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::archetypes
@@ -410,6 +456,28 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const archetypes::AffixFuzzer2& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.fuzz1101,
+                 &archetype.fuzz1102,
+                 &archetype.fuzz1103,
+                 &archetype.fuzz1104,
+                 &archetype.fuzz1105,
+                 &archetype.fuzz1106,
+                 &archetype.fuzz1107,
+                 &archetype.fuzz1108,
+                 &archetype.fuzz1109,
+                 &archetype.fuzz1110,
+                 &archetype.fuzz1111,
+                 &archetype.fuzz1112,
+                 &archetype.fuzz1113,
+                 &archetype.fuzz1114,
+                 &archetype.fuzz1115,
+                 &archetype.fuzz1116,
+                 &archetype.fuzz1117,
+                 &archetype.fuzz1118,
+                 &archetype.fuzz1122}
+            );
+        }
     };
 } // namespace rerun

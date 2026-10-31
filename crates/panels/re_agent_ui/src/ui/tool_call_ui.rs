@@ -17,11 +17,18 @@ pub fn tool_call_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallSt
         default_open,
     );
     let is_open = state.is_open();
-    state
-        .show_header(ui, |ui| {
-            header_ui(ui, session, call, is_open);
-        })
-        .body(|ui| body_ui(ui, call));
+    let mut header_clicked = false;
+    let mut header = state.show_header(ui, |ui| {
+        header_clicked = ui
+            .scope(|ui| header_ui(ui, session, call, is_open))
+            .response
+            .interact(egui::Sense::click())
+            .clicked();
+    });
+    if header_clicked {
+        header.toggle();
+    }
+    header.body(|ui| body_ui(ui, call));
 }
 
 /// The title is truncated while collapsed and wraps when expanded, so no tooltip is needed.

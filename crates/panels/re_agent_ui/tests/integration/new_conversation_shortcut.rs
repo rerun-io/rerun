@@ -20,7 +20,7 @@ fn panel() -> AgentPanel {
         profile_id: AgentProfileId::new("claude"),
         ..Default::default()
     };
-    let mut panel = AgentPanel::with_agents(settings, agents);
+    let mut panel = AgentPanel::with_agents(settings, None, agents);
     // A prompt makes it a conversation of its own, which the panel then shows.
     panel.queue_prompt("Hello".to_owned());
     panel

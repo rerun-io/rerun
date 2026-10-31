@@ -7,7 +7,7 @@ use re_log_types::external::re_types_core::SegmentId;
 use re_log_types::{EntityPathPart, EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
-use re_redap_client::{ApiError, ConnectionHandle};
+use re_redap_client::ApiError;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
@@ -77,9 +77,8 @@ impl Server {
         dataset: &'a Dataset,
     ) -> EntryMetaQuery<'a> {
         EntryMetaQuery {
-            runtime: &self.runtime,
+            client: &self.client,
             egui_ctx,
-            connection: &self.connection,
             dataset_id: dataset.id(),
         }
     }
@@ -108,11 +107,7 @@ impl Server {
             ui.spacing_mut().item_spacing.y = 0.0;
 
             let name = dataset.name();
-
-            let path = name
-                .as_str()
-                .split(re_uri::DATASET_HIERARCHY_SEPARATOR)
-                .collect::<Vec<_>>();
+            let leaf_name = re_uri::dataset_hierarchy_leaf_name(name.as_str());
 
             ui.horizontal(|ui| {
                 ui.add_space(PADDING);
@@ -121,39 +116,34 @@ impl Server {
                     ui.spacing_mut().item_spacing.y = 0.0;
                     ui.add_space(PADDING);
 
-                    if path.len() > 1 {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 0.0;
-                            for (idx, part) in path.iter().enumerate() {
-                                let last = idx == path.len() - 1;
-                                if last {
-                                    ui.strong(*part);
-                                } else {
-                                    ui.label(format!("{part} / "));
-                                }
-                            }
-                        });
+                    if leaf_name != name.as_str() {
+                        crate::breadcrumbs::hierarchy_breadcrumbs_ui(
+                            ui,
+                            &dataset.origin,
+                            name.as_str(),
+                            app_ctx.command_sender(),
+                        );
                         ui.add_space(BREADCRUMB_TO_NAME_SPACE);
                     }
 
-                    if let Some(name) = path.last() {
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(ui.available_width(), HEADER_HEIGHT),
-                            egui::Layout::left_to_right(egui::Align::Center),
-                            |ui| {
-                                ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
-                                ui.label(
-                                    egui::RichText::new(*name).size(HEADER_FONT_SIZE).strong(),
-                                );
-                                refresh_button_ui(
-                                    ui,
-                                    app_ctx,
-                                    dataset,
-                                    self.segments_queried_at(ui, dataset),
-                                );
-                            },
-                        );
-                    }
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(ui.available_width(), HEADER_HEIGHT),
+                        egui::Layout::left_to_right(egui::Align::Center),
+                        |ui| {
+                            ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
+                            ui.label(
+                                egui::RichText::new(leaf_name)
+                                    .size(HEADER_FONT_SIZE)
+                                    .strong(),
+                            );
+                            refresh_button_ui(
+                                ui,
+                                app_ctx,
+                                dataset,
+                                self.segments_queried_at(ui, dataset),
+                            );
+                        },
+                    );
 
                     ui.add_space(NAME_TO_TABS_SPACE);
                 });
@@ -162,7 +152,8 @@ impl Server {
             let mut new_resource = resource;
             TabBar::new(ui)
                 .selectable_value(&mut new_resource, DatasetResource::Segments, "Segments")
-                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets");
+                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets")
+                .selectable_value(&mut new_resource, DatasetResource::Schema, "Schema");
 
             if new_resource != resource {
                 app_ctx
@@ -182,6 +173,12 @@ impl Server {
                 }
                 DatasetResource::Assets => {
                     self.assets_ui(ui, app_ctx, ctx, dataset, &asset_sources);
+                }
+                DatasetResource::Schema => {
+                    let schema = dataset
+                        .requests()
+                        .schema(self.entry_meta_query(ui.ctx(), dataset));
+                    crate::dataset_schema::schema_ui(ui, &schema);
                 }
             }
         });
@@ -265,7 +262,13 @@ impl Server {
             self.origin().clone(),
             dataset.id(),
         )
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+        .show(
+            app_ctx,
+            self.client.runtime(),
+            ui,
+            table_blueprints,
+            view_states,
+        );
     }
 
     /// Lists the assets of a dataset, or says why there is nothing to list.
@@ -1535,12 +1538,12 @@ fn register_asset_button(
 ///
 /// Returns whether the server dropped it.
 pub(crate) async fn unregister_asset(
-    connection: ConnectionHandle,
+    client: CatalogClient,
     dataset_id: EntryId,
     asset_id: SegmentId,
     has_failed: bool,
 ) -> bool {
-    match CatalogClient::new(connection)
+    match client
         .unregister_asset(
             dataset_id,
             asset_id.clone(),

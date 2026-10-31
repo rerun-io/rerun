@@ -39,13 +39,13 @@ unsound = "all"
 ignore = [
   # `paste` is a proc-macro: it expands at compile time and contributes no runtime code, so being
   # unmaintained is a supply-chain concern rather than a reachability one.
-  { id = "RUSTSEC-2024-0436", reason = "paste 1.0.15 via lance-bitpacking 10.0.0, mcap 0.25.0, parquet 58.3.0, re_rav1d 0.1.3, re_query (re-export only) and re_string_interner (one `paste!`). Not exercised because it is a proc-macro with no runtime code. Blocked by lance-bitpacking 12.0.0, mcap 0.25.0 and re_rav1d 0.1.3 (all latest) requiring paste ^1, and by parquet before 59.2.0, which needs arrow 59. Remove when those parents drop paste and re_query/re_string_interner stop using it. No ticket yet." },
+  { id = "RUSTSEC-2024-0436", reason = "paste 1.0.15 via lance-bitpacking 10.0.0, mcap 0.25.0, parquet 58.4.1, re_rav1d 0.1.3, re_query (re-export only) and re_string_interner (one `paste!`). Not exercised because it is a proc-macro with no runtime code. Blocked by lance-bitpacking 12.0.0, mcap 0.25.0 and re_rav1d 0.1.3 (all latest) requiring paste ^1, and by parquet before 59.2.0, which needs arrow 59. Remove when those parents drop paste and re_query/re_string_interner stop using it. No ticket yet." },
   { id = "RUSTSEC-2025-0141", reason = "bincode 1.3.3 via http-cache 0.21.0 <- http-cache-reqwest 0.16.0 <- walkers 0.58.0 <- re_view_map, via puffin 0.20.0 (default `serialization` feature, through profiling <- eframe), and directly in re_server. Exercised: re_server encodes upload claims and chunk keys with it; the advisory is unmaintained status, not a vulnerability, and covers every bincode release including 2.x. Blocked by puffin 0.20.0 (latest) requiring bincode ^1.3 and by our own re_server use. Remove when walkers 0.60.0+ is adopted (its http-cache 1.0 alpha uses postcard), puffin drops bincode, and re_server moves to a maintained encoder. No ticket yet." },
   # Both pyo3 advisories are scoped to functions we never call. `rerun_py` and `re_protos` contain no
   # `.nth(`, `.nth_back(` or `new_closure` calls, and their one `PyTuple` is iterated with `for`.
   # Re-check when `arrow-pyarrow` or `numpy` moves, since they also link pyo3.
-  { id = "RUSTSEC-2026-0176", reason = "pyo3 0.28.3 via rerun_py, re_protos, arrow-pyarrow 58.3.0 and numpy 0.28.0 (shipped Python SDK). Not exercised because nothing calls `nth`/`nth_back` on PyList or PyTuple iterators (see comment above). Blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28; pyo3 ^0.29 needs arrow-pyarrow 59.1.0+, so arrow 59, and lance 12.0.0 (latest) still requires arrow ^58. Remove when a Lance release on arrow 59 is adopted along with numpy 0.29.0. RR-4865" },
-  { id = "RUSTSEC-2026-0177", reason = "pyo3 0.28.3 via rerun_py, re_protos, arrow-pyarrow 58.3.0 and numpy 0.28.0 (shipped Python SDK). Not exercised because nothing calls `PyCFunction::new_closure` (see comment above). Blocked by arrow-pyarrow 58.3.0 requiring pyo3 ^0.28; pyo3 ^0.29 needs arrow-pyarrow 59.1.0+, so arrow 59, and lance 12.0.0 (latest) still requires arrow ^58. Remove when a Lance release on arrow 59 is adopted along with numpy 0.29.0. RR-4865" },
+  { id = "RUSTSEC-2026-0176", reason = "pyo3 0.28.3 via rerun_py, re_protos, arrow-pyarrow 58.4.1 and numpy 0.28.0 (shipped Python SDK). Not exercised because nothing calls `nth`/`nth_back` on PyList or PyTuple iterators (see comment above). Blocked by arrow-pyarrow 58.4.1 requiring pyo3 ^0.28; pyo3 ^0.29 needs arrow-pyarrow 59.1.0+, so arrow 59, and lance 12.0.0 (latest) still requires arrow ^58. Remove when a Lance release on arrow 59 is adopted along with numpy 0.29.0. RR-4865" },
+  { id = "RUSTSEC-2026-0177", reason = "pyo3 0.28.3 via rerun_py, re_protos, arrow-pyarrow 58.4.1 and numpy 0.28.0 (shipped Python SDK). Not exercised because nothing calls `PyCFunction::new_closure` (see comment above). Blocked by arrow-pyarrow 58.4.1 requiring pyo3 ^0.28; pyo3 ^0.29 needs arrow-pyarrow 59.1.0+, so arrow 59, and lance 12.0.0 (latest) still requires arrow ^58. Remove when a Lance release on arrow 59 is adopted along with numpy 0.29.0. RR-4865" },
   # Three quick-xml paths below the 0.41 fix. Both advisories are parser denial-of-service, so the
   # exposure is a malformed model file stalling or ballooning the Viewer, not memory unsafety.
   #  - 0.36.2 via `minidom-14` 0.17.0 <- `dae-parser` 0.11.0 <- `re_renderer`. Exercised: it parses
@@ -141,7 +141,7 @@ skip = [
   { name = "objc2-app-kit" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2-foundation" }, # `accesskit_macos` uses a different version than `arboard`
   { name = "objc2" }, # `accesskit_macos` uses a different version than `arboard`
-  { name = "ordered-float" }, # Old version being used by parquet, but super small!
+  { name = "ordered-float" }, # 2.x via serde-value, 3.x via thrift <- parquet; tiny.
   { name = "png" }, # `resvg` (via egui_extras) still uses 0.17, `walkers` forces us on 0.18 via `image`.
   { name = "pollster" }, # `rfd` still uses 0.4, we use 1.0
   { name = "shlex" }, # `tinyaudio` → `coreaudio-sys` builds with `bindgen 0.72`, which uses an older version than `cc`.

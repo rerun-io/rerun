@@ -2,10 +2,13 @@
 //! setup screen.
 
 use std::collections::VecDeque;
+use std::sync::Arc;
 
 use re_agent::{
-    AgentEntry, AgentProfileId, AgentSession, AgentSettings, Phase, Prompt, SessionContext,
+    AgentEntry, AgentLaunch, AgentProfileId, AgentSession, AgentSettings, AgentToolbox, Phase,
+    Prompt, SessionContext,
 };
+use re_async::AsyncRuntimeHandle;
 use web_time::SystemTime;
 
 use super::Screen;
@@ -18,6 +21,12 @@ use super::setup_ui::setup_ui;
 pub struct Conversation {
     /// Unique for each conversation.
     pub id: ConversationId,
+
+    /// Where a model-API agent runs. Without it, a model-API agent fails to start.
+    pub async_runtime: Option<AsyncRuntimeHandle>,
+
+    /// The tools a model-API agent gets. See [`super::AgentPanel::set_toolbox`].
+    pub toolbox: Option<Arc<dyn AgentToolbox>>,
 
     /// When the conversation was opened, for sorting until it has any messages.
     created_at: SystemTime,
@@ -49,11 +58,18 @@ pub struct Conversation {
 
 impl Conversation {
     /// A fresh conversation. Skips the setup screen when the user has completed it before.
-    pub fn new(id: ConversationId, settings: &AgentSettings, auto_approve: bool) -> Self {
+    pub fn new(
+        settings: &AgentSettings,
+        async_runtime: Option<AsyncRuntimeHandle>,
+        id: ConversationId,
+        auto_approve: bool,
+    ) -> Self {
         let mut session = AgentSession::default();
         session.set_auto_approve(auto_approve);
         Self {
             id,
+            async_runtime,
+            toolbox: None,
             created_at: SystemTime::now(),
             seen_finished_items: 0,
             session,
@@ -80,18 +96,24 @@ impl Conversation {
         agents: &[AgentEntry],
     ) {
         let context = self.context.as_ref().unwrap_or(context);
-        match settings.agent_harness_config(agents, context) {
-            Ok(config) => {
+        match settings.launch(agents, context) {
+            Ok(mut launch) => {
+                if let AgentLaunch::ModelApi(config) = &mut launch {
+                    config.toolbox.clone_from(&self.toolbox);
+                }
                 self.profile_id.clone_from(&settings.profile_id);
                 let ctx = ctx.clone();
-                self.session.start(config, move || ctx.request_repaint());
+                self.session
+                    .start(launch, self.async_runtime.as_ref(), move || {
+                        ctx.request_repaint();
+                    });
                 self.seen_finished_items = 0;
                 self.input.reset_keeping_prompt();
                 self.screen = Screen::Chat;
                 settings.setup_done = true;
             }
             Err(err) => {
-                self.session.report_error(err);
+                self.session.report_error(err.to_string());
                 self.screen = Screen::Setup;
             }
         }

@@ -242,7 +242,7 @@ fn redaction_thread(requests: &Receiver<RedactionRequest>) {
             }) = queue.pop_front()
         {
             let mut redactor = AgentSession::default();
-            redactor.start(config, || {});
+            redactor.start(re_agent_ui::AgentLaunch::AgentHarness(config), None, || {});
             in_flight = Some(InFlight {
                 redactor,
                 json,

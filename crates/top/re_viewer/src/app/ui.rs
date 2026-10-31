@@ -255,6 +255,7 @@ impl AppCore {
             agent_panel,
             state,
             startup,
+            async_runtime,
             ..
         } = self;
 
@@ -262,6 +263,7 @@ impl AppCore {
             ui,
             &mut state.agent_panel_open,
             &mut state.agent_settings,
+            async_runtime,
             viewer_endpoint.as_deref(),
             cache_dir.as_deref(),
             startup.build_info.is_in_rerun_workspace,

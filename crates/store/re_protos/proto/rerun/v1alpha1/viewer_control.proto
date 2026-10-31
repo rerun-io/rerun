@@ -11,7 +11,7 @@
 //
 //   crates/store/re_protos/src/v1alpha1/rerun.viewer_control.v1alpha1.ext.rs
 //     One line in the `viewer_control_ops!` table, pairing the request with its response.
-//   crates/top/re_viewer/src/app/viewer_control.rs
+//   crates/top/re_viewer/src/app/viewer_control/mod.rs
 //     A match arm in `serve_viewer_control`, and what the operation does to the viewer.
 //   rerun_py/rerun_sdk/rerun/experimental/_viewer_client.py
 //     The public `ViewerClient` method, with keyword arguments and a docstring. It sends the
@@ -379,6 +379,9 @@ message ViewerControlRequest {
     // The text is only sent when the user has agreed to share redacted prompts with Rerun.
     // Fails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.
     SubmitFeedbackRequest submit_feedback = 22;
+
+    // When adding an operation, decide whether agents may run it without asking the user:
+    // see `OPERATIONS_WITHOUT_APPROVAL` in `crates/viewer_support/re_viewer_control_tools/src/lib.rs`.
   }
 }
 

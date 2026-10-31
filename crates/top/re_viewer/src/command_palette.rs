@@ -11,8 +11,8 @@ use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_redap_browser::RedapServers;
 use re_ui::{
     BoundCommand, CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd,
-    SyntaxHighlighting as _,
 };
+use re_viewer_context::StoreSyntaxHighlighting as _;
 use re_viewer_context::viewer_url::ViewerUrl;
 
 use crate::command_catalog::{CommandContext, catalog_commands};
