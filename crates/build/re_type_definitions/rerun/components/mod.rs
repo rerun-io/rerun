@@ -46,6 +46,8 @@ mod flag;
 mod gamma_correction;
 #[path = "geo_line_string.def.rs"]
 mod geo_line_string;
+#[path = "geo_polygon.def.rs"]
+mod geo_polygon;
 #[path = "graph_edge.def.rs"]
 mod graph_edge;
 #[path = "graph_node.def.rs"]
@@ -208,6 +210,7 @@ pub use self::fill_ratio::*;
 pub use self::flag::*;
 pub use self::gamma_correction::*;
 pub use self::geo_line_string::*;
+pub use self::geo_polygon::*;
 pub use self::graph_edge::*;
 pub use self::graph_node::*;
 pub use self::graph_type::*;

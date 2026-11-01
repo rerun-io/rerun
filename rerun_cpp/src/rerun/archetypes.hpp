@@ -23,6 +23,7 @@
 #include "archetypes/gaussian_splats3d.hpp"
 #include "archetypes/geo_line_strings.hpp"
 #include "archetypes/geo_points.hpp"
+#include "archetypes/geo_polygons.hpp"
 #include "archetypes/graph_edges.hpp"
 #include "archetypes/graph_nodes.hpp"
 #include "archetypes/grid_map.hpp"

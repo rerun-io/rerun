@@ -23,6 +23,7 @@ from .encoded_image import EncodedImage
 from .gaussian_splats3d import GaussianSplats3D
 from .geo_line_strings import GeoLineStrings
 from .geo_points import GeoPoints
+from .geo_polygons import GeoPolygons
 from .graph_edges import GraphEdges
 from .graph_nodes import GraphNodes
 from .grid_map import GridMap
@@ -79,6 +80,7 @@ __all__ = [
     "GaussianSplats3D",
     "GeoLineStrings",
     "GeoPoints",
+    "GeoPolygons",
     "GraphEdges",
     "GraphNodes",
     "GridMap",

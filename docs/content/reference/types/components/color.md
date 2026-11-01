@@ -37,6 +37,7 @@ UInt32
 * [`GaussianSplats3D`](../archetypes/gaussian_splats3d.md)
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)
+* [`GeoPolygons`](../archetypes/geo_polygons.md)
 * [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)

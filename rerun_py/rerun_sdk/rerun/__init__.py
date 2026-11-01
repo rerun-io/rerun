@@ -123,6 +123,7 @@ from .archetypes import (
     GaussianSplats3D as GaussianSplats3D,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
+    GeoPolygons as GeoPolygons,
     GraphEdges as GraphEdges,
     GraphNodes as GraphNodes,
     GridMap as GridMap,
@@ -165,6 +166,7 @@ from .auth import (
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
+    GeoPolygon as GeoPolygon,
     GraphEdge as GraphEdge,
     GraphType as GraphType,
     MediaType as MediaType,

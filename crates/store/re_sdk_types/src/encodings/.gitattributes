@@ -11,6 +11,7 @@ class_description_map_elem.rs linguist-generated=true
 class_id.rs linguist-generated=true
 color_model.rs linguist-generated=true
 dvec2d.rs linguist-generated=true
+geo_polygon_data.rs linguist-generated=true
 image_format.rs linguist-generated=true
 ivec3d.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true

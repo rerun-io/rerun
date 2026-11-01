@@ -19,6 +19,7 @@ This page lists all built-in archetypes.
 
 * [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 * [`GeoPoints`](archetypes/geo_points.md): Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
+* [`GeoPolygons`](archetypes/geo_polygons.md): Filled geospatial polygons, including concave boundaries and holes.
 
 ## Graph
 
