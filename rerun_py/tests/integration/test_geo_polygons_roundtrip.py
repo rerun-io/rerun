@@ -19,7 +19,7 @@ def test_geo_polygons_native_recording_roundtrip(tmp_path: Path) -> None:
     first = GeoPolygon(exterior=exterior, holes=[hole])
     second = GeoPolygon(exterior=triangle)
     path = tmp_path / "polygons.rrd"
-    with rr.RecordingStream("geo_polygons_roundtrip") as recording:
+    with rr.RecordingStream("rerun_example_geo_polygons_roundtrip") as recording:
         recording.save(path)
         recording.set_time("frame", sequence=1)
         recording.log("regions", rr.GeoPolygons([first, second], colors=[[10, 20, 30, 128], [40, 50, 60, 255]]))

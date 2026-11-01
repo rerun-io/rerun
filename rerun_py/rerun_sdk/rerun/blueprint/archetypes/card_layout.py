@@ -60,8 +60,8 @@ class CardLayout(Archetype):
             Unlisted fields are hidden unless their [`archetypes.TableColumn`][rerun.blueprint.archetypes.TableColumn] visibility overrides the default.
             Each source column may appear at most once.
 
-            Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-            Card layouts currently support at most one flag field.
+            The first visible field of component type [`components.Flag`][rerun.components.Flag] is shown in the card header
+            instead of the labeled-field list.
 
         """
 
@@ -116,8 +116,8 @@ class CardLayout(Archetype):
             Unlisted fields are hidden unless their [`archetypes.TableColumn`][rerun.blueprint.archetypes.TableColumn] visibility overrides the default.
             Each source column may appear at most once.
 
-            Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-            Card layouts currently support at most one flag field.
+            The first visible field of component type [`components.Flag`][rerun.components.Flag] is shown in the card header
+            instead of the labeled-field list.
 
         """
 
@@ -177,8 +177,8 @@ class CardLayout(Archetype):
     # Unlisted fields are hidden unless their [`archetypes.TableColumn`][rerun.blueprint.archetypes.TableColumn] visibility overrides the default.
     # Each source column may appear at most once.
     #
-    # Fields with `TableCellKind::Flag` are omitted from the labeled-field list and the first one is shown in the card header.
-    # Card layouts currently support at most one flag field.
+    # The first visible field of component type [`components.Flag`][rerun.components.Flag] is shown in the card header
+    # instead of the labeled-field list.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -3,6 +3,7 @@
 
 #include "geo_polygon_data.hpp"
 
+#include "../arrow_serialization.hpp"
 #include "dvec2d.hpp"
 
 #include <arrow/builder.h>
@@ -34,36 +35,14 @@ namespace rerun {
     Result<std::shared_ptr<arrow::Array>> Loggable<encodings::GeoPolygonData>::to_arrow(
         const encodings::GeoPolygonData* instances, size_t num_instances
     ) {
-        // TODO(andreas): Allow configuring the memory pool.
-        arrow::MemoryPool* pool = arrow::default_memory_pool();
-        auto datatype = arrow_data_type();
-
-        ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-        if (instances && num_instances > 0) {
-            RR_RETURN_NOT_OK(Loggable<encodings::GeoPolygonData>::fill_arrow_array_builder(
-                static_cast<arrow::StructBuilder*>(builder.get()),
-                instances,
-                num_instances
-            ));
-        }
-        std::shared_ptr<arrow::Array> array;
-        ARROW_RETURN_NOT_OK(builder->Finish(&array));
-        return array;
+        return detail::serialize_arrow<arrow::StructBuilder>(instances, num_instances);
     }
 
     rerun::Error Loggable<encodings::GeoPolygonData>::fill_arrow_array_builder(
         arrow::StructBuilder* builder, const encodings::GeoPolygonData* elements,
         size_t num_elements
     ) {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(
-                ErrorCode::UnexpectedNullArgument,
-                "Cannot serialize null pointer to arrow array."
-            );
-        }
+        RR_RETURN_NOT_OK(detail::check_arrow_builder_arguments(builder, elements));
 
         {
             auto field_builder = static_cast<arrow::ListBuilder*>(builder->field_builder(0));

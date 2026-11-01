@@ -16,7 +16,6 @@ use datafusion::prelude::DataFrame;
 use datafusion::prelude::{SessionContext, cast, encode};
 use datafusion::sql::sqlparser::parser::ParserError;
 use futures::{StreamExt as _, TryStreamExt as _};
-use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_async::AsyncRuntimeHandle;
 use re_log::{error, warn};
 use re_log_types::Timestamp;
@@ -25,7 +24,7 @@ use re_quota_channel::send_crossbeam;
 use re_sdk_types::blueprint::components::ColumnName;
 use re_sorbet::{BatchType, SorbetBatch, SorbetSchema};
 
-use crate::cards_view::FlagChangeEvent;
+use crate::cards_view::CellChangeEvent;
 use crate::column_sorting::SortBy;
 use crate::filters::filter_expression;
 use crate::table_selection::TableSelectionState;
@@ -721,19 +720,19 @@ impl DataFusionAdapter {
         });
     }
 
-    /// Apply flag changes to the in-memory query results.
+    /// Apply cell changes to the in-memory query results.
     ///
     /// Note that this only manipulates in-memory state.
     /// Sending this to wherever we got the data from has to happen separately.
     ///
-    /// Each edited column must already exist as a boolean column in the Sorbet schema.
+    /// Each edited column must already exist in the Sorbet schema.
     /// Does nothing otherwise.
-    pub fn apply_flag_changes(&mut self, ui: &egui::Ui, changes: &[FlagChangeEvent]) {
+    pub fn apply_cell_changes(&mut self, ui: &egui::Ui, changes: &[CellChangeEvent]) {
         let Some(Ok(results)) = &mut self.results else {
             return;
         };
 
-        update_flag_columns(results, changes);
+        update_columns(results, changes);
 
         ui.data_mut(|data| {
             data.insert_temp(self.id, self.clone());
@@ -741,12 +740,51 @@ impl DataFusionAdapter {
     }
 }
 
-/// Update existing flag columns with the given changes.
+/// Converts an edited value to a single cell of a column with the given datatype.
+///
+/// The edited value is the data of one cell as the component UI sees it,
+/// so for list columns it is the list's values.
+pub fn cell_from_edited_value(
+    datatype: &DataType,
+    edited: &arrow::array::ArrayRef,
+) -> Result<arrow::array::ArrayRef, ArrowError> {
+    match datatype {
+        DataType::List(field) => {
+            let values = arrow::compute::cast(edited, field.data_type())?;
+            let offsets = arrow::buffer::OffsetBuffer::from_lengths([values.len()]);
+            Ok(Arc::new(arrow::array::ListArray::try_new(
+                Arc::clone(field),
+                offsets,
+                values,
+                None,
+            )?))
+        }
+        DataType::LargeList(field) => {
+            let values = arrow::compute::cast(edited, field.data_type())?;
+            let offsets = arrow::buffer::OffsetBuffer::from_lengths([values.len()]);
+            Ok(Arc::new(arrow::array::LargeListArray::try_new(
+                Arc::clone(field),
+                offsets,
+                values,
+                None,
+            )?))
+        }
+        datatype => {
+            if edited.len() != 1 {
+                return Err(ArrowError::InvalidArgumentError(format!(
+                    "Expected one edited value for a {datatype} column, got {}",
+                    edited.len()
+                )));
+            }
+            arrow::compute::cast(edited, datatype)
+        }
+    }
+}
+
+/// Update existing columns with the given changes.
 ///
 /// Since Arrow arrays are immutable, we must rebuild the entire column even for single-cell changes.
-fn update_flag_columns(results: &mut DataFusionQueryResult, changes: &[FlagChangeEvent]) {
-    use arrow::array::{Array as _, BooleanArray};
-
+fn update_columns(results: &mut DataFusionQueryResult, changes: &[CellChangeEvent]) {
     for change in changes {
         let Some(col_idx) = results
             .original_schema
@@ -755,7 +793,7 @@ fn update_flag_columns(results: &mut DataFusionQueryResult, changes: &[FlagChang
             .position(|field| field.name() == change.physical_column.as_str())
         else {
             re_log::warn_once!(
-                "Flag column {:?} is missing from the original schema",
+                "Edited column {:?} is missing from the original schema",
                 change.physical_column
             );
             continue;
@@ -764,24 +802,27 @@ fn update_flag_columns(results: &mut DataFusionQueryResult, changes: &[FlagChang
             continue;
         };
 
-        let Some(old_col) = batch.column(col_idx).downcast_array_ref::<BooleanArray>() else {
-            re_log::warn_once!("Flag column at index {col_idx} is not a boolean column");
-            break;
+        let old_col = batch.column(col_idx);
+        let new_col =
+            cell_from_edited_value(old_col.data_type(), &change.new_value).and_then(|cell| {
+                re_arrow_util::concat_arrays(&[
+                    &old_col.slice(0, row_offset),
+                    &cell,
+                    &old_col.slice(row_offset + 1, old_col.len() - row_offset - 1),
+                ])
+            });
+        let new_col = match new_col {
+            Ok(new_col) => new_col,
+            Err(err) => {
+                re_log::warn_once!(
+                    "Failed to apply edit to column {:?}: {err}",
+                    change.physical_column
+                );
+                continue;
+            }
         };
 
-        let new_col: BooleanArray = (0..batch.num_rows())
-            .map(|i| {
-                if i == row_offset {
-                    Some(change.new_value)
-                } else if old_col.is_null(i) {
-                    None
-                } else {
-                    Some(old_col.value(i))
-                }
-            })
-            .collect();
-
-        if let Some(new_batch) = batch.with_replaced_column(col_idx, std::sync::Arc::new(new_col)) {
+        if let Some(new_batch) = batch.with_replaced_column(col_idx, new_col) {
             *batch = new_batch;
         }
     }
@@ -1064,6 +1105,74 @@ mod tests {
             ),
             "expected one schema event without a batch, got {without_rows:?}"
         );
+    }
+
+    /// The generated segment and entry link columns hold Rerun URIs, which the table shows as
+    /// links.
+    #[tokio::test]
+    async fn link_columns_are_redap_uris() {
+        use std::str::FromStr as _;
+
+        use re_arrow_util::ArrowArrayDowncastRef as _;
+
+        let session_ctx = Arc::new(SessionContext::new());
+        let batch = RecordBatch::try_from_iter([
+            (
+                "segment_id",
+                Arc::new(arrow::array::StringArray::from(vec!["a", "b"])) as _,
+            ),
+            (
+                "entry_id",
+                Arc::new(
+                    arrow::array::FixedSizeBinaryArray::try_from_iter(
+                        [EntryId::new(), EntryId::new()]
+                            .into_iter()
+                            .map(|id| id.id.as_bytes()),
+                    )
+                    .unwrap(),
+                ) as _,
+            ),
+        ])
+        .unwrap();
+        session_ctx.register_batch("table", batch).unwrap();
+
+        let origin: re_uri::Origin = "rerun+http://127.0.0.1:9876".parse().unwrap();
+        let query = DataFusionQuery::new(
+            session_ctx,
+            "table".into(),
+            DataFusionQueryData {
+                segment_links: Some(SegmentLinksSpec {
+                    column_name: "segment_link".into(),
+                    segment_id_column_name: "segment_id".into(),
+                    origin: origin.clone(),
+                    dataset_id: EntryId::new(),
+                }),
+                entry_links: Some(EntryLinksSpec {
+                    column_name: "entry_link".into(),
+                    entry_id_column_name: "entry_id".into(),
+                    origin,
+                }),
+                ..Default::default()
+            },
+        );
+        let QueryBatchStream { stream, .. } = query.batch_stream().await.unwrap();
+        let batches: Vec<RecordBatch> = futures::TryStreamExt::try_collect(stream).await.unwrap();
+
+        for batch in &batches {
+            for column in ["segment_link", "entry_link"] {
+                let values = batch
+                    .column_by_name(column)
+                    .unwrap()
+                    .downcast_array_ref::<arrow::array::StringArray>()
+                    .unwrap();
+                for value in values.iter().flatten() {
+                    assert!(
+                        re_uri::RedapUri::from_str(value).is_ok(),
+                        "{column}: {value}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

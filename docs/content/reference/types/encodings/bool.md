@@ -19,7 +19,9 @@ Boolean
 
 ## Used by
 
+* [`Bool`](../components/bool.md)
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
+* [`Flag`](../components/flag.md)
 * [`Interactive`](../components/interactive.md)
 * [`IsKeyframe`](../components/is_keyframe.md)
 * [`ShowLabels`](../components/show_labels.md)

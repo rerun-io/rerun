@@ -7,6 +7,7 @@ mod entries_table;
 mod fetch_chunks;
 mod find_chunks;
 mod find_entries_filters;
+mod get_schemas;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
@@ -128,6 +129,11 @@ define_redap_tests! {
     find_entries_filters::find_entries_legacy_entry_kind_miss_returns_empty,
     find_entries_filters::find_entries_legacy_entry_kind_still_works,
     find_entries_filters::find_entries_rejects_legacy_unspecified,
+    get_schemas::get_schemas,
+    get_schemas::get_schemas_empty_request,
+    get_schemas::get_schemas_invalid_id,
+    get_schemas::get_schemas_other_dataset_id,
+    get_schemas::get_schemas_too_many_ids,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_has_uncompressed_sizes,
     query_dataset::query_dataset_matches_find_chunks,

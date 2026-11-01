@@ -21,6 +21,27 @@ use crate::{
 // Showing more than this takes up too much space
 const MAX_COMPONENTS_IN_TOOLTIP: usize = 3;
 
+type ComponentValueUi<'a> = dyn Fn(&mut egui::Ui, UiLayout) + 'a;
+
+/// Options for a component row rendered by [`component_ui`].
+#[derive(Clone, Copy, Default)]
+pub struct ComponentUiOptions<'a> {
+    /// Allow nested values to expand in place.
+    pub expandable: bool,
+
+    /// Open expandable values by default.
+    pub default_open: bool,
+
+    /// Include the archetype in the row label.
+    pub show_archetype: bool,
+
+    /// Leave out the static/temporal icon, keeping the label aligned with rows that have a chevron.
+    pub hide_type_icon: bool,
+
+    /// Override the component-specific value UI, for both summary and expanded content.
+    pub value_ui: Option<&'a ComponentValueUi<'a>>,
+}
+
 impl DataUi for InstancePath {
     fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         re_tracing::profile_function!();
@@ -321,6 +342,7 @@ fn component_list_ui(
                         component_descr,
                         hits,
                         query_results,
+                        ComponentUiOptions::default(),
                     );
                 } else {
                     missing_units = true;
@@ -343,7 +365,11 @@ fn component_list_ui(
     });
 }
 
-fn component_ui(
+/// Render a component row with optional expansion and custom value UI.
+///
+/// `archetype_components` and `query_results` supply sibling values for inline previews.
+/// Must be called inside a [`re_ui::list_item::list_item_scope`].
+pub fn component_ui(
     ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
@@ -352,11 +378,19 @@ fn component_ui(
     component_descr: &ComponentDescriptor,
     hits: &LatestAllComponentResults,
     query_results: &LatestAllResults,
+    options: ComponentUiOptions<'_>,
 ) {
     let InstancePath {
         entity_path,
         instance,
     } = instance_path;
+    let ComponentUiOptions {
+        expandable,
+        default_open,
+        show_archetype,
+        hide_type_icon,
+        value_ui,
+    } = options;
 
     let interactive = ui_layout != UiLayout::Tooltip;
 
@@ -364,7 +398,10 @@ fn component_ui(
 
     let item = Item::ComponentPath(component_path);
 
-    let mut list_item = ui.list_item().interactive(interactive);
+    let mut list_item = ui
+        .list_item()
+        .interactive(interactive)
+        .toggle_on_click(expandable);
 
     if interactive {
         let is_hovered = ctx
@@ -401,23 +438,36 @@ fn component_ui(
 
     let is_static = hits.time().is_static();
 
-    let icon = if is_static {
-        &re_ui::icons::COMPONENT_STATIC
+    let name = if show_archetype {
+        component_descr.display_name()
     } else {
-        &re_ui::icons::COMPONENT_TEMPORAL
+        component_descr.archetype_field_name()
     };
 
-    let mut content = PropertyContent::new(component_descr.archetype_field_name())
-        .with_icon(icon)
-        .value_fn(move |ui, _| {
+    let mut content = PropertyContent::new(name);
+
+    if !hide_type_icon {
+        content = content.with_icon(if is_static {
+            &re_ui::icons::COMPONENT_STATIC
+        } else {
+            &re_ui::icons::COMPONENT_TEMPORAL
+        });
+    }
+
+    let value_ui = |ui: &mut egui::Ui, ui_layout| {
+        if let Some(custom_value_ui) = value_ui {
+            custom_value_ui(ui, ui_layout);
+        } else {
             LatestAllInstanceResult {
                 entity_path: entity_path.clone(),
                 component: component_descr.component,
                 instance: *instance,
                 hits,
             }
-            .data_ui(ctx, ui, UiLayout::List);
-        });
+            .data_ui(ctx, ui, ui_layout);
+        }
+    };
+    let mut content = content.value_fn(|ui, _| value_ui(ui, UiLayout::List));
 
     if let Some(extra_data_ui) = &extra_data_ui
         && ui_layout == UiLayout::SelectionPanel
@@ -432,7 +482,22 @@ fn component_ui(
             .with_always_show_buttons(true);
     }
 
-    let response = list_item.show_flat(ui, content).on_hover_ui(|ui| {
+    let show_item = |ui: &mut egui::Ui, content: PropertyContent<'_>| {
+        if expandable {
+            let id = ui.make_persistent_id(component_descr.component);
+            list_item
+                .show_hierarchical_with_children(ui, id, default_open, content, |ui| {
+                    value_ui(ui, UiLayout::SelectionPanel);
+                })
+                .item_response
+        } else if hide_type_icon {
+            list_item.show_hierarchical(ui, content)
+        } else {
+            list_item.show_flat(ui, content)
+        }
+    };
+
+    let response = show_item(ui, content).on_hover_ui(|ui| {
         if let Some(component_type) = component_descr.component_type {
             component_type.data_ui(ctx, ui, UiLayout::Tooltip);
         }
@@ -461,7 +526,7 @@ fn component_ui(
 pub fn archetype_label_list_item_ui(ui: &mut egui::Ui, archetype: Option<&ArchetypeName>) {
     ui.list_item()
         .with_y_offset(1.0)
-        .with_height(20.0)
+        .with_density(re_ui::ListItemDensity::Compact)
         .interactive(false)
         .show_flat(
             ui,

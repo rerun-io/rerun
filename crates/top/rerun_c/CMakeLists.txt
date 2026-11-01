@@ -40,10 +40,13 @@ set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION ${RERUN_C_BUILD_ARTIF
 
 # Just depend on all rust and toml files, it's hard to know which files exactly are relevant.
 file(GLOB_RECURSE RERUN_C_SOURCES LIST_DIRECTORIES FALSE "${PROJECT_SOURCE_DIR}/crates/*.rs" "${PROJECT_SOURCE_DIR}/crates/*.toml")
+# Build without `re_workspace_hack`, as the published rerun_c is built: it unifies features across
+# the whole workspace, which pulls viewer-only dependencies, and the system libraries they need, into the C SDK.
+# Cargo ignores the `--cfg rerun_workspace_hack` from `.cargo/config.toml` whenever `RUSTFLAGS` is set, even to "".
 add_custom_command(
     OUTPUT ${RERUN_C_BUILD_ARTIFACT}
     DEPENDS ${RERUN_C_SOURCES}
-    COMMAND cargo build ${CARGO_BUILD_FLAG} -p rerun_c
+    COMMAND ${CMAKE_COMMAND} -E env "RUSTFLAGS=$ENV{RUSTFLAGS}" cargo build ${CARGO_BUILD_FLAG} -p rerun_c
     COMMENT "Building rerun_c from source"
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
 )

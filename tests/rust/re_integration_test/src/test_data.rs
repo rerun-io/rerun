@@ -14,11 +14,14 @@ use re_sdk::{RecordingStreamBuilder, TimeCell};
 use re_sdk_types::{LayerName, SegmentId};
 use re_viewer::external::re_sdk_types::{archetypes, components::Color};
 
+/// The ID of the dataset that `load_test_data` registers.
+pub const TEST_DATASET_ID: &str = "187b552b95a5c2f73f37894708825ba5";
+
 pub async fn load_test_data(catalog_client: &CatalogClient) -> Result<SegmentId, Box<dyn Error>> {
     load_test_data_with_name(
         catalog_client,
         "my_dataset",
-        "187b552b95a5c2f73f37894708825ba5",
+        TEST_DATASET_ID,
         "new_recording_id",
     )
     .await

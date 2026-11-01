@@ -26,22 +26,20 @@ pub fn entity_path_edit_ui(
         .data_mut(|data| data.remove_temp::<String>(state_id))
         .unwrap_or_else(|| current.to_string());
 
-    let completion = re_ui::text_edit::text_edit_scope(ui, |ui| {
-        egui::CompletionPopup::new(text_id)
-            .word_boundary(|_| false)
-            .align(egui::emath::RectAlign::BOTTOM_START)
-            .show(ui, egui::TextEdit::singleline(&mut text), |query| {
-                let matcher = FilterMatcher::for_query(query.text);
-                suggestions()
-                    .into_iter()
-                    .filter_map(|suggestion| {
-                        let text = suggestion.to_string();
-                        matcher.match_path(text.split('/'))?;
-                        Some(egui::Suggestion::new(text))
-                    })
-                    .collect()
-            })
-    });
+    let completion = egui::CompletionPopup::new(text_id)
+        .word_boundary(|_| false)
+        .align(egui::emath::RectAlign::BOTTOM_START)
+        .show(ui, egui::TextEdit::singleline(&mut text), |query| {
+            let matcher = FilterMatcher::for_query(query.text);
+            suggestions()
+                .into_iter()
+                .filter_map(|suggestion| {
+                    let text = suggestion.to_string();
+                    matcher.match_path(text.split('/'))?;
+                    Some(egui::Suggestion::new(text))
+                })
+                .collect()
+        });
     let mut output = completion.text_edit;
 
     if let Some(accepted) = completion.accepted {

@@ -1,12 +1,13 @@
 //! Commands shared by the command palette, web menu, and native menu.
 
 use egui::{KeyboardShortcut, os::OperatingSystem};
-use re_ui::{
-    BoundCommand, CommandEnvironment, CommandKind, RecordingCommandKind, RedapServerCommandKind,
-    TableCommandKind, UICommand,
-};
+use re_ui::UICommand;
 use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{ActiveStoreContext, CommandSender, StoreHub};
+use re_viewer_context::{
+    BoundCommand, CommandEnvironment, CommandKind, RecordingCommandKind, RedapServerCommandKind,
+    TableCommandKind,
+};
 
 use crate::AppCore;
 

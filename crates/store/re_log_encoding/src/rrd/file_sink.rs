@@ -168,7 +168,6 @@ impl FileSink {
     ) -> Result<Self, FileSinkError> {
         let target = target.into();
 
-        // We always compress in the file writer.
         let encoding_options = crate::rrd::EncodingOptions::PROTOBUF_COMPRESSED;
         let mut encoder = crate::Encoder::new_eager(
             re_build_info::CrateVersion::LOCAL,

@@ -1,0 +1,1779 @@
+#![expect(clippy::unwrap_used)]
+#![expect(clippy::unused_self)] // TODO(emilk): move hard-coded values into .ron files
+
+use anyhow::Context as _;
+use egui::{Color32, Margin, Stroke, Theme, Vec2};
+
+use crate::color_table::{ColorTable, ColorToken, Hue, Scale};
+use crate::format_with_decimals_in_range;
+
+#[derive(Debug)]
+pub struct AlertVisuals {
+    pub fill: Color32,
+    pub icon: Color32,
+    pub text: Color32,
+}
+
+impl AlertVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            fill: color_from_value(color_table, value.get("fill")?)?,
+            icon: color_from_value(color_table, value.get("icon")?)?,
+            text: color_from_value(color_table, value.get("text")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse AlertVisuals")
+    }
+}
+
+/// The colors a card is outlined with to say what state its content is in.
+///
+/// One color per state: the outline is drawn in it, and anything marking the card, such as a pill
+/// or the line saying what went wrong, is tinted from it.
+#[derive(Debug)]
+pub struct Outlines {
+    /// Waiting on something that is expected to finish.
+    pub pending: Color32,
+
+    /// Something went wrong and the user has to deal with it.
+    pub error: Color32,
+}
+
+impl Outlines {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            pending: color_from_value(color_table, value.get("pending")?)?,
+            error: color_from_value(color_table, value.get("error")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse Outlines")
+    }
+}
+
+/// The label colors of a tab bar, one per interaction state.
+///
+/// Hover only changes the label color. The underline belongs to the selected tab and never
+/// follows the pointer.
+#[derive(Debug)]
+pub struct TabVisuals {
+    /// A tab that is neither selected nor hovered.
+    pub text: Color32,
+
+    /// The tab under the pointer.
+    pub text_hovered: Color32,
+
+    /// The tab whose contents are shown.
+    pub text_selected: Color32,
+}
+
+impl TabVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            text: color_from_value(color_table, value.get("text")?)?,
+            text_hovered: color_from_value(color_table, value.get("text_hovered")?)?,
+            text_selected: color_from_value(color_table, value.get("text_selected")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse TabVisuals")
+    }
+}
+
+/// A metadata line that pairs each value with the word naming it.
+#[derive(Debug)]
+pub struct MetaLineVisuals {
+    /// The word naming a value, e.g. "segments".
+    pub label: Color32,
+
+    /// The value itself, e.g. the count.
+    pub value: Color32,
+}
+
+impl MetaLineVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            label: color_from_value(color_table, value.get("label")?)?,
+            value: color_from_value(color_table, value.get("value")?)?,
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse MetaLineVisuals")
+    }
+}
+
+/// Colors for a single button [`crate::Variant`].
+#[derive(Debug, Clone, Copy)]
+pub struct ButtonVisuals {
+    /// Background fill when resting.
+    pub fill: Color32,
+
+    /// Background fill when hovered.
+    pub fill_hovered: Color32,
+
+    /// Background fill when pressed (and while open).
+    pub fill_pressed: Color32,
+
+    /// Text and icon color.
+    pub text: Color32,
+
+    /// Outline around the button. [`Stroke::NONE`] when the variant has no outline.
+    pub stroke: Stroke,
+}
+
+impl ButtonVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        Ok(Self {
+            fill: color_from_value(color_table, value.get("fill")?)?,
+            fill_hovered: color_from_value(color_table, value.get("fill_hovered")?)?,
+            fill_pressed: color_from_value(color_table, value.get("fill_pressed")?)?,
+            text: color_from_value(color_table, value.get("text")?)?,
+            stroke: match value.get("stroke") {
+                Ok(stroke) => stroke_from_value(color_table, stroke)?,
+                Err(_) => Stroke::NONE,
+            },
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse ButtonVisuals")
+    }
+}
+
+/// Colors for a single text edit [`crate::text_edit::TextEditVariant`].
+///
+/// This mirrors [`ButtonVisuals`], but a text edit is focused instead of pressed,
+/// and it has a placeholder text and a per-state outline.
+#[derive(Debug)]
+pub struct TextEditVisuals {
+    /// Background fill when resting.
+    pub fill: Color32,
+
+    /// Background fill when hovered.
+    pub fill_hovered: Color32,
+
+    /// Background fill while the field has keyboard focus.
+    pub fill_focused: Color32,
+
+    /// Color of the text the user types.
+    pub text: Color32,
+
+    /// Color of the hint text shown while the field is empty.
+    pub text_placeholder: Color32,
+
+    /// Outline when resting. [`Stroke::NONE`] when the variant has no outline.
+    pub stroke: Stroke,
+
+    /// Outline when hovered. Falls back to `stroke`.
+    pub stroke_hovered: Stroke,
+
+    /// Outline while the field has keyboard focus. Falls back to `stroke`.
+    pub stroke_focused: Stroke,
+}
+
+impl TextEditVisuals {
+    fn try_get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> anyhow::Result<Self> {
+        let value = ron.get(name)?;
+
+        let stroke = match value.get("stroke") {
+            Ok(value) => stroke_from_value(color_table, value)?,
+            Err(_) => Stroke::NONE,
+        };
+
+        Ok(Self {
+            fill: color_from_value(color_table, value.get("fill")?)?,
+            fill_hovered: color_from_value(color_table, value.get("fill_hovered")?)?,
+            fill_focused: color_from_value(color_table, value.get("fill_focused")?)?,
+            text: color_from_value(color_table, value.get("text")?)?,
+            text_placeholder: color_from_value(color_table, value.get("text_placeholder")?)?,
+            stroke,
+            stroke_hovered: match value.get("stroke_hovered") {
+                Ok(value) => stroke_from_value(color_table, value)?,
+                Err(_) => stroke,
+            },
+            stroke_focused: match value.get("stroke_focused") {
+                Ok(value) => stroke_from_value(color_table, value)?,
+                Err(_) => stroke,
+            },
+        })
+    }
+
+    fn get(color_table: &ColorTable, ron: &ron::Value, name: &str) -> Self {
+        Self::try_get(color_table, ron, name).expect("Failed to parse TextEditVisuals")
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum WindowFrameConfig {
+    Native,
+    Custom { is_maximized: bool },
+}
+
+impl WindowFrameConfig {
+    pub fn custom(ctx: &egui::Context) -> Self {
+        Self::Custom {
+            is_maximized: ctx.input(|input| input.viewport().maximized == Some(true)),
+        }
+    }
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum TableStyle {
+    /// Used for presenting a lot of information to the user
+    /// without wasting vertical space, like when showing log output.
+    #[default]
+    Dense,
+
+    /// Used when we want to fit big, clickable buttons in the table cells.
+    Spacious,
+}
+
+/// Row spacing for list items.
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Default)]
+pub enum ListItemDensity {
+    /// Present content with more spacing and visual structure.
+    #[default]
+    Spacious,
+
+    /// Present content using less space.
+    Compact,
+}
+
+/// The look and feel of the UI.
+///
+/// Not everything is covered by this.
+/// A lot of other design tokens are put straight into the [`egui::Style`]
+#[derive(Debug)]
+pub struct DesignTokens {
+    pub theme: egui::Theme,
+
+    typography: Typography,
+
+    pub large_button_size: Vec2,
+    pub large_button_icon_size: Vec2,
+    pub large_button_corner_radius: f32,
+    pub small_icon_size: Vec2,
+    pub modal_button_width: f32,
+    pub default_modal_width: f32,
+
+    // All these colors can be found in dark_theme.ron and light_theme.ron:
+    pub top_bar_color: Color32,
+    pub bottom_bar_color: Color32,
+
+    /// Structural separators between app surfaces.
+    pub divider_stroke: Stroke,
+
+    /// Outline for compact controls that need more definition than a divider.
+    pub control_stroke: Stroke,
+
+    /// Background of controls whose fill is all that sets them apart from the panel,
+    /// like checkboxes and radio buttons.
+    ///
+    /// Unlike buttons, these have no text or icon on them to make them visible.
+    pub control_fill: Color32,
+
+    /// [`Self::control_fill`] when hovered.
+    pub control_fill_hovered: Color32,
+
+    /// [`Self::control_fill`] when pressed.
+    pub control_fill_pressed: Color32,
+
+    pub shadow_gradient_dark_start: Color32,
+    pub tab_bar_color: Color32,
+    pub viewport_tab_selected_text_color: Color32,
+    pub native_frame_stroke: Stroke,
+    pub windows_close_button_hover_color: Color32,
+
+    /// Usually black or white
+    pub strong_fg_color: Color32,
+
+    pub info_log_text_color: Color32,
+    pub debug_log_text_color: Color32,
+    pub trace_log_text_color: Color32,
+
+    pub success_text_color: Color32,
+    pub info_text_color: Color32,
+
+    /// Opacity multiplier for the background of 2D labels in spatial views.
+    pub spatial_label_bg_opacity: f32,
+
+    /// Opacity multiplier for disabled controls.
+    // TODO(lucas): Implement disabled styling based on classes and colors instead of opacity.
+    pub disabled_opacity: f32,
+
+    /// Animation duration in seconds for some things that should feel smooth,
+    /// (as opposed as the default egui animaion that should feel _snappy_).
+    pub slow_animation_duration_sec: f32,
+
+    /// Background color for viewport views.
+    pub viewport_background: Color32,
+
+    /// Background color for widgets that should catch the user's attention.
+    pub highlight_color: Color32,
+
+    /// Color of an icon next to a label
+    pub label_button_icon_color: Color32,
+
+    /// The color for the background of [`crate::SectionCollapsingHeader`].
+    pub section_header_color: Color32,
+
+    /// The color we use to mean "loop this selection"
+    pub loop_selection_color: Color32,
+
+    /// Like [`Self::loop_selection_color`], but inactive.
+    pub loop_selection_color_inactive: Color32,
+
+    /// The color we use to mean "loop all the data"
+    pub loop_everything_color: Color32,
+
+    /// Color for thumbnail backgrounds
+    pub thumbnail_background_color: Color32,
+
+    /// Color for example card backgrounds
+    pub example_card_background_color: Color32,
+
+    pub example_tag_bg_fill: Color32,
+    pub example_tag_stroke: Stroke,
+
+    /// The background color of text matching an active search query.
+    pub search_match_bg_fill: Color32,
+
+    // ------
+    // Colors for content rendered on the selection surface:
+    pub surface_on_primary_hovered: Color32,
+    pub text_color_on_primary: Color32,
+    pub text_color_on_primary_hovered: Color32,
+    pub icon_color_on_primary: Color32,
+    pub icon_color_on_primary_hovered: Color32,
+    pub selection_stroke_color: Color32,
+    pub selection_bg_fill: Color32,
+
+    // Selection panel history button colors:
+    pub history_button_fill: Color32,
+    pub history_button_fill_hovered: Color32,
+    pub history_button_icon_active: Color32,
+    pub history_button_icon_inactive: Color32,
+    pub focus_outline_stroke: Stroke,
+    pub focus_halo_stroke: Stroke,
+
+    // ------
+    pub panel_bg_color: Color32,
+
+    /// Background of the home, catalog, dataset, and table pages.
+    pub page_bg_color: Color32,
+
+    pub text_edit_bg_color: Color32,
+
+    pub form_field_bg_color: Color32,
+    pub form_selectable_bg_color: Color32,
+
+    /// Color for blueprint time panel background
+    pub blueprint_time_panel_bg_fill: Color32,
+
+    /// Color for notification panel background
+    pub notification_panel_background_color: Color32,
+
+    /// Color for notification background
+    pub notification_background_color: Color32,
+
+    /// Color for table header background
+    pub table_header_bg_fill: Color32,
+
+    /// Color for table header stroke
+    pub table_header_stroke_color: Color32,
+
+    /// Color for table interaction hovered background stroke
+    pub table_interaction_hovered_bg_stroke: Color32,
+
+    /// Color for table interaction active background stroke
+    pub table_interaction_active_bg_stroke: Color32,
+
+    /// Color for table interaction noninteractive background stroke
+    pub table_interaction_noninteractive_bg_stroke: Color32,
+
+    pub table_interaction_row_selection_fill: Color32,
+
+    pub table_sort_icon_color: Color32,
+
+    pub drag_pill_droppable_fill: Color32,
+    pub drag_pill_droppable_stroke: Color32,
+    pub drag_pill_nondroppable_fill: Color32,
+    pub drag_pill_nondroppable_stroke: Color32,
+
+    /// Stroke used to indicate that a UI element is a container that will receive a drag-and-drop
+    /// payload.
+    ///
+    /// Sometimes this is the UI element that is being dragged over (e.g., a view receiving a new
+    /// entity). Sometimes this is a UI element not under the pointer, but whose content is
+    /// being hovered (e.g., a container in the blueprint tree)
+    pub drop_target_container_stroke: Stroke,
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.
+    pub tile_drag_preview_stroke: Stroke,
+
+    /// When drag-and-dropping a tile, the candidate area is drawn with this background color.
+    pub tile_drag_preview_color: Color32,
+
+    pub faint_bg_color: Color32,
+    pub plot_grid_color: Color32,
+    pub plot_grid_fade: f32,
+    pub extreme_bg_color: Color32,
+    pub extreme_fg_color: Color32,
+    pub widget_hovered_color: Color32,
+
+    /// Text in a field the user cannot edit.
+    ///
+    /// Paler than [`Self::text_default`], so the field reads as a value rather than as something
+    /// to type into.
+    pub text_readonly: Color32,
+
+    pub text_subdued: Color32,
+    pub text_default: Color32,
+    pub text_strong: Color32,
+    pub error_fg_color: Color32,
+    pub warn_fg_color: Color32,
+
+    /// Dims the page behind an open modal.
+    ///
+    /// A dark theme needs a heavier dim than a light one, since its page is already near black.
+    pub modal_backdrop_color: Color32,
+
+    pub popup_shadow_color: Color32,
+
+    pub alert_success: AlertVisuals,
+    pub alert_info: AlertVisuals,
+    pub alert_warning: AlertVisuals,
+    pub alert_error: AlertVisuals,
+
+    pub outlines: Outlines,
+
+    pub button_primary: ButtonVisuals,
+    pub button_secondary: ButtonVisuals,
+    pub button_ghost: ButtonVisuals,
+    pub button_outlined: ButtonVisuals,
+    pub button_blue: ButtonVisuals,
+    pub button_opened: ButtonVisuals,
+
+    /// The selection surface as button colors, for buttons marked selected.
+    ///
+    /// Flat like egui's own selection: the same fill whether resting, hovered or pressed.
+    pub selection: ButtonVisuals,
+
+    pub text_edit_outlined: TextEditVisuals,
+    pub text_edit_filled: TextEditVisuals,
+
+    /// Tab bar labels, see [`crate::TabBar`].
+    pub tab: TabVisuals,
+
+    /// Two-tone metadata lines, e.g. the one under a dataset's name.
+    pub meta_line: MetaLineVisuals,
+
+    pub density_graph_selected: Color32,
+    pub density_graph_unselected: Color32,
+
+    /// This is the color of time ranges that has only been partially loaded.
+    pub density_graph_outside_valid_ranges: Color32,
+
+    // Spatial view colors:
+    pub axis_color_x: Color32,
+    pub axis_color_y: Color32,
+    pub axis_color_z: Color32,
+    pub frustum_color: Color32,
+
+    // List item colors
+    pub list_item_active_text: Color32,
+    pub list_item_noninteractive_text: Color32,
+    pub list_item_hovered_text: Color32,
+    pub list_item_default_text: Color32,
+    pub list_item_strong_text: Color32,
+    pub list_item_active_icon: Color32,
+    pub list_item_hovered_icon: Color32,
+    pub list_item_default_icon: Color32,
+    pub list_item_hovered_bg: Color32,
+    pub list_item_active_bg: Color32,
+
+    /// Fill of a hovered button on a hovered or active list item.
+    pub list_item_button_hovered_bg: Color32,
+
+    /// Fill of a pressed button on a hovered or active list item.
+    pub list_item_button_pressed_bg: Color32,
+
+    pub list_item_collapse_default: Color32,
+
+    pub color_swatch_size: f32,
+    pub color_swatch_interactive_stroke: Stroke,
+    pub color_swatch_noninteractive_stroke: Stroke,
+
+    // Visualizer list (selection panel)
+    pub visualizer_list_title_text_color: Color32,
+    pub visualizer_list_title_text_invisible_color: Color32,
+    pub visualizer_list_path_text_color: Color32,
+    pub visualizer_list_path_text_invisible_color: Color32,
+    pub visualizer_list_pill_bg_color: Color32,
+    pub visualizer_list_pill_bg_color_hovered: Color32,
+
+    pub code_index_color: Color32,
+    pub code_string_color: Color32,
+    pub code_null_color: Color32,
+    pub code_primitive_color: Color32,
+    pub code_keyword_color: Color32,
+
+    // Table cards
+    pub table_grid_view_card_min_width: f32,
+    pub table_grid_view_card_spacing: f32,
+    pub table_grid_view_card_inner_margin: f32,
+    pub table_grid_view_card_corner_radius: f32,
+
+    /// Fill of a card at rest.
+    ///
+    /// Lighter than the background behind it in both themes, whichever way the gray scale runs,
+    /// so the card looks raised. Shared by every
+    /// [`crate::egui_ext::card_layout::CardLayout`] card.
+    pub card_fill: Color32,
+
+    /// Outline of a card at rest.
+    ///
+    /// The fill is only a step off the background, so the outline is what marks the card's edge.
+    pub card_stroke: Stroke,
+
+    /// Fill of a card the pointer is over.
+    ///
+    /// Equals [`Self::card_fill`] in the light theme, where only [`Self::card_hover_stroke`]
+    /// changes on hover. The dark theme also makes the fill lighter, since against a near-black
+    /// card an outline alone is too faint.
+    pub card_hover_fill: Color32,
+
+    /// Outline of a card the pointer is over.
+    pub card_hover_stroke: Stroke,
+
+    /// Fill of a card whose flag is set.
+    pub card_marked_fill: Color32,
+
+    /// Fill of the selected card of a set, e.g. the picked coverage mode.
+    pub card_selected_fill: Color32,
+
+    /// Outline of the selected card of a set.
+    pub card_selected_stroke: Stroke,
+
+    /// Fill of a text field on a card.
+    pub card_text_edit_bg_color: Color32,
+
+    /// Text of a link on a card.
+    pub card_link_color: Color32,
+
+    /// The unfilled part of a bar on a card.
+    pub card_bar_track_color: Color32,
+
+    // Flag button when it is not set, at rest and hovered. A set flag takes
+    // [`Self::button_blue`].
+    pub flag_untoggled_bg: Color32,
+    pub flag_untoggled_bg_hover: Color32,
+    pub flag_untoggled_icon: Color32,
+    pub flag_untoggled_icon_hover: Color32,
+
+    /// Background of the small timeline scrubber shown under preview thumbnails.
+    pub preview_timeline_track_color: Color32,
+
+    /// Elapsed-time fill of the small timeline scrubber shown under preview thumbnails.
+    pub preview_timeline_progress_color: Color32,
+
+    /// Translucent fill behind the play button and elapsed-time label on top of a preview.
+    pub preview_controls_fill: Color32,
+}
+
+const INTER_FONT_NAME: &str = "Inter-Variable";
+const JETBRAINS_MONO_FONT_NAME: &str = "JetBrainsMono-Variable";
+const BODY_TYPOGRAPHY_NAME: &str = "Body";
+const SMALL_TYPOGRAPHY_NAME: &str = "Small";
+const HEADING_1_TYPOGRAPHY_NAME: &str = "Heading 1";
+const HEADING_2_TYPOGRAPHY_NAME: &str = "Heading 2";
+const HEADING_3_TYPOGRAPHY_NAME: &str = "Heading 3";
+const HEADING_4_TYPOGRAPHY_NAME: &str = "Heading 4";
+const EYEBROW_TYPOGRAPHY_NAME: &str = "Eyebrow";
+
+/// Minimum contrast ratio for UI components against adjacent colors.
+///
+/// WCAG 2.1 SC 1.4.11 (Non-text Contrast) recommends 3:1, but that makes filled checkboxes
+/// too heavy, so we settle for less.
+const MIN_NON_TEXT_CONTRAST_RATIO: f32 = 1.5;
+
+/// Minimum contrast ratio of a hover highlight against the panel.
+///
+/// WCAG sets no number for hover states; but below this the highlight is hard to see.
+const MIN_HOVER_CONTRAST_RATIO: f32 = 1.2;
+
+impl DesignTokens {
+    /// Load design tokens from `data/design_tokens_*.ron`.
+    pub fn load(theme: Theme, tokens_ron: &str) -> anyhow::Result<Self> {
+        Self::load_with_color_table(theme, tokens_ron, include_str!("../data/color_table.ron"))
+    }
+
+    /// Load design tokens, supplying a custom color-table RON instead of the embedded one.
+    ///
+    /// Useful for downstream crates that want to ship their own color palette without forking
+    /// `re_ui`. The provided `color_table_ron` must have the same shape as the bundled
+    /// `data/color_table.ron`.
+    pub fn load_with_color_table(
+        theme: Theme,
+        tokens_ron: &str,
+        color_table_ron: &str,
+    ) -> anyhow::Result<Self> {
+        anyhow::ensure!(!tokens_ron.trim().is_empty(), "Empty theme file");
+
+        let color_table_ron: ron::Value =
+            ron::from_str(color_table_ron).context("Failed to parse color-table .ron")?;
+        let colors = load_color_table(&color_table_ron);
+
+        let theme_value: ron::Value = ron::from_str(tokens_ron)
+            .with_context(|| format!("Failed to parse {theme:?} theme .ron"))?;
+
+        let typography = Typography::load(&theme_value)?;
+
+        let get_scalar = |scalar_name: &str| try_get_scalar(&theme_value, scalar_name);
+        let get_color = |color_name: &str| get_aliased_color(&colors, &theme_value, color_name);
+        let get_stroke = |stroke_name: &str| get_aliased_stroke(&colors, &theme_value, stroke_name);
+
+        let selection_bg_fill = get_color("selection_bg_fill");
+        let divider_stroke = get_stroke("divider_stroke");
+        let control_stroke = get_stroke("control_stroke");
+        let mut button_outlined = ButtonVisuals::get(&colors, &theme_value, "button_outlined");
+        button_outlined.stroke = control_stroke;
+        let mut text_edit_outlined =
+            TextEditVisuals::get(&colors, &theme_value, "text_edit_outlined");
+        text_edit_outlined.stroke = control_stroke;
+
+        let loop_selection_color =
+            selection_bg_fill.gamma_multiply(get_scalar("loop_selection_alpha")?);
+        let loop_selection_color_inactive =
+            selection_bg_fill.gamma_multiply(get_scalar("loop_selection_alpha_inactive")?);
+
+        Ok(Self {
+            theme,
+            typography,
+
+            large_button_size: Vec2::splat(get_scalar("large_button_size")?),
+            large_button_icon_size: Vec2::splat(get_scalar("large_button_icon_size")?),
+            large_button_corner_radius: get_scalar("large_button_corner_radius")?,
+            small_icon_size: Vec2::splat(get_scalar("small_icon_size")?),
+            modal_button_width: get_scalar("modal_button_width")?,
+            default_modal_width: get_scalar("default_modal_width")?,
+
+            top_bar_color: get_color("top_bar_color"),
+            bottom_bar_color: get_color("bottom_bar_color"),
+            divider_stroke,
+            control_stroke,
+            control_fill: get_color("control_fill"),
+            control_fill_hovered: get_color("control_fill_hovered"),
+            control_fill_pressed: get_color("control_fill_pressed"),
+            shadow_gradient_dark_start: get_color("shadow_gradient_dark_start"),
+            tab_bar_color: get_color("tab_bar_color"),
+            viewport_tab_selected_text_color: get_color("viewport_tab_selected_text_color"),
+            native_frame_stroke: get_stroke("native_frame_stroke"),
+            windows_close_button_hover_color: get_color("windows_close_button_hover_color"),
+            strong_fg_color: get_color("strong_fg_color"),
+
+            info_log_text_color: get_color("info_log_text_color"),
+            debug_log_text_color: get_color("debug_log_text_color"),
+            trace_log_text_color: get_color("trace_log_text_color"),
+
+            success_text_color: get_color("success_text_color"),
+            info_text_color: get_color("info_text_color"),
+
+            spatial_label_bg_opacity: get_scalar("spatial_label_bg_opacity")?,
+            disabled_opacity: get_scalar("disabled_opacity")?,
+            slow_animation_duration_sec: get_scalar("slow_animation_duration_sec")?,
+
+            viewport_background: get_color("viewport_background"),
+
+            highlight_color: get_color("highlight_color"),
+
+            label_button_icon_color: get_color("label_button_icon_color"),
+            section_header_color: get_color("section_header_color"),
+
+            loop_selection_color,
+            loop_selection_color_inactive,
+            loop_everything_color: get_color("loop_everything_color"),
+
+            thumbnail_background_color: get_color("thumbnail_background_color"),
+
+            example_card_background_color: get_color("example_card_background_color"),
+            example_tag_bg_fill: get_color("example_tag_bg_fill"),
+            example_tag_stroke: get_stroke("example_tag_stroke"),
+
+            search_match_bg_fill: get_color("search_match_bg_fill"),
+
+            surface_on_primary_hovered: get_color("surface_on_primary_hovered"),
+            text_color_on_primary: get_color("text_color_on_primary"),
+            text_color_on_primary_hovered: get_color("text_color_on_primary_hovered"),
+            icon_color_on_primary: get_color("icon_color_on_primary"),
+            icon_color_on_primary_hovered: get_color("icon_color_on_primary_hovered"),
+            selection_bg_fill,
+            selection_stroke_color: get_color("selection_stroke_color"),
+            history_button_fill: get_color("history_button_fill"),
+            history_button_fill_hovered: get_color("history_button_fill_hovered"),
+            history_button_icon_active: get_color("history_button_icon_active"),
+            history_button_icon_inactive: get_color("history_button_icon_inactive"),
+            focus_outline_stroke: get_stroke("focus_outline_stroke"),
+            focus_halo_stroke: get_stroke("focus_halo_stroke"),
+
+            panel_bg_color: get_color("panel_bg_color"),
+            page_bg_color: get_color("page_bg_color"),
+            text_edit_bg_color: get_color("text_edit_bg_color"),
+            form_field_bg_color: get_color("form_field_bg_color"),
+            form_selectable_bg_color: get_color("form_selectable_bg_color"),
+            blueprint_time_panel_bg_fill: get_color("blueprint_time_panel_bg_fill"),
+            notification_panel_background_color: get_color("notification_panel_background_color"),
+            notification_background_color: get_color("notification_background_color"),
+            table_header_bg_fill: get_color("table_header_bg_fill"),
+            table_header_stroke_color: get_color("table_header_stroke_color"),
+            table_interaction_hovered_bg_stroke: get_color("table_interaction_hovered_bg_stroke"),
+            table_interaction_active_bg_stroke: get_color("table_interaction_active_bg_stroke"),
+            table_interaction_noninteractive_bg_stroke: get_color(
+                "table_interaction_noninteractive_bg_stroke",
+            ),
+            table_interaction_row_selection_fill: get_color("table_interaction_row_selection_fill"),
+            table_sort_icon_color: get_color("table_sort_icon_color"),
+
+            drag_pill_droppable_fill: get_color("drag_pill_droppable_fill"),
+            drag_pill_droppable_stroke: get_color("drag_pill_droppable_stroke"),
+            drag_pill_nondroppable_fill: get_color("drag_pill_nondroppable_fill"),
+            drag_pill_nondroppable_stroke: get_color("drag_pill_nondroppable_stroke"),
+            drop_target_container_stroke: get_stroke("drop_target_container_stroke"),
+            tile_drag_preview_stroke: get_stroke("tile_drag_preview_stroke"),
+            tile_drag_preview_color: get_color("tile_drag_preview_color"),
+
+            faint_bg_color: get_color("faint_bg_color"),
+            plot_grid_color: get_color("plot_grid_color"),
+            plot_grid_fade: get_scalar("plot_grid_fade")?,
+            extreme_bg_color: get_color("extreme_bg_color"),
+            extreme_fg_color: get_color("extreme_fg_color"),
+            widget_hovered_color: get_color("widget_hovered_color"),
+            text_readonly: get_color("text_readonly"),
+            text_subdued: get_color("text_subdued"),
+            text_default: get_color("text_default"),
+            text_strong: get_color("text_strong"),
+            error_fg_color: get_color("error_fg_color"),
+            warn_fg_color: get_color("warn_fg_color"),
+
+            alert_success: AlertVisuals::get(&colors, &theme_value, "alert_success"),
+            alert_info: AlertVisuals::get(&colors, &theme_value, "alert_info"),
+            alert_warning: AlertVisuals::get(&colors, &theme_value, "alert_warning"),
+            alert_error: AlertVisuals::get(&colors, &theme_value, "alert_error"),
+
+            outlines: Outlines::get(&colors, &theme_value, "outlines"),
+
+            button_primary: ButtonVisuals::get(&colors, &theme_value, "button_primary"),
+            button_secondary: ButtonVisuals::get(&colors, &theme_value, "button_secondary"),
+            button_ghost: ButtonVisuals::get(&colors, &theme_value, "button_ghost"),
+            button_outlined,
+            button_blue: ButtonVisuals::get(&colors, &theme_value, "button_blue"),
+            button_opened: ButtonVisuals::get(&colors, &theme_value, "button_opened"),
+            selection: ButtonVisuals {
+                fill: selection_bg_fill,
+                fill_hovered: selection_bg_fill,
+                fill_pressed: selection_bg_fill,
+                text: get_color("selection_stroke_color"),
+                stroke: Stroke::NONE,
+            },
+            text_edit_outlined,
+            text_edit_filled: TextEditVisuals::get(&colors, &theme_value, "text_edit_filled"),
+
+            tab: TabVisuals::get(&colors, &theme_value, "tab"),
+            meta_line: MetaLineVisuals::get(&colors, &theme_value, "meta_line"),
+
+            modal_backdrop_color: get_color("modal_backdrop_color"),
+            popup_shadow_color: get_color("popup_shadow_color"),
+
+            density_graph_selected: get_color("density_graph_selected"),
+            density_graph_unselected: get_color("density_graph_unselected"),
+            density_graph_outside_valid_ranges: get_color("density_graph_outside_valid_ranges"),
+
+            axis_color_x: get_color("axis_color_x"),
+            axis_color_y: get_color("axis_color_y"),
+            axis_color_z: get_color("axis_color_z"),
+            frustum_color: get_color("frustum_color"),
+
+            // List item colors
+            list_item_active_text: get_color("list_item_active_text"),
+            list_item_noninteractive_text: get_color("list_item_noninteractive_text"),
+            list_item_hovered_text: get_color("list_item_hovered_text"),
+            list_item_default_text: get_color("list_item_default_text"),
+            list_item_strong_text: get_color("list_item_strong_text"),
+            list_item_active_icon: get_color("list_item_active_icon"),
+            list_item_hovered_icon: get_color("list_item_hovered_icon"),
+            list_item_default_icon: get_color("list_item_default_icon"),
+            list_item_hovered_bg: get_color("list_item_hovered_bg"),
+            list_item_active_bg: get_color("list_item_active_bg"),
+            list_item_button_hovered_bg: get_color("list_item_button_hovered_bg"),
+            list_item_button_pressed_bg: get_color("list_item_button_pressed_bg"),
+            list_item_collapse_default: get_color("list_item_collapse_default"),
+
+            color_swatch_size: get_scalar("color_swatch_size")?,
+            color_swatch_interactive_stroke: get_stroke("color_swatch_interactive_stroke"),
+            color_swatch_noninteractive_stroke: get_stroke("color_swatch_noninteractive_stroke"),
+
+            visualizer_list_title_text_color: get_color("visualizer_list_title_text_color"),
+            visualizer_list_title_text_invisible_color: get_color(
+                "visualizer_list_title_text_invisible_color",
+            ),
+            visualizer_list_path_text_color: get_color("visualizer_list_path_text_color"),
+            visualizer_list_path_text_invisible_color: get_color(
+                "visualizer_list_path_text_invisible_color",
+            ),
+            visualizer_list_pill_bg_color: get_color("visualizer_list_pill_bg_color"),
+            visualizer_list_pill_bg_color_hovered: get_color(
+                "visualizer_list_pill_bg_color_hovered",
+            ),
+
+            code_index_color: get_color("code_index_color"),
+            code_string_color: get_color("code_string_color"),
+            code_null_color: get_color("code_null_color"),
+            code_primitive_color: get_color("code_primitive_color"),
+
+            code_keyword_color: get_color("code_keyword_color"),
+
+            table_grid_view_card_min_width: get_scalar("table_grid_view_card_min_width")?,
+            table_grid_view_card_spacing: get_scalar("table_grid_view_card_spacing")?,
+            table_grid_view_card_inner_margin: get_scalar("table_grid_view_card_inner_margin")?,
+            table_grid_view_card_corner_radius: get_scalar("table_grid_view_card_corner_radius")?,
+            card_fill: get_color("card_fill"),
+            card_stroke: get_stroke("card_stroke"),
+            card_hover_fill: get_color("card_hover_fill"),
+            card_hover_stroke: get_stroke("card_hover_stroke"),
+            card_marked_fill: get_color("card_marked_fill"),
+            card_selected_fill: get_color("card_selected_fill"),
+            card_selected_stroke: get_stroke("card_selected_stroke"),
+            card_text_edit_bg_color: get_color("card_text_edit_bg_color"),
+            card_link_color: get_color("card_link_color"),
+            card_bar_track_color: get_color("card_bar_track_color"),
+
+            flag_untoggled_bg: get_color("flag_untoggled_bg"),
+            flag_untoggled_bg_hover: get_color("flag_untoggled_bg_hover"),
+            flag_untoggled_icon: get_color("flag_untoggled_icon"),
+            flag_untoggled_icon_hover: get_color("flag_untoggled_icon_hover"),
+
+            preview_timeline_track_color: get_color("preview_timeline_track_color"),
+            preview_timeline_progress_color: get_color("preview_timeline_progress_color"),
+            preview_controls_fill: get_color("preview_controls_fill"),
+        })
+    }
+
+    /// Apply style to the given egui context.
+    pub(crate) fn apply(&self, style: &mut egui::Style) {
+        re_tracing::profile_function!();
+
+        self.set_text_styles(style);
+        self.set_spacing(style);
+        self.set_colors(style);
+        self.check_contrast(&style.visuals);
+
+        style.number_formatter = egui::style::NumberFormatter::new(format_with_decimals_in_range);
+    }
+
+    pub(crate) fn set_fonts(&self, ctx: &egui::Context) {
+        ctx.set_fonts(self.font_definitions());
+    }
+
+    fn font_definitions(&self) -> egui::FontDefinitions {
+        let mut font_definitions = egui::FontDefinitions::default();
+
+        let mut proportional_font =
+            egui::FontData::from_static(include_bytes!("../data/Inter-Variable.ttf"));
+        proportional_font
+            .tweak
+            .coords
+            .push("wght", self.typography.body.font_weight);
+        font_definitions.font_data.insert(
+            INTER_FONT_NAME.into(),
+            std::sync::Arc::new(proportional_font),
+        );
+
+        font_definitions.font_data.insert(
+            JETBRAINS_MONO_FONT_NAME.into(),
+            std::sync::Arc::new(egui::FontData::from_static(include_bytes!(
+                "../data/JetBrainsMono-Variable.ttf"
+            ))),
+        );
+        font_definitions
+            .families
+            .get_mut(&egui::FontFamily::Proportional)
+            .unwrap()
+            .insert(0, INTER_FONT_NAME.into());
+        font_definitions
+            .families
+            .get_mut(&egui::FontFamily::Monospace)
+            .unwrap()
+            .insert(0, JETBRAINS_MONO_FONT_NAME.into());
+        font_definitions
+    }
+
+    fn set_text_styles(&self, egui_style: &mut egui::Style) {
+        let typography = &self.typography;
+
+        for (text_style, typography) in [
+            (Self::body(), &typography.body),
+            (Self::small(), &typography.small),
+            (Self::heading_1(), &typography.heading_1),
+            (Self::heading_2(), &typography.heading_2),
+            (Self::heading_3(), &typography.heading_3),
+            (Self::heading_4(), &typography.heading_4),
+            (Self::eyebrow(), &typography.eyebrow),
+        ] {
+            egui_style
+                .text_styles
+                .insert(text_style, egui::FontId::proportional(typography.font_size));
+        }
+
+        egui_style.text_styles.insert(
+            egui::TextStyle::Button,
+            egui::FontId::proportional(typography.body.font_size),
+        );
+        egui_style.text_styles.insert(
+            egui::TextStyle::Monospace,
+            egui::FontId::monospace(typography.body.font_size),
+        );
+
+        // Font size and rendered text height differ, so matching the font size here would make
+        // labels and buttons different heights.
+        egui_style.spacing.interact_size.y = 15.0;
+    }
+
+    fn set_spacing(&self, egui_style: &mut egui::Style) {
+        egui_style.visuals.button_frame = true;
+
+        {
+            // Turn off strokes around buttons:
+            egui_style.visuals.widgets.inactive.bg_stroke = Default::default();
+            egui_style.visuals.widgets.hovered.bg_stroke = Default::default();
+            egui_style.visuals.widgets.active.bg_stroke = Default::default();
+            egui_style.visuals.widgets.open.bg_stroke = Default::default();
+        }
+
+        {
+            egui_style.visuals.widgets.hovered.expansion = 2.0;
+            egui_style.visuals.widgets.active.expansion = 2.0;
+            egui_style.visuals.widgets.open.expansion = 2.0;
+        }
+
+        egui_style.visuals.window_corner_radius = self.window_corner_radius().into();
+        egui_style.visuals.menu_corner_radius = self.normal_corner_radius().into();
+        let small_corner_radius = self.small_corner_radius().into();
+        egui_style.visuals.widgets.noninteractive.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.inactive.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.hovered.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.active.corner_radius = small_corner_radius;
+        egui_style.visuals.widgets.open.corner_radius = small_corner_radius;
+
+        egui_style.spacing.item_spacing = egui::vec2(8.0, 8.0);
+        egui_style.spacing.menu_margin = self.view_padding().into();
+        egui_style.spacing.menu_spacing = 1.0;
+
+        // Add stripes to grids and tables?
+        egui_style.visuals.striped = false;
+        egui_style.visuals.indent_has_left_vline = false;
+        // Rerun's own buttons are sized by the theme; this is what is left for the egui widgets
+        // that still read it, such as checkboxes and collapsing headers.
+        egui_style.spacing.button_padding = Vec2::new(1.0, 0.0);
+        egui_style.spacing.indent = 14.0; // From figma
+
+        egui_style.spacing.combo_width = 8.0; // minimum width of ComboBox - keep them small, with the down-arrow close.
+
+        egui_style.spacing.scroll.bar_width = 6.0;
+        egui_style.spacing.scroll.bar_outer_margin = 0.0; // Keep scroll bars flush to the right side; having the background visible through a gap is ugly
+
+        match self.theme {
+            Theme::Dark => {
+                egui_style.spacing.scroll.fade.strength = 0.60;
+                egui_style.spacing.scroll.fade.size = 15.0;
+            }
+            Theme::Light => {
+                egui_style.spacing.scroll.fade.strength = 0.15;
+                egui_style.spacing.scroll.fade.size = 40.0;
+            }
+        }
+
+        egui_style.spacing.tooltip_width = 600.0;
+
+        egui_style.visuals.image_loading_spinners = false;
+    }
+
+    /// Warn (in debug builds) if interactive widgets don't stand out from the panel behind them.
+    fn check_contrast(&self, visuals: &egui::Visuals) {
+        let panel = self.panel_bg_color;
+
+        // Checkboxes and radio buttons stand out by either their fill or their outline.
+        let inactive = &visuals.widgets.inactive;
+        let fill_contrast = contrast_ratio(self.control_fill, panel);
+        let outline_contrast = if 1.0 <= inactive.bg_stroke.width {
+            contrast_ratio(inactive.bg_stroke.color, panel)
+        } else {
+            1.0
+        };
+        if fill_contrast.max(outline_contrast) < MIN_NON_TEXT_CONTRAST_RATIO {
+            re_log::debug_warn_once!(
+                "Checkboxes and radio buttons have fill contrast {fill_contrast:.2} and outline contrast {outline_contrast:.2} against panel_bg_color; one should be at least {MIN_NON_TEXT_CONTRAST_RATIO}"
+            );
+        }
+
+        let resting = contrast_ratio(self.control_fill, panel);
+        for (name, color) in [
+            ("control_fill_hovered", self.control_fill_hovered),
+            ("control_fill_pressed", self.control_fill_pressed),
+        ] {
+            let contrast = contrast_ratio(color, panel);
+            if contrast < resting {
+                re_log::debug_warn_once!(
+                    "{name:?} has contrast {contrast:.2} against panel_bg_color, less than control_fill ({resting:.2})"
+                );
+            }
+        }
+
+        let hovered = contrast_ratio(self.widget_hovered_color, panel);
+        if hovered < MIN_HOVER_CONTRAST_RATIO {
+            re_log::debug_warn_once!(
+                "widget_hovered_color has contrast {hovered:.2} against panel_bg_color; should be at least {MIN_HOVER_CONTRAST_RATIO}"
+            );
+        }
+    }
+
+    fn set_colors(&self, egui_style: &mut egui::Style) {
+        // For table zebra stripes.
+        egui_style.visuals.faint_bg_color = self.faint_bg_color;
+
+        // Used as the background of scroll bars and others things
+        // that needs to look different from other interactive stuff..
+        egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
+
+        egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.panel_bg_color;
+        egui_style.visuals.widgets.noninteractive.bg_fill = self.panel_bg_color;
+        egui_style.visuals.text_edit_bg_color = Some(self.text_edit_bg_color);
+
+        egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
+
+        egui_style.visuals.widgets.inactive.bg_fill = self.button_secondary.fill;
+        egui_style.visuals.disabled_alpha = self.disabled_opacity;
+
+        {
+            // Background colors for buttons (menu buttons, blueprint buttons, etc)
+            // when hovered or pressed. The pressed color is a step stronger, so
+            // clicking gives visual feedback (reusing the `button_ghost` pressed fill).
+            let hovered_color = self.button_ghost.fill_hovered;
+            let pressed_color = self.button_ghost.fill_pressed;
+            egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
+            egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
+            egui_style.visuals.widgets.active.weak_bg_fill = pressed_color;
+            egui_style.visuals.widgets.active.bg_fill = pressed_color;
+            egui_style.visuals.widgets.open.weak_bg_fill = hovered_color;
+            egui_style.visuals.widgets.open.bg_fill = hovered_color;
+        }
+
+        egui_style.visuals.selection.bg_fill = self.selection_bg_fill;
+        egui_style.visuals.selection.stroke.color = self.selection_stroke_color;
+
+        // Separator lines, panel lines, etc.
+        egui_style.visuals.widgets.noninteractive.bg_stroke = self.divider_stroke;
+
+        let default = self.text_default;
+        let strong = self.text_strong;
+
+        egui_style.visuals.widgets.noninteractive.fg_stroke.color = default;
+        egui_style.visuals.widgets.inactive.fg_stroke.color = default;
+        egui_style.visuals.widgets.hovered.fg_stroke.color = strong;
+        egui_style.visuals.widgets.active.fg_stroke.color = strong;
+        egui_style.visuals.widgets.open.fg_stroke.color = strong;
+
+        let wide_stroke_width = 2.0; // Make it a bit more visible, especially important for spatial primitives.
+        egui_style.visuals.widgets.active.fg_stroke.width = wide_stroke_width;
+        egui_style.visuals.selection.stroke.width = wide_stroke_width;
+
+        // From figma
+        let shadow = egui::epaint::Shadow {
+            offset: [0, 15],
+            blur: 50,
+            spread: 0,
+            color: self.popup_shadow_color,
+        };
+        egui_style.visuals.popup_shadow = shadow;
+        egui_style.visuals.window_shadow = shadow;
+
+        egui_style.visuals.window_fill = self.panel_bg_color;
+        egui_style.visuals.window_stroke = self.divider_stroke;
+        egui_style.visuals.panel_fill = self.panel_bg_color;
+
+        // don't color hyperlinks #2733
+        egui_style.visuals.hyperlink_color = default;
+
+        egui_style.visuals.error_fg_color = self.error_fg_color;
+        egui_style.visuals.warn_fg_color = self.warn_fg_color;
+    }
+
+    pub fn body() -> egui::TextStyle {
+        egui::TextStyle::Body
+    }
+
+    pub fn small() -> egui::TextStyle {
+        egui::TextStyle::Small
+    }
+
+    pub fn heading_1() -> egui::TextStyle {
+        egui::TextStyle::Name(HEADING_1_TYPOGRAPHY_NAME.into())
+    }
+
+    pub fn heading_2() -> egui::TextStyle {
+        egui::TextStyle::Name(HEADING_2_TYPOGRAPHY_NAME.into())
+    }
+
+    pub fn heading_3() -> egui::TextStyle {
+        egui::TextStyle::Heading
+    }
+
+    pub fn heading_4() -> egui::TextStyle {
+        egui::TextStyle::Name(HEADING_4_TYPOGRAPHY_NAME.into())
+    }
+
+    fn eyebrow() -> egui::TextStyle {
+        egui::TextStyle::Name(EYEBROW_TYPOGRAPHY_NAME.into())
+    }
+
+    /// Formats a compact, uppercase, letter-spaced label that introduces a section.
+    pub fn eyebrow_text(&self, style: &egui::Style, text: impl Into<String>) -> egui::RichText {
+        let font_id = style
+            .text_styles
+            .get(&Self::eyebrow())
+            .cloned()
+            .unwrap_or_else(|| egui::FontId::proportional(self.typography.eyebrow.font_size));
+
+        egui::RichText::new(text.into().to_uppercase())
+            .font(font_id)
+            .variation("wght", self.typography.eyebrow.font_weight)
+            .extra_letter_spacing(0.5)
+            .color(self.text_strong)
+    }
+
+    /// Margin on all sides of views.
+    pub fn view_padding(&self) -> i8 {
+        12
+    }
+
+    /// Horizontal inset for content in side panels.
+    pub fn panel_margin(&self) -> egui::Margin {
+        egui::Margin::symmetric(16, 0)
+    }
+
+    /// Inset for list-item backgrounds inside panels, relative to panel edges.
+    pub fn panel_list_item_background_inset(&self) -> f32 {
+        0.5 * f32::from(self.panel_margin().left)
+    }
+
+    /// Indentation added for each level in compact hierarchy lists.
+    pub fn list_item_hierarchy_indent(&self) -> f32 {
+        12.0
+    }
+
+    pub fn menu_button_padding() -> f32 {
+        6.0
+    }
+
+    pub fn window_corner_radius(&self) -> u8 {
+        10
+    }
+
+    pub fn normal_corner_radius(&self) -> u8 {
+        6
+    }
+
+    pub fn small_corner_radius(&self) -> u8 {
+        4
+    }
+
+    pub fn table_cell_margin(&self, table_style: TableStyle) -> Margin {
+        match table_style {
+            // No vertical margin, so that tiny buttons (`Size::Tiny`) fit in the row height.
+            // Cells center their content vertically.
+            TableStyle::Dense => Margin::symmetric(8, 0),
+            TableStyle::Spacious => Margin::symmetric(8, 6),
+        }
+    }
+
+    /// The total row height, including margin/spacing.
+    pub fn table_row_height(&self, table_style: TableStyle) -> f32 {
+        match table_style {
+            TableStyle::Dense => 20.0,
+
+            // Should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
+            // and the cell margin.
+            TableStyle::Spacious => 32.0,
+        }
+    }
+
+    /// The max height of the content.
+    pub fn table_content_height(&self, table_style: TableStyle) -> f32 {
+        self.table_row_height(table_style) - self.table_cell_margin(table_style).sum().y
+    }
+
+    pub fn header_cell_margin(&self, _table_style: TableStyle) -> Margin {
+        Margin::symmetric(8, 6)
+    }
+
+    pub fn table_header_height(&self) -> f32 {
+        32.0
+    }
+
+    // TODO(lucasmerlin): Update all tables to the new design
+    pub fn deprecated_table_header_height(&self) -> f32 {
+        20.0
+    }
+
+    pub fn top_bar_margin(&self) -> egui::Margin {
+        egui::Margin::symmetric(8, 0)
+    }
+
+    /// Radius of a small status dot, e.g. one marking unread messages or an error.
+    pub fn status_dot_radius(&self) -> f32 {
+        3.0
+    }
+
+    pub fn text_to_icon_padding(&self) -> f32 {
+        4.0
+    }
+
+    /// Space between adjacent action buttons in a list item.
+    pub fn list_item_button_spacing(&self) -> f32 {
+        2.0
+    }
+
+    /// Space between a label and a collapse button placed after it.
+    pub fn collapse_button_to_label_padding(&self) -> f32 {
+        2.0
+    }
+
+    /// Height of the top-most bar.
+    pub fn top_bar_height(&self) -> f32 {
+        36.0
+    }
+
+    /// Height of the controls in the time panel toolbar.
+    pub fn time_panel_toolbar_height(&self) -> f32 {
+        28.0
+    }
+
+    /// Height of the title row in the blueprint and selection panels,
+    /// as well as the tab buttons in the viewport.
+    pub fn title_bar_height(&self) -> f32 {
+        24.0 // https://github.com/rerun-io/rerun/issues/5589
+    }
+
+    pub fn section_header_top_padding(&self) -> f32 {
+        4.0
+    }
+
+    pub fn list_item_height(density: ListItemDensity) -> f32 {
+        match density {
+            ListItemDensity::Spacious => 24.0,
+            ListItemDensity::Compact => 20.0,
+        }
+    }
+
+    pub fn list_header_vertical_offset() -> f32 {
+        2.0
+    }
+
+    pub fn combo_item_max_value_width() -> f32 {
+        124.0
+    }
+
+    pub fn combo_item_small_font_size() -> f32 {
+        10.0
+    }
+
+    /// Native window corner used unless maximized.
+    pub fn native_window_corner_radius(&self, is_window_maximized: bool) -> u8 {
+        if is_window_maximized { 0 } else { 10 }
+    }
+
+    pub fn top_panel_frame(&self, window_frame: WindowFrameConfig) -> egui::Frame {
+        let mut frame = egui::Frame {
+            inner_margin: self.top_bar_margin(),
+            fill: self.top_bar_color,
+            ..Default::default()
+        };
+        match window_frame {
+            WindowFrameConfig::Custom { is_maximized } => {
+                let native_corner_radius = self.native_window_corner_radius(is_maximized);
+                frame.corner_radius.nw = native_corner_radius;
+                frame.corner_radius.ne = native_corner_radius;
+                frame.inner_margin.right = 0; // window control buttons are placed right most.
+            }
+            WindowFrameConfig::Native => {
+                frame.corner_radius = 0.0.into();
+            }
+        }
+
+        frame
+    }
+
+    /// Something that provides contrast vs the background
+    pub fn popup_frame(&self, style: &egui::Style) -> egui::Frame {
+        egui::Frame::window(style)
+            .fill(self.notification_panel_background_color)
+            .corner_radius(self.window_corner_radius())
+            .inner_margin(8.0)
+    }
+
+    pub fn bottom_panel_margin(&self) -> egui::Margin {
+        let mut margin = self.top_bar_margin();
+        margin.left = self.panel_margin().left;
+        margin
+    }
+
+    /// For the streams view (time panel)
+    pub fn bottom_panel_frame(&self, window_frame: WindowFrameConfig) -> egui::Frame {
+        let margin = self.bottom_panel_margin();
+
+        let mut frame = egui::Frame {
+            fill: self.bottom_bar_color,
+            inner_margin: margin,
+            corner_radius: 0.0.into(),
+            ..Default::default()
+        };
+        if let WindowFrameConfig::Custom { is_maximized } = window_frame {
+            let native_corner_radius = self.native_window_corner_radius(is_maximized);
+            frame.corner_radius.sw = native_corner_radius;
+            frame.corner_radius.se = native_corner_radius;
+        }
+        frame
+    }
+
+    pub fn setup_table_header(_header: &mut egui_extras::TableRow<'_, '_>) {}
+
+    pub fn setup_table_body(&self, body: &mut egui_extras::TableBody<'_>, table_style: TableStyle) {
+        // Make sure buttons don't visually overflow:
+        body.ui_mut().spacing_mut().interact_size.y = self.table_content_height(table_style);
+
+        // No extra spacing between items in the table body - we bake that into the row height.
+        body.ui_mut().spacing_mut().item_spacing.y = 0.0;
+    }
+
+    /// Layout area to allocate for the collapsing triangle.
+    ///
+    /// Note that this is not the _size_ of the collapsing triangle (which is defined by
+    /// [`crate::UiExt::paint_collapsing_triangle`]), but how much screen real-estate should be
+    /// allocated for it. It's set to the same size as the small icon size so that everything is
+    /// properly aligned in [`crate::list_item::ListItem`].
+    pub fn collapsing_triangle_size(&self) -> Vec2 {
+        self.small_icon_size
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+trait RonExt {
+    /// Supports path-like access to the value structure.
+    fn get(&self, path: &str) -> anyhow::Result<&Self> {
+        let mut value = self;
+        for component in path.split('.') {
+            if let Some(child) = value.get_child(component) {
+                value = child;
+            } else {
+                anyhow::bail!("Failed to find {component:?} in path {path:?}");
+            }
+        }
+        Ok(value)
+    }
+
+    fn get_child(&self, key: &str) -> Option<&Self>;
+
+    fn as_str(&self) -> Option<&str>;
+
+    fn as_f32(&self) -> Option<f32>;
+
+    fn as_u8(&self) -> Option<u8> {
+        let value = self.as_f32()?;
+        if value as u8 as f32 == value {
+            Some(value as u8)
+        } else {
+            None
+        }
+    }
+}
+
+impl RonExt for ron::Value {
+    fn get_child(&self, key: &str) -> Option<&Self> {
+        match self {
+            Self::Map(map) => map.get(&Self::String(key.into())),
+            _ => None,
+        }
+    }
+
+    fn as_str(&self) -> Option<&str> {
+        match self {
+            Self::String(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    fn as_f32(&self) -> Option<f32> {
+        match self {
+            Self::Number(i) => Some(i.into_f64() as f32),
+            _ => None,
+        }
+    }
+}
+
+/// WCAG 2.1 contrast ratio between two opaque colors, in `[1, 21]`.
+///
+/// See <https://www.w3.org/TR/WCAG21/#dfn-contrast-ratio>.
+fn contrast_ratio(a: Color32, b: Color32) -> f32 {
+    let luminance = |color: Color32| {
+        let rgba = egui::Rgba::from(color);
+        0.2126 * rgba.r() + 0.7152 * rgba.g() + 0.0722 * rgba.b()
+    };
+    let (a, b) = (luminance(a), luminance(b));
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
+}
+
+/// Build the [`ColorTable`] based on the content of `design_token.ron`
+fn load_color_table(value: &ron::Value) -> ColorTable {
+    fn get_color_from_value(value: &ron::Value, global_path: &str) -> Option<Color32> {
+        let value = follow_path(value, global_path)?;
+        let hex = value.get_child("value")?.as_str()?;
+        Some(Color32::from_hex(hex).unwrap())
+    }
+
+    // Not all hues define every scale (e.g. Gray uses step-50 while others use step-25).
+    // Missing entries get magenta so they're obvious if ever accidentally referenced.
+    ColorTable::new(|color_token| {
+        let path = format!("{{Global.Color.{}.{}}}", color_token.hue, color_token.scale);
+        get_color_from_value(value, &path).unwrap_or(Color32::DEBUG_COLOR)
+    })
+}
+
+fn try_get_alias_color(
+    color_table: &ColorTable,
+    value: &ron::Value,
+    color_name: &str,
+) -> anyhow::Result<Color32> {
+    let color_alias = value.get("Alias")?.get(color_name)?;
+    color_from_value(color_table, color_alias)
+}
+
+fn color_from_value(color_table: &ColorTable, color_alias: &ron::Value) -> anyhow::Result<Color32> {
+    let color = color_alias
+        .get("color")?
+        .as_str()
+        .ok_or_else(|| anyhow::anyhow!("color not a string"))?;
+
+    let mut color = if color.starts_with('#') {
+        Color32::from_hex(color)
+            .map_err(|color_err| anyhow::anyhow!("Invalid hex color: {color_err:?}"))? // NOLINT: error doesn't implement Display
+    } else if color.starts_with('{') {
+        let color = color
+            .strip_prefix('{')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let color = color
+            .strip_suffix('}')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let (hue, scale) = color
+            .split_once('.')
+            .ok_or_else(|| anyhow::anyhow!("Expected {{hue.scale}}"))?;
+        let hue: Hue = hue.parse()?;
+        let scale: Scale = scale.parse()?;
+        color_table.get(ColorToken::new(hue, scale))
+    } else {
+        anyhow::bail!("Expected {{hue.scale}} or #RRGGBB")
+    };
+
+    if let Ok(alpha) = color_alias.get("alpha") {
+        let alpha = alpha
+            .as_u8()
+            .ok_or_else(|| anyhow::anyhow!("alpha should be an integer 0-255"))?;
+        color = color.gamma_multiply_u8(alpha);
+    }
+
+    Ok(color)
+}
+
+/// Parse a `{ "color": …, "width": … }` block into a [`Stroke`].
+fn stroke_from_value(color_table: &ColorTable, value: &ron::Value) -> anyhow::Result<Stroke> {
+    let color = color_from_value(color_table, value)?;
+    let width = value
+        .get("width")?
+        .as_f32()
+        .ok_or_else(|| anyhow::anyhow!("stroke 'width' not a number"))?;
+    Ok(Stroke::new(width, color))
+}
+
+fn try_get_scalar(value: &ron::Value, path: &str) -> anyhow::Result<f32> {
+    value
+        .get(path)?
+        .as_f32()
+        .ok_or_else(|| anyhow::anyhow!("'{path}' not a number"))
+}
+
+fn get_aliased_color(color_table: &ColorTable, value: &ron::Value, alias_path: &str) -> Color32 {
+    try_get_alias_color(color_table, value, alias_path).unwrap_or_else(|err| {
+        panic!("Failed to get aliased color at {alias_path:?}: {err}");
+    })
+}
+
+fn get_aliased_stroke(color_table: &ColorTable, value: &ron::Value, alias_path: &str) -> Stroke {
+    try_get_aliased_stroke(color_table, value, alias_path).unwrap_or_else(|err| {
+        panic!("Failed to get aliased stroke at {alias_path:?}: {err}");
+    })
+}
+
+fn try_get_aliased_stroke(
+    color_table: &ColorTable,
+    value: &ron::Value,
+    alias_path: &str,
+) -> anyhow::Result<Stroke> {
+    let color_alias = value.get("Alias")?.get(alias_path)?;
+
+    let color = color_from_value(color_table, color_alias)?;
+    let width = color_alias
+        .get("width")?
+        .as_f32()
+        .ok_or_else(|| anyhow::anyhow!("'Alias.{alias_path}.width' not a number"))?;
+    let stroke = Stroke::new(width, color);
+    Ok(stroke)
+}
+
+fn global_path_value<'value>(value: &'value ron::Value, global_path: &str) -> &'value ron::Value {
+    follow_path_or_panic(value, global_path)
+        .get("value")
+        .unwrap()
+}
+
+fn parse_path<T: serde::de::DeserializeOwned>(value: &ron::Value, global_path: &str) -> T {
+    let global_value = global_path_value(value, global_path);
+    global_value.clone().into_rust().unwrap_or_else(|err| {
+        panic!(
+            "Failed to convert {global_path:?} to {}: {err}. value: {value:?}",
+            std::any::type_name::<T>()
+        )
+    })
+}
+
+fn follow_path_or_panic<'value>(value: &'value ron::Value, value_path: &str) -> &'value ron::Value {
+    follow_path(value, value_path).unwrap_or_else(|| panic!("Failed to find {value_path:?}"))
+}
+
+fn follow_path<'value>(mut value: &'value ron::Value, path: &str) -> Option<&'value ron::Value> {
+    let path = path.strip_prefix('{')?;
+    let path = path.strip_suffix('}')?;
+    for component in path.split('.') {
+        value = value.get_child(component)?;
+    }
+    Some(value)
+}
+
+// ----------------------------------------------------------------------------
+
+#[derive(Debug)]
+struct TypographyStyle {
+    font_size: f32,
+    font_weight: f32,
+}
+
+#[derive(Debug, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct TypographyValue {
+    font_size: String,
+    font_weight: String,
+    font_family: String,
+}
+
+impl TryFrom<TypographyValue> for TypographyStyle {
+    type Error = anyhow::Error;
+
+    fn try_from(value: TypographyValue) -> Result<Self, Self::Error> {
+        anyhow::ensure!(
+            value.font_family == "Inter",
+            "Unsupported proportional font family: {:?}",
+            value.font_family
+        );
+
+        let font_size = value
+            .font_size
+            .strip_suffix("px")
+            .context("Typography font size must use px units")?
+            .parse::<f32>()
+            .context("Typography font size is not a number")?;
+        anyhow::ensure!(
+            font_size.is_finite() && font_size > 0.0,
+            "Typography font size must be positive and finite"
+        );
+
+        let font_weight = value
+            .font_weight
+            .parse::<f32>()
+            .context("Typography font weight is not a number")?;
+        anyhow::ensure!(
+            (100.0..=900.0).contains(&font_weight),
+            "Typography font weight must be in the Inter variable-font range 100–900"
+        );
+
+        Ok(Self {
+            font_size,
+            font_weight,
+        })
+    }
+}
+
+#[derive(Debug)]
+struct Typography {
+    body: TypographyStyle,
+    small: TypographyStyle,
+    heading_1: TypographyStyle,
+    heading_2: TypographyStyle,
+    heading_3: TypographyStyle,
+    heading_4: TypographyStyle,
+    eyebrow: TypographyStyle,
+}
+
+impl Typography {
+    fn load(theme_value: &ron::Value) -> anyhow::Result<Self> {
+        let load_style = |name: &str| {
+            TypographyStyle::try_from(parse_path::<TypographyValue>(
+                theme_value,
+                &format!("{{Global.Typography.{name}}}"),
+            ))
+            .with_context(|| format!("Invalid {name} typography style"))
+        };
+
+        let typography = Self {
+            body: load_style(BODY_TYPOGRAPHY_NAME)?,
+            small: load_style(SMALL_TYPOGRAPHY_NAME)?,
+            heading_1: load_style(HEADING_1_TYPOGRAPHY_NAME)?,
+            heading_2: load_style(HEADING_2_TYPOGRAPHY_NAME)?,
+            heading_3: load_style(HEADING_3_TYPOGRAPHY_NAME)?,
+            heading_4: load_style(HEADING_4_TYPOGRAPHY_NAME)?,
+            eyebrow: load_style(EYEBROW_TYPOGRAPHY_NAME)?,
+        };
+
+        // Egui text styles cannot carry variable-font coordinates, so styles rendered without a
+        // `RichText` override must share the proportional family's configured weight.
+        for (name, style) in [
+            (SMALL_TYPOGRAPHY_NAME, &typography.small),
+            (HEADING_1_TYPOGRAPHY_NAME, &typography.heading_1),
+            (HEADING_2_TYPOGRAPHY_NAME, &typography.heading_2),
+            (HEADING_3_TYPOGRAPHY_NAME, &typography.heading_3),
+            (HEADING_4_TYPOGRAPHY_NAME, &typography.heading_4),
+        ] {
+            anyhow::ensure!(
+                style.font_weight == typography.body.font_weight,
+                "{name} and Body must use the same Inter weight"
+            );
+        }
+
+        Ok(typography)
+    }
+}
+
+// ----------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bundled_fonts_are_prioritized() {
+        let tokens = crate::design_tokens_of(Theme::Dark);
+        let definitions = tokens.font_definitions();
+
+        assert_eq!(
+            definitions.families[&egui::FontFamily::Proportional]
+                .first()
+                .map(String::as_str),
+            Some(INTER_FONT_NAME)
+        );
+        assert_eq!(
+            definitions.families[&egui::FontFamily::Monospace]
+                .first()
+                .map(String::as_str),
+            Some(JETBRAINS_MONO_FONT_NAME)
+        );
+        assert!(definitions.font_data.contains_key(JETBRAINS_MONO_FONT_NAME));
+        let inter_coords = &definitions.font_data[INTER_FONT_NAME].tweak.coords;
+        assert_eq!(
+            inter_coords,
+            &egui::epaint::text::VariationCoords::new([(
+                "wght",
+                tokens.typography.body.font_weight,
+            )])
+        );
+
+        let ctx = egui::Context::default();
+        crate::apply_style_and_install_loaders(&ctx);
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.label("Proportional");
+            ui.monospace("Monospace");
+        });
+        output.textures_delta.clear();
+    }
+
+    #[test]
+    fn test_design_tokens() {
+        let ctx = egui::Context::default();
+        crate::apply_style_and_install_loaders(&ctx);
+
+        for theme in [Theme::Dark, Theme::Light] {
+            let tokens = crate::design_tokens_of(theme);
+            let style = ctx.style_of(theme);
+
+            assert_eq!(
+                style.visuals.widgets.noninteractive.bg_stroke, tokens.divider_stroke,
+                "noninteractive widgets should use the semantic divider stroke"
+            );
+            assert_eq!(
+                style.visuals.window_stroke, tokens.divider_stroke,
+                "windows should use the semantic divider stroke"
+            );
+            assert_eq!(
+                style.visuals.window_fill, tokens.panel_bg_color,
+                "windows should share the panel surface color"
+            );
+            assert_eq!(
+                style.visuals.disabled_alpha, tokens.disabled_opacity,
+                "disabled controls should use the theme's disabled opacity"
+            );
+            assert_eq!(
+                style.visuals.widgets.inactive.fg_stroke.color, tokens.text_default,
+                "inactive widgets should use the default text color"
+            );
+            assert_eq!(
+                style.visuals.widgets.hovered.fg_stroke.color, tokens.text_strong,
+                "hovered widgets should use the strong text color"
+            );
+            assert_eq!(
+                tokens.button_outlined.stroke, tokens.control_stroke,
+                "outlined buttons should use the semantic control stroke"
+            );
+            assert_eq!(
+                tokens.text_edit_outlined.stroke, tokens.control_stroke,
+                "outlined text edits should use the semantic control stroke"
+            );
+        }
+
+        // Make sure it works:
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            ui.label("Hello Test!");
+        });
+        output.textures_delta.clear();
+    }
+}

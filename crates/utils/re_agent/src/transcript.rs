@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use agent_client_protocol::schema::v1::{
+use agent_client_protocol_schema::v1::{
     AvailableCommand, ContentBlock, Plan, SessionConfigId, SessionConfigKind, SessionConfigOption,
     SessionConfigOptionCategory, SessionConfigSelect, SessionConfigSelectOption,
     SessionConfigSelectOptions, SessionModeId, SessionUpdate, TextContent, ToolCall,
@@ -168,7 +168,7 @@ impl TranscriptItem {
 #[derive(Clone, Debug)]
 pub struct TranscriptEntry {
     /// When the item was first added. Later updates to the item do not move it.
-    pub created_at: std::time::SystemTime,
+    pub created_at: web_time::SystemTime,
 
     /// The item itself.
     pub item: TranscriptItem,
@@ -205,7 +205,7 @@ pub struct Transcript {
 impl Transcript {
     fn push(&mut self, item: TranscriptItem) {
         self.items.push(TranscriptEntry {
-            created_at: std::time::SystemTime::now(),
+            created_at: web_time::SystemTime::now(),
             item,
         });
     }
@@ -308,7 +308,7 @@ impl Transcript {
                 self.usage = Some(usage);
             }
             SessionUpdate::SessionInfoUpdate(info) => {
-                if let agent_client_protocol::schema::MaybeUndefined::Value(title) = info.title {
+                if let agent_client_protocol_schema::MaybeUndefined::Value(title) = info.title {
                     self.title = Some(title);
                 }
             }
@@ -653,7 +653,7 @@ pub fn model_name(model: &SessionConfigSelectOption) -> &str {
 mod tests {
     use std::sync::Arc;
 
-    use agent_client_protocol::schema::v1::{
+    use agent_client_protocol_schema::v1::{
         ConfigOptionUpdate, ContentChunk, Diff, SessionConfigSelectGroup,
         SessionConfigSelectOption, ToolCall,
     };

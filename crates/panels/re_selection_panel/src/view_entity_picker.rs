@@ -203,6 +203,7 @@ fn add_entities_line_ui(
             ctx.egui_ctx(),
             name,
             entity_data.highlight_sections.iter().cloned(),
+            &egui::TextStyle::Body,
             None,
         );
 

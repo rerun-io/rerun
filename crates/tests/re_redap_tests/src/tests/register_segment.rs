@@ -1554,7 +1554,8 @@ async fn scan_dataset_manifest_and_snapshot(
         .remove_columns(&unstable_column_names)
         .auto_sort_rows()
         .unwrap()
-        .sort_property_columns();
+        .sort_property_columns()
+        .sort_index_columns();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_manifest_schema"),

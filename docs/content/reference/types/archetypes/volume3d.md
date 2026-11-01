@@ -45,6 +45,7 @@ Parts of a volume can therefore appear in front of objects that should hide them
 ## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Volume3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Volume3D.html)

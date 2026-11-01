@@ -1,15 +1,11 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use arrow::array::{
-    ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
-};
+use arrow::array::RecordBatch;
 #[cfg(not(target_arch = "wasm32"))]
 use arrow::datatypes::SchemaRef;
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
-use itertools::Itertools as _;
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::StoreKind;
@@ -21,7 +17,7 @@ use re_protos::cloud::v1alpha1::ext as cloud_ext;
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::cloud::v1alpha1::ext::TableEntry;
 use re_protos::cloud::v1alpha1::ext::{
-    DatasetDetails, EntryDetails, ProviderDetails, TableDetails,
+    DatasetDetails, EntriesTableDataframe, EntryDetails, ProviderDetails, TableDetails,
 };
 use re_protos::common::v1alpha1::ext::DatasetKind;
 #[cfg(not(target_arch = "wasm32"))]
@@ -29,7 +25,6 @@ use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
 #[cfg(not(target_arch = "wasm32"))]
 use re_types_core::LayerName;
-use re_types_core::{ArrowDataType as _, ComponentBatch as _};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::NamedPath;
@@ -690,62 +685,9 @@ impl InMemoryStore {
 }
 
 fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error> {
-    #[expect(clippy::type_complexity)]
-    let (id, name, entry_kind, created_at, updated_at): (
-        Vec<Tuid>,
-        Vec<EntryName>,
-        Vec<i32>,
-        Vec<i64>,
-        Vec<i64>,
-    ) = entries
-        .iter()
-        .map(|entry| {
-            (
-                entry.id.id,
-                entry.name.clone(),
-                entry.kind as i32,
-                entry.created_at.as_nanosecond() as i64,
-                entry.updated_at.as_nanosecond() as i64,
-            )
-        })
-        .multiunzip();
-
-    let id_arr = id
-        .to_arrow()
+    let rb = EntriesTableDataframe::new(entries)
+        .into_record_batch()
         .map_err(|err| DataFusionError::External(Box::new(err)))?;
-    let name_arr = Arc::new(StringArray::from(
-        name.iter().map(|n| n.as_str()).collect::<Vec<_>>(),
-    )) as ArrayRef;
-    let kind_arr = Arc::new(Int32Array::from(entry_kind)) as ArrayRef;
-    let created_at_arr = Arc::new(TimestampNanosecondArray::from(created_at)) as ArrayRef;
-    let updated_at_arr = Arc::new(TimestampNanosecondArray::from(updated_at)) as ArrayRef;
-
-    let schema = Arc::new(Schema::new_with_metadata(
-        vec![
-            Field::new("id", Tuid::arrow_data_type(), false),
-            Field::new("name", DataType::Utf8, false),
-            Field::new("entry_kind", DataType::Int32, false),
-            Field::new(
-                "created_at",
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                false,
-            ),
-            Field::new(
-                "updated_at",
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                false,
-            ),
-        ],
-        Default::default(),
-    ));
-
-    let num_rows = id_arr.len();
-    let rb = RecordBatch::try_new_with_options(
-        schema,
-        vec![id_arr, name_arr, kind_arr, created_at_arr, updated_at_arr],
-        &RecordBatchOptions::default().with_row_count(Some(num_rows)),
-    )
-    .map_err(DataFusionError::from)?;
 
     Ok(rb)
 }

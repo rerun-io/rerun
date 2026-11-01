@@ -208,10 +208,10 @@ impl VisualizerSystem for GeoPolygonsVisualizer {
                             .into(),
                             instance: Instance::from(instance_index as u64),
                         }),
-                        Err(error) => results.report_for_component(
+                        Err(err) => results.report_for_component(
                             polygons_component,
                             ViewerReportSeverity::Error,
-                            format!("Polygon {instance_index}: {error}"),
+                            format!("Polygon {instance_index}: {err}"),
                         ),
                     }
                 }
@@ -303,8 +303,8 @@ impl GeoPolygonsOutput {
                         vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
                         materials: vec![material].into(),
                     };
-                    let gpu_mesh = Arc::new(GpuMesh::new(render_ctx, &mesh).map_err(|error| {
-                        ViewSystemExecutionError::DrawDataCreationError(Arc::new(error))
+                    let gpu_mesh = Arc::new(GpuMesh::new(render_ctx, &mesh).map_err(|err| {
+                        ViewSystemExecutionError::DrawDataCreationError(Arc::new(err))
                     })?);
                     #[cfg(test)]
                     {
@@ -324,7 +324,7 @@ impl GeoPolygonsOutput {
             }
         }
         let draw_data = MeshDrawData::new(render_ctx, &instances)
-            .map_err(|error| ViewSystemExecutionError::DrawDataCreationError(Arc::new(error)))?
+            .map_err(|err| ViewSystemExecutionError::DrawDataCreationError(Arc::new(err)))?
             .with_sort_axis(glam::Vec3A::Z);
         view_builder.queue_draw(render_ctx, draw_data)?;
         Ok(())

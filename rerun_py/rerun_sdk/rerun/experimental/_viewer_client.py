@@ -1060,7 +1060,8 @@ class ViewerClient:
         """
         response = self._viewer_control(
             "get_recording_schema",
-            _without_none(store_id=store_id) | _schema_request(entity_path, max_entities, paths_only),
+            _without_none(store_id=store_id, entity_path=entity_path, max_entities=max_entities)
+            | {"with_archetypes": False, "with_components": not paths_only},
         )
         return RecordingSchema(
             store_id=response.get("store_id", ""),

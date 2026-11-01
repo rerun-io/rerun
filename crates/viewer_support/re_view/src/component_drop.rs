@@ -66,7 +66,6 @@ impl ComponentDropHandler<'_> {
         }
 
         if released {
-            egui::DragAndDrop::clear_payload(self.ctx.egui_ctx());
             self.apply_component_drop(component_paths);
         }
 

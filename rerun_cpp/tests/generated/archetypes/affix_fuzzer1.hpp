@@ -28,6 +28,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <rerun/archetype_utils.hpp>
 #include <rerun/collection.hpp>
 #include <rerun/component_batch.hpp>
 #include <rerun/component_column.hpp>
@@ -664,13 +665,30 @@ namespace rerun::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&fuzz1001, &fuzz1002, &fuzz1003, &fuzz1004, &fuzz1005, &fuzz1006,
+                        &fuzz1007, &fuzz1008, &fuzz1009, &fuzz1010, &fuzz1011, &fuzz1012,
+                        &fuzz1013, &fuzz1014, &fuzz1015, &fuzz1016, &fuzz1017, &fuzz1018,
+                        &fuzz1019, &fuzz1020, &fuzz1021, &fuzz1022},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length(
+                       {&fuzz1001, &fuzz1002, &fuzz1003, &fuzz1004, &fuzz1005, &fuzz1006,
+                        &fuzz1007, &fuzz1008, &fuzz1009, &fuzz1010, &fuzz1011, &fuzz1012,
+                        &fuzz1013, &fuzz1014, &fuzz1015, &fuzz1016, &fuzz1017, &fuzz1018,
+                        &fuzz1019, &fuzz1020, &fuzz1021, &fuzz1022}
+            )
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::archetypes
@@ -686,6 +704,15 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const archetypes::AffixFuzzer1& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.fuzz1001, &archetype.fuzz1002, &archetype.fuzz1003, &archetype.fuzz1004,
+                 &archetype.fuzz1005, &archetype.fuzz1006, &archetype.fuzz1007, &archetype.fuzz1008,
+                 &archetype.fuzz1009, &archetype.fuzz1010, &archetype.fuzz1011, &archetype.fuzz1012,
+                 &archetype.fuzz1013, &archetype.fuzz1014, &archetype.fuzz1015, &archetype.fuzz1016,
+                 &archetype.fuzz1017, &archetype.fuzz1018, &archetype.fuzz1019, &archetype.fuzz1020,
+                 &archetype.fuzz1021, &archetype.fuzz1022}
+            );
+        }
     };
 } // namespace rerun

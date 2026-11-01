@@ -14,10 +14,36 @@ viewer MCP, read and write the blueprint with `rerun_get_blueprint` and
 `rerun_set_blueprint` rather than the low-level click tools.
 
 A blueprint decides how a recording is shown, and the recording decides what exists.
-Read the data, design a first layout, then **iterate from screenshots** until it
-reads at a glance. The constructors are discoverable (`dir(rrb)`,
+Read the data, design a first layout, then **verify state before assessing screenshots** until it reads at a glance.
+The constructors are discoverable (`dir(rrb)`,
 `help(rrb.Spatial3DView)`); this skill covers what you can't guess. Import as
 `import rerun.blueprint as rrb`.
+
+## Editing a recording's blueprint through MCP
+
+Use `{"recording": {}}` to target the active recording.
+`rerun_set_blueprint` accepts `mode: "full"` (default) or `mode: "partial"`.
+Use partial mode for focused edits: send only changed fields, leaving the layout and all omitted fields untouched.
+Full mode clears omitted fields and entities; use it for a complete layout, reading the existing blueprint first to preserve settings you intend to keep.
+Both modes replace arrays and struct-valued fields as a whole, so preserve other entries when changing lists such as `component_map` or `instruction_ids`.
+Set a field to `null` to clear it; an empty object is a no-op in partial mode.
+Reuse view and container UUIDs when editing them.
+For a deliberate layout, set `root_container` to the root container UUID and set both `auto_layout` and `auto_views` to `false` in `/viewport` → `ViewportBlueprint`.
+Automatic layout can rearrange the supplied tree, and automatic views can add unwanted panes.
+In full mode, an explicit root defaults omitted automatic options to `false`, but values copied from the previous blueprint are preserved.
+Partial mode preserves omitted automatic options, even when changing the root.
+A write that would break a reference is rejected, and nothing is written.
+That covers a missing or unreferenced view, container, or visualizer instruction, and a loop of containers.
+So add a new view and the reference to it in the same call, and delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.
+
+After each write, check the views and their `reports` in `rerun_get_state`, plus logs appended to tool results.
+If the structure differs, inspect `rerun_get_blueprint` before retrying.
+Then check a screenshot for framing and readability before reporting completion.
+
+### Component overrides
+
+For component overrides like colors or colormaps, follow the [MCP component override example](https://rerun.io/docs/reference/viewer/mcp#component-overrides).
+Verify the effective value in the entity's Visualizers section and the visual result, not just stored rows.
 
 ## Tables
 
@@ -57,7 +83,9 @@ Double quotes for column names, single quotes for strings, and
 With the viewer MCP, change the table on screen directly:
 `rerun_get_table_schema` names the columns, `rerun_get_blueprint` with
 `{"table": {}}` reads the table blueprint, and `rerun_set_blueprint` with
-`{"table": {}}` replaces it. `rerun_set_blueprint` returns an error for a filter
+`{"table": {}, "mode": "partial"}` updates only supplied fields.
+Omitting `mode` or choosing `"full"` replaces the table blueprint.
+`rerun_set_blueprint` returns an error for a filter
 that fails. A column's entry sits at `/table/layouts/table/columns/<column name>`,
 with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
 as `\\:` and `\\ `. The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints)
@@ -66,6 +94,10 @@ and segment previews, see
 [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints).
 
 ## 1. Read the data
+
+With viewer MCP, start with `rerun_get_recording_schema` for compact entity → archetype lists (the default).
+Check `omitted_entities`; narrow with `entity_path` or raise `max_entities` to cover the remaining entities.
+Request detailed schema only for entities that need it, by setting `with_components: true` and `entity_path`.
 
 Enumerate every `(entity_path, archetype)` pair first — the archetype picks the
 view, the entity path scopes it. For a dataset (see `rerun-catalog-queries`):

@@ -8,6 +8,7 @@ use re_chunk::Chunk;
 use re_chunk_index::RawRrdManifest;
 use re_log_encoding::ToApplication as _;
 use re_log_types::{EntityPath, TimelineName};
+use re_protos::common::v1alpha1::Compression;
 use re_protos::log_msg::v1alpha1::log_msg::Msg;
 use re_quota_channel::send_crossbeam;
 
@@ -55,32 +56,30 @@ impl StatsCommand {
         let mut ipc_size_bytes_uncompressed = Vec::with_capacity(num_chunks as _);
         let mut ipc_schema_size_bytes_uncompressed = Vec::with_capacity(num_chunks as _);
         let mut ipc_data_size_bytes_uncompressed = Vec::with_capacity(num_chunks as _);
+        let mut per_codec: BTreeMap<Compression, CodecStats> = BTreeMap::new();
 
         let (rx_raw, rx_footers) = read_raw_rrd_streams_from_file_or_stdin(path_to_input_rrds);
 
-        // Each message is accompanied by the original compressed payload size (in bytes).
-        // For uncompressed messages, this equals the payload size.
+        // Each message is accompanied by how it was stored, which the decompression below erases.
         let (tx_uncompressed, rx_uncompressed) =
-            crossbeam::channel::bounded::<(u64, anyhow::Result<Msg>)>(100);
+            crossbeam::channel::bounded::<(Option<StoredPayload>, anyhow::Result<Msg>)>(100);
         let decompress_thread_handle = std::thread::Builder::new()
             .name("decompress".to_owned())
             .spawn(move || {
                 for (_source, res) in rx_raw {
                     let Ok(Msg::ArrowMsg(mut msg)) = res else {
-                        send_crossbeam(&tx_uncompressed, (0, res))?;
+                        send_crossbeam(&tx_uncompressed, (None, res))?;
                         continue;
                     };
 
                     let mut uncompressed = Vec::new();
 
-                    const COMPRESSION_NONE: i32 =
-                        re_protos::common::v1alpha1::Compression::None as _;
-                    const COMPRESSION_LZ4: i32 = re_protos::common::v1alpha1::Compression::Lz4 as _;
+                    const COMPRESSION_NONE: i32 = Compression::None as _;
+                    const COMPRESSION_LZ4: i32 = Compression::Lz4 as _;
 
-                    let compressed_size = msg.payload.len() as u64;
-
-                    match msg.compression {
-                        COMPRESSION_NONE => {}
+                    let size_bytes = msg.payload.len() as u64;
+                    let codec = match msg.compression {
+                        COMPRESSION_NONE => Compression::None,
 
                         COMPRESSION_LZ4 => {
                             let max = re_protos::common::v1alpha1::ext::max_lz4_decompressed_size(
@@ -100,15 +99,15 @@ impl StatsCommand {
                             )?;
                             msg.payload = uncompressed.into();
                             msg.compression = COMPRESSION_NONE;
+                            Compression::Lz4
                         }
 
                         huh => anyhow::bail!("unknown Compression: {huh}"),
-                    }
-
+                    };
                     send_crossbeam(
                         &tx_uncompressed,
                         (
-                            compressed_size,
+                            Some(StoredPayload { size_bytes, codec }),
                             Ok(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(msg)),
                         ),
                     )?;
@@ -120,13 +119,14 @@ impl StatsCommand {
         re_log::info!("processing input…");
         let mut num_msgs = 0;
         let mut last_checkpoint = std::time::Instant::now();
-        for (compressed_size, res) in rx_uncompressed {
+        for (stored, res) in rx_uncompressed {
             let mut is_success = true;
 
             match res {
                 Ok(msg) => {
                     num_msgs += 1;
-                    match compute_stats(!*no_decode, compressed_size, &msg) {
+                    let stored_size_bytes = stored.map_or(0, |stored| stored.size_bytes);
+                    match compute_stats(!*no_decode, stored_size_bytes, &msg) {
                         Ok(Some(stats)) => {
                             num_chunks += 1;
 
@@ -162,6 +162,13 @@ impl StatsCommand {
                                 .push(stats.transport.ipc_schema_size_bytes);
                             ipc_data_size_bytes_uncompressed
                                 .push(stats.transport.ipc_data_size_bytes);
+
+                            if let Some(stored) = stored {
+                                let codec = per_codec.entry(stored.codec).or_default();
+                                codec.num_chunks += 1;
+                                codec.stored_bytes += stored.size_bytes;
+                                codec.ipc_bytes += stats.transport.ipc_size_bytes_uncompressed;
+                            }
                         }
 
                         Ok(None) => {}
@@ -353,6 +360,32 @@ impl StatsCommand {
         println!("Size (data only, uncompressed)");
         println!("------------------------------");
         print_ipc_size_bytes_stats(ipc_data_size_bytes_uncompressed);
+
+        println!();
+        println!("Compression");
+        println!("-----------");
+        let stored_total: u64 = per_codec.values().map(|c| c.stored_bytes).sum();
+        let ipc_total: u64 = per_codec.values().map(|c| c.ipc_bytes).sum();
+        for (codec, stats) in &per_codec {
+            let codec = match codec {
+                Compression::Unspecified | Compression::None => "none",
+                Compression::Lz4 => "lz4",
+            };
+            println!(
+                "{codec}: num_chunks = {} ({:.3}%), stored = {}, uncompressed = {} ({:.3}% of uncompressed)",
+                re_format::format_uint(stats.num_chunks),
+                stats.num_chunks as f64 / num_chunks.max(1) as f64 * 100.0,
+                re_format::format_bytes(stats.stored_bytes as f64),
+                re_format::format_bytes(stats.ipc_bytes as f64),
+                stats.stored_bytes as f64 / stats.ipc_bytes.max(1) as f64 * 100.0,
+            );
+        }
+        println!(
+            "total: stored = {}, uncompressed = {} ({:.3}% of uncompressed)",
+            re_format::format_bytes(stored_total as f64),
+            re_format::format_bytes(ipc_total as f64),
+            stored_total as f64 / ipc_total.max(1) as f64 * 100.0,
+        );
 
         if !*no_decode {
             println!();
@@ -584,6 +617,23 @@ fn print_chunk_index_analysis(chunk_index: &RawRrdManifest) {
     }
 }
 
+/// How a chunk's payload was found in the stream, before `rrd stats` decompresses it.
+#[derive(Clone, Copy, Debug)]
+struct StoredPayload {
+    /// Payload size as stored, i.e. compressed if `codec` compresses.
+    size_bytes: u64,
+    codec: Compression,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+struct CodecStats {
+    num_chunks: u64,
+    stored_bytes: u64,
+
+    /// IPC bytes before compression, i.e. what the chunks would take up stored as-is.
+    ipc_bytes: u64,
+}
+
 #[derive(Clone, Debug)]
 struct ChunkStats {
     app: Option<ChunkStatsApplication>,
@@ -615,7 +665,11 @@ struct ChunkStatsApplication {
     timeline_sortedness: Vec<(EntityPath, TimelineName, bool)>,
 }
 
-fn compute_stats(app: bool, compressed_size: u64, msg: &Msg) -> anyhow::Result<Option<ChunkStats>> {
+fn compute_stats(
+    app: bool,
+    stored_size_bytes: u64,
+    msg: &Msg,
+) -> anyhow::Result<Option<ChunkStats>> {
     if let Msg::ArrowMsg(arrow_msg) = msg {
         let re_protos::log_msg::v1alpha1::ArrowMsg {
             store_id: _,
@@ -747,7 +801,7 @@ fn compute_stats(app: bool, compressed_size: u64, msg: &Msg) -> anyhow::Result<O
         return Ok(Some(ChunkStats {
             app,
             transport: ChunkStatsTransport {
-                ipc_size_bytes_compressed: compressed_size,
+                ipc_size_bytes_compressed: stored_size_bytes,
                 ipc_size_bytes_uncompressed,
 
                 ipc_schema_size_bytes,

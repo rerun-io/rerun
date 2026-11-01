@@ -61,6 +61,7 @@ fn in_process_catalog_client<T: RerunCloudService>(service: Arc<T>) -> CatalogCl
         registry
             .internal_connection_handle()
             .expect("internal connection is configured"),
+        re_async::AsyncRuntimeHandle::new_web(),
     )
 }
 

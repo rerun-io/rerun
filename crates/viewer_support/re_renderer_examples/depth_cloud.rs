@@ -10,7 +10,7 @@
 //!
 //! Web:
 //! ```sh
-//! cargo run-wasm --example depth_cloud
+//! pixi run re-renderer-web-example depth_cloud
 //! ```
 
 #![expect(clippy::disallowed_methods)] // allow hardcoded colors

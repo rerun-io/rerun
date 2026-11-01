@@ -22,7 +22,7 @@ def test_table_api() -> None:
 rerun_segment_id: string
 operator: string
 -- schema metadata --
-sorbet:version: '0.1.3'\
+sorbet:version: '0.1.4'\
 """)
         reader = table.reader()
 
@@ -43,7 +43,7 @@ sorbet:version: '0.1.3'\
         assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────┐
 │ METADATA:                         │
-│ * version: 0.1.3                  │
+│ * version: 0.1.4                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────┬────────────┐ │
 │ │ rerun_segment_id ┆ operator   │ │
@@ -65,7 +65,7 @@ sorbet:version: '0.1.3'\
         assert str(reader.sort("rerun_segment_id")) == inline_snapshot("""\
 ┌───────────────────────────────────┐
 │ METADATA:                         │
-│ * version: 0.1.3                  │
+│ * version: 0.1.4                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────┬────────────┐ │
 │ │ rerun_segment_id ┆ operator   │ │

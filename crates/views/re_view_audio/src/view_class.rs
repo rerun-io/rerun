@@ -357,7 +357,7 @@ fn audio_entry_ui(
         show_entity_path,
     } = *settings;
     if show_entity_path {
-        use re_ui::SyntaxHighlighting as _;
+        use re_viewer_context::StoreSyntaxHighlighting as _;
         ui.label(entry.entity_path.syntax_highlighted(ui.style()));
     }
 

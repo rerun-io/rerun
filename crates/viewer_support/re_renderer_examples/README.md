@@ -14,6 +14,6 @@ cargo run -p re_renderer_examples --bin multiview
 
 To run the same example on the web:
 ```
-cargo run-wasm -p re_renderer_examples --bin multiview
+pixi run re-renderer-web-example multiview
 ```
 Note that this will try to use WebGPU and fall back to WebGL if WebGPU is not supported by your browser.

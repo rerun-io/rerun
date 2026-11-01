@@ -19,47 +19,4 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> PlotInteraction::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (tooltip_mode.has_value()) {
-            columns.push_back(tooltip_mode.value().partitioned(lengths_).value_or_throw());
-        }
-        if (points_display.has_value()) {
-            columns.push_back(points_display.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> PlotInteraction::columns() {
-        if (tooltip_mode.has_value()) {
-            return columns(std::vector<uint32_t>(tooltip_mode.value().length(), 1));
-        }
-        if (points_display.has_value()) {
-            return columns(std::vector<uint32_t>(points_display.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::PlotInteraction>::as_batches(
-            const blueprint::archetypes::PlotInteraction& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.tooltip_mode.has_value()) {
-            cells.push_back(archetype.tooltip_mode.value());
-        }
-        if (archetype.points_display.has_value()) {
-            cells.push_back(archetype.points_display.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

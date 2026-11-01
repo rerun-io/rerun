@@ -431,7 +431,8 @@ async fn scan_dataset_manifest_and_snapshot(
         .remove_columns(&unstable_column_names)
         .auto_sort_rows()
         .unwrap()
-        .sort_property_columns();
+        .sort_property_columns()
+        .sort_index_columns();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_manifest_schema"),
@@ -465,12 +466,15 @@ async fn snapshot_response(
         .try_into()
         .unwrap();
 
+    // The response only guarantees the base manifest columns, not the per-dataset property and
+    // index-range columns that `get_dataset_manifest_schema` advertises.
     // Note: we check fields only because some schema-level sorbet metadata is injected in one of
     // the paths and not the other. Anyway, that's what matters.
-    assert_eq!(
-        alleged_schema.fields(),
-        batch.schema_ref().fields(),
-        "The actual schema is not consistent with the schema advertised by \
+    assert!(
+        alleged_schema
+            .fields()
+            .contains_unordered(batch.schema().fields()),
+        "The actual schema is not a subset of the schema advertised by \
         `get_dataset_manifest_schema`.\n\nActual:\n{}\n\nAlleged:\n{}\n",
         batch.schema().format_snapshot(),
         alleged_schema.format_snapshot(),

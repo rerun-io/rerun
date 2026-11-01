@@ -17,8 +17,7 @@ fn mercator([lat, lon]: [f64; 2]) -> [f64; 2] {
 
 fn ring_area(ring: &[[f64; 2]]) -> f64 {
     let origin = ring[0];
-    ring.iter()
-        .zip(ring.iter().cycle().skip(1))
+    std::iter::zip(ring, ring.iter().cycle().skip(1))
         .map(|(a, b)| {
             (a[0] - origin[0]) * (b[1] - origin[1]) - (a[1] - origin[1]) * (b[0] - origin[0])
         })
@@ -79,7 +78,7 @@ pub fn triangulate(
         if ring.len() < 3 {
             return Err("A polygon ring requires at least three distinct vertices");
         }
-        for (a, b) in ring.iter().zip(ring.iter().cycle().skip(1)) {
+        for (a, b) in std::iter::zip(ring, ring.iter().cycle().skip(1)) {
             if (a[1] - b[1]).abs() > 180.0 {
                 return Err("Split polygons at the antimeridian before logging");
             }

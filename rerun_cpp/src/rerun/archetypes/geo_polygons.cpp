@@ -15,46 +15,4 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::Color>(Descriptor_colors).value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> GeoPolygons::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (polygons.has_value()) {
-            columns.push_back(polygons.value().partitioned(lengths_).value_or_throw());
-        }
-        if (colors.has_value()) {
-            columns.push_back(colors.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> GeoPolygons::columns() {
-        if (polygons.has_value()) {
-            return columns(std::vector<uint32_t>(polygons.value().length(), 1));
-        }
-        if (colors.has_value()) {
-            return columns(std::vector<uint32_t>(colors.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<archetypes::GeoPolygons>::as_batches(
-        const archetypes::GeoPolygons& archetype
-    ) {
-        using namespace archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.polygons.has_value()) {
-            cells.push_back(archetype.polygons.value());
-        }
-        if (archetype.colors.has_value()) {
-            cells.push_back(archetype.colors.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

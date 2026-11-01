@@ -132,6 +132,20 @@ impl<E: Example + 'static> Application<E> {
 
         let instance = wgpu::Instance::new(instance_desc);
         let surface = instance.create_surface(window.clone()).unwrap();
+
+        // WebGL requires a surface when requesting an adapter; enumeration returns none.
+        // As of wgpu 30, enumeration will simply not work with WebGL.
+        // We do want to retain surface enumeration otherwise to exercise our selection logic.
+        #[cfg(target_arch = "wasm32")]
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                compatible_surface: Some(&surface),
+                ..Default::default()
+            })
+            .await
+            .context("failed to find an appropriate adapter")?;
+
+        #[cfg(not(target_arch = "wasm32"))]
         let adapter = {
             let enabled_backends = re_renderer::device_caps::default_backends();
             let adapters = instance.enumerate_adapters(enabled_backends).await;

@@ -1,3 +1,5 @@
-pub mod validation;
+mod references;
+mod validation;
 
-pub use validation::is_valid_blueprint;
+pub use references::{ReferenceProblem, Referenced, reference_problems};
+pub use validation::validate_blueprint;

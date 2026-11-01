@@ -5,10 +5,6 @@ use std::{fs, path::PathBuf, process::Command};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-changed=build.rs");
-    if std::env::var("CARGO_CFG_TARGET_ARCH")? == "wasm32" {
-        return Ok(());
-    }
-
     // Watch the directory as well as its files to detect added and removed schemas.
     println!("cargo:rerun-if-changed=proto");
     let mut protos = fs::read_dir("proto/rerun/v1alpha1")?

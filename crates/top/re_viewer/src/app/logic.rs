@@ -42,6 +42,11 @@ impl AppCore {
         {
             // Download/ingest data:
             self.receive_messages(store_hub, egui_ctx);
+            for re_agent_panel::ViewerControlCall { request, on_done } in
+                self.agent_panel.take_viewer_control_calls()
+            {
+                self.serve_viewer_control(request, on_done, store_hub, egui_ctx);
+            }
             self.receive_fetched_chunks(store_hub);
             self.prefetch_chunks(store_hub);
         }

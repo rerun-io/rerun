@@ -1,8 +1,8 @@
+use crate::RecordingCommandKind;
 use re_chunk::TimelineName;
 use re_entity_db::EntityDb;
 use re_log_types::{AbsoluteTimeRange, AbsoluteTimeRangeF, TimeReal, TimeType};
 use re_sdk_types::blueprint::components::{LoopMode, PlayState};
-use re_ui::RecordingCommandKind;
 
 use crate::NeedsRepaint;
 use crate::blueprint_helpers::BlueprintContext;
@@ -140,7 +140,7 @@ impl TimeControlCommand {
         time_commands
     }
 
-    /// The time-control command a playback [`re_ui::RecordingCommandKind`] maps to.
+    /// The time-control command a playback [`crate::RecordingCommandKind`] maps to.
     ///
     /// Returns `None` for non-playback kinds.
     pub fn from_recording_command(command: RecordingCommandKind) -> Option<Self> {

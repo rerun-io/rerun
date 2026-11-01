@@ -90,10 +90,15 @@ function(download_and_build_arrow)
     # TODO(michael): Remove this backport when upgrading to Arrow 25 or newer.
     set(MACOS_LIBTOOL_PATCH ${CMAKE_CURRENT_LIST_DIR}/patches/arrow18_macos_libtool.patch)
 
+    set(RERUN_ARROW_URL
+        "https://github.com/apache/arrow/releases/download/apache-arrow-18.0.0/apache-arrow-18.0.0.tar.gz"
+        CACHE STRING "Arrow source archive URL or local path (must match the pinned checksum)"
+    )
+
     ExternalProject_Add(
         arrow_cpp
         PREFIX ${ARROW_DOWNLOAD_PATH}
-        URL https://github.com/apache/arrow/releases/download/apache-arrow-18.0.0/apache-arrow-18.0.0.tar.gz
+        URL "${RERUN_ARROW_URL}"
         URL_MD5 96a4e40287137867c9fe7a2b6c3e5083
         DOWNLOAD_NO_PROGRESS ON # Progress sounds like a nice idea but is in practice very spammy.
         UPDATE_COMMAND "" # Prevent unnecessary rebuilds on every cmake --build

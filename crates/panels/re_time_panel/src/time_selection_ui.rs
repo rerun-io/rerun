@@ -4,7 +4,8 @@ use re_sdk_types::blueprint::components::LoopMode;
 use re_ui::{HasDesignTokens as _, UiExt as _};
 use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{
-    StoreViewContext, SystemCommandSender as _, TimeControl, TimeControlCommand, ViewerContext,
+    RecordingCommandKind, StoreViewContext, SystemCommandSender as _, TimeControl,
+    TimeControlCommand, ViewerContext,
 };
 
 use re_time_ruler::TimeRangesUi;
@@ -367,8 +368,7 @@ fn selection_context_menu(
     }
 
     let mut button = egui::Button::new("Save current time selection…");
-    if let Some(shortcut) =
-        re_ui::RecordingCommandKind::SaveTimeSelection.formatted_kb_shortcut(ui.ctx())
+    if let Some(shortcut) = RecordingCommandKind::SaveTimeSelection.formatted_kb_shortcut(ui.ctx())
     {
         button = button.shortcut_text(shortcut);
     }
@@ -377,11 +377,11 @@ fn selection_context_menu(
         .on_disabled_hover_text("Open the context menu on selected time to save it")
         .clicked()
     {
-        use re_ui::RecordingCommandSender as _;
+        use re_viewer_context::RecordingCommandSender as _;
         ctx.command_sender()
-            .send_recording_command(re_ui::RecordingCommand {
+            .send_recording_command(re_viewer_context::RecordingCommand {
                 recording_id: ctx.store_context.recording.store_id().clone(),
-                kind: re_ui::RecordingCommandKind::SaveTimeSelection,
+                kind: RecordingCommandKind::SaveTimeSelection,
             });
     }
 

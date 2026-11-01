@@ -137,14 +137,16 @@ export type ArrowMsg = Message<"rerun.log_msg.v1alpha1.ArrowMsg"> & {
   chunkId?: Tuid | undefined;
 
   /**
-   * Compression algorithm used.
+   * Compression algorithm used on this payload.
+   *
+   * Decided per message: a stream may mix compressed and uncompressed messages.
    *
    * @generated from field: rerun.common.v1alpha1.Compression compression = 2;
    */
   compression: Compression;
 
   /**
-   * Size in bytes of `payload` before it was compressed.
+   * Size in bytes of `payload` before it was compressed, equal to its length if uncompressed.
    *
    * The decoder needs this to size its decompression buffer.
    *

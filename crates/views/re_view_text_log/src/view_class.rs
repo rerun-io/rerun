@@ -541,9 +541,8 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
 
                         let mut any_change = false;
                         for (lvl, active) in &mut new_levels {
-                            any_change |= ui
-                                .re_checkbox(active, level_to_rich_text(ui, lvl))
-                                .changed();
+                            any_change |=
+                                ui.checkbox(active, level_to_rich_text(ui, lvl)).changed();
                         }
 
                         if any_change {

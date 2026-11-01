@@ -7,8 +7,8 @@ use re_protos::viewer_control::v1alpha1::{
     CommandSummary, DescribeCommandsRequest, DescribeCommandsResponse, ListCommandsRequest,
     ListCommandsResponse, RunCommandRequest, RunCommandResponse, ViewerCommand,
 };
-use re_ui::{BoundCommand, CommandEnvironment, CommandKind, CommandScope};
 use re_viewer_context::StoreHub;
+use re_viewer_context::{BoundCommand, CommandEnvironment, CommandKind, CommandScope};
 
 use super::super::AppCore;
 

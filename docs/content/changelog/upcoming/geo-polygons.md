@@ -12,4 +12,4 @@ Fills retain their recorded opacity while geographic points and line strings rem
 Automatic framing fits the projected geographic bounds, including when a recording initially loads without data.
 See the Python, Rust, and C++ example in the [GeoPolygons reference](../reference/types/archetypes/geo_polygons.md).
 
-TODO(BohanSu): publish the approved MapView screenshot to permanent website assets after prototype review.
+TODO(bohan): publish the approved MapView screenshot to permanent website assets after prototype review.

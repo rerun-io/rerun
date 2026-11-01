@@ -273,7 +273,10 @@ fn is_editing_externally(egui_ctx: &egui::Context) -> bool {
     }
 }
 
-fn is_interacting(egui_ctx: &egui::Context) -> bool {
+/// Is the user in the middle of an interaction, like dragging, scrolling or holding a key?
+///
+/// Edits made during an interaction are only recorded once it ends.
+pub fn is_interacting(egui_ctx: &egui::Context) -> bool {
     let is_editing_externally = is_editing_externally(egui_ctx);
 
     egui_ctx.input(|i| {

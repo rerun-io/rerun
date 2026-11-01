@@ -53,7 +53,15 @@ pub enum WriteError {
         source: Box<ApiError>,
     },
 
-    #[error("failed to upload RRD: {0}")]
+    #[error("failed to resolve {kind} dataset for write: {source}\nDataset: {dataset_id}")]
+    ResolveDataset {
+        dataset_id: EntryId,
+        kind: &'static str,
+        #[source]
+        source: Box<ApiError>,
+    },
+
+    #[error("failed to upload: {0}")]
     Upload(#[source] StagingError),
 }
 
@@ -67,27 +75,29 @@ impl WriteError {
     }
 }
 
-/// Generate a fresh object key for an RRD upload, relative to catalog storage.
+/// Generate a fresh object key relative to catalog storage.
 ///
-/// Keys follow `{storage_prefix}/{write_id}.rrd`; an absent prefix adds no directory.
+/// Keys follow `{storage_prefix}/{write_id}.{extension}`.
 /// Fails only if the prefix leaves too little room for the write ID within [`ObjectKey::MAX_LEN`].
 ///
 /// Each call generates a new write ID, so replacing a catalog layer need not overwrite
 /// an object referenced by an earlier registration.
-fn new_segment_key(storage_prefix: Option<&ObjectKey>) -> Result<ObjectKey, Box<WriteError>> {
+fn new_write_key(
+    storage_prefix: Option<&ObjectKey>,
+    extension: &str,
+) -> Result<ObjectKey, WriteError> {
     let write_id = re_tuid::Tuid::new();
     let key = match storage_prefix {
-        None => format!("{write_id}.rrd"),
-        Some(prefix) => format!("{prefix}/{write_id}.rrd"),
+        None => format!("{write_id}.{extension}"),
+        Some(prefix) => format!("{prefix}/{write_id}.{extension}"),
     };
-    ObjectKey::try_new(key).map_err(|err| Box::new(WriteError::Key(err)))
+    ObjectKey::try_new(key).map_err(WriteError::Key)
 }
 
 impl CatalogClient {
     /// Upload complete RRD bytes and submit their recordings for registration.
     ///
     /// Generates a fresh `{storage_prefix}/{write_id}.rrd` key in catalog storage.
-    /// An absent prefix adds no directory.
     pub async fn write_segment_bytes(
         &self,
         dataset_id: EntryId,
@@ -96,8 +106,7 @@ impl CatalogClient {
         layer: LayerName,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<WriteHandle, Box<WriteError>> {
-        let key = new_segment_key(storage_prefix)?;
-        self.write_segment(dataset_id, data, key, layer, on_duplicate)
+        self.write_segment(dataset_id, data, storage_prefix, layer, on_duplicate)
             .await
             .map_err(Box::new)
     }
@@ -105,7 +114,6 @@ impl CatalogClient {
     /// Upload a local RRD file and submit its recordings for registration.
     ///
     /// Generates a fresh `{storage_prefix}/{write_id}.rrd` key in catalog storage.
-    /// An absent prefix adds no directory.
     /// Keep the file unchanged until the upload finishes.
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn write_segment_path(
@@ -116,21 +124,169 @@ impl CatalogClient {
         layer: LayerName,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<WriteHandle, Box<WriteError>> {
-        let key = new_segment_key(storage_prefix)?;
         let file =
             std::fs::File::open(&path).map_err(|source| WriteError::Open { source, path })?;
-        self.write_segment(dataset_id, file, key, layer, on_duplicate)
+        self.write_segment(dataset_id, file, storage_prefix, layer, on_duplicate)
             .await
             .map_err(Box::new)
     }
 
     /// Upload an RRD and submit its recordings for registration.
     ///
-    /// The key must be unique for each write, including replacements.
+    /// Generates a fresh `{storage_prefix}/{write_id}.rrd` key in catalog storage.
     /// Dropping the future stops local work but does not cancel submitted registration.
     /// Wait on the returned handle to confirm registration.
     // TODO(RR-2168): Add a segment_id parameter once registration supports overriding encoded recording IDs.
     pub async fn write_segment(
+        &self,
+        dataset_id: EntryId,
+        source: impl AsyncReadAt,
+        storage_prefix: Option<&ObjectKey>,
+        layer: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<WriteHandle, WriteError> {
+        let key = new_write_key(storage_prefix, "rrd")?;
+        self.upload_and_register(dataset_id, source, key, layer, on_duplicate)
+            .await
+    }
+
+    /// Upload complete RBL bytes to the dataset's blueprint dataset.
+    ///
+    /// Generates a fresh `{storage_prefix}/{write_id}.rbl` key in catalog storage.
+    /// This does not change the dataset's default blueprints.
+    pub async fn write_blueprint_bytes(
+        &self,
+        dataset_id: EntryId,
+        data: bytes::Bytes,
+        storage_prefix: Option<&ObjectKey>,
+        layer: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<WriteHandle, Box<WriteError>> {
+        self.write_blueprint(dataset_id, data, storage_prefix, layer, on_duplicate)
+            .await
+            .map_err(Box::new)
+    }
+
+    /// Upload a local RBL file to the dataset's blueprint dataset.
+    ///
+    /// Generates a fresh `{storage_prefix}/{write_id}.rbl` key in catalog storage.
+    /// This does not change the dataset's default blueprints.
+    /// Keep the file unchanged until the upload finishes.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn write_blueprint_path(
+        &self,
+        dataset_id: EntryId,
+        path: PathBuf,
+        storage_prefix: Option<&ObjectKey>,
+        layer: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<WriteHandle, Box<WriteError>> {
+        let file =
+            std::fs::File::open(&path).map_err(|source| WriteError::Open { source, path })?;
+        self.write_blueprint(dataset_id, file, storage_prefix, layer, on_duplicate)
+            .await
+            .map_err(Box::new)
+    }
+
+    /// Upload an RBL to the dataset's blueprint dataset and submit registration.
+    ///
+    /// Generates a fresh `{storage_prefix}/{write_id}.rbl` key in catalog storage.
+    /// This does not change the dataset's default blueprints.
+    /// Wait on the returned handle to confirm registration.
+    pub async fn write_blueprint(
+        &self,
+        dataset_id: EntryId,
+        source: impl AsyncReadAt,
+        storage_prefix: Option<&ObjectKey>,
+        layer: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<WriteHandle, WriteError> {
+        let key = new_write_key(storage_prefix, "rbl")?;
+        let blueprint_dataset = self
+            .read_dataset(dataset_id)
+            .await
+            .and_then(|dataset| {
+                dataset.dataset_details.blueprint_dataset.ok_or_else(|| {
+                    ApiError::invalid_arguments(
+                        self.origin(),
+                        "a blueprint dataset is not configured for this dataset",
+                    )
+                })
+            })
+            .map_err(|source| WriteError::ResolveDataset {
+                dataset_id,
+                kind: "blueprint",
+                source: Box::new(source),
+            })?;
+        self.upload_and_register(blueprint_dataset, source, key, layer, on_duplicate)
+            .await
+    }
+
+    /// Upload complete RRD bytes to the dataset's asset dataset.
+    ///
+    /// Generates a fresh `{storage_prefix}/{write_id}.rrd` key in catalog storage.
+    /// This preserves existing asset coverage; new assets apply to every segment.
+    pub async fn write_asset_bytes(
+        &self,
+        dataset_id: EntryId,
+        data: bytes::Bytes,
+        storage_prefix: Option<&ObjectKey>,
+        layer: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<WriteHandle, Box<WriteError>> {
+        self.write_asset(dataset_id, data, storage_prefix, layer, on_duplicate)
+            .await
+            .map_err(Box::new)
+    }
+
+    /// Upload a local RRD file to the dataset's asset dataset.
+    ///
+    /// Generates a fresh `{storage_prefix}/{write_id}.rrd` key in catalog storage.
+    /// This preserves existing asset coverage; new assets apply to every segment.
+    /// Keep the file unchanged until the upload finishes.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn write_asset_path(
+        &self,
+        dataset_id: EntryId,
+        path: PathBuf,
+        storage_prefix: Option<&ObjectKey>,
+        layer: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<WriteHandle, Box<WriteError>> {
+        let file =
+            std::fs::File::open(&path).map_err(|source| WriteError::Open { source, path })?;
+        self.write_asset(dataset_id, file, storage_prefix, layer, on_duplicate)
+            .await
+            .map_err(Box::new)
+    }
+
+    /// Upload an RRD to the dataset's asset dataset and submit registration.
+    ///
+    /// Generates a fresh `{storage_prefix}/{write_id}.rrd` key in catalog storage.
+    /// This preserves existing asset coverage; new assets apply to every segment.
+    /// Wait on the returned handle to confirm registration.
+    pub async fn write_asset(
+        &self,
+        dataset_id: EntryId,
+        source: impl AsyncReadAt,
+        storage_prefix: Option<&ObjectKey>,
+        layer: LayerName,
+        on_duplicate: IfDuplicateBehavior,
+    ) -> Result<WriteHandle, WriteError> {
+        let key = new_write_key(storage_prefix, "rrd")?;
+        let asset_dataset = self
+            .ensure_asset_dataset(dataset_id)
+            .await
+            .map_err(|source| WriteError::ResolveDataset {
+                dataset_id,
+                kind: "asset",
+                source: Box::new(source),
+            })?;
+        self.upload_and_register(asset_dataset, source, key, layer, on_duplicate)
+            .await
+    }
+
+    async fn upload_and_register(
         &self,
         dataset_id: EntryId,
         source: impl AsyncReadAt,

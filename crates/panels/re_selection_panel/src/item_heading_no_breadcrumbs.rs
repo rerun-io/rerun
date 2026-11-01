@@ -13,22 +13,18 @@ pub fn item_title_list_item(
     ui: &mut egui::Ui,
     item: &Item,
 ) {
-    let response = ui
-        .list_item()
-        .with_height(re_ui::DesignTokens::list_item_height())
-        .interactive(true)
-        .show_flat(
-            ui,
-            list_item::CustomContent::new(|ui, context| {
-                ui.spacing_mut().item_spacing.x = 4.0;
-                ui.style_mut().interaction.selectable_labels = false;
+    let response = ui.list_item().interactive(true).show_flat(
+        ui,
+        list_item::CustomContent::new(|ui, context| {
+            ui.spacing_mut().item_spacing.x = 4.0;
+            ui.style_mut().interaction.selectable_labels = false;
 
-                // The icons are white by default, so they need a tint that matches
-                // the list item background (light, dark, hovered or selected).
-                let icon_tint = context.visuals.icon_tint();
-                item_heading_no_breadcrumbs(ctx, viewport, ui, item, icon_tint);
-            }),
-        );
+            // The icons are white by default, so they need a tint that matches
+            // the list item background (light, dark, hovered or selected).
+            let icon_tint = context.visuals.icon_tint();
+            item_heading_no_breadcrumbs(ctx, viewport, ui, item, icon_tint);
+        }),
+    );
     cursor_interact_with_selectable(&ctx.app_ctx, response, item.clone());
 }
 

@@ -1,8 +1,6 @@
 use egui::{Button, Frame, RichText, Ui};
 use re_ui::egui_ext::card_layout::CardLayout;
-use re_ui::{
-    DesignTokens, Icon, ReButton, ReButtonExt as _, UICommand, UICommandSender as _, UiExt as _,
-};
+use re_ui::{ButtonExt as _, DesignTokens, Icon, UICommand, UICommandSender as _, UiExt as _};
 use re_uri::Origin;
 use re_viewer_context::{
     AppContext, EditRedapServerModalCommand, Item, SystemCommand, SystemCommandSender as _,
@@ -137,7 +135,7 @@ impl IntroItem {
                     );
                     ui.add_space(11.0);
 
-                    let response = ui.add(ReButton::new("Read docs").outlined().tiny());
+                    let response = ui.add(Button::new("Read docs").outlined().size_tiny());
                     if response.clicked_with_open_in_background() || response.clicked() {
                         ui.open_url(egui::OpenUrl::new_tab(*url));
                         #[cfg(feature = "analytics")]
@@ -162,7 +160,7 @@ impl IntroItem {
                     );
                     ui.add_space(11.0);
 
-                    let connect = ui.add(ReButton::new("Connect").outlined().tiny());
+                    let connect = ui.add(Button::new("Connect").outlined().size_tiny());
                     let connect = match &cloud_state.login {
                         LoginState::Auth { email: Some(email) } => {
                             connect.on_hover_text(format!("Logged in as {email}"))
@@ -230,7 +228,10 @@ pub fn intro_section(
                 .text_style(DesignTokens::heading_3()),
         );
 
-        if ui.add(Button::new("Log out").secondary().small()).clicked() {
+        if ui
+            .add(Button::new("Log out").secondary().size_small())
+            .clicked()
+        {
             ctx.command_sender.send_system(SystemCommand::Logout);
         }
 

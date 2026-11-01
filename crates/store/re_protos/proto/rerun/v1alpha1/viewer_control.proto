@@ -11,7 +11,7 @@
 //
 //   crates/store/re_protos/src/v1alpha1/rerun.viewer_control.v1alpha1.ext.rs
 //     One line in the `viewer_control_ops!` table, pairing the request with its response.
-//   crates/top/re_viewer/src/app/viewer_control.rs
+//   crates/top/re_viewer/src/app/viewer_control/mod.rs
 //     A match arm in `serve_viewer_control`, and what the operation does to the viewer.
 //   rerun_py/rerun_sdk/rerun/experimental/_viewer_client.py
 //     The public `ViewerClient` method, with keyword arguments and a docstring. It sends the
@@ -145,11 +145,11 @@ message ViewerControlRequest {
     // timeline, or play, pause, or follow it.
     SetTimeCursorRequest set_time_cursor = 6;
 
-    // Report a recording's schema: its timelines, every entity, every component ever logged on
-    // it, whether that component has a static value, and its Arrow datatype.
+    // Report a recording's schema: its timelines, entities, and archetypes by default.
+    // Set `with_components` to true for component names, static flags, and Arrow datatypes.
     //
-    // `paths_only` answers the cheaper question — which entities exist at all — for a recording
-    // too large to describe in full.
+    // Set both `with_archetypes` and `with_components` to false to list only entity paths
+    // for a recording too large to describe in full.
     //
     // Read this before naming an entity path or a component anywhere else. A component name
     // guessed from an archetype's documentation is often not the one the recording carries, and
@@ -231,7 +231,13 @@ message ViewerControlRequest {
     // `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
     // Read the `table` input field's documentation for the table, card, and preview configuration interface.
     //
-    // The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
+    // `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
+    // partial updates write only supplied fields, preserving everything else. Prefer partial
+    // updates for small edits such as a colormap or view name. Arrays and struct-valued fields
+    // are replaced as a whole, not merged. Set a field to null to clear it.
+    // A full recording update with an explicit root defaults omitted `auto_layout` and
+    // `auto_views` to false. Partial updates preserve these options unless supplied.
+    // A field holding a
     // single value may be written as that value or as an array of one. Exactly one of
     // `recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the
     // response names which one it wrote.
@@ -255,6 +261,10 @@ message ViewerControlRequest {
     // `INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked
     // against a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor
     // `table` is set.
+    // `INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a
+    // reference to a missing view, container, or visualizer instruction, a view, container, or
+    // instruction that nothing refers to, a loop of containers, or a view or container in two
+    // containers. So add a view and the reference to it in the same call.
     // `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
     // recording is not open or the viewer does not know the table.
     SetBlueprintRequest set_blueprint = 14;
@@ -369,6 +379,9 @@ message ViewerControlRequest {
     // The text is only sent when the user has agreed to share redacted prompts with Rerun.
     // Fails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.
     SubmitFeedbackRequest submit_feedback = 22;
+
+    // When adding an operation, decide whether agents may run it without asking the user:
+    // see `OPERATIONS_WITHOUT_APPROVAL` in `crates/viewer_support/re_viewer_control_tools/src/lib.rs`.
   }
 }
 
@@ -789,16 +802,21 @@ message GetRecordingSchemaRequest {
 
   // How many entities to describe at most.
   //
-  // Defaults to 100, or to 10000 with `paths_only`, since a path costs a line where the
-  // components on it cost many.
+  // Defaults to 100, or to 10000 when both `with_archetypes` and `with_components` are false.
   optional uint32 max_entities = 3;
 
-  // Name the entities without describing what is logged on them.
-  //
-  // A whole recording's paths fit in one answer at a size worth reading, where its components
-  // would not. Use this to see the shape of an unfamiliar recording, then call again with
-  // `entity_path` for the components of the entities that turned out to matter.
-  optional bool paths_only = 4;
+  // Removed: paths_only. Set both with_archetypes and with_components to false instead.
+  reserved 4;
+  reserved "paths_only";
+
+  // Include each entity's sorted, unique archetype names. Defaults to true.
+  // Entities without archetype metadata still appear, with no archetypes listed.
+  // This describes what was logged, not visibility at the cursor.
+  optional bool with_archetypes = 5;
+
+  // Include component names, types, and metadata. Defaults to false.
+  // Request these details with `entity_path` when inspecting specific entities.
+  optional bool with_components = 6;
 }
 
 // Response for `GetRecordingSchema`: the recording's entities and the components on them.
@@ -815,8 +833,8 @@ message GetRecordingSchemaResponse {
 
   // The matching entities in path order, each with the components logged on it.
   //
-  // With `paths_only` the components are left out, and an entity here names a path that has had
-  // something logged on it, nothing more.
+  // `with_archetypes` and `with_components` independently select the details to include.
+  // With both false, only entity paths are returned.
   repeated RecordingEntitySchema entities = 2;
 
   // How many matching entities got left out because of `max_entities`.
@@ -833,6 +851,10 @@ message RecordingEntitySchema {
 
   // The components logged on this entity.
   repeated RecordingComponentSchema components = 2;
+
+  // Sorted, unique fully-qualified archetype names, populated only in archetypes-only mode.
+  // An empty list means no archetype metadata was recorded, not that the entity has no data.
+  repeated string archetypes = 3;
 }
 
 // One component column of a recording.
@@ -1244,14 +1266,28 @@ message CaptureProfileTraceResponse {
 // ----------------------------------------------------------------------------
 // SetBlueprint
 
+// How a blueprint write treats omitted fields.
+enum BlueprintUpdateMode {
+  // Same as full, for callers that do not specify a mode.
+  BLUEPRINT_UPDATE_MODE_UNSPECIFIED = 0;
+  // Replace the whole blueprint, clearing omitted fields and entities.
+  BLUEPRINT_UPDATE_MODE_FULL = 1;
+  // Write only supplied fields. Arrays and struct-valued fields replace the whole field.
+  BLUEPRINT_UPDATE_MODE_PARTIAL = 2;
+}
+
 // Request for `SetBlueprint`.
 message SetBlueprintRequest {
   reserved 1;
   reserved "store_id";
 
-  // The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`
-  // returns it.
+  // Blueprint JSON keyed by entity path, as `GetBlueprint` returns it.
+  // In partial mode, include only the fields to change. Null clears a field;
+  // an empty object makes no changes. Arrays replace the entire field.
   string json = 2;
+
+  // `full` (default) replaces the whole blueprint; `partial` preserves omitted fields.
+  optional BlueprintUpdateMode mode = 5;
 
   // Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
   oneof target {
@@ -1295,7 +1331,7 @@ message SetBlueprintRequest {
     // {
     //   "/table": {"TableBlueprint": {"layout": "Cards"}},
     //   "/table/layouts/cards": {"CardLayout": {"title": "my_title", "link": "recording link", "field_order": ["recording link", "my_title"]}},
-    //   "/table/layouts/cards/fields/recording\\ link": {"TableColumn": {"cell_kind": "Preview"}, "TableColumnPreview": {"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}},
+    //   "/table/layouts/cards/fields/recording\\ link": {"TableColumnPreview":{"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}},
     //   "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {"ViewBlueprint": {"class_identifier": "3D", "space_origin": "/my_scene"}},
     //   "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents": {"ViewContents": {"query": "+ /my_scene/**"}}
     // }
@@ -1332,6 +1368,10 @@ message SetBlueprintResponse {
   // The table whose blueprint was written, set when the blueprint is a table's. A table that
   // only exists in the viewer has no URL, so neither this nor `store_id` is set for it.
   optional string table_url = 3;
+
+  // Entity paths the write added to the blueprint, sorted. A path here that was meant to
+  // edit an existing entity is a typo: the write created a new, incomplete entity instead.
+  repeated string created_entities = 4;
 }
 
 // ----------------------------------------------------------------------------

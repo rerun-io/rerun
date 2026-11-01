@@ -1,6 +1,6 @@
 //! Integration tests for dropping components from the streams tree onto a time series view.
 //!
-//! These exercise [`re_viewer_context::ViewClass::handle_component_drop`] end-to-end: the
+//! These exercise [`re_viewer_context::ViewClass::handle_drop`] end-to-end: the
 //! drop-feedback gating (which components are accepted) and the resulting blueprint mutation.
 
 use std::sync::Arc;
@@ -17,7 +17,7 @@ use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer_context::{
-    DragAndDropFeedback, RecommendedView, ViewClass as _, ViewId, ViewerContext,
+    DragAndDropFeedback, DragAndDropPayload, RecommendedView, ViewClass as _, ViewId, ViewerContext,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -116,10 +116,13 @@ fn test_drop_scalar_component_adds_visualizer() {
 
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         let component_path = sole_component(ctx, &entity);
-        let feedback = TimeSeriesView.handle_component_drop(
-            ctx,
-            view_id,
-            &[component_path],
+        let feedback = TimeSeriesView.handle_drop(
+            &ViewBlueprint::try_from_db(view_id, ctx.blueprint_db(), ctx.blueprint_query)
+                .expect("view should exist")
+                .bundle_context_with_state(ctx, TimeSeriesView.new_state().as_ref()),
+            &DragAndDropPayload::Components {
+                component_paths: vec1::vec1![component_path],
+            },
             /* released */ true,
         );
         assert_eq!(feedback, DragAndDropFeedback::Accept);
@@ -163,10 +166,13 @@ fn test_drop_non_scalar_component_is_rejected() {
 
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         let component_path = sole_component(ctx, &entity);
-        let feedback = TimeSeriesView.handle_component_drop(
-            ctx,
-            view_id,
-            &[component_path],
+        let feedback = TimeSeriesView.handle_drop(
+            &ViewBlueprint::try_from_db(view_id, ctx.blueprint_db(), ctx.blueprint_query)
+                .expect("view should exist")
+                .bundle_context_with_state(ctx, TimeSeriesView.new_state().as_ref()),
+            &DragAndDropPayload::Components {
+                component_paths: vec1::vec1![component_path],
+            },
             /* released */ false,
         );
         assert_eq!(
@@ -198,10 +204,13 @@ fn test_drop_integer_scalar_component_is_accepted() {
 
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         let component_path = sole_component(ctx, &entity);
-        let feedback = TimeSeriesView.handle_component_drop(
-            ctx,
-            view_id,
-            &[component_path],
+        let feedback = TimeSeriesView.handle_drop(
+            &ViewBlueprint::try_from_db(view_id, ctx.blueprint_db(), ctx.blueprint_query)
+                .expect("view should exist")
+                .bundle_context_with_state(ctx, TimeSeriesView.new_state().as_ref()),
+            &DragAndDropPayload::Components {
+                component_paths: vec1::vec1![component_path],
+            },
             /* released */ false,
         );
         assert_eq!(feedback, DragAndDropFeedback::Accept);
@@ -229,10 +238,13 @@ fn test_drop_bool_scalar_component_is_accepted() {
 
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         let component_path = sole_component(ctx, &entity);
-        let feedback = TimeSeriesView.handle_component_drop(
-            ctx,
-            view_id,
-            &[component_path],
+        let feedback = TimeSeriesView.handle_drop(
+            &ViewBlueprint::try_from_db(view_id, ctx.blueprint_db(), ctx.blueprint_query)
+                .expect("view should exist")
+                .bundle_context_with_state(ctx, TimeSeriesView.new_state().as_ref()),
+            &DragAndDropPayload::Components {
+                component_paths: vec1::vec1![component_path],
+            },
             /* released */ false,
         );
         assert_eq!(feedback, DragAndDropFeedback::Accept);

@@ -10,10 +10,9 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
-use re_viewer::external::re_ui::{
-    RecordingCommand, RecordingCommandKind, RecordingCommandSender as _,
+use re_viewer::external::re_viewer_context::{
+    RecordingCommand, RecordingCommandKind, RecordingCommandSender as _, ViewClass as _,
 };
-use re_viewer::external::re_viewer_context::ViewClass as _;
 use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
