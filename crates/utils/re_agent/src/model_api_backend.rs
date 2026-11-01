@@ -942,7 +942,7 @@ async fn run_tool_call(
             name: name.to_owned(),
         }),
         (None, Some(toolbox)) => {
-            if toolbox.requires_approval(name) && !is_allowed(&id, name, events).await {
+            if toolbox.requires_approval(name, &arguments) && !is_allowed(&id, name, events).await {
                 Err(ToolCallError::Declined)
             } else {
                 events.send(status_update(&id, ToolCallStatus::InProgress, Vec::new()));
@@ -1134,7 +1134,11 @@ mod tests {
                 .collect()
         }
 
-        fn requires_approval(&self, name: &str) -> bool {
+        fn requires_approval(
+            &self,
+            name: &str,
+            _arguments: &serde_json::Map<String, serde_json::Value>,
+        ) -> bool {
             name == "delete"
         }
 
@@ -1163,7 +1167,11 @@ mod tests {
             }]
         }
 
-        fn requires_approval(&self, _name: &str) -> bool {
+        fn requires_approval(
+            &self,
+            _name: &str,
+            _arguments: &serde_json::Map<String, serde_json::Value>,
+        ) -> bool {
             false
         }
 

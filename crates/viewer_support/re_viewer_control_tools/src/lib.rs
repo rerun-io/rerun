@@ -65,10 +65,10 @@ const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 
 /// Operations an agent may run without asking the user.
 ///
-/// They only read, or change what is shown in a way the user can see and undo. Everything else,
-/// including operations added later, asks first: `open` and `set_location` load data from any
-/// URL, `close` drops recordings, `run_command` runs any UI command, `capture_profile_trace`
-/// writes files, and `submit_feedback` sends text to Rerun.
+/// The rule: the user can easily undo them. Everything else, including operations added later,
+/// asks first: `open` loads data from any URL, `close` drops recordings, `capture_profile_trace`
+/// writes files, and `submit_feedback` sends text to Rerun. `run_command` asks too, since it runs
+/// any UI command, but a host that sees the arguments can let the undoable commands through.
 const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
     "describe_commands",
     "get_blueprint",
@@ -84,6 +84,7 @@ const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
     "list_commands",
     "save_screenshot",
     "set_blueprint",
+    "set_location",
     "set_time_cursor",
 ];
 
