@@ -15,7 +15,7 @@ use super::setup_ui::selected_agent_ready;
 use re_agent::AgentEntry;
 use re_agent::Transcript;
 use re_agent::{AgentLaunch, AgentLaunchError};
-use re_agent::{AgentSession, Phase, Prompt, TurnReport};
+use re_agent::{AgentSession, Phase, Prompt, SessionReports};
 use re_agent::{AgentSettings, SessionContext};
 
 /// How wide a host should make the panel.
@@ -176,8 +176,8 @@ pub struct AgentPanel {
     /// Every conversation the user has started, in the order they were opened.
     conversations: Vec<Conversation>,
 
-    /// Reports of the turns of closed conversations, until the host takes them.
-    closed_conversation_turns: Vec<TurnReport>,
+    /// Reports of closed conversations, until the host takes them.
+    closed_conversation_reports: SessionReports,
 
     /// The conversation the list view's input starts. It joins [`Self::conversations`] when the
     /// user sends its first prompt.
@@ -260,7 +260,7 @@ impl AgentPanel {
             context: SessionContext::default(),
             agents,
             conversations: Vec::new(),
-            closed_conversation_turns: Vec::new(),
+            closed_conversation_reports: SessionReports::default(),
             draft,
             user_opened_draft_setup: false,
             view: View::List,
@@ -422,15 +422,13 @@ impl AgentPanel {
         })
     }
 
-    /// Drains the reports of the turns finished in every conversation since the last call,
-    /// closed ones included.
-    pub fn take_finished_turns(&mut self) -> Vec<TurnReport> {
-        let mut turns = std::mem::take(&mut self.closed_conversation_turns);
-        turns.extend(
-            self.all_conversations_mut()
-                .flat_map(Conversation::take_finished_turns),
-        );
-        turns
+    /// Drains what every conversation reported since the last call, closed ones included.
+    pub fn take_reports(&mut self) -> SessionReports {
+        let mut reports = std::mem::take(&mut self.closed_conversation_reports);
+        for conversation in self.all_conversations_mut() {
+            reports.append(conversation.take_reports());
+        }
+        reports
     }
 
     /// Starts (or restarts) the agent of the shown conversation with the current settings.
@@ -735,8 +733,8 @@ impl AgentPanel {
                     .position(|conversation| conversation.id == id)
                 {
                     let closed = self.conversations.remove(index);
-                    self.closed_conversation_turns
-                        .extend(closed.into_finished_turns());
+                    self.closed_conversation_reports
+                        .append(closed.into_reports());
                 }
                 if self.view == View::Conversation(id) {
                     self.view = View::List;

@@ -1,8 +1,8 @@
-//! Sends finished agent turns as analytics, after a fresh agent session has removed
-//! sensitive data from them.
+//! Sends agent starts and finished agent turns as analytics. The text of a turn is only sent
+//! after a fresh agent session has removed sensitive data from it.
 
-use re_agent::TurnReport;
 use re_agent::{RedactionAgent, RedactionError, Redactor};
+use re_agent::{StartupReport, TurnReport};
 
 /// Used for text that could not be redacted. The reason follows the colon.
 const REDACTION_FAILED: &str = "<redaction failed";
@@ -103,6 +103,26 @@ pub fn update_redactor(redactor: &mut Redactor, egui_ctx: &egui::Context) {
 /// Record non-content usage statistics for a finished turn.
 pub fn record_usage(report: &TurnReport) {
     re_analytics::record(|| usage_from_report(report));
+}
+
+/// Record how an agent start went, without any of its text.
+pub fn record_startup(report: &StartupReport) {
+    let StartupReport {
+        backend,
+        agent,
+        model,
+        duration,
+        outcome,
+        auth_required,
+    } = report;
+    re_analytics::record(|| re_analytics::event::AgentStartup {
+        backend: backend.name().to_owned(),
+        agent: agent.clone(),
+        model: model.clone(),
+        duration_secs: duration.as_secs_f64(),
+        outcome: outcome.name().to_owned(),
+        auth_required: *auth_required,
+    });
 }
 
 fn usage_from_report(report: &TurnReport) -> re_analytics::event::AgentTurnUsage {

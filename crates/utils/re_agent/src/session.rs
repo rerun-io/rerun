@@ -24,8 +24,10 @@ use crate::agent_harness::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
 use crate::error::McpStartupFailure;
+use crate::reports::SessionReports;
 use crate::responder::{AgentStoppedWaiting, Responder};
 use crate::settings::AgentLaunch;
+use crate::startup::{AgentBackendKind, StartupOutcome, StartupStart};
 use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
@@ -250,9 +252,6 @@ struct Turns {
 
     /// The turn started by the last prompt, until the agent finishes it.
     current: Option<TurnStart>,
-
-    /// Turns finished since the host last called [`AgentSession::take_finished_turns`].
-    finished: Vec<TurnReport>,
 }
 
 /// Images written out for an agent that cannot take them inline.
@@ -279,6 +278,12 @@ pub struct AgentSession {
     agent: AgentInfo,
     requests: PendingRequests,
     turns: Turns,
+
+    /// The start of the agent, until the session opens or the agent goes away.
+    startup: Option<StartupStart>,
+
+    /// Since the host last called [`Self::take_reports`].
+    reports: SessionReports,
 
     #[cfg(agent_harness_backend)]
     images: ImageFiles,
@@ -309,6 +314,7 @@ impl AgentSession {
         let mut session = Self::default();
         let connection = match launch {
             AgentLaunch::AgentHarness(config) => {
+                session.startup = Some(StartupStart::new(AgentBackendKind::AgentHarness));
                 session.phase = Phase::Connecting {
                     status: format!("Starting {}…", config.command.display()),
                 };
@@ -326,6 +332,7 @@ impl AgentSession {
                 }
             }
             AgentLaunch::ModelApi(config) => {
+                session.startup = Some(StartupStart::new(AgentBackendKind::ModelApi));
                 session.phase = Phase::Connecting {
                     status: format!("Connecting to {}…", config.model),
                 };
@@ -344,16 +351,18 @@ impl AgentSession {
                 let reason = err.to_string();
                 session.report_error(reason.clone());
                 session.phase = Phase::Disconnected { reason };
+                session.finish_startup(StartupOutcome::Failed);
             }
         }
         session
     }
 
-    /// Ends the session and returns every turn report that the host has not taken yet,
+    /// Ends the session and returns every report that the host has not taken yet,
     /// including the running turn, reported as aborted.
-    pub fn into_finished_turns(mut self) -> Vec<TurnReport> {
+    pub fn into_reports(mut self) -> SessionReports {
         self.finish_turn(TurnOutcome::Aborted, "Stopped");
-        std::mem::take(&mut self.turns.finished)
+        self.finish_startup(StartupOutcome::Stopped);
+        std::mem::take(&mut self.reports)
     }
 
     /// Answer every permission request with the first "allow" option, without asking.
@@ -648,9 +657,22 @@ impl AgentSession {
         self.turns.queue.drain(..).collect()
     }
 
-    /// Drains the reports of the turns finished since the last call.
-    pub fn take_finished_turns(&mut self) -> Vec<TurnReport> {
-        std::mem::take(&mut self.turns.finished)
+    /// Drains what the session reported since the last call.
+    pub fn take_reports(&mut self) -> SessionReports {
+        std::mem::take(&mut self.reports)
+    }
+
+    /// Reports how the start of the agent ended, unless it already did.
+    fn finish_startup(&mut self, outcome: StartupOutcome) {
+        let Some(startup) = self.startup.take() else {
+            return;
+        };
+        let model = (outcome == StartupOutcome::Ready)
+            .then(|| self.transcript.current_model().map(str::to_owned))
+            .flatten();
+        self.reports
+            .startups
+            .push(startup.finish(self.agent.name.clone(), model, outcome));
     }
 
     fn begin_turn(&mut self, prompt: Prompt) {
@@ -729,7 +751,7 @@ impl AgentSession {
             );
         }
 
-        self.turns.finished.push(TurnReport {
+        self.reports.turns.push(TurnReport {
             agent: self.agent.name.clone(),
             model: self.transcript.current_model().map(str::to_owned),
             prompt,
@@ -933,12 +955,16 @@ impl AgentSession {
                 self.transcript.config_options = config_options;
                 self.agent.auth = None;
                 self.phase = Phase::Ready;
+                self.finish_startup(StartupOutcome::Ready);
             }
             AgentEvent::AuthRequired { methods, message } => {
                 self.phase = Phase::Connecting {
                     status: "Waiting for login".to_owned(),
                 };
                 self.agent.auth = Some(AuthPrompt { methods, message });
+                if let Some(startup) = &mut self.startup {
+                    startup.auth_required = true;
+                }
             }
             AgentEvent::Update(update) => {
                 if let SessionUpdate::CurrentModeUpdate(_) = &update {
@@ -947,6 +973,7 @@ impl AgentSession {
                 if let Some(failure) =
                     McpStartupFailure::from_codex_update(&update, &self.launch.mcp_servers)
                 {
+                    self.reports.mcp_startup_failures.push(failure.clone());
                     if let Some(note) = failure.replaced_by_agent_config_note() {
                         self.transcript.push_note(note, false);
                     } else {
@@ -1034,6 +1061,7 @@ impl AgentSession {
             AgentEvent::Error(err) => self.transcript.push_note(err, true),
             AgentEvent::Disconnected => {
                 self.finish_turn(TurnOutcome::Aborted, "The agent exited before finishing");
+                self.finish_startup(StartupOutcome::Exited);
                 self.phase = Phase::Disconnected {
                     reason: "The agent exited".to_owned(),
                 };
@@ -1229,11 +1257,62 @@ mod tests {
     use std::assert_matches;
 
     use agent_client_protocol_schema::v1::{
-        ContentChunk, SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation,
-        ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields,
+        ContentChunk, SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption,
+        SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
+        ToolCallUpdate, ToolCallUpdateFields,
     };
 
     use super::*;
+
+    #[test]
+    fn startup_report() {
+        let starting = || {
+            let mut session = AgentSession::default();
+            session.agent.name = Some("Test Agent".to_owned());
+            session.startup = Some(StartupStart::new(AgentBackendKind::AgentHarness));
+            session
+        };
+        let session_started = || AgentEvent::SessionStarted {
+            session_id: "session".into(),
+            modes: None,
+            config_options: vec![
+                SessionConfigOption::select(
+                    "model",
+                    "Model",
+                    "opus",
+                    vec![SessionConfigSelectOption::new("opus", "Opus 5.5")],
+                )
+                .category(SessionConfigOptionCategory::Model),
+            ],
+        };
+
+        let mut session = starting();
+        session.handle_event(AgentEvent::AuthRequired {
+            methods: Vec::new(),
+            message: String::new(),
+        });
+        session.handle_event(session_started());
+        // Only the first outcome counts: the session is no longer starting.
+        session.handle_event(AgentEvent::Disconnected);
+        let reports = session.into_reports().startups;
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].agent.as_deref(), Some("Test Agent"));
+        assert_eq!(reports[0].model.as_deref(), Some("Opus 5.5"));
+        assert_eq!(reports[0].outcome, StartupOutcome::Ready);
+        assert!(reports[0].auth_required);
+
+        let mut session = starting();
+        session.handle_event(AgentEvent::Disconnected);
+        let reports = session.into_reports().startups;
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].model, None);
+        assert_eq!(reports[0].outcome, StartupOutcome::Exited);
+        assert!(!reports[0].auth_required);
+
+        let reports = starting().into_reports().startups;
+        assert_eq!(reports.len(), 1);
+        assert_eq!(reports[0].outcome, StartupOutcome::Stopped);
+    }
 
     #[cfg(agent_harness_backend)]
     #[test]
@@ -1415,7 +1494,7 @@ mod tests {
     fn ending_a_session_reports_its_running_turn_as_aborted() {
         let mut session = AgentSession::default();
         session.begin_turn("do the thing".into());
-        let turns = session.into_finished_turns();
+        let turns = session.into_reports().turns;
         assert_eq!(turns.len(), 1);
         assert_eq!(turns[0].outcome, TurnOutcome::Aborted);
     }
@@ -1480,11 +1559,11 @@ mod tests {
             session.handle_event(AgentEvent::Update(update));
         }
         session.handle_event(AgentEvent::Error("agent hiccup".to_owned()));
-        assert!(session.take_finished_turns().is_empty());
+        assert!(session.take_reports().turns.is_empty());
 
         session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
         assert!(!session.turn_in_progress());
-        let reports = session.take_finished_turns();
+        let reports = session.take_reports().turns;
         assert_eq!(reports.len(), 1);
         let report = &reports[0];
         assert_eq!(report.agent.as_deref(), Some("Test Agent"));
@@ -1499,12 +1578,12 @@ mod tests {
         assert_eq!(report.errors, vec!["agent hiccup"]);
         assert_eq!(report.permissions_requested, 2);
         assert_eq!(report.permissions_rejected, 1);
-        assert!(session.take_finished_turns().is_empty());
+        assert!(session.take_reports().turns.is_empty());
 
         // A turn cut short by the agent going away is still reported.
         session.begin_turn("again".into());
         session.handle_event(AgentEvent::Disconnected);
-        let reports = session.take_finished_turns();
+        let reports = session.take_reports().turns;
         assert_eq!(reports.len(), 1);
         assert_eq!(reports[0].outcome, TurnOutcome::Aborted);
         assert_eq!(reports[0].response, "");
@@ -1549,8 +1628,13 @@ mod tests {
         assert!(markdown.contains("viewer-mcp"));
         assert!(markdown.contains("~/.codex/config.toml"));
 
+        let failures = session.take_reports().mcp_startup_failures;
+        assert_eq!(failures.len(), 1);
+        assert_eq!(failures[0].server_name, "rerun");
+        assert!(session.take_reports().mcp_startup_failures.is_empty());
+
         session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
-        let report = session.take_finished_turns().pop().unwrap();
+        let report = session.take_reports().turns.pop().unwrap();
         assert_eq!(report.tool_calls, 0);
         assert!(report.failed_tool_calls.is_empty());
     }
@@ -1581,6 +1665,10 @@ mod tests {
             "Codex uses the `rerun` MCP server from `[mcp_servers.rerun]` in your Codex config \
              instead of the one Rerun provides."
         );
+
+        let failures = session.take_reports().mcp_startup_failures;
+        assert_eq!(failures.len(), 1);
+        assert!(failures[0].replaced_by_agent_config_note().is_some());
     }
 
     #[test]

@@ -204,7 +204,18 @@ impl ViewerAgentPanel {
         self.harness.handle_self_improve_request(panel);
         // Before the redactors run, so that turning sharing off drops what is queued before any
         // of it can be sent.
-        let turns = panel.take_finished_turns();
+        let re_agent::SessionReports {
+            turns,
+            startups,
+            mcp_startup_failures,
+        } = panel.take_reports();
+        for startup in &startups {
+            agent_analytics::record_startup(startup);
+        }
+        cfg_select! {
+            agent_harness_backend => harness::record_mcp_startup_failures(&mcp_startup_failures),
+            _ => drop(mcp_startup_failures),
+        }
         self.reporting.record_finished_turns(panel, turns);
         self.reporting.ui(panel, ui);
     }
