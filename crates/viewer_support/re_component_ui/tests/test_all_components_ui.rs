@@ -75,6 +75,11 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         TestCase::from_component(components::Bool::from(true), "true"),
         TestCase::from_component(components::Bool::from(false), "false"),
         TestCase::from_arrow(
+            components::LayerName::name(),
+            arrow::array::StringArray::from(vec!["base", "properties", "annotations"]),
+            "three_layers",
+        ),
+        TestCase::from_arrow(
             ComponentType::from("any_value"),
             arrow::array::ListArray::new(
                 arrow::datatypes::Field::new("item", arrow::datatypes::DataType::Float64, false)

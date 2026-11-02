@@ -22,8 +22,8 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk_types::AnyValues;
-use re_types_core::AsComponents;
 use re_types_core::SegmentId;
+use re_types_core::{AsComponents, Component as _};
 use url::Url;
 
 use super::common::{
@@ -1454,6 +1454,19 @@ async fn scan_segment_table_and_snapshot(
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
+    );
+
+    let layer_names_field = batch
+        .schema()
+        .field_with_name(ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES_NAME)
+        .unwrap()
+        .clone();
+    assert_eq!(
+        layer_names_field
+            .metadata()
+            .get(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE)
+            .map(String::as_str),
+        Some(re_sdk_types::components::LayerName::name().as_str()),
     );
 
     let unstable_column_names = vec![

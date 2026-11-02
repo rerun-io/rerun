@@ -74,6 +74,8 @@ mod key_value_pairs;
 mod keypoint_id;
 #[path = "latlon.def.rs"]
 mod latlon;
+#[path = "layer_name.def.rs"]
+mod layer_name;
 #[path = "length.def.rs"]
 mod length;
 #[path = "line_strip2d.def.rs"]
@@ -222,6 +224,7 @@ pub use self::is_keyframe::*;
 pub use self::key_value_pairs::*;
 pub use self::keypoint_id::*;
 pub use self::latlon::*;
+pub use self::layer_name::*;
 pub use self::length::*;
 pub use self::line_strip2d::*;
 pub use self::line_strip3d::*;
