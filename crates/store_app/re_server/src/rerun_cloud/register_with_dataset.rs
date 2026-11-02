@@ -500,6 +500,17 @@ async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
                 "{err} (detected file type: {file_type})\nFile path: {rrd_path:?}"
             )));
         }
+        Err(
+            err @ (re_log_encoding::CodecError::IncompatibleRerunVersion { .. }
+            | re_log_encoding::CodecError::InvalidOptions(
+                re_log_encoding::rrd::OptionsError::RemovedMsgPackSerializer,
+            )
+            | re_log_encoding::CodecError::OldRrdVersion),
+        ) => {
+            return Err(tonic::Status::failed_precondition(format!(
+                "Failed to enumerate RRD stores: {err:#}: the .rrd was written by an unsupported version of Rerun: re-export it with a supported version"
+            )));
+        }
         Err(err) => {
             let code = match &err {
                 re_log_encoding::CodecError::Io(err)

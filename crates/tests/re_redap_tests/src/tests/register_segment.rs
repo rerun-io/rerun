@@ -548,6 +548,44 @@ pub async fn register_non_rrd_file_should_error(service: impl RerunCloudService)
     }
 }
 
+/// A corrupt `.rrd` is the caller's fault, and one from an old Rerun version needs re-exporting.
+pub async fn register_bad_rrd_file_should_error(service: impl RerunCloudService) {
+    let temp_dir = tempfile::tempdir().expect("creating temp dir");
+
+    let dataset_name = "bad_rrd_dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    for (header, expected_code) in [
+        (&b"RRF1"[..], tonic::Code::FailedPrecondition),
+        (
+            &[b"RRF2".as_slice(), &[0xFF; 60]].concat()[..],
+            tonic::Code::InvalidArgument,
+        ),
+    ] {
+        let path = temp_dir.path().join("bad.rrd");
+        let mut contents = header.to_vec();
+        contents.resize(64, 0);
+        std::fs::write(&path, contents).expect("writing temp file");
+
+        let request = RegisterWithDatasetRequest {
+            data_sources: vec![cloud_ext::DataSource::new_rrd_url(
+                Url::from_file_path(&path).expect("absolute path"),
+                None,
+            )],
+            on_duplicate: Default::default(),
+        };
+
+        let status = service
+            .register_with_dataset(
+                tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
+            )
+            .await
+            .expect_err("registering a bad RRD file should fail");
+
+        assert_eq!(status.code(), expected_code, "{status:?}");
+    }
+}
+
 pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
     async fn get_dataset_updated_at_nanos(
         service: &impl RerunCloudService,

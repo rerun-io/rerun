@@ -182,6 +182,7 @@ define_redap_tests! {
     register_segment::register_and_scan_simple_dataset_with_properties,
     register_segment::register_and_scan_simple_dataset_with_properties_out_of_order,
     register_segment::register_bad_file_uri_should_error,
+    register_segment::register_bad_rrd_file_should_error,
     register_segment::register_conflicting_property_schema,
     register_segment::register_conflicting_schema,
     register_segment::register_conflicting_schema_filters_segment_table,
