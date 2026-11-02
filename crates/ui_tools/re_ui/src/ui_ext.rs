@@ -287,20 +287,30 @@ pub trait UiExt {
             .add(egui::Button::new(atoms).secondary().size_small())
     }
 
-    #[expect(clippy::disallowed_methods)]
+    /// A radio button with Rerun's control fills.
+    #[expect(clippy::disallowed_types)]
+    fn re_radio<'a>(&mut self, selected: bool, text: impl IntoAtoms<'a>) -> egui::Response {
+        self.ui_mut()
+            .scope(|ui| {
+                set_radio_button_visuals(ui);
+
+                ui.add(egui::RadioButton::new(selected, text))
+            })
+            .inner
+    }
+
     fn re_radio_value<'a, Value: PartialEq>(
         &mut self,
         current_value: &mut Value,
         alternative: Value,
         text: impl IntoAtoms<'a>,
     ) -> egui::Response {
-        self.ui_mut()
-            .scope(|ui| {
-                set_radio_button_visuals(ui);
-
-                ui.radio_value(current_value, alternative, text)
-            })
-            .inner
+        let mut response = self.re_radio(*current_value == alternative, text);
+        if response.clicked() && *current_value != alternative {
+            *current_value = alternative;
+            response.mark_changed();
+        }
+        response
     }
 
     fn visibility_toggle_button(&mut self, visible: &mut bool) -> egui::Response {

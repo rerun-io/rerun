@@ -235,7 +235,7 @@ fn field_ui(
                     description,
                 } in options
                 {
-                    if ui.radio(text == value, title).clicked() {
+                    if ui.re_radio(text == value, title).clicked() {
                         if text == value {
                             text.clear();
                         } else {

@@ -212,10 +212,10 @@ fn model_api_row_ui(
     let has_key = available_model_apis.contains(&provider);
     ui.horizontal(|ui| {
         let radio = ui
-            .add_enabled(
-                API_KEYS_IN_SETTINGS || has_key,
-                egui::RadioButton::new(selected, format!("{} API", provider.name())),
-            )
+            .add_enabled_ui(API_KEYS_IN_SETTINGS || has_key, |ui| {
+                ui.re_radio(selected, format!("{} API", provider.name()))
+            })
+            .inner
             .on_disabled_hover_text(format!(
                 "Set {key_var} in the environment the viewer starts from, then restart it"
             ));

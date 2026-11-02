@@ -96,7 +96,9 @@ fn choice_card_ui(
             ui.spacing_mut().item_spacing.y = 4.0;
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
 
-            let clicked = ui.radio(selected, RichText::new(title).strong()).clicked();
+            let clicked = ui
+                .re_radio(selected, RichText::new(title).strong())
+                .clicked();
             ui.horizontal(|ui| {
                 ui.add_space(ui.spacing().icon_width + ui.spacing().icon_spacing);
                 ui.weak(description);
@@ -171,10 +173,10 @@ fn agent_row_ui(ui: &mut egui::Ui, agent: &AgentEntry, selected: bool) -> egui::
 
     ui.horizontal(|ui| {
         let radio = ui
-            .add_enabled(
-                executable.is_some(),
-                egui::RadioButton::new(selected, &profile.name),
-            )
+            .add_enabled_ui(executable.is_some(), |ui| {
+                ui.re_radio(selected, &profile.name)
+            })
+            .inner
             .on_disabled_hover_text("Not installed");
         if let Some(path) = executable {
             tag_ui(ui, "Installed").on_hover_text(path.display().to_string());
@@ -187,7 +189,7 @@ fn agent_row_ui(ui: &mut egui::Ui, agent: &AgentEntry, selected: bool) -> egui::
 /// Returns `true` if the radio button was clicked, or the command field focused or edited.
 fn custom_agent_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, selected: bool) -> bool {
     let radio_clicked = ui
-        .radio(selected, "Custom command")
+        .re_radio(selected, "Custom command")
         .on_hover_text(
             "Any command that speaks ACP over stdio. Leading NAME=value pairs set environment variables.",
         )
