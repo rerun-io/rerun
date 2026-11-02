@@ -28,6 +28,17 @@ use ::std::borrow::Cow;
 /// Within an entity draw order is governed by the order of the components.
 ///
 /// Draw order for entities with the same draw order is generally undefined.
+///
+/// If no draw order is set, the viewer uses these defaults:
+/// * -20: [`archetypes::DepthImage`][crate::archetypes::DepthImage], [`archetypes::EncodedDepthImage`][crate::archetypes::EncodedDepthImage]
+/// * -15: [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference], [`archetypes::VideoStream`][crate::archetypes::VideoStream]
+/// * -10: [`archetypes::Image`][crate::archetypes::Image], [`archetypes::EncodedImage`][crate::archetypes::EncodedImage], [`archetypes::GridMap`][crate::archetypes::GridMap]
+/// * 0: [`archetypes::SegmentationImage`][crate::archetypes::SegmentationImage]
+/// * 10: [`archetypes::Boxes2D`][crate::archetypes::Boxes2D], [`archetypes::Ellipses2D`][crate::archetypes::Ellipses2D]
+/// * 20: [`archetypes::Arrows2D`][crate::archetypes::Arrows2D], [`archetypes::LineStrips2D`][crate::archetypes::LineStrips2D]
+/// * 30: [`archetypes::Points2D`][crate::archetypes::Points2D]
+///
+/// For example, to draw an image on top of a segmentation image, give the image a draw order above 0.
 #[derive(Clone, Debug, Copy, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct DrawOrder(pub crate::encodings::Float32);

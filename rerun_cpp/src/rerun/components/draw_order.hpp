@@ -16,6 +16,17 @@ namespace rerun::components {
     /// Within an entity draw order is governed by the order of the components.
     ///
     /// Draw order for entities with the same draw order is generally undefined.
+    ///
+    /// If no draw order is set, the viewer uses these defaults:
+    /// * -20: `archetypes::DepthImage`, `archetypes::EncodedDepthImage`
+    /// * -15: `archetypes::VideoFrameReference`, `archetypes::VideoStream`
+    /// * -10: `archetypes::Image`, `archetypes::EncodedImage`, `archetypes::GridMap`
+    /// * 0: `archetypes::SegmentationImage`
+    /// * 10: `archetypes::Boxes2D`, `archetypes::Ellipses2D`
+    /// * 20: `archetypes::Arrows2D`, `archetypes::LineStrips2D`
+    /// * 30: `archetypes::Points2D`
+    ///
+    /// For example, to draw an image on top of a segmentation image, give the image a draw order above 0.
     struct DrawOrder {
         rerun::encodings::Float32 value;
 
