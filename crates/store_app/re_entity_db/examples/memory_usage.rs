@@ -103,7 +103,7 @@ fn log_messages() {
 
     let store_id = StoreId::random(StoreKind::Recording, "test_app");
     let timeline = Timeline::new_sequence("frame_nr");
-    let mut time_point = TimePoint::default();
+    let mut time_point = TimePoint::STATIC;
     time_point.insert(timeline, TimeInt::ZERO);
 
     {

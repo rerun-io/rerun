@@ -472,7 +472,7 @@ fn video_stream_cache_from_single_static_encoded_image() {
     // Statically logged image => static chunk (empty timepoint).
     let chunk = ChunkBuilder::new(ChunkId::new(), "img".into())
         .with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::EncodedImage::new(jpeg_data).with_media_type("image/jpeg"),
         )
         .build()
@@ -533,8 +533,8 @@ fn video_stream_cache_static_picks_highest_row_id() {
     assert!(high_row_id > low_row_id);
 
     let chunk = ChunkBuilder::new(ChunkId::new(), "img".into())
-        .with_archetype(low_row_id, TimePoint::default(), &image)
-        .with_archetype(high_row_id, TimePoint::default(), &image)
+        .with_archetype(low_row_id, TimePoint::STATIC, &image)
+        .with_archetype(high_row_id, TimePoint::STATIC, &image)
         .build()
         .unwrap();
     assert!(chunk.is_static());

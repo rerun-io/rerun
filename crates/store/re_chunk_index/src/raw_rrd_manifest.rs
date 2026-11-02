@@ -1945,7 +1945,7 @@ mod tests {
             .unwrap();
         let r#static = re_chunk::Chunk::builder(entity_path)
             .with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &MyPoints::new(MyPoint::from_iter(0..3))
                     .with_labels([MyLabel("static".to_owned())]),
             )

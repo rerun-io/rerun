@@ -191,7 +191,7 @@ fn test_video(video_type: VideoType, codec: &VideoCodec) {
     match video_type {
         VideoType::AssetVideo => {
             test_context.log_entity("video", |builder| {
-                builder.with_archetype(RowId::new(), TimePoint::default(), &video_asset)
+                builder.with_archetype(RowId::new(), TimePoint::STATIC, &video_asset)
             });
 
             test_context.log_entity("video", |mut builder| {

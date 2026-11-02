@@ -779,7 +779,7 @@ fn build_codec_chunk(entity_path: &EntityPath, codec: VideoCodec) -> Result<Chun
     let chunk = Chunk::builder(entity_path.clone())
         .with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &VideoStream::update_fields().with_codec(codec),
         )
         .build()?;

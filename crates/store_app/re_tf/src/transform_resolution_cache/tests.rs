@@ -480,14 +480,14 @@ fn test_static_tree_transforms() -> Result<(), Box<dyn std::error::Error>> {
         let timeline = Timeline::new_sequence("t");
         let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 // Make sure only translation is logged (no null arrays for everything else).
                 &Transform3D::from_translation([123.0, 234.0, 345.0]),
             )
             .build()?;
         let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 // Make sure only translation is logged (no null arrays for everything else).
                 &Transform3D::from_translation([1.0, 2.0, 3.0]),
             )
@@ -584,13 +584,13 @@ fn test_static_pose_transforms() -> Result<(), Box<dyn std::error::Error>> {
         let timeline = Timeline::new_sequence("t");
         let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &InstancePoses3D::new().with_translations([[321.0, 234.0, 345.0]]),
             )
             .build()?;
         let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &InstancePoses3D::new().with_translations([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]),
             )
             .build()?;
@@ -687,13 +687,13 @@ fn test_static_pinhole_projection() -> Result<(), Box<dyn std::error::Error>> {
         let timeline = Timeline::new_sequence("t");
         let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &Pinhole::new(image_from_camera_prior).with_resolution([1.0, 1.0]),
             )
             .build()?;
         let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &Pinhole::new(image_from_camera_final).with_resolution([2.0, 2.0]),
             )
             .build()?;
@@ -799,10 +799,10 @@ fn test_static_view_coordinates_projection() -> Result<(), Box<dyn std::error::E
         // Static view coordinates, non-static pinhole.
         let timeline = Timeline::new_sequence("t");
         let prior_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype_auto_row(TimePoint::default(), &archetypes::ViewCoordinates::BRU())
+            .with_archetype_auto_row(TimePoint::STATIC, &archetypes::ViewCoordinates::BRU())
             .build()?;
         let final_static_chunk = Chunk::builder(EntityPath::from("my_entity"))
-            .with_archetype_auto_row(TimePoint::default(), &archetypes::ViewCoordinates::BLU())
+            .with_archetype_auto_row(TimePoint::STATIC, &archetypes::ViewCoordinates::BLU())
             .build()?;
         let regular_chunk = Chunk::builder(EntityPath::from("my_entity"))
             .with_archetype_auto_row([(timeline, 1)], &Pinhole::new(image_from_camera))

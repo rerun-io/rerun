@@ -1552,7 +1552,7 @@ mod tests {
                 re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
-                        re_log_types::TimePoint::default().with(
+                        re_log_types::TimePoint::STATIC.with(
                             re_log_types::Timeline::new_sequence("blueprint"),
                             re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                         ),
@@ -1603,7 +1603,7 @@ mod tests {
         for _ in 0..n {
             let timepoint = match temporalness {
                 Temporalness::Static => re_log_types::TimePoint::STATIC,
-                Temporalness::Temporal => re_log_types::TimePoint::default().with(
+                Temporalness::Temporal => re_log_types::TimePoint::STATIC.with(
                     re_log_types::Timeline::new_sequence("log_time"),
                     re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                 ),

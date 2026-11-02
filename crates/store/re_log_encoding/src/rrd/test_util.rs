@@ -22,7 +22,7 @@ pub fn make_test_chunks(num_chunks: usize) -> Vec<Arc<Chunk>> {
                 .with_sparse_component_batches(
                     row_id,
                     #[expect(clippy::cast_possible_wrap)]
-                    TimePoint::default().with(timeline, i as i64),
+                    TimePoint::STATIC.with(timeline, i as i64),
                     [(MyPoints::descriptor_points(), Some(&points as _))],
                 )
                 .build()
@@ -59,7 +59,7 @@ fn make_points_chunk(points: &dyn re_types_core::ComponentBatch) -> Arc<Chunk> {
     let chunk = Chunk::builder("/test/entity")
         .with_sparse_component_batches(
             RowId::new(),
-            TimePoint::default().with(Timeline::new_sequence("frame"), 0),
+            TimePoint::STATIC.with(Timeline::new_sequence("frame"), 0),
             [(MyPoints::descriptor_points(), Some(points))],
         )
         .build()

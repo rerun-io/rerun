@@ -854,7 +854,7 @@ mod tests {
         );
 
         let row_id3 = RowId::new();
-        let timepoint3 = TimePoint::default();
+        let timepoint3 = TimePoint::STATIC;
         let chunk3 = {
             let num_instances = 6;
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];

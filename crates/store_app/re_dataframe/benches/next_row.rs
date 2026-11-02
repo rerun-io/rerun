@@ -155,7 +155,7 @@ fn build_chunk(num_rows: usize, build_outer: fn(usize) -> ArrayRef) -> Arc<Chunk
     let outer = build_outer(num_rows);
     for row_idx in 0..num_rows {
         let one_row = outer.slice(row_idx, 1);
-        let mut tp = TimePoint::default();
+        let mut tp = TimePoint::STATIC;
         tp.insert(timeline, TimeInt::new_temporal(row_idx as i64));
         builder = builder.with_row(RowId::new(), tp, [(component_descr.clone(), one_row)]);
     }
@@ -389,7 +389,7 @@ fn build_chunked_engine(
             for local_row in 0..rows_per_chunk {
                 let global_row = chunk_idx * rows_per_chunk + local_row;
                 let one_row = outer.slice(local_row, 1);
-                let mut tp = TimePoint::default();
+                let mut tp = TimePoint::STATIC;
                 tp.insert(timeline, TimeInt::new_temporal(global_row as i64));
                 builder = builder.with_row(RowId::new(), tp, [(component_descr.clone(), one_row)]);
             }

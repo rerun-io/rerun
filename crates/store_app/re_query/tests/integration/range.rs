@@ -262,7 +262,7 @@ fn static_range() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_archetype(
             row_id1_3,
-            TimePoint::default(),
+            TimePoint::STATIC,
             &MyPoints::update_fields().with_colors(colors1_2.clone()),
         )
         .build()?;
@@ -284,7 +284,7 @@ fn static_range() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_archetype(
             row_id2_2,
-            TimePoint::default(),
+            TimePoint::STATIC,
             &MyPoints::update_fields().with_colors(colors2_1.clone()),
         )
         .build()?;
@@ -790,7 +790,7 @@ fn invalidation() {
         );
     };
 
-    let static_ = TimePoint::default();
+    let static_ = TimePoint::STATIC;
     let frame_122 = build_frame_nr(122);
     let frame_123 = build_frame_nr(123);
     let frame_124 = build_frame_nr(124);
@@ -845,7 +845,7 @@ fn invalidation_of_future_optionals() {
 
     let entity_path = "points";
 
-    let static_ = TimePoint::default();
+    let static_ = TimePoint::STATIC;
     let frame2 = [build_frame_nr(2)];
     let frame3 = [build_frame_nr(3)];
 
@@ -958,7 +958,7 @@ fn invalidation_static() {
 
     let entity_path = "points";
 
-    let static_ = TimePoint::default();
+    let static_ = TimePoint::STATIC;
 
     let frame0 = [build_frame_nr(TimeInt::ZERO)];
     let query = RangeQuery::new(*frame0[0].0.name(), AbsoluteTimeRange::EVERYTHING);

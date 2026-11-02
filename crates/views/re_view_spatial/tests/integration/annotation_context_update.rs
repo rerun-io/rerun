@@ -25,7 +25,7 @@ pub fn test_annotation_context_update_on_points3d() {
     test_context.set_active_timeline(*timeline.name());
 
     let frame = |seq: i64| {
-        TimePoint::default().with(
+        TimePoint::STATIC.with(
             timeline,
             TimeInt::from_sequence(seq.try_into().expect("unexpected min value")),
         )

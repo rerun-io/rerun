@@ -16,7 +16,7 @@ pub fn test_dae_mesh_import() {
     test_context.log_entity("world/mesh", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Asset3D::from_file_path(&dae_path).unwrap(),
         )
     });
@@ -55,7 +55,7 @@ pub fn test_dae_multi_triangle_groups() {
     test_context.log_entity("world/mesh", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Asset3D::from_file_path(&dae_path).unwrap(),
         )
     });

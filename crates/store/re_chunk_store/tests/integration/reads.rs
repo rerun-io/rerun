@@ -121,7 +121,7 @@ fn all_components() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             (MyPoints::descriptor_colors(), &MyColor::from_iter(0..2)),
         )
         .build()?;
@@ -296,7 +296,7 @@ fn latest_at() -> anyhow::Result<()> {
     let chunk5 = Chunk::builder(entity_path.clone())
         .with_component_batches(
             row_id5,
-            TimePoint::default(),
+            TimePoint::STATIC,
             [(MyPoints::descriptor_colors(), &colors5 as _)],
         )
         .build()?;
@@ -790,7 +790,7 @@ fn earliest_at() -> anyhow::Result<()> {
     let chunk5 = Chunk::builder(entity_path.clone())
         .with_component_batches(
             row_id5,
-            TimePoint::default(),
+            TimePoint::STATIC,
             [(MyPoints::descriptor_colors(), &colors5 as _)],
         )
         .build()?;
@@ -1423,7 +1423,7 @@ fn range() -> anyhow::Result<()> {
         Chunk::builder(entity_path.clone())
             .with_component_batches(
                 row_id5,
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_colors(), &colors5 as _)],
             )
             .build()?,

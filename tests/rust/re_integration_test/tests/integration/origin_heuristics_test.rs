@@ -39,7 +39,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     harness.log_entity("/", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(0.0, 0.0, 0.0)],
                 [(0.3, 0.3, 0.3)],
@@ -51,7 +51,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     harness.log_entity("/world", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
         )
     });
@@ -59,7 +59,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     harness.log_entity("/world/camera", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Transform3D::from_rotation(
                 re_sdk_types::components::RotationAxisAngle::new(
                     [-1.0, 0.9, 0.0],
@@ -72,7 +72,7 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     harness.log_entity("/world/camera/image", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Pinhole::from_focal_length_and_resolution(
                 [128.0, 128.0],
                 [256.0, 256.0],
@@ -83,13 +83,13 @@ fn make_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
     });
 
     harness.log_entity("/world/camera/image", |builder| {
-        builder.with_archetype(RowId::new(), TimePoint::default(), &make_test_image())
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &make_test_image())
     });
 
     harness.log_entity("/world/camera/image/keypoint", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Points2D::new([(10.0, 10.0), (128.0, -0.0), (50.0, -50.0)])
                 .with_radii([-10.0, -10.0, -10.0])
                 .with_colors([0xFF9001FF, 0x9001FFFF, 0x90FF01FF]),
