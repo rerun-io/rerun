@@ -51,6 +51,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`KeyValuePairs`](components/key_value_pairs.md): A map of string keys to string values.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`LatLon`](components/lat_lon.md): A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
+* [`LayerName`](components/layer_name.md): The name of a layer of a segment in a dataset.
 * [`Length`](components/length.md): Length, or one-dimensional size.
 * [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.
 * [`LineStrip3D`](components/line_strip3d.md): A line strip in 3D space.

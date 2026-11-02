@@ -167,8 +167,14 @@ impl<'a> ImageStack<'a> {
     }
 
     pub fn finish(self) -> Vec<String> {
-        match self.url {
-            ImageUrl::Rerun(rerun) => rerun.image_stack(self.snippet_id, self.width, self.center),
+        let Self {
+            url,
+            width,
+            snippet_id,
+            center,
+        } = self;
+        match url {
+            ImageUrl::Rerun(rerun) => rerun.image_stack(snippet_id, width, center),
             ImageUrl::Other(url) => {
                 vec![format!(r#"<img src="{url}">"#)]
             }

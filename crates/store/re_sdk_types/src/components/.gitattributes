@@ -37,6 +37,7 @@ is_keyframe.rs linguist-generated=true
 key_value_pairs.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true
 lat_lon.rs linguist-generated=true
+layer_name.rs linguist-generated=true
 length.rs linguist-generated=true
 line_strip2d.rs linguist-generated=true
 line_strip3d.rs linguist-generated=true

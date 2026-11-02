@@ -48,6 +48,7 @@ key_value_pairs.cpp linguist-generated=true
 key_value_pairs.hpp linguist-generated=true
 keypoint_id.hpp linguist-generated=true
 lat_lon.hpp linguist-generated=true
+layer_name.hpp linguist-generated=true
 length.hpp linguist-generated=true
 line_strip2d.cpp linguist-generated=true
 line_strip2d.hpp linguist-generated=true

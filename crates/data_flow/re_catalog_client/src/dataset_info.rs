@@ -1,8 +1,8 @@
-//! An overview of a dataset, aggregated from its segment table and schema.
+//! An overview of a dataset selection, aggregated from its segment table and schema.
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use arrow::array::{Array as _, Int64Array, RecordBatch};
+use arrow::array::{Array as _, BooleanArray, Int64Array, RecordBatch};
 use arrow::datatypes::Schema as ArrowSchema;
 use re_chunk::TimeColumn;
 use re_chunk_index::RawRrdManifest;
@@ -13,29 +13,36 @@ use re_types_core::LayerName;
 
 use re_redap_client::{ApiError, ApiResult, TraceId};
 
-/// An overview of a dataset: its segments, layers, timelines, contents and properties.
+use crate::DatasetSelection;
+
+/// An overview of a dataset selection: its segments, layers, timelines, contents and properties.
 ///
-/// Built from the segment table and the dataset schema, without reading any recording data.
+/// Built from the segment table and the schemas, without reading any recording data.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DatasetInfo {
     pub num_segments: u64,
 
-    /// Sum of the segment table's per-segment sizes.
+    /// Sum of the segment table's per-segment sizes, including entities that content filters
+    /// leave out.
     pub size_bytes: u64,
 
     /// Sorted by name.
     pub layers: Vec<LayerInfo>,
 
-    /// Sorted by name.
+    /// The timelines that at least one selected segment has data on, sorted by name.
+    ///
+    /// Covers all entities of the selected segments, whatever the content filters.
     pub timelines: Vec<TimelineInfo>,
 
-    /// Entity paths in the dataset schema, excluding properties.
+    /// Selected entity paths, excluding properties.
     pub num_entities: u64,
 
-    /// Component columns in the dataset schema, excluding properties.
+    /// Component columns of the selected entities, excluding properties.
     pub num_component_columns: u64,
 
-    /// The segment table's property columns, sorted.
+    /// The dataset's segment table property columns, sorted.
+    ///
+    /// A selection keeps all of them, whatever its filters.
     pub property_columns: Vec<ComponentColumnDescriptor>,
 }
 
@@ -54,18 +61,20 @@ pub struct TimelineInfo {
     pub name: TimelineName,
     pub typ: TimeType,
 
-    /// Segments with data on this timeline. May be 0.
+    /// Segments with data on this timeline, at least 1.
     pub num_segments: u64,
 
-    /// Union of the per-segment ranges. `None` when `num_segments == 0`.
-    pub range: Option<AbsoluteTimeRange>,
+    /// Union of the per-segment ranges.
+    pub range: AbsoluteTimeRange,
 }
 
 /// Folds `/ScanSegmentTable` batches into a [`DatasetInfo`].
 ///
 /// Scan the segment table with [`Self::columns`] as the projection, feed every batch to
 /// [`Self::add_batch`], then call [`Self::finish`].
+/// Batches may hold segments outside the selection: [`Self::add_batch`] drops them.
 pub struct DatasetInfoBuilder {
+    selection: DatasetSelection,
     timelines: Vec<TimelineAccumulator>,
     property_columns: Vec<ComponentColumnDescriptor>,
 
@@ -85,7 +94,7 @@ struct TimelineAccumulator {
 }
 
 impl DatasetInfoBuilder {
-    pub fn new(segment_table_schema: &ArrowSchema) -> Self {
+    pub fn new(selection: DatasetSelection, segment_table_schema: &ArrowSchema) -> Self {
         let timelines = RawRrdManifest::global_index_ranges(segment_table_schema.fields())
             .filter_map(|(name, start_field, end_field)| {
                 let Some(typ) = TimeType::from_arrow_datatype(start_field.data_type()) else {
@@ -130,6 +139,7 @@ impl DatasetInfoBuilder {
         property_columns.sort();
 
         Self {
+            selection,
             timelines,
             property_columns,
             num_segments: 0,
@@ -141,6 +151,7 @@ impl DatasetInfoBuilder {
     /// The segment table columns to project the scan onto.
     pub fn columns(&self) -> Vec<&str> {
         let mut columns = vec![
+            ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
             ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES_NAME,
             ScanSegmentTableDataframe::COLUMN_RERUN_SIZE_BYTES_NAME,
         ];
@@ -159,6 +170,29 @@ impl DatasetInfoBuilder {
     ) -> ApiResult<()> {
         let decode_failed =
             |err| ApiError::deserialization_quiver_from(origin, trace_id, err, "/ScanSegmentTable");
+
+        let filtered_batch;
+        let batch = if let Some(segment_ids) = self.selection.segment_filter() {
+            // Servers may ignore the filter hint, so filter locally too.
+            let selected: BooleanArray = ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID
+                .extract(batch)
+                .map_err(decode_failed)?
+                .iter_owned()
+                .map(|segment_id| Some(segment_ids.contains(&segment_id)))
+                .collect();
+            filtered_batch =
+                arrow::compute::filter_record_batch(batch, &selected).map_err(|err| {
+                    ApiError::deserialization_with_source(
+                        origin,
+                        trace_id,
+                        err,
+                        "failed filtering /ScanSegmentTable rows",
+                    )
+                })?;
+            &filtered_batch
+        } else {
+            batch
+        };
 
         self.num_segments += batch.num_rows() as u64;
 
@@ -188,12 +222,10 @@ impl DatasetInfoBuilder {
         Ok(())
     }
 
-    pub fn finish(
-        self,
-        origin: &re_uri::Origin,
-        dataset_schema: &ArrowSchema,
-    ) -> ApiResult<DatasetInfo> {
+    /// `schema` is the union of the schemas of the selected segments, before content filtering.
+    pub fn finish(self, origin: &re_uri::Origin, schema: &ArrowSchema) -> ApiResult<DatasetInfo> {
         let Self {
+            selection,
             timelines,
             property_columns,
             num_segments,
@@ -201,7 +233,7 @@ impl DatasetInfoBuilder {
             layers,
         } = self;
 
-        let columns = SorbetColumnDescriptors::try_from_arrow_fields(None, dataset_schema.fields())
+        let columns = SorbetColumnDescriptors::try_from_arrow_fields(None, schema.fields())
             .map_err(|err| {
                 ApiError::deserialization_with_source(
                     origin,
@@ -212,7 +244,9 @@ impl DatasetInfoBuilder {
             })?;
         let component_columns: Vec<_> = columns
             .component_columns()
-            .filter(|column| !column.entity_path.is_property())
+            .filter(|column| {
+                !column.entity_path.is_property() && selection.selects_entity(&column.entity_path)
+            })
             .collect();
         let entities: BTreeSet<_> = component_columns
             .iter()
@@ -228,16 +262,17 @@ impl DatasetInfoBuilder {
                 .collect(),
             timelines: timelines
                 .into_iter()
-                .map(|timeline| TimelineInfo {
-                    name: timeline.name,
-                    typ: timeline.typ,
-                    num_segments: timeline.num_segments,
-                    range: Option::zip(timeline.min, timeline.max).map(|(min, max)| {
-                        AbsoluteTimeRange::new(
+                .filter_map(|timeline| {
+                    let (min, max) = Option::zip(timeline.min, timeline.max)?;
+                    Some(TimelineInfo {
+                        name: timeline.name,
+                        typ: timeline.typ,
+                        num_segments: timeline.num_segments,
+                        range: AbsoluteTimeRange::new(
                             TimeInt::saturated_temporal_i64(min),
                             TimeInt::saturated_temporal_i64(max),
-                        )
-                    }),
+                        ),
+                    })
                 })
                 .collect(),
             num_entities: entities.len() as u64,

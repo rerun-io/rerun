@@ -515,37 +515,43 @@ impl<'a, 'ctx> LineStripBuilder<'a, 'ctx> {
 
 impl Drop for LineStripBuilder<'_, '_> {
     fn drop(&mut self) {
-        if self.num_strips_added == 0 {
+        let Self {
+            builder,
+            outline_mask_ids,
+            vertex_range,
+            picking_instance_id,
+            strip,
+            num_strips_added,
+        } = self;
+
+        if *num_strips_added == 0 {
             // Happens if we reached the maximum number of strips.
             return;
         }
 
-        if self.outline_mask_ids.is_some() {
-            self.builder
+        if outline_mask_ids.is_some() {
+            builder
                 .batches
                 .last_mut()
                 .unwrap()
                 .additional_outline_mask_ids_vertex_ranges
                 .push((
-                    Span::from_start_len(
-                        self.vertex_range.start as u32,
-                        self.vertex_range.len as u32,
-                    ),
-                    self.outline_mask_ids,
+                    Span::from_start_len(vertex_range.start as u32, vertex_range.len as u32),
+                    *outline_mask_ids,
                 ));
         }
 
-        self.builder
+        builder
             .picking_instance_ids_buffer
-            .add_n(self.picking_instance_id, self.num_strips_added)
+            .add_n(*picking_instance_id, *num_strips_added)
             .ok_or_log_error_once();
-        self.builder
+        builder
             .strips_buffer
-            .add_n(self.strip, self.num_strips_added)
+            .add_n(*strip, *num_strips_added)
             .ok_or_log_error_once();
 
         re_log::debug_assert!(
-            self.builder.strips_buffer.len() == self.builder.picking_instance_ids_buffer.len()
+            builder.strips_buffer.len() == builder.picking_instance_ids_buffer.len()
         );
     }
 }

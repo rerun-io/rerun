@@ -37,9 +37,11 @@ mod elicitation;
 mod error;
 mod model_api_backend;
 mod redactor;
+mod reports;
 mod responder;
 mod session;
 mod settings;
+mod startup;
 mod transcript;
 mod turn;
 
@@ -64,12 +66,14 @@ pub use backend::{AgentCommand, AgentEvent, LineDirection};
 pub use error::McpStartupFailure;
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
 pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
+pub use reports::SessionReports;
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, ElicitationId, LogLine, PendingElicitation, PendingPermission, Phase,
     Prompt, PromptImage,
 };
 pub use settings::{AgentLaunch, AgentLaunchError, AgentSettings, McpServerConfig, SessionContext};
+pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};
 pub use transcript::{
     ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,
     truncate_bytes,

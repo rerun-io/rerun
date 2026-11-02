@@ -420,7 +420,7 @@ impl InFlight {
                 .send_prompt(redaction_prompt(&self.json).into());
         }
 
-        if let Some(finished) = self.redactor.take_finished_turns().pop() {
+        if let Some(finished) = self.redactor.take_reports().turns.pop() {
             return Some(parse_redacted(&self.json, &finished.response));
         }
 

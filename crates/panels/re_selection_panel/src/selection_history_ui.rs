@@ -173,7 +173,12 @@ fn history_item_ui(
         return false;
     };
 
-    if ui.add(egui::Button::new(title.atoms)).clicked() {
+    let EntryTitle { atoms, tooltip } = title;
+    let mut response = ui.add(egui::Button::new(atoms));
+    if let Some(tooltip) = tooltip {
+        response = response.on_hover_text(tooltip);
+    }
+    if response.clicked() {
         history.current = index;
         ui.close();
         true
@@ -185,6 +190,9 @@ fn history_item_ui(
 /// How one history entry is presented: the icon and label parts of the leading item.
 struct EntryTitle {
     atoms: egui::Atoms<'static>,
+
+    /// The tooltip of the leading item, if the entry is a single item.
+    tooltip: Option<egui::WidgetText>,
 }
 
 impl EntryTitle {
@@ -200,18 +208,20 @@ impl EntryTitle {
         let first = *items.first()?;
         let title = QualifiedItemTitle::from_item(ctx, viewport, &style, first);
 
-        let atoms = if items.len() == 1 {
-            title.into_atoms(&style, icon_tint)
+        let (atoms, tooltip) = if items.len() == 1 {
+            let tooltip = title.parts.last().and_then(|part| part.tooltip.clone());
+            (title.into_atoms(&style, icon_tint), tooltip)
         } else {
-            items
+            let atoms = items
                 .iter()
                 .copied()
                 .collect::<ItemCounter>()
                 .to_string()
-                .into_atoms()
+                .into_atoms();
+            (atoms, None)
         };
 
-        Some(Self { atoms })
+        Some(Self { atoms, tooltip })
     }
 
     fn text(&self) -> String {

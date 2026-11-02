@@ -20,12 +20,13 @@ use re_catalog_client::DatasetSelection;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::EntityPathFilter;
-use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
+use re_redap_client::ApiErrorKind;
+use re_sorbet::ColumnDescriptor;
 use re_types_core::SegmentId;
 
 use crate::catalog::{
-    IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
-    to_py_err,
+    IndexValuesLike, PyDatasetEntryInternal, PyDatasetInfoInternal, PySchemaInternal,
+    PyTableProviderAdapterInternal, to_py_err,
 };
 #[cfg(feature = "perf_telemetry")]
 use crate::trace_context::extract_trace_context_from_contextvar;
@@ -52,27 +53,6 @@ impl PyDatasetSelectionInternal {
     /// `selection` must select from `dataset`.
     pub fn new(dataset: Py<PyDatasetEntryInternal>, selection: DatasetSelection) -> Self {
         Self { dataset, selection }
-    }
-
-    /// Filter schema columns based on content filters.
-    fn filter_schema(&self, schema: SorbetColumnDescriptors) -> SorbetColumnDescriptors {
-        // Filter columns: keep non-component columns (row_id, index) and matching component columns
-        let filtered_columns: Vec<ColumnDescriptor> = schema
-            .into_iter()
-            .filter(|col| {
-                match col {
-                    ColumnDescriptor::Component(comp) => {
-                        self.selection.selects_entity(&comp.entity_path)
-                    }
-                    // Keep row_id and index columns
-                    ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => true,
-                }
-            })
-            .collect();
-
-        SorbetColumnDescriptors {
-            columns: filtered_columns,
-        }
     }
 }
 
@@ -127,20 +107,30 @@ impl PyDatasetSelectionInternal {
     fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetSelection.schema").entered();
-        let dataset = self_.dataset.borrow(py);
-        let PySchemaInternal {
-            columns: base_columns,
-            metadata,
-        } = PySchemaInternal::from_arrow_schema(PyDatasetEntryInternal::fetch_arrow_schema(
-            &dataset,
-        )?)?;
-
-        // Apply content filters
-        let filtered_columns = self_.filter_schema(base_columns);
-        Ok(PySchemaInternal {
-            columns: filtered_columns,
-            metadata,
-        })
+        let connection = self_
+            .dataset
+            .borrow(py)
+            .client()
+            .borrow(py)
+            .connection()
+            .clone();
+        let selection = self_.selection.clone();
+        let schema = wait_for_future(py, async {
+            connection
+                .inner()
+                .get_selection_schema(&selection)
+                .await
+                .map_err(|mut err| {
+                    //TODO(RR-6250): remove this when all production servers support /GetSchemas
+                    if err.kind == ApiErrorKind::Unimplemented {
+                        err.message.push_str(
+                            "; use `selection.dataset.schema()` for the schema of the whole dataset",
+                        );
+                    }
+                    to_py_err(err)
+                })
+        })?;
+        PySchemaInternal::from_arrow_schema(schema)
     }
 
     /// Return the Arrow schema of the data contained in this selection.
@@ -148,6 +138,16 @@ impl PyDatasetSelectionInternal {
         let _span =
             read_trace_context_from_python(self_.py(), "DatasetSelection.arrow_schema").entered();
         Ok(Self::schema(self_)?.into_arrow_schema().into())
+    }
+
+    /// Return an overview of the segments and contents this selection keeps.
+    fn info(self_: PyRef<'_, Self>) -> PyResult<PyDatasetInfoInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetSelection.info").entered();
+        self_
+            .dataset
+            .borrow(py)
+            .selection_info(py, self_.selection.clone())
     }
 
     /// Returns a list of segment IDs for this selection (filtered if segment filter is set).

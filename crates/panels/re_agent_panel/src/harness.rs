@@ -215,6 +215,21 @@ impl Harness {
     }
 }
 
+/// Record every MCP server that failed to start, without its name (unless it is ours),
+/// command, or error.
+pub fn record_mcp_startup_failures(failures: &[re_agent::McpStartupFailure]) {
+    for failure in failures {
+        re_analytics::record(|| re_analytics::event::AgentMcpStartupFailure {
+            server: if failure.server_name == MCP_SERVER_NAME {
+                re_analytics::event::Server::Rerun
+            } else {
+                re_analytics::event::Server::Other
+            },
+            replaced_by_agent_config: failure.replaced_by_agent_config_note().is_some(),
+        });
+    }
+}
+
 /// `rerun viewer-mcp`, pointed at this viewer.
 ///
 /// Prefers the running executable, so that the agent drives the viewer it is embedded in rather

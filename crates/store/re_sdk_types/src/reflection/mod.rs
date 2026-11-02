@@ -1742,6 +1742,19 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LayerName as Component>::name(),
+            ComponentTypeReflection {
+                docstring_md: "The name of a layer of a segment in a dataset.\n\n⚠\u{fe0f} **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**",
+                deprecation_summary: None,
+                custom_placeholder: Some(LayerName::default().to_arrow()?),
+                datatype: LayerName::arrow_data_type(),
+                encoding: Some("rerun.encodings.Utf8"),
+                enum_variants: None,
+                own_chunk: false,
+                verify_arrow_array: LayerName::verify_arrow_array,
+            },
+        ),
+        (
             <Length as Component>::name(),
             ComponentTypeReflection {
                 docstring_md: "Length, or one-dimensional size.\n\nMeasured in its local coordinate system; consult the archetype in use to determine which\naxis or part of the entity this is the length of.",

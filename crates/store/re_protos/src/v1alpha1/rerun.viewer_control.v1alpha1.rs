@@ -182,9 +182,9 @@ pub mod viewer_control_request {
         /// A full recording update with an explicit root defaults omitted `auto_layout` and
         /// `auto_views` to false. Partial updates preserve these options unless supplied.
         /// A field holding a
-        /// single value may be written as that value or as an array of one. Exactly one of
-        /// `recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the
-        /// response names which one it wrote.
+        /// single value may be written as that value or as an array of one. `recording` or `table`
+        /// picks whose blueprint to write, as for `GetBlueprint`: without either, it writes the
+        /// blueprint of what is on screen. The response names which one it wrote.
         ///
         /// ## Tables
         ///
@@ -203,8 +203,7 @@ pub mod viewer_control_request {
         /// ## Errors
         ///
         /// `INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked
-        /// against a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor
-        /// `table` is set.
+        /// against a table that has been shown.
         /// `INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a
         /// reference to a missing view, container, or visualizer instruction, a view, container, or
         /// instruction that nothing refers to, a loop of containers, or a view or container in two
@@ -1847,13 +1846,13 @@ pub struct SetBlueprintRequest {
     /// `full` (default) replaces the whole blueprint; `partial` preserves omitted fields.
     #[prost(enumeration = "BlueprintUpdateMode", optional, tag = "5")]
     pub mode: ::core::option::Option<i32>,
-    /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+    /// Whose blueprint to write. Unset writes the blueprint of what is on screen.
     #[prost(oneof = "set_blueprint_request::Target", tags = "3, 4")]
     pub target: ::core::option::Option<set_blueprint_request::Target>,
 }
 /// Nested message and enum types in `SetBlueprintRequest`.
 pub mod set_blueprint_request {
-    /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+    /// Whose blueprint to write. Unset writes the blueprint of what is on screen.
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Target {
         /// Write the blueprint of a recording.

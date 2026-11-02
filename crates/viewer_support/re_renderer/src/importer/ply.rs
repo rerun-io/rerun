@@ -172,26 +172,38 @@ struct MeshVertex {
 
 impl ParsedMeshVertex {
     fn into_vertex(self) -> std::io::Result<MeshVertex> {
-        let (Some(x), Some(y)) = (self.x, self.y) else {
+        let Self {
+            x,
+            y,
+            z,
+            nx,
+            ny,
+            nz,
+            red,
+            green,
+            blue,
+            alpha,
+        } = self;
+
+        let (Some(x), Some(y)) = (x, y) else {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::InvalidData,
                 "PLY mesh vertices require \"x\" and \"y\" properties",
             ));
         };
 
-        let position = glam::vec3(x, y, self.z.unwrap_or(0.0));
-        let normal = if let (Some(nx), Some(ny), Some(nz)) = (self.nx, self.ny, self.nz) {
+        let position = glam::vec3(x, y, z.unwrap_or(0.0));
+        let normal = if let (Some(nx), Some(ny), Some(nz)) = (nx, ny, nz) {
             Some(glam::vec3(nx, ny, nz))
         } else {
             None
         };
-        let color = if let (Some(red), Some(green), Some(blue)) = (self.red, self.green, self.blue)
-        {
+        let color = if let (Some(red), Some(green), Some(blue)) = (red, green, blue) {
             Some(Rgba32Unmul::from_rgba_unmul_array([
                 red,
                 green,
                 blue,
-                self.alpha.unwrap_or(255),
+                alpha.unwrap_or(255),
             ]))
         } else {
             None

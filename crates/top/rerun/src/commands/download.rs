@@ -25,10 +25,10 @@ pub struct DownloadCommand {
 
 impl DownloadCommand {
     pub fn run(self, tokio_runtime: &tokio::runtime::Handle) -> anyhow::Result<()> {
+        let Self { urls, output_dir } = self;
+
         let async_runtime = re_async::AsyncRuntimeHandle::new_native(tokio_runtime.clone());
-        let output_dir = self
-            .output_dir
-            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        let output_dir = output_dir.unwrap_or_else(|| std::path::PathBuf::from("."));
 
         if !output_dir.exists() {
             std::fs::create_dir_all(&output_dir)?;
@@ -37,7 +37,7 @@ impl DownloadCommand {
         let connection_registry =
             re_redap_client::ConnectionRegistry::new_with_stored_credentials();
 
-        for url in &self.urls {
+        for url in &urls {
             let data_source = LogDataSource::from_uri(
                 re_log_msg::FileSource::Cli,
                 url,

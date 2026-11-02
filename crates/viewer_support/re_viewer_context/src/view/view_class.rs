@@ -96,7 +96,11 @@ impl RecommendedVisualizers {
     ///
     /// Auto-spanned recommendations are always a subset of all recommendations.
     pub fn into_auto_spawned(self) -> BTreeMap<ViewSystemIdentifier, Vec1<RecommendedMappings>> {
-        self.auto_spawned
+        let Self {
+            all_recommendations: _,
+            auto_spawned,
+        } = self;
+        auto_spawned
     }
 
     fn extend_mappings_unique(

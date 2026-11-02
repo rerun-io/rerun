@@ -59,6 +59,7 @@ from .is_keyframe import IsKeyframe, IsKeyframeBatch
 from .key_value_pairs import KeyValuePairs, KeyValuePairsArrayLike, KeyValuePairsBatch, KeyValuePairsLike
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
+from .layer_name import LayerName, LayerNameBatch
 from .length import Length, LengthBatch
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike
@@ -227,6 +228,8 @@ __all__ = [
     "KeypointIdBatch",
     "LatLon",
     "LatLonBatch",
+    "LayerName",
+    "LayerNameBatch",
     "Length",
     "LengthBatch",
     "LineStrip2D",

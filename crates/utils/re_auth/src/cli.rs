@@ -147,6 +147,12 @@ pub struct GenerateTokenOptions {
 }
 
 pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> {
+    let GenerateTokenOptions {
+        server,
+        expiration,
+        permission,
+    } = options;
+
     let credentials = match oauth::load_and_refresh_credentials().await {
         Ok(Some(credentials)) => credentials,
 
@@ -159,8 +165,8 @@ pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> 
     };
 
     let jwt = credentials.access_token().jwt();
-    let server_url = url::Url::parse(&options.server.ascii_serialization())
-        .map_err(|err| Error::Generic(err.into()))?;
+    let server_url =
+        url::Url::parse(&server.ascii_serialization()).map_err(|err| Error::Generic(err.into()))?;
     let server_host = server_url
         .host_str()
         .ok_or_else(|| Error::Generic("server URL has no host".into()))?;
@@ -169,10 +175,10 @@ pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> 
         .map_err(|err| Error::Generic(err.into()))?;
 
     let res = send_async(GenerateToken {
-        server: options.server,
+        server,
         token,
-        expiration: options.expiration,
-        permission: options.permission,
+        expiration,
+        permission,
     })
     .await
     .map_err(|err| Error::Generic(err.into()))?;

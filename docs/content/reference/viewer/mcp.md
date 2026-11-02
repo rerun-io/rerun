@@ -213,6 +213,7 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
 ```
 
 `rerun_set_blueprint` accepts `mode: "full"` (the default) or `mode: "partial"`.
+Like `rerun_get_blueprint`, it writes the blueprint of what is on screen when given no target.
 Full updates replace the whole blueprint and clear omitted fields and entities, so read the blueprint, edit it, and send all of it back.
 Partial updates write only supplied fields and preserve everything else; prefer them for small changes such as a view name, colormap, or column visibility.
 Arrays and struct-valued fields are replaced as a whole, not merged; preserve other entries when editing a component map or list of active visualizers.
@@ -235,7 +236,28 @@ For example, this call renames one view without resending its layout or other pr
 }
 ```
 
+### Component defaults for a whole view
+
+For view-wide changes not meant for a specific entity, first consider component defaults at `/view/<view UUID>/defaults`.
+For a specific entity, use a [component override](#component-overrides) instead.
+Defaults apply to every entity using that archetype in the view, matching the selection panel's **Visualizer defaults**, but do not supersede logged values or per-entity overrides.
+
+For example, to hide Boxes3D labels throughout a view, call `rerun_set_blueprint` with this partial update, substituting the existing view UUID from `rerun_get_blueprint`:
+
+```json
+{
+  "recording": {},
+  "mode": "partial",
+  "json": "{\"/view/11111111-1111-4111-8111-111111111111/defaults\": {\"Boxes3D\": {\"show_labels\": false}}}"
+}
+```
+
+Check a screenshot; if some labels remain, inspect those entities' component sources and use [overrides](#component-overrides) where needed.
+Send `"show_labels": null` to remove the default.
+
 ### Component overrides
+
+Use per-entity overrides for selected entities or to supersede logged values; prefer [defaults](#component-defaults-for-a-whole-view) for view-wide styling.
 
 Store component overrides beside their `VisualizerInstruction` at `/view/<view UUID>/ViewContents/overrides/<entity path>/visualizers/<instruction UUID>`.
 For example, writing `Points3D.colors` directly at `overrides/<entity path>` does not configure the visualizer.

@@ -21,7 +21,8 @@ The constructors are discoverable (`dir(rrb)`,
 
 ## Editing a recording's blueprint through MCP
 
-Use `{"recording": {}}` to target the active recording.
+Without a target, `rerun_get_blueprint` and `rerun_set_blueprint` use what is on screen: the table if one is shown, else the active recording.
+Use `{"recording": {}}` to target the active recording even when a table is shown.
 `rerun_set_blueprint` accepts `mode: "full"` (default) or `mode: "partial"`.
 Use partial mode for focused edits: send only changed fields, leaving the layout and all omitted fields untouched.
 Full mode clears omitted fields and entities; use it for a complete layout, reading the existing blueprint first to preserve settings you intend to keep.
@@ -40,9 +41,13 @@ After each write, check the views and their `reports` in `rerun_get_state`, plus
 If the structure differs, inspect `rerun_get_blueprint` before retrying.
 Then check a screenshot for framing and readability before reporting completion.
 
-### Component overrides
+### Component defaults and overrides
 
-For component overrides like colors or colormaps, follow the [MCP component override example](https://rerun.io/docs/reference/viewer/mcp#component-overrides).
+For view-wide styling, prefer [component defaults](https://rerun.io/docs/reference/viewer/mcp#component-defaults-for-a-whole-view).
+For example, send `{"/view/<view UUID>/defaults": {"Boxes3D": {"show_labels": false}}}` as the `json` string of a partial update to hide Boxes3D labels.
+Defaults apply across the view but do not supersede logged values or per-entity overrides.
+
+For selected entities or to supersede logged values, follow the [MCP component override example](https://rerun.io/docs/reference/viewer/mcp#component-overrides).
 Verify the effective value in the entity's Visualizers section and the visual result, not just stored rows.
 
 ## Tables

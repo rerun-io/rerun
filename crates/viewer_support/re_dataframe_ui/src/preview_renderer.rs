@@ -596,6 +596,7 @@ fn preview_playback_ui(
     };
     let button_widget = controls_ui
         .image_button_widget(icon.as_image(), action)
+        .image_tint_follows_text_color(true)
         .fill(tokens.preview_controls_fill)
         .corner_radius(egui::CornerRadius::same((PLAY_BUTTON_SIZE / 2.0) as u8));
     let button = controls_ui.add_sized(egui::Vec2::splat(PLAY_BUTTON_SIZE), button_widget);

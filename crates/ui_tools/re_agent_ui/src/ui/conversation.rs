@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use re_agent::{
     AgentEntry, AgentLaunch, AgentProfileId, AgentSession, AgentSettings, AgentToolbox,
-    ModelApiProvider, Phase, Prompt, SessionContext, TurnReport,
+    ModelApiProvider, Phase, Prompt, SessionContext, SessionReports,
 };
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_ui::UiExt as _;
@@ -44,8 +44,8 @@ pub struct Conversation {
     /// The connection to its agent, and the transcript.
     pub session: AgentSession,
 
-    /// Reports of the turns of sessions that a restart replaced, until the host takes them.
-    replaced_session_turns: Vec<TurnReport>,
+    /// Reports of sessions that a restart replaced, until the host takes them.
+    replaced_session_reports: SessionReports,
 
     /// The prompt being written.
     pub input: ChatInput,
@@ -81,7 +81,7 @@ impl Conversation {
             created_at: SystemTime::now(),
             seen_finished_items: 0,
             session,
-            replaced_session_turns: Vec::new(),
+            replaced_session_reports: SessionReports::default(),
             input: ChatInput::default(),
             profile_id: settings.profile_id.clone(),
             screen: if settings.setup_done {
@@ -114,8 +114,8 @@ impl Conversation {
                 // Shut the old agent down before the new one starts.
                 let replaced = std::mem::take(&mut self.session);
                 let auto_approve = replaced.auto_approve();
-                self.replaced_session_turns
-                    .extend(replaced.into_finished_turns());
+                self.replaced_session_reports
+                    .append(replaced.into_reports());
 
                 self.session = AgentSession::start(launch, self.async_runtime.as_ref(), waker);
                 self.session.set_auto_approve(auto_approve);
@@ -131,24 +131,24 @@ impl Conversation {
         }
     }
 
-    /// Drains the reports of the turns finished since the last call, including those of sessions
-    /// that a restart replaced.
-    pub fn take_finished_turns(&mut self) -> Vec<TurnReport> {
-        let mut turns = std::mem::take(&mut self.replaced_session_turns);
-        turns.extend(self.session.take_finished_turns());
-        turns
+    /// Drains what its sessions reported since the last call, including sessions that a restart
+    /// replaced.
+    pub fn take_reports(&mut self) -> SessionReports {
+        let mut reports = std::mem::take(&mut self.replaced_session_reports);
+        reports.append(self.session.take_reports());
+        reports
     }
 
-    /// Ends the conversation, and returns the reports of every turn the host has not taken yet,
-    /// including the running turn, reported as aborted.
-    pub fn into_finished_turns(self) -> Vec<TurnReport> {
+    /// Ends the conversation, and returns every report the host has not taken yet, including the
+    /// running turn, reported as aborted.
+    pub fn into_reports(self) -> SessionReports {
         let Self {
             session,
-            mut replaced_session_turns,
+            mut replaced_session_reports,
             ..
         } = self;
-        replaced_session_turns.extend(session.into_finished_turns());
-        replaced_session_turns
+        replaced_session_reports.append(session.into_reports());
+        replaced_session_reports
     }
 
     /// Session title if the agent gave one, else the first line of the first prompt, else the

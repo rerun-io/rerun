@@ -19,14 +19,18 @@ pub struct Notebook {
 
 impl Notebook {
     pub fn run(self) -> anyhow::Result<()> {
+        let Self {
+            channel,
+            examples: example_names,
+        } = self;
         let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
-        let mut examples = if self.examples.is_empty() {
-            self.channel.notebooks(workspace_root)?
+        let mut examples = if example_names.is_empty() {
+            channel.notebooks(workspace_root)?
         } else {
             Channel::Nightly
                 .notebooks(workspace_root)?
                 .into_iter()
-                .filter(|example| self.examples.contains(&example.name))
+                .filter(|example| example_names.contains(&example.name))
                 .collect()
         };
         examples.sort_by(|a, b| a.name.cmp(&b.name));

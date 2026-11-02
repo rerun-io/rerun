@@ -1676,9 +1676,9 @@ checksum = "aaa6b4b263a5d737e9bf6b7c09b72c41a5480aec4d7219af827f6564e950b6a5"
 
 [[package]]
 name = "clipboard-win"
-version = "5.4.0"
+version = "5.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15efe7a882b08f34e38556b14f2fb3daa98769d06c7f0c1b076dfd0d983bc892"
+checksum = "052af7878466feccda12ba7a6a67d019d712f296809559b47c12c8cc196d3a9a"
 dependencies = [
  "error-code",
 ]
@@ -9064,6 +9064,7 @@ dependencies = [
  "re_sdk_types",
  "re_tracing",
  "re_ui",
+ "re_viewer_context",
  "re_viewer_control_tools",
  "re_workspace_hack",
  "serde",
@@ -11114,6 +11115,7 @@ dependencies = [
  "hmac",
  "http",
  "http-body",
+ "infer",
  "itertools 0.15.0",
  "jiff",
  "lance",

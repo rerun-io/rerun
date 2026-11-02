@@ -258,13 +258,19 @@ impl ItemTitle {
     }
 
     /// The icon and the label as atoms, ready for a button or a label.
+    ///
+    /// Atoms can't carry a tooltip, so callers must show [`Self::tooltip`] themselves.
     pub fn into_atoms(self, style: &egui::Style, icon_tint: egui::Color32) -> Atoms<'static> {
+        let Self {
+            icon,
+            label,
+            tooltip: _,
+        } = self;
         Atoms::new((
-            self.icon
-                .as_image()
+            icon.as_image()
                 .fit_to_exact_size(style.tokens().small_icon_size)
                 .tint(icon_tint),
-            self.label,
+            label,
         ))
     }
 

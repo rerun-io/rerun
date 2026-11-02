@@ -215,6 +215,7 @@ pub struct ScanSegmentTableDataframe {
     /// Layer names for this segment, one per layer.
     ///
     /// Same length as [`Self::rerun_storage_urls`].
+    #[quiver(metadata("rerun:component_type" = "rerun.components.LayerName"))]
     pub rerun_layer_names: quiver::Column<quiver::List<LayerName>>,
 
     /// Storage URLs for this segment, one per layer.

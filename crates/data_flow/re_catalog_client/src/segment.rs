@@ -13,7 +13,10 @@ use re_protos::cloud::v1alpha1::{
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::SegmentId;
-use re_redap_client::{ApiError, ApiResult, DatasetSchema, TraceId};
+use re_redap_client::{
+    ApiError, ApiErrorKind, ApiResult, ConnectionClient, DatasetSchema, OnMissingGetSchemas,
+    TraceId,
+};
 use re_types_core::LayerName;
 
 use crate::CatalogClient;
@@ -91,13 +94,7 @@ impl CatalogClient {
         let mut request = ScanSegmentTableRequest::with_columns([
             ScanSegmentTableDataframe::COLUMN_RERUN_SEGMENT_ID_NAME,
         ]);
-        if let Some(ids) = segment_filter {
-            request.segment_id_filter = Some(SegmentIdFilter {
-                strategy: Some(segment_id_filter::Strategy::ScanOnly(SegmentIdList {
-                    segment_ids: ids.iter().cloned().map(Into::into).collect(),
-                })),
-            });
-        }
+        request.segment_id_filter = segment_filter.map(scan_only);
 
         let mut stream = self
             .client()
@@ -159,29 +156,62 @@ impl CatalogClient {
         Ok(segment_count)
     }
 
-    /// An overview of a dataset, from its schemas and a projected scan of its segment table.
+    /// An overview of what `selection` keeps, from schemas and a projected scan of the segment
+    /// table.
+    ///
+    /// Pass a dataset's [`EntryId`] for an overview of the whole dataset.
+    ///
+    /// A segment-filtered selection fails with [`re_redap_client::ApiErrorKind::Unimplemented`]
+    /// against servers older than Rerun 0.41 or Rerun Hub 0.20.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_info(&self, dataset_id: EntryId) -> ApiResult<DatasetInfo> {
+    pub async fn get_dataset_info(
+        &self,
+        selection: impl Into<DatasetSelection>,
+    ) -> ApiResult<DatasetInfo> {
+        let selection = selection.into();
+        let dataset_id = selection.dataset_id();
         let mut client = self.client().await?;
         let segment_table_schema = client.get_segment_table_schema(dataset_id).await?;
-        let dataset_schema = client.get_dataset_schema(dataset_id).await?.schema;
+        let schema = selected_segments_schema(&mut client, &selection, "the info").await?;
 
-        let mut builder = DatasetInfoBuilder::new(&segment_table_schema);
-        let request = ScanSegmentTableRequest::with_columns(builder.columns());
-        let mut stream = client.scan_segment_table(dataset_id, request).await?;
-        let trace_id = stream.trace_id();
+        let selects_no_segments = selection.selects_no_segments();
+        let segment_id_filter = selection.segment_filter().map(scan_only);
+        let mut builder = DatasetInfoBuilder::new(selection, &segment_table_schema);
 
-        while let Some(batch) = stream.next().await {
-            builder.add_batch(self.origin(), trace_id, &batch?)?;
+        if !selects_no_segments {
+            let mut request = ScanSegmentTableRequest::with_columns(builder.columns());
+            request.segment_id_filter = segment_id_filter;
+            let mut stream = client.scan_segment_table(dataset_id, request).await?;
+            let trace_id = stream.trace_id();
+
+            while let Some(batch) = stream.next().await {
+                builder.add_batch(self.origin(), trace_id, &batch?)?;
+            }
         }
 
-        builder.finish(self.origin(), &dataset_schema)
+        builder.finish(self.origin(), &schema)
     }
 
     /// The union of the schemas of every registered layer of every segment in the dataset.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_schema(&self, dataset_id: EntryId) -> ApiResult<DatasetSchema> {
         self.client().await?.get_dataset_schema(dataset_id).await
+    }
+
+    /// The schema of the data `selection` keeps: the union of the schemas of its segments, without
+    /// the component columns of the entities its content filters leave out.
+    ///
+    /// A segment-filtered selection fails with [`re_redap_client::ApiErrorKind::Unimplemented`]
+    /// against servers older than Rerun 0.41 or Rerun Hub 0.20, and the order of its fields is
+    /// unspecified.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_selection_schema(
+        &self,
+        selection: &DatasetSelection,
+    ) -> ApiResult<ArrowSchema> {
+        let mut client = self.client().await?;
+        let schema = selected_segments_schema(&mut client, selection, "the schema").await?;
+        Ok(with_selected_contents(schema, selection))
     }
 
     /// The union of the schemas of a segment's registered layers.
@@ -199,7 +229,11 @@ impl CatalogClient {
         let mut client = self.client().await?;
 
         let Some(segment_schema) = client
-            .get_segments_schema(dataset_id, &BTreeSet::from([segment_id.clone()]))
+            .get_segments_schema(
+                dataset_id,
+                &BTreeSet::from([segment_id.clone()]),
+                OnMissingGetSchemas::FetchRrdManifests,
+            )
             .await?
         else {
             return Err(ApiError::not_found(
@@ -223,7 +257,11 @@ impl CatalogClient {
         }
 
         let Some(asset_schema) = client
-            .get_segments_schema(asset_dataset, &asset_ids)
+            .get_segments_schema(
+                asset_dataset,
+                &asset_ids,
+                OnMissingGetSchemas::FetchRrdManifests,
+            )
             .await?
         else {
             return Ok(segment_schema);
@@ -459,6 +497,62 @@ impl CatalogClient {
             .await?
             .unregister_from_dataset(dataset_id, vec![segment_id], vec![layer], false)
             .await
+    }
+}
+
+/// The union of the schemas of the segments `selection` keeps, whatever its content filters.
+///
+/// Against servers without `/GetSchemas`, a segment-filtered selection fails with an
+/// [`ApiErrorKind::Unimplemented`] error that says `what` requires a newer server.
+async fn selected_segments_schema(
+    client: &mut ConnectionClient,
+    selection: &DatasetSelection,
+    what: &str,
+) -> ApiResult<ArrowSchema> {
+    let dataset_id = selection.dataset_id();
+    let Some(segment_ids) = selection.segment_filter() else {
+        return Ok(client.get_dataset_schema(dataset_id).await?.schema);
+    };
+
+    // Falling back to one `/GetRrdManifest` per segment would take minutes for a thousand
+    // segments.
+    let schema = client
+        .get_segments_schema(dataset_id, segment_ids, OnMissingGetSchemas::Fail)
+        .await
+        .map_err(|mut err| {
+            if err.kind == ApiErrorKind::Unimplemented {
+                err.message = format!(
+                    "{what} of a segment selection requires a server running Rerun 0.41 or \
+                     Rerun Hub 0.20 or later"
+                );
+            }
+            err
+        })?;
+    Ok(schema.unwrap_or_else(ArrowSchema::empty))
+}
+
+/// `schema` without the component columns of the entities `selection` leaves out.
+fn with_selected_contents(schema: ArrowSchema, selection: &DatasetSelection) -> ArrowSchema {
+    let fields: Vec<_> = schema
+        .fields()
+        .iter()
+        .filter(|field| {
+            re_sorbet::ColumnDescriptor::try_from_arrow_field(None, field)
+                .ok()
+                .and_then(|column| column.entity_path().cloned())
+                .is_none_or(|entity_path| selection.selects_entity(&entity_path))
+        })
+        .cloned()
+        .collect();
+    ArrowSchema::new_with_metadata(fields, schema.metadata)
+}
+
+/// A segment-ID filter hint that keeps only `segment_ids`.
+fn scan_only(segment_ids: &BTreeSet<SegmentId>) -> SegmentIdFilter {
+    SegmentIdFilter {
+        strategy: Some(segment_id_filter::Strategy::ScanOnly(SegmentIdList {
+            segment_ids: segment_ids.iter().cloned().map(Into::into).collect(),
+        })),
     }
 }
 

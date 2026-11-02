@@ -61,6 +61,8 @@ use crate::{
 mod segment_properties;
 mod segments_schema;
 
+pub use self::segments_schema::OnMissingGetSchemas;
+
 /// Extension trait for [`tonic::Response`] that extracts both the inner value
 /// and the server's trace-id in one step.
 trait TonicResponseExt<T> {
