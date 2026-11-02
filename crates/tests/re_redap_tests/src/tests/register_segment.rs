@@ -503,6 +503,51 @@ pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService)
     }
 }
 
+/// Registering a file that isn't an RRD is the caller's fault, not an internal error.
+pub async fn register_non_rrd_file_should_error(service: impl RerunCloudService) {
+    let temp_dir = tempfile::tempdir().expect("creating temp dir");
+
+    let dataset_name = "non_rrd_dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let png_header = b"\x89PNG\r\n\x1a\n";
+    let unknown_header = [0x0F, 0x79, 0x8B, 0x62];
+
+    for (header, expected_message) in [
+        (
+            &png_header[..],
+            r#"Not an RRD file: expected FourCC header "RRF2", got "0x89504E47" (detected file type: image/png (.png))"#,
+        ),
+        (
+            &unknown_header[..],
+            r#"Not an RRD file: expected FourCC header "RRF2", got "0x0F798B62" (detected file type: unknown)"#,
+        ),
+    ] {
+        let path = temp_dir.path().join("not_an_rrd.rrd");
+        let mut contents = header.to_vec();
+        contents.resize(64, 0);
+        std::fs::write(&path, contents).expect("writing temp file");
+
+        let request = RegisterWithDatasetRequest {
+            data_sources: vec![cloud_ext::DataSource::new_rrd_url(
+                Url::from_file_path(&path).expect("absolute path"),
+                None,
+            )],
+            on_duplicate: Default::default(),
+        };
+
+        let status = service
+            .register_with_dataset(
+                tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
+            )
+            .await
+            .expect_err("registering a non-RRD file should fail");
+
+        assert_eq!(status.code(), tonic::Code::InvalidArgument, "{status:?}");
+        assert!(status.message().contains(expected_message), "{status:?}");
+    }
+}
+
 pub async fn register_segment_bumps_timestamp(service: impl RerunCloudService) {
     async fn get_dataset_updated_at_nanos(
         service: &impl RerunCloudService,

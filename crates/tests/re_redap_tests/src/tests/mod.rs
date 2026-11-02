@@ -189,6 +189,7 @@ define_redap_tests! {
     register_segment::register_empty_request,
     register_segment::register_fully_skipped,
     register_segment::register_intra_request_duplicates,
+    register_segment::register_non_rrd_file_should_error,
     register_segment::register_segment_bumps_timestamp,
     register_segment::register_with_dataset_if_duplicate_behavior_overwrite,
     register_segment::register_with_dataset_if_duplicate_behavior_skip,

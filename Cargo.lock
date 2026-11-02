@@ -11115,6 +11115,7 @@ dependencies = [
  "hmac",
  "http",
  "http-body",
+ "infer",
  "itertools 0.15.0",
  "jiff",
  "lance",
