@@ -259,15 +259,12 @@ impl ImporterSettings {
                     }
                     re_log_types::TimeType::TimestampNs => {
                         args.extend([
-                            "--time_duration_nanos".to_owned(),
+                            "--time_timestamp_nanos".to_owned(),
                             format!("{timeline}={}", cell.value),
                         ]);
 
                         // for backwards compatibility:
-                        args.extend([
-                            "--sequence".to_owned(),
-                            format!("{timeline}={}", cell.value),
-                        ]);
+                        args.extend(["--time".to_owned(), format!("{timeline}={}", cell.value)]);
                     }
                 }
             }
