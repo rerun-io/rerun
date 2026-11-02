@@ -31,6 +31,6 @@ Adding a whole new layer means editing [`../scripts/crate_layers.py`](../scripts
 
 ## Enforcement
 
-[`../scripts/check_crate_layers.py`](../scripts/check_crate_layers.py) fails in CI on a dependency that points up, and [`../ARCHITECTURE.md`](../ARCHITECTURE.md) draws the layering, one band per folder.
+[`../scripts/check_crate_dependencies.py`](../scripts/check_crate_dependencies.py) fails in CI on a dependency that points up, and [`../ARCHITECTURE.md`](../ARCHITECTURE.md) draws the layering, one band per folder.
 
 To fix a dependency that points the wrong way, move a crate — do not reorder the layers.

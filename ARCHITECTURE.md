@@ -102,7 +102,7 @@ Here is an overview of the crates included in the project, and how they depend o
 
 Each band is one folder under `crates/`, with `rerun_py` and `rerun_c` folded into the top band.
 Every arrow points downwards, because the folders are layers: a crate may only depend on its own folder or one below it.
-[`scripts/check_crate_layers.py`](scripts/check_crate_layers.py) enforces that in CI.
+[`scripts/check_crate_dependencies.py`](scripts/check_crate_dependencies.py) enforces that in CI.
 A `dev-dependency` is exempt, since a test may reach anywhere.
 
 See [`crates/README.md`](crates/README.md) for the layers as a list, and for which one a new crate belongs in.

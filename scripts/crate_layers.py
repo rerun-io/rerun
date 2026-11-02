@@ -1,7 +1,7 @@
 """
 The folders under `crates/`, and how they layer.
 
-`check_crate_layers.py` enforces this layering, and `generate_crate_graph.py` draws it in `ARCHITECTURE.md`.
+`check_crate_dependencies.py` enforces this layering, and `generate_crate_graph.py` draws it in `ARCHITECTURE.md`.
 """
 
 from __future__ import annotations
