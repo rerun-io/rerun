@@ -998,7 +998,7 @@ Local Rerun catalog server.
 * `--cors-allow-origin <CORS_ALLOW_ORIGIN>`
 > Additional origin patterns allowed to make cross-origin requests to the server (can be specified multiple times).
 >
-> By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed. Patterns are matched against the full `Origin` header value, using glob-style matching where `*` matches any sequence of characters.
+> By default, only `localhost`, `127.0.0.1`, `rerun.io`, and its subdomains are allowed. Patterns are matched against the full `Origin` header value, using glob-style matching where `*` matches any sequence of characters.
 
 * `-V, --version `
 > Print version.
