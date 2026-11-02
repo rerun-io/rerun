@@ -376,9 +376,9 @@ impl AppCore {
                 );
             }
             Kind::GetBlueprint(GetBlueprintRequest { target }) => {
-                let requested =
-                    target.map_or_else(|| self.blueprint_on_screen(), RequestedBlueprint::from);
-                match self.requested_blueprint_target(store_hub, Some(requested)) {
+                match self
+                    .requested_blueprint_target(store_hub, target.map(RequestedBlueprint::from))
+                {
                     Ok(target) => self.answer_after_blueprint(
                         on_done,
                         target.ensure_blueprint_command(),
@@ -1142,30 +1142,24 @@ impl AppCore {
         })
     }
 
-    /// The blueprint a `get_blueprint` or `set_blueprint` request names, with the active
-    /// recording or the table on screen filled in for a missing id.
+    /// The blueprint a `get_blueprint` or `set_blueprint` request names, with what is on screen
+    /// filled in for a missing target, and the active recording or the table on screen filled in
+    /// for a missing id.
     fn requested_blueprint_target(
         &self,
         store_hub: &StoreHub,
         requested: Option<RequestedBlueprint>,
     ) -> Result<BlueprintTarget, ViewerControlError> {
-        let store_id = match requested {
-            // A `oneof` is an enum: an unset target names neither a recording nor a table.
-            None => {
-                return Err(ViewerControlError::invalid_argument(
-                    "set exactly one of `recording` and `table`: `{\"recording\": {}}` for the \
-                     active recording, or `{\"table\": {}}` for the table on screen",
-                ));
-            }
-            Some(RequestedBlueprint::Table(table_url)) => {
+        let store_id = match requested.unwrap_or_else(|| self.blueprint_on_screen()) {
+            RequestedBlueprint::Table(table_url) => {
                 return Ok(BlueprintTarget::Table(self.requested_table(table_url)?));
             }
-            Some(RequestedBlueprint::Recording(Some(store_id))) => {
+            RequestedBlueprint::Recording(Some(store_id)) => {
                 store_id.parse::<StoreId>().map_err(|err| {
                     ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
                 })?
             }
-            Some(RequestedBlueprint::Recording(None)) => {
+            RequestedBlueprint::Recording(None) => {
                 self.state.active_recording_id().cloned().ok_or_else(|| {
                     ViewerControlError::failed_precondition(
                         "no active recording, and no `store_id`",

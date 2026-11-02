@@ -294,9 +294,9 @@ export type ViewerControlRequest = Message<"rerun.viewer_control.v1alpha1.Viewer
      * A full recording update with an explicit root defaults omitted `auto_layout` and
      * `auto_views` to false. Partial updates preserve these options unless supplied.
      * A field holding a
-     * single value may be written as that value or as an array of one. Exactly one of
-     * `recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the
-     * response names which one it wrote.
+     * single value may be written as that value or as an array of one. `recording` or `table`
+     * picks whose blueprint to write, as for `GetBlueprint`: without either, it writes the
+     * blueprint of what is on screen. The response names which one it wrote.
      *
      * ## Tables
      *
@@ -315,8 +315,7 @@ export type ViewerControlRequest = Message<"rerun.viewer_control.v1alpha1.Viewer
      * ## Errors
      *
      * `INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked
-     * against a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor
-     * `table` is set.
+     * against a table that has been shown.
      * `INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a
      * reference to a missing view, container, or visualizer instruction, a view, container, or
      * instruction that nothing refers to, a loop of containers, or a view or container in two
@@ -2683,7 +2682,7 @@ export type SetBlueprintRequest = Message<"rerun.viewer_control.v1alpha1.SetBlue
   mode?: BlueprintUpdateMode | undefined;
 
   /**
-   * Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+   * Whose blueprint to write. Unset writes the blueprint of what is on screen.
    *
    * @generated from oneof rerun.viewer_control.v1alpha1.SetBlueprintRequest.target
    */

@@ -213,6 +213,7 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
 ```
 
 `rerun_set_blueprint` accepts `mode: "full"` (the default) or `mode: "partial"`.
+Like `rerun_get_blueprint`, it writes the blueprint of what is on screen when given no target.
 Full updates replace the whole blueprint and clear omitted fields and entities, so read the blueprint, edit it, and send all of it back.
 Partial updates write only supplied fields and preserve everything else; prefer them for small changes such as a view name, colormap, or column visibility.
 Arrays and struct-valued fields are replaced as a whole, not merged; preserve other entries when editing a component map or list of active visualizers.

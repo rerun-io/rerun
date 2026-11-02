@@ -21,7 +21,8 @@ The constructors are discoverable (`dir(rrb)`,
 
 ## Editing a recording's blueprint through MCP
 
-Use `{"recording": {}}` to target the active recording.
+Without a target, `rerun_get_blueprint` and `rerun_set_blueprint` use what is on screen: the table if one is shown, else the active recording.
+Use `{"recording": {}}` to target the active recording even when a table is shown.
 `rerun_set_blueprint` accepts `mode: "full"` (default) or `mode: "partial"`.
 Use partial mode for focused edits: send only changed fields, leaving the layout and all omitted fields untouched.
 Full mode clears omitted fields and entities; use it for a complete layout, reading the existing blueprint first to preserve settings you intend to keep.

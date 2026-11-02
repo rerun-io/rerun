@@ -91,7 +91,10 @@ const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
 /// Fully-qualified names of the `oneof`s a caller may leave unset, which the viewer then fills in.
 ///
 /// A `.proto` cannot mark a `oneof` as omittable, so this list does.
-const OMITTABLE_ONEOFS: &[&str] = &["rerun.viewer_control.v1alpha1.GetBlueprintRequest.target"];
+const OMITTABLE_ONEOFS: &[&str] = &[
+    "rerun.viewer_control.v1alpha1.GetBlueprintRequest.target",
+    "rerun.viewer_control.v1alpha1.SetBlueprintRequest.target",
+];
 
 /// The screenshot operation, whose `max_size` this server defaults.
 const SCREENSHOT_OPERATION: &str = "save_screenshot";
@@ -1042,13 +1045,17 @@ mod tests {
         );
     }
 
-    /// `get_blueprint` reads what is on screen when it names no target, but still refuses two.
+    /// The blueprint tools use what is on screen when they name no target, but still refuse two.
     #[test]
     fn an_omittable_oneof_takes_no_arm_but_not_several() {
         build("get_blueprint", &json!({})).expect("the target is omittable");
+        build("set_blueprint", &json!({ "json": "{}" })).expect("the target is omittable");
 
-        let err = build("get_blueprint", &json!({ "recording": {}, "table": {} }))
-            .expect_err("two targets contradict each other");
+        let err = build(
+            "set_blueprint",
+            &json!({ "json": "{}", "recording": {}, "table": {} }),
+        )
+        .expect_err("two targets contradict each other");
         assert!(err.contains("at most one"), "{err}");
     }
 
