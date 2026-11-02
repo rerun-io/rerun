@@ -117,3 +117,74 @@ fn test_notification_with_details_in_field() {
     harness.run();
     harness.snapshot("notification_with_details_in_field_expanded");
 }
+
+/// A failure that repeats shows up as one toast with a count, with the details the occurrences
+/// share shown once, and the rest grouped per occurrence.
+#[test]
+fn test_repeated_notification() {
+    let mut notifications: Option<NotificationUi> = None;
+
+    let mut harness =
+        re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(520.0, 420.0))
+            .build_ui(move |ui| {
+                let notifications = notifications.get_or_insert_with(|| {
+                    let mut notifications = NotificationUi::new(ui.ctx().clone());
+                    for trace_id in ["e2aba56a", "0b3c41f9", "77d0e2c1"] {
+                        notifications.add(
+                            Notification::new(
+                                NotificationLevel::Error,
+                                "Failed to load the blueprint, skipping it",
+                            )
+                            .with_details([
+                                "Endpoint: /GetRrdManifest".to_owned(),
+                                format!("trace-id: {trace_id}"),
+                            ]),
+                        );
+                    }
+                    notifications
+                });
+
+                notifications.show_toasts(ui.ctx());
+            });
+
+    harness.run();
+    harness.snapshot("notification_repeated");
+
+    harness.get_by_label("Details").click();
+    harness.run();
+    harness.snapshot("notification_repeated_expanded");
+}
+
+/// Details taller than the viewport scroll, and the close button takes down a toast that open
+/// details would otherwise keep up forever.
+#[test]
+fn test_long_details_scroll_and_close() {
+    let mut notifications: Option<NotificationUi> = None;
+
+    let mut harness =
+        re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(520.0, 300.0))
+            .build_ui(move |ui| {
+                let notifications = notifications.get_or_insert_with(|| {
+                    let mut notifications = NotificationUi::new(ui.ctx().clone());
+                    notifications.add(
+                        Notification::new(NotificationLevel::Error, "Failed to load")
+                            .with_details((0..40).map(|i| format!("line {i}"))),
+                    );
+                    notifications
+                });
+
+                notifications.show_toasts(ui.ctx());
+            });
+
+    harness.run();
+    harness.get_by_label("Details").click();
+    harness.run();
+    harness.snapshot("notification_long_details_expanded");
+
+    harness.get_by_label("Close").click();
+    harness.run();
+    assert!(
+        harness.query_by_label("Details").is_none(),
+        "the toast should be gone"
+    );
+}
