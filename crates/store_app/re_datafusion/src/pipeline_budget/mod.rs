@@ -540,36 +540,49 @@ impl SegmentAdmissionPolicy {
     }
 
     pub(crate) fn record_metrics(self, metrics: &QueryMetrics) {
+        let Self {
+            candidate_limit,
+            effective_limit,
+            source,
+            candidate_reason,
+            adaptive_enabled,
+            profile_segment_count,
+            profile_complete,
+            p95_segment_bytes,
+            max_segment_bytes,
+            largest_window_bytes,
+        } = self;
+
         metrics
             .segment_admission_candidate_limit
-            .store(self.candidate_limit.saturating_into::<u64>(), Relaxed);
+            .store(candidate_limit.saturating_into::<u64>(), Relaxed);
         metrics
             .segment_admission_source
-            .store(self.source as u64, Relaxed);
+            .store(source as u64, Relaxed);
         metrics
             .segment_admission_candidate_reason
-            .store(self.candidate_reason as u64, Relaxed);
+            .store(candidate_reason as u64, Relaxed);
         metrics
             .segment_admission_adaptive_enabled
-            .store(u64::from(self.adaptive_enabled), Relaxed);
+            .store(u64::from(adaptive_enabled), Relaxed);
         metrics
             .segment_admission_profile_segment_count
-            .store(self.profile_segment_count.saturating_into::<u64>(), Relaxed);
+            .store(profile_segment_count.saturating_into::<u64>(), Relaxed);
         metrics
             .segment_admission_profile_complete
-            .store(u64::from(self.profile_complete), Relaxed);
+            .store(u64::from(profile_complete), Relaxed);
         metrics
             .segment_admission_p95_segment_bytes
-            .store(self.p95_segment_bytes, Relaxed);
+            .store(p95_segment_bytes, Relaxed);
         metrics
             .segment_admission_max_segment_bytes
-            .store(self.max_segment_bytes, Relaxed);
+            .store(max_segment_bytes, Relaxed);
         metrics
             .segment_admission_largest_window_bytes
-            .store(self.largest_window_bytes, Relaxed);
+            .store(largest_window_bytes, Relaxed);
         metrics
             .segment_admission_limit
-            .store(self.effective_limit.saturating_into::<u64>(), Relaxed);
+            .store(effective_limit.saturating_into::<u64>(), Relaxed);
     }
 }
 

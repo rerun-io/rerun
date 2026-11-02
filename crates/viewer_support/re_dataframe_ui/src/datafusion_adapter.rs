@@ -291,7 +291,13 @@ impl DataFusionQuery {
     }
 
     async fn batch_stream(self) -> Result<QueryBatchStream, DataFusionError> {
-        let (mut session_state, plan) = self.session_ctx.table(self.table_ref).await?.into_parts();
+        let Self {
+            session_ctx,
+            table_ref,
+            query_data,
+        } = self;
+
+        let (mut session_state, plan) = session_ctx.table(table_ref).await?.into_parts();
         set_filter_time_zone(&mut session_state);
         let mut dataframe = DataFrame::new(session_state.clone(), plan);
 
@@ -301,7 +307,7 @@ impl DataFusionQuery {
             entry_links,
             prefilter,
             filters,
-        } = &self.query_data;
+        } = query_data;
 
         //
         // Segment links
@@ -344,7 +350,7 @@ impl DataFusionQuery {
         //
 
         if let Some(prefilter) = prefilter {
-            dataframe = dataframe.filter(prefilter.clone())?;
+            dataframe = dataframe.filter(prefilter)?;
         }
 
         //

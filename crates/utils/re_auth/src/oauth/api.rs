@@ -312,11 +312,17 @@ pub struct AuthenticateWithCodeResponse {
 
 impl From<AuthenticateWithCodeResponse> for RefreshResponse {
     fn from(value: AuthenticateWithCodeResponse) -> Self {
+        let AuthenticateWithCodeResponse {
+            user,
+            organization_id,
+            access_token,
+            refresh_token,
+        } = value;
         Self {
-            user: value.user.into(),
-            organization_id: value.organization_id,
-            access_token: value.access_token,
-            refresh_token: value.refresh_token,
+            user: user.into(),
+            organization_id,
+            access_token,
+            refresh_token,
         }
     }
 }

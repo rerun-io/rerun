@@ -236,10 +236,16 @@ impl OwnChunkRuleArgs {
 
 impl GopBatchingRuleArgs {
     fn into_rule(self) -> PyResult<GopBatchingRule> {
+        let Self {
+            entity_filter,
+            samples,
+            keyframes,
+        } = self;
+
         Ok(GopBatchingRule {
-            entity_filter: parse_entity_filter(self.entity_filter)?,
-            samples: self.samples.into_override("samples")?,
-            keyframes: self.keyframes.into_placement()?,
+            entity_filter: parse_entity_filter(entity_filter)?,
+            samples: samples.into_override("samples")?,
+            keyframes: keyframes.into_placement()?,
         })
     }
 }

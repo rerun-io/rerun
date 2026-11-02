@@ -105,13 +105,14 @@ impl HeightField {
 impl rerun::AsComponents for HeightField {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<rerun::SerializedComponentBatch> {
-        [
-            self.buffer.clone(),
-            self.format.clone(),
-            self.colormap.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        let Self {
+            buffer,
+            format,
+            colormap,
+        } = self;
+        [buffer.clone(), format.clone(), colormap.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }

@@ -43,13 +43,13 @@ pub struct PanelStates {
 
 impl serde::Serialize for PanelStates {
     fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        [
-            self.top as u8,
-            self.blueprint as u8,
-            self.selection as u8,
-            self.time as u8,
-        ]
-        .serialize(serializer)
+        let Self {
+            top,
+            blueprint,
+            selection,
+            time,
+        } = *self;
+        [top as u8, blueprint as u8, selection as u8, time as u8].serialize(serializer)
     }
 }
 

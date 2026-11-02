@@ -185,15 +185,21 @@ struct DiagnosticSummaries<'a> {
 
 impl DiagnosticSummaries<'_> {
     fn messages(&self) -> Vec<String> {
+        let Self {
+            skipped_episodes,
+            skipped_data_files,
+            skipped_features,
+            failed_features,
+            skipped_metadata_rows,
+            metadata_warnings,
+        } = self;
         [
-            self.skipped_episodes.message("Skipping episodes"),
-            self.skipped_data_files
-                .message("Skipping unusable data files and their episodes"),
-            self.skipped_features.message("Skipping dataset features"),
-            self.failed_features.message(),
-            self.skipped_metadata_rows
-                .message("Skipping invalid episode metadata rows"),
-            self.metadata_warnings.message("LeRobot metadata warnings"),
+            skipped_episodes.message("Skipping episodes"),
+            skipped_data_files.message("Skipping unusable data files and their episodes"),
+            skipped_features.message("Skipping dataset features"),
+            failed_features.message(),
+            skipped_metadata_rows.message("Skipping invalid episode metadata rows"),
+            metadata_warnings.message("LeRobot metadata warnings"),
         ]
         .into_iter()
         .flatten()

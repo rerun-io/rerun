@@ -244,8 +244,8 @@ impl From<crate::Rgba> for Vec4 {
 
 impl From<Vec4> for glam::Vec4 {
     #[inline]
-    fn from(val: Vec4) -> Self {
-        glam::vec4(val.x, val.y, val.z, val.w)
+    fn from(Vec4 { x, y, z, w }: Vec4) -> Self {
+        glam::vec4(x, y, z, w)
     }
 }
 
@@ -298,8 +298,8 @@ impl From<glam::Affine3A> for Mat4 {
 
 impl From<Mat4> for glam::Mat4 {
     #[inline]
-    fn from(val: Mat4) -> Self {
-        Self::from_cols(val.c0.into(), val.c1.into(), val.c2.into(), val.c3.into())
+    fn from(Mat4 { c0, c1, c2, c3 }: Mat4) -> Self {
+        Self::from_cols(c0.into(), c1.into(), c2.into(), c3.into())
     }
 }
 
