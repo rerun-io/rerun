@@ -32,9 +32,10 @@ use tokio_stream::Stream;
 pub struct ScanParams {
     /// Unique column names required from the source, in scan order.
     ///
-    /// `None` requests every column. `Some([])` is a zero-column DataFusion projection; protocols
-    /// where an empty projection means "all columns" must request all columns and rely on the
-    /// stream normalizer to remove them while preserving the row count.
+    /// `None` requests every column. `Some([])` is a zero-column DataFusion projection, as in
+    /// `count(*)`; protocols where an empty projection means "all columns" must still request at
+    /// least one column, see [`Self::requested_columns`]. The stream normalizer removes it while
+    /// preserving the row count.
     pub projected_columns: Option<Arc<[String]>>,
 
     /// Filters offered by DataFusion, combined with a logical AND.
@@ -48,6 +49,20 @@ pub struct ScanParams {
     /// server-side limit support; the coalescer already enforces it downstream in the meantime.
     #[expect(dead_code, reason = "plumbed for future server-side limit pushdown")]
     pub limit: Option<usize>,
+}
+
+impl ScanParams {
+    /// The columns to request from a protocol where an empty list means "all columns".
+    ///
+    /// A zero-column projection requests only `row_count_column`, which must be a cheap column
+    /// that every row has, rather than the whole table.
+    pub fn requested_columns(&self, row_count_column: &str) -> Vec<String> {
+        match self.projected_columns.as_deref() {
+            None => Vec::new(),
+            Some([]) => vec![row_count_column.to_owned()],
+            Some(columns) => columns.to_vec(),
+        }
+    }
 }
 
 #[async_trait]
@@ -620,6 +635,25 @@ mod table_query_pipeline_tests {
         assert!(
             err.to_string()
                 .contains("has datatype UInt32, expected Utf8")
+        );
+    }
+
+    #[test]
+    fn requested_columns_never_sends_an_empty_projection() {
+        let params = |projected_columns: Option<&[&str]>| ScanParams {
+            projected_columns: projected_columns
+                .map(|columns| columns.iter().map(|column| (*column).to_owned()).collect()),
+            ..Default::default()
+        };
+
+        assert_eq!(
+            params(None).requested_columns("cheap"),
+            Vec::<String>::new()
+        );
+        assert_eq!(params(Some(&[])).requested_columns("cheap"), vec!["cheap"]);
+        assert_eq!(
+            params(Some(&["a", "b"])).requested_columns("cheap"),
+            vec!["a", "b"]
         );
     }
 
