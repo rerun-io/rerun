@@ -416,15 +416,31 @@ fn server_entries_ui(
             message,
             is_auth_error,
         } => {
-            let (label, color) = if *is_auth_error {
-                ("Authentication required", ui.visuals().weak_text_color())
+            if *is_auth_error {
+                let response = ui
+                    .list_item()
+                    .show_flat(
+                        ui,
+                        list_item::LabelContent::new(
+                            egui::RichText::new("Authentication required")
+                                .color(ui.visuals().weak_text_color()),
+                        ),
+                    )
+                    .on_hover_text(message);
+
+                if response.clicked() {
+                    ctx.command_sender()
+                        .send_system(SystemCommand::EditRedapServerModal(
+                            re_viewer_context::EditRedapServerModalCommand::new(origin.clone()),
+                        ));
+                }
             } else {
-                ("Failed to load entries", ui.visuals().error_fg_color)
-            };
-            ui.list_item_flat_noninteractive(list_item::LabelContent::new(
-                egui::RichText::new(label).color(color),
-            ))
-            .on_hover_text(message);
+                ui.list_item_flat_noninteractive(list_item::LabelContent::new(
+                    egui::RichText::new("Failed to load entries")
+                        .color(ui.visuals().error_fg_color),
+                ))
+                .on_hover_text(message);
+            }
         }
 
         ServerEntriesData::Loaded { entry_tree } => {
