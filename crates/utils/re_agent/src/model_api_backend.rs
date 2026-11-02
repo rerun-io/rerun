@@ -100,20 +100,25 @@ const OPENAI_WEB_SEARCH: &str = "web_search";
 /// A provider reply is summarized from its HTTP status and the `error.message` in its body,
 /// which is where both the Anthropic and the `OpenAI` APIs put the human-readable part.
 fn describe_provider_error(err: &rig_core::ProviderError) -> String {
-    let Some(status) = err.provider_response_status() else {
+    if err.provider_response().is_none() {
         return format!("The model request failed: {err}");
-    };
+    }
 
-    let code = status.as_u16();
-    let summary = match code {
-        401 => "The API key was rejected".to_owned(),
-        403 => "The API key is not allowed to do this".to_owned(),
-        429 => "The model API is rate limiting requests".to_owned(),
-        500..=599 => format!("The model API had an internal error ({code})"),
-        _ => format!(
-            "The model request failed with {code} {}",
-            status.canonical_reason().unwrap_or_default()
-        ),
+    let summary = match err.provider_response_status() {
+        None => "The model request failed".to_owned(),
+        Some(status) => {
+            let code = status.as_u16();
+            match code {
+                401 => "The API key was rejected".to_owned(),
+                403 => "The API key is not allowed to do this".to_owned(),
+                429 => "The model API is rate limiting requests".to_owned(),
+                500..=599 => format!("The model API had an internal error ({code})"),
+                _ => format!(
+                    "The model request failed with {code} {}",
+                    status.canonical_reason().unwrap_or_default()
+                ),
+            }
+        }
     };
 
     let details = err
@@ -1116,6 +1121,17 @@ mod tests {
         assert_eq!(
             provider_error(400, "  not json  "),
             "The model request failed with 400 Bad Request: not json"
+        );
+
+        let streamed = rig_core::ProviderError::from_provider_body(
+            r#"{"type":"error","error":{"type":"insufficient_quota","code":"credit_balance_exhausted","message":"You have no credits remaining."},"sequence_number":2}"#,
+        );
+        assert_eq!(
+            ModelApiError::Provider {
+                err: Box::new(streamed)
+            }
+            .to_string(),
+            "The model request failed: You have no credits remaining."
         );
     }
 
