@@ -17,6 +17,7 @@ Getting oriented:
 - Every Rerun gRPC endpoint serves gRPC server reflection, so where `grpcurl` is installed, `grpcurl -plaintext <host:port> list` shows which services an address speaks (viewer control, SDK proxy, catalog) before you `rerun_connect`, and `describe` shows a service's methods and message types.
 
 Editing blueprints:
+- If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
 - `rerun_set_blueprint` takes `mode: "full"` (default) or `mode: "partial"` for either recordings or tables. Prefer partial for focused edits: omitted fields and entities stay untouched. Full replaces the blueprint and clears omitted fields.
 - Both modes replace arrays and struct-valued fields as a whole, including `component_map`, `instruction_ids`, and container contents; preserve entries you intend to keep. Set a field to `null` to clear it. An empty object in partial mode changes nothing.
 - A write that would break a reference is rejected, and nothing is written: a missing or unreferenced view, container, or visualizer instruction, or a loop of containers. Add a new view and the reference to it in the same call. Delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.

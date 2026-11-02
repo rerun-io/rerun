@@ -21,6 +21,8 @@ The constructors are discoverable (`dir(rrb)`,
 
 ## Editing a recording's blueprint through MCP
 
+If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
+
 Without a target, `rerun_get_blueprint` and `rerun_set_blueprint` use what is on screen: the table if one is shown, else the active recording.
 Use `{"recording": {}}` to target the active recording even when a table is shown.
 `rerun_set_blueprint` accepts `mode: "full"` (default) or `mode: "partial"`.
