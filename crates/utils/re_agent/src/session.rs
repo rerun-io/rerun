@@ -116,13 +116,17 @@ pub struct PendingPermission {
 
 impl PendingPermission {
     fn answer(self, option_id: Option<PermissionOptionId>) -> Result<(), AgentStoppedWaiting> {
+        let Self {
+            request: _,
+            responder,
+        } = self;
         let outcome = match option_id {
             Some(option_id) => {
                 RequestPermissionOutcome::Selected(SelectedPermissionOutcome::new(option_id))
             }
             None => RequestPermissionOutcome::Cancelled,
         };
-        match self.responder {
+        match responder {
             Some(responder) => responder.respond(RequestPermissionResponse::new(outcome)),
             None => Ok(()),
         }

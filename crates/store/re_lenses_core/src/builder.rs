@@ -120,36 +120,42 @@ impl DeriveLensBuilder {
     /// Fails if no component outputs were added, or if the output component
     /// matches the input on the same entity.
     pub fn build(self) -> Result<Lens, LensBuilderError> {
-        let output_components = Vec1::try_from_vec(self.components).map_err(|_empty_vec| {
+        let Self {
+            input,
+            rows,
+            target_entity,
+            components,
+            time_outputs,
+        } = self;
+
+        let output_components = Vec1::try_from_vec(components).map_err(|_empty_vec| {
             LensBuilderError::MissingOutputComponent {
-                input_component: self.input,
+                input_component: input,
             }
         })?;
 
-        if self.target_entity.is_none() {
+        if target_entity.is_none() {
             for comp in &output_components {
-                if comp.component_descr.component == self.input {
-                    return Err(LensBuilderError::InputEqualsOutput {
-                        component: self.input,
-                    });
+                if comp.component_descr.component == input {
+                    return Err(LensBuilderError::InputEqualsOutput { component: input });
                 }
             }
         }
 
-        let inner = if let Some(target_entity) = self.target_entity {
+        let inner = if let Some(target_entity) = target_entity {
             LensInner::DeriveSeparateEntity(DeriveSeparateEntityLens {
-                input: self.input,
-                rows: self.rows,
+                input,
+                rows,
                 target_entity,
                 output_components,
-                output_timelines: self.time_outputs,
+                output_timelines: time_outputs,
             })
         } else {
             LensInner::DeriveSameEntity(DeriveSameEntityLens {
-                input: self.input,
-                rows: self.rows,
+                input,
+                rows,
                 output_components,
-                output_timelines: self.time_outputs,
+                output_timelines: time_outputs,
             })
         };
         Ok(inner.into())

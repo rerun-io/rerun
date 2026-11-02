@@ -97,14 +97,16 @@ impl<'a> SelectableToggle<'a> {
 
 impl Widget for SelectableToggle<'_> {
     fn ui(self, ui: &mut Ui) -> Response {
+        let Self { atoms, selected } = self;
+
         // Allocate widget space and observe interactions.
-        let mut atom_layout = WidgetAtom::new(self.atoms)
+        let mut atom_layout = WidgetAtom::new(atoms)
             .frame(Frame::new().corner_radius(4.0))
             .sense(egui::Sense::click())
             .allocate(ui);
 
         // Set selected style.
-        if self.selected {
+        if selected {
             atom_layout.frame = atom_layout
                 .frame
                 .stroke(ui.tokens().control_stroke)

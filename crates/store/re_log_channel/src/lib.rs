@@ -344,7 +344,8 @@ impl SmartMessage {
     }
 
     pub fn into_data(self) -> Option<DataSourceMessage> {
-        match self.payload {
+        let Self { source: _, payload } = self;
+        match payload {
             SmartMessagePayload::Msg(msg) => Some(msg),
             SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }
