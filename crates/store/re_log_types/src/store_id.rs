@@ -124,10 +124,15 @@ pub struct StoreId {
 impl std::fmt::Debug for StoreId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            kind,
+            application_id,
+            recording_id,
+        } = self;
         f.debug_tuple("StoreId")
-            .field(&self.kind)
-            .field(&self.application_id.as_str())
-            .field(&self.recording_id.as_str())
+            .field(kind)
+            .field(&application_id.as_str())
+            .field(&recording_id.as_str())
             .finish()
     }
 }

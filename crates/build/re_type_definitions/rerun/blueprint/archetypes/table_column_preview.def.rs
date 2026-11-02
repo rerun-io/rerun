@@ -8,7 +8,8 @@
 /// Card fields use `/table/layouts/cards/fields/{column_name}`.
 /// Shared preview configuration is stored as [`rerun::blueprint::archetypes::PreviewsConfig`] at `/table`.
 ///
-/// A column uses this payload only when its `TableCellKind::Preview` is set.
+/// A column with this archetype is a preview column.
+/// Each cell shows the recording reference as a link above the preview views.
 #[rerun::rerun_type]
 #[rerun(scope = "blueprint")]
 #[rerun(state = "unstable")]

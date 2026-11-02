@@ -184,10 +184,15 @@ impl MutateLensBuilder {
 
     /// Builds the mutate lens.
     pub fn build(self) -> Lens {
+        let Self {
+            input,
+            selector,
+            keep_row_ids,
+        } = self;
         LensInner::Mutate(MutateLens {
-            input: self.input,
-            selector: self.selector,
-            keep_row_ids: self.keep_row_ids,
+            input,
+            selector,
+            keep_row_ids,
         })
         .into()
     }

@@ -33,6 +33,7 @@ A voxel center is at `(index + 0.5) * voxel_size` in local grid coordinates (i.e
 ## Can be shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `VoxelGridMap`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VoxelGridMap.html)

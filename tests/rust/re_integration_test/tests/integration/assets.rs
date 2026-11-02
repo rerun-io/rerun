@@ -643,7 +643,11 @@ async fn asset_chunks_are_only_downloaded_once() {
 
     // Every client handed out by one registry shares a connection, and with it a chunk cache.
     let registry = ConnectionRegistry::new_without_stored_credentials();
-    let catalog_client = CatalogClient::new(registry.connection_handle(origin(&server)));
+    let catalog_client = CatalogClient::new(
+        registry.connection_handle(origin(&server)),
+        re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+            .expect("test runtime is running"),
+    );
     let mut client = catalog_client
         .client()
         .await

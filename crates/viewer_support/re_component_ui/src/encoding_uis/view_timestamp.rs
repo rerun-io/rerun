@@ -1,4 +1,3 @@
-use re_log_types::Timestamp;
 use re_sdk_types::encodings;
 use re_ui::UiLayout;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
@@ -13,6 +12,6 @@ pub fn view_timestamp(
     UiLayout::List.data_label(
         ui,
         SyntaxHighlightedBuilder::new()
-            .with_primitive(&Timestamp::from(*value).format(ctx.app_options.timestamp_format)),
+            .with_primitive(&ctx.app_options.timestamp_format.format_nanos(value.0)),
     )
 }

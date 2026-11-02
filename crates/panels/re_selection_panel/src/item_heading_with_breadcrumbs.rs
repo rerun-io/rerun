@@ -18,7 +18,7 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathPart;
-use re_ui::{ReButton, Size, UiExt as _, icons, list_item, menu::menu_style};
+use re_ui::{ButtonExt as _, Size, UiExt as _, icons, list_item, menu::menu_style};
 use re_viewer_context::{ContainerId, Contents, Item, ViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -168,7 +168,7 @@ pub fn item_heading_with_breadcrumbs(
 
     ui.add_space(4.0);
     ui.horizontal_wrapped(|ui| {
-        // Every crumb brings its own padding (they are all `ReButton`s),
+        // Every crumb brings its own padding (they are all buttons),
         // so we only set the gap between them.
         ui.spacing_mut().item_spacing.x = 2.0;
         // The chevron separators size themselves off `interact_size.y`.
@@ -602,14 +602,14 @@ fn selected_crumb_ui(
     // View, container and recording items show their type icon next to the name.
     let label = label.text().to_owned();
     let button = if matches!(item, Item::View(_) | Item::Container(_) | Item::StoreId(_)) {
-        ReButton::new((
+        egui::Button::new((
             icon.as_image()
                 .fit_to_exact_size(ui.tokens().small_icon_size),
             label,
         ))
         .size(CRUMB_SIZE)
     } else {
-        ReButton::new(label).size(CRUMB_SIZE)
+        egui::Button::new(label).size(CRUMB_SIZE)
     };
 
     // The caller limits the width to one row, so `truncate` only kicks in
@@ -659,7 +659,7 @@ fn viewport_breadcrumbs(
         tooltip,
     } = ItemTitle::from_contents(ctx, viewport, &contents);
 
-    let mut response = ui.add(ReButton::icon(*icon, label.text()).size(CRUMB_SIZE));
+    let mut response = ui.add(egui::Button::icon(*icon, label.text()).size(CRUMB_SIZE));
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
@@ -804,7 +804,7 @@ fn entity_path_breadcrumbs(
 
     let button = if let Some(last) = full_entity_path.last() {
         let atoms = last.unescaped_str().to_owned();
-        ReButton::new(atoms).size(CRUMB_SIZE)
+        egui::Button::new(atoms).size(CRUMB_SIZE)
     } else {
         // Root
         let icon = if view_id.is_some() {
@@ -816,7 +816,7 @@ fn entity_path_breadcrumbs(
             // just to make it clear that this is a different kind of hierarchy.
             &icons::RECORDING // streams hierarchy
         };
-        ReButton::icon(*icon, "/").size(CRUMB_SIZE)
+        egui::Button::icon(*icon, "/").size(CRUMB_SIZE)
     };
 
     // No tooltip on breadcrumb segments — only the last crumb gets the copy tooltip.

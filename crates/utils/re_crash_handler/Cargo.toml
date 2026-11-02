@@ -18,22 +18,13 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
-[features]
-default = ["analytics"]
-
-## Send analytics to Rerun on crashes
-analytics = ["dep:re_analytics"]
-
 [dependencies]
+re_analytics.workspace = true
 re_build_info.workspace = true
 
 econtext.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
-
-# Optional dependencies:
-re_analytics = { workspace = true, optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

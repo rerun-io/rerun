@@ -38,11 +38,13 @@ def test_catalog_basics(tmp_path: Path) -> None:
         assert str(df.schema()) == inline_snapshot("""\
 id: fixed_size_binary[16] not null
 name: string not null
-entry_kind: int32 not null
+entry_kind: uint8 not null
+  -- field metadata --
+  rerun:component_type: 'rerun.components.EntryKind'
 created_at: timestamp[ns] not null
 updated_at: timestamp[ns] not null
 -- schema metadata --
-sorbet:version: '0.1.3'\
+sorbet:version: '0.1.4'\
 """)
 
         assert str(
@@ -52,21 +54,22 @@ sorbet:version: '0.1.3'\
             .sort("name")
         ) == inline_snapshot(
             """\
-┌────────────────────────────────────────────────┐
-│ METADATA:                                      │
-│ * version: 0.1.3                               │
-├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
-│ ┌─────────────────────┬──────────────────────┐ │
-│ │ name                ┆ entry_kind           │ │
-│ │ ---                 ┆ ---                  │ │
-│ │ type: non-null Utf8 ┆ type: non-null Int32 │ │
-│ ╞═════════════════════╪══════════════════════╡ │
-│ │ __entries           ┆ 3                    │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ my_dataset          ┆ 1                    │ │
-│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
-│ │ my_table            ┆ 3                    │ │
-│ └─────────────────────┴──────────────────────┘ │
-└────────────────────────────────────────────────┘\
+┌─────────────────────────────────────────────────────┐
+│ METADATA:                                           │
+│ * version: 0.1.4                                    │
+├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
+│ ┌─────────────────────┬───────────────────────────┐ │
+│ │ name                ┆ entry_kind                │ │
+│ │ ---                 ┆ ---                       │ │
+│ │ type: non-null Utf8 ┆ type: non-null UInt8      │ │
+│ │                     ┆ component_type: EntryKind │ │
+│ ╞═════════════════════╪═══════════════════════════╡ │
+│ │ __entries           ┆ 3                         │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ my_dataset          ┆ 1                         │ │
+│ ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┼╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤ │
+│ │ my_table            ┆ 3                         │ │
+│ └─────────────────────┴───────────────────────────┘ │
+└─────────────────────────────────────────────────────┘\
 """
         )

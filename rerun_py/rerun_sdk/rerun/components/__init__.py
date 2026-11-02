@@ -17,6 +17,7 @@ from .annotation_context import (
 )
 from .axis_length import AxisLength, AxisLengthBatch
 from .blob import Blob, BlobBatch
+from .bool import Bool, BoolBatch
 from .cell_size import CellSize, CellSizeBatch
 from .channel_id import ChannelId, ChannelIdBatch
 from .channel_message_counts import (
@@ -33,8 +34,10 @@ from .count import Count, CountBatch
 from .depth_meter import DepthMeter, DepthMeterBatch
 from .draw_order import DrawOrder, DrawOrderBatch
 from .entity_path import EntityPath, EntityPathBatch
+from .entry_kind import EntryKind, EntryKindArrayLike, EntryKindBatch, EntryKindLike
 from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike
 from .fill_ratio import FillRatio, FillRatioBatch
+from .flag import Flag, FlagBatch
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch
 from .geo_line_string import GeoLineString, GeoLineStringArrayLike, GeoLineStringBatch, GeoLineStringLike
 from .graph_edge import GraphEdge, GraphEdgeBatch
@@ -56,6 +59,7 @@ from .is_keyframe import IsKeyframe, IsKeyframeBatch
 from .key_value_pairs import KeyValuePairs, KeyValuePairsArrayLike, KeyValuePairsBatch, KeyValuePairsLike
 from .keypoint_id import KeypointId, KeypointIdBatch
 from .lat_lon import LatLon, LatLonBatch
+from .layer_name import LayerName, LayerNameBatch
 from .length import Length, LengthBatch
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike
@@ -102,6 +106,7 @@ from .tensor_width_dimension import TensorWidthDimension, TensorWidthDimensionBa
 from .texcoord2d import Texcoord2D, Texcoord2DBatch
 from .text import Text, TextBatch
 from .text_log_level import TextLogLevel, TextLogLevelBatch
+from .thumbnail import Thumbnail, ThumbnailBatch
 from .timestamp import Timestamp, TimestampBatch
 from .transform_frame_id import TransformFrameId, TransformFrameIdBatch
 from .transform_mat3x3 import TransformMat3x3, TransformMat3x3Batch
@@ -114,6 +119,7 @@ from .transform_relation import (
 from .translation3d import Translation3D, Translation3DBatch
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch
 from .unit import Unit, UnitBatch
+from .url import Url, UrlBatch
 from .value_range import ValueRange, ValueRangeBatch
 from .variance import Variance, VarianceBatch
 from .vector2d import Vector2D, Vector2DBatch
@@ -142,6 +148,8 @@ __all__ = [
     "AxisLengthBatch",
     "Blob",
     "BlobBatch",
+    "Bool",
+    "BoolBatch",
     "CellSize",
     "CellSizeBatch",
     "ChannelId",
@@ -168,12 +176,18 @@ __all__ = [
     "DrawOrderBatch",
     "EntityPath",
     "EntityPathBatch",
+    "EntryKind",
+    "EntryKindArrayLike",
+    "EntryKindBatch",
+    "EntryKindLike",
     "FillMode",
     "FillModeArrayLike",
     "FillModeBatch",
     "FillModeLike",
     "FillRatio",
     "FillRatioBatch",
+    "Flag",
+    "FlagBatch",
     "GammaCorrection",
     "GammaCorrectionBatch",
     "GeoLineString",
@@ -214,6 +228,8 @@ __all__ = [
     "KeypointIdBatch",
     "LatLon",
     "LatLonBatch",
+    "LayerName",
+    "LayerNameBatch",
     "Length",
     "LengthBatch",
     "LineStrip2D",
@@ -298,6 +314,8 @@ __all__ = [
     "TextBatch",
     "TextLogLevel",
     "TextLogLevelBatch",
+    "Thumbnail",
+    "ThumbnailBatch",
     "Timestamp",
     "TimestampBatch",
     "TransformFrameId",
@@ -314,6 +332,8 @@ __all__ = [
     "TriangleIndicesBatch",
     "Unit",
     "UnitBatch",
+    "Url",
+    "UrlBatch",
     "ValueRange",
     "ValueRangeBatch",
     "Variance",

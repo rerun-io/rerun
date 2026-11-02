@@ -1,6 +1,36 @@
 use re_entity_db::EntityDb;
 use re_types_core::reflection::ComponentReflectionMap;
 
+/// Whether `blueprint` can be used: every component has the datatype this viewer expects.
+///
+/// A usable blueprint is also checked for [`crate::blueprint::reference_problems`], which are
+/// logged as warnings but do not reject it: the viewer skips what it cannot follow.
+pub fn validate_blueprint(
+    blueprint: &EntityDb,
+    component_reflection: &ComponentReflectionMap,
+) -> bool {
+    if !is_valid_blueprint(blueprint, component_reflection) {
+        return false;
+    }
+
+    let problems = crate::blueprint::reference_problems(
+        blueprint,
+        &re_viewer_context::BlueprintUndoState::default_query(),
+    );
+    if !problems.is_empty() {
+        let problems = problems
+            .iter()
+            .map(|problem| format!("  {problem}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        re_log::warn_once!(
+            "Blueprint {} has broken references:\n{problems}",
+            blueprint.store_id()
+        );
+    }
+    true
+}
+
 /// Because blueprints are both read and written, their schema must match what we
 /// expect to find, or else we will run into all kinds of problems.
 ///
@@ -11,10 +41,7 @@ use re_types_core::reflection::ComponentReflectionMap;
 ///
 /// This checks _all_ components in the blueprint, not just the blueprint-specific ones:
 /// blueprints also store overrides and defaults for regular data components.
-pub fn is_valid_blueprint(
-    blueprint: &EntityDb,
-    component_reflection: &ComponentReflectionMap,
-) -> bool {
+fn is_valid_blueprint(blueprint: &EntityDb, component_reflection: &ComponentReflectionMap) -> bool {
     re_tracing::profile_function!();
 
     let engine = blueprint.storage_engine();

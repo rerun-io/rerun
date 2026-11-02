@@ -21,4 +21,5 @@ List(non-null UInt8)
 
 * [`Blob`](../components/blob.md)
 * [`ImageBuffer`](../components/image_buffer.md)
+* [`Thumbnail`](../components/thumbnail.md)
 * [`VideoSample`](../components/video_sample.md)

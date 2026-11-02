@@ -12,6 +12,14 @@ use crate::{Chunk, ChunkId, ChunkResult, RowId};
 impl Chunk {
     // --- Batch ---
 
+    /// Whether any row contains a non-empty batch for this component.
+    ///
+    /// Missing components, null rows, and empty batches (clears) do not count as set.
+    pub fn has_component_set(&self, component: ComponentIdentifier) -> bool {
+        self.iter_component_offsets(component)
+            .any(|span| span.len > 0)
+    }
+
     /// Returns the raw data for the specified component.
     ///
     /// Returns an error if the row index is out of bounds.

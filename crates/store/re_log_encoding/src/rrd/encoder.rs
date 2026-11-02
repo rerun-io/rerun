@@ -270,8 +270,9 @@ impl<W: std::io::Write> Encoder<W> {
     ///
     /// ## Safety
     ///
-    /// `message` must respect the global settings of the encoder (e.g. the compression used),
+    /// `message` must be a valid transport-level message using the encoder's serializer,
     /// otherwise the resulting RRD stream will be corrupt and unreadable.
+    /// Its compression does not have to match the encoder's: compression is recorded per message.
     #[expect(unsafe_code)]
     pub unsafe fn append_transport_without_footer(
         &mut self,

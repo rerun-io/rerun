@@ -96,17 +96,27 @@ impl WgpuResourcePoolStatistics {
 
 impl WgpuResourcePools {
     pub fn statistics(&self) -> WgpuResourcePoolStatistics {
+        let Self {
+            bind_group_layouts,
+            pipeline_layouts,
+            render_pipelines,
+            samplers,
+            shader_modules,
+            bind_groups,
+            buffers,
+            textures,
+        } = self;
         WgpuResourcePoolStatistics {
-            num_bind_group_layouts: self.bind_group_layouts.num_resources(),
-            num_pipeline_layouts: self.pipeline_layouts.num_resources(),
-            num_render_pipelines: self.render_pipelines.num_resources(),
-            num_samplers: self.samplers.num_resources(),
-            num_shader_modules: self.shader_modules.num_resources(),
-            num_bind_groups: self.bind_groups.num_resources(),
-            num_buffers: self.buffers.num_resources(),
-            num_textures: self.textures.num_resources(),
-            total_buffer_size_in_bytes: self.buffers.total_gpu_size_in_bytes(),
-            total_texture_size_in_bytes: self.textures.total_gpu_size_in_bytes(),
+            num_bind_group_layouts: bind_group_layouts.num_resources(),
+            num_pipeline_layouts: pipeline_layouts.num_resources(),
+            num_render_pipelines: render_pipelines.num_resources(),
+            num_samplers: samplers.num_resources(),
+            num_shader_modules: shader_modules.num_resources(),
+            num_bind_groups: bind_groups.num_resources(),
+            num_buffers: buffers.num_resources(),
+            num_textures: textures.num_resources(),
+            total_buffer_size_in_bytes: buffers.total_gpu_size_in_bytes(),
+            total_texture_size_in_bytes: textures.total_gpu_size_in_bytes(),
         }
     }
 }

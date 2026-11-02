@@ -761,6 +761,7 @@ fn sample_ranges(
             .iter_indexed()
             .filter_map(|(idx, sample)| match sample {
                 SampleMetadataState::Present(_) => Some(Span::from_start_len(idx, 1)),
+                SampleMetadataState::Clear { .. } => None,
                 SampleMetadataState::Unloaded { .. } => {
                     re_log::warn_once!(
                         "Skipping unloaded sample {idx} in mp4 demux (entity path: {})",

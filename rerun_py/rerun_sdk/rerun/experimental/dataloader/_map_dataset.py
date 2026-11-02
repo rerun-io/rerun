@@ -8,14 +8,15 @@ import torch.utils.data
 
 from rerun._tracing import with_tracing
 
-from ._sample_index import FixedRateSampling, SampleIndex
+from ._config import TimeAlignedSampling
+from ._sample_index import SampleIndex, _validate_timeline_sampling
 from ._utils import (
     FetchedBlock,
     _build_query_plans,
     _build_targets,
     _decode_iter,
     _decode_pool,
-    _fetch_prior_keyframes,
+    _discover_prior_keyframes,
     _fetch_queries_parallel,
     _index_fetched_block,
     _locate_samples,
@@ -27,7 +28,7 @@ from ._utils import (
 from .decoders._base import DecodedSample
 
 if TYPE_CHECKING:
-    from ._config import DataSource, Field
+    from ._config import DataSource, Field, FixedRateSampling
     from .manifest._manifest import Manifest
 
 
@@ -52,9 +53,10 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
     fields
         Sample fields, keyed by output name.
     timeline_sampling
-        Required when `index` is a timestamp timeline; ignored for
-        integer indices. Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling] to sample on
-        a fixed grid (e.g. 30 Hz).
+        `None` uses ordinary integer sampling.
+        [`TimeAlignedSampling`][rerun.experimental.dataloader.TimeAlignedSampling] declares aligned integer fields.
+        Use [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]
+        for timestamp and duration timelines.
     decode_threads
         Fields to decode concurrently within each `DataLoader` worker.
 
@@ -80,7 +82,7 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         index: str,
         fields: dict[str, Field],
         *,
-        timeline_sampling: FixedRateSampling | None = None,
+        timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
         decode_threads: int | None = None,
     ) -> None:
         super().__init__()
@@ -88,6 +90,7 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         _warn_if_fork_unsafe(stacklevel=3)
 
         self._fields = fields
+        self._timeline_sampling = timeline_sampling
         self._index = index
         self._decode_threads = _resolve_decode_threads(decode_threads, fields)
         self._manifest: Manifest | None = None
@@ -108,6 +111,7 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         source: DataSource,
         fields: dict[str, Field],
         *,
+        timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
         decode_threads: int | None = None,
     ) -> RerunMapDataset:
         """
@@ -130,6 +134,9 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
             The live catalog connection.
         fields:
             The decoders, keyed by field name (a manifest records only their spec, not the objects).
+        timeline_sampling:
+            Optional sampling declaration matching the manifest's stored grid.
+            Stored sample positions and decode ranges are unchanged.
         decode_threads:
             Fields to decode concurrently within each `DataLoader` worker.
 
@@ -144,11 +151,13 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         _warn_if_fork_unsafe(stacklevel=3)
         meta = manifest.metadata
         self._fields = fields
+        self._timeline_sampling = timeline_sampling
         self._index = meta.index_name
         self._manifest = manifest
         self._decode_threads = _resolve_decode_threads(decode_threads, fields)
         # Query construction only needs the grid step / dtype, not the full sample space.
         self._sample_index = SampleIndex([], ns_per_sample=meta.ns_per_sample, ns_dtype=meta.ns_dtype)
+        _validate_timeline_sampling(timeline_sampling, self._sample_index)
         self._connection = _WorkerConnection.from_source(source, fields)
         return self
 
@@ -164,16 +173,15 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         return self._sample_index.total_samples
 
     def __getitem__(self, idx: int) -> DecodedSample:  # ty: ignore[invalid-method-override]
-        """Fetch a single sample by global index (one server query)."""
+        """Fetch a single sample by global index."""
         return self.__getitems__([idx])[0]
 
     @with_tracing("RerunMapDataset.__getitems__")
     def __getitems__(self, indices: list[int]) -> list[DecodedSample]:
         """
-        Fetch multiple samples by global index in a single server query.
+        Fetch multiple samples by global index, sharing queries where possible.
 
-        PyTorch's `DataLoader` calls this automatically when present, so
-        each batch round-trips once.
+        PyTorch's `DataLoader` calls this once per batch.
         """
         view, decoders = self._connection.ensure()
         if self._manifest is not None:
@@ -187,21 +195,32 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
                 sample_index=self._sample_index,
                 num_fields=len(self._fields),
             )
-            keyframes = _fetch_prior_keyframes(
-                view=view,
-                index=self._index,
-                fields=self._fields,
-                located=located,
-                sample_index=self._sample_index,
+            keyframes = (
+                {}
+                if isinstance(self._timeline_sampling, TimeAlignedSampling)
+                else _discover_prior_keyframes(
+                    view=view,
+                    index=self._index,
+                    fields=self._fields,
+                    located=located,
+                    sample_index=self._sample_index,
+                )
             )
             targets = _build_targets(
                 located,
                 keyframes,
                 fields=self._fields,
                 sample_index=self._sample_index,
+                timeline_sampling=self._timeline_sampling,
             )
 
-        query_plans = _build_query_plans(targets, self._fields, sample_index=self._sample_index)
+        query_plans = _build_query_plans(
+            targets,
+            self._fields,
+            sample_index=self._sample_index,
+            timeline_sampling=self._timeline_sampling,
+            index=self._index,
+        )
         fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
         fetched = FetchedBlock(targets=targets, fetched_groups=fetched_groups)
         with _decode_pool(self._decode_threads, len(self._fields)) as executor:

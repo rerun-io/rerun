@@ -20,6 +20,7 @@ mod blueprint_helpers;
 mod blueprint_id;
 mod cache;
 mod collapsed_id;
+mod command;
 mod command_sender;
 mod component_fallbacks;
 mod component_ui_registry;
@@ -37,14 +38,17 @@ mod maybe_mut_ref;
 mod query_context;
 mod query_range;
 mod recording_or_table;
+mod relative_time_range;
 mod route;
 mod selection_state;
 mod storage_context;
 pub mod store_hub;
 mod store_view_context;
+mod syntax_highlighting;
 mod tables;
 mod tensor;
 mod time_control;
+mod time_drag_value;
 mod typed_entity_collections;
 mod undo;
 mod utils;
@@ -75,6 +79,7 @@ pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
 pub use self::audio_output::AudioOutput;
 pub use self::blueprint_helpers::{
     AppBlueprintCtx, BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
+    entity_path_for_view_property,
 };
 pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,
@@ -86,6 +91,13 @@ pub use self::cache::{
     VideoStoreSource, VideoStreamCache, VideoStreamProcessingError, filter_blob_removed_events,
 };
 pub use self::collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
+pub use self::command::{
+    BoundCommand, CommandEnvironment, CommandKind, CommandScope, RecordingCommand,
+    RecordingCommandKind, RecordingCommandSender, RedapServerCommand, RedapServerCommandKind,
+    RedapServerCommandSender, SetPlaybackSpeed, TableCommand, TableCommandKind, TableCommandSender,
+    consume_timeline_shortcut, listen_for_kb_shortcuts, redo_shortcuts, refresh_shortcuts,
+    undo_shortcuts,
+};
 pub use self::command_sender::{
     CommandReceiver, CommandSender, DownloadAction, EditRedapServerModalCommand, SystemCommand,
     SystemCommandSender, command_channel,
@@ -95,7 +107,7 @@ pub use self::component_fallbacks::{
 };
 pub use self::component_ui_registry::{
     ComponentUiRegistry, ComponentUiTypes, EditTarget, FallbackComponentUiCallback,
-    TryShowEditUiResult, VariantName,
+    TryShowEditUiResult,
 };
 pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
@@ -120,6 +132,9 @@ pub use self::query_context::{
 };
 pub use self::query_range::QueryRange;
 pub use self::recording_or_table::RecordingOrLocalTable;
+pub use self::relative_time_range::{
+    RelativeTimeRange, relative_time_range_boundary_label_text, relative_time_range_label_text,
+};
 pub use self::route::{EntryKind, Route};
 pub use self::selection_state::{
     ApplicationSelectionState, HoverHighlight, InteractionHighlight, SelectionChange,
@@ -128,6 +143,7 @@ pub use self::selection_state::{
 pub use self::storage_context::StorageContext;
 pub use self::store_hub::{EntityDbUsages, StoreHub};
 pub use self::store_view_context::StoreViewContext;
+pub use self::syntax_highlighting::{InstanceInBrackets, StoreSyntaxHighlighting};
 pub use self::tables::{TableStore, TableStores};
 pub use self::tensor::{ImageStats, TensorStats};
 pub use self::time_control::{
@@ -135,12 +151,13 @@ pub use self::time_control::{
     TimeControlResponse, TimeControlUpdateParams, TimeRangeHighlight, TimeRangeHighlightKind,
     TimeView, time_panel_blueprint_entity_path,
 };
+pub use self::time_drag_value::TimeDragValue;
 pub use self::typed_entity_collections::{
     BufferAndFormatMatch, ComponentMatch, IndicatedEntities, PerVisualizerInstruction,
     PerVisualizerType, PerVisualizerTypeInViewClass, SingleRequiredComponentMatch,
     VisualizableEntities, VisualizableReason,
 };
-pub use self::undo::{BlueprintUndoState, on_external_blueprint_edit};
+pub use self::undo::{BlueprintUndoState, is_interacting, on_external_blueprint_edit};
 pub use self::utils::{
     auto_color_egui, auto_color_for_entity_path, level_to_rich_text, video_stream_time_from_query,
     video_timestamp_component_to_video_time,
@@ -160,6 +177,7 @@ pub use self::view::{
     VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionReport,
     VisualizerInstructionsPerType, VisualizerQueryInfo, VisualizerReportContext, VisualizerSystem,
     VisualizerTypeReport, VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
+    default_view_entity_drop,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

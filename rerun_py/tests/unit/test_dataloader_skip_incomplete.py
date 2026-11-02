@@ -87,6 +87,33 @@ def test_valid_sample_resets_consecutive_skip_count() -> None:
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_zero_skip_budget_raises_on_the_first_incomplete_sample() -> None:
+    samples = _skip_incomplete(
+        _stream(_complete(), {"image": None, "action": torch.ones(7)}),
+        max_consecutive_skipped_samples=0,
+    )
+
+    assert next(samples)["image"] is not None
+    with pytest.raises(RuntimeError, match="Exceeded max_consecutive_skipped_samples=0"):
+        next(samples)
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_none_skip_budget_allows_an_arbitrary_incomplete_run() -> None:
+    incomplete: DecodedSample = {"image": None, "action": torch.ones(7)}
+    valid = _complete()
+
+    kept = list(
+        _skip_incomplete(
+            _stream(*(incomplete for _ in range(1001)), valid),
+            max_consecutive_skipped_samples=None,
+        )
+    )
+
+    assert kept == [valid]
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_raises_after_consecutive_skip_limit_with_per_field_counts() -> None:
     missing_image: DecodedSample = {"image": None, "action": torch.ones(7)}
     missing_both: DecodedSample = {"image": None, "action": None}

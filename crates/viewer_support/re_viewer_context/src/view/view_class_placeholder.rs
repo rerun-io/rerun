@@ -37,10 +37,6 @@ impl ViewClass for ViewClassPlaceholder {
         Ok(())
     }
 
-    fn new_state(&self) -> Box<dyn ViewState> {
-        Box::<()>::default()
-    }
-
     fn layout_priority(&self) -> crate::ViewClassLayoutPriority {
         crate::ViewClassLayoutPriority::Low
     }

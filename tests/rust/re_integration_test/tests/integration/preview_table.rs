@@ -21,8 +21,8 @@ use re_integration_test::{HarnessExt as _, TestServer};
 use re_sdk::RecordingStreamBuilder;
 use re_sdk::external::{re_log_types, re_tuid};
 use re_sdk_types::blueprint::archetypes::{
-    CardLayout, ContainerBlueprint, TableColumn, TableColumnPreview, TableLayout, ViewBlueprint,
-    ViewContents, ViewportBlueprint,
+    CardLayout, ContainerBlueprint, TableColumnPreview, TableLayout, ViewBlueprint, ViewContents,
+    ViewportBlueprint,
 };
 use re_sdk_types::blueprint::components::{
     ContainerKind, IncludedContent, QueryExpression, RootContainer, ViewClass,
@@ -367,14 +367,6 @@ fn blueprint_rbl_file(
         for base_path in ["table/layouts/table/columns", "table/layouts/cards/fields"] {
             let preview_path = re_log_types::EntityPath::from(base_path)
                 / re_log_types::EntityPathPart::new(preview.name);
-            stream
-                .log(
-                    preview_path.clone(),
-                    &TableColumn::new().with_cell_kind(
-                        re_sdk_types::blueprint::components::TableCellKind::Preview,
-                    ),
-                )
-                .expect("Failed to log preview column blueprint");
             stream
                 .log(preview_path, &TableColumnPreview::new(views.clone()))
                 .expect("Failed to log preview configuration");

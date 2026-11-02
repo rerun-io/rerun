@@ -38,6 +38,10 @@ pub struct Source {
 
     /// All sources in the same layer share the same [`LayerInfo`].
     layer_info: Arc<LayerInfo>,
+
+    /// Computed once: the backing store is never mutated after registration, so the schema
+    /// is fixed for the lifetime of the source.
+    schema_sha256: [u8; 32],
 }
 
 impl Source {
@@ -47,15 +51,19 @@ impl Source {
         data_source_kind: DataSourceKind,
         storage_url: Url,
         layer_info: Arc<LayerInfo>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, ArrowError> {
+        let schema_sha256 =
+            RawRrdManifest::compute_sorbet_schema_sha256(&schema_of_store(&resolved))?;
+
+        Ok(Self {
             store_slot_id,
             resolved,
             registration_time: jiff::Timestamp::now(),
             data_source_kind,
             storage_url,
             layer_info,
-        }
+            schema_sha256,
+        })
     }
 
     pub fn data_source_kind(&self) -> DataSourceKind {
@@ -128,16 +136,11 @@ impl Source {
     }
 
     pub fn schema(&self) -> Schema {
-        let fields = self
-            .resolved
-            .schema()
-            .chunk_column_descriptors()
-            .arrow_fields();
-        Schema::new_with_metadata(fields, HashMap::default())
+        schema_of_store(&self.resolved)
     }
 
-    pub fn schema_sha256(&self) -> Result<[u8; 32], ArrowError> {
-        RawRrdManifest::compute_sorbet_schema_sha256(&self.schema())
+    pub fn schema_sha256(&self) -> [u8; 32] {
+        self.schema_sha256
     }
 
     pub async fn compute_properties(&self) -> Result<RecordBatch, super::Error> {
@@ -259,6 +262,11 @@ impl Source {
             }
         }
     }
+}
+
+fn schema_of_store(resolved: &ResolvedStore) -> Schema {
+    let fields = resolved.schema().chunk_column_descriptors().arrow_fields();
+    Schema::new_with_metadata(fields, HashMap::default())
 }
 
 /// Append the server-synthesized `chunk_key` column to a [`RawRrdManifest`].
@@ -389,7 +397,8 @@ mod tests {
             DataSourceKind::Rrd,
             Url::parse("memory:///store/eager").expect("valid url"),
             test_layer_info.clone(),
-        );
+        )
+        .expect("failed to create eager test layer");
 
         // Lazy backend: same chunks, written to an RRD file with footer, then loaded lazily.
         let dir = tempfile::tempdir().expect("failed to create temp dir");
@@ -414,7 +423,8 @@ mod tests {
             DataSourceKind::Rrd,
             Url::from_file_path(&rrd_path).expect("test RRD path should be absolute"),
             test_layer_info,
-        );
+        )
+        .expect("failed to create lazy test layer");
 
         let lazy_manifest = lazy_layer
             .rrd_manifest()

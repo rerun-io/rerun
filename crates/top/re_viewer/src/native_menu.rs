@@ -13,7 +13,8 @@ use objc2_app_kit::{
     NSMenuItemValidation, NSRightArrowFunctionKey, NSUpArrowFunctionKey,
 };
 use objc2_foundation::{MainThreadMarker, NSObject, NSObjectProtocol, NSString};
-use re_ui::{CommandKind, RedapServerCommandKind, UICommand};
+use re_ui::UICommand;
+use re_viewer_context::{CommandKind, RedapServerCommandKind};
 
 use crate::command_catalog::{
     CommandContext, MenuGroup, MenuItem, catalog_commands, primary_shortcut,

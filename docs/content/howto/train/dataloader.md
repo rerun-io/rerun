@@ -64,7 +64,10 @@ The decoder turns that column into a training value:
 - `ImageDecoder()` for encoded image blobs (JPEG/PNG)
 - `VideoFrameDecoder(codec=…)` for compressed video (`h264`/`h265`/`av1`)
 
-The dict keys (`"state"`, `"action"`, …) in `fields` become the keys of each sample dict that the dataset yields. When the `index` is a timestamp timeline (like `"real_time"` above), pass `timeline_sampling=FixedRateSampling(rate_hz=…)` so the dataloader knows how to lay out the sampling grid.
+The dict keys (`"state"`, `"action"`, …) in `fields` become the keys of each sample dict that the dataset yields.
+For timestamp or duration timelines, pass `timeline_sampling=FixedRateSampling(rate_hz=…)` to define the sampling grid.
+For integer timelines, omit `timeline_sampling`.
+The sampling choice must match the timeline type; `shuffle_strategy` controls the order of the resulting samples.
 
 #### Action chunks and history via `window`
 
@@ -113,6 +116,26 @@ snippet: howto/dataloader[video_decoder]
 The dataloader handles this transparently by looking up the prior keyframe, fetching the encoded samples from that keyframe through the requested outputs, and decoding them in order.
 The video stream must include the sibling `VideoStream:is_keyframe` component.
 If your recordings do not have it, run [`rerun rrd optimize`](../../reference/cli.md#rerun-rrd-optimize) on them before registering, which derives it from the stream.
+During live loading, keyframe discovery starts near each requested window and expands backward only until it finds the nearest preceding keyframe or reaches the recording's start.
+This supports variable GOP lengths without requiring a scan of each recording's entire history for every fetch.
+If no preceding keyframe exists, the video field is unresolved and live iterable loading applies the same `max_consecutive_skipped_samples` policy as other missing values.
+Explicit manifest generation still scans the keyframe history to determine valid samples in advance.
+
+For aligned data with known video keyframes, pass `timeline_sampling=TimeAlignedSampling(keyframe_interval=10)` to the dataset.
+This uses exact-index reads for all fields instead of latest-at filling and calculates video decode starts using the declared interval.
+The data must satisfy:
+
+1. **An integer timeline.** The selected timeline uses integer frame numbers.
+2. **Dense, zero-based indices.** Every selected field (scalars, state, actions, video) has one value or frame at each index `0, 1, 2, …`, with no gaps or null values.
+3. **Known video keyframes.** Frames `0, K, 2K, …` are valid decode starting points; for `K=10`, frame 27 decodes from frame 20.
+4. **A shared frame-number reference.** The same index refers to the same physical instant across fields.
+   Every selected video and recording uses the same keyframe interval and origin.
+5. **Integer field-window offsets.** Windows use whole-frame steps, such as `(-2, -1, 0)`.
+
+Validate these properties when preparing the data; the loader does not scan the dataset to check them.
+It checks each computed decode start's `is_keyframe` marker alongside the requested video data as it loads.
+A missing or false marker makes that video field unresolved, so live iterable loading skips the sample under the same `max_consecutive_skipped_samples` policy as other missing values.
+The default `timeline_sampling=None` preserves each field's filling behavior and discovers keyframes from the data.
 
 To avoid CPU RGB conversion and reduce the size of decoded samples, keep video in YUV420 through collation.
 `Yuv420Collator` is an optional convenience for applications whose other fields can use PyTorch's default collation:

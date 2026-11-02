@@ -217,7 +217,10 @@ impl Video {
             video_source,
         );
 
-        let output = decoder_entry.player.output();
+        let output = decoder_entry
+            .player
+            .output()
+            .filter(|_| !status.as_ref().is_ok_and(|s| s.cleared));
 
         FrameDecodingOutput {
             output: Some(VideoFrameTexture {

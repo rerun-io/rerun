@@ -4,6 +4,7 @@ mod arrays;
 mod batches;
 mod compare;
 mod format;
+mod schemas;
 mod string_view;
 #[cfg(feature = "test")]
 mod test_extensions;
@@ -21,6 +22,7 @@ pub use self::format::{
     RecordBatchFormatOpts, format_field_datatype, format_record_batch, format_record_batch_opts,
     format_record_batch_with_width,
 };
+pub use self::schemas::{SchemaFieldsMerger, merge_schema_fields};
 pub use self::string_view::*;
 #[cfg(feature = "test")]
 pub use self::test_extensions::*;

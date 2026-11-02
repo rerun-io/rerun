@@ -250,7 +250,7 @@ Every RRD opens with the same fixed 12 bytes:
 |------------|-------------|-------------------------------------------------------------|
 | `[0..4)`   | FourCC      | `b"RRF2"` for the current format                            |
 | `[4..8)`   | Version     | 4-byte encoded Rerun crate version                          |
-| `[8]`      | compression | `0` = Off, `1` = LZ4                                        |
+| `[8]`      | compression | `0` = Off, `1` = LZ4 (the writer's request, see below)      |
 | `[9]`      | serializer  | `2` = Protobuf (`1` once meant MsgPack and is now rejected) |
 | `[10..12)` | reserved    | `0x00 0x00`                                                 |
 
@@ -296,6 +296,7 @@ The `kind` field tells the decoder how to interpret the payload:
 
 The outer payload bytes are always plain protobuf. Of the four kinds, only `ArrowMsg` can carry compressed data: its `compression` field tracks whether the wrapped Arrow IPC bytes are LZ4-compressed, so different `ArrowMsg`s in the same file can mix compressed and uncompressed Arrow IPC payloads.
 The `compression` byte in the `StreamHeader`'s `EncodingOptions` is advisory only — per-message decoding does not consult it.
+A writer that was asked for LZ4 only keeps it where it saves at least 10% of the bytes, so chunks that do not compress, such as video samples, are stored as plain Arrow IPC and can be read without a decompression pass.
 
 ### Stream footer
 

@@ -89,11 +89,11 @@ pub mod viewer_control_request {
         /// timeline, or play, pause, or follow it.
         #[prost(message, tag = "6")]
         SetTimeCursor(super::SetTimeCursorRequest),
-        /// Report a recording's schema: its timelines, every entity, every component ever logged on
-        /// it, whether that component has a static value, and its Arrow datatype.
+        /// Report a recording's schema: its timelines, entities, and archetypes by default.
+        /// Set `with_components` to true for component names, static flags, and Arrow datatypes.
         ///
-        /// `paths_only` answers the cheaper question — which entities exist at all — for a recording
-        /// too large to describe in full.
+        /// Set both `with_archetypes` and `with_components` to false to list only entity paths
+        /// for a recording too large to describe in full.
         ///
         /// Read this before naming an entity path or a component anywhere else. A component name
         /// guessed from an archetype's documentation is often not the one the recording carries, and
@@ -175,10 +175,16 @@ pub mod viewer_control_request {
         /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
         /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
         ///
-        /// The JSON is the whole blueprint: anything it leaves out is cleared. A field holding a
-        /// single value may be written as that value or as an array of one. Exactly one of
-        /// `recording` and `table` picks whose blueprint to write, as for `GetBlueprint`, and the
-        /// response names which one it wrote.
+        /// `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
+        /// partial updates write only supplied fields, preserving everything else. Prefer partial
+        /// updates for small edits such as a colormap or view name. Arrays and struct-valued fields
+        /// are replaced as a whole, not merged. Set a field to null to clear it.
+        /// A full recording update with an explicit root defaults omitted `auto_layout` and
+        /// `auto_views` to false. Partial updates preserve these options unless supplied.
+        /// A field holding a
+        /// single value may be written as that value or as an array of one. `recording` or `table`
+        /// picks whose blueprint to write, as for `GetBlueprint`: without either, it writes the
+        /// blueprint of what is on screen. The response names which one it wrote.
         ///
         /// ## Tables
         ///
@@ -197,8 +203,11 @@ pub mod viewer_control_request {
         /// ## Errors
         ///
         /// `INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked
-        /// against a table that has been shown. `INVALID_ARGUMENT` too if neither `recording` nor
-        /// `table` is set.
+        /// against a table that has been shown.
+        /// `INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a
+        /// reference to a missing view, container, or visualizer instruction, a view, container, or
+        /// instruction that nothing refers to, a loop of containers, or a view or container in two
+        /// containers. So add a view and the reference to it in the same call.
         /// `FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the
         /// recording is not open or the viewer does not know the table.
         #[prost(message, tag = "14")]
@@ -1069,17 +1078,18 @@ pub struct GetRecordingSchemaRequest {
     pub entity_path: ::core::option::Option<::prost::alloc::string::String>,
     /// How many entities to describe at most.
     ///
-    /// Defaults to 100, or to 10000 with `paths_only`, since a path costs a line where the
-    /// components on it cost many.
+    /// Defaults to 100, or to 10000 when both `with_archetypes` and `with_components` are false.
     #[prost(uint32, optional, tag = "3")]
     pub max_entities: ::core::option::Option<u32>,
-    /// Name the entities without describing what is logged on them.
-    ///
-    /// A whole recording's paths fit in one answer at a size worth reading, where its components
-    /// would not. Use this to see the shape of an unfamiliar recording, then call again with
-    /// `entity_path` for the components of the entities that turned out to matter.
-    #[prost(bool, optional, tag = "4")]
-    pub paths_only: ::core::option::Option<bool>,
+    /// Include each entity's sorted, unique archetype names. Defaults to true.
+    /// Entities without archetype metadata still appear, with no archetypes listed.
+    /// This describes what was logged, not visibility at the cursor.
+    #[prost(bool, optional, tag = "5")]
+    pub with_archetypes: ::core::option::Option<bool>,
+    /// Include component names, types, and metadata. Defaults to false.
+    /// Request these details with `entity_path` when inspecting specific entities.
+    #[prost(bool, optional, tag = "6")]
+    pub with_components: ::core::option::Option<bool>,
 }
 impl ::prost::Name for GetRecordingSchemaRequest {
     const NAME: &'static str = "GetRecordingSchemaRequest";
@@ -1106,8 +1116,8 @@ pub struct GetRecordingSchemaResponse {
     pub timelines: ::prost::alloc::vec::Vec<ViewerTimeline>,
     /// The matching entities in path order, each with the components logged on it.
     ///
-    /// With `paths_only` the components are left out, and an entity here names a path that has had
-    /// something logged on it, nothing more.
+    /// `with_archetypes` and `with_components` independently select the details to include.
+    /// With both false, only entity paths are returned.
     #[prost(message, repeated, tag = "2")]
     pub entities: ::prost::alloc::vec::Vec<RecordingEntitySchema>,
     /// How many matching entities got left out because of `max_entities`.
@@ -1136,6 +1146,10 @@ pub struct RecordingEntitySchema {
     /// The components logged on this entity.
     #[prost(message, repeated, tag = "2")]
     pub components: ::prost::alloc::vec::Vec<RecordingComponentSchema>,
+    /// Sorted, unique fully-qualified archetype names, populated only in archetypes-only mode.
+    /// An empty list means no archetype metadata was recorded, not that the entity has no data.
+    #[prost(string, repeated, tag = "3")]
+    pub archetypes: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for RecordingEntitySchema {
     const NAME: &'static str = "RecordingEntitySchema";
@@ -1824,17 +1838,21 @@ impl ::prost::Name for CaptureProfileTraceResponse {
 /// Request for `SetBlueprint`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct SetBlueprintRequest {
-    /// The whole blueprint as a JSON object, keyed by blueprint entity path, as `GetBlueprint`
-    /// returns it.
+    /// Blueprint JSON keyed by entity path, as `GetBlueprint` returns it.
+    /// In partial mode, include only the fields to change. Null clears a field;
+    /// an empty object makes no changes. Arrays replace the entire field.
     #[prost(string, tag = "2")]
     pub json: ::prost::alloc::string::String,
-    /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+    /// `full` (default) replaces the whole blueprint; `partial` preserves omitted fields.
+    #[prost(enumeration = "BlueprintUpdateMode", optional, tag = "5")]
+    pub mode: ::core::option::Option<i32>,
+    /// Whose blueprint to write. Unset writes the blueprint of what is on screen.
     #[prost(oneof = "set_blueprint_request::Target", tags = "3, 4")]
     pub target: ::core::option::Option<set_blueprint_request::Target>,
 }
 /// Nested message and enum types in `SetBlueprintRequest`.
 pub mod set_blueprint_request {
-    /// Whose blueprint to write. Exactly one is set, like a Rust enum: there is no default target.
+    /// Whose blueprint to write. Unset writes the blueprint of what is on screen.
     #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
     pub enum Target {
         /// Write the blueprint of a recording.
@@ -1877,7 +1895,7 @@ pub mod set_blueprint_request {
         /// {
         ///    "/table": {"TableBlueprint": {"layout": "Cards"}},
         ///    "/table/layouts/cards": {"CardLayout": {"title": "my_title", "link": "recording link", "field_order": \["recording link", "my_title"\]}},
-        ///    "/table/layouts/cards/fields/recording\\ link": {"TableColumn": {"cell_kind": "Preview"}, "TableColumnPreview": {"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}},
+        ///    "/table/layouts/cards/fields/recording\\ link": {"TableColumnPreview":{"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}},
         ///    "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {"ViewBlueprint": {"class_identifier": "3D", "space_origin": "/my_scene"}},
         ///    "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents": {"ViewContents": {"query": "+ /my_scene/**"}}
         /// }
@@ -1926,6 +1944,10 @@ pub struct SetBlueprintResponse {
     /// only exists in the viewer has no URL, so neither this nor `store_id` is set for it.
     #[prost(string, optional, tag = "3")]
     pub table_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// Entity paths the write added to the blueprint, sorted. A path here that was meant to
+    /// edit an existing entity is a typo: the write created a new, incomplete entity instead.
+    #[prost(string, repeated, tag = "4")]
+    pub created_entities: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for SetBlueprintResponse {
     const NAME: &'static str = "SetBlueprintResponse";
@@ -2125,6 +2147,39 @@ impl ::prost::Name for SubmitFeedbackResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.SubmitFeedbackResponse".into()
+    }
+}
+/// How a blueprint write treats omitted fields.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum BlueprintUpdateMode {
+    /// Same as full, for callers that do not specify a mode.
+    Unspecified = 0,
+    /// Replace the whole blueprint, clearing omitted fields and entities.
+    Full = 1,
+    /// Write only supplied fields. Arrays and struct-valued fields replace the whole field.
+    Partial = 2,
+}
+impl BlueprintUpdateMode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "BLUEPRINT_UPDATE_MODE_UNSPECIFIED",
+            Self::Full => "BLUEPRINT_UPDATE_MODE_FULL",
+            Self::Partial => "BLUEPRINT_UPDATE_MODE_PARTIAL",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "BLUEPRINT_UPDATE_MODE_UNSPECIFIED" => Some(Self::Unspecified),
+            "BLUEPRINT_UPDATE_MODE_FULL" => Some(Self::Full),
+            "BLUEPRINT_UPDATE_MODE_PARTIAL" => Some(Self::Partial),
+            _ => None,
+        }
     }
 }
 /// Whether a recording's time cursor moves.

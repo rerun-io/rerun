@@ -15,13 +15,16 @@ use re_redap_client::{ApiResult, ConnectionClient, ConnectionRegistry};
 use re_sdk_types::SegmentId;
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
-pub use test_data::{asset_rrd, file_url, register_asset, register_table_blueprint};
+pub use test_data::{
+    TEST_DATASET_ID, asset_rrd, file_url, register_asset, register_table_blueprint,
+};
 pub use viewer_harness_ext::ViewerHarnessExt;
 // pub use viewer_section::GetSection;
 pub use viewer_section::ViewerSection;
 
 pub struct TestServer {
     server_handle: Option<ServerHandle>,
+    runtime: re_viewer::AsyncRuntimeHandle,
     port: u16,
 }
 
@@ -42,6 +45,8 @@ impl TestServer {
 
         Self {
             server_handle: Some(server_handle),
+            runtime: re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+                .expect("test runtime is running"),
             port,
         }
     }
@@ -120,6 +125,7 @@ impl TestServer {
         };
         CatalogClient::new(
             ConnectionRegistry::new_without_stored_credentials().connection_handle(origin),
+            self.runtime.clone(),
         )
     }
 

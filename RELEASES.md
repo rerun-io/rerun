@@ -177,7 +177,6 @@ Publishing the release triggers the [`GitHub Release` workflow](https://github.c
 
 For a final release, the same workflow also does the post-release chores:
 
-- Announces the release on Discord, with a link and the first paragraph of the release highlights.
 - Removes `consider-patch` (rerun-io/rerun) and `consider-oss-patch` (rerun-io/reality) from the PRs that shipped in this release.
 - Waits for the website to redeploy, then runs [`scripts/ci/verify_release.py`](./scripts/ci/verify_release.py), which fails the job if anything is missing and writes its summary to the workflow run.
   It checks PyPI, npm, crates.io and conda-forge, the GitHub release, rerun.io/docs, rerun.io/viewer, app.rerun.io, the web viewer embedded by `rerun-io/landing`, `docs-latest`, and the gradio-rerun-viewer release.
@@ -186,6 +185,7 @@ For a final release, the same workflow also does the post-release chores:
 
 Follow up on anything the check reports as failed.
 The `#ship-room` Slack announcement is done by the release captain, or the release agent via the `oss-release` skill.
+The Discord announcement is drafted by the `oss-release` skill, and then edited and posted by the release captain.
 To re-run the check later, run `python3 scripts/ci/verify_release.py 0.x.y`.
 
 ### 8. Merge changes to `main`

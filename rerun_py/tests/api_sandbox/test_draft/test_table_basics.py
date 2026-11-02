@@ -34,7 +34,7 @@ def test_create_table_and_append() -> None:
         assert str(df.sort("id")) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────┐
 │ METADATA:                                       │
-│ * version: 0.1.3                                │
+│ * version: 0.1.4                                │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────┬───────────────┬───────────────┐ │
 │ │ id          ┆ value         ┆ enabled       │ │
@@ -87,7 +87,7 @@ def test_write_table_with_record_batches() -> None:
         assert str(df.sort("id")) == inline_snapshot("""\
 ┌─────────────────────────────────────────────────┐
 │ METADATA:                                       │
-│ * version: 0.1.3                                │
+│ * version: 0.1.4                                │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────┬───────────────┬───────────────┐ │
 │ │ id          ┆ enabled       ┆ score         │ │
@@ -131,7 +131,7 @@ def test_table_overwrite_mode() -> None:
         assert str(df_after_append.sort("id")) == inline_snapshot("""\
 ┌───────────────────────────────────────┐
 │ METADATA:                             │
-│ * version: 0.1.3                      │
+│ * version: 0.1.4                      │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────┬────────────┐ │
 │ │ id                   ┆ category   │ │
@@ -157,7 +157,7 @@ def test_table_overwrite_mode() -> None:
         assert str(df_after_overwrite.sort("id")) == inline_snapshot("""\
 ┌───────────────────────────────────────┐
 │ METADATA:                             │
-│ * version: 0.1.3                      │
+│ * version: 0.1.4                      │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────┬────────────┐ │
 │ │ id                   ┆ category   │ │
@@ -178,7 +178,7 @@ def test_table_overwrite_mode() -> None:
         assert str(df_after_upsert.sort("id")) == inline_snapshot("""\
 ┌───────────────────────────────────────┐
 │ METADATA:                             │
-│ * version: 0.1.3                      │
+│ * version: 0.1.4                      │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────┬────────────┐ │
 │ │ id                   ┆ category   │ │
@@ -212,7 +212,7 @@ def test_read_table() -> None:
         assert str(df1.sort("product_id")) == inline_snapshot("""\
 ┌─────────────────────────────────┐
 │ METADATA:                       │
-│ * version: 0.1.3                │
+│ * version: 0.1.4                │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────┬───────────────┐ │
 │ │ product_id  ┆ price         │ │
@@ -234,7 +234,7 @@ def test_read_table() -> None:
         assert str(df2.sort("product_id")) == inline_snapshot("""\
 ┌─────────────────────────────────┐
 │ METADATA:                       │
-│ * version: 0.1.3                │
+│ * version: 0.1.4                │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────┬───────────────┐ │
 │ │ product_id  ┆ price         │ │

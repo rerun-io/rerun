@@ -351,7 +351,7 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
 
     let mut content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
         .with_menu_button(&icons::MORE, "Actions", move |ui| {
-            for command in re_ui::RedapServerCommand::all_for_server(origin) {
+            for command in re_viewer_context::RedapServerCommand::all_for_server(origin) {
                 if command.requires_editable_server() && *is_internal {
                     continue;
                 }

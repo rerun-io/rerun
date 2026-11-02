@@ -304,7 +304,7 @@ jobs:
           fetch-depth: 0
 
       - name: Set up Python
-        if: github.event_name == 'pull_request'
+        if: ${{ inputs.CHANNEL == 'pr' }}
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
         with:
           python-version: "3.11"
@@ -325,12 +325,15 @@ jobs:
       # For PRs: Check only links in added lines
       - name: PR Link Checker (added lines only)
         if: ${{ inputs.CHANNEL == 'pr' }}
+        env:
+          # Release branches run this on `push`, which has no base ref: they compare against `main`.
+          BASE_REF: ${{ github.base_ref || 'main' }}
         run: |
           # Fetch the base branch
-          git fetch origin ${{ github.base_ref }}:${{ github.base_ref }}
+          git fetch origin "$BASE_REF:$BASE_REF"
 
           # Run our custom PR link checker
-          pixi run link-check-pr origin/${{ github.base_ref }}
+          pixi run link-check-pr "origin/$BASE_REF"
 
       # For nightly: Check all links in the entire codebase
       - name: Full Link Checker

@@ -25,6 +25,9 @@ enum Compression {
   COMPRESSION_NONE = 1;
 
   // LZ4 block compression.
+  //
+  // Encoders only use this where it saves enough bytes; a payload that compresses poorly is
+  // written as `COMPRESSION_NONE` even when LZ4 was requested.
   COMPRESSION_LZ4 = 2;
 }
 
@@ -233,11 +236,10 @@ message DataframePart {
 
   // How large is the uncompressed data?
   //
-  // The value is undefined if `self.compression == Off`.
-  //
-  // This was introduced late in `DataframePart`'s lifetime, and therefore might be unspecified
-  // in many real world recordings out there (which is fine, because they are all implicitly
-  // using `Compression::Off`).
+  // Encoders always write it, and it equals the payload length when the payload is not
+  // compressed. Readers must treat the payload length as authoritative for uncompressed parts,
+  // because this was introduced late in `DataframePart`'s lifetime and old recordings left it
+  // unset (which is fine, because they are all implicitly using `Compression::Off`).
   uint64 uncompressed_size = 4;
 }
 
@@ -335,6 +337,15 @@ message ScanParametersOrderClause {
 message SegmentId {
   // The identifier itself.
   optional string id = 1;
+}
+
+// Identifies an Arrow schema by the SHA-256 of its canonical form: fields sorted,
+// top-level metadata dropped, encoded as Arrow IPC.
+//
+// Equal schemas have equal identifiers, whichever layer or dataset they come from.
+message SchemaId {
+  // The SHA-256 digest, exactly 32 bytes. Required.
+  optional bytes sha256 = 1;
 }
 
 // Fully describes the semantics of a column of data. Mirrors `re_types_core::ComponentDescriptor`.

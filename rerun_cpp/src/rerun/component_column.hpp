@@ -1,6 +1,7 @@
 #pragma once
 
-#include <memory> // shared_ptr
+#include <cstddef> // size_t
+#include <memory>  // shared_ptr
 
 #include "collection.hpp"
 #include "component_batch.hpp"
@@ -8,9 +9,19 @@
 #include "error.hpp"
 #include "loggable.hpp"
 
+namespace arrow {
+    class Buffer;
+}
+
 struct rr_component_column;
 
 namespace rerun {
+    namespace detail {
+        /// Builds a shareable buffer of cumulative uint32_t offsets, starting at zero.
+        /// Accumulation does not check for overflow.
+        std::shared_ptr<arrow::Buffer> offsets_from_lengths(const Collection<uint32_t>& lengths);
+    } // namespace detail
+
     /// Arrow-encoded data of a column of components.
     ///
     /// This is essentially an array of `rerun::ComponentBatch` with all batches
@@ -88,6 +99,25 @@ namespace rerun {
         // would have an offset array of `[0, 2, 5]`.
         static Result<ComponentColumn> from_batch_with_offsets(
             ComponentBatch batch, Collection<uint32_t> offsets
+        );
+
+        /// Creates a new component batch partition from a batch and a shared Arrow offsets buffer.
+        ///
+        /// The column shares ownership of the offsets buffer and the batch's values without copying them,
+        /// and retains the batch's component type handle.
+        /// Multiple columns can share the same offsets buffer.
+        ///
+        /// \param batch A batch of components which is about to be partitioned.
+        /// \param offsets A non-null buffer containing `num_rows + 1` contiguous uint32_t offsets into `batch`.
+        /// Offsets must start at zero, be nondecreasing, and end at the total number of components in the batch.
+        /// Equal consecutive offsets produce an empty row.
+        /// For example, five components divided into two rows of lengths two and three use `[0, 2, 5]`.
+        /// The buffer must not be modified while any column uses it.
+        /// \param num_rows The number of component runs (rows), one less than the number of offsets.
+        ///
+        /// The caller must supply valid Arrow list offsets; this method does not validate them.
+        static Result<ComponentColumn> from_batch_with_offsets(
+            ComponentBatch batch, std::shared_ptr<arrow::Buffer> offsets, size_t num_rows
         );
 
         /// To rerun C API component batch.

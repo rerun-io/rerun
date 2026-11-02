@@ -104,6 +104,10 @@ Besides the accessibility tree and screenshots, the server gives the agent the s
 It works for any open recording, whatever it was loaded from.
 Without it an agent guesses entity paths and component names from an archetype's documentation, and a query built on a wrong guess comes back empty rather than complaining — so the agent ends up describing data it never read.
 A recording too large to describe in one answer comes back truncated, with a count of the entities left out; the request narrows to a subtree to read the rest.
+For blueprint planning, call `rerun_get_recording_schema` to get each entity's sorted, unique `archetypes` by default.
+It uses the same subtree filtering, limit (100 by default), and `omitted_entities` count; entities without archetype metadata still appear with no archetypes listed.
+To inspect component names and types, call again with `entity_path` and `with_components: true`.
+`with_archetypes` (default `true`) and `with_components` (default `false`) independently select the details to return; set both to `false` for paths only.
 `rerun_get_dataset_schema` gives the same description for a dataset on a server, merged over all its segments, without opening any of them.
 Without a `dataset_url` it describes the dataset on screen, or the dataset of the segment on screen.
 It names the dataset's [assets](../../concepts/query-and-transform/catalog-object-model.md#assets) by id, and `rerun_get_dataset_assets_schema` describes each asset in the same form.
@@ -204,19 +208,98 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
   "/container/4a8c…": { "ContainerBlueprint": { "container_kind": "Horizontal", "contents": ["/view/1f2e…", "/view/9b3d…"] } },
   "/view/1f2e…": { "ViewBlueprint": { "class_identifier": "3D", "space_origin": "/world" } },
   "/view/1f2e…/ViewContents": { "ViewContents": { "query": "+ /world/**" } },
-  "/view/1f2e…/ViewContents/overrides/world/points": { "Points3D": { "colors": "#ff0010" } },
   "/viewport": { "ViewportBlueprint": { "root_container": "4a8c…" } }
 }
 ```
 
-`rerun_set_blueprint` replaces the whole blueprint with JSON of the same form, and clears anything it leaves out.
-So an agent reads the blueprint, edits it, and sends all of it back.
+`rerun_set_blueprint` accepts `mode: "full"` (the default) or `mode: "partial"`.
+Like `rerun_get_blueprint`, it writes the blueprint of what is on screen when given no target.
+Full updates replace the whole blueprint and clear omitted fields and entities, so read the blueprint, edit it, and send all of it back.
+Partial updates write only supplied fields and preserve everything else; prefer them for small changes such as a view name, colormap, or column visibility.
+Arrays and struct-valued fields are replaced as a whole, not merged; preserve other entries when editing a component map or list of active visualizers.
+Set a field to `null` to clear it, or send an empty object for a no-op partial update.
 The write is a normal blueprint edit, so the user can undo it.
+A write that would break a reference is rejected, and nothing is written.
+That covers a reference to a missing view, container, or visualizer instruction, a view, container, or instruction that nothing refers to, a loop of containers, and a view or container in two containers.
+So add a new view and the reference to it in the same call, and delete a view with a recursive `Clear` in the same call that takes it out of `contents`.
+For full recording updates, an explicit `root_container` defaults omitted `auto_layout` and `auto_views` to `false`; set both to `false` if copying a blueprint that enables them.
+View and container IDs can be reused across edits.
+Partial updates preserve automatic options unless supplied, even when changing the root container.
+
+For example, this call renames one view without resending its layout or other properties (substitute the actual view UUID):
+
+```json
+{
+  "recording": {},
+  "mode": "partial",
+  "json": "{\"/view/11111111-1111-4111-8111-111111111111\": {\"ViewBlueprint\": {\"display_name\": \"Navigation\"}}}"
+}
+```
+
+### Component defaults for a whole view
+
+For view-wide changes not meant for a specific entity, first consider component defaults at `/view/<view UUID>/defaults`.
+For a specific entity, use a [component override](#component-overrides) instead.
+Defaults apply to every entity using that archetype in the view, matching the selection panel's **Visualizer defaults**, but do not supersede logged values or per-entity overrides.
+
+For example, to hide Boxes3D labels throughout a view, call `rerun_set_blueprint` with this partial update, substituting the existing view UUID from `rerun_get_blueprint`:
+
+```json
+{
+  "recording": {},
+  "mode": "partial",
+  "json": "{\"/view/11111111-1111-4111-8111-111111111111/defaults\": {\"Boxes3D\": {\"show_labels\": false}}}"
+}
+```
+
+Check a screenshot; if some labels remain, inspect those entities' component sources and use [overrides](#component-overrides) where needed.
+Send `"show_labels": null` to remove the default.
+
+### Component overrides
+
+Use per-entity overrides for selected entities or to supersede logged values; prefer [defaults](#component-defaults-for-a-whole-view) for view-wide styling.
+
+Store component overrides beside their `VisualizerInstruction` at `/view/<view UUID>/ViewContents/overrides/<entity path>/visualizers/<instruction UUID>`.
+For example, writing `Points3D.colors` directly at `overrides/<entity path>` does not configure the visualizer.
+
+For example, these entries make `/world/points` red and give `/map` the Turbo colormap in one view.
+Note that IDs are dummy placeholders in the following example; replace them with full UUIDs, reusing existing IDs where possible.
+
+```json
+{
+  "/view/<view UUID>/ViewContents/overrides/world/points/visualizers": {
+    "ActiveVisualizers": {"instruction_ids": ["<points instruction UUID>"]}
+  },
+  "/view/<view UUID>/ViewContents/overrides/world/points/visualizers/<points instruction UUID>": {
+    "VisualizerInstruction": {
+      "visualizer_type": "Points3D",
+      "component_map": [{"target": "Points3D:colors", "source_kind": 2}]
+    },
+    "Points3D": {"colors": "#ff0010"}
+  },
+  "/view/<view UUID>/ViewContents/overrides/map/visualizers": {
+    "ActiveVisualizers": {"instruction_ids": ["<map instruction UUID>"]}
+  },
+  "/view/<view UUID>/ViewContents/overrides/map/visualizers/<map instruction UUID>": {
+    "VisualizerInstruction": {
+      "visualizer_type": "GridMap",
+      "component_map": [{"target": "GridMap:colormap", "source_kind": 2}]
+    },
+    "GridMap": {"colormap": "Turbo"}
+  }
+}
+```
+
+Send these entries with `mode: "partial"` using the recording's entity paths, preserving other component mappings and active instruction IDs.
+`source_kind: 2` selects the override value; `ActiveVisualizers.instruction_ids` selects which instructions run instead of relying on viewer heuristics.
+
+Verify the effective value in the selection panel's Visualizers section and check a screenshot: blueprint readback alone only confirms storage.
 
 ### Table blueprints
 
 A table, such as a dataset's segment table or a catalog table, has a blueprint of its own with its row filters, layout, and column settings.
-`rerun_get_blueprint` and `rerun_set_blueprint` read and replace it in the same JSON form when given a `table` target, whose `table_url` defaults to the table on screen.
+`rerun_get_blueprint` and `rerun_set_blueprint` read and update it in the same JSON form when given a `table` target, whose `table_url` defaults to the table on screen.
+The same full and partial update modes apply to tables.
 Their answer names the recording or table it used, as `store_id` or `table_url`.
 Row filters are SQL expressions such as `"task" ILIKE '%pick%'`, and the `filters` docs of `TableBlueprint` list the forms the Viewer shows as editable filter widgets.
 A filter that does not fit the table's columns comes back as an error.
@@ -264,8 +347,7 @@ In a column's entity path, `:` and spaces are escaped as `\:` and `\ `, which JS
 To show a column again, set `"visible": true` or leave its entry out.
 Calling `rerun_get_table_schema` again lists the columns in the new order, hidden ones included.
 
-A preview column needs both `"cell_kind": "Preview"` in its `TableColumn` and a `TableColumnPreview` that lists its views.
-Without the cell kind, the Viewer ignores `TableColumnPreview`.
+A column with a `TableColumnPreview` that lists views is a preview column.
 This shows a 3D view of `/my_scene` as a preview of the recording link on each card:
 
 ```json
@@ -274,7 +356,6 @@ This shows a 3D view of `/my_scene` as a preview of the recording link on each c
     "CardLayout": { "link": "recording link", "field_order": ["recording link"] }
   },
   "/table/layouts/cards/fields/recording\\ link": {
-    "TableColumn": { "cell_kind": "Preview" },
     "TableColumnPreview": { "views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d" }
   },
   "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {

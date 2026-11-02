@@ -7,7 +7,7 @@ from rerun._tracing import with_tracing
 if TYPE_CHECKING:
     from rerun_bindings import LayerInternal
 
-    from . import DatasetEntry
+    from . import DatasetEntry, Schema
 
 
 class Layer:
@@ -50,3 +50,17 @@ class Layer:
         Raises [`NotFoundError`][rerun.catalog.NotFoundError] if the dataset does not exist.
         """
         return self._internal.segment_ids()
+
+    @with_tracing("Layer.schema")
+    def schema(self) -> Schema:
+        """
+        Fetch the current schema of this layer, merged across the segments that contain it.
+
+        Unlike [`DatasetEntry.schema`][rerun.catalog.DatasetEntry.schema], the columns of other layers are left out.
+        Raises [`NotFoundError`][rerun.catalog.NotFoundError] if no segment contains the layer, or if the dataset does
+        not exist.
+        Requires a server running Rerun 0.41 or Rerun Hub 0.20 or later.
+        """
+        from ._schema import Schema
+
+        return Schema(self._internal.schema())

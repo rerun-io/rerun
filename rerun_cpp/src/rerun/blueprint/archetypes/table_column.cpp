@@ -15,69 +15,9 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         archetype.visible =
             ComponentBatch::empty<rerun::components::Visible>(Descriptor_visible).value_or_throw();
-        archetype.cell_kind =
-            ComponentBatch::empty<rerun::blueprint::components::TableCellKind>(Descriptor_cell_kind)
+        archetype.column_type =
+            ComponentBatch::empty<rerun::blueprint::components::ColumnType>(Descriptor_column_type)
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> TableColumn::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(4);
-        if (name.has_value()) {
-            columns.push_back(name.value().partitioned(lengths_).value_or_throw());
-        }
-        if (editable.has_value()) {
-            columns.push_back(editable.value().partitioned(lengths_).value_or_throw());
-        }
-        if (visible.has_value()) {
-            columns.push_back(visible.value().partitioned(lengths_).value_or_throw());
-        }
-        if (cell_kind.has_value()) {
-            columns.push_back(cell_kind.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> TableColumn::columns() {
-        if (name.has_value()) {
-            return columns(std::vector<uint32_t>(name.value().length(), 1));
-        }
-        if (editable.has_value()) {
-            return columns(std::vector<uint32_t>(editable.value().length(), 1));
-        }
-        if (visible.has_value()) {
-            return columns(std::vector<uint32_t>(visible.value().length(), 1));
-        }
-        if (cell_kind.has_value()) {
-            return columns(std::vector<uint32_t>(cell_kind.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<blueprint::archetypes::TableColumn>::as_batches(
-        const blueprint::archetypes::TableColumn& archetype
-    ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(4);
-
-        if (archetype.name.has_value()) {
-            cells.push_back(archetype.name.value());
-        }
-        if (archetype.editable.has_value()) {
-            cells.push_back(archetype.editable.value());
-        }
-        if (archetype.visible.has_value()) {
-            cells.push_back(archetype.visible.value());
-        }
-        if (archetype.cell_kind.has_value()) {
-            cells.push_back(archetype.cell_kind.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

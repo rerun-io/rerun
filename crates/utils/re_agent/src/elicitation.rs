@@ -1,6 +1,6 @@
 //! Human-readable transcript summaries for structured user input.
 
-use agent_client_protocol::schema::v1::{
+use agent_client_protocol_schema::v1::{
     CreateElicitationRequest, CreateElicitationResponse, ElicitationAction,
     ElicitationContentValue, ElicitationMode, ElicitationPropertySchema,
 };

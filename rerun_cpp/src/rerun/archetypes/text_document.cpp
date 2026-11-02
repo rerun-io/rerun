@@ -15,46 +15,4 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> TextDocument::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (text.has_value()) {
-            columns.push_back(text.value().partitioned(lengths_).value_or_throw());
-        }
-        if (media_type.has_value()) {
-            columns.push_back(media_type.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> TextDocument::columns() {
-        if (text.has_value()) {
-            return columns(std::vector<uint32_t>(text.value().length(), 1));
-        }
-        if (media_type.has_value()) {
-            return columns(std::vector<uint32_t>(media_type.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<archetypes::TextDocument>::as_batches(
-        const archetypes::TextDocument& archetype
-    ) {
-        using namespace archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.text.has_value()) {
-            cells.push_back(archetype.text.value());
-        }
-        if (archetype.media_type.has_value()) {
-            cells.push_back(archetype.media_type.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

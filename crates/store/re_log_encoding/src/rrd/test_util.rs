@@ -32,6 +32,41 @@ pub fn make_test_chunks(num_chunks: usize) -> Vec<Arc<Chunk>> {
         .collect()
 }
 
+/// Points whose coordinates are deterministic pseudo-random values, which LZ4 cannot shrink.
+///
+/// Stands in for incompressible payloads such as encoded video.
+pub fn make_incompressible_chunk(num_points: usize) -> Arc<Chunk> {
+    let mut state = 0x9E37_79B9_7F4A_7C15_u64;
+    let mut next = move || {
+        state ^= state << 13;
+        state ^= state >> 7;
+        state ^= state << 17;
+        (state >> 8) as f32
+    };
+    let points: Vec<MyPoint> = (0..num_points)
+        .map(|_| MyPoint::new(next(), next()))
+        .collect();
+    make_points_chunk(&points)
+}
+
+/// Points that are all identical, which LZ4 shrinks to almost nothing.
+pub fn make_compressible_chunk(num_points: usize) -> Arc<Chunk> {
+    let points = vec![MyPoint::new(1.0, 2.0); num_points];
+    make_points_chunk(&points)
+}
+
+fn make_points_chunk(points: &dyn re_types_core::ComponentBatch) -> Arc<Chunk> {
+    let chunk = Chunk::builder("/test/entity")
+        .with_sparse_component_batches(
+            RowId::new(),
+            TimePoint::default().with(Timeline::new_sequence("frame"), 0),
+            [(MyPoints::descriptor_points(), Some(points))],
+        )
+        .build()
+        .unwrap();
+    Arc::new(chunk)
+}
+
 /// Encode test chunks into a temporary RRD file (with footer).
 ///
 /// Returns the temp file (keeps it alive) and the `StoreId`.

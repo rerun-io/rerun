@@ -15,46 +15,4 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> GraphEdges::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (edges.has_value()) {
-            columns.push_back(edges.value().partitioned(lengths_).value_or_throw());
-        }
-        if (graph_type.has_value()) {
-            columns.push_back(graph_type.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> GraphEdges::columns() {
-        if (edges.has_value()) {
-            return columns(std::vector<uint32_t>(edges.value().length(), 1));
-        }
-        if (graph_type.has_value()) {
-            return columns(std::vector<uint32_t>(graph_type.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<archetypes::GraphEdges>::as_batches(
-        const archetypes::GraphEdges& archetype
-    ) {
-        using namespace archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.edges.has_value()) {
-            cells.push_back(archetype.edges.value());
-        }
-        if (archetype.graph_type.has_value()) {
-            cells.push_back(archetype.graph_type.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

@@ -321,6 +321,13 @@ impl TestVideoPlayer {
             .is_some_and(|status| status.show_loading_indicator)
     }
 
+    /// Whether the sample at the last requested time is a clear.
+    fn cleared(&self) -> bool {
+        self.last_status
+            .as_ref()
+            .is_some_and(|status| status.cleared)
+    }
+
     #[track_caller]
     fn expect_decoded_samples(&self, samples: impl IntoIterator<Item = SampleIndex>) {
         let received = self.sample_rx.try_iter().collect::<Vec<_>>();
@@ -404,6 +411,14 @@ fn frame(time: f64) -> SampleMetadataState {
         // Not relevant for these tests.
         source: re_video::VideoSource::id(Tuid::new(), Tuid::new()),
     })
+}
+
+fn clear(time: f64) -> SampleMetadataState {
+    let time = Time::from_secs(time, re_video::Timescale::NANOSECOND);
+    SampleMetadataState::Clear {
+        source_id: Tuid::new(),
+        timestamp: time,
+    }
 }
 
 fn keyframe(time: f64) -> SampleMetadataState {
@@ -634,6 +649,38 @@ fn player_irregular() {
     let video = create_video(samples).unwrap();
 
     test_simple_video(video, count, 0.1, 2500.0);
+}
+
+/// A clear between frames of one group of pictures shows nothing for its time. The decoder never
+/// gets the clear, and the frames after it decode without starting over at the keyframe.
+#[test]
+fn player_clear_within_gop() {
+    let mut video = create_video([
+        keyframe(0.0),
+        frame(0.1),
+        frame(0.2),
+        clear(0.3),
+        frame(0.4),
+        frame(0.5),
+    ])
+    .unwrap();
+    let source = TestVideoSource::new(|_| {});
+
+    video.frame_at(0.25, &source).unwrap();
+    assert!(!video.cleared());
+    assert_eq!(video.shown_sample_idx(), Some(2));
+
+    video.frame_at(0.35, &source).unwrap();
+    assert!(video.cleared());
+
+    video.frame_at(0.45, &source).unwrap();
+    assert!(!video.cleared());
+    assert_eq!(video.shown_sample_idx(), Some(4));
+
+    assert_eq!(
+        video.sample_rx.try_iter().collect::<Vec<_>>(),
+        [0, 1, 2, 4, 5]
+    );
 }
 
 /// All samples of a video share one timestamp, and more keep streaming in on it. The frame on

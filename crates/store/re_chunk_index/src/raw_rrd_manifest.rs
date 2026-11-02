@@ -732,14 +732,14 @@ impl PartialEq for RawRrdManifest {
 // helpers centralize the conventions so downstream code doesn't reach into names or metadata.
 impl RawRrdManifest {
     /// Field metadata key holding the index name an index column belongs to.
-    const FIELD_METADATA_KEY_INDEX: &str = "rerun:index";
+    pub const FIELD_METADATA_KEY_INDEX: &str = "rerun:index";
 
     /// Field metadata key holding the index kind (`"sequence"`, `"timestamp"`, `"duration"`).
-    const FIELD_METADATA_KEY_INDEX_KIND: &str = "rerun:index_kind";
+    pub const FIELD_METADATA_KEY_INDEX_KIND: &str = "rerun:index_kind";
 
     /// Field metadata key holding the index marker in the Segment Manifest schema, where the RRD
     /// manifest encodes it as the column name's last `:`-separated part instead.
-    const FIELD_METADATA_KEY_INDEX_MARKER: &str = "rerun:index_marker";
+    pub const FIELD_METADATA_KEY_INDEX_MARKER: &str = "rerun:index_marker";
 
     /// The `rerun:index` value of the static-data pseudo-index.
     ///
@@ -749,8 +749,11 @@ impl RawRrdManifest {
     /// The Segment Manifest's `rerun:index` value of the static-data pseudo-index.
     const INDEX_NAME_STATIC_SEGMENT_MANIFEST: &str = "static";
 
-    const INDEX_MARKER_START: &str = "start";
-    const INDEX_MARKER_END: &str = "end";
+    /// Index marker of the column holding the lower bound of an index range.
+    pub const INDEX_MARKER_START: &str = "start";
+
+    /// Index marker of the column holding the upper bound of an index range.
+    pub const INDEX_MARKER_END: &str = "end";
     const INDEX_MARKER_NUM_ROWS: &str = "num_rows";
     const INDEX_MARKER_HAS_DATA: &str = "has_data";
     const INDEX_MARKER_HAS_STATIC_DATA: &str = "has_static_data";

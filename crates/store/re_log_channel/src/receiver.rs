@@ -37,8 +37,8 @@ impl LogReceiver {
     /// Call this on each sent message.
     ///
     /// Can be used to wake up the receiver thread.
-    pub fn set_waker(&self, waker: impl Fn() + Send + Sync + 'static) {
-        *self.channel.waker.write() = Some(Box::new(waker));
+    pub fn set_waker(&self, waker: re_async::UiWaker) {
+        *self.channel.waker.write() = waker;
     }
 
     /// Are we still connected?
