@@ -76,7 +76,7 @@ DESCRIPTIONS: dict[str, Description] = {
     ),
     "crates/ui_tools": Description(
         "UI tools",
-        "generic widgets and UI helpers, built on egui.\nNothing Rerun-specific in here.",
+        "generic widgets, UI helpers, and the renderer.\nNothing Rerun-specific in here.",
     ),
     "crates/build": Description(
         "Build support",

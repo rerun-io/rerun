@@ -22,7 +22,7 @@ macro_rules! include_file {
         // We're packing shaders using the re_renderer crate as root instead (to avoid nasty
         // problems when publishing: as we lose workspace information when publishing!), so we
         // need to make sure to strip the path down.
-        let path = if let Ok(root_path) = root_path.strip_prefix("crates/viewer_support/re_renderer") {
+        let path = if let Ok(root_path) = root_path.strip_prefix("crates/ui_tools/re_renderer") {
             let path = root_path.parent().unwrap().join($path);
 
             // If we're building from outside the workspace, `path` is an absolute path already and
@@ -62,7 +62,7 @@ macro_rules! include_file {
         // problems when publishing: as we lose workspace information when publishing!), so we
         // need to make sure to strip the path down.
         let path = path
-            .strip_prefix("crates/viewer_support/re_renderer")
+            .strip_prefix("crates/ui_tools/re_renderer")
             .map_or_else(|_| path.clone(), ToOwned::to_owned);
 
         // If we're building from outside the workspace, `file!()` will return an absolute path

@@ -58,7 +58,7 @@ The Rerun Viewer uses the [`wgpu`](https://github.com/gfx-rs/wgpu) graphics API.
 
 On web builds, we use WebGPU when available on the Web, but automatically fall back to a WebGL based emulation layer (with a more limited feature set).
 
-We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/viewer_support/re_renderer/README.md).
+We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/ui_tools/re_renderer/README.md).
 
 ### `egui`
 
@@ -201,8 +201,6 @@ A sibling of `crates/views`: neither depends on the other.
 | re_context_menu         | Support crate for context menu and actions.                                                                |
 | re_data_ui              | Provides ui elements for Rerun component data for the Rerun Viewer.                                        |
 | re_dataframe_ui         | Rich table widget over DataFusion.                                                                         |
-| re_renderer             | A wgpu based renderer for all your visualization needs.                                                    |
-| re_renderer_examples    | Examples for the re_renderer crate.                                                                        |
 | re_time_ruler           | Time ruler widget shared by the time panel and time-aware views.                                           |
 | re_view                 | Types & utilities for defining view classes and communicating with the viewport.                           |
 | re_viewer_context       | Rerun viewer state that is shared with the viewer's code components.                                       |
@@ -265,16 +263,18 @@ A sibling of `crates/views`: neither depends on the other.
 
 ### UI tools
 
-[`crates/ui_tools`](./crates/ui_tools) — generic widgets and UI helpers, built on egui.
+[`crates/ui_tools`](./crates/ui_tools) — generic widgets, UI helpers, and the renderer.
 Nothing Rerun-specific in here.
 
-| Crate       | Description                                                                               |
-| ----------- | ----------------------------------------------------------------------------------------- |
-| re_agent_ui | Chat UI for driving a coding agent (Claude Code, Codex, …) over the Agent Client Protocol |
-| re_arrow_ui | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.  |
-| re_gamepad  | Gamepad input handling for the Rerun viewer.                                              |
-| re_plot     | Shared utilities for plot-based views.                                                    |
-| re_ui       | Rerun GUI theme and helpers, built around egui                                            |
+| Crate                | Description                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| re_agent_ui          | Chat UI for driving a coding agent (Claude Code, Codex, …) over the Agent Client Protocol |
+| re_arrow_ui          | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.  |
+| re_gamepad           | Gamepad input handling for the Rerun viewer.                                              |
+| re_plot              | Shared utilities for plot-based views.                                                    |
+| re_renderer          | A wgpu based renderer for all your visualization needs.                                   |
+| re_renderer_examples | Examples for the re_renderer crate.                                                       |
+| re_ui                | Rerun GUI theme and helpers, built around egui                                            |
 
 ### Build support
 
