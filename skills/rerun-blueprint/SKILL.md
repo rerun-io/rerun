@@ -40,9 +40,13 @@ After each write, check the views and their `reports` in `rerun_get_state`, plus
 If the structure differs, inspect `rerun_get_blueprint` before retrying.
 Then check a screenshot for framing and readability before reporting completion.
 
-### Component overrides
+### Component defaults and overrides
 
-For component overrides like colors or colormaps, follow the [MCP component override example](https://rerun.io/docs/reference/viewer/mcp#component-overrides).
+For view-wide styling, prefer [component defaults](https://rerun.io/docs/reference/viewer/mcp#component-defaults-for-a-whole-view).
+For example, send `{"/view/<view UUID>/defaults": {"Boxes3D": {"show_labels": false}}}` as the `json` string of a partial update to hide Boxes3D labels.
+Defaults apply across the view but do not supersede logged values or per-entity overrides.
+
+For selected entities or to supersede logged values, follow the [MCP component override example](https://rerun.io/docs/reference/viewer/mcp#component-overrides).
 Verify the effective value in the entity's Visualizers section and the visual result, not just stored rows.
 
 ## Tables
