@@ -606,6 +606,23 @@ mod tests {
         assert_eq!(ViewerMcpServer::new(None).instructions(), INSTRUCTIONS);
     }
 
+    #[test]
+    fn instructions_name_available_tools() {
+        let tools = ViewerMcpServer::new(None).all_tools();
+        let names = INSTRUCTIONS
+            .split('`')
+            .skip(1)
+            .step_by(2)
+            .filter(|name| name.starts_with(RERUN_PREFIX))
+            .filter(|name| name.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
+        for name in names {
+            assert!(
+                tools.iter().any(|tool| tool.name == name),
+                "unknown tool: {name}"
+            );
+        }
+    }
+
     /// Snapshot of the documentation the llm will see when loading the mcp tools.
     ///
     /// It's useful to look at the snapshot output to check how much llm context the tool
