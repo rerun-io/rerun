@@ -1425,6 +1425,19 @@ class DatasetSelection:
         """
         return self._internal.arrow_schema()
 
+    @with_tracing("DatasetSelection.info")
+    def info(self) -> DatasetInfo:
+        """
+        Return an overview of this selection: segments, size, layers, timelines, contents and properties.
+
+        This fetches schemas and scans a few columns of the segment table.
+        It reads no recording data.
+        A segment filter requires a server running Rerun 0.41 or Rerun Hub 0.20 or later.
+        """
+        from ._dataset_info import _dataset_info_from_internal
+
+        return _dataset_info_from_internal(self._internal.info())
+
     @with_tracing("DatasetSelection.segment_ids")
     def segment_ids(self) -> list[str]:
         """

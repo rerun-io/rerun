@@ -13,6 +13,18 @@ use tonic::codegen::{Body, StdError};
 use super::RedapClient;
 use crate::{ApiError, ApiErrorKind, ApiResult};
 
+/// What [`RedapClient::get_segments_schema`] does against servers without `/GetSchemas`, which
+/// are older than Rerun 0.41 or Rerun Hub 0.20.
+// TODO(RR-6250): remove once no supported server lacks `/GetSchemas`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OnMissingGetSchemas {
+    /// Fetch one `/GetRrdManifest` per segment, which only suits a handful of segments.
+    FetchRrdManifests,
+
+    /// Fail with [`ApiErrorKind::Unimplemented`], naming the minimum server versions.
+    Fail,
+}
+
 impl<T> RedapClient<T>
 where
     T: tonic::client::GrpcService<tonic::body::Body> + Clone,
@@ -23,13 +35,12 @@ where
     /// dataset holds none of them.
     ///
     /// The order of the fields is unspecified.
-    ///
-    /// Against servers without `/GetSchemas`, falls back to one `/GetRrdManifest` per segment.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_segments_schema(
         &mut self,
         dataset_id: EntryId,
         segment_ids: &BTreeSet<SegmentId>,
+        on_missing_get_schemas: OnMissingGetSchemas,
     ) -> ApiResult<Option<ArrowSchema>> {
         if segment_ids.is_empty() {
             return Ok(None);
@@ -41,6 +52,7 @@ where
                 segment_ids: Some(segment_ids),
                 layer_name: None,
             },
+            on_missing_get_schemas,
         )
         .await
     }
@@ -63,14 +75,18 @@ where
                 segment_ids: None,
                 layer_name: Some(layer),
             },
+            OnMissingGetSchemas::Fail,
         )
         .await
     }
 
+    /// `on_missing_get_schemas` is ignored when `rows` names a layer: an RRD manifest merges all of a
+    /// segment's layers, so the fallback cannot isolate one.
     async fn get_registered_layers_schema(
         &mut self,
         dataset_id: EntryId,
         rows: LayerRows<'_>,
+        on_missing_get_schemas: OnMissingGetSchemas,
     ) -> ApiResult<Option<ArrowSchema>> {
         // A layer unregistered between the manifest scan and the lookup can take its schema with
         // it, so a missing schema gets one retry against a fresh manifest.
@@ -84,7 +100,6 @@ where
             let schemas = match self.get_schemas(dataset_id, &manifest.schema_ids).await {
                 Ok(schemas) => schemas,
                 Err(err) if err.kind == ApiErrorKind::Unimplemented => {
-                    // An RRD manifest merges all of a segment's layers.
                     if let Some(layer_name) = rows.layer_name {
                         return Err(ApiError::unimplemented(
                             &self.origin,
@@ -94,10 +109,20 @@ where
                             ),
                         ));
                     }
-                    return self
-                        .get_segments_schema_from_rrd_manifests(dataset_id, &manifest.segment_ids)
-                        .await
-                        .map(Some);
+                    return match on_missing_get_schemas {
+                        OnMissingGetSchemas::FetchRrdManifests => self
+                            .get_segments_schema_from_rrd_manifests(
+                                dataset_id,
+                                &manifest.segment_ids,
+                            )
+                            .await
+                            .map(Some),
+                        OnMissingGetSchemas::Fail => Err(ApiError::unimplemented(
+                            &self.origin,
+                            "the schema of a set of segments requires a server running Rerun 0.41 \
+                             or Rerun Hub 0.20 or later",
+                        )),
+                    };
                 }
                 Err(err) => return Err(err),
             };

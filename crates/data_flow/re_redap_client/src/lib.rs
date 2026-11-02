@@ -28,7 +28,7 @@ pub use self::api_response_stream::ApiResponseStream;
 pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
     BoxedRedapClientStack, Connection, ConnectionClient, DatasetManifest, DatasetSchema,
-    FetchChunksResponseStream, RedapClient,
+    FetchChunksResponseStream, OnMissingGetSchemas, RedapClient,
 };
 pub use self::connection_handle::ConnectionHandle;
 pub use self::connection_registry::{

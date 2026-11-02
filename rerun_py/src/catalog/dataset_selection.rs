@@ -24,8 +24,8 @@ use re_sorbet::{ColumnDescriptor, SorbetColumnDescriptors};
 use re_types_core::SegmentId;
 
 use crate::catalog::{
-    IndexValuesLike, PyDatasetEntryInternal, PySchemaInternal, PyTableProviderAdapterInternal,
-    to_py_err,
+    IndexValuesLike, PyDatasetEntryInternal, PyDatasetInfoInternal, PySchemaInternal,
+    PyTableProviderAdapterInternal, to_py_err,
 };
 #[cfg(feature = "perf_telemetry")]
 use crate::trace_context::extract_trace_context_from_contextvar;
@@ -148,6 +148,16 @@ impl PyDatasetSelectionInternal {
         let _span =
             read_trace_context_from_python(self_.py(), "DatasetSelection.arrow_schema").entered();
         Ok(Self::schema(self_)?.into_arrow_schema().into())
+    }
+
+    /// Return an overview of the segments and contents this selection keeps.
+    fn info(self_: PyRef<'_, Self>) -> PyResult<PyDatasetInfoInternal> {
+        let py = self_.py();
+        let _span = read_trace_context_from_python(py, "DatasetSelection.info").entered();
+        self_
+            .dataset
+            .borrow(py)
+            .selection_info(py, self_.selection.clone())
     }
 
     /// Returns a list of segment IDs for this selection (filtered if segment filter is set).

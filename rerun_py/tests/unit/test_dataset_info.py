@@ -31,7 +31,6 @@ def _info(**overrides: object) -> DatasetInfo:
                 min=np.timedelta64(1_500_000_000, "ns"),
                 max=np.timedelta64(90_000_000_000, "ns"),
             ),
-            TimelineInfo(name="frame_nr", kind="sequence", num_segments=0, min=None, max=None),
         }),
         "num_entities": 37,
         "num_component_columns": 112,
@@ -51,7 +50,6 @@ DatasetInfo(robot_runs: 120 segments, 382 GiB)
     base: in 120 segments
     predictions-v1: in 118 segments
   timelines:
-    frame_nr: sequence, no data
     log_time: timestamp, 2026-09-01 08:12:03.120Z … 2026-09-30 17:45:59.004Z, in 120 segments
     sim_time: duration, +1.5s … +90s, in 3 segments
     step: sequence, #0 … #184, in 120 segments\
@@ -75,8 +73,8 @@ DatasetInfo(robot_runs: 0 segments, 0 B)
 
 def test_child_reprs() -> None:
     assert repr(LayerInfo(name="base", num_segments=120)) == snapshot("LayerInfo(base: in 120 segments)")
-    assert repr(TimelineInfo(name="frame_nr", kind="sequence", num_segments=0, min=None, max=None)) == snapshot(
-        "TimelineInfo(frame_nr: sequence, no data)"
+    assert repr(TimelineInfo(name="step", kind="sequence", num_segments=120, min=np.int64(0), max=np.int64(184))) == (
+        snapshot("TimelineInfo(step: sequence, #0 … #184, in 120 segments)")
     )
 
 
