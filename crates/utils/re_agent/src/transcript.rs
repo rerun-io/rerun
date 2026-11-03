@@ -8,7 +8,7 @@ use agent_client_protocol_schema::v1::{
     ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 
-use crate::{McpStartupFailure, Prompt, PromptImage};
+use crate::{AgentError, McpStartupFailure, Prompt, PromptImage};
 
 /// The accumulated state of one tool call, patched by later updates.
 #[derive(Clone, Debug)]
@@ -136,6 +136,8 @@ pub enum TranscriptItem {
 
     McpStartupFailure(McpStartupFailure),
 
+    AgentError(AgentError),
+
     /// Something the UI wants to say inline: an error, a cancelled turn, …
     Note {
         text: String,
@@ -152,13 +154,14 @@ impl TranscriptItem {
         }
     }
 
-    /// The text of an error note.
+    /// The text of an error note or agent error.
     pub fn error_text(&self) -> Option<&str> {
         match self {
             Self::Note {
                 text,
                 is_error: true,
             } => Some(text),
+            Self::AgentError(error) => Some(&error.message),
             _ => None,
         }
     }
@@ -216,6 +219,10 @@ impl Transcript {
 
     pub fn push_mcp_startup_failure(&mut self, failure: McpStartupFailure) {
         self.push(TranscriptItem::McpStartupFailure(failure));
+    }
+
+    pub fn push_agent_error(&mut self, error: AgentError) {
+        self.push(TranscriptItem::AgentError(error));
     }
 
     pub fn push_note(&mut self, text: impl Into<String>, is_error: bool) {
@@ -433,6 +440,9 @@ impl Transcript {
                         writeln!(out, "Hint: {hint}").ok();
                     }
                 }
+                TranscriptItem::AgentError(error) => {
+                    writeln!(out, "Error from {}: {}", error.reporter(), error.message).ok();
+                }
                 TranscriptItem::Note { text, is_error } => {
                     let prefix = if *is_error { "Error" } else { "Note" };
                     writeln!(out, "{prefix}: {text}").ok();
@@ -531,6 +541,12 @@ impl Transcript {
                     if let Some(hint) = &failure.hint {
                         writeln!(out, "{hint}\n").ok();
                     }
+                }
+
+                TranscriptItem::AgentError(error) => {
+                    let reporter = error.reporter();
+                    let message = &error.message;
+                    writeln!(out, "## Error from {reporter}{elapsed}\n\n{message}\n").ok();
                 }
 
                 TranscriptItem::Note { text, is_error } => {

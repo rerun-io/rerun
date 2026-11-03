@@ -1,3 +1,5 @@
+#![expect(clippy::print_stderr)] // This is only a test
+
 mod annotation_context_update;
 mod annotations;
 mod axes_property;

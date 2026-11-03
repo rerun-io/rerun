@@ -209,6 +209,8 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
     use std::process::Command;
     use std::time::Duration;
 
+    use re_error::try_eprintln;
+
     // NOTE: These are indented on purpose, it just looks better and reads easier.
 
     const MSG_INSTALL_HOW_TO: &str = //
@@ -331,7 +333,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
         let sdk_version = re_build_info::CrateVersion::LOCAL;
 
         if !viewer_version.is_compatible_with(sdk_version) {
-            eprintln!(
+            let _err = try_eprintln!(
                 "{}",
                 MSG_VERSION_MISMATCH
                     .replace("__VIEWER_VERSION__", &viewer_version.to_string())
@@ -342,13 +344,13 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
             // Don't recommend installing stuff through registries if the user is running some
             // weird version.
             if sdk_version.is_release() {
-                eprintln!(
+                let _err = try_eprintln!(
                     "{}",
                     MSG_INSTALL_HOW_TO_VERSIONED
                         .replace("__VIEWER_VERSION__", &sdk_version.to_string())
                 );
             } else {
-                eprintln!();
+                let _err = try_eprintln!();
             }
         }
     }

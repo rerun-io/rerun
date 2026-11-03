@@ -1,5 +1,7 @@
 use std::path::Path;
 
+use re_error::{try_eprint, try_eprintln, try_println};
+
 use crate::{AnalyticsError, Config, ConfigError, Property};
 
 // ---
@@ -23,7 +25,7 @@ pub fn clear() -> Result<(), CliError> {
     let config = Config::load_or_default()?;
 
     fn delete_dir(dir: &Path) -> Result<(), CliError> {
-        eprint!("Are you sure you want to delete directory {dir:?}? [y/N]: ");
+        try_eprint!("Are you sure you want to delete directory {dir:?}? [y/N]: ")?;
 
         let mut input = String::new();
         std::io::stdin().read_line(&mut input)?;
@@ -34,7 +36,7 @@ pub fn clear() -> Result<(), CliError> {
             {
                 return Err(err.into());
             }
-            eprintln!("Deleted {dir:?}");
+            try_eprintln!("Deleted {dir:?}")?;
         }
 
         Ok(())
@@ -61,9 +63,9 @@ pub fn opt(enabled: bool) -> Result<(), CliError> {
     config.save()?;
 
     if enabled {
-        eprintln!("Analytics enabled");
+        try_eprintln!("Analytics enabled")?;
     } else {
-        eprintln!("Analytics disabled");
+        try_eprintln!("Analytics disabled")?;
     }
 
     Ok(())
@@ -71,7 +73,8 @@ pub fn opt(enabled: bool) -> Result<(), CliError> {
 
 pub fn print_config() -> Result<(), CliError> {
     let config = Config::load()?;
-    serde_json::to_writer_pretty(std::io::stdout(), &config).map_err(Into::into)
+    try_println!("{}", serde_json::to_string_pretty(&config)?)?;
+    Ok(())
 }
 
 const DETAILS: &str = "
@@ -115,9 +118,10 @@ const DETAILS: &str = "
     Find out its location by running `rerun analytics config`.
 ";
 
-pub fn print_details(git_ref: &str) {
-    eprintln!(
+pub fn print_details(git_ref: &str) -> Result<(), CliError> {
+    try_eprintln!(
         "{}",
         DETAILS.replace("/blob/main/", &format!("/blob/{git_ref}/"))
-    );
+    )?;
+    Ok(())
 }

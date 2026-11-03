@@ -1,6 +1,8 @@
 //! Agent harnesses: coding agents such as Claude Code or Codex, installed on the user's machine.
 
 #[cfg(agent_harness_backend)]
+mod acp_error;
+#[cfg(agent_harness_backend)]
 mod backend;
 mod config;
 #[cfg(agent_harness_backend)]

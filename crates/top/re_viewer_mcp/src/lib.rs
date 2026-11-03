@@ -654,6 +654,21 @@ mod tests {
         insta::assert_snapshot!("agent_surface", surface);
     }
 
+    /// The Anthropic and `OpenAI` APIs reject a tool schema with a top-level `oneOf`, `anyOf`, or
+    /// `allOf`, and some agents pass our schemas through to them unchanged.
+    #[test]
+    fn no_top_level_schema_combinators() {
+        for tool in ViewerMcpServer::new(None).all_tools() {
+            for keyword in ["allOf", "anyOf", "oneOf"] {
+                assert!(
+                    !tool.input_schema.contains_key(keyword),
+                    "`{}` has a top-level `{keyword}`",
+                    tool.name
+                );
+            }
+        }
+    }
+
     #[test]
     fn tool_list_carries_both_cache_hints() {
         let server = ViewerMcpServer::new(None);

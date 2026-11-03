@@ -5,6 +5,7 @@ use std::sync::Arc;
 use anyhow::Context as _;
 use itertools::{Itertools as _, izip};
 use re_chunk::Chunk;
+use re_error::try_println;
 
 // ---
 
@@ -70,14 +71,14 @@ impl CompareCommand {
             .with_context(|| format!("path: {path_to_rrd2:?}"))?;
 
         if *full_dump {
-            println!("{app_id1}");
+            try_println!("{app_id1}")?;
             for chunk in &chunks1 {
-                println!("{chunk}");
+                try_println!("{chunk}")?;
             }
 
-            println!("{app_id2}");
+            try_println!("{app_id2}")?;
             for chunk in &chunks2 {
-                println!("{chunk}");
+                try_println!("{chunk}")?;
             }
         }
 

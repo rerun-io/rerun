@@ -784,28 +784,6 @@ Conventions:
         "description": "Close the recordings loaded from these URLs, and stop loading from them."
       }
     },
-    "oneOf": [
-      {
-        "required": [
-          "current"
-        ]
-      },
-      {
-        "required": [
-          "all"
-        ]
-      },
-      {
-        "required": [
-          "store_ids"
-        ]
-      },
-      {
-        "required": [
-          "urls"
-        ]
-      }
-    ],
     "description": "Request for `Close`.\n\nExactly one of `current`, `all`, `store_ids`, `urls` must be set."
   }
 }
@@ -899,34 +877,6 @@ Conventions:
         "description": "Read the blueprint of a table."
       }
     },
-    "oneOf": [
-      {
-        "required": [
-          "recording"
-        ]
-      },
-      {
-        "required": [
-          "table"
-        ]
-      },
-      {
-        "not": {
-          "anyOf": [
-            {
-              "required": [
-                "recording"
-              ]
-            },
-            {
-              "required": [
-                "table"
-              ]
-            }
-          ]
-        }
-      }
-    ],
     "description": "Request for `GetBlueprint`.\n\nAt most one of `recording`, `table` may be set."
   }
 }
@@ -1328,34 +1278,6 @@ Conventions:
     },
     "required": [
       "json"
-    ],
-    "oneOf": [
-      {
-        "required": [
-          "recording"
-        ]
-      },
-      {
-        "required": [
-          "table"
-        ]
-      },
-      {
-        "not": {
-          "anyOf": [
-            {
-              "required": [
-                "recording"
-              ]
-            },
-            {
-              "required": [
-                "table"
-              ]
-            }
-          ]
-        }
-      }
     ],
     "description": "Request for `SetBlueprint`.\n\nAt most one of `recording`, `table` may be set."
   }

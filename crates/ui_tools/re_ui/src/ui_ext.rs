@@ -147,6 +147,27 @@ pub trait UiExt {
         error_label_bg_color(self.ui().style().visuals.error_fg_color)
     }
 
+    /// Shows the summary of an error, with its details (see [`re_error::StructuredError`]) in a
+    /// collapsed "Details" section.
+    ///
+    /// Both are selectable, so they can be copied.
+    fn structured_error_ui(&mut self, error: &re_error::StructuredError) {
+        let re_error::StructuredError { summary, details } = error;
+        let ui = self.ui_mut();
+        ui.add(egui::Label::new(summary).wrap().selectable(true));
+        if !details.is_empty() {
+            ui.collapsing_header("Details", false, |ui| {
+                for detail in details {
+                    ui.add(
+                        egui::Label::new(egui::RichText::new(detail).monospace().weak())
+                            .wrap()
+                            .selectable(true),
+                    );
+                }
+            });
+        }
+    }
+
     /// Shows an error label with the entire error text and copies the text to the clipboard on click.
     ///
     /// If the text has a details section (see [`re_error::StructuredError`]), the details are
@@ -1323,6 +1344,10 @@ pub trait UiExt {
                     .with_class(Size::Tiny.class_name()),
                 |ui| {
                     ui.spacing_mut().item_spacing.x = 3.0;
+
+                    // `ui.horizontal` makes its row `interact_size.y` tall. The row is as tall as
+                    // the segments, so the toggle is centered in a centered layout.
+                    ui.spacing_mut().interact_size.y = Size::Tiny.height();
 
                     ui.horizontal(content).inner
                 },

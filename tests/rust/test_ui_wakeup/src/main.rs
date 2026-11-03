@@ -16,6 +16,8 @@
 //! * Run `cargo r -p test_ui_wakeup -- --save stream.rrd` and in another terminal start the viewer with `pixi run rerun stream.rrd` and test:
 //!  * The viewer is updated on every new message (every ENTER press)
 
+#![expect(clippy::print_stdout, clippy::print_stderr)] // This is only a test
+
 use std::io::Read as _;
 
 #[derive(Debug, clap::Parser)]

@@ -1,5 +1,7 @@
 //! Discovers and runs Rerun web tests.
 
+#![expect(clippy::print_stderr)] // Test runner
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 

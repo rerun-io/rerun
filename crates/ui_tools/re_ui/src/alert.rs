@@ -93,6 +93,24 @@ impl Alert {
         })
     }
 
+    /// An error's summary, with its details in a collapsed "Details" section (see
+    /// [`crate::UiExt::structured_error_ui`]), followed by `content`.
+    pub fn show_structured_error<T>(
+        self,
+        ui: &mut Ui,
+        error: &re_error::StructuredError,
+        content: impl FnOnce(&mut Ui) -> T,
+    ) -> InnerResponse<T> {
+        self.show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.set_min_width(ui.available_width());
+                ui.structured_error_ui(error);
+                content(ui)
+            })
+            .inner
+        })
+    }
+
     /// A titled alert with the content laid out below the icon and title,
     /// for notices that hold more than a line of text.
     pub fn show_with_title<T>(

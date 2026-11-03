@@ -1,4 +1,5 @@
 use re_chunk_store::{LatestAtQuery, RowId};
+use re_log_types::EntityPath;
 use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::components::{TensorData, ValueRange};
 use re_sdk_types::{Archetype as _, ComponentIdentifier};
@@ -11,6 +12,7 @@ use re_viewer_context::{
 
 #[derive(Clone, re_byte_size::SizeBytes)]
 pub struct TensorVisualization {
+    pub entity_path: EntityPath,
     pub tensor_row_id: RowId,
     pub tensor_component: ComponentIdentifier,
     // Tensor is already counted as part of the store.
@@ -112,6 +114,7 @@ impl VisualizerSystem for TensorSystem {
                     });
 
                 tensors.push(TensorVisualization {
+                    entity_path: data_result.entity_path.clone(),
                     tensor_row_id,
                     tensor_component: source_component,
                     tensor: tensor.clone(),

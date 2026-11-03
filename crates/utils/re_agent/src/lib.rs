@@ -63,7 +63,7 @@ pub use agent_harness::{
 };
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection};
-pub use error::McpStartupFailure;
+pub use error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
 pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
 pub use reports::SessionReports;
