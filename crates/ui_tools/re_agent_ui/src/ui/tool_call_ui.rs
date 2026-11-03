@@ -359,7 +359,7 @@ fn kind_icon(kind: ToolKind) -> Option<&'static re_ui::Icon> {
         ToolKind::Delete => &icons::TRASH,
         ToolKind::Move => &icons::DND_MOVE,
         ToolKind::Search => &icons::SEARCH,
-        ToolKind::Execute => &icons::VIEW_LOG,
+        ToolKind::Execute => &icons::TERMINAL,
         ToolKind::Think => &icons::INFO,
         ToolKind::Fetch => &icons::URL,
         ToolKind::SwitchMode => &icons::SETTINGS,
