@@ -846,7 +846,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             if not isinstance(data, bytes):
                 raise TypeError("binary readers must return bytes")
         else:
-            # TODO(RR-5715): Pass sequential sources through the bounded streaming upload path.
+            # TODO(RR-6198): Pass sequential sources through the bounded streaming upload path.
             data = b"".join(source)
         return WriteOperation(self._internal.write_bytes(data, storage_prefix, kind, layer_name, on_duplicate))
 

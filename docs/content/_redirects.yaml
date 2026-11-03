@@ -178,3 +178,6 @@ reference/types/datatypes/video_timestamp: reference/types/encodings/video_times
 reference/types/datatypes/view_coordinates: reference/types/encodings/view_coordinates
 reference/types/datatypes/view_dir: reference/types/encodings/view_dir
 reference/types/datatypes/visible_time_range: reference/types/encodings/visible_time_range
+
+# Hub section
+hub/bucket-cors: hub/bucket-configuration
