@@ -7,12 +7,13 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
 use re_sdk_types::blueprint::components::VisibleTimeRange;
 use re_sdk_types::encodings::{TimeInt, TimeRange, TimeRangeBoundary};
+use re_ui::UiExt as _;
 use re_ui::list_item::{LabelContent, ListItemContentButtonsExt as _};
-use re_ui::{RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_label_text};
 use re_viewer_context::{
     BlueprintContext as _, QueryRange, TimeControlCommand, TimeRangeHighlight,
     TimeRangeHighlightKind, ViewClass, ViewState, ViewerContext,
 };
+use re_viewer_context::{RelativeTimeRange, TimeDragValue, relative_time_range_label_text};
 use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
 
 pub fn visible_time_range_ui_for_view(

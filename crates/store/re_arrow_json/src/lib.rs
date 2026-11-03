@@ -35,5 +35,7 @@ mod to_json;
 #[cfg(test)]
 mod test_util;
 
-pub use self::from_json::{ChunksFromJsonError, ValueFromJsonError, chunks_from_json};
+pub use self::from_json::{
+    ChunksFromJsonError, ValueFromJsonError, chunks_from_json, partial_chunks_from_json,
+};
 pub use self::to_json::json_from_store;

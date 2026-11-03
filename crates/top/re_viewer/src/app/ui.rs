@@ -1,5 +1,5 @@
 use re_byte_size::NamedMemUsageTree;
-use re_entity_db::LogSource;
+use re_log_channel::{LogSource, RecordingOpenBehavior};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{HasDesignTokens as _, UiExt as _, WindowFrameConfig};
 use re_viewer_context::{ActiveStoreContext, StorageContext, store_hub::StoreHubStats};
@@ -65,8 +65,7 @@ impl AppCore {
                     ui,
                 );
 
-                #[cfg(agent_panel)]
-                self.agent_panel_ui(ui);
+                self.agent_panel_ui(ui, active_store_context);
 
                 self.dev_panel_ui(
                     ui,
@@ -140,6 +139,8 @@ impl AppCore {
                         &mut self.notifications,
                     );
 
+                    let welcome_screen_revealed = self.update_welcome_screen_revealed(ui);
+
                     self.state.show(
                         &self.startup.app_env,
                         &self.startup.options,
@@ -158,7 +159,7 @@ impl AppCore {
                         &WelcomeScreenState {
                             hide_examples: self.startup.options.hide_welcome_screen
                                 || !self.app_options().enable_welcome_screen,
-                            opacity: self.welcome_screen_opacity(ui),
+                            revealed: welcome_screen_revealed,
                         },
                         self.event_dispatcher.as_ref(),
                         &self.connections.registry,
@@ -231,8 +232,11 @@ impl AppCore {
     }
 
     /// The rightmost panel: a chat with a coding agent that drives this viewer.
-    #[cfg(agent_panel)]
-    fn agent_panel_ui(&mut self, ui: &mut egui::Ui) {
+    fn agent_panel_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        active_store_context: Option<&ActiveStoreContext<'_>>,
+    ) {
         if !self.app_options().experimental.agent_panel {
             return;
         }
@@ -242,12 +246,19 @@ impl AppCore {
             .registry
             .internal_origin()
             .map(|origin| origin.as_url());
-        let cache_dir = self.app_options().cache_directory.clone();
+        let cache_dir = cfg_select! {
+            target_arch = "wasm32" => None::<std::path::PathBuf>,
+            _ => self.app_options().cache_directory.clone(),
+        };
+        let recording = active_store_context
+            .map(|context| context.recording)
+            .filter(|recording| !recording.store_id().is_empty_recording());
 
         let Self {
             agent_panel,
             state,
             startup,
+            async_runtime,
             ..
         } = self;
 
@@ -255,9 +266,11 @@ impl AppCore {
             ui,
             &mut state.agent_panel_open,
             &mut state.agent_settings,
+            async_runtime,
             viewer_endpoint.as_deref(),
             cache_dir.as_deref(),
             startup.build_info.is_in_rerun_workspace,
+            recording,
         );
     }
 
@@ -300,59 +313,31 @@ impl AppCore {
         self.egui_debug_panel_open = egui_debug_panel_open;
     }
 
-    fn should_fade_in_welcome_screen(&self) -> bool {
-        if let Some(expect_data_soon) = self.startup.options.expect_data_soon {
-            return expect_data_soon;
-        }
+    /// Whether the welcome screen may be drawn this frame.
+    ///
+    /// When data is expected right after startup, the welcome screen is held back briefly so it
+    /// doesn't flash before the recording arrives. It is not skipped entirely, because the data
+    /// may never come. Once revealed it stays revealed: sources that connect later must never
+    /// blank a welcome screen the user can already see.
+    fn update_welcome_screen_revealed(&mut self, egui_ctx: &egui::Context) -> bool {
+        // Enough for `spawn()` to send its recording info, which it does right after connecting.
+        const HOLD_BACK: std::time::Duration = std::time::Duration::from_millis(400);
 
-        // The reason for the fade-in is to avoid the welcome screen
-        // flickering quickly before receiving some data.
-        // So: if we expect data very soon, we do a fade-in.
-
-        for source in self.rx_log.sources() {
-            match &*source {
-                LogSource::File { .. }
-                | LogSource::HttpStream { .. }
-                | LogSource::RedapGrpcStream { .. }
-                | LogSource::Stdin
-                | LogSource::RrdWebEvent
-                | LogSource::Sdk
-                | LogSource::JsChannel { .. } => {
-                    return true; // We expect data soon, so fade-in
-                }
-
-                // We start a gRPC server by default in native rerun, i.e. when just running `rerun`,
-                // and in that case fading in the welcome screen would be slightly annoying.
-                // However, we also use the gRPC server for sending data from the logging SDKs
-                // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
-                // Therefore `spawn()` uses the special `--expect-data-soon` flag
-                // (handled earlier in this function), so here we know we are in the other case:
-                // a user calling `rerun` in their terminal (don't fade in).
-                LogSource::MessageProxy { .. } => {}
+        if !self.welcome_screen_revealed {
+            let elapsed = self.startup.start_time.elapsed();
+            if HOLD_BACK <= elapsed
+                || !expects_data_soon(
+                    self.startup.options.expect_data_soon,
+                    &self.rx_log.sources(),
+                )
+            {
+                self.welcome_screen_revealed = true;
+            } else {
+                egui_ctx.request_repaint_after(HOLD_BACK.saturating_sub(elapsed));
             }
         }
 
-        false // No special sources (or no sources at all), so don't fade in
-    }
-
-    /// Handle fading in the welcome screen, if we should.
-    fn welcome_screen_opacity(&self, egui_ctx: &egui::Context) -> f32 {
-        if self.should_fade_in_welcome_screen() {
-            // The reason for this delay is to avoid the welcome screen
-            // flickering quickly before receiving some data.
-            // The only time it has for that is between the call to `spawn` and sending the recording info,
-            // which should happen _right away_, so we only need a small delay.
-            // Why not skip the wlecome screen completely when we expect the data?
-            // Because maybe the data never comes.
-            let sec_since_first_shown = self.startup.start_time.elapsed().as_secs_f32();
-            let opacity = egui::remap_clamp(sec_since_first_shown, 0.4..=0.6, 0.0..=1.0);
-            if opacity < 1.0 {
-                egui_ctx.request_repaint();
-            }
-            opacity
-        } else {
-            1.0
-        }
+        self.welcome_screen_revealed
     }
 
     /// Show recent text log messages to the user as toast notifications.
@@ -624,4 +609,33 @@ pub(super) fn file_saver_progress_ui(
                 });
         }
     }
+}
+
+/// Is a recording likely to arrive within moments?
+fn expects_data_soon(
+    expect_data_soon: Option<bool>,
+    sources: &[std::sync::Arc<LogSource>],
+) -> bool {
+    if let Some(expect_data_soon) = expect_data_soon {
+        return expect_data_soon;
+    }
+
+    sources.iter().any(|source| match &**source {
+        // Background streams (e.g. table blueprints) never open a recording.
+        // Plain `rerun` starts a gRPC server by default, and nothing may ever be sent to it;
+        // `spawn()` also uses that server, but passes `--expect-data-soon`, handled above.
+        LogSource::RedapGrpcStream {
+            open_behavior: RecordingOpenBehavior::Background,
+            ..
+        }
+        | LogSource::MessageProxy { .. } => false,
+
+        LogSource::File { .. }
+        | LogSource::HttpStream { .. }
+        | LogSource::JsChannel { .. }
+        | LogSource::RedapGrpcStream { .. }
+        | LogSource::RrdWebEvent
+        | LogSource::Sdk
+        | LogSource::Stdin => true,
+    })
 }

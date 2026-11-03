@@ -2,13 +2,12 @@ use egui::NumExt as _;
 use re_log_types::{AbsoluteTimeRange, TimeType};
 use re_sdk_types::blueprint::components::TimeRange;
 use re_sdk_types::encodings::{TimeInt, TimeRangeBoundary};
+use re_ui::UiExt as _;
 use re_ui::list_item::LabelContent;
-use re_ui::{
-    RelativeTimeRange, TimeDragValue, UiExt as _, relative_time_range_boundary_label_text,
-    relative_time_range_label_text,
-};
 use re_viewer_context::{
-    AppContext, MaybeMutRef, TimeControlCommand, TimeRangeHighlight, TimeRangeHighlightKind,
+    AppContext, MaybeMutRef, RelativeTimeRange, TimeControlCommand, TimeDragValue,
+    TimeRangeHighlight, TimeRangeHighlightKind, relative_time_range_boundary_label_text,
+    relative_time_range_label_text,
 };
 
 struct RecordingTimeContext {

@@ -317,6 +317,7 @@ impl DatastoreUi {
                     let _ = self
                         .chunk_list_mode
                         .query_ui(ui, chunk_store, timestamp_format);
+                    self.filter_controls_ui(ui, chunk_store);
                 }
                 should_copy_chunk
             })
@@ -336,8 +337,6 @@ impl DatastoreUi {
             if self.show_details_panels {
                 ui.separator();
             }
-
-            self.filter_controls_ui(ui, chunk_store);
 
             // Each of these must be a column that contains the corresponding time range.
             let all_timelines = chunk_store.schema().timelines();
@@ -503,46 +502,39 @@ impl DatastoreUi {
         self.filter_suggestion_cache
             .maybe_update(self.store_kind, chunk_store);
 
-        ui.horizontal(|ui| {
-            // Make the filter text edits wider by default to accommodate long entity/component names.
-            // Note that this is a handcrafted heuristic and may need adjustments if the UI layout changes.
-            ui.spacing_mut().text_edit_width = (400f32).min(ui.available_width() / 3.);
+        // Two columns maximize the autocomplete field widths for long entity paths and component names.
+        ui.columns(2, |columns| {
+            columns[0].horizontal(|ui| {
+                ui.small_icon(&re_ui::icons::FILTER, None);
+                ui.label("Entity");
+                autocomplete_text_edit(
+                    ui,
+                    &mut self.entity_path_filter,
+                    self.filter_suggestion_cache.entity_suggestions(),
+                    None::<&str>,
+                    None::<&str>,
+                );
+            });
 
-            let filter_icon_rect = ui.small_icon(&re_ui::icons::FILTER, None);
-            ui.interact(
-                filter_icon_rect,
-                ui.make_persistent_id("chunk_list_filter_icon"),
-                egui::Sense::hover(),
-            )
-            .on_hover_text(
-                "Filter the chunk list by entity path and/or component. Filtering is \
-                case-insensitive text-based.",
-            );
-            ui.label("Entity");
-            autocomplete_text_edit(
-                ui,
-                &mut self.entity_path_filter,
-                self.filter_suggestion_cache.entity_suggestions(),
-                None::<&str>,
-                None::<&str>,
-            );
-
-            ui.label("Component");
-            autocomplete_text_edit(
-                ui,
-                &mut self.component_filter,
-                self.filter_suggestion_cache.component_suggestions(),
-                None::<&str>,
-                None::<&str>,
-            );
-
-            if ui
-                .small_icon_button(&re_ui::icons::TRASH, "Clear filters")
-                .clicked()
-            {
-                self.entity_path_filter.clear();
-                self.component_filter.clear();
-            }
+            columns[1].horizontal(|ui| {
+                ui.label("Component");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if ui
+                        .small_icon_button(&re_ui::icons::TRASH, "Clear filters")
+                        .clicked()
+                    {
+                        self.entity_path_filter.clear();
+                        self.component_filter.clear();
+                    }
+                    autocomplete_text_edit(
+                        ui,
+                        &mut self.component_filter,
+                        self.filter_suggestion_cache.component_suggestions(),
+                        None::<&str>,
+                        None::<&str>,
+                    );
+                });
+            });
         });
     }
 
@@ -656,7 +648,7 @@ impl DatastoreUi {
         let selected_recording_before = self.selected_recording_id.clone();
 
         let should_copy_chunks = ui
-            .horizontal(|ui| {
+            .horizontal_wrapped(|ui| {
                 ui.selectable_toggle(|ui| {
                     ui.selectable_value(&mut self.store_kind, StoreKind::Recording, "Recording")
                         .on_hover_text("Display the current recording's data store");

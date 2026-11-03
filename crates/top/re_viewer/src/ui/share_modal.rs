@@ -1,7 +1,7 @@
 use egui::{AtomExt as _, IntoAtoms, NumExt as _};
 use re_ui::list_item::PropertyContent;
 use re_ui::modal::{ModalHandler, ModalWrapper};
-use re_ui::{UiExt as _, icons};
+use re_ui::{ButtonExt as _, UiExt as _, icons};
 use re_uri::Fragment;
 use re_viewer_context::viewer_url::ViewerUrl;
 use re_viewer_context::{ItemCollection, Route, StoreHub, TimeControl, ViewerContext};
@@ -136,13 +136,11 @@ impl ShareModal {
                     // TODO(andreas): This is slightly glitchy: you can still type and we forget about it immediately.
                     // Ideally we'd keep this interactive but don't allow text edits, but `TextEdit` doesn't have this option yet.
                     let mut url_for_text_edit = url_string.clone();
-                    re_ui::text_edit::text_edit_scope(ui, |ui| {
-                        egui::TextEdit::singleline(&mut url_for_text_edit)
-                            .hint_text("<can't share link>") // No known way to get into this situation.
-                            .text_color(ui.style().visuals.strong_text_color())
-                            .desired_width(f32::INFINITY) // Take up the entire space.
-                            .show(ui);
-                    });
+                    egui::TextEdit::singleline(&mut url_for_text_edit)
+                        .hint_text("<can't share link>") // No known way to get into this situation.
+                        .text_color(ui.style().visuals.strong_text_color())
+                        .desired_width(f32::INFINITY) // Take up the entire space.
+                        .show(ui);
 
                     url_string
                 };
@@ -157,32 +155,17 @@ impl ShareModal {
                 } else {
                     (
                         egui::Atom::grow(),
-                        icons::URL.as_image().tint(ui.tokens().icon_inverse),
+                        icons::URL.as_image(),
                         "Copy link",
                         egui::Atom::grow(),
                     )
                         .into_atoms()
                 };
-                let copy_link_response = ui
-                    .scope(|ui| {
-                        let tokens = ui.tokens();
-                        let visuals = &mut ui.style_mut().visuals;
-                        visuals.override_text_color = Some(tokens.text_inverse);
-
-                        let response = ui.read_response(ui.next_auto_id());
-                        let fill_color = if response.is_some_and(|r| r.hovered()) {
-                            tokens.bg_fill_inverse_hover
-                        } else {
-                            tokens.bg_fill_inverse
-                        };
-
-                        ui.add(
-                            egui::Button::new(copy_link_label)
-                                .fill(fill_color)
-                                .min_size(egui::vec2(ui.available_width(), 20.0)),
-                        )
-                    })
-                    .inner;
+                let copy_link_response = ui.add(
+                    egui::Button::new(copy_link_label)
+                        .primary()
+                        .min_size(egui::vec2(ui.available_width(), 20.0)),
+                );
                 if copy_link_response.clicked() {
                     ui.copy_text(url_string.clone());
                     self.show_copied_feedback = true;

@@ -144,7 +144,7 @@ pub fn visualizer_ui_impl(
                 if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
                     ui.list_item()
                         .with_y_offset(1.0)
-                        .with_height(20.0)
+                        .with_density(re_ui::ListItemDensity::Compact)
                         .interactive(false)
                         .show_flat(
                             ui,

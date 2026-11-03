@@ -4,8 +4,8 @@ use re_entity_db::InstancePath;
 use re_format::format_plural_s;
 use re_log_types::{EntityPath, Instance, TimePoint};
 use re_sdk_types::ComponentIdentifier;
-use re_ui::{SyntaxHighlighting as _, UiExt as _};
-use re_viewer_context::{StoreViewContext, UiLayout};
+use re_ui::UiExt as _;
+use re_viewer_context::{StoreSyntaxHighlighting as _, StoreViewContext, UiLayout};
 
 use crate::item_ui;
 

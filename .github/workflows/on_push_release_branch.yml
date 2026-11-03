@@ -1,0 +1,112 @@
+# CI for release branches, in place of `on_pull_request.yml`.
+# A `pull_request` run uses the workflow files of the PR merged into `main`, and GitHub starts none at all
+# while the PR conflicts with `main`. A release PR is never merged, so its CI runs on each push instead:
+# the branch's own commit and workflow files, as in `release.yml`.
+# Always the full set of checks, with no paths filter, since everything on the branch is about to be published.
+
+name: Release Branch
+
+on:
+  push:
+    branches:
+      - "prepare-release-*"
+
+permissions: write-all
+
+jobs:
+  checks:
+    name: Checks
+    uses: ./.github/workflows/reusable_checks.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      CHANNEL: pr
+    secrets: inherit
+
+  protobuf-checks:
+    name: "Protobuf Checks"
+    uses: ./.github/workflows/reusable_checks_protobuf.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit
+
+  rust-checks:
+    name: "Rust Checks"
+    uses: ./.github/workflows/reusable_checks_rust.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      CHANNEL: main
+    secrets: inherit
+
+  python-checks:
+    name: "Python Checks"
+    uses: ./.github/workflows/reusable_checks_python.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit
+
+  cpp-tests:
+    name: "C++ tests"
+    uses: ./.github/workflows/reusable_checks_cpp.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      CHANNEL: pr
+    secrets: inherit
+
+  cli-build:
+    name: "Rerun CLI Build"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      PLATFORM: linux-x64
+    secrets: inherit
+
+  min-wheel-build:
+    name: "Minimum Wheel Build"
+    needs: [cli-build]
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      MODE: "pr"
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: "linux-x64-wheel-fast"
+    secrets: inherit
+
+  min-wheel-test:
+    name: "Minimum Wheel Test"
+    needs: [min-wheel-build]
+    uses: ./.github/workflows/reusable_test_wheels.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: "linux-x64-wheel-fast"
+      FAST: true
+    secrets: inherit
+
+  build-js:
+    name: "Build rerun_js"
+    uses: ./.github/workflows/reusable_build_js.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit
+
+  build-web:
+    name: "Build web viewer"
+    uses: ./.github/workflows/reusable_build_web.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+      CHANNEL: main
+    secrets: inherit
+
+  web-test:
+    name: "Web tests"
+    uses: ./.github/workflows/reusable_web_test.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit
+
+  check-doc-redirects:
+    name: "Check Doc Redirects"
+    uses: ./.github/workflows/reusable_checks_doc_redirects.yml
+    with:
+      CONCURRENCY: push-${{ github.ref_name }}
+    secrets: inherit

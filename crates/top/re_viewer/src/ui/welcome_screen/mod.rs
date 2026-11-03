@@ -43,7 +43,7 @@ impl WelcomeScreen {
         log_sources: &[Arc<LogSource>],
         login_state: &CloudState,
     ) {
-        if welcome_screen_state.opacity <= 0.0 {
+        if !welcome_screen_state.revealed {
             return;
         }
 
@@ -55,7 +55,7 @@ impl WelcomeScreen {
 
         let horizontal_margin = page_horizontal_margin(ui.available_width());
 
-        let response = egui::ScrollArea::vertical()
+        egui::ScrollArea::vertical()
             .id_salt("welcome_screen_page")
             .auto_shrink([false, false])
             .show(ui, |ui| {
@@ -82,13 +82,6 @@ impl WelcomeScreen {
                     }
                 });
             });
-
-        if welcome_screen_state.opacity < 1.0 {
-            let cover_opacity = 1.0 - welcome_screen_state.opacity;
-            let fill_color = ui.visuals().panel_fill.gamma_multiply(cover_opacity);
-            ui.painter()
-                .rect_filled(response.inner_rect, 0.0, fill_color);
-        }
     }
 }
 

@@ -727,6 +727,10 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    if cfg!(feature = "analytics") {
+        re_analytics::enable_in_this_process();
+    }
+
     #[cfg(feature = "native_viewer")]
     re_memory::accounting_allocator::turn_on_tracking_if_env_var(
         re_viewer::env_vars::RERUN_TRACK_ALLOCATIONS,

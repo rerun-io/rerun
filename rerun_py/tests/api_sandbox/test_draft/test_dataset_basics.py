@@ -45,7 +45,7 @@ property:RecordingInfo:start_time: list<item: int64>
 timeline:end: timestamp[ns]
 timeline:start: timestamp[ns]
 -- schema metadata --
-sorbet:version: '0.1.3'\
+sorbet:version: '0.1.4'\
 """)
 
         df_schema = segment_df.schema()
@@ -61,13 +61,13 @@ sorbet:version: '0.1.3'\
         ) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                            │
-│ * version: 0.1.3                                                                                                                     │
+│ * version: 0.1.4                                                                                                                     │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬────────────────────────────────────┬───────────────────────┬───────────────────────┬───────────────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names                  ┆ rerun_num_chunks      ┆ timeline:end          ┆ timeline:start        │ │
 │ │ ---                 ┆ ---                                ┆ ---                   ┆ ---                   ┆ ---                   │ │
 │ │ type: non-null Utf8 ┆ type: non-null List(non-null Utf8) ┆ type: non-null UInt64 ┆ type: Timestamp(ns)   ┆ type: Timestamp(ns)   │ │
-│ │                     ┆                                    ┆                       ┆ index: timeline       ┆ index: timeline       │ │
+│ │                     ┆ component_type: LayerName          ┆                       ┆ index: timeline       ┆ index: timeline       │ │
 │ │                     ┆                                    ┆                       ┆ index_kind: timestamp ┆ index_kind: timestamp │ │
 │ │                     ┆                                    ┆                       ┆ index_marker: end     ┆ index_marker: start   │ │
 │ │                     ┆                                    ┆                       ┆ kind: index           ┆ kind: index           │ │
@@ -116,7 +116,7 @@ def test_dataset_register(rrd_paths: list[Path]) -> None:
             """\
 ┌───────────────────────────────────────────────┐
 │ METADATA:                                     │
-│ * version: 0.1.3                              │
+│ * version: 0.1.4                              │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬─────────────────────┐ │
 │ │ rerun_layer_name    ┆ rerun_segment_id    │ │
@@ -217,7 +217,7 @@ timeline: timestamp[ns]
   rerun:index_name: 'timeline'
   rerun:kind: 'index'
 -- schema metadata --
-sorbet:version: '0.1.3'\
+sorbet:version: '0.1.4'\
 """)
 
 
@@ -251,7 +251,7 @@ def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
         assert (str(df)) == inline_snapshot("""\
 ┌─────────────────────────────────────────┐
 │ METADATA:                               │
-│ * version: 0.1.3                        │
+│ * version: 0.1.4                        │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬───────────────┐ │
 │ │ rerun_segment_id    ┆ success       │ │

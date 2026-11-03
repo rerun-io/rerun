@@ -66,6 +66,8 @@ const COMMAND_QUEUE_CAPACITY: usize = 100;
 
 #[derive(Clone)]
 pub struct Options {
+    /// Requested compression for each message. The sink stores a message uncompressed when
+    /// compressing it would not save enough, see [`Compression::LZ4`].
     pub compression: Compression,
 
     /// If we have not yet connected to the client, then

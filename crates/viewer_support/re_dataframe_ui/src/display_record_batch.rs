@@ -11,19 +11,15 @@ use arrow::buffer::{NullBuffer as ArrowNullBuffer, ScalarBuffer as ArrowScalarBu
 use arrow::datatypes::DataType as ArrowDataType;
 use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_component_ui::{
-    REDAP_ENTRY_KIND_VARIANT, REDAP_THUMBNAIL_VARIANT, REDAP_URI_BUTTON_VARIANT, TABLE_FLAG_VARIANT,
-};
 use re_dataframe::external::re_chunk::{TimeColumn, TimeColumnError};
 use re_log_types::hash::Hash64;
-use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_sdk_types::ComponentDescriptor;
-use re_sdk_types::blueprint::components::TableCellKind;
-use re_sdk_types::components::{Blob, MediaType};
+use re_log_types::{EntityPath, TimeInt, Timeline, TimestampFormat};
+use re_sdk_types::components::{Blob, Thumbnail};
+use re_sdk_types::{ComponentDescriptor, ComponentType};
 use re_sorbet::ColumnDescriptorRef;
 use re_types_core::{Component as _, DeserializationError, FromArrow as _, RowId};
 use re_ui::UiExt as _;
-use re_viewer_context::{AppContext, UiLayout, VariantName};
+use re_viewer_context::{AppContext, UiLayout};
 
 #[derive(thiserror::Error, Debug)]
 pub enum DisplayRecordBatchError {
@@ -163,18 +159,6 @@ fn quick_partial_hash(data: &[u8], section_length: usize) -> Hash64 {
     Hash64::from_u64(hasher.finish())
 }
 
-fn variant_name_for_cell_kind(cell_kind: TableCellKind) -> Option<VariantName> {
-    match cell_kind {
-        TableCellKind::Link => Some(VariantName::from_static_str(REDAP_URI_BUTTON_VARIANT)),
-        TableCellKind::Thumbnail => Some(VariantName::from_static_str(REDAP_THUMBNAIL_VARIANT)),
-        TableCellKind::EntryKind => Some(VariantName::from_static_str(REDAP_ENTRY_KIND_VARIANT)),
-        TableCellKind::Flag => Some(VariantName::from_static_str(TABLE_FLAG_VARIANT)),
-
-        // TODO(andreas): express other cell kinds also as variant names.
-        _ => None,
-    }
-}
-
 /// Data related to a single component column.
 #[derive(Debug)]
 pub struct DisplayComponentColumn {
@@ -187,24 +171,6 @@ pub struct DisplayComponentColumn {
 }
 
 impl DisplayComponentColumn {
-    fn blobs(&self, row: usize) -> Option<Vec<Blob>> {
-        if self.component_descr.component_type != Some(re_sdk_types::components::Blob::name()) {
-            return None;
-        }
-
-        let data = self.component_data.row_data(row)?;
-        Blob::from_arrow(&data).ok()
-    }
-
-    pub fn is_image(&self, row: usize) -> bool {
-        self.blobs(row)
-            .as_ref()
-            .and_then(|blobs| blobs.first())
-            .is_some_and(|blob| {
-                MediaType::guess_from_data(blob.as_ref()).is_some_and(|t| t.starts_with("image/"))
-            })
-    }
-
     pub fn row_value_at(&self, row: usize) -> Option<ArrowArrayRef> {
         self.component_data.row_data(row)
     }
@@ -218,6 +184,11 @@ impl DisplayComponentColumn {
         Some(string_array.value(0).to_owned())
     }
 
+    /// The component type of the column's data, if it has one.
+    pub fn component_type(&self) -> Option<ComponentType> {
+        self.component_descr.component_type
+    }
+
     /// Shows a single cell of this component column in the UI.
     ///
     /// Returns edited data if the cell was edited, otherwise returns `None`.
@@ -228,7 +199,7 @@ impl DisplayComponentColumn {
         row_index: usize,
         instance_index: Option<u64>,
         ui_layout: UiLayout,
-        cell_kind: TableCellKind,
+        component_descr: Option<&ComponentDescriptor>,
         editable: bool,
     ) -> Option<ArrowArrayRef> {
         // handle null columns
@@ -257,8 +228,10 @@ impl DisplayComponentColumn {
                 .and_then(|row_ids| row_ids.get(row_index))
                 .copied();
 
+            let component_descr = component_descr.unwrap_or(&self.component_descr);
+
             // Generate a content-based cache key for thumbnails without a row ID.
-            if cell_kind == TableCellKind::Thumbnail
+            if component_descr.component_type == Some(Thumbnail::name())
                 && row_id.is_none()
                 && let Ok(blobs) = Blob::from_arrow(&data_to_display)
                 && let Some(blob) = blobs.first()
@@ -274,37 +247,26 @@ impl DisplayComponentColumn {
                 ));
             }
 
-            if let Some(variant_name) = variant_name_for_cell_kind(cell_kind) {
-                if editable {
-                    return ctx.component_ui_registry.variant_edit_ui_raw(
-                        ctx,
-                        ui,
-                        variant_name,
-                        &self.component_descr,
-                        row_id,
-                        data_to_display.as_ref(),
-                    );
-                }
-                ctx.component_ui_registry.variant_ui_raw(
-                    ctx,
-                    ui,
-                    ui_layout,
-                    variant_name,
-                    &self.component_descr,
-                    row_id,
-                    data_to_display.as_ref(),
-                );
-            } else {
-                ctx.component_ui_registry.component_ui_raw(
+            if editable {
+                return ctx.component_ui_registry.component_edit_ui_raw(
                     ctx,
                     ui,
                     ui_layout,
                     &self.entity_path,
-                    &self.component_descr,
+                    component_descr,
                     row_id,
                     data_to_display.as_ref(),
                 );
             }
+            ctx.component_ui_registry.component_ui_raw(
+                ctx,
+                ui,
+                ui_layout,
+                &self.entity_path,
+                component_descr,
+                row_id,
+                data_to_display.as_ref(),
+            );
         } else {
             ui.label("-");
         }
@@ -364,6 +326,14 @@ impl DisplayColumn {
         }
     }
 
+    /// The component descriptor of the column, if it is a component column.
+    pub fn component_descriptor(&self) -> Option<&ComponentDescriptor> {
+        match self {
+            Self::RowId { .. } | Self::Timeline { .. } => None,
+            Self::Component(component_column) => Some(&component_column.component_descr),
+        }
+    }
+
     pub fn instance_count(&self, row_index: usize) -> u64 {
         match self {
             Self::RowId { .. } | Self::Timeline { .. } => 1,
@@ -379,7 +349,8 @@ impl DisplayColumn {
     /// - Argument `instance_index` is the specific instance within the row to display. If `None`,
     ///   a summary of all instances is displayed. If the instance is out-of-bound (aka greater than
     ///   [`Self::instance_count`]), nothing is displayed.
-    /// - Argument `cell_kind` determines how the cell is displayed.
+    /// - Argument `component_descr` picks the component UI the cell is shown with.
+    ///   If `None`, the column's own component descriptor is used.
     ///
     /// Returns edited data if the cell was edited, otherwise returns `None`.
     pub fn data_ui(
@@ -389,7 +360,7 @@ impl DisplayColumn {
         row_index: usize,
         instance_index: Option<u64>,
         ui_layout: UiLayout,
-        cell_kind: TableCellKind,
+        component_descr: Option<&ComponentDescriptor>,
         editable: bool,
     ) -> Option<ArrowArrayRef> {
         if let Some(instance_index) = instance_index
@@ -447,12 +418,49 @@ impl DisplayColumn {
                     row_index,
                     instance_index,
                     ui_layout,
-                    cell_kind,
+                    component_descr,
                     editable,
                 );
             }
         }
         None
+    }
+
+    /// The value at `row_index` as plain text, with nothing left out.
+    ///
+    /// Empty if there is no value.
+    pub fn full_text(&self, row_index: usize, timestamp_format: TimestampFormat) -> String {
+        match self {
+            Self::RowId { row_ids } => row_ids
+                .get(row_index)
+                .map(ToString::to_string)
+                .unwrap_or_default(),
+
+            Self::Timeline {
+                timeline,
+                time_data,
+                time_nulls,
+            } => {
+                let is_valid = time_nulls
+                    .as_ref()
+                    .is_none_or(|nulls| nulls.is_valid(row_index));
+                time_data
+                    .get(row_index)
+                    .filter(|_| is_valid)
+                    .and_then(|value| TimeInt::try_from(*value).ok())
+                    .map(|time| timeline.typ().format(time, timestamp_format))
+                    .unwrap_or_default()
+            }
+
+            Self::Component(component_column) => component_column
+                .component_data
+                .row_data(row_index)
+                .map(|data| {
+                    re_arrow_ui::arrow_full_text(&data, timestamp_format)
+                        .unwrap_or_else(|err| err.to_string())
+                })
+                .unwrap_or_default(),
+        }
     }
 
     /// Try to decode the time from the given row index.

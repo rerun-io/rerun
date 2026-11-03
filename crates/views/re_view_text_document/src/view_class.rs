@@ -209,9 +209,11 @@ fn text_document_ui(
                 .or_insert(egui::FontId::proportional(32.0))
                 .size = 24.0;
 
-            egui_commonmark::CommonMarkViewer::new()
-                .max_image_width(Some(ui.available_width().floor() as _))
-                .show(ui, &mut state.commonmark_cache, body);
+            ui.uncontrolled_external_ui(|ui| {
+                egui_commonmark::CommonMarkViewer::new()
+                    .max_image_width(Some(ui.available_width().floor() as _))
+                    .show(ui, &mut state.commonmark_cache, body);
+            });
         } else {
             let mut text = egui::RichText::new(body.as_str());
 

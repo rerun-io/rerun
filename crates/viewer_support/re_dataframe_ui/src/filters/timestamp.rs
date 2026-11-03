@@ -26,6 +26,7 @@ use re_log_types::TimestampFormat;
 use re_types_core::ArrowDataType as _;
 use re_types_core::encodings::TimeInt;
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::text_edit::TextEditExt as _;
 use re_ui::{DesignTokens, SyntaxHighlighting, UiExt as _};
 use strum::VariantArray as _;
 
@@ -466,10 +467,10 @@ impl Filter for TimestampFilter {
         let (default_low_string, default_high_string) = (
             default_timestamp_range
                 .0
-                .map(|t| format_timestamp(t, timestamp_format)),
+                .map(|t| timestamp_format.format(t)),
             default_timestamp_range
                 .1
-                .map(|t| format_timestamp(t, timestamp_format)),
+                .map(|t| timestamp_format.format(t)),
         );
 
         ui.re_radio_value(&mut self.kind, TimestampFilterKind::Today, "today");
@@ -680,18 +681,14 @@ impl EditableTimestamp {
                     self.timestamp_string.clone().unwrap_or_default()
                 };
 
-                let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-                    ui.scope(|ui| {
-                        let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
-                        if parsed.is_err() {
-                            ui.style_invalid_field();
-                        }
+                let parsed = parse_timestamp(&timestamp_string_to_edit, timestamp_format);
 
-                        ui.text_edit_singleline(&mut timestamp_string_to_edit)
-                            .accessible_name("Timestamp")
-                    })
-                    .inner
-                });
+                let response = ui
+                    .add(
+                        egui::TextEdit::singleline(&mut timestamp_string_to_edit)
+                            .invalid(parsed.is_err()),
+                    )
+                    .accessible_name("Timestamp");
 
                 if response.changed() && is_editable {
                     self.update_and_resolve_timestamp(timestamp_string_to_edit, timestamp_format);
@@ -705,7 +702,7 @@ impl EditableTimestamp {
 
         match &self.resolved_timestamp {
             Ok(timestamp) => {
-                ui.label(format_timestamp(*timestamp, timestamp_format));
+                ui.label(timestamp_format.format(*timestamp));
             }
 
             Err(err) => {
@@ -729,10 +726,10 @@ impl EditableTimestamp {
             if let Some(timestamp_string) = self.timestamp_string.as_mut() {
                 if !parse_timestamp(timestamp_string, timestamp_format).is_ok_and(|t| t == resolved)
                 {
-                    *timestamp_string = format_timestamp(resolved, timestamp_format);
+                    *timestamp_string = timestamp_format.format(resolved);
                 }
             } else {
-                self.timestamp_string = Some(format_timestamp(resolved, timestamp_format));
+                self.timestamp_string = Some(timestamp_format.format(resolved));
             }
         }
     }
@@ -767,12 +764,8 @@ impl EditableTimestamp {
     ) -> Result<String, &jiff::Error> {
         self.resolved_timestamp
             .as_ref()
-            .map(|t| re_log_types::Timestamp::from(*t).format(timestamp_format))
+            .map(|t| timestamp_format.format(*t))
     }
-}
-
-fn format_timestamp(timestamp: Timestamp, timestamp_format: TimestampFormat) -> String {
-    re_log_types::Timestamp::from(timestamp).format(timestamp_format)
 }
 
 /// The range of a relative timestamp filter, in the system time zone.

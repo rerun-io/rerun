@@ -12,38 +12,4 @@ namespace rerun::blueprint::archetypes {
             ComponentBatch::empty<rerun::components::Color>(Descriptor_color).value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> GraphBackground::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(1);
-        if (color.has_value()) {
-            columns.push_back(color.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> GraphBackground::columns() {
-        if (color.has_value()) {
-            return columns(std::vector<uint32_t>(color.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::GraphBackground>::as_batches(
-            const blueprint::archetypes::GraphBackground& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(1);
-
-        if (archetype.color.has_value()) {
-            cells.push_back(archetype.color.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

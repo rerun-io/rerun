@@ -664,10 +664,15 @@ pub struct StreamingOptions {
 
 impl std::fmt::Debug for StreamingOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            force_full_download,
+            download,
+            on_progress,
+        } = self;
         f.debug_struct("StreamingOptions")
-            .field("force_full_download", &self.force_full_download)
-            .field("download", &self.download)
-            .field("on_progress", &self.on_progress.as_ref().map(|_| "…"))
+            .field("force_full_download", force_full_download)
+            .field("download", download)
+            .field("on_progress", &on_progress.as_ref().map(|_| "…"))
             .finish()
     }
 }
@@ -853,6 +858,13 @@ pub async fn stream_blueprint_and_segment_from_server(
             };
 
             (asset_dataset, DatasetKind::Asset)
+        }
+
+        re_uri::DatasetResource::Schema => {
+            return Err(ApiError::invalid_arguments(
+                client.origin(),
+                format!("Cannot stream a dataset schema\nUri: {uri}"),
+            ));
         }
     };
 
@@ -1121,7 +1133,7 @@ async fn stream_manifest(
         };
 
         let part_nr = rrd_manifest_parts.len() + 1;
-        re_log::debug!(
+        re_log::trace!(
             "Received RRD manifest part #{part_nr}/? ({} deflated, {:.1}s elapsed)",
             re_format::format_bytes(raw_rrd_manifest_part.total_size_bytes() as _),
             start_time.elapsed().as_secs_f32(),
@@ -1153,7 +1165,7 @@ async fn stream_manifest(
     }
 
     let part_nr = rrd_manifest_parts.len();
-    re_log::debug!(
+    re_log::trace!(
         "Full RRD manifest loaded in {:.1}s in {}",
         start_time.elapsed().as_secs_f32(),
         re_format::format_plural_s(part_nr, "part")
@@ -1172,7 +1184,7 @@ async fn stream_manifest(
 
     match store_id.kind() {
         StoreKind::Recording if !options.force_full_download => {
-            re_log::debug!("Letting the viewer load chunks on-demand");
+            re_log::trace!("Letting the viewer load chunks on-demand");
             Ok(ManifestOutcome::Loaded)
         }
         StoreKind::Recording | StoreKind::Blueprint => {

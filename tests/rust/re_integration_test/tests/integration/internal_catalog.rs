@@ -252,8 +252,11 @@ async fn internal_catalog_load_rbl() {
     let origin = origin.clone();
     let entry_id = *entry_id;
     let connection_registry = harness.state().connection_registry().clone();
-    let catalog =
-        re_catalog_client::CatalogClient::new(connection_registry.connection_handle(origin));
+    let catalog = re_catalog_client::CatalogClient::new(
+        connection_registry.connection_handle(origin),
+        re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+            .expect("test runtime is running"),
+    );
     let mut client = catalog
         .client()
         .await
@@ -505,6 +508,8 @@ async fn open_answers_once_the_recording_has_arrived() {
                     .connection_registry()
                     .internal_connection_handle()
                     .expect("internal catalog should be configured"),
+                re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+                    .expect("test runtime is running"),
             );
             catalog
                 .find_or_create_dataset(&EntryName::new(RRD_APP_ID).expect("valid entry name"))

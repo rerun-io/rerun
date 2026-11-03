@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../archetype_utils.hpp"
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
@@ -461,13 +462,40 @@ namespace rerun::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&vertex_positions,
+                        &triangle_indices,
+                        &vertex_normals,
+                        &vertex_colors,
+                        &vertex_texcoords,
+                        &albedo_factor,
+                        &face_rendering,
+                        &albedo_texture_buffer,
+                        &albedo_texture_format,
+                        &class_ids},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length({&vertex_positions,
+                                                             &triangle_indices,
+                                                             &vertex_normals,
+                                                             &vertex_colors,
+                                                             &vertex_texcoords,
+                                                             &albedo_factor,
+                                                             &face_rendering,
+                                                             &albedo_texture_buffer,
+                                                             &albedo_texture_format,
+                                                             &class_ids})
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::archetypes
@@ -481,6 +509,19 @@ namespace rerun {
     template <>
     struct AsComponents<archetypes::Mesh3D> {
         /// Serialize all set component batches.
-        static Result<Collection<ComponentBatch>> as_batches(const archetypes::Mesh3D& archetype);
+        static Result<Collection<ComponentBatch>> as_batches(const archetypes::Mesh3D& archetype) {
+            return detail::collect_batches(
+                {&archetype.vertex_positions,
+                 &archetype.triangle_indices,
+                 &archetype.vertex_normals,
+                 &archetype.vertex_colors,
+                 &archetype.vertex_texcoords,
+                 &archetype.albedo_factor,
+                 &archetype.face_rendering,
+                 &archetype.albedo_texture_buffer,
+                 &archetype.albedo_texture_format,
+                 &archetype.class_ids}
+            );
+        }
     };
 } // namespace rerun

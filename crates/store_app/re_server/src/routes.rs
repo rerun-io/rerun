@@ -52,7 +52,7 @@ impl WriteAccessGrants {
         object_key: &ObjectKey,
     ) -> tonic::Result<re_protos::cloud::v1alpha1::ext::GetWriteAccessGrantResponse> {
         use re_protos::cloud::v1alpha1::ext::{
-            AccessGrant, GetWriteAccessGrantResponse, HttpRequest, Redemption,
+            AccessGrant, GetWriteAccessGrantResponse, HttpRequest, Redemption, UrlSigning,
         };
 
         let destination = self.storage_dir.join(object_key.to_string());
@@ -92,6 +92,7 @@ impl WriteAccessGrants {
             storage_url,
             grant: AccessGrant {
                 expires_at,
+                signing: UrlSigning::Signed,
                 redemption: Redemption::HttpRequest(HttpRequest::SameOrigin {
                     method: http::Method::PUT,
                     path_and_query,

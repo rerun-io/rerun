@@ -424,6 +424,106 @@ impl Properties for HelpButtonFirstClicked {
 
 // -----------------------------------------------
 
+/// An agent in the Rerun Viewer's agent panel was started, and either opened a session or failed to.
+///
+/// This event contains no text from the agent or its errors.
+/// It is emitted regardless of whether the user shares redacted prompts and responses.
+pub struct AgentStartup {
+    /// How the agent runs: `agent_harness` (a subprocess such as Claude Code) or `model_api`.
+    pub backend: String,
+
+    /// Which agent was started, e.g. "Claude Code", if it introduced itself before the outcome.
+    pub agent: Option<String>,
+
+    /// The model the agent reported when the session opened, e.g. "Opus 5.5".
+    pub model: Option<String>,
+
+    /// From starting the agent to the outcome.
+    pub duration_secs: f64,
+
+    /// How the start ended: `ready`, `failed`, `exited`, or `stopped`.
+    pub outcome: String,
+
+    /// Whether the agent asked the user to log in before the outcome.
+    pub auth_required: bool,
+}
+
+impl Event for AgentStartup {
+    const NAME: &'static str = "agent_startup";
+}
+
+impl Properties for AgentStartup {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            backend,
+            agent,
+            model,
+            duration_secs,
+            outcome,
+            auth_required,
+        } = self;
+        event.insert("backend", backend);
+        event.insert_opt("agent", agent);
+        event.insert_opt("model", model);
+        event.insert("duration_secs", duration_secs);
+        event.insert("outcome", outcome);
+        event.insert("auth_required", auth_required);
+    }
+}
+
+// -----------------------------------------------
+
+/// Which MCP server an [`AgentMcpStartupFailure`] is about.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Server {
+    /// `rerun viewer-mcp`, through which the agent drives the viewer.
+    Rerun,
+
+    /// Any other server, e.g. one the user configured.
+    /// Its name is not sent for privacy reasons.
+    Other,
+}
+
+impl Server {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Rerun => "rerun",
+            Self::Other => "other",
+        }
+    }
+}
+
+/// An MCP server that the agent in the Rerun Viewer's agent panel was asked to start did not start.
+///
+/// This event contains no server name (other than whether it is ours), command, or error text.
+/// Only Codex reports MCP startup failures, so only Codex sessions emit it.
+pub struct AgentMcpStartupFailure {
+    /// Which server failed to start.
+    pub server: Server,
+
+    /// Whether the agent's own config defines a server of the same name, which took precedence.
+    ///
+    /// This does not mean a replacement server ran: that config entry may be disabled.
+    pub replaced_by_agent_config: bool,
+}
+
+impl Event for AgentMcpStartupFailure {
+    const NAME: &'static str = "agent_mcp_startup_failure";
+}
+
+impl Properties for AgentMcpStartupFailure {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self {
+            server,
+            replaced_by_agent_config,
+        } = self;
+        event.insert("server", server.as_str());
+        event.insert("replaced_by_agent_config", replaced_by_agent_config);
+    }
+}
+
+// -----------------------------------------------
+
 /// Non-content usage statistics for a finished turn in the Rerun Viewer's agent panel.
 ///
 /// This event contains no prompt, response, tool output, or error text. It is emitted regardless
@@ -431,6 +531,9 @@ impl Properties for HelpButtonFirstClicked {
 pub struct AgentTurnUsage {
     /// Which agent handled the prompt, e.g. "Claude Code".
     pub agent: Option<String>,
+
+    /// Which model handled the prompt, e.g. "Opus 5.5".
+    pub model: Option<String>,
 
     /// From sending the prompt to the agent finishing.
     pub duration_secs: f64,
@@ -462,6 +565,7 @@ impl Properties for AgentTurnUsage {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
             agent,
+            model,
             duration_secs,
             outcome,
             tool_calls,
@@ -474,6 +578,9 @@ impl Properties for AgentTurnUsage {
         } = self;
         if let Some(agent) = agent {
             event.insert("agent", agent);
+        }
+        if let Some(model) = model {
+            event.insert("model", model);
         }
         event.insert("duration_secs", duration_secs);
         event.insert("outcome", outcome);
@@ -499,7 +606,7 @@ impl Properties for AgentTurnUsage {
 ///
 /// This event is only emitted by the agent panel, not by standalone users of `re_agent`.
 /// It carries the full prompt and response text, which is processed according to the
-/// [redaction instructions](https://github.com/rerun-io/rerun/blob/main/crates/top/re_viewer/src/agent_analytics/redactor.rs)
+/// [redaction instructions](https://github.com/rerun-io/rerun/blob/main/crates/panels/re_agent_panel/src/agent_analytics/redactor.rs)
 /// before sending. The agent settings explain this and ask the user to opt in.
 pub struct AgentTurn {
     /// Non-content statistics about the turn.
@@ -1014,6 +1121,7 @@ mod tests {
     fn agent_turn_keeps_both_the_counts_and_the_text() {
         let usage = AgentTurnUsage {
             agent: None,
+            model: None,
             duration_secs: 1.0,
             outcome: "completed".to_owned(),
             tool_calls: 3,

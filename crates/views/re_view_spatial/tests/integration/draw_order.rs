@@ -19,7 +19,7 @@ pub fn test_draw_order() {
 
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
                     re_sdk_types::encodings::ColorModel::RGB,
                     image,
@@ -41,7 +41,7 @@ pub fn test_draw_order() {
 
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
                     re_sdk_types::encodings::ColorModel::RGB,
                     image,
@@ -58,7 +58,7 @@ pub fn test_draw_order() {
 
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
                     re_sdk_types::encodings::ColorModel::RGB,
                     image,
@@ -71,7 +71,7 @@ pub fn test_draw_order() {
         test_context.log_entity("2d_layering/lines_behind_rect", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::LineStrips2D::new(std::iter::once(
                     (0..20)
                         .map(|i| i as f32)
@@ -85,7 +85,7 @@ pub fn test_draw_order() {
         test_context.log_entity("2d_layering/rect_between_top_and_middle", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Boxes2D::from_mins_and_sizes(
                     [(64.0, 32.0)],
                     [(256.0, 128.0)],
@@ -98,7 +98,7 @@ pub fn test_draw_order() {
         test_context.log_entity("2d_layering/points_between_top_and_middle", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Points2D::new((0..16 * 16).map(|i| i as f32).map(|i| {
                     (
                         32.0 + (i as i32 / 16) as f32 * 16.0,
@@ -116,7 +116,7 @@ pub fn test_draw_order() {
 
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
                     re_sdk_types::encodings::ColorModel::RGB,
                     image,
@@ -130,7 +130,7 @@ pub fn test_draw_order() {
         test_context.log_entity("2d_layering/arrow2d_between", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Arrows2D::from_vectors([(200.0, 200.0)])
                     .with_origins([(10.0, 10.0)])
                     .with_radii([5.0])

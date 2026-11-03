@@ -16,7 +16,7 @@ pub fn test_single_channel_mesh() {
     test_context.log_entity("world/mesh", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &Mesh3D::new([
                 [-1.0, 0.0, -1.0],
                 [1.0, 0.0, -1.0],

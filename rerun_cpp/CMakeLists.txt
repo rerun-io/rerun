@@ -50,8 +50,8 @@ if(NOT TARGET rerun_c)
 
     if(APPLE)
         if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+            # We don't ship a prebuilt rerun_c for Intel macOS, so leave the default empty.
             message(WARNING "macOS x86 is officially unsupported by Rerun.")
-            set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_x64.a)
         elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "arm64" OR "${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
             set(RERUN_C_LIB_DEFAULT ${RERUN_C_DEFAULT_LIB_DIR}/librerun_c__macos_arm64.a)
         else()
@@ -78,7 +78,9 @@ if(NOT TARGET rerun_c)
     )
 
     if("${RERUN_C_LIB}" STREQUAL "")
-        message(FATAL_ERROR "RERUN_C_LIB is not set.")
+        message(FATAL_ERROR "RERUN_C_LIB is not set, and there is no prebuilt rerun_c for this platform. "
+            "Build it yourself with `cargo build --release -p rerun_c` in the Rerun repository, "
+            "then pass `-DRERUN_C_LIB=<path to librerun_c.a>`.")
     endif()
 
     set_target_properties(rerun_c PROPERTIES IMPORTED_LOCATION ${RERUN_C_LIB})

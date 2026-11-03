@@ -61,6 +61,7 @@ fn in_process_catalog_client<T: RerunCloudService>(service: Arc<T>) -> CatalogCl
         registry
             .internal_connection_handle()
             .expect("internal connection is configured"),
+        re_async::AsyncRuntimeHandle::new_web(),
     )
 }
 
@@ -125,7 +126,7 @@ fn encode_rrd(with_footer: bool) -> Vec<u8> {
     let chunk = Chunk::builder(EntityPath::from("/test/entity"))
         .with_sparse_component_batches(
             RowId::new(),
-            TimePoint::default().with(timeline, 0),
+            TimePoint::STATIC.with(timeline, 0),
             [(MyPoints::descriptor_points(), Some(&points as _))],
         )
         .build()

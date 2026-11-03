@@ -25,12 +25,10 @@ fn edit_singleline_string_impl(
 ) -> egui::Response {
     if let Some(value) = value.as_mut() {
         let mut edit_name = value.to_string();
-        let response = re_ui::text_edit::text_edit_scope(ui, |ui| {
-            egui::TextEdit::singleline(&mut edit_name)
-                .password(is_password)
-                .show(ui)
-                .response
-        });
+        let response = egui::TextEdit::singleline(&mut edit_name)
+            .password(is_password)
+            .show(ui)
+            .response;
         *value = edit_name.into();
         response.response
     } else {

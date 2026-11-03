@@ -206,7 +206,7 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
         Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/static_only"))
             .with_sparse_component_batches(
                 next_row_id(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_points(), Some(&points as _))],
             )
             .build()?;
@@ -217,7 +217,7 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
     let both_static_chunk = Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/both"))
         .with_sparse_component_batches(
             next_row_id(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             [(MyPoints::descriptor_points(), Some(&points as _))],
         )
         .build()?;

@@ -14,7 +14,7 @@ fn no_radii() -> impl Iterator<Item = f32> {
 #[test]
 fn encode_roundtrip() {
     fn timepoint(time: i64) -> TimePoint {
-        TimePoint::default().with(Timeline::new_sequence("my_index"), time)
+        TimePoint::STATIC.with(Timeline::new_sequence("my_index"), time)
     }
 
     let chunk = Chunk::builder("points")

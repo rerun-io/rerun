@@ -20,6 +20,7 @@ A list of nodes in a graph with optional labels, colors, etc.
 ## Can be shown in
 * [GraphView](../views/graph_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphNodes`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GraphNodes.html)

@@ -20,7 +20,7 @@ fn log_test_image(
     harness.log_entity(entity_path, |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
                 re_sdk_types::encodings::ColorModel::RGB,
                 image,
@@ -41,7 +41,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
     harness.log_entity("3D", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::ViewCoordinates::RIGHT_HAND_Y_DOWN(),
         )
     });
@@ -60,7 +60,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
     harness.log_entity("3D/camera", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Pinhole::from_focal_length_and_resolution(
                 [128.0, 128.0],
                 [IMAGE_WIDTH as f32, IMAGE_HEIGHT as f32],

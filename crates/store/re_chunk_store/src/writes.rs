@@ -1184,7 +1184,7 @@ mod tests {
 
         let entity_path = EntityPath::from("this/that");
 
-        let timepoint = TimePoint::default().with(Timeline::log_tick(), 42);
+        let timepoint = TimePoint::STATIC.with(Timeline::log_tick(), 42);
 
         let row_id1_1 = RowId::new();
         let row_id2_1 = RowId::new();

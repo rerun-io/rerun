@@ -126,7 +126,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     // Points2D
     registry.register_component_fallback_provider(
         archetypes::Points2D::descriptor_draw_order().component,
-        |_| components::DrawOrder::DEFAULT_LINES2D,
+        |_| components::DrawOrder::DEFAULT_POINTS2D,
     );
     registry.register_component_fallback_provider(
         archetypes::Points2D::descriptor_show_labels().component,

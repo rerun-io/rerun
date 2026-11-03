@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .column_type import ColumnType, ColumnTypeArrayLike, ColumnTypeBatch, ColumnTypeLike
 from .component_column_selector import (
     ComponentColumnSelector,
     ComponentColumnSelectorArrayLike,
@@ -41,6 +42,10 @@ from .visualizer_component_mapping import (
 )
 
 __all__ = [
+    "ColumnType",
+    "ColumnTypeArrayLike",
+    "ColumnTypeBatch",
+    "ColumnTypeLike",
     "ComponentColumnSelector",
     "ComponentColumnSelectorArrayLike",
     "ComponentColumnSelectorBatch",

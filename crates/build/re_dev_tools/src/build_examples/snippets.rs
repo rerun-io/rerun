@@ -196,15 +196,22 @@ struct Snippet {
 
 impl Snippet {
     fn build(self, progress: &MultiProgress, output_dir: &Path) -> anyhow::Result<Option<PathBuf>> {
-        let rrd_path = output_dir.join(&self.name).with_extension("rrd");
+        let Self {
+            path,
+            name,
+            extra_args,
+            backwards_check_opted_out,
+        } = self;
+
+        let rrd_path = output_dir.join(&name).with_extension("rrd");
 
         if let Some(dir) = rrd_path.parent() {
             std::fs::create_dir_all(dir)?;
         }
 
         let mut cmd = Command::new("python3");
-        cmd.arg(&self.path);
-        cmd.args(&self.extra_args);
+        cmd.arg(path);
+        cmd.args(extra_args);
 
         cmd.envs([
             ("PYTHONWARNINGS", "error"), // raise exception on warnings, e.g. when using a @deprecated function
@@ -214,16 +221,16 @@ impl Snippet {
         ]);
 
         // Only set _RERUN_TEST_FORCE_SAVE if we expect an RRD output
-        if !self.backwards_check_opted_out {
+        if !backwards_check_opted_out {
             cmd.env(
                 "_RERUN_TEST_FORCE_SAVE",
                 rrd_path.to_string_lossy().as_ref(),
             );
         }
 
-        wait_for_output(cmd, &self.name, progress)?;
+        wait_for_output(cmd, &name, progress)?;
 
-        if self.backwards_check_opted_out {
+        if backwards_check_opted_out {
             Ok(None)
         } else {
             Ok(Some(rrd_path))

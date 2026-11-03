@@ -178,7 +178,7 @@ pub fn scalar_chunk_on_component(
 ) -> Chunk {
     let timepoint: TimePoint = match time {
         Some(t) => TimePoint::from([(Timeline::new_sequence(timeline), TimeInt::new_temporal(t))]),
-        None => TimePoint::default(),
+        None => TimePoint::STATIC,
     };
 
     let array: ArrayRef = Arc::new(Int64Array::from(vec![value]));

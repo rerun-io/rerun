@@ -85,6 +85,27 @@ This query produces one row per segment, so the example uses `rerun_segment_id`,
 The `rr.SORBET_IS_TABLE_INDEX` constant provides the metadata key.
 An upsert replaces the entire matching row, so omitted columns are written as null rather than retaining their previous values.
 
+## Give columns semantic meaning
+
+A plain Arrow field only says how a column's values are stored, such as booleans or strings.
+A Rerun component type also says what the values mean, for anyone who reads the table.
+The Viewer uses this meaning to pick the UI for the column, such as flag buttons for a `Flag` column and links for a `Url` column.
+
+`table_field` on a component class returns a schema field with the component's Arrow datatype and component type.
+With `editable=True`, the column can be edited in the Viewer.
+Editing needs a table index and write permission.
+
+```python
+schema = pa.schema([
+    pa.field("id", pa.int64(), metadata={rr.SORBET_IS_TABLE_INDEX: "true"}),
+    rr.components.Url.table_field("link"),
+    rr.components.Flag.table_field("reviewed", editable=True),
+    rr.components.Text.table_field("notes", editable=True),
+])
+```
+
+A [table blueprint](../visualization/configure-table-blueprints.md) can override both the component type and whether a column is editable.
+
 ## Register an existing table
 
 Use `create_table` to create a new table managed by the catalog.

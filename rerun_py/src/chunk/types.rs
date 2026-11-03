@@ -179,7 +179,7 @@ impl PyChunkInternal {
         // One static row (empty timepoint) holding all component data — the same
         // semantics as `send_property` / `RecordingStream::log_static`.
         let chunk = Chunk::builder(entity_path)
-            .with_row(RowId::new(), TimePoint::default(), components)
+            .with_row(RowId::new(), TimePoint::STATIC, components)
             .build()
             .map_err(|err| PyValueError::new_err(err.to_string()))?;
         Ok(Self::new(Arc::new(chunk)))

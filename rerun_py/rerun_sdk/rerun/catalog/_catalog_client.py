@@ -295,8 +295,8 @@ class CatalogClient:
 
         """
         if isinstance(source, bytes):
-            return self._internal.stage_bytes(source, key=key)
-        return self._internal.stage_file(os.fspath(source), key=key)
+            return self._internal.stage_bytes(source, key=key, upload_method="auto")
+        return self._internal.stage_file(os.fspath(source), key=key, upload_method="auto")
 
     def entries(self, *, include_hidden: bool = False) -> list[DatasetEntry | TableEntry]:
         """

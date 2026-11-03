@@ -24,13 +24,13 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
     assert segment_stable_snapshot(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                                            │
-│ * version: 0.1.3                                                                                                                                     │
+│ * version: 0.1.4                                                                                                                                     │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬────────────────────────────────────┬───────────────────────┬───────────────────────┬───────────────────────┬───────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names                  ┆ rerun_num_chunks      ┆ timeline:end          ┆ timeline:start        ┆ success       │ │
 │ │ ---                 ┆ ---                                ┆ ---                   ┆ ---                   ┆ ---                   ┆ ---           │ │
 │ │ type: non-null Utf8 ┆ type: non-null List(non-null Utf8) ┆ type: non-null UInt64 ┆ type: Timestamp(ns)   ┆ type: Timestamp(ns)   ┆ type: Boolean │ │
-│ │                     ┆                                    ┆                       ┆ index: timeline       ┆ index: timeline       ┆               │ │
+│ │                     ┆ component_type: LayerName          ┆                       ┆ index: timeline       ┆ index: timeline       ┆               │ │
 │ │                     ┆                                    ┆                       ┆ index_kind: timestamp ┆ index_kind: timestamp ┆               │ │
 │ │                     ┆                                    ┆                       ┆ index_marker: end     ┆ index_marker: start   ┆               │ │
 │ │                     ┆                                    ┆                       ┆ kind: index           ┆ kind: index           ┆               │ │
@@ -54,13 +54,13 @@ def test_dataset_view_filter_segments(complex_dataset: DatasetEntry, complex_met
     assert segment_stable_snapshot(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                                            │
-│ * version: 0.1.3                                                                                                                     │
+│ * version: 0.1.4                                                                                                                     │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬────────────────────────────────────┬───────────────────────┬───────────────────────┬───────────────────────┐ │
 │ │ rerun_segment_id    ┆ rerun_layer_names                  ┆ rerun_num_chunks      ┆ timeline:end          ┆ timeline:start        │ │
 │ │ ---                 ┆ ---                                ┆ ---                   ┆ ---                   ┆ ---                   │ │
 │ │ type: non-null Utf8 ┆ type: non-null List(non-null Utf8) ┆ type: non-null UInt64 ┆ type: Timestamp(ns)   ┆ type: Timestamp(ns)   │ │
-│ │                     ┆                                    ┆                       ┆ index: timeline       ┆ index: timeline       │ │
+│ │                     ┆ component_type: LayerName          ┆                       ┆ index: timeline       ┆ index: timeline       │ │
 │ │                     ┆                                    ┆                       ┆ index_kind: timestamp ┆ index_kind: timestamp │ │
 │ │                     ┆                                    ┆                       ┆ index_marker: end     ┆ index_marker: start   │ │
 │ │                     ┆                                    ┆                       ┆ kind: index           ┆ kind: index           │ │
@@ -139,7 +139,7 @@ timeline: timestamp[ns]\
     assert str(df) == inline_snapshot("""\
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                │
-│ * version: 0.1.3                                                         │
+│ * version: 0.1.4                                                         │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌─────────────────────┬──────────────────────┬─────────────────────────┐ │
 │ │ rerun_segment_id    ┆ timeline             ┆ /text:TextLog:text      │ │

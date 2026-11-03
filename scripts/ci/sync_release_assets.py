@@ -73,7 +73,7 @@ def fetch_binary_assets(
     # Python wheels
     if do_wheels:
         found = False
-        wheel_blobs = list(bucket.list_blobs(prefix=f"commit/{commit_short}/wheels"))
+        wheel_blobs = list(bucket.list_blobs(prefix=f"commit/{commit_short}/wheels/", delimiter="/"))
         for blob in (bucket.get_blob(blob.name) for blob in wheel_blobs if blob.name.endswith(".whl")):
             if blob is not None and blob.name is not None:
                 name = blob.name.split("/")[-1]

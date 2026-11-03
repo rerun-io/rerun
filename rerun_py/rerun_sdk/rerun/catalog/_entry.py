@@ -762,18 +762,82 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Experimental API. Only the first recording in the RRD is registered.
         Its recording ID becomes the segment ID; selecting another recording is not yet supported.
         Duplicate handling follows `register()`.
-        `storage_prefix` is relative to catalog storage; None adds no prefix.
+        `storage_prefix` is relative to catalog storage.
         An invalid `storage_prefix` raises `ValueError` immediately.
 
         Keep files unchanged until the operation finishes.
         Readers are consumed synchronously from their current position and are not closed.
         Call `wait()` on the returned operation to confirm registration or raise the failure.
         """
+        return self._write_recording(
+            source, storage_prefix, "segment", layer_name=layer_name, on_duplicate=on_duplicate
+        )
+
+    @with_tracing("DatasetEntry._write_blueprint")
+    def _write_blueprint(
+        self,
+        source: str | Path | bytes | bytearray | memoryview | BinaryIO | Iterable[bytes],
+        storage_prefix: str | None = None,
+        *,
+        layer_name: str = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> WriteOperation:
+        """
+        Upload a complete RBL and register its first recording in the associated blueprint dataset.
+
+        Experimental API. The recording ID becomes the blueprint's segment ID.
+        This does not change the dataset's default blueprints.
+        `storage_prefix` is relative to catalog storage.
+        An invalid `storage_prefix` raises `ValueError` immediately.
+        Duplicate handling follows `register()`.
+
+        Keep files unchanged until the operation finishes.
+        Readers are consumed synchronously from their current position and are not closed.
+        Call `wait()` on the returned operation to confirm registration or raise the failure.
+        """
+        return self._write_recording(
+            source, storage_prefix, "blueprint", layer_name=layer_name, on_duplicate=on_duplicate
+        )
+
+    @with_tracing("DatasetEntry._write_asset")
+    def _write_asset(
+        self,
+        source: str | Path | bytes | bytearray | memoryview | BinaryIO | Iterable[bytes],
+        storage_prefix: str | None = None,
+        *,
+        layer_name: str = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+    ) -> WriteOperation:
+        """
+        Upload a complete RRD and register its first recording in the associated asset dataset.
+
+        Experimental API. The recording ID becomes the asset's segment ID.
+        This preserves existing asset coverage; new assets apply to every segment.
+        The server enforces the same static-data and size limits as `register_asset()`.
+        `storage_prefix` is relative to catalog storage.
+        An invalid `storage_prefix` raises `ValueError` immediately.
+        Duplicate handling follows `register()`.
+
+        Keep files unchanged until the operation finishes.
+        Readers are consumed synchronously from their current position and are not closed.
+        Call `wait()` on the returned operation to confirm registration or raise the failure.
+        """
+        return self._write_recording(source, storage_prefix, "asset", layer_name=layer_name, on_duplicate=on_duplicate)
+
+    def _write_recording(
+        self,
+        source: str | Path | bytes | bytearray | memoryview | BinaryIO | Iterable[bytes],
+        storage_prefix: str | None,
+        kind: Literal["segment", "blueprint", "asset"],
+        *,
+        layer_name: str,
+        on_duplicate: OnDuplicateSegmentLayer,
+    ) -> WriteOperation:
         from ._write_operation import WriteOperation
 
         if isinstance(source, (str, Path)):
             return WriteOperation(
-                self._internal.write_segment_path(str(source), storage_prefix, layer_name, on_duplicate)
+                self._internal.write_path(str(source), storage_prefix, kind, layer_name, on_duplicate)
             )
         elif isinstance(source, (bytes, bytearray, memoryview)):
             data = bytes(source)
@@ -784,7 +848,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         else:
             # TODO(RR-5715): Pass sequential sources through the bounded streaming upload path.
             data = b"".join(source)
-        return WriteOperation(self._internal.write_segment_bytes(data, storage_prefix, layer_name, on_duplicate))
+        return WriteOperation(self._internal.write_bytes(data, storage_prefix, kind, layer_name, on_duplicate))
 
     # TODO(RR-2168): Allow selecting an arbitrary recording from each RRD and add a segment_id
     # parameter once registration supports overriding encoded recording IDs.
@@ -1337,7 +1401,9 @@ class DatasetSelection:
         """
         Return the filtered schema for this selection.
 
-        The schema reflects any content filters applied to the selection.
+        The schema covers only the selected segments, and reflects any content filters applied to the selection.
+        A segment filter requires a server running Rerun 0.41 or Rerun Hub 0.20 or later.
+        Use `selection.dataset.schema()` for the schema of the whole dataset.
 
         Returns
         -------
@@ -1360,6 +1426,19 @@ class DatasetSelection:
 
         """
         return self._internal.arrow_schema()
+
+    @with_tracing("DatasetSelection.info")
+    def info(self) -> DatasetInfo:
+        """
+        Return an overview of this selection: segments, size, layers, timelines, contents and properties.
+
+        This fetches schemas and scans a few columns of the segment table.
+        It reads no recording data.
+        A segment filter requires a server running Rerun 0.41 or Rerun Hub 0.20 or later.
+        """
+        from ._dataset_info import _dataset_info_from_internal
+
+        return _dataset_info_from_internal(self._internal.info())
 
     @with_tracing("DatasetSelection.segment_ids")
     def segment_ids(self) -> list[str]:
@@ -1727,7 +1806,7 @@ class DatasetSelection:
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
         exprs = ["rerun_segment_id"]
-        for index_col in self.schema().index_columns():
+        for index_col in self.dataset.schema().index_columns():
             exprs.extend((f"{index_col.name}:start", f"{index_col.name}:end"))
 
         return self.segment_table().select(*exprs)

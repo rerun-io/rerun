@@ -230,6 +230,9 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 # Compile the web-viewer wasm in release mode.
 rerun-build-web-release = "python scripts/build_web_viewer.py --release"
 
+# Build a `re_renderer_examples` binary as Wasm and serve it on localhost.
+re-renderer-web-example = "python scripts/run_re_renderer_web_example.py"
+
 # Run the `re_integration_test` suite against the real wasm web viewer in headless Chrome.
 # Builds the web viewer first, then runs the tests against the `browser` inspection target.
 # Requires a Chrome/Chromium binary on the machine.

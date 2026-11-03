@@ -9,11 +9,9 @@ use std::task::Poll;
 use re_entity_db::EntityDb;
 use re_log_types::{ComponentPath, EntityPath, EntryId};
 use re_redap_browser::RedapServers;
-use re_ui::{
-    BoundCommand, CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd,
-    SyntaxHighlighting as _,
-};
+use re_ui::{CmdRow, CommandPaletteProvider, FuzzyMatch, FuzzyQuery, MatchGroup, MatchedCmd};
 use re_viewer_context::viewer_url::ViewerUrl;
+use re_viewer_context::{BoundCommand, StoreSyntaxHighlighting as _};
 
 use crate::command_catalog::{CommandContext, catalog_commands};
 use crate::viewer_url_description::ViewerUrlDescription;
@@ -52,20 +50,16 @@ pub enum CommandPaletteAction {
     OpenUrl(String),
 
     /// Submit a prompt from agent mode, opening the agent panel.
-    #[cfg(agent_panel)]
     AskAgent(String),
 
     /// Open agent setup without submitting a prompt.
-    #[cfg(agent_panel)]
     SetUpAgent,
 }
 
 impl CommandPaletteAction {
     fn tooltip(&self) -> &'static str {
         match self {
-            #[cfg(agent_panel)]
             Self::AskAgent(_) => "Send this prompt to the agent",
-            #[cfg(agent_panel)]
             Self::SetUpAgent => "Set up an agent",
             Self::Command(command) => command.kind().tooltip(),
             Self::SelectEntityPath(_) => "Select and focus on this entity",
@@ -81,10 +75,10 @@ impl CommandPaletteAction {
     #[cfg(debug_assertions)]
     pub fn is_debug_only(&self) -> bool {
         match self {
-            #[cfg(agent_panel)]
-            Self::AskAgent(_) | Self::SetUpAgent => false,
             Self::Command(command) => command.kind().is_debug_only(),
-            Self::SelectEntityPath(_)
+            Self::AskAgent(_)
+            | Self::SetUpAgent
+            | Self::SelectEntityPath(_)
             | Self::SelectComponentPath(_)
             | Self::SelectRedapServer(_)
             | Self::SelectRedapEntry { .. }
@@ -96,11 +90,9 @@ impl CommandPaletteAction {
 /// Feeds the viewer's commands into the [`re_ui::CommandPalette`].
 pub struct CommandPaletteProviderImpl<'a> {
     /// Whether the agent panel feature is enabled, allowing agent mode in the palette.
-    #[cfg(agent_panel)]
     pub agent_enabled: bool,
 
     /// Whether agent setup has been completed, allowing prompt submission.
-    #[cfg(agent_panel)]
     pub agent_setup_done: bool,
 
     /// The active recording, if any. Provides entity-path completion.
@@ -114,18 +106,15 @@ pub struct CommandPaletteProviderImpl<'a> {
 }
 
 impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl<'_> {
-    #[cfg(agent_panel)]
     fn agent_enabled(&self) -> bool {
         self.agent_enabled
     }
 
-    #[cfg(agent_panel)]
     fn submit_agent_prompt(&mut self, query: &str) -> Option<CommandPaletteAction> {
         (self.agent_enabled && self.agent_setup_done && !query.trim().is_empty())
             .then(|| CommandPaletteAction::AskAgent(query.to_owned()))
     }
 
-    #[cfg(agent_panel)]
     fn agent_setup_action(&self) -> Option<CommandPaletteAction> {
         (self.agent_enabled && !self.agent_setup_done).then_some(CommandPaletteAction::SetUpAgent)
     }
@@ -313,13 +302,13 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         selected: bool,
     ) -> CmdRow {
         let kb_shortcut = match &matched.command {
-            #[cfg(agent_panel)]
-            CommandPaletteAction::AskAgent(_) | CommandPaletteAction::SetUpAgent => String::new(),
             CommandPaletteAction::Command(command) => command
                 .kind()
                 .formatted_kb_shortcut(ui.ctx())
                 .unwrap_or_default(),
-            CommandPaletteAction::SelectEntityPath(_)
+            CommandPaletteAction::AskAgent(_)
+            | CommandPaletteAction::SetUpAgent
+            | CommandPaletteAction::SelectEntityPath(_)
             | CommandPaletteAction::SelectComponentPath(_)
             | CommandPaletteAction::SelectRedapServer(_)
             | CommandPaletteAction::SelectRedapEntry { .. }
@@ -347,7 +336,6 @@ impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl
         };
 
         let job = match &matched.command {
-            #[cfg(agent_panel)]
             CommandPaletteAction::AskAgent(_) | CommandPaletteAction::SetUpAgent => {
                 unreachable!("agent prompts are submitted directly, not shown as search results")
             }

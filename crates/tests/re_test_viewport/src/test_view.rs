@@ -4,29 +4,12 @@ use re_sdk_types::Archetype as _;
 use re_ui::Help;
 use re_viewer_context::external::re_chunk_store::external::re_chunk;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewClass, ViewSpawnHeuristics, ViewState, ViewerContext,
-    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
+    IdentifiedViewSystem, ViewClass, ViewSpawnHeuristics, ViewerContext, VisualizerExecutionOutput,
+    VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
 };
 
 #[derive(Default)]
 pub struct TestView;
-
-#[derive(re_byte_size::SizeBytes)]
-pub struct TestViewState;
-
-impl ViewState for TestViewState {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn heap_size_bytes(&self) -> u64 {
-        re_viewer_context::SizeBytes::heap_size_bytes(self)
-    }
-}
 
 #[derive(Default)]
 pub struct TestSystem;
@@ -96,10 +79,6 @@ impl ViewClass for TestView {
         );
 
         Ok(())
-    }
-
-    fn new_state(&self) -> Box<dyn re_viewer_context::ViewState> {
-        Box::new(TestViewState {})
     }
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {

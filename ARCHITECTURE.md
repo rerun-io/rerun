@@ -58,7 +58,7 @@ The Rerun Viewer uses the [`wgpu`](https://github.com/gfx-rs/wgpu) graphics API.
 
 On web builds, we use WebGPU when available on the Web, but automatically fall back to a WebGL based emulation layer (with a more limited feature set).
 
-We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/viewer_support/re_renderer/README.md).
+We have written our own high-level rendering crate on top of `wgpu`, called [`re_renderer`](crates/ui_tools/re_renderer/README.md).
 
 ### `egui`
 
@@ -102,7 +102,7 @@ Here is an overview of the crates included in the project, and how they depend o
 
 Each band is one folder under `crates/`, with `rerun_py` and `rerun_c` folded into the top band.
 Every arrow points downwards, because the folders are layers: a crate may only depend on its own folder or one below it.
-[`scripts/check_crate_layers.py`](scripts/check_crate_layers.py) enforces that in CI.
+[`scripts/check_crate_dependencies.py`](scripts/check_crate_dependencies.py) enforces that in CI.
 A `dev-dependency` is exempt, since a test may reach anywhere.
 
 See [`crates/README.md`](crates/README.md) for the layers as a list, and for which one a new crate belongs in.
@@ -165,6 +165,7 @@ A sibling of `crates/panels`: neither depends on the other.
 | re_view_dataframe      | A view that shows the data contained in entities in a table.                |
 | re_view_graph          | A view that shows a graph (node-link diagram).                              |
 | re_view_map            | A view that shows a map.                                                    |
+| re_view_raw_data       | A view that shows the raw component data of a single entity.                |
 | re_view_spatial        | Views that show entities in a 2D or 3D spatial relationship.                |
 | re_view_state_timeline | A view that shows state transitions as horizontal lanes over time.          |
 | re_view_tensor         | A view dedicated to visualizing tensors with arbitrary dimensionality.      |
@@ -179,7 +180,7 @@ A sibling of `crates/views`: neither depends on the other.
 
 | Crate              | Description                                                                               |
 | ------------------ | ----------------------------------------------------------------------------------------- |
-| re_agent_ui        | Chat UI for driving a coding agent (Claude Code, Codex, …) over the Agent Client Protocol |
+| re_agent_panel     | The Rerun Viewer's agent panel: a coding agent that runs next to the viewer and drives it |
 | re_blueprint_tree  | The UI for the blueprint tree in the left panel.                                          |
 | re_chunk_store_ui  | Display the contents of chunk stores.                                                     |
 | re_memory_view     | Flamegraph visualization for memory usage trees                                           |
@@ -193,55 +194,50 @@ A sibling of `crates/views`: neither depends on the other.
 
 [`crates/viewer_support`](./crates/viewer_support) — the UI and rendering machinery the views are built on.
 
-| Crate                  | Description                                                                                                |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------- |
-| re_arrow_ui            | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.                   |
-| re_component_fallbacks | Handles registering various component fallbacks to `FallbackProviderRegistry`.                             |
-| re_component_ui        | Provides ui editors for Rerun component data for registration with the Rerun Viewer component ui registry. |
-| re_context_menu        | Support crate for context menu and actions.                                                                |
-| re_data_ui             | Provides ui elements for Rerun component data for the Rerun Viewer.                                        |
-| re_dataframe_ui        | Rich table widget over DataFusion.                                                                         |
-| re_gamepad             | Gamepad input handling for the Rerun viewer.                                                               |
-| re_plot                | Shared utilities for plot-based views.                                                                     |
-| re_renderer            | A wgpu based renderer for all your visualization needs.                                                    |
-| re_renderer_examples   | Examples for the re_renderer crate.                                                                        |
-| re_time_ruler          | Time ruler widget shared by the time panel and time-aware views.                                           |
-| re_ui                  | Rerun GUI theme and helpers, built around egui                                                             |
-| re_view                | Types & utilities for defining view classes and communicating with the viewport.                           |
-| re_viewer_context      | Rerun viewer state that is shared with the viewer's code components.                                       |
-| re_viewport_blueprint  | The data model describing the layout of the viewport.                                                      |
+| Crate                   | Description                                                                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------- |
+| re_component_fallbacks  | Handles registering various component fallbacks to `FallbackProviderRegistry`.                             |
+| re_component_ui         | Provides ui editors for Rerun component data for registration with the Rerun Viewer component ui registry. |
+| re_context_menu         | Support crate for context menu and actions.                                                                |
+| re_data_ui              | Provides ui elements for Rerun component data for the Rerun Viewer.                                        |
+| re_dataframe_ui         | Rich table widget over DataFusion.                                                                         |
+| re_time_ruler           | Time ruler widget shared by the time panel and time-aware views.                                           |
+| re_view                 | Types & utilities for defining view classes and communicating with the viewport.                           |
+| re_viewer_context       | Rerun viewer state that is shared with the viewer's code components.                                       |
+| re_viewer_control_tools | The Rerun Viewer's control API as tools for LLM agents.                                                    |
+| re_viewport_blueprint   | The data model describing the layout of the viewport.                                                      |
 
 ### Application-level store
 
 [`crates/store_app`](./crates/store_app) — the queryable state a viewer or a server works with.
 
-| Crate         | Description                             |
-| ------------- | --------------------------------------- |
-| re_dataframe  | High-level query APIs                   |
-| re_datafusion | High-level query APIs                   |
-| re_entity_db  | In-memory storage of Rerun entities     |
-| re_query      | High-level query APIs                   |
-| re_server     | An ephemeral local Rerun catalog server |
-| re_tf         | Rerun spatial transform processing      |
+| Crate             | Description                             |
+| ----------------- | --------------------------------------- |
+| re_catalog_client | High-level client for Rerun catalogs    |
+| re_dataframe      | High-level query APIs                   |
+| re_datafusion     | High-level query APIs                   |
+| re_entity_db      | In-memory storage of Rerun entities     |
+| re_query          | High-level query APIs                   |
+| re_server         | An ephemeral local Rerun catalog server |
+| re_tf             | Rerun spatial transform processing      |
 
 ### Data flow
 
 [`crates/data_flow`](./crates/data_flow) — getting data in and out: clients, servers, and file importers.
 
-| Crate             | Description                                                                       |
-| ----------------- | --------------------------------------------------------------------------------- |
-| re_catalog_client | High-level client for Rerun catalogs                                              |
-| re_data_source    | Handles loading of Rerun data                                                     |
-| re_grpc_client    | Client for the legacy StoreHub API (`re_grpc_server`).                            |
-| re_grpc_server    | Server for the legacy StoreHub API                                                |
-| re_hdf5           | Core HDF5-to-chunk loading logic for Rerun                                        |
-| re_importer       | Handles importing of Rerun data from file using importer plugins                  |
-| re_lenses         | Lenses are an API for extracting, transforming, and restructuring component data. |
-| re_lerobot        | Core LeRobot-dataset-to-chunk loading logic for Rerun                             |
-| re_mcap           | Convert MCAP into Rerun-compatible data                                           |
-| re_mp4_reader     | Core mp4-to-chunk loading logic for Rerun                                         |
-| re_parquet        | Core parquet-to-chunk loading logic for Rerun                                     |
-| re_redap_client   | Official gRPC client for the Rerun Data Protocol                                  |
+| Crate           | Description                                                                       |
+| --------------- | --------------------------------------------------------------------------------- |
+| re_data_source  | Handles loading of Rerun data                                                     |
+| re_grpc_client  | Client for the legacy StoreHub API (`re_grpc_server`).                            |
+| re_grpc_server  | Server for the legacy StoreHub API                                                |
+| re_hdf5         | Core HDF5-to-chunk loading logic for Rerun                                        |
+| re_importer     | Handles importing of Rerun data from file using importer plugins                  |
+| re_lenses       | Lenses are an API for extracting, transforming, and restructuring component data. |
+| re_lerobot      | Core LeRobot-dataset-to-chunk loading logic for Rerun                             |
+| re_mcap         | Convert MCAP into Rerun-compatible data                                           |
+| re_mp4_reader   | Core mp4-to-chunk loading logic for Rerun                                         |
+| re_parquet      | Core parquet-to-chunk loading logic for Rerun                                     |
+| re_redap_client | Official gRPC client for the Rerun Data Protocol                                  |
 
 ### Data model & chunk store
 
@@ -265,6 +261,21 @@ A sibling of `crates/views`: neither depends on the other.
 | re_types_core      | The core traits and types that power Rerun's data model.                                      |
 | re_uri             | Parsing and constructing Rerun URIs                                                           |
 
+### UI tools
+
+[`crates/ui_tools`](./crates/ui_tools) — generic widgets, UI helpers, and the renderer.
+Nothing Rerun-specific in here.
+
+| Crate                | Description                                                                               |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| re_agent_ui          | Chat UI for driving a coding agent (Claude Code, Codex, …) over the Agent Client Protocol |
+| re_arrow_ui          | Show arrow data in a tree of rerun list_items and format arrow with syntax highlighting.  |
+| re_gamepad           | Gamepad input handling for the Rerun viewer.                                              |
+| re_plot              | Shared utilities for plot-based views.                                                    |
+| re_renderer          | A wgpu based renderer for all your visualization needs.                                   |
+| re_renderer_examples | Examples for the re_renderer crate.                                                       |
+| re_ui                | Rerun GUI theme and helpers, built around egui                                            |
+
 ### Build support
 
 [`crates/build`](./crates/build) — crates that run at build time.
@@ -285,7 +296,7 @@ A sibling of `crates/views`: neither depends on the other.
 
 | Crate               | Description                                                                                                                                                                |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| re_agent            | Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol                                                                                              |
+| re_agent            | Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol, or run an agent loop against a model API                                                    |
 | re_analytics        | Rerun's analytics SDK                                                                                                                                                      |
 | re_arrow_util       | Helpers for working with arrow.                                                                                                                                            |
 | re_async            | Async runtime abstractions for native and WebAssembly targets.                                                                                                             |

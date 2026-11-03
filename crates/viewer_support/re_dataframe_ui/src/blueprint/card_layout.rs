@@ -1,5 +1,5 @@
 use re_sdk_types::blueprint::archetypes;
-use re_sdk_types::blueprint::components::{ColumnName, TableCellKind, TableLayoutKind};
+use re_sdk_types::blueprint::components::{ColumnName, TableLayoutKind};
 use re_sorbet::ColumnDescriptorRef;
 use re_types_core::Archetype as _;
 use re_viewer_context::{AppBlueprintCtx, BlueprintContext as _};
@@ -83,20 +83,6 @@ impl<'a> CardLayout<'a> {
         let link = load_and_resolve_link(data_columns, &results, &fields);
         let title = load_and_resolve_title(data_columns, &results, &fields);
 
-        // Warn if there's more than one flag field since we don't support that yet.
-        {
-            let mut flags = fields.iter().filter(|field| {
-                field.is_visible(TableLayoutKind::Cards)
-                    && field.configured_cell_kind() == TableCellKind::Flag
-            });
-            flags.next();
-            if flags.next().is_some() {
-                re_log::warn_once!(
-                    "Card layout has multiple flag fields; only the first field is shown in the card header"
-                );
-            }
-        }
-
         Some(Self {
             title,
             link,
@@ -104,12 +90,12 @@ impl<'a> CardLayout<'a> {
         })
     }
 
-    /// Returns the first visible field configured for the card's special flag position.
+    /// Returns the first visible field of component type [`re_sdk_types::components::Flag`],
+    /// which is shown in the card header.
     pub fn flag(&self) -> Option<&TableColumn<'a>> {
-        self.fields.iter().find(|field| {
-            field.is_visible(TableLayoutKind::Cards)
-                && field.configured_cell_kind() == TableCellKind::Flag
-        })
+        self.fields
+            .iter()
+            .find(|field| field.is_visible(TableLayoutKind::Cards) && field.is_flag())
     }
 }
 
@@ -164,9 +150,8 @@ fn load_and_resolve_link(
 
     link.or_else(|| {
         fields.iter().find_map(|field| {
-            (field.configured_cell_kind() == TableCellKind::Preview
-                && field.is_visible(TableLayoutKind::Cards))
-            .then(|| field.physical_name().clone())
+            (field.is_preview() && field.is_visible(TableLayoutKind::Cards))
+                .then(|| field.physical_name().clone())
         })
     })
 }

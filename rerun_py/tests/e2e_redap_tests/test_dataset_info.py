@@ -40,3 +40,40 @@ def test_dataset_info_empty(entry_factory: EntryFactory, snapshot: SnapshotAsser
     info = entry_factory.create_dataset("empty_dataset").info()
 
     assert repr(_stable(info)) == snapshot
+
+
+def test_dataset_selection_info(entry_factory: EntryFactory, resource_prefix: str) -> None:
+    dataset = entry_factory.create_dataset("dataset_selection_info")
+    dataset.register([
+        resource_prefix + f"segment_schema/{segment_id}.rrd" for segment_id in ("first", "second")
+    ]).wait()
+    dataset.register([resource_prefix + "segment_schema/predictions.rrd"], layer_name="predictions").wait()
+    full = dataset.info()
+
+    assert dataset.filter_contents("/**").info() == full
+
+    first = dataset.filter_segments("first").info()
+    assert first.num_segments == 1
+    assert 0 < first.size_bytes < full.size_bytes
+    assert {layer.name: layer.num_segments for layer in first.layers} == {"base": 1, "predictions": 1}
+    timelines = {timeline.name: timeline.num_segments for timeline in first.timelines}
+    assert timelines["first"] == 1
+    assert "second" not in timelines
+    assert first.num_entities == 3  # /first, /predictions and /static
+    assert first.property_columns == full.property_columns
+
+    # A content filter changes only the entity and component column counts.
+    second = dataset.filter_segments("second")
+    second_static = second.filter_contents("/static").info()
+    assert second_static.num_entities == 1
+    assert dataclasses.replace(second_static, num_entities=0, num_component_columns=0) == dataclasses.replace(
+        second.info(), num_entities=0, num_component_columns=0
+    )
+
+    for nothing in (dataset.filter_segments([]).info(), dataset.filter_segments("unknown").info()):
+        assert nothing.num_segments == 0
+        assert nothing.size_bytes == 0
+        assert nothing.layers == frozenset()
+        assert nothing.timelines == frozenset()
+        assert nothing.num_entities == 0
+        assert nothing.property_columns == full.property_columns

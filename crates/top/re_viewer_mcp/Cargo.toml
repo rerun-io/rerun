@@ -32,11 +32,10 @@ egui_inspection.workspace = true
 egui_mcp.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_protos.workspace = true
+re_viewer_control_tools.workspace = true
 
 anyhow.workspace = true
 parking_lot.workspace = true
-prost-reflect = { workspace = true, features = ["serde"] }
-prost.workspace = true
 rmcp.workspace = true
 schemars.workspace = true
 serde = { workspace = true, features = ["derive"] }

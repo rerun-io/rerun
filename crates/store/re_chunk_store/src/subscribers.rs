@@ -462,7 +462,7 @@ mod tests {
             Chunk::builder("entity_b")
                 .with_component_batches(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [
                         (
                             MyIndex::partial_descriptor(),

@@ -14,7 +14,6 @@ use re_viewer_context::{
 use crate::dataframe_ui::dataframe_ui;
 use crate::expanded_rows::ExpandedRowsCache;
 use crate::view_query;
-use crate::visualizer_system::EmptySystem;
 
 #[derive(Default, re_byte_size::SizeBytes)]
 struct DataframeViewState {
@@ -83,7 +82,7 @@ Configure in the selection panel:
         &self,
         system_registry: &mut re_viewer_context::ViewSystemRegistrator<'_>,
     ) -> Result<(), ViewClassRegistryError> {
-        system_registry.register_visualizer::<EmptySystem>()
+        system_registry.register_visualizer::<re_viewer_context::NoopVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn ViewState> {

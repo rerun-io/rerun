@@ -5,6 +5,7 @@
 mod duration;
 mod plural;
 pub mod time;
+mod timestamp_format;
 
 use std::cmp::PartialOrd;
 use std::fmt::Display;
@@ -13,6 +14,7 @@ use re_int::UnsignedAbs;
 
 pub use self::duration::DurationFormatOptions;
 pub use self::plural::{format_plural_s, format_plural_signed_s};
+pub use self::timestamp_format::{DateVisibility, TimestampFormat, TimestampFormatKind};
 
 // --- Numbers ---
 

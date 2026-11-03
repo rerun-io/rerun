@@ -140,7 +140,7 @@ mod tests {
         let arrow_msg = re_chunk::Chunk::builder("test_entity")
             .with_archetype(
                 re_chunk::RowId::new(),
-                re_log_types::TimePoint::default().with(
+                re_log_types::TimePoint::STATIC.with(
                     re_log_types::Timeline::new_sequence("blueprint"),
                     re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                 ),

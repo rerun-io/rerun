@@ -265,7 +265,7 @@ fn static_data() -> anyhow::Result<()> {
     let chunk = Chunk::builder(ENTITY_PATH)
         .with_component_batches(
             row_id,
-            TimePoint::default(), // static
+            TimePoint::STATIC,
             [(MyPoints::descriptor_colors(), colors as _)],
         )
         .build()?;
@@ -345,12 +345,12 @@ fn static_tie_break() -> anyhow::Result<()> {
         let chunk = Chunk::builder(ENTITY_PATH)
             .with_component_batches(
                 first,
-                TimePoint::default(), // static
+                TimePoint::STATIC,
                 [(colors.clone(), colors_first as _)],
             )
             .with_component_batches(
                 second,
-                TimePoint::default(), // static
+                TimePoint::STATIC,
                 [(colors.clone(), colors_second as _)],
             )
             .build()?;

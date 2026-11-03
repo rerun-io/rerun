@@ -675,7 +675,7 @@ class RecordingStream:
             If `False`, the messages will be played back in the order they arrived.
         cors_allow_origin:
             Additional origin patterns allowed to make CORS requests to the gRPC server.
-            By default, only localhost and rerun.io are allowed.
+            By default, only localhost, rerun.io, and its subdomains are allowed.
             Patterns are matched against the full `Origin` header (e.g. `"https://example.com:8080"`),
             using glob-style matching where `*` matches any sequence of characters.
             Examples: `"https://*.example.com"`, `"https://example.com:8080"`,

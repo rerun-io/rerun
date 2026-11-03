@@ -157,7 +157,7 @@ pub fn create_simple_recording_in(
         let static_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
             .with_sparse_component_batches(
                 next_row_id(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_labels(), Some(&labels as _))],
             )
             .build()?;
@@ -256,7 +256,7 @@ pub fn create_simple_recording_one_chunk_per_frame_in(
         let static_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
             .with_sparse_component_batches(
                 next_row_id(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_labels(), Some(&labels as _))],
             )
             .build()?;
@@ -519,7 +519,7 @@ pub fn create_nasty_recording(
         let chunk5 = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
             .with_sparse_component_batches(
                 next_row_id(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_labels(), Some(&labels2 as _))],
             )
             .build()?;
@@ -529,7 +529,7 @@ pub fn create_nasty_recording(
         let chunk6 = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
             .with_sparse_component_batches(
                 next_row_id(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_labels(), Some(&labels3 as _))],
             )
             .build()?;
@@ -979,7 +979,7 @@ pub fn create_recording_with_properties(
 
         for property in properties {
             chunk_builder =
-                chunk_builder.with_archetype(next_row_id(), TimePoint::default(), property);
+                chunk_builder.with_archetype(next_row_id(), TimePoint::STATIC, property);
         }
 
         let chunk = chunk_builder.build()?;
@@ -1051,7 +1051,7 @@ fn create_store_with_static_components(
     for (entity_path, components) in components {
         let mut chunk_builder = Chunk::builder_with_id(next_chunk_id(), entity_path);
         chunk_builder =
-            chunk_builder.with_archetype(next_row_id(), TimePoint::default(), components.as_ref());
+            chunk_builder.with_archetype(next_row_id(), TimePoint::STATIC, components.as_ref());
         let chunk = chunk_builder.build()?;
         rec.send_chunk(chunk);
     }
@@ -1219,7 +1219,7 @@ pub fn multi_chunked_entities_recording(
                 let static_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path.clone())
                     .with_sparse_component_batches(
                         next_row_id(),
-                        TimePoint::default(),
+                        TimePoint::STATIC,
                         [(MyPoints::descriptor_labels(), Some(&labels as _))],
                     )
                     .build()?;
@@ -1326,7 +1326,7 @@ pub fn create_two_timeline_recording(
     let static_chunk = Chunk::builder_with_id(next_chunk_id(), entity_path)
         .with_sparse_component_batches(
             next_row_id(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             [(MyPoints::descriptor_labels(), Some(&labels as _))],
         )
         .build()?;

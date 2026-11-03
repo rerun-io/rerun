@@ -281,7 +281,7 @@ pub(crate) struct Channel {
     /// The sender should call this every time a message is sent.
     ///
     /// This can be used to wake up the receiver thread.
-    waker: RwLock<Option<Box<dyn Fn() + Send + Sync + 'static>>>,
+    waker: RwLock<re_async::UiWaker>,
 }
 
 /// Create a new communication channel for [`DataSourceMessage`].
@@ -344,7 +344,8 @@ impl SmartMessage {
     }
 
     pub fn into_data(self) -> Option<DataSourceMessage> {
-        match self.payload {
+        let Self { source: _, payload } = self;
+        match payload {
             SmartMessagePayload::Msg(msg) => Some(msg),
             SmartMessagePayload::Flush { .. } | SmartMessagePayload::Quit(_) => None,
         }

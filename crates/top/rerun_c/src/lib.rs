@@ -1196,7 +1196,7 @@ fn rr_recording_stream_log_impl(
 
     let row = PendingRow {
         row_id,
-        timepoint: TimePoint::default(), // we use the one in the recording stream for now
+        timepoint: TimePoint::STATIC, // we use the one in the recording stream for now
         components,
     };
 

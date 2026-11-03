@@ -26,15 +26,16 @@ use re_protos::cloud::v1alpha1::{
     CancelTasksRequest, CancelTasksResponse, DeleteEntryResponse, DoBandwidthTestResponse,
     EntryCreatedEvent, EntryDeletedEvent, EntryDetails, EntryKind, EventKind, FetchChunksRequest,
     GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse, GetDatasetSchemaResponse,
-    GetRrdManifestResponse, GetSegmentTableSchemaResponse, LayerNameFilter, QueryDatasetResponse,
-    QueryTasksOnCompletionRequest, QueryTasksOnCompletionResponse, QueryTasksRequest,
-    QueryTasksResponse, RegisterTableRequest, RegisterTableResponse, ScanDatasetManifestRequest,
-    ScanDatasetManifestResponse, ScanSegmentTableResponse, ScanTableResponse, SegmentIdFilter,
-    WatchEventsResponse, layer_name_filter, segment_id_filter, watch_events_response,
+    GetRrdManifestResponse, GetSchemasRequest, GetSchemasResponse, GetSegmentTableSchemaResponse,
+    LayerNameFilter, QueryDatasetResponse, QueryTasksOnCompletionRequest,
+    QueryTasksOnCompletionResponse, QueryTasksRequest, QueryTasksResponse, RegisterTableRequest,
+    RegisterTableResponse, ScanDatasetManifestRequest, ScanDatasetManifestResponse,
+    ScanSegmentTableResponse, ScanTableResponse, SegmentIdFilter, WatchEventsResponse,
+    layer_name_filter, segment_id_filter, watch_events_response,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::{DatasetKind, SegmentId};
+use re_protos::common::v1alpha1::ext::{DatasetKind, SchemaId, SegmentId};
 use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
 use re_protos::{
@@ -239,38 +240,28 @@ impl RerunCloudHandlerBuilder {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn build(self) -> Result<RerunCloudHandler, crate::store::Error> {
+        let Self { build_info, store } = self;
         let settings = RerunCloudHandlerSettings::new()?;
-        Ok(RerunCloudHandler::new(
-            settings,
-            self.build_info,
-            self.store,
-            None,
-        ))
+        Ok(RerunCloudHandler::new(settings, build_info, store, None))
     }
 
     #[cfg(target_arch = "wasm32")]
     pub fn build(self) -> RerunCloudHandler {
-        RerunCloudHandler::new(
-            RerunCloudHandlerSettings::default(),
-            self.build_info,
-            self.store,
-        )
+        let Self { build_info, store } = self;
+        RerunCloudHandler::new(RerunCloudHandlerSettings::default(), build_info, store)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn build_with_write_access(
         self,
     ) -> anyhow::Result<(RerunCloudHandler, axum::routing::MethodRouter)> {
+        let Self { build_info, store } = self;
         let settings = RerunCloudHandlerSettings::new()?;
         let write_access_grants =
             crate::routes::WriteAccessGrants::new(settings.storage_dir.path().to_owned())?;
         let write_upload_route = crate::routes::write_upload_route(write_access_grants.clone());
-        let handler = RerunCloudHandler::new(
-            settings,
-            self.build_info,
-            self.store,
-            Some(write_access_grants),
-        );
+        let handler =
+            RerunCloudHandler::new(settings, build_info, store, Some(write_access_grants));
         Ok((handler, write_upload_route))
     }
 }
@@ -584,6 +575,7 @@ decl_stream!(FindChunksResponseStream<rerun_cloud:FindChunksResponse>);
 decl_stream!(GetAssetsForSegmentResponseStream<rerun_cloud:GetAssetsForSegmentResponse>);
 decl_stream!(GetSegmentPropertiesResponseStream<rerun_cloud:GetSegmentPropertiesResponse>);
 decl_stream!(GetRrdManifestResponseStream<manifest:GetRrdManifestResponse>);
+decl_stream!(GetSchemasResponseStream<manifest:GetSchemasResponse>);
 decl_stream!(QueryDatasetResponseStream<manifest:QueryDatasetResponse>);
 decl_stream!(QueryTasksOnCompletionResponseStream<tasks:QueryTasksOnCompletionResponse>);
 decl_stream!(ScanDatasetManifestResponseStream<manifest:ScanDatasetManifestResponse>);
@@ -1159,17 +1151,58 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetWriteAccessGrantRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
     {
-        let ext::GetWriteAccessGrantRequest { key, location } = request.into_inner().try_into()?;
-        if location.is_some() {
+        let request: ext::GetWriteAccessGrantRequest = request.into_inner().try_into()?;
+        if request.location.is_some() {
             return Err(tonic::Status::invalid_argument(
                 "explicit storage locations are not supported",
+            ));
+        }
+        if request.signing == ext::UrlSigning::Unsigned {
+            return Err(tonic::Status::unimplemented(
+                "unsigned upload requests are not implemented",
+            ));
+        }
+        if !request.accepts(re_protos::cloud::v1alpha1::UploadMethod::SingleRequest) {
+            return Err(tonic::Status::failed_precondition(
+                "this server only issues single-request grants",
             ));
         }
         let write_access_grants = self.write_access_grants.as_ref().ok_or_else(|| {
             tonic::Status::unimplemented("write access grants are not configured")
         })?;
-        let response = write_access_grants.issue(&key).await?;
+        let response = write_access_grants.issue(&request.key).await?;
         Ok(tonic::Response::new(response.try_into()?))
+    }
+
+    async fn get_multipart_upload_part_grants(
+        &self,
+        _: tonic::Request<re_protos::cloud::v1alpha1::GetMultipartUploadPartGrantsRequest>,
+    ) -> tonic::Result<
+        tonic::Response<re_protos::cloud::v1alpha1::GetMultipartUploadPartGrantsResponse>,
+    > {
+        Err(tonic::Status::unimplemented(
+            "multipart uploads are not implemented",
+        ))
+    }
+
+    async fn complete_multipart_upload(
+        &self,
+        _: tonic::Request<re_protos::cloud::v1alpha1::CompleteMultipartUploadRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::CompleteMultipartUploadResponse>>
+    {
+        Err(tonic::Status::unimplemented(
+            "multipart uploads are not implemented",
+        ))
+    }
+
+    async fn abort_multipart_upload(
+        &self,
+        _: tonic::Request<re_protos::cloud::v1alpha1::AbortMultipartUploadRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::AbortMultipartUploadResponse>>
+    {
+        Err(tonic::Status::unimplemented(
+            "multipart uploads are not implemented",
+        ))
     }
 
     // --- Manifest Registry ---
@@ -1475,6 +1508,42 @@ impl RerunCloudService for RerunCloudHandler {
             })?),
             meta: None,
         }))
+    }
+
+    type GetSchemasStream = GetSchemasResponseStream;
+
+    async fn get_schemas(
+        &self,
+        request: tonic::Request<GetSchemasRequest>,
+    ) -> tonic::Result<tonic::Response<Self::GetSchemasStream>> {
+        let store = self.store.read().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset = store.dataset(entry_id)?;
+
+        let ext::GetSchemasRequest {
+            schema_ids: mut remaining,
+        } = request.into_inner().try_into()?;
+        let mut responses = Vec::with_capacity(remaining.len());
+        for source in dataset.iter_sources() {
+            if remaining.is_empty() {
+                break;
+            }
+
+            let schema_id = SchemaId::from_sha256(source.schema_sha256());
+            if remaining.remove(&schema_id) {
+                let response = ext::GetSchemasResponse {
+                    schema_id,
+                    schema: source.schema(),
+                };
+                responses.push(Ok(GetSchemasResponse::try_from(response).map_err(
+                    |err| tonic::Status::internal(format!("Unable to serialize schema: {err:#}")),
+                )?));
+            }
+        }
+
+        Ok(tonic::Response::new(
+            Box::pin(futures::stream::iter(responses)) as Self::GetSchemasStream,
+        ))
     }
 
     type GetRrdManifestStream = GetRrdManifestResponseStream;

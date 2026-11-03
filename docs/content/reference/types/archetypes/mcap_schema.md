@@ -25,6 +25,7 @@ See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archet
 
 ## Can be shown in
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `McapSchema`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapSchema.html)

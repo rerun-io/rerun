@@ -460,6 +460,7 @@ impl QuotedObject {
 
         let mut cpp_includes = Includes::new(obj.fqname.clone(), obj.scope());
         cpp_includes.insert_rerun("collection_adapter_builtins.hpp");
+        hpp_includes.insert_rerun("archetype_utils.hpp");
         hpp_includes.insert_system("utility"); // std::move
 
         let field_declarations = obj
@@ -678,24 +679,16 @@ impl QuotedObject {
                 name_and_parameters: quote! { columns(const Collection<uint32_t>& lengths_) },
             },
             definition_body: {
-                let num_fields = quote_integer(obj.fields.len());
-                let push_back_columns = obj.fields.iter().map(|field| {
+                let fields = obj.fields.iter().map(|field| {
                     let field_ident = field_name_ident(field);
-                    quote! {
-                        if (#field_ident.has_value()) {
-                            columns.push_back(#field_ident.value().partitioned(lengths_).value_or_throw());
-                        }
-                    }
+                    quote! { &#field_ident }
                 });
 
                 quote! {
-                    std::vector<ComponentColumn> columns;
-                    columns.reserve(#num_fields);
-                    #(#push_back_columns)*
-                    return columns;
+                    return detail::partition_batches({#(#fields),*}, lengths_).value_or_throw();
                 }
             },
-            inline: false,
+            inline: true,
         });
         methods.push(Method {
             docs: unindent::unindent(
@@ -711,21 +704,16 @@ impl QuotedObject {
                 name_and_parameters: quote! { columns() },
             },
             definition_body: {
-                let set_len = obj.fields.iter().map(|field| {
+                let fields = obj.fields.iter().map(|field| {
                     let field_ident = field_name_ident(field);
-                    quote! {
-                        if (#field_ident.has_value()) {
-                            return columns(std::vector<uint32_t>(#field_ident.value().length(), 1));
-                        }
-                    }
+                    quote! { &#field_ident }
                 });
 
                 quote! {
-                    #(#set_len)*
-                    return Collection<ComponentColumn>();
+                    return detail::partition_batches_of_unit_length({#(#fields),*}).value_or_throw();
                 }
             },
-            inline: false,
+            inline: true,
         });
 
         let quoted_namespace = if let Some(scope) = obj.scope() {
@@ -739,6 +727,13 @@ impl QuotedObject {
         let serialize_hpp = serialize_method.to_hpp_tokens(reporter, objects);
         let serialize_cpp = serialize_method
             .to_cpp_tokens(&quote!(AsComponents<#quoted_namespace::#archetype_type_ident>));
+        let serialize_cpp = (!serialize_cpp.is_empty()).then(|| {
+            quote! {
+                namespace rerun {
+                    #serialize_cpp
+                }
+            }
+        });
 
         let methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(reporter, objects));
         let methods_cpp = methods
@@ -840,11 +835,7 @@ impl QuotedObject {
                 #(#methods_cpp)*
             }
 
-            namespace rerun {
-                #NEWLINE_TOKEN
-                #NEWLINE_TOKEN
-                #serialize_cpp
-            }
+            #serialize_cpp
 
             #deprecation_ignore_end
         };
@@ -1740,6 +1731,7 @@ fn to_arrow_method(
     obj: &Object,
     objects: &Objects,
     hpp_includes: &mut Includes,
+    cpp_includes: &mut Includes,
     declarations: &mut ForwardDecls,
 ) -> Method {
     hpp_includes.insert_system("memory"); // std::shared_ptr
@@ -1754,56 +1746,30 @@ fn to_arrow_method(
         quote! {#namespace_ident}
     };
 
-    let (inline, definition_body) = if let Some(forwarded_fqname) =
-        transparent_forwarded_fqname(obj)
-    {
+    let definition_body = if let Some(forwarded_fqname) = transparent_forwarded_fqname(obj) {
         let forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
         let field_name = format_ident!("{}", obj.fields[0].snake_case_name());
 
-        (
-            true,
-            quote! {
-                if (num_instances == 0) {
-                    return Loggable<#forwarded_type>::to_arrow(nullptr, 0);
-                } else if (instances == nullptr) {
-                    return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array instances is null when num_elements > 0.");
-                } else {
-                    return Loggable<#forwarded_type>::to_arrow(&instances->#field_name, num_instances);
-                }
-            },
-        )
+        quote! {
+            if (num_instances == 0) {
+                return Loggable<#forwarded_type>::to_arrow(nullptr, 0);
+            } else if (instances == nullptr) {
+                return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array instances is null when num_elements > 0.");
+            } else {
+                return Loggable<#forwarded_type>::to_arrow(&instances->#field_name, num_instances);
+            }
+        }
     } else {
         hpp_includes.insert_rerun("result.hpp");
         declarations.insert("arrow", ForwardDecl::Class(format_ident!("Array")));
 
-        let todo_pool = quote_comment("TODO(andreas): Allow configuring the memory pool.");
-
-        // Only need this in the cpp file where we don't need to forward declare the arrow builder type.
+        cpp_includes.insert_rerun("arrow_serialization.hpp");
         let arrow_builder_type =
             arrow_array_builder_type_object(obj, objects, &mut ForwardDecls::default());
 
-        (
-            false,
-            quote! {
-                #NEWLINE_TOKEN
-                #todo_pool
-                arrow::MemoryPool* pool = arrow::default_memory_pool();
-                auto datatype = arrow_data_type();
-                #NEWLINE_TOKEN
-                #NEWLINE_TOKEN
-                ARROW_ASSIGN_OR_RAISE(auto builder, arrow::MakeBuilder(datatype, pool))
-                if (instances && num_instances > 0) {
-                    RR_RETURN_NOT_OK(Loggable<#quoted_namespace::#type_ident>::fill_arrow_array_builder(
-                        static_cast<arrow::#arrow_builder_type*>(builder.get()),
-                        instances,
-                        num_instances
-                    ));
-                }
-                std::shared_ptr<arrow::Array> array;
-                ARROW_RETURN_NOT_OK(builder->Finish(&array));
-                return array;
-            },
-        )
+        quote! {
+            return detail::serialize_arrow<arrow::#arrow_builder_type>(instances, num_instances);
+        }
     };
 
     Method {
@@ -1819,7 +1785,7 @@ fn to_arrow_method(
             },
         },
         definition_body,
-        inline,
+        inline: transparent_forwarded_fqname(obj).is_some(),
     }
 }
 
@@ -1835,15 +1801,9 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
         quote!(archetypes)
     };
 
-    let num_fields = quote_integer(obj.fields.len());
-    let push_batches = obj.fields.iter().map(|field| {
-        let field_name_ident = field_name_ident(field);
-
-        quote! {
-            if (archetype.#field_name_ident.has_value()) {
-                cells.push_back(archetype.#field_name_ident.value());
-            }
-        }
+    let fields = obj.fields.iter().map(|field| {
+        let field_ident = field_name_ident(field);
+        quote! { &archetype.#field_ident }
     });
 
     Method {
@@ -1854,18 +1814,9 @@ fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Incl
             name_and_parameters: quote!(as_batches(const #quoted_scoped_archetypes::#type_ident& archetype)),
         },
         definition_body: quote! {
-            using namespace #quoted_scoped_archetypes;
-            #NEWLINE_TOKEN
-            std::vector<ComponentBatch> cells;
-            cells.reserve(#num_fields);
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            #(#push_batches)*
-            #NEWLINE_TOKEN
-            #NEWLINE_TOKEN
-            return rerun::take_ownership(std::move(cells));
+            return detail::collect_batches({#(#fields),*});
         },
-        inline: false,
+        inline: true,
     }
 }
 
@@ -1884,13 +1835,9 @@ fn quote_fill_arrow_array_builder(
         quote! {#namespace_ident}
     };
 
+    includes.insert_rerun("arrow_serialization.hpp");
     let parameter_check = quote! {
-        if (builder == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Passed array builder is null.");
-        }
-        if (elements == nullptr) {
-            return rerun::Error(ErrorCode::UnexpectedNullArgument, "Cannot serialize null pointer to arrow array.");
-        }
+        RR_RETURN_NOT_OK(detail::check_arrow_builder_arguments(builder, elements));
         #NEWLINE_TOKEN
         #NEWLINE_TOKEN
     };
@@ -2865,7 +2812,7 @@ fn quote_loggable_hpp_and_cpp(
 
     let mut methods = vec![
         arrow_data_type_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
-        to_arrow_method(obj, objects, hpp_includes, hpp_declarations),
+        to_arrow_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
     ];
 
     let predeclarations_and_static_assertions = if let Some(forwarded_fqname) =
@@ -2888,7 +2835,6 @@ fn quote_loggable_hpp_and_cpp(
         ));
 
         quote! {
-            // Instead of including loggable.hpp, simply re-declare the template since it's trivial
             template<typename T>
             struct Loggable;
         }

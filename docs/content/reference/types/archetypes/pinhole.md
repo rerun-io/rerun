@@ -5,7 +5,7 @@ title: "Pinhole"
 
 Camera perspective projection (a.k.a. intrinsics).
 
-If [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole).
+A [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d) logged for the same child/parent relationship (e.g. for the camera extrinsics) is applied first, then the pinhole projection.
 
 If you use named transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes.CoordinateFrame`](https://rerun.io/docs/reference/types/archetypes/coordinate_frame)
 as it is the case with other visualizations: for any entity with an [`archetypes.Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole) the viewer will always visualize it
@@ -31,6 +31,7 @@ directly without needing a [`archetypes.CoordinateFrame`](https://rerun.io/docs/
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Pinhole`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Pinhole.html)

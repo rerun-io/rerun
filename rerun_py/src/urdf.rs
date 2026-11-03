@@ -129,7 +129,7 @@ impl PyUrdfTree {
 
         let mut chunks = Vec::new();
         self.0
-            .emit(&mut |chunk| chunks.push(chunk), &TimePoint::default(), true)
+            .emit(&mut |chunk| chunks.push(chunk), &TimePoint::STATIC, true)
             .map_err(|err| PyRuntimeError::new_err(format!("Failed to log URDF: {err}")))?;
 
         recording.send_chunks(chunks);

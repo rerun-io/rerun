@@ -1,0 +1,12 @@
+---
+source: crates/top/re_viewer/src/blueprint/references.rs
+assertion_line: 466
+expression: "problems(&blueprint).join(\"\\n\")"
+---
+`ContainerBlueprint.contents` of /container/00000000-0000-4000-8000-000000000001 refers to /world/points, which has no ViewBlueprint or ContainerBlueprint. Refer to a `/view/<uuid>` or `/container/<uuid>` path instead.
+`ActiveVisualizers.instruction_ids` of /view/00000000-0000-4000-8000-000000000003/visualizers refers to /view/00000000-0000-4000-8000-000000000003/visualizers/00000000-0000-4000-8000-000000000004, which has no VisualizerInstruction. Write a VisualizerInstruction at /view/00000000-0000-4000-8000-000000000003/visualizers/00000000-0000-4000-8000-000000000004 in the same call, or remove the reference.
+`ViewportBlueprint.maximized` of /viewport refers to /view/00000000-0000-4000-8000-000000000002, which has no ViewBlueprint. Write a ViewBlueprint at /view/00000000-0000-4000-8000-000000000002 in the same call, or remove the reference.
+/view/00000000-0000-4000-8000-000000000003/visualizers/00000000-0000-4000-8000-000000000001 is not in `instruction_ids` of the `ActiveVisualizers` at /view/00000000-0000-4000-8000-000000000003/visualizers, so it is never used. Add its id there in the same call, or delete it with `{"/view/00000000-0000-4000-8000-000000000003/visualizers/00000000-0000-4000-8000-000000000001":{"Clear":{"is_recursive":true}}}`.
+/view/00000000-0000-4000-8000-000000000004 is not in the `contents` of any container reachable from `root_container`, nor in a table preview, so it never shows. Add it to `contents` in the same call, or delete it with `{"/view/00000000-0000-4000-8000-000000000004":{"Clear":{"is_recursive":true}}}`.
+Containers hold each other in a loop: /container/00000000-0000-4000-8000-000000000001 → /container/00000000-0000-4000-8000-000000000002 → /container/00000000-0000-4000-8000-000000000001. Remove one of them from the `contents` of the one before it.
+/view/00000000-0000-4000-8000-000000000003 is listed in `contents` more than once, by /container/00000000-0000-4000-8000-000000000001, /container/00000000-0000-4000-8000-000000000001. A view or container has exactly one parent.

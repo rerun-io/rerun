@@ -20,7 +20,7 @@ fn run_chroma_test(
     test_context.log_entity("image", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Image::from_pixel_format(
                 IMAGE_SIZE,
                 pixel_format,

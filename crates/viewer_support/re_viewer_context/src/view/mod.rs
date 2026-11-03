@@ -5,8 +5,10 @@
 
 // TODO(andreas): Can we move some of these to the `re_view` crate?
 mod diagnostic;
+mod entity_drop;
 mod highlights;
 mod named_system;
+mod noop_visualizer;
 mod spawn_heuristics;
 mod system_execution_output;
 mod view_class;
@@ -23,10 +25,12 @@ mod visualizer_system;
 use std::sync::Arc;
 
 pub use diagnostic::{ViewerDiagnostic, ViewerReportSeverity};
+pub use entity_drop::default_view_entity_drop;
 pub use highlights::{
     OptionalViewEntityHighlight, ViewEntityHighlight, ViewHighlights, ViewOutlineMasks,
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
+pub use noop_visualizer::NoopVisualizer;
 pub use spawn_heuristics::{MAX_VIEWS_SPAWNED, RecommendedView, ViewSpawnHeuristics};
 pub use system_execution_output::{
     SystemExecutionOutput, VisualizerTypeReport, VisualizerViewReport,

@@ -57,6 +57,9 @@ jobs:
       - name: Build rerun_js package
         run: pixi run npm --prefix rerun_js run build --workspaces
 
+      - name: Test rerun_js package
+        run: pixi run npm --prefix rerun_js run test --workspaces --if-present
+
       - name: Package rerun_js
         run: |
           pixi run npm --prefix rerun_js run pack --workspaces

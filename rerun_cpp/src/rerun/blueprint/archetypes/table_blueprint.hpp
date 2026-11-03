@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../../archetype_utils.hpp"
 #include "../../blueprint/components/column_display_mode.hpp"
 #include "../../blueprint/components/sort_by.hpp"
 #include "../../blueprint/components/sql_filter_expression.hpp"
@@ -182,13 +183,24 @@ namespace rerun::blueprint::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&layout, &column_display_mode, &filters, &sort_by},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length(
+                       {&layout, &column_display_mode, &filters, &sort_by}
+            )
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::blueprint::archetypes
@@ -204,6 +216,13 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const blueprint::archetypes::TableBlueprint& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.layout,
+                 &archetype.column_display_mode,
+                 &archetype.filters,
+                 &archetype.sort_by}
+            );
+        }
     };
 } // namespace rerun

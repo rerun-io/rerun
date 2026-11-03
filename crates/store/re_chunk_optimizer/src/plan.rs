@@ -1083,7 +1083,7 @@ mod tests {
         Chunk::builder_with_id(ChunkId::from_u128(id), entity)
             .with_serialized_batches(
                 RowId::new(),
-                re_log_types::TimePoint::default(),
+                re_log_types::TimePoint::STATIC,
                 [MyPoint::from_iter(0..1)
                     .try_serialized(MyPoints::descriptor_points())
                     .unwrap()],
@@ -1096,7 +1096,7 @@ mod tests {
         Chunk::builder_with_id(ChunkId::from_u128(id), entity)
             .with_serialized_batches(
                 RowId::new(),
-                re_log_types::TimePoint::default(),
+                re_log_types::TimePoint::STATIC,
                 [
                     MyPoint::from_iter(0..1)
                         .try_serialized(MyPoints::descriptor_points())
@@ -1940,7 +1940,7 @@ mod tests {
         Chunk::builder_with_id(ChunkId::from_u128(id), entity)
             .with_serialized_batches(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [vec![VideoCodec::VP8]
                     .try_serialized(VideoStream::descriptor_codec())
                     .unwrap()],
@@ -2338,7 +2338,7 @@ mod tests {
         let static_codec_and_keyframe = Chunk::builder_with_id(ChunkId::from_u128(1), "static_kf")
             .with_serialized_batches(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [
                     vec![VideoCodec::VP8]
                         .try_serialized(VideoStream::descriptor_codec())
@@ -2397,7 +2397,7 @@ mod tests {
             Chunk::builder_with_id(ChunkId::from_u128(6), "static_samples")
                 .with_serialized_batches(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [vec![VideoSample::from(vec![0_u8; 16])]
                         .try_serialized(VideoStream::descriptor_sample())
                         .unwrap()],

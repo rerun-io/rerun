@@ -124,7 +124,7 @@ pub(crate) fn definition_module_name(filepath: &Utf8Path) -> Option<&str> {
 /// Every definition file under `definitions_dir`, sorted.
 ///
 /// Only [`DEFINITION_SUFFIX`] files are definitions; the module tree around them (`lib.rs`, plus a
-/// `foo.rs` next to every `foo/`) exists so that rustc and rust-analyzer can see them, and declares
+/// `mod.rs` in every subdirectory) exists so that rustc and rust-analyzer can see them, and declares
 /// no types of its own.
 fn definition_files(reporter: &Reporter, definitions_dir: &Utf8Path) -> Vec<Utf8PathBuf> {
     let mut files = Vec::new();
@@ -1654,7 +1654,7 @@ mod tests {
         );
 
         // The module tree, and anything else that happens to sit in the same directory.
-        assert_eq!(name("/x/rerun/components.rs"), None);
+        assert_eq!(name("/x/rerun/components/mod.rs"), None);
         assert_eq!(name("/x/rerun/lib.rs"), None);
         assert_eq!(name("/x/rerun/components/position3d.fbs"), None);
         assert_eq!(name("/x/rerun/components/position3d.rs"), None);
@@ -1724,7 +1724,7 @@ mod tests {
     fn hand_written_module_tree_files_warn() {
         fn warning(contents: &str) -> Option<String> {
             let (report, reporter) = crate::report::init();
-            let filepath = Utf8Path::new("/definitions/rerun/components.rs");
+            let filepath = Utf8Path::new("/definitions/rerun/components/mod.rs");
             check_module_tree_file(&reporter, filepath, contents);
             report.drain_warnings().into_iter().next()
         }
