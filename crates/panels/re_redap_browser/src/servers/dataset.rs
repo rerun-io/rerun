@@ -12,7 +12,7 @@ use re_ui::ButtonExt as _;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
-use re_ui::{DesignTokens, ServerValue, TabBar, UiExt as _, icons};
+use re_ui::{ContextExt as _, DesignTokens, ServerValue, TabBar, UiExt as _, icons};
 use re_uri::DatasetResource;
 use re_viewer_context::{
     AppContext, SystemCommand, SystemCommandSender as _, TableReference as ViewerTableReference,
@@ -486,7 +486,7 @@ impl Server {
                     let total_bytes = assets
                         .get()
                         .map(|a| a.iter().map(|a| a.size as f64).sum::<f64>())
-                        .map(re_format::format_bytes);
+                        .map(|total| asset_size_text(ui.ctx(), total));
 
                     // There is no total size until the asset list has arrived, so while it is
                     // pending only the count is shown, with its loading indicator.
@@ -762,7 +762,7 @@ impl Server {
                                 ui.spacing_mut().item_spacing.y = 3.0;
                                 ui.label(egui::RichText::new("SIZE").monospace().size(10.0).weak());
                                 ui.label(
-                                    egui::RichText::new(re_format::format_bytes(asset.size as _))
+                                    egui::RichText::new(asset_size_text(ui.ctx(), asset.size as _))
                                         .monospace()
                                         .size(14.0)
                                         .strong(),
@@ -837,6 +837,18 @@ fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool)
 }
 
 const COVERAGE_NOT_EDITABLE: &str = "This server does not support editing coverage";
+
+/// The size of an asset, or of several, as text.
+///
+/// In tests it is always the same placeholder, because the size depends on how the data is
+/// encoded.
+fn asset_size_text(egui_ctx: &egui::Context, size_bytes: f64) -> String {
+    if egui_ctx.is_test() {
+        "* KiB".to_owned()
+    } else {
+        re_format::format_bytes(size_bytes)
+    }
+}
 
 fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &Asset) {
     send_crossbeam(
