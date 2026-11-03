@@ -827,6 +827,15 @@ def test_video_frame_decoder_duplicate_slots_do_not_share_memory() -> None:
     assert out[0].data_ptr() != out[1].data_ptr()
 
 
+def test_video_frame_decoder_rgb_output_does_not_share_memory_with_rgb_frame() -> None:
+    # An `rgb24` frame skips conversion, and unpadded rows let `to_ndarray` view its buffer.
+    frame = av.VideoFrame.from_ndarray(np.full((4, 64, 3), 7, dtype=np.uint8), format="rgb24")
+
+    VideoFrameDecoder(codec="h264")._frame_to_tensor(frame).zero_()
+
+    assert (frame.to_ndarray() == 7).all()
+
+
 def test_video_frame_decoder_returns_window_stack() -> None:
     samples = _encode_h264(num_frames=8, gop=8)
     request = DecodeRequest(

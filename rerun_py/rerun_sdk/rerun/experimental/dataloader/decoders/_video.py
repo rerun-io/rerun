@@ -544,9 +544,10 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
 
         # 4. Scatter captured frames back into each request's ordered output slots.
         for packet_position, tensor in decoded_frames_by_packet_position.items():
-            for request_position, output_slot in output_slots_by_packet_position[packet_position]:
+            for use, (request_position, output_slot) in enumerate(output_slots_by_packet_position[packet_position]):
+                # Each capture is a fresh frame, so only its repeat unwindowed outputs need their own copy.
                 frames_by_request_position[request_position][output_slot] = (
-                    tensor if batch.is_windowed else tensor.clone()
+                    tensor if batch.is_windowed or use == 0 else tensor.clone()
                 )
 
         for request_position, frames in frames_by_request_position.items():
@@ -818,7 +819,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         return self._frame_to_tensor(frame)
 
     def _frame_to_tensor(self, frame: av.VideoFrame) -> torch.Tensor:
-        """Convert a PyAV VideoFrame to a `(3, H, W)` uint8 tensor."""
+        """Convert a PyAV VideoFrame to a `(3, H, W)` uint8 tensor that never shares memory with `frame`."""
         reformatters = self._rgb_reformatters
         if reformatters is None:
             reformatters = self._rgb_reformatters = threading.local()
@@ -827,6 +828,9 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             reformatter = reformatters.rgb = VideoReformatter()
         rgb = reformatter.reformat(frame, format="rgb24")
         arr = rgb.to_ndarray()
+        if rgb is frame:
+            # An `rgb24` input comes back as-is, and `to_ndarray` may view its buffer.
+            arr = arr.copy()
         return torch.from_numpy(arr).permute(2, 0, 1)
 
     def _frame_to_yuv420(self, frame: av.VideoFrame) -> Yuv420Frame:
