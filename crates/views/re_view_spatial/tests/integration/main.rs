@@ -7,6 +7,7 @@ mod blueprint_2d;
 mod chroma_subsampling;
 mod dae_mesh;
 mod draw_order;
+mod ellipses2d;
 mod encoded_depth_image;
 mod encoded_image_clear;
 mod gaussian_splats3d;
