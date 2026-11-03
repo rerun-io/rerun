@@ -7,8 +7,8 @@ use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_agent::LineDirection;
 use re_agent::acp::schema::v1::{
     AuthMethod, AuthMethodTerminal, ConfigOptionUpdate, ContentBlock, ContentChunk, Diff,
-    PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority, PlanEntryStatus,
-    RequestPermissionRequest, SessionConfigOption, SessionConfigOptionCategory,
+    Implementation, PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority,
+    PlanEntryStatus, RequestPermissionRequest, SessionConfigOption, SessionConfigOptionCategory,
     SessionConfigSelectOption, SessionId, SessionMode, SessionModeState, SessionUpdate,
     TextContent, ToolCall, ToolCallContent, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
     ToolCallUpdateFields, ToolKind, UsageUpdate,
@@ -404,6 +404,36 @@ fn chat_finished_turn() {
     }
 
     snapshot("chat_finished_turn", panel);
+}
+
+/// A failed turn shows the error summary, with its details folded away until asked for.
+#[test]
+fn chat_turn_error() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+    session.handle_event(AgentEvent::Initialized {
+        agent_info: Some(Implementation::new("opencode", "1.4.2").title("OpenCode")),
+        capabilities: Box::default(),
+        auth_methods: Vec::new(),
+    });
+    session
+        .transcript_mut()
+        .push_user("Help me detect missing frames".into());
+    session.handle_event(AgentEvent::TurnFinished(Err(
+        "tools.12.custom.input_schema: input_schema does not support oneOf, allOf, or anyOf at the top level\n- service: session\n- errorName: APIError".to_owned(),
+    )));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    harness.snapshot("chat_turn_error");
+
+    harness.get_by_label("Details").click();
+    // Off the transcript, so no hover times (which depend on the clock) show up.
+    harness.hover_at(egui::pos2(1.0, SIZE.y - 1.0));
+    harness.run_steps(4);
+    harness.snapshot("chat_turn_error_details");
 }
 
 /// Tool calls fold once the turn has ended, failed or not, and expand again on click.

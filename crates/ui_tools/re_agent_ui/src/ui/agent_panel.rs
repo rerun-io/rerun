@@ -5,6 +5,7 @@ use std::sync::Arc;
 use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
 use re_agent::{AgentToolbox, ModelApiProvider};
 use re_async::{AsyncRuntimeHandle, UiWaker};
+use re_error::StructuredError;
 use re_ui::alert::Alert;
 use re_ui::{ContextExt as _, UiExt as _, icons};
 
@@ -801,10 +802,7 @@ impl AgentPanel {
 /// Why the draft's agent failed to start, and a way to fix its setup.
 fn draft_error_ui(ui: &mut egui::Ui, message: &str, draft: ConversationId) -> Option<PanelAction> {
     let action = Alert::error()
-        .show(ui, |ui| {
-            ui.set_min_width(ui.available_width());
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-            ui.label(message);
+        .show_structured_error(ui, &StructuredError::parse(message), |ui| {
             ui.button("Agent setup…")
                 .clicked()
                 .then_some(PanelAction::OpenSetup(draft))

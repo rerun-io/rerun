@@ -120,3 +120,96 @@ impl McpStartupFailure {
         })
     }
 }
+
+/// Who reported an [`AgentError`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AgentErrorSource {
+    /// An agent such as Claude Code or `OpenCode`, as it introduced itself, if it did.
+    Agent {
+        /// The name the agent gave, e.g. `OpenCode`.
+        name: Option<String>,
+
+        /// The version the agent gave, e.g. `1.4.2`.
+        version: Option<String>,
+    },
+
+    /// A model provider's API, called by our own agent loop.
+    ModelApi {
+        /// The provider's name, e.g. `Anthropic`.
+        provider: Option<String>,
+    },
+}
+
+/// What the agent was asked to do when it reported an [`AgentError`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FailedRequest {
+    /// Answer a prompt: the turn ended with the error.
+    Prompt,
+
+    /// Anything else, e.g. connecting or changing a setting.
+    Other,
+}
+
+/// A request that the agent failed, e.g. a prompt it could not answer.
+///
+/// Unlike an error from the host, the user can only fix this by changing the agent, its
+/// configuration, or what it is connected to, so it is shown along with who reported it.
+#[derive(Clone, Debug)]
+pub struct AgentError {
+    /// Who reported the error.
+    pub source: AgentErrorSource,
+
+    /// What the agent failed to do.
+    pub request: FailedRequest,
+
+    /// What went wrong, as [`re_error::StructuredError`] text.
+    pub message: String,
+}
+
+impl AgentError {
+    /// Who reported the error, e.g. "`OpenCode` 1.4.2", or "the Anthropic API".
+    pub fn reporter(&self) -> String {
+        match &self.source {
+            AgentErrorSource::Agent {
+                name: Some(name),
+                version: Some(version),
+            } => format!("{name} {version}"),
+            AgentErrorSource::Agent {
+                name: Some(name),
+                version: None,
+            } => name.clone(),
+            AgentErrorSource::Agent { name: None, .. } => "the agent".to_owned(),
+            AgentErrorSource::ModelApi {
+                provider: Some(provider),
+            } => format!("the {provider} API"),
+            AgentErrorSource::ModelApi { provider: None } => "the model API".to_owned(),
+        }
+    }
+
+    /// What the user can do about the error.
+    pub fn hint(&self) -> String {
+        match &self.source {
+            AgentErrorSource::Agent { name, .. } => {
+                let agent = name.as_deref().unwrap_or("the agent");
+                if self.message.contains("input_schema") {
+                    format!(
+                        "The model provider rejected a tool that {agent} offered it. \
+                         Tools come from {agent} itself and from its MCP servers, including Rerun's. \
+                         Update {agent} and Rerun. If that does not help, turn off the MCP servers \
+                         of {agent} one at a time to find the faulty one."
+                    )
+                } else {
+                    format!(
+                        "This comes from {agent} or the model provider it calls. \
+                         If it keeps happening, update {agent}, or choose another agent in the agent setup."
+                    )
+                }
+            }
+            AgentErrorSource::ModelApi { .. } => {
+                "If it keeps happening, check your API key and account with the provider, \
+                 or choose another model in the agent setup."
+                    .to_owned()
+            }
+        }
+    }
+}
