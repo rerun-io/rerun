@@ -1324,6 +1324,10 @@ pub trait UiExt {
                 |ui| {
                     ui.spacing_mut().item_spacing.x = 3.0;
 
+                    // `ui.horizontal` makes its row `interact_size.y` tall. The row is as tall as
+                    // the segments, so the toggle is centered in a centered layout.
+                    ui.spacing_mut().interact_size.y = Size::Tiny.height();
+
                     ui.horizontal(content).inner
                 },
             )
