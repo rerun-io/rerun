@@ -9,6 +9,8 @@
 //! Settings default to `OptimizationProfile::OBJECT_STORE`; no own-chunk rules are applied, and
 //! every video stream is GoP-batched unless `--no-rebatch-videos` is passed.
 
+#![expect(clippy::print_stderr)] // Example
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write as _;

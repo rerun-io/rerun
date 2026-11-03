@@ -5,6 +5,8 @@
 //! cargo run -p re_hdf5 --example gen_test_fixture -- <output_dir>
 //! ```
 
+#![expect(clippy::print_stdout)] // Example
+
 use hdf5_pure::{AttrValue, FileBuilder};
 
 fn main() {

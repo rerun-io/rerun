@@ -1,6 +1,7 @@
 //! Provides a test context that builds on `re_viewer_context`.
 
 #![expect(clippy::unwrap_used)] // This is only a test
+#![expect(clippy::print_stderr)] // This is only a test
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};

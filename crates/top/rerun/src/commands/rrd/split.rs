@@ -11,6 +11,7 @@ use re_build_info::CrateVersion;
 use re_chunk::external::crossbeam;
 use re_chunk::{Chunk, ChunkId, RowId, TimeInt, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkTrackingMode};
+use re_error::try_eprintln;
 use re_quota_channel::send_crossbeam;
 use re_sdk::external::arrow;
 use re_sdk::external::nohash_hasher::IntMap;
@@ -759,7 +760,7 @@ impl SplitCommand {
                             if cfg!(debug_assertions) {
                                 for (time, row_id) in chunk.iter_indices(cutoff_timeline.name()) {
                                     if !all_unique_indexes_in_split.insert((time, row_id)) {
-                                        eprintln!(
+                                        let _err = try_eprintln!(
                                             "ERROR: duplicate index detected on {}: {} / {row_id}",
                                             chunk.entity_path(),
                                             time_to_human_string(cutoff_timeline, time),

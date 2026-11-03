@@ -1,3 +1,5 @@
+#![expect(clippy::print_stderr)] // Example
+
 use std::sync::Arc;
 
 use anyhow::Context as _;

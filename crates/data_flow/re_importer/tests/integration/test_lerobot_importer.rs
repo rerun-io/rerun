@@ -1,3 +1,5 @@
+#![expect(clippy::print_stderr)] // This is only a test
+
 use std::sync::Arc;
 
 use re_chunk::Chunk;

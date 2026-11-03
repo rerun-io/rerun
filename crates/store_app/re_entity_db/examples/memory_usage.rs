@@ -1,5 +1,6 @@
 // TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stdout)] // Example
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;

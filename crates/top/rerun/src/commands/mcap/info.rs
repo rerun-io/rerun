@@ -6,6 +6,7 @@ use std::path::PathBuf;
 
 use crate::commands::table_util::print_table;
 use anyhow::Context as _;
+use re_error::try_println;
 
 #[derive(Debug, Clone, clap::Parser)]
 pub struct InfoCommand {
@@ -34,44 +35,44 @@ impl InfoCommand {
         let mcap_file = re_mcap::McapFile::new(mmap, *recover);
         let info = mcap_file.info()?;
 
-        print_info(path, &info);
+        print_info(path, &info)?;
         Ok(())
     }
 }
 
-fn print_info(path: &std::path::Path, info: &re_mcap::McapInfo) {
-    println!("{}", path.display());
-    println!();
-    println!("Recording");
-    print_property("Profile", value_or_dash(&info.profile));
-    print_property("Library", value_or_dash(&info.library));
-    print_property("Messages", format_optional_uint(info.message_count));
-    print_property("Duration", format_duration(info.duration_ns));
-    print_property("Start", format_timestamp(info.message_start_time_ns));
-    print_property("End", format_timestamp(info.message_end_time_ns));
-    print_property("Schemas", info.schema_count);
-    print_property("Channels", info.channel_count);
-    print_property("Attachments", info.attachment_count);
-    print_property("Metadata", info.metadata_count);
+fn print_info(path: &std::path::Path, info: &re_mcap::McapInfo) -> std::io::Result<()> {
+    try_println!("{}", path.display())?;
+    try_println!()?;
+    try_println!("Recording")?;
+    print_property("Profile", value_or_dash(&info.profile))?;
+    print_property("Library", value_or_dash(&info.library))?;
+    print_property("Messages", format_optional_uint(info.message_count))?;
+    print_property("Duration", format_duration(info.duration_ns))?;
+    print_property("Start", format_timestamp(info.message_start_time_ns))?;
+    print_property("End", format_timestamp(info.message_end_time_ns))?;
+    print_property("Schemas", info.schema_count)?;
+    print_property("Channels", info.channel_count)?;
+    print_property("Attachments", info.attachment_count)?;
+    print_property("Metadata", info.metadata_count)?;
     print_property(
         "Summary",
         match info.summary_source {
             re_mcap::McapSummarySource::Embedded => "embedded".to_owned(),
             re_mcap::McapSummarySource::Reconstructed => "reconstructed".to_owned(),
         },
-    );
+    )?;
 
-    println!();
-    println!("Chunks");
-    print_property("Count", info.chunks.count);
+    try_println!()?;
+    try_println!("Chunks")?;
+    print_property("Count", info.chunks.count)?;
     print_property(
         "Max uncompressed size",
         format_optional_bytes(info.chunks.max_uncompressed_size_bytes),
-    );
+    )?;
     print_property(
         "Max compressed size",
         format_optional_bytes(info.chunks.max_compressed_size_bytes),
-    );
+    )?;
     print_property(
         "Overlapping time ranges",
         if info.chunks.has_overlapping_time_ranges {
@@ -80,11 +81,11 @@ fn print_info(path: &std::path::Path, info: &re_mcap::McapInfo) {
             "no"
         }
         .to_owned(),
-    );
+    )?;
 
     if !info.compression.is_empty() {
-        println!();
-        println!("Compression");
+        try_println!()?;
+        try_println!("Compression")?;
         let rows = info
             .compression
             .iter()
@@ -125,11 +126,11 @@ fn print_info(path: &std::path::Path, info: &re_mcap::McapInfo) {
             ],
             &rows,
             &[1, 2, 3, 4, 5],
-        );
+        )?;
     }
 
-    println!();
-    println!("Channels");
+    try_println!()?;
+    try_println!("Channels")?;
     let rows = info
         .channels
         .iter()
@@ -159,11 +160,11 @@ fn print_info(path: &std::path::Path, info: &re_mcap::McapInfo) {
         &["ID", "Topic", "Messages", "Rate", "Schema", "Encoding"],
         &rows,
         &[0, 2, 3],
-    );
+    )
 }
 
-fn print_property(label: &str, value: impl std::fmt::Display) {
-    println!("  {label:<24} {value}");
+fn print_property(label: &str, value: impl std::fmt::Display) -> std::io::Result<()> {
+    try_println!("  {label:<24} {value}")
 }
 
 fn value_or_dash(value: &str) -> String {

@@ -1459,7 +1459,7 @@ impl AppCore {
                 if let Some(ctx) = store_context {
                     let text = format!("{}", ctx.recording.storage_engine().store());
                     egui_ctx.copy_text(text.clone());
-                    println!("{text}");
+                    let _err = re_error::try_println!("{text}");
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -1467,7 +1467,7 @@ impl AppCore {
                 if let Some(ctx) = store_context {
                     let text = format!("{}", ctx.blueprint.storage_engine().store());
                     egui_ctx.copy_text(text.clone());
-                    println!("{text}");
+                    let _err = re_error::try_println!("{text}");
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
@@ -1475,7 +1475,7 @@ impl AppCore {
                 if let Some(ctx) = store_context {
                     let text = format!("{:?}", ctx.recording.storage_engine().cache());
                     egui_ctx.copy_text(text.clone());
-                    println!("{text}");
+                    let _err = re_error::try_println!("{text}");
                 }
             }
         }

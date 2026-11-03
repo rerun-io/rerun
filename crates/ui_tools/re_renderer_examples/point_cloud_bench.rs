@@ -31,6 +31,7 @@
 //! * `--experiment <none|occluder-rectangle|sorted-front-to-back>`: select experiment
 
 #![expect(clippy::disallowed_methods)] // allow hardcoded colors
+#![expect(clippy::print_stdout)] // Prints the benchmark results
 
 use clap::Parser as _;
 use re_math::IsoTransform;
