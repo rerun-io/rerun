@@ -1,5 +1,92 @@
 # Rerun changelog
 
+## [0.42.0](https://github.com/rerun-io/rerun/compare/0.41.0...0.42.0) - 2026-11-03
+
+### ✨ Overview & highlights
+
+- New [Raw Data view](https://rerun.io/docs/reference/types/views/raw_data_view) to inspect an entity's components, including nested fields and individual instances
+
+  <picture>
+    <img src="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/full.png" alt="The Raw Data view showing the components of an entity">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/1024w.png">
+  </picture>
+
+- [Schema tab for datasets](https://rerun.io/docs/changelog/changeset-0-42#schema-tab-for-datasets), showing the combined [schema](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#schema) of all layers as a searchable entity tree
+
+  <picture>
+    <img src="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/full.png" alt="The schema tab of a dataset, with the entity tree on the left and the components of the selected entity on the right">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/1200w.png">
+  </picture>
+
+- Hovering a tensor in the [tensor view](https://rerun.io/docs/reference/types/views/tensor_view) shows a zoomed preview and the value of the element under the cursor
+
+  <img src="https://static.rerun.io/tensor-view-hover/9e0adf6a485257e0e0721130bd28f3c557e7d005/full.png" alt="Tooltip over a tensor showing a zoomed preview, the element index and its value">
+
+- [`Component.table_field()`](https://rerun.io/docs/howto/query-and-transform/catalog-tables#give-columns-semantic-meaning) gives catalog table columns a component type, optionally editable without a table blueprint
+- `Layer.schema()` and `DatasetSelection.info()` in the Python catalog API
+- Catalog folders have clickable breadcrumbs, and folders and tables can copy a link to themselves
+- Layer names show as tags in segment tables
+- Repeated notifications merge into one
+- The gRPC server and proxy accept browser connections from `rerun.io` subdomains by default
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-42#highlights
+
+### ⚠️ Breaking changes
+
+- [`DatasetSelection.schema()` covers only the selected segments](https://rerun.io/docs/changelog/changeset-0-42#datasetselectionschema-covers-only-the-selected-segments)
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-42#breaking-changes
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Better [table schema API](https://rerun.io/docs/howto/query-and-transform/catalog-tables#give-columns-semantic-meaning) [6001efd](https://github.com/rerun-io/rerun/commit/6001efd9c92cd8b57a3cdff969ff1179b5c12fec)
+- Add `layer.schema()` [022859f](https://github.com/rerun-io/rerun/commit/022859f5b65da70d64c20fc07e499cec78b7b403)
+- Add `selection.info()` to `DatasetSelection` [86f9bc9](https://github.com/rerun-io/rerun/commit/86f9bc9dcf7ac400c616b67fb42dbf52651b435c)
+- `DatasetSelection.schema` now takes into account the segment selection [826dc6e](https://github.com/rerun-io/rerun/commit/826dc6e493eda05a65f167303c6bb97bfa50d309)
+
+#### 🦀 Rust API
+- Update `arrow_rs` to 58.4.1 [a38ef38](https://github.com/rerun-io/rerun/commit/a38ef386d6eb042fe495f1dcd79d7bc657ba0381)
+
+#### 🪳 Bug fixes
+- Don't crash the headless viewer on characters no font can draw [#12980](https://github.com/rerun-io/rerun/pull/12980) (thanks [@jaeminbird](https://github.com/jaeminbird)!)
+- Don't panic on broken pipe [13efe4d](https://github.com/rerun-io/rerun/commit/13efe4de084822693b8eb22c9cf84868b1ba17bb)
+- Draw 2D points above lines again by default [a235fbc](https://github.com/rerun-io/rerun/commit/a235fbc072e3624e9ba0a6c75a472bc8430b52f0)
+- Smoother `Ellipses2D` outlines when zoomed in [#12988](https://github.com/rerun-io/rerun/pull/12988) (thanks [@michele-xilo](https://github.com/michele-xilo)!)
+- Pass `--time_timestamp_nanos` to external importers for timestamp timelines [d98777b](https://github.com/rerun-io/rerun/commit/d98777b249856072e3e38c4ab26cf5ab9618ea67)
+- Return InvalidArgument when registering a non-RRD file [7e5529e](https://github.com/rerun-io/rerun/commit/7e5529e2417097f7f940d451edaa7125b6033339)
+- Classify all RRD decode errors from user files as client errors [a6175b1](https://github.com/rerun-io/rerun/commit/a6175b142baece9ec0c2a10552fad9f36fdf9d90)
+- Fix welcome screen flicker while the viewer connects to a server [43e7161](https://github.com/rerun-io/rerun/commit/43e7161868bcbe80d09be22084b1422f1bbb2364)
+- Align catalog breadcrumbs with the title below them [8ae43b7](https://github.com/rerun-io/rerun/commit/8ae43b790bf2e00985137e2617a0c062d68a1faa)
+- Show item tooltips in the selection history menu [544c33d](https://github.com/rerun-io/rerun/commit/544c33dc24fb8cee971dfe8f2de0730e359023d7)
+- Fix invisible play/pause icon on table previews in light mode [4f16dff](https://github.com/rerun-io/rerun/commit/4f16dff27e11cae78f938f01f36b4b46c187848c)
+- Keep selected text readable in text edits [cd45097](https://github.com/rerun-io/rerun/commit/cd450978fa9f85335a0ee65df027cbf4f970b2d7)
+- Center value toggles correctly [0bb3b58](https://github.com/rerun-io/rerun/commit/0bb3b5828eca58ae290a5c4855f89211497007b0)
+
+#### 🌁 Viewer improvements
+- Add new [Raw Data view](https://rerun.io/docs/reference/types/views/raw_data_view) [c2e5b74](https://github.com/rerun-io/rerun/commit/c2e5b74f8fe371082cc64d5786d92ca8153267fd)
+- Dataset [Schema](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#schema) Tab [d6de728](https://github.com/rerun-io/rerun/commit/d6de728c57f165be14344e07ffbd99015c2012fd)
+- Make dataset folder paths clickable with breadcrumbs [131096b](https://github.com/rerun-io/rerun/commit/131096bae6941ef85e2fd7793f6d1dcf1fe29e06)
+- Add "Copy link to folder" to folder context menu [28021de](https://github.com/rerun-io/rerun/commit/28021de775dbe081e7dfc977680afb1bf609d164)
+- Layer names component UI [0a4c196](https://github.com/rerun-io/rerun/commit/0a4c1967e68d67c4b9dda9439f8d08ae0dbe6a1e)
+- Merge repeated notifications into one [8e02bd4](https://github.com/rerun-io/rerun/commit/8e02bd45a5d65297c18e5f1fe0d4a253535203f3)
+
+#### 🚀 Performance improvements
+- Store uncompressed chunks where optimal [f63cf29](https://github.com/rerun-io/rerun/commit/f63cf298d80b7096c5ef1f6267e6a5ac239e927b)
+- dataloader: Skip copying the first use of each decoded video frame [8217e81](https://github.com/rerun-io/rerun/commit/8217e814932c79c3b2e8cbf4f5aec87aecfd12c7)
+
+#### 🖼 UI improvements
+- Support [tensor](https://rerun.io/docs/reference/types/views/tensor_view) hover previews [ee88e60](https://github.com/rerun-io/rerun/commit/ee88e60c94fce20f57a07665d3980757b422cb3a)
+
+#### 🕸️ Web
+- Allow rerun.io subdomains in the default gRPC CORS allowlist [0dbaf30](https://github.com/rerun-io/rerun/commit/0dbaf30bda24ba6d816d7c6e1370a393e4d4f553)
+
+
 ## [0.41.0](https://github.com/rerun-io/rerun/compare/0.40.0...0.41.0) - 2026-10-28
 
 ### ✨ Overview & highlights
