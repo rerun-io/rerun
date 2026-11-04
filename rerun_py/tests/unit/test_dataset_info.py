@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import numpy as np
+import pyarrow as pa
+import pytest
 from inline_snapshot import snapshot
-from rerun.catalog import DatasetInfo, LayerInfo, TimelineInfo
+from rerun.catalog import DatasetInfo, LayerInfo, TimelineInfo, TimelineKind
 
 
 def _info(**overrides: object) -> DatasetInfo:
@@ -18,15 +20,15 @@ def _info(**overrides: object) -> DatasetInfo:
         "timelines": frozenset({
             TimelineInfo(
                 name="log_time",
-                kind="timestamp",
+                kind=TimelineKind.TIMESTAMP,
                 num_segments=120,
                 min=np.datetime64("2026-09-01T08:12:03.120000000", "ns"),
                 max=np.datetime64("2026-09-30T17:45:59.004000000", "ns"),
             ),
-            TimelineInfo(name="step", kind="sequence", num_segments=120, min=np.int64(0), max=np.int64(184)),
+            TimelineInfo(name="step", kind=TimelineKind.SEQUENCE, num_segments=120, min=np.int64(0), max=np.int64(184)),
             TimelineInfo(
                 name="sim_time",
-                kind="duration",
+                kind=TimelineKind.DURATION,
                 num_segments=3,
                 min=np.timedelta64(1_500_000_000, "ns"),
                 max=np.timedelta64(90_000_000_000, "ns"),
@@ -73,10 +75,25 @@ DatasetInfo(robot_runs: 0 segments, 0 B)
 
 def test_child_reprs() -> None:
     assert repr(LayerInfo(name="base", num_segments=120)) == snapshot("LayerInfo(base: in 120 segments)")
-    assert repr(TimelineInfo(name="step", kind="sequence", num_segments=120, min=np.int64(0), max=np.int64(184))) == (
-        snapshot("TimelineInfo(step: sequence, #0 … #184, in 120 segments)")
-    )
+    assert repr(
+        TimelineInfo(name="step", kind=TimelineKind.SEQUENCE, num_segments=120, min=np.int64(0), max=np.int64(184))
+    ) == (snapshot("TimelineInfo(step: sequence, #0 … #184, in 120 segments)"))
 
 
 def test_is_hashable() -> None:
     hash(_info())
+
+
+@pytest.mark.parametrize("kind", list(TimelineKind))
+def test_timeline_kind_datatype_round_trips(kind: TimelineKind) -> None:
+    assert TimelineKind.from_datatype(kind.datatype) is kind
+
+
+def test_timeline_kind_from_timestamp_ignores_timezone() -> None:
+    assert TimelineKind.from_datatype(pa.timestamp("ns", tz="Europe/Zurich")) is TimelineKind.TIMESTAMP
+
+
+@pytest.mark.parametrize("datatype", [pa.int32(), pa.duration("us"), pa.timestamp("ms"), pa.string()])
+def test_timeline_kind_rejects_other_datatypes(datatype: pa.DataType) -> None:
+    with pytest.raises(ValueError, match="Not a timeline datatype"):
+        TimelineKind.from_datatype(datatype)
