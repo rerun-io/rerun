@@ -1,6 +1,6 @@
 # Rerun changelog
 
-## [0.42.0](https://github.com/rerun-io/rerun/compare/0.41.0...0.42.0) - 2026-11-03
+## [0.42.0](https://github.com/rerun-io/rerun/compare/0.41.0...0.42.0) - 2026-11-04
 
 ### ✨ Overview & highlights
 
