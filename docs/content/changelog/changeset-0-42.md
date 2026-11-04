@@ -38,7 +38,7 @@ The archetype and data type of each component can be shown as extra columns.
 - **Hovering a tensor shows a zoomed preview and element values**: Hovering a tensor in the [tensor view](../reference/types/views/tensor_view.md) now shows a magnified view of the surrounding elements, along with the index and value of the element under the cursor, like hovering an image in the 2D view does.
 
   <img src="https://static.rerun.io/tensor-view-hover/9e0adf6a485257e0e0721130bd28f3c557e7d005/full.png" alt="Display tooltip hovering over tensor index and showing matching value.">
-- **`Component.table_field()`**: `rr.components.Flag.table_field("reviewed", editable=True)` returns a catalog table schema field with a Rerun component type, which gives the column semantic meaning. The Viewer uses it to pick the UI for the column. With `editable=True`, the column can be edited without a table blueprint. See [Give columns semantic meaning](../howto/query-and-transform/catalog-tables.md#give-columns-semantic-meaning).
+- **Give table columns semantic meaning**: `rr.components.Flag.table_field("reviewed", editable=True)` returns a catalog table schema field with a Rerun component type, which gives the column semantic meaning. The Viewer uses it to pick the UI for the column. With `editable=True`, the column can be edited without a table blueprint. See [Give columns semantic meaning](../howto/query-and-transform/catalog-tables.md#give-columns-semantic-meaning).
 
   ```python
   schema = pa.schema([

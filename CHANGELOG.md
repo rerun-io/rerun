@@ -27,7 +27,7 @@
 
   <img src="https://static.rerun.io/tensor-view-hover/9e0adf6a485257e0e0721130bd28f3c557e7d005/full.png" alt="Tooltip over a tensor showing a zoomed preview, the element index and its value">
 
-- [`Component.table_field()`](https://rerun.io/docs/howto/query-and-transform/catalog-tables#give-columns-semantic-meaning) gives catalog table columns a component type, optionally editable without a table blueprint
+- [Give table columns semantic meaning](https://rerun.io/docs/howto/query-and-transform/catalog-tables#give-columns-semantic-meaning) with `Component.table_field()`, optionally editable without a table blueprint
 - `Layer.schema()` and `DatasetSelection.info()` in the Python catalog API
 - Catalog folders have clickable breadcrumbs, and folders and tables can copy a link to themselves
 - Layer names show as tags in segment tables
