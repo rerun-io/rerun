@@ -35,7 +35,7 @@ use re_protos::cloud::v1alpha1::{
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::{DatasetKind, SchemaId, SegmentId};
+use re_protos::common::v1alpha1::ext::{DatasetKind, SegmentId};
 use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
 use re_protos::{
@@ -1529,7 +1529,7 @@ impl RerunCloudService for RerunCloudHandler {
                 break;
             }
 
-            let schema_id = SchemaId::from_sha256(source.schema_sha256());
+            let schema_id = source.schema_sha256();
             if remaining.remove(&schema_id) {
                 let response = ext::GetSchemasResponse {
                     schema_id,

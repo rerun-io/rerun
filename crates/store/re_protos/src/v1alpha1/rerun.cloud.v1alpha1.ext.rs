@@ -10,6 +10,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntryId, TimeInt};
+use re_sorbet::SchemaId;
 use re_types_core::LayerName;
 
 use crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
@@ -19,7 +20,7 @@ use crate::cloud::v1alpha1::{
     UploadMethod,
 };
 use crate::common::v1alpha1::ext as common_ext;
-use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SchemaId, SegmentId};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -2941,7 +2942,7 @@ mod tests {
         let last_updated_at = vec![2];
         let num_chunks = vec![1];
         let size_bytes = vec![2];
-        let schema_sha256 = vec![[1; 32]];
+        let schema_sha256 = vec![SchemaId::from_sha256([1; 32])];
         let registration_status = vec![LayerRegistrationStatus::Done.to_string()];
 
         let batch = ScanDatasetManifestDataframe::new(
