@@ -4,7 +4,7 @@
 
 ### ✨ Overview & highlights
 
-- New [Raw Data view](https://rerun.io/docs/reference/types/views/raw_data_view) to inspect an entity's components, including nested fields and individual instances
+- New [Raw Data view](https://rerun.io/docs/changelog/changeset-0-42#raw-data-view) to inspect an entity's components, including nested fields and individual instances
 
   <picture>
     <img src="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/full.png" alt="The Raw Data view showing the components of an entity">
@@ -69,7 +69,7 @@
 - Center value toggles correctly [0bb3b58](https://github.com/rerun-io/rerun/commit/0bb3b5828eca58ae290a5c4855f89211497007b0)
 
 #### 🌁 Viewer improvements
-- Add new [Raw Data view](https://rerun.io/docs/reference/types/views/raw_data_view) [c2e5b74](https://github.com/rerun-io/rerun/commit/c2e5b74f8fe371082cc64d5786d92ca8153267fd)
+- Add new [Raw Data view](https://rerun.io/docs/changelog/changeset-0-42#raw-data-view) [c2e5b74](https://github.com/rerun-io/rerun/commit/c2e5b74f8fe371082cc64d5786d92ca8153267fd)
 - Dataset [Schema](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#schema) Tab [d6de728](https://github.com/rerun-io/rerun/commit/d6de728c57f165be14344e07ffbd99015c2012fd)
 - Make dataset folder paths clickable with breadcrumbs [131096b](https://github.com/rerun-io/rerun/commit/131096bae6941ef85e2fd7793f6d1dcf1fe29e06)
 - Add "Copy link to folder" to folder context menu [28021de](https://github.com/rerun-io/rerun/commit/28021de775dbe081e7dfc977680afb1bf609d164)
