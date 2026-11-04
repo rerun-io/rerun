@@ -62,9 +62,30 @@ Three details:
 - **The server URL can be remote.** `rerun+http://127.0.0.1:51234` is the local default; a hosted catalog takes its own `rerun+https://…` URL.
   What you register must be readable by that server, so a remote catalog needs the files in object storage (`s3://…`) rather than on your disk.
   See [Staging files](#staging-files).
+  For a bucket outside AWS, see [S3-compatible storage outside AWS](#s3-compatible-storage-outside-aws).
 
 Call `register` once per layer, with the layer name each set of files was built as.
 Registering the URDF layer under `layer_name="base"` silently shadows the base layer.
+
+### S3-compatible storage outside AWS
+
+A Rerun Hub can read RRDs from S3-compatible providers other than AWS, such as Cloudflare R2, Hugging Face, or MinIO.
+Each such store is configured on the Hub deployment under a name, which every registration of a file in that store must pass as `object_store_config`:
+
+```python
+dataset.register(
+    ["s3://my-bucket/episodes/ep_000.rrd"],
+    layer_name="base",
+    on_duplicate=OnDuplicateSegmentLayer.REPLACE,
+    object_store_config="r2",  # the store's name on the Hub deployment
+).wait()
+```
+
+- **The URI keeps the `s3://bucket/key` form.** The named config supplies the provider's endpoint and credentials.
+  Without `object_store_config`, the server resolves the URI against AWS S3 and fails to read the file.
+- **Every register method takes it.** `register_prefix`, `register_blueprint`, and `register_asset` accept the same keyword; pass it whenever the `.rrd` or `.rbl` lives in that store.
+- **The name comes from the deployment.** The SDK cannot list the configured stores, so ask the user (or whoever set up the Hub) for it rather than guessing.
+- **Staging does not take it yet.** `client.stage` uploads to the server's default staging storage, so register the URI it returns without `object_store_config`.
 
 ### Staging files
 
@@ -79,6 +100,7 @@ Use a key that is unique to the segment and layer, since Rerun Hub may overwrite
 ### Registering a prefix
 
 For up to about 50,000 RRDs already in object storage, `dataset.register_prefix(prefix, layer_name, on_duplicate=…)` sends the whole prefix to the server in one request.
+For a prefix in a bucket outside AWS, also pass `object_store_config` (see [S3-compatible storage outside AWS](#s3-compatible-storage-outside-aws)).
 This only supports one layer name per call, so prefer to organize each layer under its own prefix.
 
 A `register_prefix` call over too many files fails with `encoded message length too large`.
