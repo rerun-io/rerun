@@ -14,6 +14,15 @@ Include links to any related issues/PRs in a bulleted list, for example:
 * Part of #1337
 -->
 
+### Why
+
+<!--
+Explain why this change is needed: what problem it solves, or what would go wrong without it.
+This context helps reviewers today and readers of the history later.
+
+This section explains the problem that motivates the change, the `What` section explains how it solves the problem.
+-->
+
 ### What
 
 <!--
