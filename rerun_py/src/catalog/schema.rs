@@ -41,10 +41,8 @@ impl PySchemaInternal {
 
     /// Convert back the schema to an Arrow schema.
     pub fn into_arrow_schema(self) -> Schema {
-        Schema::new_with_metadata(
-            self.columns.arrow_fields(BatchType::Dataframe),
-            self.metadata,
-        )
+        let Self { columns, metadata } = self;
+        Schema::new_with_metadata(columns.arrow_fields(BatchType::Dataframe), metadata)
     }
 }
 

@@ -66,7 +66,7 @@ fn all_wgsl_shaders_are_valid() {
     let workspace_root = crate_dir
         .ancestors()
         .nth(3)
-        .expect("re_renderer should live at crates/viewer_support/re_renderer");
+        .expect("re_renderer should live at crates/ui_tools/re_renderer");
     let examples_dir = workspace_root.join("examples");
 
     // Imports such as `#import <types.wgsl>` resolve against the search path; relative imports

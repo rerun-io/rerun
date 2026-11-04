@@ -91,13 +91,18 @@ impl CpuModel {
     /// * instances with invalid mesh keys
     /// * unreferenced meshes
     pub fn into_gpu_meshes(self, ctx: &RenderContext) -> Result<Vec<GpuMeshInstance>, MeshError> {
-        let mut gpu_meshes = SecondaryMap::with_capacity(self.meshes.len());
-        for (mesh_key, mesh) in &self.meshes {
+        let Self {
+            meshes,
+            instances,
+            bbox: _,
+        } = self;
+
+        let mut gpu_meshes = SecondaryMap::with_capacity(meshes.len());
+        for (mesh_key, mesh) in &meshes {
             gpu_meshes.insert(mesh_key, Arc::new(GpuMesh::new(ctx, mesh)?));
         }
 
-        Ok(self
-            .instances
+        Ok(instances
             .into_iter()
             .filter_map(|instance| {
                 Some(GpuMeshInstance {

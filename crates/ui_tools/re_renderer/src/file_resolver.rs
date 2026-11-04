@@ -470,7 +470,7 @@ cfg_select! {
 /// Returns the recommended `FileResolver` for the current platform/target.
 pub fn new_recommended() -> RecommendedFileResolver {
     let mut search_path = SearchPath::from_env();
-    search_path.push("crates/viewer_support/re_renderer/shader");
+    search_path.push("crates/ui_tools/re_renderer/shader");
     FileResolver::with_search_path(crate::get_filesystem(), search_path)
 }
 

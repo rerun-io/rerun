@@ -100,20 +100,25 @@ const OPENAI_WEB_SEARCH: &str = "web_search";
 /// A provider reply is summarized from its HTTP status and the `error.message` in its body,
 /// which is where both the Anthropic and the `OpenAI` APIs put the human-readable part.
 fn describe_provider_error(err: &rig_core::ProviderError) -> String {
-    let Some(status) = err.provider_response_status() else {
+    if err.provider_response().is_none() {
         return format!("The model request failed: {err}");
-    };
+    }
 
-    let code = status.as_u16();
-    let summary = match code {
-        401 => "The API key was rejected".to_owned(),
-        403 => "The API key is not allowed to do this".to_owned(),
-        429 => "The model API is rate limiting requests".to_owned(),
-        500..=599 => format!("The model API had an internal error ({code})"),
-        _ => format!(
-            "The model request failed with {code} {}",
-            status.canonical_reason().unwrap_or_default()
-        ),
+    let summary = match err.provider_response_status() {
+        None => "The model request failed".to_owned(),
+        Some(status) => {
+            let code = status.as_u16();
+            match code {
+                401 => "The API key was rejected".to_owned(),
+                403 => "The API key is not allowed to do this".to_owned(),
+                429 => "The model API is rate limiting requests".to_owned(),
+                500..=599 => format!("The model API had an internal error ({code})"),
+                _ => format!(
+                    "The model request failed with {code} {}",
+                    status.canonical_reason().unwrap_or_default()
+                ),
+            }
+        }
     };
 
     let details = err
@@ -939,7 +944,7 @@ async fn run_tool_call(
             name: name.to_owned(),
         }),
         (None, Some(toolbox)) => {
-            if toolbox.requires_approval(name) && !is_allowed(&id, name, events).await {
+            if toolbox.requires_approval(name, &arguments) && !is_allowed(&id, name, events).await {
                 Err(ToolCallError::Declined)
             } else {
                 events.send(status_update(&id, ToolCallStatus::InProgress, Vec::new()));
@@ -1121,6 +1126,17 @@ mod tests {
             provider_error(400, "  not json  "),
             "The model request failed with 400 Bad Request: not json"
         );
+
+        let streamed = rig_core::ProviderError::from_provider_body(
+            r#"{"type":"error","error":{"type":"insufficient_quota","code":"credit_balance_exhausted","message":"You have no credits remaining."},"sequence_number":2}"#,
+        );
+        assert_eq!(
+            ModelApiError::Provider {
+                err: Box::new(streamed)
+            }
+            .to_string(),
+            "The model request failed: You have no credits remaining."
+        );
     }
 
     /// Echoes its arguments. `echo` runs freely; `delete` needs approval.
@@ -1138,7 +1154,11 @@ mod tests {
                 .collect()
         }
 
-        fn requires_approval(&self, name: &str) -> bool {
+        fn requires_approval(
+            &self,
+            name: &str,
+            _arguments: &serde_json::Map<String, serde_json::Value>,
+        ) -> bool {
             name == "delete"
         }
 
@@ -1167,7 +1187,11 @@ mod tests {
             }]
         }
 
-        fn requires_approval(&self, _name: &str) -> bool {
+        fn requires_approval(
+            &self,
+            _name: &str,
+            _arguments: &serde_json::Map<String, serde_json::Value>,
+        ) -> bool {
             false
         }
 

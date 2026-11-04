@@ -87,11 +87,8 @@ jobs:
       - name: Rerun lints
         run: pixi run lint-rerun
 
-      - name: Check crate layering
-        run: pixi run scripts/check_crate_layers.py
-
-      - name: Check forbidden dependencies
-        run: pixi run python scripts/check_forbidden_dependencies.py
+      - name: Check crate dependencies
+        run: pixi run scripts/check_crate_dependencies.py
 
       - name: Check skills
         run: pixi run python scripts/ci/check_skills.py

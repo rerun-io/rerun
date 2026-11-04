@@ -110,8 +110,6 @@ re_component_ui = { path = "crates/viewer_support/re_component_ui", version = "=
 re_context_menu = { path = "crates/viewer_support/re_context_menu", version = "=0.42.0-alpha.1", default-features = false }
 re_data_ui = { path = "crates/viewer_support/re_data_ui", version = "=0.42.0-alpha.1", default-features = false }
 re_dataframe_ui = { path = "crates/viewer_support/re_dataframe_ui", version = "=0.42.0-alpha.1", default-features = false }
-re_renderer = { path = "crates/viewer_support/re_renderer", version = "=0.42.0-alpha.1", default-features = false }
-re_renderer_examples = { path = "crates/viewer_support/re_renderer_examples", version = "=0.42.0-alpha.1", default-features = false }
 re_time_ruler = { path = "crates/viewer_support/re_time_ruler", version = "=0.42.0-alpha.1", default-features = false }
 re_view = { path = "crates/viewer_support/re_view", version = "=0.42.0-alpha.1", default-features = false }
 re_viewer_context = { path = "crates/viewer_support/re_viewer_context", version = "=0.42.0-alpha.1", default-features = false }
@@ -162,6 +160,8 @@ re_agent_ui = { path = "crates/ui_tools/re_agent_ui", version = "=0.42.0-alpha.1
 re_arrow_ui = { path = "crates/ui_tools/re_arrow_ui", version = "=0.42.0-alpha.1", default-features = false }
 re_gamepad = { path = "crates/ui_tools/re_gamepad", version = "=0.42.0-alpha.1", default-features = false }
 re_plot = { path = "crates/ui_tools/re_plot", version = "=0.42.0-alpha.1", default-features = false }
+re_renderer = { path = "crates/ui_tools/re_renderer", version = "=0.42.0-alpha.1", default-features = false }
+re_renderer_examples = { path = "crates/ui_tools/re_renderer_examples", version = "=0.42.0-alpha.1", default-features = false }
 re_ui = { path = "crates/ui_tools/re_ui", version = "=0.42.0-alpha.1", default-features = false }
 
 # crates/build:

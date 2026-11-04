@@ -1335,11 +1335,17 @@ pub(crate) struct TableScanStatsSnapshot {
 impl SharedTableScanStats {
     /// Take a snapshot of the counters using relaxed atomic loads.
     fn snapshot(&self) -> TableScanStatsSnapshot {
+        let Self {
+            grpc_requests,
+            batches,
+            rows_returned,
+            bytes_returned,
+        } = self;
         TableScanStatsSnapshot {
-            grpc_requests: self.grpc_requests.load(Ordering::Relaxed),
-            batches: self.batches.load(Ordering::Relaxed),
-            rows_returned: self.rows_returned.load(Ordering::Relaxed),
-            bytes_returned: self.bytes_returned.load(Ordering::Relaxed),
+            grpc_requests: grpc_requests.load(Ordering::Relaxed),
+            batches: batches.load(Ordering::Relaxed),
+            rows_returned: rows_returned.load(Ordering::Relaxed),
+            bytes_returned: bytes_returned.load(Ordering::Relaxed),
         }
     }
 }

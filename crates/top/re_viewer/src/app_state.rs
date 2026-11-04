@@ -206,8 +206,8 @@ pub(crate) struct WelcomeScreenState {
     /// The normal examples screen should be hidden. Show a fallback "no data ui" instead.
     pub hide_examples: bool,
 
-    /// The opacity of the welcome screen during fade-in.
-    pub opacity: f32,
+    /// `false` while the welcome screen is held back at startup.
+    pub revealed: bool,
 }
 
 /// The entry kind a route should carry, given what it has and what the catalog says.

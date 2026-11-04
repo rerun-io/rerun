@@ -72,7 +72,7 @@ pub struct ServerOptions {
 
     /// Additional origin patterns allowed to make cross-origin requests to the server.
     ///
-    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    /// By default, only `localhost`, `127.0.0.1`, `rerun.io`, and its subdomains are allowed.
     /// Patterns are matched against the full `Origin` header value (e.g. `https://example.com:8080`),
     /// using glob-style matching where `*` matches any sequence of characters.
     ///
@@ -161,6 +161,8 @@ const DEFAULT_CORS_PATTERNS: &[&str] = &[
     "*://127.0.0.1:*",
     "*://rerun.io",
     "*://rerun.io:*",
+    "*://*.rerun.io",
+    "*://*.rerun.io:*",
 ];
 
 /// Returns true if the given origin is allowed by the given patterns.
@@ -168,7 +170,7 @@ fn is_origin_allowed(origin: &str, patterns: &[wildmatch::WildMatch]) -> bool {
     patterns.iter().any(|pat| pat.matches(origin))
 }
 
-/// Build a CORS layer that allows only localhost, 127.0.0.1, rerun.io,
+/// Build a CORS layer that allows only localhost, 127.0.0.1, rerun.io and its subdomains,
 /// and any additional user-specified origin patterns.
 ///
 /// Patterns are matched against the full `Origin` header value,
@@ -2125,6 +2127,8 @@ mod tests {
             assert!(check("https://127.0.0.1:9090", &[]));
             assert!(check("https://rerun.io", &[]));
             assert!(check("https://rerun.io:443", &[]));
+            assert!(check("https://app.rerun.io", &[]));
+            assert!(check("https://app.rerun.io:443", &[]));
         }
 
         #[test]
@@ -2132,6 +2136,8 @@ mod tests {
             assert!(!check("https://evil.com", &[]));
             assert!(!check("https://notlocalhost.com", &[]));
             assert!(!check("https://localhost.evil.com", &[]));
+            assert!(!check("https://evilrerun.io", &[]));
+            assert!(!check("https://rerun.io.evil.com", &[]));
         }
 
         #[test]

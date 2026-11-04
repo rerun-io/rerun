@@ -19,11 +19,13 @@ pub struct RrdSnapshot {
 impl RrdSnapshot {
     #[cfg(any(target_arch = "wasm32", test))]
     pub fn encode(self) -> anyhow::Result<Vec<u8>> {
+        let Self { version, messages } = self;
+
         let mut bytes = Vec::new();
         re_log_encoding::Encoder::encode_into(
-            self.version,
+            version,
             re_log_encoding::rrd::EncodingOptions::PROTOBUF_COMPRESSED,
-            self.messages,
+            messages,
             &mut bytes,
         )
         .context("Encoding RRD snapshot")?;

@@ -76,6 +76,7 @@ arrow.workspace = true
 bincode.workspace = true
 datafusion.workspace = true
 futures.workspace = true
+infer.workspace = true
 itertools.workspace = true
 jiff = { workspace = true, features = ["serde"] }
 nohash-hasher.workspace = true

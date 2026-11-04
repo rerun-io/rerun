@@ -128,7 +128,8 @@ impl<T> TrackedMessage<T> {
     /// The `TrackedInner` (via the Arc) will decrement counters when all
     /// clones of this message have been dropped.
     fn into_value(self) -> T {
-        self.value
+        let Self { value, state: _ } = self;
+        value
     }
 }
 

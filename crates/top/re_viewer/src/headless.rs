@@ -55,6 +55,9 @@ pub fn run_headless_app(
         egui_kittest::Harness::<App>::builder()
             .with_size(size)
             .with_accessibility_check(false)
+            // kittest panics on a missing glyph by default, and the harness has no system font
+            // fallback, so draw tofu instead of crashing on e.g. CJK or emoji text.
+            .allow_missing_glyphs()
             .wgpu_setup(wgpu_setup)
             .build_eframe(move |cc| {
                 let repaint_signal = repaint_signal.clone();

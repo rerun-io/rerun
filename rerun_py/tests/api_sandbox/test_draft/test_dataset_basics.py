@@ -67,7 +67,7 @@ sorbet:version: '0.1.4'\
 │ │ rerun_segment_id    ┆ rerun_layer_names                  ┆ rerun_num_chunks      ┆ timeline:end          ┆ timeline:start        │ │
 │ │ ---                 ┆ ---                                ┆ ---                   ┆ ---                   ┆ ---                   │ │
 │ │ type: non-null Utf8 ┆ type: non-null List(non-null Utf8) ┆ type: non-null UInt64 ┆ type: Timestamp(ns)   ┆ type: Timestamp(ns)   │ │
-│ │                     ┆                                    ┆                       ┆ index: timeline       ┆ index: timeline       │ │
+│ │                     ┆ component_type: LayerName          ┆                       ┆ index: timeline       ┆ index: timeline       │ │
 │ │                     ┆                                    ┆                       ┆ index_kind: timestamp ┆ index_kind: timestamp │ │
 │ │                     ┆                                    ┆                       ┆ index_marker: end     ┆ index_marker: start   │ │
 │ │                     ┆                                    ┆                       ┆ kind: index           ┆ kind: index           │ │

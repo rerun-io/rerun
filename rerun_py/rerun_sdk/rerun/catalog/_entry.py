@@ -1401,7 +1401,9 @@ class DatasetSelection:
         """
         Return the filtered schema for this selection.
 
-        The schema reflects any content filters applied to the selection.
+        The schema covers only the selected segments, and reflects any content filters applied to the selection.
+        A segment filter requires a server running Rerun 0.41 or Rerun Hub 0.20 or later.
+        Use `selection.dataset.schema()` for the schema of the whole dataset.
 
         Returns
         -------
@@ -1424,6 +1426,19 @@ class DatasetSelection:
 
         """
         return self._internal.arrow_schema()
+
+    @with_tracing("DatasetSelection.info")
+    def info(self) -> DatasetInfo:
+        """
+        Return an overview of this selection: segments, size, layers, timelines, contents and properties.
+
+        This fetches schemas and scans a few columns of the segment table.
+        It reads no recording data.
+        A segment filter requires a server running Rerun 0.41 or Rerun Hub 0.20 or later.
+        """
+        from ._dataset_info import _dataset_info_from_internal
+
+        return _dataset_info_from_internal(self._internal.info())
 
     @with_tracing("DatasetSelection.segment_ids")
     def segment_ids(self) -> list[str]:
@@ -1791,7 +1806,7 @@ class DatasetSelection:
     def get_index_ranges(self) -> datafusion.DataFrame:
         """Returns the range bounds of all indexes per segment."""
         exprs = ["rerun_segment_id"]
-        for index_col in self.schema().index_columns():
+        for index_col in self.dataset.schema().index_columns():
             exprs.extend((f"{index_col.name}:start", f"{index_col.name}:end"))
 
         return self.segment_table().select(*exprs)

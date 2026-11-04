@@ -665,10 +665,15 @@ pub struct StreamingOptions {
 
 impl std::fmt::Debug for StreamingOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            force_full_download,
+            download,
+            on_progress,
+        } = self;
         f.debug_struct("StreamingOptions")
-            .field("force_full_download", &self.force_full_download)
-            .field("download", &self.download)
-            .field("on_progress", &self.on_progress.as_ref().map(|_| "…"))
+            .field("force_full_download", force_full_download)
+            .field("download", download)
+            .field("on_progress", &on_progress.as_ref().map(|_| "…"))
             .finish()
     }
 }

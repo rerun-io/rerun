@@ -240,38 +240,28 @@ impl RerunCloudHandlerBuilder {
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn build(self) -> Result<RerunCloudHandler, crate::store::Error> {
+        let Self { build_info, store } = self;
         let settings = RerunCloudHandlerSettings::new()?;
-        Ok(RerunCloudHandler::new(
-            settings,
-            self.build_info,
-            self.store,
-            None,
-        ))
+        Ok(RerunCloudHandler::new(settings, build_info, store, None))
     }
 
     #[cfg(target_arch = "wasm32")]
     pub fn build(self) -> RerunCloudHandler {
-        RerunCloudHandler::new(
-            RerunCloudHandlerSettings::default(),
-            self.build_info,
-            self.store,
-        )
+        let Self { build_info, store } = self;
+        RerunCloudHandler::new(RerunCloudHandlerSettings::default(), build_info, store)
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     pub fn build_with_write_access(
         self,
     ) -> anyhow::Result<(RerunCloudHandler, axum::routing::MethodRouter)> {
+        let Self { build_info, store } = self;
         let settings = RerunCloudHandlerSettings::new()?;
         let write_access_grants =
             crate::routes::WriteAccessGrants::new(settings.storage_dir.path().to_owned())?;
         let write_upload_route = crate::routes::write_upload_route(write_access_grants.clone());
-        let handler = RerunCloudHandler::new(
-            settings,
-            self.build_info,
-            self.store,
-            Some(write_access_grants),
-        );
+        let handler =
+            RerunCloudHandler::new(settings, build_info, store, Some(write_access_grants));
         Ok((handler, write_upload_route))
     }
 }

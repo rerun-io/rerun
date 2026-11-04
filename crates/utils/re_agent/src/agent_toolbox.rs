@@ -41,10 +41,11 @@ pub trait AgentToolbox: Send + Sync {
     /// Every tool on offer, sent to the model with each request.
     fn definitions(&self) -> Vec<ToolDefinition>;
 
-    /// Whether the user is asked before each call of the tool `name`.
+    /// Whether the user is asked before this call of the tool `name`, with `arguments`.
     ///
-    /// Tools that only read should return `false`, so that the agent can look around freely.
-    fn requires_approval(&self, name: &str) -> bool;
+    /// Calls that only read, or that the user can easily undo, should return `false`, so that
+    /// the agent can work freely.
+    fn requires_approval(&self, name: &str, arguments: &Map<String, Value>) -> bool;
 
     /// Runs the tool `name`.
     ///

@@ -1,7 +1,7 @@
 """
 The folders under `crates/`, and how they layer.
 
-`check_crate_layers.py` enforces this layering, and `generate_crate_graph.py` draws it in `ARCHITECTURE.md`.
+`check_crate_dependencies.py` enforces this layering, and `generate_crate_graph.py` draws it in `ARCHITECTURE.md`.
 """
 
 from __future__ import annotations
@@ -76,7 +76,7 @@ DESCRIPTIONS: dict[str, Description] = {
     ),
     "crates/ui_tools": Description(
         "UI tools",
-        "generic widgets and UI helpers, built on egui.\nNothing Rerun-specific in here.",
+        "generic widgets, UI helpers, and the renderer.\nNothing Rerun-specific in here.",
     ),
     "crates/build": Description(
         "Build support",

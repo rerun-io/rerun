@@ -65,10 +65,10 @@ const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 
 /// Operations an agent may run without asking the user.
 ///
-/// They only read, or change what is shown in a way the user can see and undo. Everything else,
-/// including operations added later, asks first: `open` and `set_location` load data from any
-/// URL, `close` drops recordings, `run_command` runs any UI command, `capture_profile_trace`
-/// writes files, and `submit_feedback` sends text to Rerun.
+/// The rule: the user can easily undo them. Everything else, including operations added later,
+/// asks first: `open` loads data from any URL, `close` drops recordings, `capture_profile_trace`
+/// writes files, and `submit_feedback` sends text to Rerun. `run_command` asks too, since it runs
+/// any UI command, but a host that sees the arguments can let the undoable commands through.
 const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
     "describe_commands",
     "get_blueprint",
@@ -84,13 +84,17 @@ const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
     "list_commands",
     "save_screenshot",
     "set_blueprint",
+    "set_location",
     "set_time_cursor",
 ];
 
 /// Fully-qualified names of the `oneof`s a caller may leave unset, which the viewer then fills in.
 ///
 /// A `.proto` cannot mark a `oneof` as omittable, so this list does.
-const OMITTABLE_ONEOFS: &[&str] = &["rerun.viewer_control.v1alpha1.GetBlueprintRequest.target"];
+const OMITTABLE_ONEOFS: &[&str] = &[
+    "rerun.viewer_control.v1alpha1.GetBlueprintRequest.target",
+    "rerun.viewer_control.v1alpha1.SetBlueprintRequest.target",
+];
 
 /// The screenshot operation, whose `max_size` this server defaults.
 const SCREENSHOT_OPERATION: &str = "save_screenshot";
@@ -1041,13 +1045,17 @@ mod tests {
         );
     }
 
-    /// `get_blueprint` reads what is on screen when it names no target, but still refuses two.
+    /// The blueprint tools use what is on screen when they name no target, but still refuse two.
     #[test]
     fn an_omittable_oneof_takes_no_arm_but_not_several() {
         build("get_blueprint", &json!({})).expect("the target is omittable");
+        build("set_blueprint", &json!({ "json": "{}" })).expect("the target is omittable");
 
-        let err = build("get_blueprint", &json!({ "recording": {}, "table": {} }))
-            .expect_err("two targets contradict each other");
+        let err = build(
+            "set_blueprint",
+            &json!({ "json": "{}", "recording": {}, "table": {} }),
+        )
+        .expect_err("two targets contradict each other");
         assert!(err.contains("at most one"), "{err}");
     }
 

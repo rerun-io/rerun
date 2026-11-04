@@ -1324,7 +1324,16 @@ impl SampleMetadata {
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
     pub fn get(&self, video_source: &dyn GetVideoSource, sample_idx: SampleIndex) -> Option<Chunk> {
-        let bytes = video_source.get_video_chunk(self.source);
+        let Self {
+            is_sync,
+            frame_nr,
+            decode_timestamp,
+            presentation_timestamp,
+            duration,
+            source,
+        } = *self;
+
+        let bytes = video_source.get_video_chunk(source);
 
         if bytes.is_empty() {
             return None;
@@ -1333,12 +1342,12 @@ impl SampleMetadata {
         Some(Chunk {
             data: bytes.to_vec(),
             sample_idx,
-            frame_nr: self.frame_nr,
-            decode_timestamp: self.decode_timestamp,
-            presentation_timestamp: self.presentation_timestamp,
-            duration: self.duration,
-            is_sync: self.is_sync,
-            source: self.source,
+            frame_nr,
+            decode_timestamp,
+            presentation_timestamp,
+            duration,
+            is_sync,
+            source,
         })
     }
 }

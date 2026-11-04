@@ -124,6 +124,7 @@ struct Startup {
 /// Everything in [`App`] except the [`StoreHub`].
 pub struct AppCore {
     startup: Startup,
+    welcome_screen_revealed: bool,
 
     ram_limit_warner: re_memory::RamLimitWarner,
     pub(crate) egui_ctx: egui::Context,
@@ -507,6 +508,7 @@ impl App {
                 start_time: web_time::Instant::now(),
                 adapter_backend,
             },
+            welcome_screen_revealed: false,
 
             ram_limit_warner: re_memory::RamLimitWarner::warn_at_fraction_of_max(0.75),
             egui_ctx: creation_context.egui_ctx.clone(),

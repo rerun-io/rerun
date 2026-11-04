@@ -36,20 +36,18 @@ class TimelineInfo:
     name: str
     kind: TimelineKind
     num_segments: int
-    """Number of segments with data on this timeline. May be 0."""
+    """Number of segments with data on this timeline, at least 1."""
 
-    min: TimelineValue | None
-    """Smallest index value across segments, with nanosecond precision for timestamps and durations. `None` when `num_segments == 0`."""
+    min: TimelineValue
+    """Smallest index value across segments, with nanosecond precision for timestamps and durations."""
 
-    max: TimelineValue | None
-    """Largest index value across segments, with nanosecond precision for timestamps and durations. `None` when `num_segments == 0`."""
+    max: TimelineValue
+    """Largest index value across segments, with nanosecond precision for timestamps and durations."""
 
     def __repr__(self) -> str:
         return f"TimelineInfo({self._describe()})"
 
     def _describe(self) -> str:
-        if self.min is None or self.max is None:
-            return f"{self.name}: {self.kind}, no data"
         bounds = f"{_format_value(self.kind, self.min)} … {_format_value(self.kind, self.max)}"
         return f"{self.name}: {self.kind}, {bounds}, in {_count(self.num_segments, 'segment')}"
 
@@ -57,7 +55,7 @@ class TimelineInfo:
 @dataclass(frozen=True)
 class DatasetInfo:
     """
-    Overview of a dataset, as returned by [`DatasetEntry.info`][rerun.catalog.DatasetEntry.info].
+    Overview of a dataset, as returned by [`DatasetEntry.info`][rerun.catalog.DatasetEntry.info] and [`DatasetSelection.info`][rerun.catalog.DatasetSelection.info].
 
     The repr is a compact text overview; the fields are for programmatic use.
     A segment with several layers counts once in `num_segments` and once per layer in `layers`.
@@ -66,16 +64,20 @@ class DatasetInfo:
     dataset_name: str
     num_segments: int
     size_bytes: int
+    """Total size of the selected segments, including entities that content filters leave out."""
+
     layers: frozenset[LayerInfo]
     timelines: frozenset[TimelineInfo]
+    """The timelines that at least one selected segment has data on, covering all of its entities whatever the content filters."""
+
     num_entities: int
-    """Number of entity paths in the dataset schema, excluding properties."""
+    """Number of selected entity paths, excluding properties."""
 
     num_component_columns: int
-    """Number of component columns in the dataset schema, excluding properties."""
+    """Number of component columns of the selected entities, excluding properties."""
 
     property_columns: frozenset[str]
-    """Names of the segment table's property columns."""
+    """Names of the dataset's segment table property columns, whatever the selection."""
 
     def __repr__(self) -> str:
         header = f"{self.dataset_name}: {_count(self.num_segments, 'segment')}, {format_bytes(self.size_bytes)}"
@@ -119,9 +121,7 @@ def _dataset_info_from_internal(info: DatasetInfoInternal) -> DatasetInfo:
     )
 
 
-def _to_numpy(kind: TimelineKind, value: int | None) -> TimelineValue | None:
-    if value is None:
-        return None
+def _to_numpy(kind: TimelineKind, value: int) -> TimelineValue:
     if kind == "timestamp":
         return np.datetime64(value, "ns")
     if kind == "duration":

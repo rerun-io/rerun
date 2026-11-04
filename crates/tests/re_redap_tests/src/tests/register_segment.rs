@@ -22,8 +22,8 @@ use re_protos::cloud::v1alpha1::{
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk_types::AnyValues;
-use re_types_core::AsComponents;
 use re_types_core::SegmentId;
+use re_types_core::{AsComponents, Component as _};
 use url::Url;
 
 use super::common::{
@@ -500,6 +500,89 @@ pub async fn register_bad_file_uri_should_error(service: impl RerunCloudService)
             tonic::Code::NotFound,
             "bad file URI should result in a not found error (case: {test_name})"
         );
+    }
+}
+
+/// Registering a file that isn't an RRD is the caller's fault, not an internal error.
+pub async fn register_non_rrd_file_should_error(service: impl RerunCloudService) {
+    let temp_dir = tempfile::tempdir().expect("creating temp dir");
+
+    let dataset_name = "non_rrd_dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    let png_header = b"\x89PNG\r\n\x1a\n";
+    let unknown_header = [0x0F, 0x79, 0x8B, 0x62];
+
+    for (header, expected_message) in [
+        (
+            &png_header[..],
+            r#"Not an RRD file: expected FourCC header "RRF2", got "0x89504E47" (detected file type: image/png (.png))"#,
+        ),
+        (
+            &unknown_header[..],
+            r#"Not an RRD file: expected FourCC header "RRF2", got "0x0F798B62" (detected file type: unknown)"#,
+        ),
+    ] {
+        let path = temp_dir.path().join("not_an_rrd.rrd");
+        let mut contents = header.to_vec();
+        contents.resize(64, 0);
+        std::fs::write(&path, contents).expect("writing temp file");
+
+        let request = RegisterWithDatasetRequest {
+            data_sources: vec![cloud_ext::DataSource::new_rrd_url(
+                Url::from_file_path(&path).expect("absolute path"),
+                None,
+            )],
+            on_duplicate: Default::default(),
+        };
+
+        let status = service
+            .register_with_dataset(
+                tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
+            )
+            .await
+            .expect_err("registering a non-RRD file should fail");
+
+        assert_eq!(status.code(), tonic::Code::InvalidArgument, "{status:?}");
+        assert!(status.message().contains(expected_message), "{status:?}");
+    }
+}
+
+/// A corrupt `.rrd` is the caller's fault, and one from an old Rerun version needs re-exporting.
+pub async fn register_bad_rrd_file_should_error(service: impl RerunCloudService) {
+    let temp_dir = tempfile::tempdir().expect("creating temp dir");
+
+    let dataset_name = "bad_rrd_dataset";
+    service.create_dataset_entry_with_name(dataset_name).await;
+
+    for (header, expected_code) in [
+        (&b"RRF1"[..], tonic::Code::FailedPrecondition),
+        (
+            &[b"RRF2".as_slice(), &[0xFF; 60]].concat()[..],
+            tonic::Code::InvalidArgument,
+        ),
+    ] {
+        let path = temp_dir.path().join("bad.rrd");
+        let mut contents = header.to_vec();
+        contents.resize(64, 0);
+        std::fs::write(&path, contents).expect("writing temp file");
+
+        let request = RegisterWithDatasetRequest {
+            data_sources: vec![cloud_ext::DataSource::new_rrd_url(
+                Url::from_file_path(&path).expect("absolute path"),
+                None,
+            )],
+            on_duplicate: Default::default(),
+        };
+
+        let status = service
+            .register_with_dataset(
+                tonic::Request::new(request.into()).with_entry_name(entry_name(dataset_name)),
+            )
+            .await
+            .expect_err("registering a bad RRD file should fail");
+
+        assert_eq!(status.code(), expected_code, "{status:?}");
     }
 }
 
@@ -1454,6 +1537,19 @@ async fn scan_segment_table_and_snapshot(
     assert!(
         batch.schema().fields().contains_unordered(&required_fields),
         "the schema should contain all the required fields, but it doesn't",
+    );
+
+    let layer_names_field = batch
+        .schema()
+        .field_with_name(ScanSegmentTableDataframe::COLUMN_RERUN_LAYER_NAMES_NAME)
+        .unwrap()
+        .clone();
+    assert_eq!(
+        layer_names_field
+            .metadata()
+            .get(re_types_core::FIELD_METADATA_KEY_COMPONENT_TYPE)
+            .map(String::as_str),
+        Some(re_sdk_types::components::LayerName::name().as_str()),
     );
 
     let unstable_column_names = vec![

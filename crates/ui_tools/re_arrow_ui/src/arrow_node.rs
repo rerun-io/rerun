@@ -57,7 +57,9 @@ impl<'a> ArrowNode<'a> {
     /// Can be different from [`ArrowNode::index`] (the index to display) e.g. in a sliced array.
     /// See also [`NodeLabel::Index`].
     pub fn show(self, ui: &mut Ui, index: usize) {
-        let label = match self.label {
+        let Self { label, values } = self;
+
+        let label = match label {
             NodeLabel::Index(idx) => {
                 let mut builder = SyntaxHighlightedBuilder::new();
                 builder.append_index(&format_uint(idx));
@@ -71,8 +73,8 @@ impl<'a> ArrowNode<'a> {
             NodeLabel::Custom(name) => name,
         };
 
-        let nested = self.values.is_item_nested();
-        let data_type = self.values.array().data_type();
+        let nested = values.is_item_nested();
+        let data_type = values.array().data_type();
         let data_type_ui = DataTypeUi::new(data_type);
 
         // We *don't* use index for the ID, since it might change across timesteps,
@@ -107,7 +109,7 @@ impl<'a> ArrowNode<'a> {
                                 ui.set_opacity(1.0 - visuals.openness());
                             }
                             let mut value = SyntaxHighlightedBuilder::new();
-                            let result = self.values.write(index, &mut value);
+                            let result = values.write(index, &mut value);
 
                             // Measure whether the value text overflows the available width.
                             // This is stored and used on the next frame to decide expandability.

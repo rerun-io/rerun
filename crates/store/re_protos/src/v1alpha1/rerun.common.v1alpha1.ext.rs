@@ -731,7 +731,11 @@ pub struct StoreIdMissingApplicationIdError {
 impl StoreIdMissingApplicationIdError {
     /// Recover the store ID by providing the application ID.
     pub fn recover(self, application_id: re_log_types::ApplicationId) -> re_log_types::StoreId {
-        re_log_types::StoreId::new(self.store_kind, application_id, self.recording_id)
+        let Self {
+            store_kind,
+            recording_id,
+        } = self;
+        re_log_types::StoreId::new(store_kind, application_id, recording_id)
     }
 
     #[inline]

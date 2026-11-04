@@ -118,7 +118,7 @@ fn closing_a_running_conversation_reports_its_turn() {
     harness.get_by_label("Close conversation").click();
     harness.run_steps(2);
 
-    let turns = harness.state_mut().take_finished_turns();
+    let turns = harness.state_mut().take_reports().turns;
     assert_eq!(turns.len(), 1);
     assert_eq!(turns[0].outcome, re_agent::TurnOutcome::Aborted);
 }

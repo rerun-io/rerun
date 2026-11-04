@@ -38,7 +38,12 @@ pub struct AlertText {
 
 impl egui::Widget for AlertText {
     fn ui(self, ui: &mut Ui) -> Response {
-        self.alert.show_text(ui, self.visible_text, self.full_text)
+        let Self {
+            alert,
+            visible_text,
+            full_text,
+        } = self;
+        alert.show_text(ui, visible_text, full_text)
     }
 }
 

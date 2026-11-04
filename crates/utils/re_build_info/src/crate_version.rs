@@ -306,11 +306,17 @@ impl CrateVersion<'_> {
 
     /// A compact 32-bit representation. See also [`Self::from_bytes`].
     pub fn to_bytes(self) -> [u8; 4] {
+        let Self {
+            major,
+            minor,
+            patch,
+            meta,
+        } = self;
         [
-            self.major,
-            self.minor,
-            self.patch,
-            self.meta.map(Meta::to_byte).unwrap_or_default(),
+            major,
+            minor,
+            patch,
+            meta.map(Meta::to_byte).unwrap_or_default(),
         ]
     }
 

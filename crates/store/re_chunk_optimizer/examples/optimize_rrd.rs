@@ -302,8 +302,9 @@ impl ProfileStats {
     }
 
     fn print(self, wall: std::time::Duration) {
-        puffin::GlobalProfiler::lock().remove_sink(self.sink_id);
-        let inner = self.inner.lock();
+        let Self { inner, sink_id } = self;
+        puffin::GlobalProfiler::lock().remove_sink(sink_id);
+        let inner = inner.lock();
 
         let mut rows: Vec<(String, ScopeStats)> = inner
             .stats

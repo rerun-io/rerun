@@ -416,15 +416,31 @@ fn server_entries_ui(
             message,
             is_auth_error,
         } => {
-            let (label, color) = if *is_auth_error {
-                ("Authentication required", ui.visuals().weak_text_color())
+            if *is_auth_error {
+                let response = ui
+                    .list_item()
+                    .show_flat(
+                        ui,
+                        list_item::LabelContent::new(
+                            egui::RichText::new("Authentication required")
+                                .color(ui.visuals().weak_text_color()),
+                        ),
+                    )
+                    .on_hover_text(message);
+
+                if response.clicked() {
+                    ctx.command_sender()
+                        .send_system(SystemCommand::EditRedapServerModal(
+                            re_viewer_context::EditRedapServerModalCommand::new(origin.clone()),
+                        ));
+                }
             } else {
-                ("Failed to load entries", ui.visuals().error_fg_color)
-            };
-            ui.list_item_flat_noninteractive(list_item::LabelContent::new(
-                egui::RichText::new(label).color(color),
-            ))
-            .on_hover_text(message);
+                ui.list_item_flat_noninteractive(list_item::LabelContent::new(
+                    egui::RichText::new("Failed to load entries")
+                        .color(ui.visuals().error_fg_color),
+                ))
+                .on_hover_text(message);
+            }
         }
 
         ServerEntriesData::Loaded { entry_tree } => {
@@ -478,6 +494,27 @@ fn entry_tree_node_ui(
                     }
                 })
                 .item_response;
+
+            item_response.context_menu(|ui| {
+                if let Some(route) = &route {
+                    let url = ViewerUrl::from_route(ctx.store_hub(), route)
+                        .and_then(|url| url.sharable_url(None));
+                    if ui
+                        .add_enabled(url.is_ok(), egui::Button::new("Copy link to folder"))
+                        .on_disabled_hover_text("Can't copy a link to this folder")
+                        .clicked()
+                        && let Ok(url) = url
+                    {
+                        ctx.command_sender()
+                            .send_system(SystemCommand::CopyViewerUrl(url));
+                    }
+                }
+
+                if ui.button("Copy folder name").clicked() {
+                    re_log::info!("Copied {path_prefix:?} to clipboard");
+                    ui.copy_text(path_prefix.clone());
+                }
+            });
 
             ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
             ctx.handle_select_focus_sync(&item_response, item.clone());
@@ -638,16 +675,32 @@ fn remote_table_entry_ui(
     let list_item_content = LabelContent::new(text).with_icon(icon);
     let item_response = list_item.show_hierarchical(ui, list_item_content);
 
+    let new_route = Route::RedapEntry {
+        origin: origin.clone(),
+        entry_id: *entry_id,
+        kind: Some(re_viewer_context::EntryKind::Table),
+    };
+
+    item_response.context_menu(|ui| {
+        let url = ViewerUrl::from_route(ctx.store_hub(), &new_route)
+            .and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to table"))
+            .on_disabled_hover_text("Can't copy a link to this table")
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+    });
+
     ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
     ctx.handle_select_focus_sync(&item_response, item.clone());
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetRoute(Route::RedapEntry {
-                origin: origin.clone(),
-                entry_id: *entry_id,
-                kind: Some(re_viewer_context::EntryKind::Table),
-            }));
+            .send_system(SystemCommand::SetRoute(new_route));
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
     }

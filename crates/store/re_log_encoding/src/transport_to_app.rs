@@ -17,6 +17,27 @@ use re_log_msg::{BlueprintActivationCommand, SetStoreInfo};
 use crate::ApplicationIdInjector;
 use crate::rrd::CodecError;
 
+/// Migrates the Sorbet schema of an RRD manifest, decoded without migration, to the latest Sorbet version.
+///
+/// Returns the migrated schema and its hash.
+///
+/// The hash of the input is reused as an optimization when no migration was needed.
+///
+/// The manifest data must be migrated with [`re_sorbet::migrate_rrd_manifest_data`] and the
+/// same `raw` schema, or the index columns won't match the migrated schema.
+pub fn migrate_rrd_manifest_sorbet_schema(
+    raw: &arrow::datatypes::SchemaRef,
+    raw_sha256: [u8; 32],
+) -> Result<(arrow::datatypes::Schema, [u8; 32]), arrow::error::ArrowError> {
+    let migrated = std::sync::Arc::unwrap_or_clone(re_sorbet::migrate_schema_ref(raw.clone()));
+    let sha256 = if migrated.fields() == raw.fields() {
+        raw_sha256
+    } else {
+        RawRrdManifest::compute_sorbet_schema_sha256(&migrated)?
+    };
+    Ok((migrated, sha256))
+}
+
 // TODO(cmc): I'd really like a nice centralized way of communicating this.
 //
 // pub type LogMsgTransport = re_protos::log_msg::v1alpha1::log_msg::Msg;
@@ -222,22 +243,13 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
                 .ok_or_else(|| re_protos::missing_field!(Self, "sorbet_schema.arrow_schema"))?,
         )
         .map_err(CodecError::ArrowDeserialization)?;
-        let migrated_sorbet_schema = std::sync::Arc::unwrap_or_clone(
-            re_sorbet::migrate_schema_ref(raw_sorbet_schema.clone()),
-        );
-
-        // When migration changes the schema fields, the hash is computed from the migrated schema.
-        let sorbet_schema_sha256 = if migrated_sorbet_schema.fields() == raw_sorbet_schema.fields()
-        {
-            sorbet_schema_sha256
-        } else {
-            RawRrdManifest::compute_sorbet_schema_sha256(&migrated_sorbet_schema)
-                .map_err(CodecError::ArrowDeserialization)?
-        };
+        let (sorbet_schema, sorbet_schema_sha256) =
+            migrate_rrd_manifest_sorbet_schema(&raw_sorbet_schema, sorbet_schema_sha256)
+                .map_err(CodecError::ArrowDeserialization)?;
 
         let rrd_manifest = Self::Output {
             store_id: store_id.clone().try_into()?,
-            sorbet_schema: migrated_sorbet_schema,
+            sorbet_schema,
             sorbet_schema_sha256,
             data: re_sorbet::migrate_rrd_manifest_data(&raw_sorbet_schema, data.try_into()?),
         };

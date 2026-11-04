@@ -39,6 +39,7 @@ is_keyframe.py linguist-generated=true
 key_value_pairs.py linguist-generated=true
 keypoint_id.py linguist-generated=true
 lat_lon.py linguist-generated=true
+layer_name.py linguist-generated=true
 length.py linguist-generated=true
 line_strip2d.py linguist-generated=true
 line_strip3d.py linguist-generated=true

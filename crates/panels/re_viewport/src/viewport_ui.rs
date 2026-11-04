@@ -1094,22 +1094,33 @@ impl TabWidget {
     }
 
     fn paint(self, ui: &egui::Ui) {
-        ui.painter()
-            .rect_filled(self.rect, ui.tokens().normal_corner_radius(), self.bg_color);
+        let Self {
+            galley,
+            rect,
+            galley_rect,
+            icon,
+            icon_size,
+            icon_rect,
+            bg_color,
+            text_color,
+            label: _,
+        } = self;
 
-        let icon_image = self
-            .icon
+        ui.painter()
+            .rect_filled(rect, ui.tokens().normal_corner_radius(), bg_color);
+
+        let icon_image = icon
             .as_image()
-            .fit_to_exact_size(self.icon_size)
-            .tint(self.text_color);
-        icon_image.paint_at(ui, self.icon_rect);
+            .fit_to_exact_size(icon_size)
+            .tint(text_color);
+        icon_image.paint_at(ui, icon_rect);
 
         ui.painter().galley(
             egui::Align2::CENTER_CENTER
-                .align_size_within_rect(self.galley.size(), self.galley_rect)
+                .align_size_within_rect(galley.size(), galley_rect)
                 .min,
-            self.galley,
-            self.text_color,
+            galley,
+            text_color,
         );
     }
 }

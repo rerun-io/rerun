@@ -225,10 +225,10 @@ impl LegendSwatch {
     const SWATCH_SIZE: f32 = 8.0;
 
     pub fn atom(self) -> Atom<'static> {
+        let Self { color, visible } = self;
         Atom::paint(Vec2::splat(Self::SWATCH_SIZE), move |ui, args| {
-            if self.visible {
-                ui.painter()
-                    .circle_filled(args.rect.center(), 4.0, self.color);
+            if visible {
+                ui.painter().circle_filled(args.rect.center(), 4.0, color);
             } else {
                 // Neutral gray outline when hidden (inset by half stroke width to match filled size).
                 let stroke_color = ui.tokens().text_subdued;
