@@ -41,11 +41,18 @@ impl StyleProvider<TextEditStyle> for ReTheme {
 
         // A text edit over an immutable buffer has no background, like egui's own text edit style:
         // callers that show a read-only value draw their own frame around it.
-        let fill = if classes.has_class(egui::TextEdit::CLASS_READ_ONLY.as_str()) {
+        let read_only = classes.has_class(egui::TextEdit::CLASS_READ_ONLY.as_str());
+        let fill = if read_only {
             egui::Color32::TRANSPARENT
         } else {
             fill
         };
+
+        // `egui_commonmark` outlines its read-only code blocks itself, so a second outline here
+        // would show as a double border.
+        if read_only && args.has_class(class::UNCONTROLLED_EXTERNAL_UI) {
+            stroke = Stroke::NONE;
+        }
 
         TextEditStyle {
             atom_layout: AtomLayoutStyle {
