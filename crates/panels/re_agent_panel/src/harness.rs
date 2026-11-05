@@ -8,10 +8,7 @@ use re_agent::{AgentSettings, McpServerConfig, SessionContext};
 use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
 
-use super::{DOCS_SUBDIR, SKILLS_SUBDIR, preamble, self_improve};
-
-/// The MCP server name the agent sees the viewer under. Tools show up as `mcp__rerun__<tool>`.
-const MCP_SERVER_NAME: &str = "rerun";
+use super::{DOCS_SUBDIR, MCP_SERVER_NAME, SKILLS_SUBDIR, preamble, self_improve};
 
 /// Sub-directory of the viewer cache that the agent may read. Holds the skills and docs.
 const AGENT_CACHE_SUBDIR: &str = "agent";

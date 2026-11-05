@@ -20,6 +20,7 @@ use agent_client_protocol_schema::v1::{
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use web_time::Instant;
 
+use crate::AgentToolbox;
 use crate::agent_harness::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
@@ -218,6 +219,10 @@ struct LaunchContext {
 
     /// Working directory the agent process was started in, which its relative paths are against.
     cwd: PathBuf,
+
+    /// The host's tools. Calls that reach them through [`AgentToolbox::mcp_server_name`] and that
+    /// need no approval there are allowed without asking.
+    toolbox: Option<Arc<dyn AgentToolbox>>,
 }
 
 /// What the agent reported about itself, and what was asked of it.
@@ -381,6 +386,12 @@ impl AgentSession {
     /// Meant for unattended runs; the agent gets to do anything it asks for.
     pub fn set_auto_approve(&mut self, auto_approve: bool) {
         self.auto_approve = auto_approve;
+    }
+
+    /// The host's tools, for judging an agent harness' permission requests to call them over MCP.
+    /// See [`AgentToolbox::mcp_server_name`].
+    pub fn set_toolbox(&mut self, toolbox: Option<Arc<dyn AgentToolbox>>) {
+        self.launch.toolbox = toolbox;
     }
 
     /// See [`Self::set_auto_approve`].
@@ -1055,11 +1066,20 @@ impl AgentSession {
                     pending.answer(None).ok();
                     return;
                 }
-                let is_harmless_read = self
+                let is_harmless = self
                     .transcript
                     .tool_call(&pending.request.tool_call.tool_call_id)
-                    .is_some_and(|call| is_read_within(call, &self.launch.readable_directories));
-                if (self.auto_approve || is_harmless_read)
+                    .is_some_and(|call| {
+                        is_read_within(call, &self.launch.readable_directories)
+                            || self.launch.toolbox.as_deref().is_some_and(|toolbox| {
+                                is_toolbox_call_without_approval(
+                                    call,
+                                    toolbox,
+                                    &self.launch.mcp_servers,
+                                )
+                            })
+                    });
+                if (self.auto_approve || is_harmless)
                     && let Some(option) = allow_option(&pending.request.options)
                 {
                     let option_id = option.option_id.clone();
@@ -1147,6 +1167,38 @@ fn allow_option(options: &[PermissionOption]) -> Option<&PermissionOption> {
         .iter()
         .find(|option| option.kind == PermissionOptionKind::AllowOnce)
         .or_else(|| options.iter().find(|option| allows(option.kind)))
+}
+
+/// Whether `call` goes to a tool of `toolbox` through the MCP server the host supplied for it,
+/// and `toolbox` would run that call without approval.
+///
+/// The tool is named by the call's title, `mcp__<server>__<tool>`, as Claude Code reports it.
+fn is_toolbox_call_without_approval(
+    call: &ToolCallState,
+    toolbox: &dyn AgentToolbox,
+    mcp_servers: &[McpStdioServer],
+) -> bool {
+    let Some(server) = toolbox.mcp_server_name() else {
+        return false;
+    };
+    if !mcp_servers.iter().any(|supplied| supplied.name == server) {
+        return false;
+    }
+    let Some(tool) = call
+        .title
+        .strip_prefix("mcp__")
+        .and_then(|rest| rest.strip_prefix(server))
+        .and_then(|rest| rest.strip_prefix("__"))
+    else {
+        return false;
+    };
+    let no_arguments = serde_json::Map::new();
+    let arguments = call
+        .raw_input
+        .as_ref()
+        .and_then(serde_json::Value::as_object)
+        .unwrap_or(&no_arguments);
+    !toolbox.requires_approval(tool, arguments)
 }
 
 /// Whether `call` only reads or searches, and every path it touches is inside `directories`.
@@ -1806,6 +1858,80 @@ mod tests {
             raw_input,
             raw_output: None,
         }
+    }
+
+    /// Approves only `get` without arguments, served by the `viewer` MCP server.
+    struct TestToolbox;
+
+    impl AgentToolbox for TestToolbox {
+        fn definitions(&self) -> Vec<crate::ToolDefinition> {
+            Vec::new()
+        }
+
+        fn requires_approval(
+            &self,
+            name: &str,
+            arguments: &serde_json::Map<String, serde_json::Value>,
+        ) -> bool {
+            name != "get" || !arguments.is_empty()
+        }
+
+        fn mcp_server_name(&self) -> Option<&str> {
+            Some("viewer")
+        }
+
+        fn call(
+            &self,
+            _name: &str,
+            _arguments: serde_json::Map<String, serde_json::Value>,
+        ) -> futures::future::BoxFuture<
+            'static,
+            Result<Vec<crate::ToolOutput>, Box<dyn std::error::Error + Send + Sync>>,
+        > {
+            Box::pin(std::future::ready(Ok(Vec::new())))
+        }
+    }
+
+    #[test]
+    fn toolbox_calls_over_mcp_follow_the_toolbox() {
+        let servers = |names: &[&str]| {
+            names
+                .iter()
+                .map(|name| McpStdioServer {
+                    name: (*name).to_owned(),
+                    command: PathBuf::from("viewer-mcp"),
+                    args: Vec::new(),
+                })
+                .collect::<Vec<_>>()
+        };
+        let allowed = |title: &str, raw_input, servers: &[McpStdioServer]| {
+            let call = ToolCallState {
+                title: title.to_owned(),
+                ..call(ToolKind::Other, &[], raw_input)
+            };
+            is_toolbox_call_without_approval(&call, &TestToolbox, servers)
+        };
+        let viewer = servers(&["viewer"]);
+
+        assert!(allowed("mcp__viewer__get", None, &viewer));
+        assert!(allowed(
+            "mcp__viewer__get",
+            Some(serde_json::json!({})),
+            &viewer
+        ));
+        assert!(!allowed(
+            "mcp__viewer__get",
+            Some(serde_json::json!({ "x": 1 })),
+            &viewer
+        ));
+        assert!(!allowed("mcp__viewer__set", None, &viewer));
+        assert!(!allowed("mcp__other__get", None, &viewer));
+        assert!(!allowed("mcp__viewerx__get", None, &viewer));
+        assert!(!allowed("get", None, &viewer));
+        assert!(
+            !allowed("mcp__viewer__get", None, &servers(&["other"])),
+            "the host did not supply the server, so the user configured it"
+        );
     }
 
     #[test]

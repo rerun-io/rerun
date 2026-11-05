@@ -276,7 +276,10 @@ impl AgentPanel {
     }
 
     /// The tools that model-API agents, such as the `anthropic-api` profile, may call.
-    /// Applies to sessions started from now on. Agent harnesses get their tools from MCP servers.
+    /// Applies to sessions started from now on.
+    ///
+    /// Agent harnesses get their tools from MCP servers. Their permission requests for the
+    /// toolbox's own MCP server follow [`AgentToolbox::requires_approval`].
     pub fn set_toolbox(&mut self, toolbox: Arc<dyn AgentToolbox>) {
         for conversation in self.all_conversations_mut() {
             conversation.toolbox = Some(Arc::clone(&toolbox));

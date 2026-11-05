@@ -27,6 +27,10 @@ mod viewer_toolbox;
 
 pub use viewer_toolbox::ViewerControlCall;
 
+/// The MCP server name an agent harness sees the viewer under. Tools show up as
+/// `mcp__rerun__<tool>`.
+const MCP_SERVER_NAME: &str = "rerun";
+
 /// Where the skills are unpacked inside the agent directory.
 #[cfg(agent_harness_backend)]
 const SKILLS_SUBDIR: &str = "agent_context/skills";
