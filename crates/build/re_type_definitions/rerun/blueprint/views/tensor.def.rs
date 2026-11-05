@@ -16,4 +16,10 @@ pub struct TensorView {
 
     /// Configures how the selected slice should fit into the view.
     pub view_fit: rerun::blueprint::archetypes::TensorViewFit,
+
+    /// The visible region of the selected slice, in element coordinates.
+    ///
+    /// Use this to control pan & zoom of the view.
+    /// It is cleared when the dimensions shown as width or height change, or when the view fit changes.
+    pub visual_bounds: rerun::blueprint::archetypes::VisualBounds2D,
 }
