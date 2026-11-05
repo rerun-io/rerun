@@ -349,6 +349,14 @@ impl AgentPanel {
         self.active_conversation_mut().input.request_focus();
     }
 
+    /// Attaches the contents of an image file (PNG or JPEG) to the prompt being composed in the
+    /// shown conversation.
+    pub fn attach_image_file(&mut self, bytes: &[u8]) -> Result<(), image::ImageError> {
+        let image = super::pasted_image::encode_image_file(bytes)?;
+        self.active_conversation_mut().input.attach_image(image);
+        Ok(())
+    }
+
     /// Switch the shown conversation to the chat view. Starts its agent if none is running.
     pub fn show_chat(&mut self) {
         self.active_conversation_mut().screen = Screen::Chat;

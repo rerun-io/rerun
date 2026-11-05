@@ -530,45 +530,101 @@ pub(super) fn paint_custom_window_frame(egui_ctx: &egui::Context) {
     );
 }
 
-pub(super) fn preview_files_being_dropped(egui_ctx: &egui::Context) {
+/// Whether a dropped file is an image that the agent prompt can take.
+pub(super) fn is_agent_image_path(path: &std::path::Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            ["jpeg", "jpg", "png"]
+                .iter()
+                .any(|image_extension| extension.eq_ignore_ascii_case(image_extension))
+        })
+}
+
+/// Whether a hovered file is an image that the agent prompt can take.
+///
+/// The web backend only gives the MIME type of a hovered file, not its path.
+fn is_agent_image(file: &egui::HoveredFile) -> bool {
+    match &file.path {
+        Some(path) => is_agent_image_path(path),
+        None => ["image/jpeg", "image/png"].contains(&file.mime.as_str()),
+    }
+}
+
+/// Shows where hovered files will go when dropped.
+///
+/// Images go to the agent panel when there is an `agent_drop_target`, everything else is loaded
+/// into the central panel, or the whole window if there is no `central_panel_rect`.
+pub(super) fn preview_files_being_dropped(
+    egui_ctx: &egui::Context,
+    central_panel_rect: Option<egui::Rect>,
+    agent_drop_target: Option<&re_agent_panel::ImageDropTarget>,
+) {
     use egui::{Align2, Id, LayerId, Order, TextStyle};
 
-    // Preview hovering files:
-    if !egui_ctx.input(|i| i.raw.hovered_files.is_empty()) {
+    let hovered_files = egui_ctx.input(|i| i.raw.hovered_files.clone());
+    if hovered_files.is_empty() {
+        return;
+    }
+
+    let (images, files_to_load): (Vec<_>, Vec<_>) = hovered_files
+        .iter()
+        .partition(|file| agent_drop_target.is_some() && is_agent_image(file));
+
+    let style = egui_ctx.global_style();
+    let font = TextStyle::Body.resolve(&style);
+    let text_color = style.visuals.strong_text_color();
+    let fill = style.visuals.extreme_bg_color.gamma_multiply_u8(192);
+    let stroke = egui_ctx.tokens().drop_target_container_stroke;
+
+    let painter = egui_ctx.layer_painter(LayerId::new(
+        Order::Foreground,
+        Id::unique("file_drop_target"),
+    ));
+
+    let file_list = |title: &str, files: &[&egui::HoveredFile]| {
         use std::fmt::Write as _;
 
-        let mut text = "Drop to load:\n".to_owned();
-        egui_ctx.input(|input| {
-            for file in &input.raw.hovered_files {
-                if let Some(path) = &file.path {
-                    write!(text, "\n{}", path.display()).ok();
-                } else if !file.mime.is_empty() {
-                    write!(text, "\n{}", file.mime).ok();
-                }
+        let mut text = format!("{title}\n");
+        for file in files {
+            if let Some(path) = &file.path {
+                write!(text, "\n{}", path.display()).ok();
+            } else if !file.mime.is_empty() {
+                write!(text, "\n{}", file.mime).ok();
             }
-        });
+        }
+        text
+    };
 
-        let painter = egui_ctx.layer_painter(LayerId::new(
-            Order::Foreground,
-            Id::unique("file_drop_target"),
-        ));
-
-        let screen_rect = egui_ctx.content_rect();
-        painter.rect_filled(
-            screen_rect,
-            0.0,
-            egui_ctx
-                .global_style()
-                .visuals
-                .extreme_bg_color
-                .gamma_multiply_u8(192),
-        );
+    if let Some(agent_drop_target) = agent_drop_target
+        && !images.is_empty()
+    {
+        let rect = agent_drop_target.rect;
+        painter.rect_filled(rect, 0.0, fill);
+        painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
         painter.text(
-            screen_rect.center(),
+            rect.center(),
             Align2::CENTER_CENTER,
-            text,
-            TextStyle::Body.resolve(&egui_ctx.global_style()),
-            egui_ctx.global_style().visuals.strong_text_color(),
+            if images.len() == 1 {
+                "Add image to prompt"
+            } else {
+                "Add images to prompt"
+            },
+            font.clone(),
+            text_color,
+        );
+    }
+
+    if !files_to_load.is_empty() {
+        let rect = central_panel_rect.unwrap_or_else(|| egui_ctx.content_rect());
+        painter.rect_filled(rect, 0.0, fill);
+        painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
+        painter.text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            file_list("Drop to load:", &files_to_load),
+            font,
+            text_color,
         );
     }
 }

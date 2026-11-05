@@ -60,6 +60,10 @@ pub struct AppState {
     /// Whether the agent panel is open. Persisted, so it comes back on the next run.
     pub(crate) agent_panel_open: bool,
 
+    /// Where the central panel of the current route was last shown, if it has one.
+    #[serde(skip)]
+    pub(crate) central_panel_rect: Option<egui::Rect>,
+
     /// The time control for each recording (found in [`EntityDb`]).
     ///
     /// Created lazily on first use with a given store.
@@ -171,6 +175,7 @@ impl Default for AppState {
             audio_output: Default::default(),
             agent_settings: Default::default(),
             agent_panel_open: false,
+            central_panel_rect: None,
             time_controls: Default::default(),
             app_caches: Default::default(),
             blueprint_undo_state: Default::default(),
@@ -437,6 +442,8 @@ impl AppState {
         // Only the settings screen edits the app options, so we avoid cloning them every frame.
         let mut new_app_options = None;
 
+        let mut central_panel_rect = None;
+
         match self.navigation.current() {
             Route::Settings {
                 return_route: previous,
@@ -677,12 +684,13 @@ impl AppState {
                     Some((&viewport_ui, &ctx)),
                 );
 
-                egui::CentralPanel::default()
+                let response = egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show(ui, |ui| {
                         ui.name_panel("Viewport");
                         viewport_ui.viewport_ui(ui, &ctx, view_states);
                     });
+                central_panel_rect = Some(response.response.rect);
 
                 add_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
 
@@ -722,7 +730,7 @@ impl AppState {
                     Cow::Borrowed("<unknown>")
                 };
 
-                egui::CentralPanel::default()
+                let response = egui::CentralPanel::default()
                     .frame(viewport_frame)
                     .show(ui, |ui| {
                         ui.name_panel("Loading screen");
@@ -739,6 +747,7 @@ impl AppState {
                             command_sender.send_system(SystemCommand::ReturnFromLoading);
                         }
                     });
+                central_panel_rect = Some(response.response.rect);
             }
 
             Route::LocalTable(table_id) => {
@@ -754,7 +763,7 @@ impl AppState {
                     None,
                 );
 
-                egui::CentralPanel::default()
+                let response = egui::CentralPanel::default()
                     .frame(page_frame)
                     .show(ui, |ui| {
                         ui.name_panel("Table page");
@@ -780,6 +789,7 @@ impl AppState {
                             );
                         }
                     });
+                central_panel_rect = Some(response.response.rect);
             }
 
             Route::RedapServer(origin) => {
@@ -795,7 +805,7 @@ impl AppState {
                     None,
                 );
 
-                egui::CentralPanel::default()
+                let response = egui::CentralPanel::default()
                     .frame(page_frame)
                     .show(ui, |ui| {
                         ui.name_panel("Server page");
@@ -841,6 +851,7 @@ impl AppState {
                             );
                         }
                     });
+                central_panel_rect = Some(response.response.rect);
             }
 
             Route::RedapEntry {
@@ -860,7 +871,7 @@ impl AppState {
                     None,
                 );
 
-                egui::CentralPanel::default()
+                let response = egui::CentralPanel::default()
                     .frame(page_frame)
                     .show(ui, |ui| {
                         ui.name_panel("Entry page");
@@ -875,6 +886,7 @@ impl AppState {
                             &mut self.view_states,
                         );
                     });
+                central_panel_rect = Some(response.response.rect);
             }
 
             Route::RedapFolder {
@@ -893,7 +905,7 @@ impl AppState {
                     None,
                 );
 
-                egui::CentralPanel::default()
+                let response = egui::CentralPanel::default()
                     .frame(page_frame)
                     .show(ui, |ui| {
                         ui.name_panel("Folder page");
@@ -905,8 +917,10 @@ impl AppState {
                             path_prefix,
                         );
                     });
+                central_panel_rect = Some(response.response.rect);
             }
         }
+        self.central_panel_rect = central_panel_rect;
 
         // The `LocalRecording` arm shows the share modal itself with a `ViewerContext`.
         if !matches!(active_route, Route::LocalRecording { .. }) {

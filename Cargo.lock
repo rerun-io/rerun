@@ -9053,6 +9053,7 @@ dependencies = [
  "futures",
  "insta",
  "jiff",
+ "parking_lot",
  "re_agent",
  "re_agent_ui",
  "re_analytics",

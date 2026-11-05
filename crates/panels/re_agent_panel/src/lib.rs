@@ -8,6 +8,9 @@
 
 use std::collections::VecDeque;
 use std::path::Path;
+use std::sync::Arc;
+
+use parking_lot::Mutex;
 
 use re_agent::AgentSettings;
 use re_agent_ui::AgentPanel;
@@ -53,6 +56,35 @@ const NO_RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [
     "Show me an example recording",
 ];
 
+/// The contents of an image file, encoded as PNG or JPEG.
+pub struct EncodedImage(pub Vec<u8>);
+
+/// Image files to attach to the prompt being composed.
+///
+/// Shared, because on the web a dropped file can only be read asynchronously.
+#[derive(Clone, Default)]
+pub struct DroppedImages(Arc<Mutex<Vec<EncodedImage>>>);
+
+impl DroppedImages {
+    /// Attaches this image the next time the panel is shown.
+    pub fn push(&self, image: EncodedImage) {
+        self.0.lock().push(image);
+    }
+
+    fn take(&self) -> Vec<EncodedImage> {
+        std::mem::take(&mut *self.0.lock())
+    }
+}
+
+/// The open agent panel, as a place to drop image files onto.
+pub struct ImageDropTarget {
+    /// Where the panel is on screen.
+    pub rect: egui::Rect,
+
+    /// Where to put the contents of image files dropped onto the panel.
+    pub images: DroppedImages,
+}
+
 /// The agent chat, configured for the viewer it lives in.
 #[derive(Default)]
 pub struct ViewerAgentPanel {
@@ -70,6 +102,12 @@ pub struct ViewerAgentPanel {
     ///
     /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
     pending_prompts: VecDeque<String>,
+
+    /// Contents of image files dropped onto the viewer, to attach to the prompt being composed.
+    dropped_images: DroppedImages,
+
+    /// Where the panel was last shown, or `None` if it is closed.
+    rect: Option<egui::Rect>,
 
     #[cfg(agent_harness_backend)]
     harness: harness::Harness,
@@ -122,6 +160,16 @@ impl ViewerAgentPanel {
         }
     }
 
+    /// Where to drop image files to attach them to the prompt being composed.
+    ///
+    /// `None` while the panel is closed.
+    pub fn image_drop_target(&self) -> Option<ImageDropTarget> {
+        Some(ImageDropTarget {
+            rect: self.rect?,
+            images: self.dropped_images.clone(),
+        })
+    }
+
     /// Give the prompt input keyboard focus once there is a panel to give it to.
     pub fn request_input_focus(&mut self) {
         self.focus_input = true;
@@ -158,6 +206,7 @@ impl ViewerAgentPanel {
             focus_input,
             example_prompts,
             pending_prompts,
+            dropped_images,
             ..
         } = self;
         if let Some(panel) = panel.as_mut() {
@@ -173,6 +222,11 @@ impl ViewerAgentPanel {
             for prompt in pending_prompts.drain(..) {
                 panel.queue_prompt(prompt);
             }
+            for EncodedImage(bytes) in dropped_images.take() {
+                if let Err(err) = panel.attach_image_file(&bytes) {
+                    re_log::warn!("Could not attach the dropped image: {err:#}");
+                }
+            }
             // A collapsed panel never runs its `ui`, and its agents would otherwise
             // sit on their messages until the user opens it again.
             panel.poll_events();
@@ -182,7 +236,7 @@ impl ViewerAgentPanel {
                 *focus_input = false;
             }
         }
-        egui::Panel::right("agent_panel")
+        let response = egui::Panel::right("agent_panel")
             .default_size(re_agent_ui::RECOMMENDED_WIDTH)
             .resizable(true)
             .frame(egui::Frame {
@@ -197,6 +251,9 @@ impl ViewerAgentPanel {
                     settings.clone_from(panel.settings());
                 }
             });
+        self.rect = response
+            .filter(|_| *open)
+            .map(|response| response.response.rect);
 
         // Dragging the collapsed panel open does not go through `toggle_agent_panel`:
         self.focus_input |= !was_open && *open;

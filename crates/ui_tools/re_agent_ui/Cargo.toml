@@ -35,7 +35,7 @@ re_ui.workspace = true
 
 base64.workspace = true
 egui.workspace = true
-image = { workspace = true, default-features = false, features = ["png"] }
+image = { workspace = true, default-features = false, features = ["jpeg", "png"] }
 jiff.workspace = true
 pulldown-cmark.workspace = true
 serde_json.workspace = true
