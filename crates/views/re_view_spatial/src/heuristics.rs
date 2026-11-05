@@ -1,7 +1,7 @@
 use nohash_hasher::IntSet;
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
-use re_viewer_context::{ViewClass as _, ViewerContext};
+use re_viewer_context::{ViewClass as _, ViewSpawnContext, ViewerContext};
 
 use crate::{SpatialView2D, SpatialView3D};
 
@@ -23,16 +23,16 @@ impl IndicatedVisualizableEntities {
     pub fn new(
         ctx: &ViewerContext<'_>,
         view_class_identifier: ViewClassIdentifier,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: ViewSpawnContext,
         indicate_extra: impl FnOnce(&mut IntSet<EntityPath>),
     ) -> Self {
-        let mut indicated_entities = default_visualized_entities_for_visualizer_affinity(
-            ctx,
-            view_class_identifier,
-            include_entity,
-        );
+        let mut indicated_entities =
+            default_visualized_entities_for_visualizer_affinity(ctx, view_class_identifier);
 
         indicate_extra(&mut indicated_entities);
+        if spawn_context == ViewSpawnContext::Automatic {
+            indicated_entities.retain(|entity| !entity.is_property());
+        }
 
         let excluded_entities = default_excluded_entities_for_visualizer_affinity(
             ctx,
@@ -50,7 +50,6 @@ impl IndicatedVisualizableEntities {
 fn default_visualized_entities_for_visualizer_affinity(
     ctx: &ViewerContext<'_>,
     view_class_identifier: ViewClassIdentifier,
-    include_entity: &dyn Fn(&EntityPath) -> bool,
 ) -> IntSet<EntityPath> {
     re_tracing::profile_function!();
 
@@ -71,7 +70,6 @@ fn default_visualized_entities_for_visualizer_affinity(
             }
         })
         .flatten()
-        .filter(|e| include_entity(e))
         .cloned()
         .collect()
 }

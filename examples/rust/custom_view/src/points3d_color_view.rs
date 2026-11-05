@@ -10,9 +10,9 @@ use rerun::external::re_viewer_context::{
     DataResultInteractionAddress, HoverHighlight, IdentifiedViewSystem as _, IndicatedEntities,
     Item, MissingChunkReporter, PerVisualizerType, RecommendedVisualizers, SelectionHighlight,
     SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewClassUiOutput, ViewQuery, ViewSpawnHeuristics, ViewState,
-    ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator, ViewerContext,
-    VisualizableReason,
+    ViewClassRegistryError, ViewClassUiOutput, ViewQuery, ViewSpawnContext, ViewSpawnHeuristics,
+    ViewState, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
+    ViewerContext, VisualizableReason,
 };
 use rerun::external::re_viewport_blueprint::ViewProperty;
 
@@ -65,13 +65,17 @@ impl ViewClass for ColorCoordinatesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
         // By default spawn a single view at the root if there's anything the visualizer may be able to show.
         if ctx
             .visualizable_entities_per_visualizer
             .get(&Points3DColorVisualizer::identifier())
-            .is_some_and(|entities| entities.keys().any(include_entity))
+            .is_some_and(|entities| {
+                entities.keys().any(|entity| {
+                    spawn_context == ViewSpawnContext::Explicit || !entity.is_property()
+                })
+            })
         {
             ViewSpawnHeuristics::root()
         } else {

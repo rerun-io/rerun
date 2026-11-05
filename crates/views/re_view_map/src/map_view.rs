@@ -3,7 +3,6 @@ use std::mem::size_of;
 use egui::{Modifiers, NumExt as _, Rect, Response};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
-use re_log_types::EntityPath;
 use re_renderer::view_builder::ViewBuilderError;
 use re_renderer::{ViewBuilder, ViewPickingConfiguration};
 use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
@@ -179,28 +178,16 @@ impl ViewClass for MapView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
-        re_tracing::profile_function!();
-
-        // Spawn a single map view at the root if any geospatial entity exists.
-        let any_map_entity = [
-            GeoPointsVisualizer::identifier(),
-            GeoLineStringsVisualizer::identifier(),
-        ]
-        .iter()
-        .any(|system_id| {
-            // TODO(grtlr): This looks slow.
-            ctx.indicated_entities_per_visualizer
-                .get(system_id)
-                .is_some_and(|indicated_entities| indicated_entities.iter().any(include_entity))
-        });
-
-        if any_map_entity {
-            ViewSpawnHeuristics::root()
-        } else {
-            ViewSpawnHeuristics::empty()
-        }
+        re_viewer_context::suggest_root_view_if_indicated_for(
+            ctx,
+            spawn_context,
+            [
+                GeoPointsVisualizer::identifier(),
+                GeoLineStringsVisualizer::identifier(),
+            ],
+        )
     }
 
     fn ui(

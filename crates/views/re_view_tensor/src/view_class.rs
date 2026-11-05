@@ -220,11 +220,11 @@ Set the displayed dimensions in a selection panel.",
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_view_for_each_entity::<TensorSystem>(ctx, include_entity)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, spawn_context)
     }
 
     fn ui(
