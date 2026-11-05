@@ -7,10 +7,7 @@ index.js
 index.js.map
 inlined.d.ts
 inlined.js
-proto/**/*.d.ts
-proto/**/*.d.ts.map
-proto/**/*.js
-proto/**/*.js.map
+proto/
 re_viewer.d.ts
 re_viewer.js
 re_viewer_bg.js
