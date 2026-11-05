@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use arrow::array::{Array, ArrayRef, RecordBatch, StringArray};
@@ -2381,30 +2382,33 @@ pub enum Redemption {
     /// An HTTP request the caller performs directly.
     HttpRequest(HttpRequest),
     /// A multipart session whose bytes are uploaded directly to storage.
-    MultipartRequest(MultipartRequest),
+    MultipartSession(MultipartSession),
 }
 
 /// A multipart session with initial part requests and an opaque token.
 #[derive(Debug, Clone)]
-pub struct MultipartRequest {
+pub struct MultipartSession {
     /// Bearer token for part grants, completion, and abort. Return unchanged; do not log it.
     pub upload_token: prost::bytes::Bytes,
     /// Size of each part except the last, which may be smaller.
     pub part_size_bytes: std::num::NonZeroU64,
     /// Requests for consecutive parts starting at 1, in part-number order.
     pub part_requests: Vec<HttpRequest>,
+    /// Maximum part count, including the final part. Absence selects the legacy 10,000-part limit.
+    pub max_part_count: Option<NonZeroU32>,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
+impl TryFrom<crate::cloud::v1alpha1::MultipartSession> for MultipartSession {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::cloud::v1alpha1::MultipartRequest) -> Result<Self, Self::Error> {
-        use crate::cloud::v1alpha1::MultipartRequest as Proto;
+    fn try_from(value: crate::cloud::v1alpha1::MultipartSession) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::MultipartSession as Proto;
 
         let Proto {
             upload_token,
             part_size_bytes,
             part_requests,
+            max_part_count,
         } = value;
         if upload_token.is_empty() {
             return Err(invalid_field!(
@@ -2416,9 +2420,17 @@ impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
         let part_size_bytes = std::num::NonZeroU64::new(part_size_bytes).ok_or_else(|| {
             invalid_field!(Proto, "part_size_bytes", "expected a positive part size")
         })?;
+        let max_part_count = max_part_count
+            .map(|count| {
+                NonZeroU32::new(count).ok_or_else(|| {
+                    invalid_field!(Proto, "max_part_count", "expected a positive part count")
+                })
+            })
+            .transpose()?;
         Ok(Self {
             upload_token,
             part_size_bytes,
+            max_part_count,
             part_requests: part_requests
                 .into_iter()
                 .map(TryInto::try_into)
@@ -2427,18 +2439,20 @@ impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
     }
 }
 
-impl TryFrom<MultipartRequest> for crate::cloud::v1alpha1::MultipartRequest {
+impl TryFrom<MultipartSession> for crate::cloud::v1alpha1::MultipartSession {
     type Error = TypeConversionError;
 
-    fn try_from(value: MultipartRequest) -> Result<Self, Self::Error> {
-        let MultipartRequest {
+    fn try_from(value: MultipartSession) -> Result<Self, Self::Error> {
+        let MultipartSession {
             upload_token,
             part_size_bytes,
             part_requests,
+            max_part_count,
         } = value;
         Ok(Self {
             upload_token,
             part_size_bytes: part_size_bytes.get(),
+            max_part_count: max_part_count.map(NonZeroU32::get),
             part_requests: part_requests
                 .into_iter()
                 .map(TryInto::try_into)
@@ -2464,8 +2478,8 @@ impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
             crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(request) => {
                 Redemption::HttpRequest(request.try_into()?)
             }
-            crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(request) => {
-                Redemption::MultipartRequest(request.try_into()?)
+            crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(request) => {
+                Redemption::MultipartSession(request.try_into()?)
             }
         };
         Ok(Self {
@@ -2500,8 +2514,8 @@ impl TryFrom<AccessGrant> for crate::cloud::v1alpha1::AccessGrant {
                         request.try_into()?,
                     )
                 }
-                Redemption::MultipartRequest(request) => {
-                    crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
+                Redemption::MultipartSession(request) => {
+                    crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(
                         request.try_into()?,
                     )
                 }
@@ -3338,32 +3352,47 @@ mod tests {
                 jiff::Timestamp::new(1_700_000_000, 0).unwrap(),
             )),
             redemption: Some(
-                crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
-                    crate::cloud::v1alpha1::MultipartRequest {
+                crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(
+                    crate::cloud::v1alpha1::MultipartSession {
                         upload_token: b"opaque-token".as_slice().into(),
                         part_size_bytes: 8 * 1024 * 1024,
                         part_requests: vec![],
+                        max_part_count: None,
                     },
                 ),
             ),
         };
         let parsed = AccessGrant::try_from(grant.clone()).unwrap();
-        assert!(matches!(parsed.redemption, Redemption::MultipartRequest(_)));
+        assert!(matches!(parsed.redemption, Redemption::MultipartSession(_)));
         assert_eq!(
             crate::cloud::v1alpha1::AccessGrant::try_from(parsed).unwrap(),
             grant
         );
 
-        let Some(crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(mut request)) =
+        let Some(crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(mut request)) =
             grant.redemption
         else {
-            panic!("expected multipart request");
+            panic!("expected multipart session");
         };
+        for max_part_count in [None, Some(1), Some(u32::MAX)] {
+            request.max_part_count = max_part_count;
+            let parsed = MultipartSession::try_from(request.clone())
+                .expect("valid multipart session should parse");
+            assert_eq!(parsed.max_part_count.map(NonZeroU32::get), max_part_count);
+            assert_eq!(
+                crate::cloud::v1alpha1::MultipartSession::try_from(parsed)
+                    .expect("valid multipart session should serialize"),
+                request
+            );
+        }
+        request.max_part_count = Some(0);
+        assert!(MultipartSession::try_from(request.clone()).is_err());
+        request.max_part_count = Some(1);
         request.part_size_bytes = 0;
-        assert!(MultipartRequest::try_from(request.clone()).is_err());
+        assert!(MultipartSession::try_from(request.clone()).is_err());
         request.part_size_bytes = 1;
         request.upload_token = prost::bytes::Bytes::new();
-        assert!(MultipartRequest::try_from(request).is_err());
+        assert!(MultipartSession::try_from(request).is_err());
     }
 
     #[test]

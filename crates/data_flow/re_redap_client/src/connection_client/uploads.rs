@@ -45,7 +45,7 @@ where
             cloud_ext::Redemption::HttpRequest(_) => {
                 re_protos::cloud::v1alpha1::UploadMethod::SingleRequest
             }
-            cloud_ext::Redemption::MultipartRequest(_) => {
+            cloud_ext::Redemption::MultipartSession(_) => {
                 re_protos::cloud::v1alpha1::UploadMethod::Multipart
             }
         };
@@ -68,7 +68,7 @@ where
             return Ok(response);
         };
         // The server has already initiated the session, and the caller never sees its token.
-        if let cloud_ext::Redemption::MultipartRequest(request) = response.grant.redemption
+        if let cloud_ext::Redemption::MultipartSession(request) = response.grant.redemption
             && let Err(abort_err) = self.abort_multipart_upload(request.upload_token).await
         {
             re_log::warn!("Failed to abort rejected multipart upload: {abort_err}");

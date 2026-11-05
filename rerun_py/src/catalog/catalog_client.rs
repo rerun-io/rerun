@@ -86,7 +86,7 @@ pub fn _get_write_access_grant(
     })?;
     let request = match response.grant.redemption {
         Redemption::HttpRequest(request) => request,
-        Redemption::MultipartRequest(_) => {
+        Redemption::MultipartSession(_) => {
             return Err(PyRuntimeError::new_err(
                 "server returned a multipart grant, which this client did not accept",
             ));

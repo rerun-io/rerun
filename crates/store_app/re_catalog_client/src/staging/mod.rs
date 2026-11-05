@@ -63,6 +63,16 @@ pub enum StagingError {
     )]
     MissingEtag { part_number: u32 },
 
+    #[error(
+        "source is {size_bytes} bytes and needs {required_parts} parts of {part_size_bytes} bytes, but the multipart grant permits at most {max_part_count} parts"
+    )]
+    MultipartPartLimit {
+        size_bytes: u64,
+        required_parts: u64,
+        part_size_bytes: u64,
+        max_part_count: u32,
+    },
+
     #[error("failed to read the source: {0}")]
     Read(#[from] std::io::Error),
 
@@ -133,7 +143,7 @@ impl CatalogClient {
                 check_expiry(expires_at)?;
                 self.send_upload(request, Vec::from(body)).await?;
             }
-            Redemption::MultipartRequest(request) => {
+            Redemption::MultipartSession(request) => {
                 self.stage_multipart(request, expires_at, &source, source_size_bytes)
                     .await?;
             }

@@ -580,7 +580,7 @@ enum UploadMethod {
   // `AccessGrant.http_request`.
   UPLOAD_METHOD_SINGLE_REQUEST = 1;
 
-  // `AccessGrant.multipart_request`.
+  // `AccessGrant.multipart_session`.
   UPLOAD_METHOD_MULTIPART = 2;
 }
 
@@ -624,7 +624,7 @@ message AccessGrant {
     // The HTTP request that redeems this grant.
     HttpRequest http_request = 2;
     // Multipart upload session and the initial part-upload requests.
-    MultipartRequest multipart_request = 3;
+    MultipartSession multipart_session = 3;
   }
 
   // Effective signing mode for all HTTP requests in this grant, including renewed part requests.
@@ -633,9 +633,8 @@ message AccessGrant {
 }
 
 // Describes a multipart upload session and its initial part-upload requests.
-//
-// TODO(RR-6103): Define multipart upload size limits.
-message MultipartRequest {
+// Limits guide clients; provider constraints and server validation remain authoritative.
+message MultipartSession {
   // Bearer token for renewal, completion, and abort. Return it unchanged.
   bytes upload_token = 1;
 
@@ -647,6 +646,10 @@ message MultipartRequest {
   // HTTP requests for consecutive parts starting at 1, using the grant's signing mode.
   // Expired requests can be renewed before the session deadline.
   repeated HttpRequest part_requests = 3;
+
+  // Maximum number of parts, including the final part. Must be positive when present.
+  // New servers always set this. Absence selects the legacy limit of 10,000 parts.
+  optional uint32 max_part_count = 4;
 }
 
 // Requests HTTP upload instructions for selected parts of an active multipart upload.

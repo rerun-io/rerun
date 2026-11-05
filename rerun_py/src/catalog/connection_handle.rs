@@ -83,9 +83,7 @@ impl PyConnectionHandle {
                     path.display()
                 ))
             })?;
-            let url = self
-                .inner
-                .stage_opt(key, file, opt)
+            let url = Box::pin(self.inner.stage_opt(key, file, opt))
                 .await
                 .map_err(to_py_err)?;
             Ok(url.to_string())
@@ -105,9 +103,7 @@ impl PyConnectionHandle {
         let bytes = bytes::Bytes::copy_from_slice(bytes);
 
         wait_for_future(py, async move {
-            let url = self
-                .inner
-                .stage_opt(key, bytes, opt)
+            let url = Box::pin(self.inner.stage_opt(key, bytes, opt))
                 .await
                 .map_err(to_py_err)?;
             Ok(url.to_string())

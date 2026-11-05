@@ -405,7 +405,7 @@ pub mod access_grant {
         HttpRequest(super::HttpRequest),
         /// Multipart upload session and the initial part-upload requests.
         #[prost(message, tag = "3")]
-        MultipartRequest(super::MultipartRequest),
+        MultipartSession(super::MultipartSession),
     }
 }
 impl ::prost::Name for AccessGrant {
@@ -419,10 +419,9 @@ impl ::prost::Name for AccessGrant {
     }
 }
 /// Describes a multipart upload session and its initial part-upload requests.
-///
-/// TODO(RR-6103): Define multipart upload size limits.
+/// Limits guide clients; provider constraints and server validation remain authoritative.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct MultipartRequest {
+pub struct MultipartSession {
     /// Bearer token for renewal, completion, and abort. Return it unchanged.
     #[prost(bytes = "bytes", tag = "1")]
     pub upload_token: ::prost::bytes::Bytes,
@@ -435,15 +434,19 @@ pub struct MultipartRequest {
     /// Expired requests can be renewed before the session deadline.
     #[prost(message, repeated, tag = "3")]
     pub part_requests: ::prost::alloc::vec::Vec<HttpRequest>,
+    /// Maximum number of parts, including the final part. Must be positive when present.
+    /// New servers always set this. Absence selects the legacy limit of 10,000 parts.
+    #[prost(uint32, optional, tag = "4")]
+    pub max_part_count: ::core::option::Option<u32>,
 }
-impl ::prost::Name for MultipartRequest {
-    const NAME: &'static str = "MultipartRequest";
+impl ::prost::Name for MultipartSession {
+    const NAME: &'static str = "MultipartSession";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.MultipartRequest".into()
+        "rerun.cloud.v1alpha1.MultipartSession".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.MultipartRequest".into()
+        "/rerun.cloud.v1alpha1.MultipartSession".into()
     }
 }
 /// Requests HTTP upload instructions for selected parts of an active multipart upload.
@@ -3217,7 +3220,7 @@ pub enum UploadMethod {
     Unspecified = 0,
     /// `AccessGrant.http_request`.
     SingleRequest = 1,
-    /// `AccessGrant.multipart_request`.
+    /// `AccessGrant.multipart_session`.
     Multipart = 2,
 }
 impl UploadMethod {

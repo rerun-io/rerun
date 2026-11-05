@@ -1,9 +1,9 @@
-use std::num::NonZeroU64;
+use std::num::{NonZeroU32, NonZeroU64};
 use std::time::Duration;
 
 use re_async::{AsyncReadAt, AsyncRuntimeHandle};
 use re_protos::cloud::v1alpha1::UploadedPart;
-use re_protos::cloud::v1alpha1::ext::MultipartRequest;
+use re_protos::cloud::v1alpha1::ext::MultipartSession;
 use re_protos::external::prost::bytes::Bytes;
 use re_redap_client::ApiResult;
 use re_span::Span;
@@ -18,6 +18,11 @@ const MAX_ATTEMPTS: u32 = 4;
 /// use at most 128 MiB per upload, excluding source memory and transport buffers.
 const MAX_PART_SIZE_BYTES: u64 = 64 * 1024 * 1024;
 
+/// Compatibility with grants from servers that do not advertise a part-count limit.
+// TODO(RR-6296): Remove this fallback once the oldest supported Hub version guarantees
+// `max_part_count` in every multipart grant; reject missing limits at that point.
+const LEGACY_MAX_PART_COUNT: u32 = 10_000;
+
 /// Retry delays for transient failures, reset for each part and for completion.
 const RETRY_BACKOFF: re_backoff::BackoffGenerator =
     re_backoff::BackoffGenerator::new_const(Duration::from_millis(250), Duration::from_secs(1));
@@ -25,7 +30,7 @@ const RETRY_BACKOFF: re_backoff::BackoffGenerator =
 impl CatalogClient {
     pub(super) async fn stage_multipart(
         &self,
-        request: MultipartRequest,
+        request: MultipartSession,
         expires_at: jiff::Timestamp,
         source: &impl AsyncReadAt,
         source_size_bytes: u64,
@@ -68,18 +73,19 @@ impl CatalogClient {
 
     async fn upload_multipart_parts(
         &self,
-        request: MultipartRequest,
+        request: MultipartSession,
         expires_at: jiff::Timestamp,
         source: &impl AsyncReadAt,
         source_size_bytes: u64,
     ) -> Result<Vec<UploadedPart>, StagingError> {
         check_expiry(expires_at)?;
-        let MultipartRequest {
+        let MultipartSession {
             upload_token,
             part_size_bytes,
             part_requests,
+            max_part_count,
         } = request;
-        let ranges = part_ranges(source_size_bytes, part_size_bytes)?;
+        let ranges = part_ranges(source_size_bytes, part_size_bytes, max_part_count)?;
         let part_count = ranges.len() as u32;
         let mut requests = part_requests.into_iter();
         let mut parts = Vec::new();
@@ -159,6 +165,7 @@ struct PartRange {
 fn part_ranges(
     source_size_bytes: u64,
     part_size_bytes: NonZeroU64,
+    max_part_count: Option<NonZeroU32>,
 ) -> Result<impl ExactSizeIterator<Item = PartRange>, StagingError> {
     let part_size_bytes = part_size_bytes.get();
     if part_size_bytes > MAX_PART_SIZE_BYTES {
@@ -167,11 +174,18 @@ fn part_ranges(
             re_format::format_bytes(MAX_PART_SIZE_BYTES as f64),
         )));
     }
-    let part_count = u32::try_from(source_size_bytes.div_ceil(part_size_bytes).max(1))
-        .ok()
-        // TODO(RR-6103): Read the part-count limit from the grant.
-        .filter(|count| *count <= 10_000)
-        .ok_or_else(|| StagingError::InvalidMultipart("too many parts".to_owned()))?;
+    let part_count = source_size_bytes.div_ceil(part_size_bytes).max(1);
+    let max_part_count = max_part_count.map_or(LEGACY_MAX_PART_COUNT, NonZeroU32::get);
+    if part_count > u64::from(max_part_count) {
+        return Err(StagingError::MultipartPartLimit {
+            size_bytes: source_size_bytes,
+            required_parts: part_count,
+            part_size_bytes,
+            max_part_count,
+        });
+    }
+    // The count fits in u32 after validation against max_part_count.
+    let part_count = part_count as u32;
     Ok((0..part_count).map(move |index| {
         let start = u64::from(index) * part_size_bytes;
         PartRange {
@@ -185,8 +199,7 @@ fn part_ranges(
 }
 
 fn part_grant_batch(part_number: u32, part_count: u32) -> Vec<u32> {
-    // TODO(RR-6103): Read the grant batch limit from the server.
-    (part_number..=part_count.min(part_number + 15)).collect()
+    (part_number..=part_count.min(part_number.saturating_add(15))).collect()
 }
 
 fn uploaded_part(part_number: u32, headers: &ehttp::Headers) -> Result<UploadedPart, StagingError> {
@@ -221,6 +234,7 @@ fn should_retry(err: &StagingError, attempts: u32) -> bool {
         | StagingError::InvalidMultipart(_)
         | StagingError::InvalidUploadRequest(_)
         | StagingError::MissingEtag { .. }
+        | StagingError::MultipartPartLimit { .. }
         | StagingError::Read(_) => false,
     }
 }
@@ -287,7 +301,8 @@ mod tests {
             (6, vec![(0, 3), (3, 3)]),
             (7, vec![(0, 3), (3, 3), (6, 1)]),
         ] {
-            let ranges = part_ranges(size, NonZeroU64::new(3).unwrap()).unwrap();
+            let ranges = part_ranges(size, NonZeroU64::new(3).expect("positive part size"), None)
+                .expect("source should fit within the legacy limit");
             assert_eq!(ranges.len(), expected.len());
             for (PartRange { part_number, span }, (index, (start, len))) in
                 std::iter::zip(ranges, expected.into_iter().enumerate())
@@ -299,7 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn part_ranges_enforce_size_and_count_limits() {
+    fn part_ranges_enforce_memory_and_legacy_count_limits() {
         for (size, part_size, valid) in [
             (0, MAX_PART_SIZE_BYTES, true),
             (0, MAX_PART_SIZE_BYTES + 1, false),
@@ -311,11 +326,84 @@ mod tests {
             (u64::from(u32::MAX) + 1, 1, false),
             (u64::MAX, MAX_PART_SIZE_BYTES, false),
         ] {
-            let result = part_ranges(size, NonZeroU64::new(part_size).unwrap());
+            let result = part_ranges(
+                size,
+                NonZeroU64::new(part_size).expect("positive part size"),
+                None,
+            );
             assert_eq!(result.is_ok(), valid, "size={size}, part_size={part_size}");
             if let Err(err) = result {
-                assert!(matches!(err, StagingError::InvalidMultipart(_)));
+                if part_size > MAX_PART_SIZE_BYTES {
+                    assert!(matches!(err, StagingError::InvalidMultipart(_)));
+                } else {
+                    assert!(matches!(
+                        err,
+                        StagingError::MultipartPartLimit {
+                            max_part_count: LEGACY_MAX_PART_COUNT,
+                            ..
+                        }
+                    ));
+                }
+                assert!(!should_retry(&err, 1));
             }
+        }
+    }
+
+    #[tokio::test]
+    async fn rejects_part_limit_before_reading_source_bytes() {
+        let runtime = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+            .expect("test should have a Tokio runtime");
+        let connection = re_redap_client::ConnectionRegistry::new_without_stored_credentials()
+            .connection_handle(re_uri::Origin::test());
+        let client = CatalogClient::new(connection, runtime);
+        let session = MultipartSession {
+            upload_token: Bytes::from_static(b"token"),
+            part_size_bytes: NonZeroU64::new(3).expect("positive part size"),
+            part_requests: vec![],
+            max_part_count: NonZeroU32::new(2),
+        };
+        let err = client
+            .upload_multipart_parts(session, jiff::Timestamp::MAX, &Bytes::new(), 7)
+            .await
+            .expect_err("source should exceed the part-count limit");
+        assert!(matches!(err, StagingError::MultipartPartLimit { .. }));
+    }
+
+    #[test]
+    fn part_ranges_enforce_advertised_count_before_narrowing() {
+        let part_size = NonZeroU64::new(3).expect("positive part size");
+        assert_eq!(
+            part_ranges(6, part_size, NonZeroU32::new(2))
+                .expect("source should fit exactly at the part-count limit")
+                .len(),
+            2
+        );
+        let Err(err) = part_ranges(7, part_size, NonZeroU32::new(2)) else {
+            panic!("expected part-count limit error");
+        };
+        assert!(matches!(
+            err,
+            StagingError::MultipartPartLimit {
+                size_bytes: 7,
+                required_parts: 3,
+                part_size_bytes: 3,
+                max_part_count: 2,
+            }
+        ));
+        assert!(!should_retry(&err, 1));
+
+        let max_size = u64::from(u32::MAX) * MAX_PART_SIZE_BYTES;
+        for (size, part_size, expected_count) in [
+            (max_size, MAX_PART_SIZE_BYTES, Some(u32::MAX as usize)),
+            (max_size + 1, MAX_PART_SIZE_BYTES, None),
+            (u64::MAX, 1, None),
+        ] {
+            let result = part_ranges(
+                size,
+                NonZeroU64::new(part_size).expect("positive part size"),
+                NonZeroU32::new(u32::MAX),
+            );
+            assert_eq!(result.map(|ranges| ranges.len()).ok(), expected_count);
         }
     }
 
@@ -325,6 +413,10 @@ mod tests {
         assert_eq!(part_grant_batch(2, 4), vec![2, 3, 4]);
         assert_eq!(part_grant_batch(1, 17), (1..=16).collect::<Vec<_>>());
         assert_eq!(part_grant_batch(17, 33), (17..=32).collect::<Vec<_>>());
+        assert_eq!(
+            part_grant_batch(u32::MAX - 1, u32::MAX),
+            vec![u32::MAX - 1, u32::MAX]
+        );
         assert_eq!(
             part_grant_batch(9_995, 10_000),
             (9_995..=10_000).collect::<Vec<_>>()
