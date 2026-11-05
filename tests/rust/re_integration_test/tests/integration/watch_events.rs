@@ -29,6 +29,7 @@ pub async fn watch_events_auto_refresh_test() {
         .create_dataset_entry(
             re_log_types::EntryName::new(persistent_dataset).expect("Failed to create entry name"),
             None,
+            Default::default(),
         )
         .await
         .expect("Failed to create persistent dataset");
@@ -80,6 +81,7 @@ pub async fn watch_events_auto_refresh_test() {
         .create_dataset_entry(
             re_log_types::EntryName::new(transient_dataset).expect("Failed to create entry name"),
             None,
+            Default::default(),
         )
         .await
         .expect("Failed to create dataset");

@@ -552,6 +552,174 @@ pub struct InconsistentBlueprintDetailsError {
     entry_kind: &'static str,
 }
 
+// --- DatasetPolicy ---
+
+/// Selects every name of a dimension, or an explicit set.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum IndexingPolicySelection {
+    /// Every name, including names that appear later.
+    All,
+
+    /// Exactly the listed names. An empty set selects nothing.
+    Explicit(BTreeSet<String>),
+}
+
+impl IndexingPolicySelection {
+    /// Whether `name` is selected. Names match exactly.
+    pub fn contains(&self, name: &str) -> bool {
+        match self {
+            Self::All => true,
+            Self::Explicit(names) => names.contains(name),
+        }
+    }
+
+    /// The names both selections contain.
+    pub fn intersection(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Self::All, other) | (other, Self::All) => other.clone(),
+            (Self::Explicit(a), Self::Explicit(b)) => Self::Explicit(a & b),
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexingPolicySelection> for IndexingPolicySelection {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::IndexingPolicySelection,
+    ) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::indexing_policy_selection::Selection;
+
+        let selection = value.selection.ok_or(missing_field!(
+            crate::cloud::v1alpha1::IndexingPolicySelection,
+            "selection"
+        ))?;
+        Ok(match selection {
+            Selection::All(()) => Self::All,
+            Selection::Explicit(list) => Self::Explicit(list.names.into_iter().collect()),
+        })
+    }
+}
+
+impl From<IndexingPolicySelection> for crate::cloud::v1alpha1::IndexingPolicySelection {
+    fn from(value: IndexingPolicySelection) -> Self {
+        use crate::cloud::v1alpha1::indexing_policy_selection::Selection;
+
+        let selection = match value {
+            IndexingPolicySelection::All => Selection::All(()),
+            IndexingPolicySelection::Explicit(names) => {
+                Selection::Explicit(crate::cloud::v1alpha1::IndexingPolicyNameList {
+                    names: names.into_iter().collect(),
+                })
+            }
+        };
+        Self {
+            selection: Some(selection),
+        }
+    }
+}
+
+/// Which entity paths and timelines a dataset indexes for chunk queries.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ChunkIndexingPolicy {
+    /// The entity paths the dataset indexes.
+    pub entity_paths: IndexingPolicySelection,
+
+    /// The timelines the dataset indexes.
+    pub timelines: IndexingPolicySelection,
+}
+
+impl ChunkIndexingPolicy {
+    /// Every entity path and every timeline.
+    pub const ALL: Self = Self {
+        entity_paths: IndexingPolicySelection::All,
+        timelines: IndexingPolicySelection::All,
+    };
+
+    /// No entity path and no timeline.
+    pub const NOTHING: Self = Self {
+        entity_paths: IndexingPolicySelection::Explicit(BTreeSet::new()),
+        timelines: IndexingPolicySelection::Explicit(BTreeSet::new()),
+    };
+
+    /// Whether this is [`Self::ALL`].
+    pub fn indexes_everything(&self) -> bool {
+        *self == Self::ALL
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::ChunkIndexingPolicy> for ChunkIndexingPolicy {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::ChunkIndexingPolicy) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths,
+            timelines,
+        } = value;
+        let entity_paths = entity_paths.ok_or(missing_field!(
+            crate::cloud::v1alpha1::ChunkIndexingPolicy,
+            "entity_paths"
+        ))?;
+        let timelines = timelines.ok_or(missing_field!(
+            crate::cloud::v1alpha1::ChunkIndexingPolicy,
+            "timelines"
+        ))?;
+        Ok(Self {
+            entity_paths: entity_paths.try_into()?,
+            timelines: timelines.try_into()?,
+        })
+    }
+}
+
+impl From<ChunkIndexingPolicy> for crate::cloud::v1alpha1::ChunkIndexingPolicy {
+    fn from(value: ChunkIndexingPolicy) -> Self {
+        let ChunkIndexingPolicy {
+            entity_paths,
+            timelines,
+        } = value;
+        Self {
+            entity_paths: Some(entity_paths.into()),
+            timelines: Some(timelines.into()),
+        }
+    }
+}
+
+/// Dataset-level policies.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DatasetPolicy {
+    /// `None` states no preference. The server that stores the entry then picks a policy.
+    pub chunk_indexing_policy: Option<ChunkIndexingPolicy>,
+}
+
+impl DatasetPolicy {
+    /// Replaces an unset chunk indexing policy with `default`.
+    pub fn resolve_chunk_indexing_policy(&mut self, default: ChunkIndexingPolicy) {
+        self.chunk_indexing_policy.get_or_insert(default);
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::DatasetPolicy> for DatasetPolicy {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::DatasetPolicy) -> Result<Self, Self::Error> {
+        Ok(Self {
+            chunk_indexing_policy: value
+                .chunk_indexing_policy
+                .map(TryInto::try_into)
+                .transpose()?,
+        })
+    }
+}
+
+impl From<DatasetPolicy> for crate::cloud::v1alpha1::DatasetPolicy {
+    fn from(value: DatasetPolicy) -> Self {
+        Self {
+            chunk_indexing_policy: value.chunk_indexing_policy.map(Into::into),
+        }
+    }
+}
+
 // --- DatasetDetails ---
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -560,6 +728,9 @@ pub struct DatasetDetails {
     pub asset_dataset: Option<EntryId>,
     pub default_blueprint_segment: Option<SegmentId>,
     pub default_segment_table_blueprint_segment: Option<SegmentId>,
+
+    /// The dataset's policies. On an update, `None` keeps the stored policy.
+    pub policy: Option<DatasetPolicy>,
 }
 
 impl DatasetDetails {
@@ -600,6 +771,14 @@ impl DatasetDetails {
             .as_ref()
             .map(|default| (blueprint.clone(), default.clone()))
     }
+
+    /// Replaces an absent or unset chunk indexing policy with `default`, so the details name an
+    /// explicit one.
+    pub fn resolve_chunk_indexing_policy(&mut self, default: ChunkIndexingPolicy) {
+        self.policy
+            .get_or_insert_default()
+            .resolve_chunk_indexing_policy(default);
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
@@ -621,6 +800,7 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
             asset_dataset: value.asset_dataset.map(TryInto::try_into).transpose()?,
             default_blueprint_segment,
             default_segment_table_blueprint_segment,
+            policy: value.policy.map(TryInto::try_into).transpose()?,
         })
     }
 }
@@ -635,6 +815,7 @@ impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
                 .default_segment_table_blueprint_segment
                 .clone()
                 .map(Into::into),
+            policy: value.policy.map(Into::into),
         }
     }
 }
@@ -755,6 +936,9 @@ pub struct CreateDatasetEntryRequest {
 
     /// Override, use at your own risk.
     pub id: Option<EntryId>,
+
+    /// The dataset's policies. An unset chunk indexing policy states no preference.
+    pub policy: DatasetPolicy,
 }
 
 impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEntryRequest {
@@ -762,6 +946,7 @@ impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEn
         Self {
             name: Some(value.name.to_string()),
             id: value.id.map(Into::into),
+            policy: Some(value.policy.into()),
         }
     }
 }
@@ -779,6 +964,11 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for CreateDatase
         Ok(Self {
             name: EntryName::new(name_str).map_err(TypeConversionError::InvalidEntryName)?,
             id: value.id.map(TryInto::try_into).transpose()?,
+            policy: value
+                .policy
+                .map(TryInto::try_into)
+                .transpose()?
+                .unwrap_or_default(),
         })
     }
 }
@@ -3262,5 +3452,85 @@ mod tests {
         };
 
         assert!(crate::cloud::v1alpha1::HttpRequest::try_from(request).is_err());
+    }
+
+    #[test]
+    fn name_selection_round_trips() {
+        let explicit = IndexingPolicySelection::Explicit(["b".to_owned(), "a".to_owned()].into());
+        for selection in [IndexingPolicySelection::All, explicit] {
+            let proto = crate::cloud::v1alpha1::IndexingPolicySelection::from(selection.clone());
+            let back =
+                IndexingPolicySelection::try_from(proto).expect("a set selection converts back");
+            assert_eq!(back, selection);
+        }
+
+        let proto = crate::cloud::v1alpha1::IndexingPolicySelection::from(
+            IndexingPolicySelection::Explicit(["b".to_owned(), "a".to_owned()].into()),
+        );
+        let Some(crate::cloud::v1alpha1::indexing_policy_selection::Selection::Explicit(list)) =
+            proto.selection
+        else {
+            panic!("expected an explicit selection");
+        };
+        assert_eq!(list.names, vec!["a".to_owned(), "b".to_owned()]);
+    }
+
+    #[test]
+    fn policy_conversion_reports_the_missing_field() {
+        let result =
+            IndexingPolicySelection::try_from(crate::cloud::v1alpha1::IndexingPolicySelection {
+                selection: None,
+            });
+        assert!(
+            matches!(
+                result,
+                Err(TypeConversionError::MissingField {
+                    field_name: "selection",
+                    ..
+                })
+            ),
+            "{result:?}"
+        );
+
+        let result = ChunkIndexingPolicy::try_from(crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths: Some(IndexingPolicySelection::All.into()),
+            timelines: None,
+        });
+        assert!(
+            matches!(
+                result,
+                Err(TypeConversionError::MissingField {
+                    field_name: "timelines",
+                    ..
+                })
+            ),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn resolve_chunk_indexing_policy_fills_only_an_unset_policy() {
+        let mut details = DatasetDetails::default();
+        details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::NOTHING);
+        assert_eq!(
+            details.policy,
+            Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::NOTHING),
+            })
+        );
+
+        let mut details = DatasetDetails {
+            policy: Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::ALL),
+            }),
+            ..Default::default()
+        };
+        details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::NOTHING);
+        assert_eq!(
+            details.policy,
+            Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::ALL),
+            })
+        );
     }
 }

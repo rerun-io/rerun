@@ -6,9 +6,9 @@ use arrow::datatypes::Schema as ArrowSchema;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::{
-    CreateDatasetEntryResponse, DataSource, DatasetDetails, DatasetEntry, ReadDatasetEntryResponse,
-    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, UnregisterFromDatasetRequest,
-    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+    CreateDatasetEntryResponse, DataSource, DatasetDetails, DatasetEntry, DatasetPolicy,
+    ReadDatasetEntryResponse, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
+    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
 };
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
@@ -98,12 +98,14 @@ where
         &mut self,
         name: EntryName,
         entry_id: Option<EntryId>,
+        policy: Option<DatasetPolicy>,
     ) -> ApiResult<DatasetEntry> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .create_dataset_entry(CreateDatasetEntryRequest {
                     name: Some(name.to_string()),
                     id: entry_id.map(Into::into),
+                    policy: policy.map(|policy| policy.into()),
                 })
                 .await
                 .map_err(|err| ApiError::tonic(&self.origin, err, "/CreateDatasetEntry"))?,

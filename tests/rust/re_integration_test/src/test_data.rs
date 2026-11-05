@@ -148,7 +148,11 @@ async fn register_rrds(
     let entry = catalog_client
         .client()
         .await?
-        .create_dataset_entry(EntryName::new(dataset_name)?, Some(dataset_id.into()))
+        .create_dataset_entry(
+            EntryName::new(dataset_name)?,
+            Some(dataset_id.into()),
+            Default::default(),
+        )
         .await?;
 
     let mut segment_ids = Vec::with_capacity(paths.len());

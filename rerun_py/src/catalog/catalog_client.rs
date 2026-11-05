@@ -421,7 +421,7 @@ impl PyCatalogClientInternal {
     ) -> PyResult<Py<PyDatasetEntryInternal>> {
         let _span = read_trace_context_from_python(py, "CatalogClient.create_dataset").entered();
         let connection = self_.borrow_mut(py).connection.clone();
-        let dataset_entry = connection.create_dataset(py, name.to_owned())?;
+        let dataset_entry = connection.create_dataset(py, name.to_owned(), None)?;
 
         Py::new(
             py,

@@ -174,10 +174,18 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
+    pub fn create_dataset(
+        &self,
+        py: Python<'_>,
+        name: String,
+        policy: Option<re_protos::cloud::v1alpha1::ext::DatasetPolicy>,
+    ) -> PyResult<DatasetEntry> {
         let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
         wait_for_future(py, async {
-            self.inner.create_dataset(name).await.map_err(to_py_err)
+            self.inner
+                .create_dataset(name, policy)
+                .await
+                .map_err(to_py_err)
         })
     }
 

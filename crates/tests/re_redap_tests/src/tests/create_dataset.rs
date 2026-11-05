@@ -1,8 +1,8 @@
 use arrow::datatypes::{DataType, Field, Schema};
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{
-    CreateDatasetEntryRequest, CreateTableEntryRequest, DatasetDetails, DatasetEntry, EntryDetails,
-    LanceTable, ProviderDetails,
+    ChunkIndexingPolicy, CreateDatasetEntryRequest, CreateTableEntryRequest, DatasetDetails,
+    DatasetEntry, DatasetPolicy, EntryDetails, LanceTable, ProviderDetails,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
@@ -14,20 +14,20 @@ use super::common::entry_name;
 
 pub async fn create_dataset_tests(service: impl RerunCloudService) {
     //
-    // Create a dataset with just a name
     //
 
     let dataset1_name = "dataset1";
 
-    create_dataset_entry(
-        &service,
-        CreateDatasetEntryRequest {
-            name: entry_name(dataset1_name),
-            id: None,
-        },
-    )
-    .await
-    .unwrap();
+    service
+        .create_dataset_entry(tonic::Request::new(
+            re_protos::cloud::v1alpha1::CreateDatasetEntryRequest {
+                name: Some(dataset1_name.to_owned()),
+                id: None,
+                policy: None,
+            },
+        ))
+        .await
+        .unwrap();
 
     let entry_details = entry_details_from_name(&service, dataset1_name, EntryKind::Dataset)
         .await
@@ -39,6 +39,12 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
 
     assert!(dataset_details.blueprint_dataset.is_some());
     assert!(dataset_details.default_blueprint_segment.is_none());
+    assert_eq!(
+        dataset_details.policy,
+        Some(DatasetPolicy {
+            chunk_indexing_policy: Some(ChunkIndexingPolicy::ALL),
+        })
+    );
 
     //
     // Check the dataset got a matching blueprint dataset
@@ -68,6 +74,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         CreateDatasetEntryRequest {
             name: entry_name(dataset1_name),
             id: None,
+            policy: Default::default(),
         },
     )
     .await
@@ -88,6 +95,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         CreateDatasetEntryRequest {
             name: entry_name("this name is for sure not used but the id might"),
             id: Some(entry_details.id),
+            policy: Default::default(),
         },
     )
     .await
@@ -111,6 +119,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         CreateDatasetEntryRequest {
             name: entry_name(dataset2_name),
             id: Some(dataset2_id),
+            policy: Default::default(),
         },
     )
     .await
@@ -165,6 +174,7 @@ pub async fn create_dataset_tests(service: impl RerunCloudService) {
         CreateDatasetEntryRequest {
             name: entry_name(table_name),
             id: None,
+            policy: Default::default(),
         },
     )
     .await
