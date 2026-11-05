@@ -1047,48 +1047,6 @@ async fn dataset_assets_tab() {
         ));
     }
 
-    // Each asset's size is the compressed size of its chunks, which varies by a few bytes between
-    // runs and is enough to change the rounded number. Each card's mask covers the column under
-    // its `SIZE` header, which is right aligned.
-    const SIZE_COLUMN_WIDTH: f32 = 74.0;
-    const SIZE_COLUMN_HEIGHT: f32 = 40.0;
-    let size_headers: Vec<egui::Rect> = harness
-        .query_all_by_label("SIZE")
-        .map(|node| node.rect())
-        .collect();
-    assert_eq!(
-        size_headers.len(),
-        ASSET_IDS.len(),
-        "every asset card should say how big its asset is"
-    );
-    for header in size_headers {
-        harness.mask(egui::Rect::from_min_size(
-            egui::pos2(header.max.x - SIZE_COLUMN_WIDTH, header.min.y),
-            egui::vec2(SIZE_COLUMN_WIDTH, SIZE_COLUMN_HEIGHT),
-        ));
-    }
-
-    // The toolbar's total varies the same way. The mask starts where the asset count ends and is
-    // wider than the rest of the line, so its own width stays fixed.
-    const SIZE_MASK_WIDTH: f32 = 240.0;
-    let asset_count = harness
-        .query_by_label("assets")
-        .expect("the toolbar should say how many assets there are")
-        .rect();
-    let size_mask = egui::Rect::from_min_size(
-        egui::pos2(asset_count.max.x, asset_count.min.y),
-        egui::vec2(SIZE_MASK_WIDTH, asset_count.height()),
-    );
-    let total_label = harness
-        .query_by_label("total")
-        .expect("the toolbar should say the assets' total size")
-        .rect();
-    assert!(
-        size_mask.contains_rect(total_label),
-        "the mask should cover the rest of the line"
-    );
-    harness.mask(size_mask);
-
     harness.snapshot("dataset_assets_tab");
 }
 

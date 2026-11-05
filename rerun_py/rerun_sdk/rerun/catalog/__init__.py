@@ -22,6 +22,7 @@ from ._dataset_info import (
     DatasetInfo as DatasetInfo,
     LayerInfo as LayerInfo,
     TimelineInfo as TimelineInfo,
+    TimelineKind as TimelineKind,
 )
 from ._entry import (
     DatasetEntry as DatasetEntry,

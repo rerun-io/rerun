@@ -257,6 +257,7 @@ pub const VIEW_TENSOR: Icon = icon_from_path!("../data/icons/view_tensor.svg");
 pub const VIEW_TEXT: Icon = icon_from_path!("../data/icons/view_text.svg");
 pub const VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/view_timeseries.svg");
 pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.svg");
+pub const TERMINAL: Icon = icon_from_path!("../data/icons/terminal.svg");
 
 //pub const GROUP: Icon = icon_from_path!("../data/icons/group.svg");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.svg");

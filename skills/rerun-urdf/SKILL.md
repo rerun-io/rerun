@@ -318,6 +318,8 @@ urdf.stream().collect(optimize=OptimizationProfile.OBJECT_STORE).write_rrd(
 asset_id = dataset.register_asset("s3://bucket/so100_model.rrd")  # uri must be readable by the server
 ```
 
+For a bucket on an S3-compatible provider outside AWS (Cloudflare R2, MinIO, …), also pass `object_store_config=` with the store's name on the Hub deployment.
+
 The split is along static vs temporal: the **model** is an asset, and the **FK transforms** stay a per-segment layer keyed by `recording_id`.
 Keeping `include_joint_transforms=True` in the asset costs nothing and gives the rest pose for segments or time ranges the FK layer does not cover.
 

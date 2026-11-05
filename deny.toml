@@ -153,7 +153,7 @@ skip = [
   { name = "rustix" }, # tantivy uses an old version.
   { name = "sha2" }, # DataFusion 54 uses 0.11 while the rest of the ecosystem uses 0.10.
   { name = "unicode-width" }, # walkers depends on 0.1 via http-cache-request / cacache
-  { name = "wasm-streams" }, # `walkers` uses 0.5 via reqwest 0.13, `ehttp` (via egui_extras) uses 0.4.
+  { name = "wasm-streams" }, # reqwest 0.12 (used by `lance` and us) uses 0.4, `ehttp`, `tonic-web-wasm-client` and reqwest 0.13 (via `walkers`) use 0.5.
 
   # Duplicated by `headless_chrome`, pulled in only by the `browser` feature of the
   # `re_integration_test` browser integration-test harness.

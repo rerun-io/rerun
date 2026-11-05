@@ -41,7 +41,7 @@ pub struct Source {
 
     /// Computed once: the backing store is never mutated after registration, so the schema
     /// is fixed for the lifetime of the source.
-    schema_sha256: [u8; 32],
+    schema_sha256: re_sorbet::SchemaId,
 }
 
 impl Source {
@@ -139,7 +139,7 @@ impl Source {
         schema_of_store(&self.resolved)
     }
 
-    pub fn schema_sha256(&self) -> [u8; 32] {
+    pub fn schema_sha256(&self) -> re_sorbet::SchemaId {
         self.schema_sha256
     }
 

@@ -300,6 +300,13 @@ impl Trajectory {
                         entry.created_at,
                     ));
                 }
+                TranscriptItem::AgentError(error) => {
+                    steps.push(Step::new(
+                        Source::System,
+                        format!("Error from {}: {}", error.reporter(), error.message),
+                        entry.created_at,
+                    ));
+                }
                 TranscriptItem::Note { text, .. } => {
                     steps.push(Step::new(Source::System, text.clone(), entry.created_at));
                 }

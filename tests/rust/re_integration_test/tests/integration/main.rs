@@ -3,6 +3,8 @@
 //! The out-of-process `InspectionHarness` suite lives in a separate test binary (`inspection/`) so
 //! the two harnesses don't get mixed in one test.
 
+#![expect(clippy::print_stderr)] // This is only a test
+
 mod add_entity_to_view_test;
 mod add_visualizer_test;
 mod assets;

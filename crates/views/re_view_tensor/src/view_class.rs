@@ -3,6 +3,7 @@ use egui::{Align2, NumExt as _, Vec2};
 use ndarray::Axis;
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
+use re_renderer::renderer::ColormappedTexture;
 use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
 use re_sdk_types::blueprint::components::ViewFit;
 use re_sdk_types::components::{
@@ -23,6 +24,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::TensorDimension;
 use crate::dimension_mapping::TensorSliceSelection;
 use crate::tensor_dimension_mapper::dimension_mapping_ui;
+use crate::tensor_slice_hover::tensor_slice_hover_ui;
 use crate::visualizer_system::{TensorSystem, TensorVisualization};
 
 #[derive(Default)]
@@ -330,11 +332,13 @@ impl TensorView {
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
     ) -> anyhow::Result<()> {
-        let (response, image_rect) = Self::paint_tensor_slice(ctx, ui, state, slice_selection)?;
+        let (response, texture) = Self::paint_tensor_slice(ctx, ui, state, slice_selection)?;
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
-            paint_axis_names(ui, image_rect, &font_id, dimension_labels);
+            paint_axis_names(ui, response.rect, &font_id, dimension_labels);
+        } else if let Some(tensor_view) = &state.tensor {
+            tensor_slice_hover_ui(ctx, ui, response, texture, tensor_view, slice_selection);
         }
 
         Ok(())
@@ -345,13 +349,14 @@ impl TensorView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<(egui::Response, egui::Rect)> {
+    ) -> anyhow::Result<(egui::Response, ColormappedTexture)> {
         re_tracing::profile_function!();
 
         let Some(tensor_view) = state.tensor.as_ref() else {
             anyhow::bail!("No tensor data available.");
         };
         let TensorVisualization {
+            entity_path: _,
             tensor_row_id,
             tensor_component: _,
             tensor,
@@ -397,8 +402,6 @@ impl TensorView {
         };
 
         let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
-        let rect = response.rect;
-        let image_rect = egui::Rect::from_min_max(rect.min, rect.max);
         let texture_options = egui::TextureOptions {
             magnification: match mag_filter {
                 MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
@@ -414,14 +417,14 @@ impl TensorView {
         gpu_bridge::render_image(
             ctx.render_ctx(),
             &painter,
-            image_rect,
-            colormapped_texture,
+            response.rect,
+            colormapped_texture.clone(),
             texture_options,
             ctx.view_id.render_view_id(),
             re_renderer::Label::from("tensor_slice"),
         )?;
 
-        Ok((response, image_rect))
+        Ok((response, colormapped_texture))
     }
 }
 

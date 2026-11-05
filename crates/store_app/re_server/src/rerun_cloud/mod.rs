@@ -15,9 +15,9 @@ use re_arrow_util::RecordBatchExt as _;
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntryId, StoreKind, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{
-    AssetMode, ChunkCandidatesDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
-    ScanDatasetManifestDataframe, ScanSegmentTableDataframe, asset_applies_to_segment,
-    read_asset_mode, read_asset_segments,
+    AssetMode, ChunkCandidatesDataframe, ChunkIndexingPolicy, QueryTasksDataframe,
+    RegisterWithDatasetDataframe, ScanDatasetManifestDataframe, ScanSegmentTableDataframe,
+    asset_applies_to_segment, read_asset_mode, read_asset_segments,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::cloud::v1alpha1::ext::{CreateTableEntryResponse, ProviderDetails};
@@ -35,7 +35,7 @@ use re_protos::cloud::v1alpha1::{
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::{DatasetKind, SchemaId, SegmentId};
+use re_protos::common::v1alpha1::ext::{DatasetKind, SegmentId};
 use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
 use re_protos::{
@@ -196,7 +196,9 @@ impl RerunCloudHandlerBuilder {
         on_duplicate: IfDuplicateBehavior,
         on_error: crate::OnError,
     ) -> Result<Self, crate::store::Error> {
-        let dataset_id = self.store.create_dataset(dataset_name, None)?;
+        let dataset_id = self
+            .store
+            .create_dataset(dataset_name, None, Default::default())?;
 
         for rrd_path in rrd_paths {
             let load_result = self
@@ -937,10 +939,11 @@ impl RerunCloudService for RerunCloudHandler {
         let CreateDatasetEntryRequest {
             name: dataset_name,
             id: dataset_id,
+            policy,
         } = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
-        let dataset_id = store.create_dataset(dataset_name, dataset_id)?;
+        let dataset_id = store.create_dataset(dataset_name, dataset_id, policy)?;
         let dataset = store.dataset(dataset_id)?;
 
         self.notify(watch_events_response::Kind::EntryCreated(
@@ -996,6 +999,10 @@ impl RerunCloudService for RerunCloudHandler {
         // datasets were introduced have none, so create the missing one on demand, and replace a
         // reference left dangling by a deleted asset dataset the same way.
         let dataset = store.dataset(request.id)?;
+        if dataset_details.policy.is_none() {
+            dataset_details.policy = dataset.dataset_details().policy.clone();
+        }
+        dataset_details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::ALL);
         let stored_asset_dataset = dataset.dataset_details().asset_dataset;
         let dataset_kind = dataset.dataset_kind();
         let client_chosen_asset_dataset = dataset_details.asset_dataset.is_some()
@@ -1529,7 +1536,7 @@ impl RerunCloudService for RerunCloudHandler {
                 break;
             }
 
-            let schema_id = SchemaId::from_sha256(source.schema_sha256());
+            let schema_id = source.schema_sha256();
             if remaining.remove(&schema_id) {
                 let response = ext::GetSchemasResponse {
                     schema_id,

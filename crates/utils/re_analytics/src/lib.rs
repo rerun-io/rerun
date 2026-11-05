@@ -307,7 +307,7 @@ fn load_config(_user_logged_in: bool) -> Result<Config, ConfigError> {
                 if config.is_first_run() {
                     if !_user_logged_in {
                         // Only print the disclaimer if the user is not logged in.
-                        eprintln!("{DISCLAIMER}");
+                        let _err = re_error::try_eprintln!("{DISCLAIMER}");
                     }
 
                     config.save()?;
@@ -495,7 +495,7 @@ pub fn record_and_flush_blocking<E: Event>(cb: impl FnOnce() -> E) {
         if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
             && cfg!(debug_assertions)
         {
-            eprintln!("Failed to flush analytics: {err}");
+            let _err = re_error::try_eprintln!("Failed to flush analytics: {err}");
         }
     }
 }

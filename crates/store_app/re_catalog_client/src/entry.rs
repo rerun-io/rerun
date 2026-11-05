@@ -2,7 +2,7 @@
 
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext::{
-    DatasetDetails, DatasetEntry, EntryDetails, EntryDetailsUpdate,
+    DatasetDetails, DatasetEntry, DatasetPolicy, EntryDetails, EntryDetailsUpdate,
 };
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_redap_client::{ApiError, ApiErrorKind, ApiResult, ConnectionClient};
@@ -33,8 +33,15 @@ impl CatalogClient {
     ///
     /// Fails with [`ApiErrorKind::AlreadyExists`] if the name is taken; see
     /// [`Self::find_or_create_dataset`].
-    pub async fn create_dataset(&self, name: EntryName) -> ApiResult<DatasetEntry> {
-        self.client().await?.create_dataset_entry(name, None).await
+    pub async fn create_dataset(
+        &self,
+        name: EntryName,
+        policy: Option<DatasetPolicy>,
+    ) -> ApiResult<DatasetEntry> {
+        self.client()
+            .await?
+            .create_dataset_entry(name, None, policy)
+            .await
     }
 
     /// Get information on a dataset entry.
@@ -62,7 +69,7 @@ impl CatalogClient {
             return Ok(id);
         }
 
-        match client.create_dataset_entry(name.clone(), None).await {
+        match client.create_dataset_entry(name.clone(), None, None).await {
             Ok(dataset) => Ok(dataset.details.id),
 
             // Created concurrently between our lookup and our create.

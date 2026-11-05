@@ -1,18 +1,32 @@
 //! The setup screen: pick an agent, a working directory, MCP servers, and options.
 
 use egui::RichText;
-use re_ui::alert::Alert;
 use re_ui::{ButtonExt as _, UiExt as _, icons};
 
 use super::Screen;
 use re_agent::AgentEntry;
-use re_agent::{
-    API_KEYS_IN_SETTINGS, AgentProfileId, AgentSettings, HostedTools, ModelApiProvider,
-};
+use re_agent::{AgentProfileId, AgentSettings, HostedTools, ModelApiProvider};
 
 #[cfg(agent_harness_backend)]
 mod agent_harness;
 mod prompt_sharing;
+
+/// Where the selected model API's key comes from.
+enum ApiKeySource<'a> {
+    /// The web viewer: the user pastes it into this string.
+    #[cfg_attr(
+        all(agent_harness_backend, not(test)),
+        expect(dead_code, reason = "only the web viewer takes typed keys")
+    )]
+    Typed(&'a mut String),
+
+    /// The desktop viewer: read from the environment, if `found`.
+    #[cfg_attr(
+        not(agent_harness_backend),
+        expect(dead_code, reason = "the web viewer has no environment")
+    )]
+    Environment { found: bool },
+}
 
 /// Returns [`Screen::Chat`] when the user clicked "OK", so the caller should start the agent.
 ///
@@ -30,59 +44,49 @@ pub fn setup_ui(
         .auto_shrink(false)
         .show(ui, |ui| {
             egui::Frame::new().inner_margin(12).show(ui, |ui| {
-                next_screen = setup_ui_inner(ui, settings, agents, available_model_apis);
+                next_screen = cfg_select! {
+                    agent_harness_backend => setup_ui_inner(
+                        ui,
+                        settings,
+                        agents,
+                        available_model_apis,
+                        agent_harness::agent_choice_ui,
+                    ),
+                    _ => setup_ui_inner(ui, settings, agents, available_model_apis, web_choice_ui),
+                };
             });
         });
 
     next_screen
 }
 
-#[cfg_attr(
-    not(agent_harness_backend),
-    expect(
-        clippy::needless_pass_by_ref_mut,
-        reason = "only an agent harness re-checks which agents are installed"
-    )
-)]
+/// `choice_ui` picks the agent: on the desktop among agent harnesses and model APIs, on the web
+/// among model APIs only.
 fn setup_ui_inner(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
     agents: &mut [AgentEntry],
     available_model_apis: &[ModelApiProvider],
+    choice_ui: impl FnOnce(&mut egui::Ui, &mut AgentSettings, &mut [AgentEntry], &[ModelApiProvider]),
 ) -> Screen {
     let mut next_screen = Screen::Setup;
     let available_model_apis = &model_apis_with_key(settings, available_model_apis);
 
     ui.spacing_mut().item_spacing.y = 8.0;
 
-    warning_ui(ui);
+    choice_ui(ui, settings, agents, available_model_apis);
 
-    ui.add_space(8.0);
-    ui.label(RichText::new("Choose your agent").strong().size(15.0));
-
-    cfg_select! {
-        agent_harness_backend => {
-            agent_harness::agent_choice_ui(ui, settings, agents, available_model_apis);
-        }
-        _ => {
-            ui.label(
-                "Rerun agent calls a model API with your own key. \
-                 The key is kept in this browser's local storage, and sent only to that API.",
-            );
-            ui.add_space(8.0);
-            model_api_list_ui(ui, settings, available_model_apis);
-        }
-    }
-
-    ui.add_space(8.0);
-    prompt_sharing::prompt_analytics_ui(ui, &mut settings.share_redacted_prompts);
-
-    ui.add_space(8.0);
+    ui.add_space(4.0);
     let ready = selected_agent_ready(settings, agents, available_model_apis);
-    let label = format!(
-        "Start {}",
-        selected_agent_name(settings, agents).unwrap_or_else(|| "agent".to_owned())
-    );
+    // The provider toggle already names a model API.
+    let label = if settings.profile_id.model_api_provider().is_some() {
+        "Start".to_owned()
+    } else {
+        format!(
+            "Start {}",
+            selected_agent_name(settings, agents).unwrap_or_else(|| "agent".to_owned())
+        )
+    };
     let button = egui::Button::new((label, icons::ARROW_RIGHT))
         .primary()
         .size_small();
@@ -94,17 +98,18 @@ fn setup_ui_inner(
     if clicked {
         next_screen = Screen::Chat;
     }
-    if let Err(problem) = ready {
+    // A missing key is already shown next to the provider toggle.
+    if let Err(problem) = ready
+        && settings.profile_id.model_api_provider().is_none()
+    {
         ui.error_label(problem);
-        if let Some(provider) = settings.profile_id.model_api_provider() {
-            ui.hyperlink_to(
-                format!("Get an API key from {}", provider.name()),
-                provider.api_key_url(),
-            );
-        }
     }
 
-    ui.add_space(8.0);
+    ui.add_space(4.0);
+    ui.separator();
+    prompt_sharing::prompt_analytics_ui(ui, &mut settings.share_redacted_prompts);
+
+    ui.add_space(4.0);
     ui.collapsing_header("Advanced", false, |ui| {
         ui.spacing_mut().item_spacing.y = 6.0;
 
@@ -162,32 +167,109 @@ fn hosted_tools_ui(ui: &mut egui::Ui, hosted_tools: &mut HostedTools) {
         );
 }
 
-/// One radio button per model-API provider.
-///
-/// `available_model_apis` are the ones whose key was found.
-fn model_api_list_ui(
+/// The web viewer has no agent harnesses, so it only picks a model API.
+#[cfg(target_arch = "wasm32")]
+fn web_choice_ui(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
+    _agents: &mut [AgentEntry],
     available_model_apis: &[ModelApiProvider],
 ) {
-    for provider in ModelApiProvider::ALL {
-        let selected = provider.profile_id() == settings.profile_id;
-        if model_api_row_ui(ui, provider, available_model_apis, selected).clicked() {
-            settings.profile_id = provider.profile_id();
+    let api_keys = &mut settings.api_keys;
+    model_api_choice_ui(
+        ui,
+        &mut settings.profile_id,
+        available_model_apis,
+        |provider| ApiKeySource::Typed(api_keys.entry(provider.profile_id()).or_default()),
+    );
+}
+
+/// The choice on the web: a model API, and nothing else.
+#[cfg(any(target_arch = "wasm32", test))]
+fn model_api_choice_ui<'a>(
+    ui: &mut egui::Ui,
+    profile_id: &mut AgentProfileId,
+    available_model_apis: &[ModelApiProvider],
+    key_source: impl FnOnce(ModelApiProvider) -> ApiKeySource<'a>,
+) {
+    ui.label(RichText::new("Connect a model").strong().size(15.0));
+    model_api_key_ui(ui, profile_id, available_model_apis, key_source);
+}
+
+/// Pick a model-API provider, and show where its key comes from.
+///
+/// `available_model_apis` are the providers whose key was found.
+fn model_api_key_ui<'a>(
+    ui: &mut egui::Ui,
+    profile_id: &mut AgentProfileId,
+    available_model_apis: &[ModelApiProvider],
+    key_source: impl FnOnce(ModelApiProvider) -> ApiKeySource<'a>,
+) {
+    let mut provider = profile_id
+        .model_api_provider()
+        .unwrap_or_else(|| default_model_api(available_model_apis));
+    ui.selectable_toggle(|ui| {
+        for option in ModelApiProvider::ALL {
+            ui.selectable_value(&mut provider, option, option.name());
         }
-        #[cfg(target_arch = "wasm32")]
-        if selected {
-            let key = settings.api_keys.entry(provider.profile_id()).or_default();
-            ui.indent(provider.name(), |ui| {
+    });
+    *profile_id = provider.profile_id();
+
+    ui.scope(|ui| {
+        ui.spacing_mut().item_spacing.y = 4.0;
+
+        match key_source(provider) {
+            ApiKeySource::Typed(key) => {
                 ui.add(
                     re_ui::text_edit::ReTextEdit::singleline(key)
                         .password(true)
-                        .hint_text(format!("{} API key", provider.name()))
+                        .hint_text(format!("Paste your {} API key", provider.name()))
                         .desired_width(f32::INFINITY),
                 );
-            });
+                key_status_ui(ui, provider, true, |ui| {
+                    ui.label(RichText::new("Stays in this browser.").small().weak())
+                        .on_hover_text(format!(
+                            "The key is kept in this browser's local storage, \
+                             and sent only to {}.",
+                            provider.name()
+                        ));
+                });
+            }
+            ApiKeySource::Environment { found } => {
+                let key_var = provider.api_key_env_var();
+                key_status_ui(ui, provider, !found, |ui| {
+                    if found {
+                        tag_ui(ui, "Key found").on_hover_text(format!("Read from {key_var}"));
+                    } else {
+                        ui.label(
+                            RichText::new(format!("Set {key_var}, then restart"))
+                                .small()
+                                .weak(),
+                        )
+                        .on_hover_text(format!(
+                            "Set {key_var} in the environment the viewer starts from, \
+                             then restart it"
+                        ));
+                    }
+                });
+            }
         }
-    }
+    });
+}
+
+/// A line with `status_ui` on the left, and optionally a link to get a key on the right.
+fn key_status_ui(
+    ui: &mut egui::Ui,
+    provider: ModelApiProvider,
+    show_link: bool,
+    status_ui: impl FnOnce(&mut egui::Ui),
+) {
+    egui::containers::Sides::new().show(ui, status_ui, |ui| {
+        if show_link {
+            ui.re_hyperlink("Get a key", provider.api_key_url(), true)
+                .on_hover_text(format!("Create an API key at {}", provider.api_key_url()));
+        }
+    });
 }
 
 /// The providers whose key is at hand: from the settings, or `detected` in the environment.
@@ -199,38 +281,6 @@ pub fn model_apis_with_key(
         .into_iter()
         .filter(|provider| detected.contains(provider) || settings.api_key(*provider).is_some())
         .collect()
-}
-
-/// Returns the response of the radio button, which is disabled until the API key is set.
-fn model_api_row_ui(
-    ui: &mut egui::Ui,
-    provider: ModelApiProvider,
-    available_model_apis: &[ModelApiProvider],
-    selected: bool,
-) -> egui::Response {
-    let key_var = provider.api_key_env_var();
-    let has_key = available_model_apis.contains(&provider);
-    ui.horizontal(|ui| {
-        let radio = ui
-            .add_enabled_ui(API_KEYS_IN_SETTINGS || has_key, |ui| {
-                ui.re_radio(selected, format!("{} API", provider.name()))
-            })
-            .inner
-            .on_disabled_hover_text(format!(
-                "Set {key_var} in the environment the viewer starts from, then restart it"
-            ));
-        if API_KEYS_IN_SETTINGS {
-            if has_key {
-                tag_ui(ui, "Key entered");
-            }
-        } else if has_key {
-            tag_ui(ui, "Key found").on_hover_text(format!("Read from {key_var}"));
-        } else {
-            ui.weak(format!("needs {key_var}"));
-        }
-        radio
-    })
-    .inner
 }
 
 /// A small pill next to an option, saying that it is ready to use.
@@ -246,25 +296,6 @@ fn tag_ui(ui: &mut egui::Ui, text: &str) -> egui::Response {
         )
         .show(ui)
         .response
-}
-
-/// What the user is signing up for before they hand the panel their agent.
-///
-/// One line only: what the agent does with their machine belongs next to the agent they pick.
-fn warning_ui(ui: &mut egui::Ui) {
-    Alert::info().show(ui, |ui| {
-        // `show` hugs its content; the panel's blocks all run full-bleed.
-        ui.set_min_width(ui.available_width());
-        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-        let text = egui::WidgetText::concat(
-            ui,
-            [
-                RichText::new("Experimental.").strong(),
-                RichText::new(" Expect rough edges."),
-            ],
-        );
-        ui.label(text);
-    });
 }
 
 /// The name of the selected agent, e.g. "Claude Code" or "Anthropic API".
@@ -314,4 +345,32 @@ pub fn selected_agent_ready(
         ));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The web layout, which the integration tests cannot reach since they run on the desktop.
+    #[test]
+    fn web_setup_screen() {
+        let mut harness = re_ui::testing::new_harness(
+            re_ui::testing::TestOptions::Gui,
+            egui::vec2(crate::RECOMMENDED_WIDTH, 400.0),
+        )
+        .build_ui_state(
+            |ui, (settings, key): &mut (AgentSettings, String)| {
+                egui::Frame::new().inner_margin(12).show(ui, |ui| {
+                    _ = setup_ui_inner(ui, settings, &mut [], &[], |ui, settings, _, _| {
+                        model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
+                            ApiKeySource::Typed(key)
+                        });
+                    });
+                });
+            },
+            (AgentSettings::default(), String::new()),
+        );
+        harness.fit_contents();
+        harness.snapshot("setup_screen_web");
+    }
 }

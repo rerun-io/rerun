@@ -85,7 +85,7 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
         .expect("failed to write OPFS file");
 
     let dataset = client
-        .create_dataset_entry(dataset_name, None)
+        .create_dataset_entry(dataset_name, None, Default::default())
         .await
         .expect("failed to create dataset");
     let registration = catalog_client

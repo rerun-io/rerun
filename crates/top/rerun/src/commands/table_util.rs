@@ -1,12 +1,17 @@
 use comfy_table::{CellAlignment, ContentArrangement, Table, TableComponent, presets};
+use re_error::try_println;
 
 /// Prints a plain, aligned text table with an underlined header row.
-pub fn print_table(headers: &[&str], rows: &[Vec<String>], right_aligned: &[usize]) {
+pub fn print_table(
+    headers: &[&str],
+    rows: &[Vec<String>],
+    right_aligned: &[usize],
+) -> std::io::Result<()> {
     if headers.is_empty()
         || rows.iter().any(|row| row.len() != headers.len())
         || right_aligned.iter().any(|&column| column >= headers.len())
     {
-        return;
+        return Ok(());
     }
 
     let mut table = Table::new();
@@ -22,7 +27,7 @@ pub fn print_table(headers: &[&str], rows: &[Vec<String>], right_aligned: &[usiz
 
     for &column in right_aligned {
         let Some(column) = table.column_mut(column) else {
-            return;
+            return Ok(());
         };
         column.set_cell_alignment(CellAlignment::Right);
     }
@@ -32,5 +37,5 @@ pub fn print_table(headers: &[&str], rows: &[Vec<String>], right_aligned: &[usiz
         column.set_padding((0, right_padding));
     }
 
-    println!("{}", table.trim_fmt());
+    try_println!("{}", table.trim_fmt())
 }

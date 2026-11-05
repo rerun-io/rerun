@@ -5,6 +5,7 @@ use std::sync::Arc;
 use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
 use re_agent::{AgentToolbox, ModelApiProvider};
 use re_async::{AsyncRuntimeHandle, UiWaker};
+use re_error::StructuredError;
 use re_ui::alert::Alert;
 use re_ui::{ContextExt as _, UiExt as _, icons};
 
@@ -275,7 +276,10 @@ impl AgentPanel {
     }
 
     /// The tools that model-API agents, such as the `anthropic-api` profile, may call.
-    /// Applies to sessions started from now on. Agent harnesses get their tools from MCP servers.
+    /// Applies to sessions started from now on.
+    ///
+    /// Agent harnesses get their tools from MCP servers. Their permission requests for the
+    /// toolbox's own MCP server follow [`AgentToolbox::requires_approval`].
     pub fn set_toolbox(&mut self, toolbox: Arc<dyn AgentToolbox>) {
         for conversation in self.all_conversations_mut() {
             conversation.toolbox = Some(Arc::clone(&toolbox));
@@ -343,6 +347,14 @@ impl AgentPanel {
     /// Give the shown conversation's prompt input keyboard focus when it is next shown.
     pub fn request_input_focus(&mut self) {
         self.active_conversation_mut().input.request_focus();
+    }
+
+    /// Attaches the contents of an image file (PNG or JPEG) to the prompt being composed in the
+    /// shown conversation.
+    pub fn attach_image_file(&mut self, bytes: &[u8]) -> Result<(), image::ImageError> {
+        let image = super::pasted_image::encode_image_file(bytes)?;
+        self.active_conversation_mut().input.attach_image(image);
+        Ok(())
     }
 
     /// Switch the shown conversation to the chat view. Starts its agent if none is running.
@@ -694,6 +706,9 @@ impl AgentPanel {
                                     .on_hover_text("Back to conversations")
                                     .clicked();
                             ui.label(egui::RichText::new(title).strong());
+                            if !in_chat {
+                                experimental_tag_ui(ui).on_hover_text("Expect rough edges.");
+                            }
                             back.then_some(PanelAction::ShowList)
                         },
                         |ui| {
@@ -801,10 +816,7 @@ impl AgentPanel {
 /// Why the draft's agent failed to start, and a way to fix its setup.
 fn draft_error_ui(ui: &mut egui::Ui, message: &str, draft: ConversationId) -> Option<PanelAction> {
     let action = Alert::error()
-        .show(ui, |ui| {
-            ui.set_min_width(ui.available_width());
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-            ui.label(message);
+        .show_structured_error(ui, &StructuredError::parse(message), |ui| {
             ui.button("Agent setup…")
                 .clicked()
                 .then_some(PanelAction::OpenSetup(draft))
@@ -849,6 +861,25 @@ fn new_conversation_shortcut_pressed(ui: &egui::Ui, panel_rect: egui::Rect) -> b
 
     (pointer_inside || focus_inside)
         && ui.input_mut(|input| input.consume_shortcut(&NEW_CONVERSATION_SHORTCUT))
+}
+
+/// A warning-colored pill saying that the panel is experimental.
+fn experimental_tag_ui(ui: &mut egui::Ui) -> egui::Response {
+    let tokens = ui.tokens();
+    let alert = &tokens.alert_warning;
+    egui::WidgetAtom::new(
+        egui::RichText::new("Experimental")
+            .small()
+            .color(alert.icon),
+    )
+    .frame(
+        egui::Frame::new()
+            .fill(alert.fill)
+            .corner_radius(tokens.normal_corner_radius())
+            .inner_margin(egui::Margin::symmetric(6, 1)),
+    )
+    .show(ui)
+    .response
 }
 
 #[cfg(test)]

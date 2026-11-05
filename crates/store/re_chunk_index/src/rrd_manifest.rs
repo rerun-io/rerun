@@ -6,7 +6,7 @@ use re_chunk::external::nohash_hasher::IntMap;
 use re_chunk::external::re_byte_size;
 use re_chunk::{ChunkId, ComponentIdentifier, EntityPath};
 use re_log_types::StoreId;
-use re_sorbet::SorbetSchema;
+use re_sorbet::{SchemaId, SorbetSchema};
 use re_types_core::{LayerName, SegmentId};
 
 use crate::{
@@ -68,7 +68,7 @@ pub struct RrdManifest {
 
     /// Hash of `sorbet_schema`, to compare two schemas without walking their fields.
     /// See [`RawRrdManifest::compute_sorbet_schema_sha256`].
-    sorbet_schema_sha256: [u8; 32],
+    sorbet_schema_sha256: SchemaId,
 
     /// False once a merge kept the schema of the first part because the schemas of the parts
     /// could not be unified.
@@ -121,7 +121,7 @@ struct MergedSchema {
 
     /// Hash of `sorbet_schema`.
     /// See [`RawRrdManifest::compute_sorbet_schema_sha256`].
-    sorbet_schema_sha256: [u8; 32],
+    sorbet_schema_sha256: SchemaId,
 
     /// False when the schemas of the parts could not be unified and the schema of the first part
     /// was kept, or when a part's own schema already did not cover all its chunks.
@@ -607,8 +607,8 @@ impl RrdManifest {
     /// Two manifests with the same hash only describe the same columns if
     /// [`Self::schema_covers_all_chunks`] is true for both.
     #[inline]
-    pub fn sorbet_schema_sha256(&self) -> &[u8; 32] {
-        &self.sorbet_schema_sha256
+    pub fn sorbet_schema_sha256(&self) -> SchemaId {
+        self.sorbet_schema_sha256
     }
 
     /// Whether [`Self::sorbet_schema`] has the columns of every chunk in the manifest.

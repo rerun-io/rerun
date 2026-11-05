@@ -20,10 +20,11 @@ use agent_client_protocol_schema::v1::{
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use web_time::Instant;
 
+use crate::AgentToolbox;
 use crate::agent_harness::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
-use crate::error::McpStartupFailure;
+use crate::error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 use crate::reports::SessionReports;
 use crate::responder::{AgentStoppedWaiting, Responder};
 use crate::settings::AgentLaunch;
@@ -218,12 +219,22 @@ struct LaunchContext {
 
     /// Working directory the agent process was started in, which its relative paths are against.
     cwd: PathBuf,
+
+    /// The host's tools. Calls that reach them through [`AgentToolbox::mcp_server_name`] and that
+    /// need no approval there are allowed without asking.
+    toolbox: Option<Arc<dyn AgentToolbox>>,
 }
 
 /// What the agent reported about itself, and what was asked of it.
 #[derive(Default)]
 struct AgentInfo {
+    /// How the agent runs, once it has been started.
+    backend: Option<AgentBackendKind>,
+
     name: Option<String>,
+
+    /// The version the agent reported, which is ours for a model-API agent.
+    version: Option<String>,
     modes: Option<SessionModeState>,
 
     /// Set by [`AgentSession::set_mode`] until the agent confirms a mode.
@@ -319,6 +330,7 @@ impl AgentSession {
         let connection = match launch {
             AgentLaunch::AgentHarness(config) => {
                 session.startup = Some(StartupStart::new(AgentBackendKind::AgentHarness));
+                session.agent.backend = Some(AgentBackendKind::AgentHarness);
                 session.phase = Phase::Connecting {
                     status: format!("Starting {}…", config.command.display()),
                 };
@@ -337,6 +349,7 @@ impl AgentSession {
             }
             AgentLaunch::ModelApi(config) => {
                 session.startup = Some(StartupStart::new(AgentBackendKind::ModelApi));
+                session.agent.backend = Some(AgentBackendKind::ModelApi);
                 session.phase = Phase::Connecting {
                     status: format!("Connecting to {}…", config.model),
                 };
@@ -375,6 +388,12 @@ impl AgentSession {
         self.auto_approve = auto_approve;
     }
 
+    /// The host's tools, for judging an agent harness' permission requests to call them over MCP.
+    /// See [`AgentToolbox::mcp_server_name`].
+    pub fn set_toolbox(&mut self, toolbox: Option<Arc<dyn AgentToolbox>>) {
+        self.launch.toolbox = toolbox;
+    }
+
     /// See [`Self::set_auto_approve`].
     pub fn auto_approve(&self) -> bool {
         self.auto_approve
@@ -407,6 +426,53 @@ impl AgentSession {
                 .items
                 .iter()
                 .any(|entry| matches!(entry.item, TranscriptItem::User(_)))
+    }
+
+    fn push_agent_error(&mut self, request: FailedRequest, message: String) {
+        let AgentInfo {
+            backend,
+            name,
+            version,
+            ..
+        } = &self.agent;
+        let source = match backend {
+            Some(AgentBackendKind::ModelApi) => AgentErrorSource::ModelApi {
+                provider: name.clone(),
+            },
+            Some(AgentBackendKind::AgentHarness) | None => AgentErrorSource::Agent {
+                name: name.clone(),
+                version: version.clone(),
+            },
+        };
+        self.transcript.push_agent_error(AgentError {
+            source,
+            request,
+            message,
+        });
+    }
+
+    /// The prompt to send again after it failed, and the transcript index of its error.
+    ///
+    /// Only the error that ended the last turn qualifies: an earlier prompt has been superseded,
+    /// and only an idle session can take the prompt again.
+    pub fn retryable_prompt(&self) -> Option<(usize, &Prompt)> {
+        if !self.is_ready() {
+            return None;
+        }
+        let items = &self.transcript.items;
+        let error_index = items.iter().rposition(|entry| {
+            matches!(
+                &entry.item,
+                TranscriptItem::AgentError(error) if error.request == FailedRequest::Prompt
+            )
+        })?;
+        let user_index = items
+            .iter()
+            .rposition(|entry| matches!(entry.item, TranscriptItem::User(_)))?;
+        if error_index < user_index {
+            return None;
+        }
+        Some((error_index, items.get(user_index)?.item.user_prompt()?))
     }
 
     /// What the agent calls itself, once it has told us.
@@ -734,6 +800,7 @@ impl AgentSession {
                     ));
                 }
                 TranscriptItem::Note { text, is_error } if *is_error => errors.push(text.clone()),
+                TranscriptItem::AgentError(error) => errors.push(error.message.clone()),
                 TranscriptItem::Agent { content, .. } => {
                     let text = message_text(content);
                     if !text.trim().is_empty() {
@@ -947,6 +1014,7 @@ impl AgentSession {
                 capabilities,
                 ..
             } => {
+                self.agent.version = agent_info.as_ref().map(|info| info.version.clone());
                 self.agent.name = agent_info.map(|info| info.title.unwrap_or(info.name));
                 self.agent.prompt_capabilities = capabilities.prompt_capabilities;
             }
@@ -998,11 +1066,20 @@ impl AgentSession {
                     pending.answer(None).ok();
                     return;
                 }
-                let is_harmless_read = self
+                let is_harmless = self
                     .transcript
                     .tool_call(&pending.request.tool_call.tool_call_id)
-                    .is_some_and(|call| is_read_within(call, &self.launch.readable_directories));
-                if (self.auto_approve || is_harmless_read)
+                    .is_some_and(|call| {
+                        is_read_within(call, &self.launch.readable_directories)
+                            || self.launch.toolbox.as_deref().is_some_and(|toolbox| {
+                                is_toolbox_call_without_approval(
+                                    call,
+                                    toolbox,
+                                    &self.launch.mcp_servers,
+                                )
+                            })
+                    });
+                if (self.auto_approve || is_harmless)
                     && let Some(option) = allow_option(&pending.request.options)
                 {
                     let option_id = option.option_id.clone();
@@ -1041,7 +1118,7 @@ impl AgentSession {
                     }
                     Ok(_) => TurnOutcome::Completed,
                     Err(err) => {
-                        self.transcript.push_note(err, true);
+                        self.push_agent_error(FailedRequest::Prompt, err);
                         TurnOutcome::Error
                     }
                 };
@@ -1062,7 +1139,7 @@ impl AgentSession {
                 }
                 self.log.push_back(LogLine { direction, line });
             }
-            AgentEvent::Error(err) => self.transcript.push_note(err, true),
+            AgentEvent::Error(err) => self.push_agent_error(FailedRequest::Other, err),
             AgentEvent::Disconnected => {
                 self.finish_turn(TurnOutcome::Aborted, "The agent exited before finishing");
                 self.finish_startup(StartupOutcome::Exited);
@@ -1090,6 +1167,38 @@ fn allow_option(options: &[PermissionOption]) -> Option<&PermissionOption> {
         .iter()
         .find(|option| option.kind == PermissionOptionKind::AllowOnce)
         .or_else(|| options.iter().find(|option| allows(option.kind)))
+}
+
+/// Whether `call` goes to a tool of `toolbox` through the MCP server the host supplied for it,
+/// and `toolbox` would run that call without approval.
+///
+/// The tool is named by the call's title, `mcp__<server>__<tool>`, as Claude Code reports it.
+fn is_toolbox_call_without_approval(
+    call: &ToolCallState,
+    toolbox: &dyn AgentToolbox,
+    mcp_servers: &[McpStdioServer],
+) -> bool {
+    let Some(server) = toolbox.mcp_server_name() else {
+        return false;
+    };
+    if !mcp_servers.iter().any(|supplied| supplied.name == server) {
+        return false;
+    }
+    let Some(tool) = call
+        .title
+        .strip_prefix("mcp__")
+        .and_then(|rest| rest.strip_prefix(server))
+        .and_then(|rest| rest.strip_prefix("__"))
+    else {
+        return false;
+    };
+    let no_arguments = serde_json::Map::new();
+    let arguments = call
+        .raw_input
+        .as_ref()
+        .and_then(serde_json::Value::as_object)
+        .unwrap_or(&no_arguments);
+    !toolbox.requires_approval(tool, arguments)
 }
 
 /// Whether `call` only reads or searches, and every path it touches is inside `directories`.
@@ -1424,6 +1533,49 @@ mod tests {
         );
     }
 
+    /// Only a failed prompt that is still the latest one can be retried, and only once the session
+    /// is idle again; the retry carries the images of the original prompt.
+    #[test]
+    fn retryable_prompt() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::SessionStarted {
+            session_id: agent_client_protocol_schema::v1::SessionId::new("test-session"),
+            modes: None,
+            config_options: Vec::new(),
+        });
+        let image = PromptImage {
+            bytes: Arc::from([0_u8].as_slice()),
+            mime_type: "image/png".to_owned(),
+            resolution: [8, 6],
+        };
+        session.transcript.push_user(Prompt {
+            text: "first".to_owned(),
+            images: vec![image.clone()],
+        });
+        assert!(session.retryable_prompt().is_none(), "nothing failed yet");
+
+        session.handle_event(AgentEvent::Error("Failed to set mode".to_owned()));
+        assert!(
+            session.retryable_prompt().is_none(),
+            "a failed setting change is not a failed prompt"
+        );
+
+        session.handle_event(AgentEvent::TurnFinished(Err("boom".to_owned())));
+        let (error_index, prompt) = session
+            .retryable_prompt()
+            .expect("the failed prompt can be retried");
+        assert_eq!(error_index, 2);
+        assert_eq!(prompt.text, "first");
+        assert_eq!(prompt.images.len(), 1);
+        assert!(Arc::ptr_eq(&prompt.images[0].bytes, &image.bytes));
+
+        session.transcript.push_user("second".into());
+        assert!(
+            session.retryable_prompt().is_none(),
+            "a newer prompt supersedes the failed one"
+        );
+    }
+
     #[test]
     fn questions_require_an_answer_even_with_auto_approve() {
         let mut session = AgentSession::default();
@@ -1706,6 +1858,80 @@ mod tests {
             raw_input,
             raw_output: None,
         }
+    }
+
+    /// Approves only `get` without arguments, served by the `viewer` MCP server.
+    struct TestToolbox;
+
+    impl AgentToolbox for TestToolbox {
+        fn definitions(&self) -> Vec<crate::ToolDefinition> {
+            Vec::new()
+        }
+
+        fn requires_approval(
+            &self,
+            name: &str,
+            arguments: &serde_json::Map<String, serde_json::Value>,
+        ) -> bool {
+            name != "get" || !arguments.is_empty()
+        }
+
+        fn mcp_server_name(&self) -> Option<&str> {
+            Some("viewer")
+        }
+
+        fn call(
+            &self,
+            _name: &str,
+            _arguments: serde_json::Map<String, serde_json::Value>,
+        ) -> futures::future::BoxFuture<
+            'static,
+            Result<Vec<crate::ToolOutput>, Box<dyn std::error::Error + Send + Sync>>,
+        > {
+            Box::pin(std::future::ready(Ok(Vec::new())))
+        }
+    }
+
+    #[test]
+    fn toolbox_calls_over_mcp_follow_the_toolbox() {
+        let servers = |names: &[&str]| {
+            names
+                .iter()
+                .map(|name| McpStdioServer {
+                    name: (*name).to_owned(),
+                    command: PathBuf::from("viewer-mcp"),
+                    args: Vec::new(),
+                })
+                .collect::<Vec<_>>()
+        };
+        let allowed = |title: &str, raw_input, servers: &[McpStdioServer]| {
+            let call = ToolCallState {
+                title: title.to_owned(),
+                ..call(ToolKind::Other, &[], raw_input)
+            };
+            is_toolbox_call_without_approval(&call, &TestToolbox, servers)
+        };
+        let viewer = servers(&["viewer"]);
+
+        assert!(allowed("mcp__viewer__get", None, &viewer));
+        assert!(allowed(
+            "mcp__viewer__get",
+            Some(serde_json::json!({})),
+            &viewer
+        ));
+        assert!(!allowed(
+            "mcp__viewer__get",
+            Some(serde_json::json!({ "x": 1 })),
+            &viewer
+        ));
+        assert!(!allowed("mcp__viewer__set", None, &viewer));
+        assert!(!allowed("mcp__other__get", None, &viewer));
+        assert!(!allowed("mcp__viewerx__get", None, &viewer));
+        assert!(!allowed("get", None, &viewer));
+        assert!(
+            !allowed("mcp__viewer__get", None, &servers(&["other"])),
+            "the host did not supply the server, so the user configured it"
+        );
     }
 
     #[test]

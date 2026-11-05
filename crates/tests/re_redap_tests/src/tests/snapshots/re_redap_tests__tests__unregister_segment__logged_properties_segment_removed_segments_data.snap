@@ -1,0 +1,9 @@
+---
+source: crates/tests/re_redap_tests/src/tests/unregister_segment.rs
+expression: filter_out_index_ranges(filtered_batch.clone()).format_snapshot(false)
+---
+┌──────────────────┬───────────────────┬──────────────────┬───────────────────────────────────────┬──────────────────────────────┐
+│ rerun_segment_id ┆ rerun_layer_names ┆ rerun_num_chunks ┆ property:only_in_keep_me:TextLog:text ┆ property:shared:TextLog:text │
+╞══════════════════╪═══════════════════╪══════════════════╪═══════════════════════════════════════╪══════════════════════════════╡
+│ keep_me          ┆ [base]            ┆ 2                ┆ [only in keep_me]                     ┆ [shared, from keep_me]       │
+└──────────────────┴───────────────────┴──────────────────┴───────────────────────────────────────┴──────────────────────────────┘

@@ -289,7 +289,7 @@ checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
 name = "animated_urdf"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -1284,7 +1284,7 @@ dependencies = [
 
 [[package]]
 name = "blueprint"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "clap",
  "re_workspace_hack",
@@ -1293,7 +1293,7 @@ dependencies = [
 
 [[package]]
 name = "blueprint_stocks"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "chrono",
@@ -1685,7 +1685,7 @@ dependencies = [
 
 [[package]]
 name = "clock"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -1710,7 +1710,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.2",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -2232,7 +2232,7 @@ checksum = "f27ae1dd37df86211c42e150270f82743308803d90a6f6e6651cd730d5e1732f"
 
 [[package]]
 name = "custom_callback"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "axum",
  "futures-util",
@@ -2249,7 +2249,7 @@ dependencies = [
 
 [[package]]
 name = "custom_importer"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "re_build_tools",
@@ -2260,7 +2260,7 @@ dependencies = [
 
 [[package]]
 name = "custom_store_subscriber"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_build_tools",
  "re_workspace_hack",
@@ -2269,7 +2269,7 @@ dependencies = [
 
 [[package]]
 name = "custom_view"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_build_tools",
@@ -2279,7 +2279,7 @@ dependencies = [
 
 [[package]]
 name = "custom_visualizer"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "bytemuck",
  "mimalloc",
@@ -2465,7 +2465,7 @@ checksum = "5c297a1c74b71ae29df00c3e22dd9534821d60eb9af5a0192823fa2acea70c2a"
 
 [[package]]
 name = "dataframe_query"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "itertools 0.15.0",
  "re_workspace_hack",
@@ -3340,7 +3340,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3383,7 +3383,7 @@ dependencies = [
 
 [[package]]
 name = "dna"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "itertools 0.15.0",
  "rand 0.9.5",
@@ -3737,14 +3737,14 @@ dependencies = [
 
 [[package]]
 name = "ehttp"
-version = "0.7.2"
-source = "git+https://github.com/emilk/ehttp.git?branch=main#3286a6fee4e05d20a80388e1058c0d7bee240a42"
+version = "0.7.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4d1c51126a4e8242c5b3bcd4c5b350ed3540f0c13c10e0c3c840a3833fa3474c"
 dependencies = [
  "async-channel",
  "document-features",
  "futures-util",
  "js-sys",
- "rustls",
  "serde",
  "serde_json",
  "ureq",
@@ -3933,7 +3933,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3979,7 +3979,7 @@ dependencies = [
 
 [[package]]
 name = "extend_viewer_ui"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_build_tools",
@@ -4682,7 +4682,7 @@ dependencies = [
 
 [[package]]
 name = "graph_lattice"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "itertools 0.15.0",
@@ -5295,7 +5295,7 @@ checksum = "edcd27d72f2f071c64249075f42e205ff93c9a4c5f6c6da53e79ed9f9832c285"
 
 [[package]]
 name = "incremental_logging"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -6289,7 +6289,7 @@ checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
 
 [[package]]
 name = "lenses"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -6480,7 +6480,7 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
 name = "log_benchmark"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -6495,7 +6495,7 @@ dependencies = [
 
 [[package]]
 name = "log_file"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -6773,7 +6773,7 @@ dependencies = [
 
 [[package]]
 name = "minimal"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_workspace_hack",
  "rerun",
@@ -6787,7 +6787,7 @@ checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
 
 [[package]]
 name = "minimal_options"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -6798,7 +6798,7 @@ dependencies = [
 
 [[package]]
 name = "minimal_serve"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_workspace_hack",
  "rerun",
@@ -7583,7 +7583,7 @@ dependencies = [
 
 [[package]]
 name = "objectron"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -7780,7 +7780,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8163,7 +8163,7 @@ checksum = "19f132c84eca552bf34cab8ec81f1c1dcc229b811638f9d283dceabe58c5569e"
 
 [[package]]
 name = "plot_dashboard_stress"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -8215,7 +8215,7 @@ dependencies = [
 
 [[package]]
 name = "ply_stl_tetrahedrons"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -8600,9 +8600,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.13.5"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "278e9268c93b9e498a2da46c34d90ba93a3255eb99009646398f34bc73ab36eb"
+checksum = "3db2be46835f013dd3f4fa7f5f7402c537787b54ebb6fe2b94bbdd7e2669bb7b"
 dependencies = [
  "bitflags 2.13.1",
  "memchr",
@@ -8784,7 +8784,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8980,7 +8980,7 @@ dependencies = [
 
 [[package]]
 name = "raw_mesh"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "bytes",
@@ -9018,7 +9018,7 @@ dependencies = [
 
 [[package]]
 name = "re_agent"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "agent-client-protocol",
  "agent-client-protocol-schema",
@@ -9028,6 +9028,7 @@ dependencies = [
  "futures",
  "http",
  "re_async",
+ "re_error",
  "re_log",
  "re_workspace_hack",
  "reqwest 0.13.5",
@@ -9044,7 +9045,7 @@ dependencies = [
 
 [[package]]
 name = "re_agent_panel"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "cfg_aliases",
  "crossbeam",
@@ -9052,6 +9053,7 @@ dependencies = [
  "futures",
  "insta",
  "jiff",
+ "parking_lot",
  "re_agent",
  "re_agent_ui",
  "re_analytics",
@@ -9076,7 +9078,7 @@ dependencies = [
 
 [[package]]
 name = "re_agent_ui"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "base64 0.23.1",
  "cfg_aliases",
@@ -9090,6 +9092,7 @@ dependencies = [
  "pulldown-cmark",
  "re_agent",
  "re_async",
+ "re_error",
  "re_format",
  "re_log",
  "re_tracing",
@@ -9102,13 +9105,14 @@ dependencies = [
 
 [[package]]
 name = "re_analytics"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "directories",
  "ehttp",
  "jiff",
  "re_build_info",
+ "re_error",
  "re_log",
  "re_quota_channel",
  "re_workspace_hack",
@@ -9125,7 +9129,7 @@ dependencies = [
 
 [[package]]
 name = "re_arrow_json"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "insta",
@@ -9145,7 +9149,7 @@ dependencies = [
 
 [[package]]
 name = "re_arrow_ui"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "egui",
@@ -9164,7 +9168,7 @@ dependencies = [
 
 [[package]]
 name = "re_arrow_util"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -9184,7 +9188,7 @@ dependencies = [
 
 [[package]]
 name = "re_async"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "async-trait",
  "bytes",
@@ -9203,7 +9207,7 @@ dependencies = [
 
 [[package]]
 name = "re_audio"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "emath",
  "libloading 0.8.9",
@@ -9224,7 +9228,7 @@ dependencies = [
 
 [[package]]
 name = "re_auth"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "async-trait",
  "base64 0.23.1",
@@ -9241,6 +9245,7 @@ dependencies = [
  "rand 0.9.5",
  "re_analytics",
  "re_byte_size",
+ "re_error",
  "re_int",
  "re_log",
  "re_web",
@@ -9263,7 +9268,7 @@ dependencies = [
 
 [[package]]
 name = "re_backoff"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "getrandom 0.3.4",
  "rand 0.9.5",
@@ -9273,7 +9278,7 @@ dependencies = [
 
 [[package]]
 name = "re_blueprint_tree"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_kittest",
@@ -9301,7 +9306,7 @@ dependencies = [
 
 [[package]]
 name = "re_build_info"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_byte_size",
  "re_workspace_hack",
@@ -9310,7 +9315,7 @@ dependencies = [
 
 [[package]]
 name = "re_build_tools"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "cargo_metadata",
@@ -9325,7 +9330,7 @@ dependencies = [
 
 [[package]]
 name = "re_byte_size"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "ecolor",
@@ -9345,7 +9350,7 @@ dependencies = [
 
 [[package]]
 name = "re_byte_size_derive"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "proc-macro-crate",
  "proc-macro2",
@@ -9356,7 +9361,7 @@ dependencies = [
 
 [[package]]
 name = "re_capabilities"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "document-features",
  "egui",
@@ -9367,7 +9372,7 @@ dependencies = [
 
 [[package]]
 name = "re_case"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "convert_case 0.11.0",
  "re_workspace_hack",
@@ -9375,7 +9380,7 @@ dependencies = [
 
 [[package]]
 name = "re_catalog_client"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -9423,7 +9428,7 @@ dependencies = [
 
 [[package]]
 name = "re_chunk"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -9457,7 +9462,7 @@ dependencies = [
 
 [[package]]
 name = "re_chunk_index"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -9481,7 +9486,7 @@ dependencies = [
 
 [[package]]
 name = "re_chunk_optimizer"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -9515,7 +9520,7 @@ dependencies = [
 
 [[package]]
 name = "re_chunk_store"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -9554,7 +9559,7 @@ dependencies = [
 
 [[package]]
 name = "re_chunk_store_ui"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "egui",
@@ -9575,7 +9580,7 @@ dependencies = [
 
 [[package]]
 name = "re_component_fallbacks"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_log_types",
  "re_rvl",
@@ -9587,7 +9592,7 @@ dependencies = [
 
 [[package]]
 name = "re_component_ui"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "egui",
@@ -9615,7 +9620,7 @@ dependencies = [
 
 [[package]]
 name = "re_context_menu"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_tiles",
@@ -9639,7 +9644,7 @@ dependencies = [
 
 [[package]]
 name = "re_crash_handler"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "backtrace",
  "econtext",
@@ -9648,12 +9653,13 @@ dependencies = [
  "parking_lot",
  "re_analytics",
  "re_build_info",
+ "re_error",
  "re_workspace_hack",
 ]
 
 [[package]]
 name = "re_data_source"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "ehttp",
@@ -9678,7 +9684,7 @@ dependencies = [
 
 [[package]]
 name = "re_data_ui"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -9715,7 +9721,7 @@ dependencies = [
 
 [[package]]
 name = "re_dataframe"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -9745,7 +9751,7 @@ dependencies = [
 
 [[package]]
 name = "re_dataframe_ui"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -9800,7 +9806,7 @@ dependencies = [
 
 [[package]]
 name = "re_datafusion"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -9850,7 +9856,7 @@ dependencies = [
 
 [[package]]
 name = "re_dev_tools"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "argh",
@@ -9874,7 +9880,7 @@ dependencies = [
 
 [[package]]
 name = "re_dump_puffin"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "puffin",
@@ -9886,7 +9892,7 @@ dependencies = [
 
 [[package]]
 name = "re_entity_db"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -9929,7 +9935,7 @@ dependencies = [
 
 [[package]]
 name = "re_error"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "re_workspace_hack",
@@ -9937,7 +9943,7 @@ dependencies = [
 
 [[package]]
 name = "re_format"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "half",
  "itertools 0.15.0",
@@ -9951,7 +9957,7 @@ dependencies = [
 
 [[package]]
 name = "re_gamepad"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "gilrs",
  "glam",
@@ -9963,7 +9969,7 @@ dependencies = [
 
 [[package]]
 name = "re_grpc_client"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "async-stream",
  "crossbeam",
@@ -9991,7 +9997,7 @@ dependencies = [
 
 [[package]]
 name = "re_grpc_headers"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "http",
  "pin-project-lite",
@@ -10003,7 +10009,7 @@ dependencies = [
 
 [[package]]
 name = "re_grpc_server"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "async-stream",
@@ -10040,7 +10046,7 @@ dependencies = [
 
 [[package]]
 name = "re_hdf5"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "hdf5-pure",
@@ -10059,7 +10065,7 @@ dependencies = [
 
 [[package]]
 name = "re_importer"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -10106,14 +10112,14 @@ dependencies = [
 
 [[package]]
 name = "re_int"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_workspace_hack",
 ]
 
 [[package]]
 name = "re_integration_test"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "base64 0.23.1",
@@ -10146,6 +10152,7 @@ dependencies = [
  "re_sdk",
  "re_sdk_types",
  "re_server",
+ "re_sorbet",
  "re_test_context",
  "re_ui",
  "re_uri",
@@ -10171,7 +10178,7 @@ dependencies = [
 
 [[package]]
 name = "re_lenses"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "document-features",
@@ -10191,7 +10198,7 @@ dependencies = [
 
 [[package]]
 name = "re_lenses_core"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -10212,7 +10219,7 @@ dependencies = [
 
 [[package]]
 name = "re_lerobot"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -10237,11 +10244,12 @@ dependencies = [
 
 [[package]]
 name = "re_log"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "log",
  "parking_lot",
+ "re_error",
  "re_workspace_hack",
  "tracing",
  "tracing-log",
@@ -10251,7 +10259,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_channel"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "parking_lot",
@@ -10272,7 +10280,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_encoding"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "async-trait",
@@ -10320,7 +10328,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_msg"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "re_build_info",
@@ -10334,7 +10342,7 @@ dependencies = [
 
 [[package]]
 name = "re_log_types"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -10385,7 +10393,7 @@ dependencies = [
 
 [[package]]
 name = "re_mcap"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -10418,7 +10426,7 @@ dependencies = [
 
 [[package]]
 name = "re_memory"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "backtrace",
@@ -10441,7 +10449,7 @@ dependencies = [
 
 [[package]]
 name = "re_memory_view"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "eframe",
  "egui",
@@ -10467,7 +10475,7 @@ dependencies = [
 
 [[package]]
 name = "re_mp4_reader"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "itertools 0.15.0",
@@ -10485,7 +10493,7 @@ dependencies = [
 
 [[package]]
 name = "re_mutex"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "parking_lot",
  "re_byte_size",
@@ -10495,7 +10503,7 @@ dependencies = [
 
 [[package]]
 name = "re_parquet"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "bytes",
@@ -10518,7 +10526,7 @@ dependencies = [
 
 [[package]]
 name = "re_perf_telemetry"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -10536,6 +10544,7 @@ dependencies = [
  "prometheus-client",
  "rand 0.9.5",
  "re_auth",
+ "re_error",
  "re_grpc_headers",
  "re_log",
  "re_test_mocks",
@@ -10554,7 +10563,7 @@ dependencies = [
 
 [[package]]
 name = "re_plot"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
@@ -10566,7 +10575,7 @@ dependencies = [
 
 [[package]]
 name = "re_protos"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "http",
@@ -10609,7 +10618,7 @@ dependencies = [
 
 [[package]]
 name = "re_protos_builder"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "camino",
  "re_log",
@@ -10619,7 +10628,7 @@ dependencies = [
 
 [[package]]
 name = "re_query"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -10653,7 +10662,7 @@ dependencies = [
 
 [[package]]
 name = "re_quota_channel"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "parking_lot",
@@ -10689,7 +10698,7 @@ dependencies = [
 
 [[package]]
 name = "re_recording_panel"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
@@ -10698,6 +10707,7 @@ dependencies = [
  "itertools 0.15.0",
  "re_data_ui",
  "re_entity_db",
+ "re_error",
  "re_log",
  "re_log_channel",
  "re_log_msg",
@@ -10715,7 +10725,7 @@ dependencies = [
 
 [[package]]
 name = "re_redap_browser"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -10761,7 +10771,7 @@ dependencies = [
 
 [[package]]
 name = "re_redap_client"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -10793,6 +10803,7 @@ dependencies = [
  "re_mutex",
  "re_perf_telemetry",
  "re_protos",
+ "re_sorbet",
  "re_tracing",
  "re_types_core",
  "re_uri",
@@ -10815,7 +10826,7 @@ dependencies = [
 
 [[package]]
 name = "re_redap_tests"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -10850,7 +10861,7 @@ dependencies = [
 
 [[package]]
 name = "re_renderer"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -10905,7 +10916,7 @@ dependencies = [
 
 [[package]]
 name = "re_renderer_examples"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -10930,7 +10941,7 @@ dependencies = [
 
 [[package]]
 name = "re_renderer_tests"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "egui",
  "glam",
@@ -10943,7 +10954,7 @@ dependencies = [
 
 [[package]]
 name = "re_ros_msg"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -10960,7 +10971,7 @@ dependencies = [
 
 [[package]]
 name = "re_rvl"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "byteorder",
  "re_workspace_hack",
@@ -10969,7 +10980,7 @@ dependencies = [
 
 [[package]]
 name = "re_sdk"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -10987,6 +10998,7 @@ dependencies = [
  "re_build_tools",
  "re_byte_size",
  "re_chunk",
+ "re_error",
  "re_grpc_client",
  "re_grpc_server",
  "re_importer",
@@ -11017,7 +11029,7 @@ dependencies = [
 
 [[package]]
 name = "re_sdk_types"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "array-init",
  "arrow",
@@ -11061,7 +11073,7 @@ dependencies = [
 
 [[package]]
 name = "re_selection_panel"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "egui",
@@ -11097,7 +11109,7 @@ dependencies = [
 
 [[package]]
 name = "re_server"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -11167,11 +11179,14 @@ dependencies = [
 
 [[package]]
 name = "re_sorbet"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "arrow",
+ "bytemuck",
  "itertools 0.15.0",
  "nohash-hasher",
+ "quiver",
  "re_arrow_util",
  "re_byte_size",
  "re_log",
@@ -11181,6 +11196,7 @@ dependencies = [
  "re_types_core",
  "re_workspace_hack",
  "semver",
+ "static_assertions",
  "strum 0.26.3",
  "thiserror 2.0.19",
  "tracing",
@@ -11189,7 +11205,7 @@ dependencies = [
 
 [[package]]
 name = "re_span"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "num-traits",
  "re_workspace_hack",
@@ -11197,7 +11213,7 @@ dependencies = [
 
 [[package]]
 name = "re_string_interner"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "nohash-hasher",
@@ -11211,7 +11227,7 @@ dependencies = [
 
 [[package]]
 name = "re_test_context"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -11248,7 +11264,7 @@ dependencies = [
 
 [[package]]
 name = "re_test_mocks"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "axum",
  "opentelemetry-proto",
@@ -11263,7 +11279,7 @@ dependencies = [
 
 [[package]]
 name = "re_test_viewport"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
@@ -11282,7 +11298,7 @@ dependencies = [
 
 [[package]]
 name = "re_tf"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -11311,7 +11327,7 @@ dependencies = [
 
 [[package]]
 name = "re_time_panel"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -11347,7 +11363,7 @@ dependencies = [
 
 [[package]]
 name = "re_time_ruler"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "egui",
  "itertools 0.15.0",
@@ -11363,7 +11379,7 @@ dependencies = [
 
 [[package]]
 name = "re_tracing"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "parking_lot",
  "puffin",
@@ -11376,7 +11392,7 @@ dependencies = [
 
 [[package]]
 name = "re_tuid"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "bytemuck",
  "criterion",
@@ -11393,7 +11409,7 @@ dependencies = [
 
 [[package]]
 name = "re_type_definitions"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_types_builder_prelude",
  "re_workspace_hack",
@@ -11401,7 +11417,7 @@ dependencies = [
 
 [[package]]
 name = "re_types_builder"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "camino",
@@ -11433,7 +11449,7 @@ dependencies = [
 
 [[package]]
 name = "re_types_builder_macros"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -11443,7 +11459,7 @@ dependencies = [
 
 [[package]]
 name = "re_types_builder_prelude"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "half",
  "re_types_builder_macros",
@@ -11452,7 +11468,7 @@ dependencies = [
 
 [[package]]
 name = "re_types_core"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -11481,7 +11497,7 @@ dependencies = [
 
 [[package]]
 name = "re_ui"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -11529,7 +11545,7 @@ dependencies = [
 
 [[package]]
 name = "re_uri"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "percent-encoding",
  "re_byte_size",
@@ -11546,7 +11562,7 @@ dependencies = [
 
 [[package]]
 name = "re_video"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "bit-vec",
@@ -11590,7 +11606,7 @@ dependencies = [
 
 [[package]]
 name = "re_view"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -11624,7 +11640,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_audio"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "egui",
@@ -11651,7 +11667,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_bar_chart"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -11675,7 +11691,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_dataframe"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -11706,7 +11722,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_graph"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
@@ -11735,7 +11751,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_map"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "bytemuck",
  "egui",
@@ -11763,7 +11779,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_raw_data"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "egui",
@@ -11789,7 +11805,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_spatial"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -11844,7 +11860,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_state_timeline"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "egui",
  "nohash-hasher",
@@ -11865,7 +11881,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_tensor"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "bytemuck",
@@ -11875,6 +11891,7 @@ dependencies = [
  "re_byte_size",
  "re_chunk_store",
  "re_data_ui",
+ "re_format",
  "re_log_types",
  "re_query",
  "re_renderer",
@@ -11893,7 +11910,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_text_document"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_commonmark",
@@ -11913,7 +11930,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_text_log"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_table",
@@ -11941,7 +11958,7 @@ dependencies = [
 
 [[package]]
 name = "re_view_time_series"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrayvec",
@@ -11977,7 +11994,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewer"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -12107,7 +12124,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewer_context"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -12190,7 +12207,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewer_control_tools"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "prost",
  "prost-reflect",
@@ -12202,7 +12219,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewer_mcp"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "egui_inspection",
@@ -12224,7 +12241,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewport"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "egui",
@@ -12245,7 +12262,7 @@ dependencies = [
 
 [[package]]
 name = "re_viewport_blueprint"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -12266,6 +12283,7 @@ dependencies = [
  "re_log_types",
  "re_mutex",
  "re_sdk_types",
+ "re_sorbet",
  "re_test_context",
  "re_tracing",
  "re_types_core",
@@ -12304,7 +12322,7 @@ dependencies = [
 
 [[package]]
 name = "re_web"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "async-trait",
  "bytes",
@@ -12321,7 +12339,7 @@ dependencies = [
 
 [[package]]
 name = "re_web_tests"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "argh",
@@ -12335,7 +12353,7 @@ dependencies = [
 
 [[package]]
 name = "re_web_viewer_server"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "document-features",
  "re_analytics",
@@ -12783,7 +12801,7 @@ dependencies = [
 
 [[package]]
 name = "rerun"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
@@ -12859,7 +12877,7 @@ dependencies = [
 
 [[package]]
 name = "rerun-cli"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "document-features",
  "mimalloc",
@@ -12875,7 +12893,7 @@ dependencies = [
 
 [[package]]
 name = "rerun-importer-rust-file"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "argh",
@@ -12885,8 +12903,9 @@ dependencies = [
 
 [[package]]
 name = "rerun-tonic-web-wasm-client"
-version = "0.8.2"
-source = "git+https://github.com/rerun-io/tonic-web-wasm-client.git?branch=patch-0.8.2#2a2c3d6e31aa61289fdc388f048044dc1c878e1d"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9b544d507219e082268b0922e1d6abea86c75f511755dd3bfb5e7fc27aff7c1"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -12909,7 +12928,7 @@ dependencies = [
 
 [[package]]
 name = "rerun_c"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "arrow",
@@ -12921,6 +12940,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_crash_handler",
+ "re_error",
  "re_log",
  "re_sdk",
  "re_video",
@@ -12929,7 +12949,7 @@ dependencies = [
 
 [[package]]
 name = "rerun_py"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -13300,7 +13320,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -13358,7 +13378,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -13773,7 +13793,7 @@ dependencies = [
 
 [[package]]
 name = "shared_recording"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_workspace_hack",
  "rerun",
@@ -13988,7 +14008,7 @@ checksum = "1b6b67fb9a61334225b5b790716f609cd58395f895b3fe8b328786812a40bc3b"
 
 [[package]]
 name = "snippets"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "crossbeam",
  "half",
@@ -14009,7 +14029,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -14025,7 +14045,7 @@ dependencies = [
 
 [[package]]
 name = "spawn_viewer"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_workspace_hack",
  "rerun",
@@ -14120,7 +14140,7 @@ checksum = "6ce2be8dc25455e1f91df71bfa12ad37d7af1092ae736f3a6cd0e37bc7810596"
 
 [[package]]
 name = "state_timeline_example"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "arrow",
@@ -14142,7 +14162,7 @@ checksum = "8207e78455ffdf55661170876f88daf85356e4edd54e0a3dbc79586ca1e50cbe"
 
 [[package]]
 name = "stdio"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "itertools 0.15.0",
  "re_workspace_hack",
@@ -14527,12 +14547,12 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
 name = "template"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "re_workspace_hack",
  "rerun",
@@ -14549,7 +14569,7 @@ dependencies = [
 
 [[package]]
 name = "test_data_density_graph"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "rand 0.9.5",
@@ -14560,7 +14580,7 @@ dependencies = [
 
 [[package]]
 name = "test_gaussian_compare"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -14577,7 +14597,7 @@ dependencies = [
 
 [[package]]
 name = "test_image_memory"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_format",
@@ -14588,7 +14608,7 @@ dependencies = [
 
 [[package]]
 name = "test_label_compaction"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -14599,7 +14619,7 @@ dependencies = [
 
 [[package]]
 name = "test_out_of_order_transforms"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -14611,7 +14631,7 @@ dependencies = [
 
 [[package]]
 name = "test_ui_wakeup"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
@@ -15634,7 +15654,7 @@ checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
 
 [[package]]
 name = "viewer_callbacks"
-version = "0.42.0-alpha.1+dev"
+version = "0.43.0-alpha.1+dev"
 dependencies = [
  "mimalloc",
  "re_build_tools",
@@ -16195,7 +16215,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -16557,7 +16577,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

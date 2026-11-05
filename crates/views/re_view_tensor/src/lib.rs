@@ -4,6 +4,7 @@
 
 mod dimension_mapping;
 mod tensor_dimension_mapper;
+mod tensor_slice_hover;
 mod tensor_slice_to_gpu;
 #[cfg(test)]
 mod tensor_tests;

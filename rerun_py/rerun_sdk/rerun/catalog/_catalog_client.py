@@ -244,8 +244,8 @@ class CatalogClient:
         return BenchmarkResult(rtt=timedelta(seconds=rtt_seconds), bandwidth=bandwidth)
 
     # TODO(RR-5830): Make optional by handing out structured storage urls.
-    # TODO(RR-5715): Accept binary readers and chunk iterators:
-    # - Require a byte count until grants support unknown lengths.
+    # TODO(RR-6198): Accept binary readers and chunk iterators:
+    # - Upload sources of unknown length with multipart; S3 rejects chunked PUT bodies.
     # - Bound read-ahead/retry buffers; hold the GIL only for Python reads.
     # - Keep multipart handling in Rust and return only after completion.
     @with_tracing("CatalogClient.stage")

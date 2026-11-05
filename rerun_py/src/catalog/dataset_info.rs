@@ -1,7 +1,8 @@
 use pyo3::pyclass;
 use re_catalog_client::DatasetInfo;
-use re_log_types::TimeType;
 use re_sorbet::BatchType;
+
+use crate::timeline_type::timeline_type_name;
 
 /// `(name, kind, num_segments, min, max)`, with `min` and `max` in nanoseconds for temporal kinds.
 type TimelineRow = (String, &'static str, u64, i64, i64);
@@ -53,14 +54,9 @@ impl PyDatasetInfoInternal {
             timelines: timelines
                 .into_iter()
                 .map(|timeline| {
-                    let kind = match timeline.typ {
-                        TimeType::Sequence => "sequence",
-                        TimeType::TimestampNs => "timestamp",
-                        TimeType::DurationNs => "duration",
-                    };
                     (
                         timeline.name.as_str().to_owned(),
-                        kind,
+                        timeline_type_name(timeline.typ),
                         timeline.num_segments,
                         timeline.range.min().as_i64(),
                         timeline.range.max().as_i64(),

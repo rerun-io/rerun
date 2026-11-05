@@ -1,4 +1,5 @@
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stdout, clippy::print_stderr)] // Output of `build.rs` scripts
 #![allow(
     clippy::allow_attributes,
     clippy::disallowed_methods,

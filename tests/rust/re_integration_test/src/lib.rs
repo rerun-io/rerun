@@ -1,5 +1,7 @@
 //! Integration tests for rerun and the in memory server.
 
+#![expect(clippy::print_stdout, clippy::print_stderr)] // This is only a test
+
 mod inspection;
 mod kittest_harness_ext;
 mod test_data;

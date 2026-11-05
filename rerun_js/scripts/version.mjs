@@ -58,9 +58,11 @@ for (const pkg_path of root_package_json.workspaces) {
       /<https:\/\/app\.rerun\.io\/version\/.*\/examples\/dna\.rrd>/,
       `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
     );
+    // pre-releases deploy their JS docs to `dev`, only final releases get a versioned directory.
+    const js_docs_version = stripSemverBuildMetadata(version).includes("-") ? "dev" : version;
     readme = readme.replace(
-      /https:\/\/ref\.rerun\.io\/docs\/js\/.*\/web-viewer/,
-      `https://ref.rerun.io/docs/js/${version}/web-viewer`
+      /https:\/\/ref\.rerun\.io\/docs\/js\/[^/]+\/web-viewer/g,
+      `https://ref.rerun.io/docs/js/${js_docs_version}/web-viewer`
     )
     if (index_ts) {
       index_ts = index_ts.replace(

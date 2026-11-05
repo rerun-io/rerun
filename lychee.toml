@@ -105,8 +105,9 @@ exclude = [
   'file:///does/not/exist.rrd',
   'file:///path/to/file',
   'file:///tmp/.*', # Example paths in re_data_source's `file://` URL docs and tests.
-  'file://cors.json', # AWS CLI `--cors-configuration file://…` syntax in docs/content/hub/bucket-cors.md, not a real link.
+  'file://cors.json', # AWS CLI `--cors-configuration file://…` syntax in docs/content/hub/bucket-configuration.md, not a real link.
   'file://foo',
+  'file://lifecycle.json', # AWS CLI `--lifecycle-configuration file://…` syntax in docs/content/hub/bucket-configuration.md, not a real link.
   'file://localhost/.*', # Example paths in re_data_source's `file://` URL docs and tests.
   'file://path/to/file.rrd',
   'file://server/share.*', # Example UNC path in re_data_source's `file://` URL docs and tests.
@@ -181,6 +182,10 @@ exclude = [
   # `CHANGELOG.md` links to a release's changeset page, which only goes live with the docs deploy
   # that follows the release — so the newest links 404 until then.
   'https://rerun.io/docs/changelog/changeset-.*',
+
+  # Each `CHANGELOG.md` release heading links to the compare view up to the release's tag,
+  # which only exists once the release is tagged.
+  'https://github.com/rerun-io/rerun/compare/.*',
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',

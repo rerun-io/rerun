@@ -732,6 +732,12 @@ Conventions:
       "file_path"
     ],
     "description": "Request for `CaptureProfileTrace`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "openWorldHint": true
   }
 }
 
@@ -784,29 +790,13 @@ Conventions:
         "description": "Close the recordings loaded from these URLs, and stop loading from them."
       }
     },
-    "oneOf": [
-      {
-        "required": [
-          "current"
-        ]
-      },
-      {
-        "required": [
-          "all"
-        ]
-      },
-      {
-        "required": [
-          "store_ids"
-        ]
-      },
-      {
-        "required": [
-          "urls"
-        ]
-      }
-    ],
     "description": "Request for `Close`.\n\nExactly one of `current`, `all`, `store_ids`, `urls` must be set."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "openWorldHint": true
   }
 }
 
@@ -828,6 +818,12 @@ Conventions:
       }
     },
     "type": "object"
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -856,6 +852,12 @@ Conventions:
       }
     },
     "description": "Request for `DescribeCommands`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -867,6 +869,12 @@ Conventions:
   "inputSchema": {
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "type": "object"
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -899,35 +907,13 @@ Conventions:
         "description": "Read the blueprint of a table."
       }
     },
-    "oneOf": [
-      {
-        "required": [
-          "recording"
-        ]
-      },
-      {
-        "required": [
-          "table"
-        ]
-      },
-      {
-        "not": {
-          "anyOf": [
-            {
-              "required": [
-                "recording"
-              ]
-            },
-            {
-              "required": [
-                "table"
-              ]
-            }
-          ]
-        }
-      }
-    ],
     "description": "Request for `GetBlueprint`.\n\nAt most one of `recording`, `table` may be set."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -958,6 +944,12 @@ Conventions:
       }
     },
     "description": "Request for `GetDatasetAssetsSchema`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -988,6 +980,12 @@ Conventions:
       }
     },
     "description": "Request for `GetDatasetSchema`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -1000,6 +998,12 @@ Conventions:
     "type": "object",
     "properties": {},
     "description": "Request for `GetLocation`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -1018,6 +1022,12 @@ Conventions:
       }
     },
     "description": "Request for `GetLogs`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -1052,6 +1062,12 @@ Conventions:
       }
     },
     "description": "Request for `GetRecordingSchema`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -1064,6 +1080,12 @@ Conventions:
     "type": "object",
     "properties": {},
     "description": "Request for `GetState`. Empty: the whole state is always returned."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -1081,6 +1103,12 @@ Conventions:
       }
     },
     "description": "Request for `GetTableSchema`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -1122,6 +1150,12 @@ Conventions:
       }
     },
     "description": "Request for `GetTransformGraph`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -1167,6 +1201,12 @@ Conventions:
       }
     },
     "description": "Request for `HighlightRect`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
   }
 }
 
@@ -1196,6 +1236,12 @@ Conventions:
       }
     },
     "description": "Request for `ListCommands`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
   }
 }
 
@@ -1220,6 +1266,12 @@ Conventions:
       "url"
     ],
     "description": "Request for `Open`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "openWorldHint": true
   }
 }
 
@@ -1252,6 +1304,12 @@ Conventions:
       "id"
     ],
     "description": "Request for `RunCommand`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "openWorldHint": true
   }
 }
 
@@ -1281,6 +1339,12 @@ Conventions:
       "file_path"
     ],
     "description": "Request for `SaveScreenshot`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "openWorldHint": true
   }
 }
 
@@ -1329,35 +1393,13 @@ Conventions:
     "required": [
       "json"
     ],
-    "oneOf": [
-      {
-        "required": [
-          "recording"
-        ]
-      },
-      {
-        "required": [
-          "table"
-        ]
-      },
-      {
-        "not": {
-          "anyOf": [
-            {
-              "required": [
-                "recording"
-              ]
-            },
-            {
-              "required": [
-                "table"
-              ]
-            }
-          ]
-        }
-      }
-    ],
     "description": "Request for `SetBlueprint`.\n\nAt most one of `recording`, `table` may be set."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
   }
 }
 
@@ -1378,6 +1420,12 @@ Conventions:
       "location"
     ],
     "description": "Request for `SetLocation`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
   }
 }
 
@@ -1431,6 +1479,12 @@ Conventions:
       }
     },
     "description": "Request for `SetTimeCursor`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
   }
 }
 
@@ -1489,6 +1543,12 @@ Conventions:
       "severity"
     ],
     "description": "Request for `SubmitFeedback`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "openWorldHint": true
   }
 }
 

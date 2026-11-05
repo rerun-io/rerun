@@ -279,7 +279,7 @@ pub struct ScanDatasetManifestDataframe {
 
     /// SHA-256 hash of the schema of this row's source. Nullable for the same
     /// reason as [`Self::rerun_num_chunks`].
-    pub rerun_schema_sha256: quiver::Column<Option<quiver::FixedSizeBinary<32>>>,
+    pub rerun_schema_sha256: quiver::Column<Option<re_sorbet::SchemaId>>,
 
     /// The registration status of this row's source
     /// (see [`LayerRegistrationStatus`](crate::cloud::v1alpha1::ext::LayerRegistrationStatus)).
@@ -312,7 +312,7 @@ impl ScanDatasetManifestDataframe {
         last_updated_at_times: Vec<i64>,
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
-        schema_sha256s: Vec<[u8; 32]>,
+        schema_sha256s: Vec<re_sorbet::SchemaId>,
         registration_statuses: Vec<String>,
     ) -> Self {
         Self {
@@ -329,7 +329,7 @@ impl ScanDatasetManifestDataframe {
             rerun_size_bytes: Self::COLUMN_RERUN_SIZE_BYTES
                 .new_from_values(size_bytes.into_iter().map(Some)),
             rerun_schema_sha256: Self::COLUMN_RERUN_SCHEMA_SHA256
-                .new_from_values(schema_sha256s.into_iter().map(Some)),
+                .new_from_values(schema_sha256s.iter().copied().map(Some)),
             rerun_registration_status: Self::COLUMN_RERUN_REGISTRATION_STATUS
                 .new_from_values(registration_statuses),
             extra_columns: vec![],

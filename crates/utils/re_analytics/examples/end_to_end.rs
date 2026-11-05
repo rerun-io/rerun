@@ -1,3 +1,5 @@
+#![expect(clippy::print_stdout)] // Example
+
 use re_analytics::{Analytics, AnalyticsEvent, Event, Properties};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {

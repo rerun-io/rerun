@@ -5,3 +5,6 @@ pub const ERROR_DOMAIN: &str = "rerun.io";
 
 /// The request was rejected before reading because the replica is behind the watermark.
 pub const DATASET_REVISION_BEHIND: &str = "DATASET_REVISION_BEHIND";
+
+/// The request names an entity path or timeline the dataset's chunk indexing policy excludes.
+pub const CHUNK_NOT_INDEXED: &str = "CHUNK_NOT_INDEXED";

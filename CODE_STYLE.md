@@ -72,6 +72,7 @@ Strive to encode code invariants and contracts in the type system as much as pos
 Prefer strong types over primitive ones:
 * `url::Url` and `PathBuf` over `String`.
 * A newtype (`struct StreamId(u64)`) over a bare integer or a type alias.
+* A newtype (`struct SchemaId([u8; 32])`) over a bare byte array (`[u8; N]`) holding a hash, key, or ID.
 * An enum over a `bool` field or parameter (`enum Screen { Setup, Chat }` over `show_setup: bool`).
 * `Option<Result<(), Error>>` over `Option<bool>`.
 * A named struct (or `Rangef`, `Span`, …) over a tuple.

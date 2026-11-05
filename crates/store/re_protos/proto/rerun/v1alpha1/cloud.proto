@@ -1801,6 +1801,10 @@ message CreateDatasetEntryRequest {
   // If specified, create the entry using this specific ID. Use at your own risk.
   optional rerun.common.v1alpha1.EntryId id = 2;
 
+  // Dataset policies, such as the chunk indexing policy.
+  // If omitted (e.g. by older clients), the server will make a choice on its own.
+  DatasetPolicy policy = 100;
+
   //TODO(ab): add IfExistingBehavior?
 }
 
@@ -2045,8 +2049,47 @@ message DatasetDetails {
   // any other.
   optional rerun.common.v1alpha1.EntryId asset_dataset = 7;
 
+  // Dataset policies, such as the chunk indexing policy.
+  // If omitted (e.g. by older clients), the server will make a choice on its own.
+  DatasetPolicy policy = 100;
+
   reserved 4;
   reserved "default_blueprint";
+}
+
+// --- Dataset policies ---
+
+// Policy of a single dataset.
+message DatasetPolicy {
+  // Selects the entity paths and timelines the dataset indexes for chunk queries.
+  // Unset means no preference: the server decides and stores its choice
+  // (see `CreateDatasetEntryRequest.policy` and `DatasetDetails.policy`).
+  ChunkIndexingPolicy chunk_indexing_policy = 1;
+}
+
+// Which entity paths and timelines a dataset indexes for chunk queries.
+message ChunkIndexingPolicy {
+  // The entity paths to index. Required.
+  IndexingPolicySelection entity_paths = 1;
+  // The timelines to index. Required.
+  IndexingPolicySelection timelines = 2;
+}
+
+// Selects every name of a dimension, or an explicit list.
+message IndexingPolicySelection {
+  // The name set. Required.
+  oneof selection {
+    // Every name, including names that appear later.
+    google.protobuf.Empty all = 1;
+    // Exactly the listed names.
+    IndexingPolicyNameList explicit = 2;
+  }
+}
+
+// An explicit list of names for an indexing policy.
+message IndexingPolicyNameList {
+  // The names. Entity paths and timeline names match exactly. An empty list selects nothing.
+  repeated string names = 1;
 }
 
 // Everything the catalog knows about one dataset.

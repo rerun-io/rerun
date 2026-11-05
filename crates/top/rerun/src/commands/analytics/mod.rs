@@ -32,8 +32,7 @@ impl AnalyticsCommands {
         build_info: &re_build_info::BuildInfo,
     ) -> Result<(), re_analytics::cli::CliError> {
         match self {
-            #[expect(clippy::unit_arg)]
-            Self::Details => Ok(re_analytics::cli::print_details(&build_info.git_ref())),
+            Self::Details => re_analytics::cli::print_details(&build_info.git_ref()),
             Self::Clear => re_analytics::cli::clear(),
             Self::Email { email } => {
                 re_analytics::cli::set([("email".to_owned(), email.clone().into())])

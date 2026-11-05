@@ -34,10 +34,28 @@ pub struct ToolDefinition {
     /// JSON Schema of the arguments, as [`build_request`] takes them.
     pub input_schema: Map<String, Value>,
 
-    /// Whether an agent should ask the user before running the operation.
-    ///
-    /// True for every operation not known to be harmless, including ones added later.
-    pub requires_approval: bool,
+    /// What running the operation can change, which decides whether an agent asks first.
+    pub effect: ToolEffect,
+}
+
+/// What running a tool can change, in the terms of MCP's `readOnlyHint` and `destructiveHint`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ToolEffect {
+    /// Changes nothing.
+    ReadOnly,
+
+    /// Changes only what the viewer shows, in a way the user can easily undo.
+    NonDestructive,
+
+    /// Anything else, including every operation not classified yet.
+    Destructive,
+}
+
+impl ToolEffect {
+    /// Whether an agent should ask the user before running the tool.
+    pub fn requires_approval(self) -> bool {
+        self == Self::Destructive
+    }
 }
 
 /// Prefix on the name of every viewer-control tool an agent sees, as in `rerun_get_state`.
@@ -63,13 +81,11 @@ const OPERATION_ONEOF: &str = "kind";
 /// agent the raw bytes would be worse than the tools it backs.
 const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 
-/// Operations an agent may run without asking the user.
+/// Operations that change nothing. See [`ToolEffect::ReadOnly`].
 ///
-/// The rule: the user can easily undo them. Everything else, including operations added later,
-/// asks first: `open` loads data from any URL, `close` drops recordings, `capture_profile_trace`
-/// writes files, and `submit_feedback` sends text to Rerun. `run_command` asks too, since it runs
-/// any UI command, but a host that sees the arguments can let the undoable commands through.
-const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
+/// `save_screenshot` is only read-only with [`ScreenshotDelivery::Inline`]: otherwise it writes
+/// a file, possibly over another one.
+const READ_ONLY_OPERATIONS: &[&str] = &[
     "describe_commands",
     "get_blueprint",
     "get_dataset_assets_schema",
@@ -80,9 +96,17 @@ const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
     "get_state",
     "get_table_schema",
     "get_transform_graph",
-    "highlight_rect",
     "list_commands",
-    "save_screenshot",
+];
+
+/// Operations the user can easily undo. See [`ToolEffect::NonDestructive`].
+///
+/// Everything not listed here or in [`READ_ONLY_OPERATIONS`] asks first, including operations
+/// added later: `open` loads data from any URL, `close` drops recordings, `capture_profile_trace`
+/// writes files, and `submit_feedback` sends text to Rerun. `run_command` asks too, since it runs
+/// any UI command, but a host that sees the arguments can let the undoable commands through.
+const NON_DESTRUCTIVE_OPERATIONS: &[&str] = &[
+    "highlight_rect",
     "set_blueprint",
     "set_location",
     "set_time_cursor",
@@ -243,6 +267,12 @@ fn real_oneofs(message: &MessageDescriptor) -> impl Iterator<Item = OneofDescrip
     message.oneofs().filter(|oneof| !oneof.is_synthetic())
 }
 
+/// The keywords that the Anthropic and `OpenAI` APIs reject at the top level of a tool's input
+/// schema, failing every request that offers the tool. They are fine nested inside a property.
+///
+/// Agents such as `OpenCode` pass MCP tool schemas through to the model API unchanged.
+const TOP_LEVEL_SCHEMA_COMBINATORS: [&str; 3] = ["allOf", "anyOf", "oneOf"];
+
 /// Whether a caller may leave this `oneof` unset.
 fn is_omittable(oneof: &OneofDescriptor) -> bool {
     OMITTABLE_ONEOFS.contains(&oneof.full_name())
@@ -402,7 +432,7 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
                     name: field.name().to_owned(),
                     description: "Unsupported operation".to_owned(),
                     input_schema: Map::new(),
-                    requires_approval: true,
+                    effect: ToolEffect::Destructive,
                 };
             };
 
@@ -426,15 +456,45 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
             if field.name() == SCREENSHOT_OPERATION {
                 screenshot_schema(&mut schema, screenshot);
             }
+            // The description still names the exclusive arms, and `build_request` enforces them.
+            for keyword in TOP_LEVEL_SCHEMA_COMBINATORS {
+                schema.remove(keyword);
+            }
 
             ToolDefinition {
                 name: field.name().to_owned(),
                 description,
                 input_schema: schema,
-                requires_approval: !OPERATIONS_WITHOUT_APPROVAL.contains(&field.name()),
+                effect: operation_effect(field.name(), screenshot),
             }
         })
         .collect()
+}
+
+/// What one call of `operation` with `arguments` can change.
+///
+/// Can differ from the tool's [`ToolDefinition::effect`]: `save_screenshot` given a `file_path`
+/// writes a file, whichever [`ScreenshotDelivery`] the tool was described with.
+pub fn call_effect(operation: &str, arguments: &Map<String, Value>) -> ToolEffect {
+    let screenshot = if has_screenshot_file_path(arguments) {
+        ScreenshotDelivery::File
+    } else {
+        ScreenshotDelivery::Inline
+    };
+    operation_effect(operation, screenshot)
+}
+
+/// What `operation` can change, when screenshots are delivered as `screenshot`.
+fn operation_effect(operation: &str, screenshot: ScreenshotDelivery) -> ToolEffect {
+    if READ_ONLY_OPERATIONS.contains(&operation)
+        || (operation == SCREENSHOT_OPERATION && screenshot == ScreenshotDelivery::Inline)
+    {
+        ToolEffect::ReadOnly
+    } else if NON_DESTRUCTIVE_OPERATIONS.contains(&operation) {
+        ToolEffect::NonDestructive
+    } else {
+        ToolEffect::Destructive
+    }
 }
 
 /// Adjusts the screenshot tool's schema: the `max_size` default this crate applies, and the
@@ -490,10 +550,7 @@ pub fn build_request(
 
     let mut arguments = arguments.unwrap_or_default();
     if name == SCREENSHOT_OPERATION {
-        let has_file_path = [SCREENSHOT_FILE_PATH, "filePath"]
-            .into_iter()
-            .any(|key| arguments.get(key).is_some_and(|value| !value.is_null()));
-        match (screenshot, has_file_path) {
+        match (screenshot, has_screenshot_file_path(&arguments)) {
             (ScreenshotDelivery::File, false) => {
                 return Err(format!(
                     "invalid arguments for `{name}`: missing required field `{SCREENSHOT_FILE_PATH}`"
@@ -552,6 +609,15 @@ pub fn build_request(
 
     ViewerControlRequest::decode(envelope.encode_to_vec().as_slice())
         .map_err(|err| format!("failed to build the request envelope for `{name}`: {err}"))
+}
+
+/// Whether `save_screenshot` `arguments` name a file to write the image to.
+///
+/// Protobuf JSON accepts both the field name and its camel-case JSON name, so both are checked.
+fn has_screenshot_file_path(arguments: &Map<String, Value>) -> bool {
+    [SCREENSHOT_FILE_PATH, "filePath"]
+        .into_iter()
+        .any(|key| arguments.get(key).is_some_and(|value| !value.is_null()))
 }
 
 /// Apply [`DEFAULT_SCREENSHOT_MAX_SIZE`] when `max_size` is unset, and turn an explicit 0 into
@@ -681,9 +747,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_operation_without_approval_exists() {
-        for operation in OPERATIONS_WITHOUT_APPROVAL {
+    fn every_classified_operation_exists() {
+        for operation in std::iter::chain(READ_ONLY_OPERATIONS, NON_DESTRUCTIVE_OPERATIONS) {
             assert!(is_operation(operation), "{operation:?} is not an operation");
+        }
+    }
+
+    #[test]
+    fn a_screenshot_written_to_a_file_needs_approval() {
+        let tool_effect = |screenshot| {
+            tools(screenshot)
+                .into_iter()
+                .find(|tool| tool.name == SCREENSHOT_OPERATION)
+                .map(|tool| tool.effect)
+        };
+        assert_eq!(
+            tool_effect(ScreenshotDelivery::Inline),
+            Some(ToolEffect::ReadOnly)
+        );
+        assert_eq!(
+            tool_effect(ScreenshotDelivery::File),
+            Some(ToolEffect::Destructive)
+        );
+
+        assert_eq!(
+            call_effect(SCREENSHOT_OPERATION, &Map::new()),
+            ToolEffect::ReadOnly
+        );
+        for key in [SCREENSHOT_FILE_PATH, "filePath"] {
+            let to_file = Map::from_iter([(key.to_owned(), Value::from("/tmp/screenshot.png"))]);
+            assert_eq!(
+                call_effect(SCREENSHOT_OPERATION, &to_file),
+                ToolEffect::Destructive,
+                "{key}"
+            );
         }
     }
 
@@ -1032,17 +1129,20 @@ mod tests {
             .as_str()
             .expect("a description listing the exclusive arms");
         assert!(description.contains("Exactly one of"), "{description}");
+    }
 
-        // A `oneof` is an enum, so the schema has to reject both no arm and two arms.
-        assert_eq!(
-            close.input_schema["oneOf"],
-            json!([
-                { "required": ["current"] },
-                { "required": ["all"] },
-                { "required": ["store_ids"] },
-                { "required": ["urls"] },
-            ])
-        );
+    /// A top-level `oneOf`, `anyOf`, or `allOf` makes the model API reject every request.
+    #[test]
+    fn no_top_level_schema_combinators() {
+        for tool in tools(ScreenshotDelivery::File) {
+            for keyword in TOP_LEVEL_SCHEMA_COMBINATORS {
+                assert!(
+                    !tool.input_schema.contains_key(keyword),
+                    "`{}` has a top-level `{keyword}`",
+                    tool.name
+                );
+            }
+        }
     }
 
     /// The blueprint tools use what is on screen when they name no target, but still refuse two.
