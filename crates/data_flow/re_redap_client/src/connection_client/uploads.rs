@@ -120,7 +120,7 @@ where
     }
 
     /// Publishes the uploaded object, without registering it.
-    /// Do not retry automatically: a failed response may follow successful publication.
+    /// Retrying with the same token and receipts confirms publication, even after the lease expires.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn complete_multipart_upload(
         &mut self,

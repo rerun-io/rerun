@@ -5,19 +5,20 @@ use re_async::{AsyncReadAt, AsyncRuntimeHandle};
 use re_protos::cloud::v1alpha1::UploadedPart;
 use re_protos::cloud::v1alpha1::ext::MultipartRequest;
 use re_protos::external::prost::bytes::Bytes;
+use re_redap_client::ApiResult;
 use re_span::Span;
 
 use super::{StagingError, check_expiry};
 use crate::CatalogClient;
 
-/// Per-part attempt budget, including the initial attempt and failed grant refreshes.
+/// Per-part or completion attempt budget, including the initial attempt and failed grant refreshes.
 const MAX_ATTEMPTS: u32 = 4;
 
 /// Client memory budget, not a provider limit: a retained retry body plus its HTTP copy
 /// use at most 128 MiB per upload, excluding source memory and transport buffers.
 const MAX_PART_SIZE_BYTES: u64 = 64 * 1024 * 1024;
 
-/// Retry delays for transient part or grant failures, reset for each part.
+/// Retry delays for transient failures, reset for each part and for completion.
 const RETRY_BACKOFF: re_backoff::BackoffGenerator =
     re_backoff::BackoffGenerator::new_const(Duration::from_millis(250), Duration::from_secs(1));
 
@@ -43,11 +44,17 @@ impl CatalogClient {
         let result = async {
             let parts = parts?;
             check_expiry(expires_at)?;
-            // TODO(RR-6113): Completion errors can be ambiguous; do not retry publication.
-            self.client()
-                .await?
-                .complete_multipart_upload(upload_token, parts)
-                .await?;
+            retry_completion(|| {
+                let upload_token = upload_token.clone();
+                let parts = parts.clone();
+                async move {
+                    self.client()
+                        .await?
+                        .complete_multipart_upload(upload_token, parts)
+                        .await
+                }
+            })
+            .await?;
             Ok(())
         }
         .await;
@@ -122,6 +129,25 @@ impl CatalogClient {
             }
         }
         Ok(parts)
+    }
+}
+
+/// Every attempt must use the same token and receipts.
+/// Confirmation may outlive the lease; the server enforces publication expiry.
+async fn retry_completion<F: Future<Output = ApiResult<()>>>(
+    mut complete: impl FnMut() -> F,
+) -> ApiResult<()> {
+    let mut backoff = RETRY_BACKOFF;
+    let mut attempt = 1;
+    loop {
+        match complete().await {
+            Err(err) if err.kind.is_retryable() && attempt < MAX_ATTEMPTS => {
+                re_log::debug!("Multipart completion attempt {attempt} failed: {err}");
+                backoff.gen_next().sleep().await;
+                attempt += 1;
+            }
+            result => return result,
+        }
     }
 }
 
@@ -341,6 +367,47 @@ mod tests {
             &StagingError::Read(std::io::Error::other("read failed")),
             1,
         ));
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn completion_retries_transient_errors() {
+        let mut attempts = 0;
+        retry_completion(|| {
+            attempts += 1;
+            std::future::ready(if attempts == 1 {
+                Err(re_redap_client::ApiError::connection(
+                    &re_uri::Origin::test(),
+                    "lost completion response",
+                ))
+            } else {
+                Ok(())
+            })
+        })
+        .await
+        .unwrap();
+        assert_eq!(attempts, 2);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn completion_bounds_retries_and_preserves_terminal_errors() {
+        use re_redap_client::{ApiError, ApiErrorKind};
+
+        for (kind, expected_attempts) in [
+            (ApiErrorKind::Connection, MAX_ATTEMPTS),
+            (ApiErrorKind::AlreadyExists, 1),
+        ] {
+            let mut attempts = 0;
+            let err = retry_completion(|| {
+                attempts += 1;
+                let mut err = ApiError::connection(&re_uri::Origin::test(), "completion failed");
+                err.kind = kind;
+                std::future::ready(Err(err))
+            })
+            .await
+            .unwrap_err();
+            assert_eq!(err.kind, kind);
+            assert_eq!(attempts, expected_attempts, "{kind}");
+        }
     }
 
     #[test]
