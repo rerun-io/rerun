@@ -28,11 +28,17 @@ jobs:
       - name: Get version
         id: versioning
         run: |
-          version=$(curl --fail --silent --show-error https://pypi.org/pypi/rerun-sdk/json | jq -r .info.version)
-          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Unexpected latest rerun-sdk version on PyPI: '$version'"
-            exit 1
-          fi
+          for attempt in 1 2 3 4 5; do
+            version=$(curl --fail --silent --show-error --retry 5 --retry-all-errors https://pypi.org/pypi/rerun-sdk/json | jq -r .info.version) || version=""
+            if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              break
+            fi
+            if [[ "$attempt" -eq 5 ]]; then
+              echo "::error::Unexpected latest rerun-sdk version on PyPI: '$version'"
+              exit 1
+            fi
+            sleep 10
+          done
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
   build-search-index:
