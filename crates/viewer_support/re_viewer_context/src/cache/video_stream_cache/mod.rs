@@ -618,9 +618,12 @@ fn handle_deletion(
         return Err(VideoStreamProcessingError::UnexpectedChunkChanges);
     };
 
+    // The range also holds samples of chunks that overlap the deleted chunk in time. Only the
+    // deleted chunk's samples count towards each root's `num_rows`.
     let mut samples = video_data
         .samples
-        .iter_index_range_clamped_mut(known_range.idx_range());
+        .iter_index_range_clamped_mut(known_range.idx_range())
+        .filter(|(_, sample)| sample.source_primary_id() == Some(deleted_chunk.id().as_tuid()));
 
     if clear_start {
         rrd_manifest_chunks
@@ -640,10 +643,6 @@ fn handle_deletion(
             let Some((idx, sample)) = sample else {
                 break 'outer;
             };
-
-            if sample.source_primary_id() != Some(deleted_chunk.id().as_tuid()) {
-                continue;
-            }
 
             known_ranges
                 .entry(chunk_id)
