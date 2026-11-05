@@ -12,7 +12,7 @@ impl AgentSettings {
         agents: &[AgentEntry],
         context: &SessionContext,
     ) -> Result<AgentHarnessConfig, AgentLaunchError> {
-        let (command, args, env) = if self.profile_id == AgentProfileId::CUSTOM {
+        let (command, args, env, default_mode) = if self.profile_id == AgentProfileId::CUSTOM {
             let mut parts = shell_words::split(&self.custom_command_line)
                 .map_err(|err| AgentLaunchError::InvalidCommandLine { err })?;
             let env = take_leading_env_vars(&mut parts);
@@ -20,7 +20,7 @@ impl AgentSettings {
                 return Err(AgentLaunchError::EmptyCommandLine);
             }
             let command = parts.remove(0);
-            (command, parts, env)
+            (command, parts, env, None)
         } else {
             let agent = agents
                 .iter()
@@ -33,6 +33,7 @@ impl AgentSettings {
                 profile.command.clone(),
                 profile.args.clone(),
                 profile.env.clone(),
+                profile.default_mode.clone(),
             )
         };
 
@@ -88,7 +89,7 @@ impl AgentSettings {
                 .map(|&model| model.to_owned())
                 .collect(),
             preferred_model: self.preferred_models.get(&self.profile_id).cloned(),
-            preferred_mode: self.preferred_mode.clone(),
+            mode_preferences: std::iter::chain(self.preferred_mode.clone(), default_mode).collect(),
         })
     }
 }
