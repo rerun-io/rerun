@@ -672,6 +672,14 @@ impl ChunkIndexingPolicy {
     pub fn indexes_everything(&self) -> bool {
         *self == Self::ALL
     }
+
+    /// The entity paths and timelines both policies index.
+    pub fn intersection(&self, other: &Self) -> Self {
+        Self {
+            entity_paths: self.entity_paths.intersection(&other.entity_paths),
+            timelines: self.timelines.intersection(&other.timelines),
+        }
+    }
 }
 
 fn normalized_entity_path(path: &str) -> String {
