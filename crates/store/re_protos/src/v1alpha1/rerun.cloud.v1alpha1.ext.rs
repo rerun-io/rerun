@@ -621,6 +621,10 @@ impl From<IndexingPolicySelection> for crate::cloud::v1alpha1::IndexingPolicySel
 }
 
 /// Which entity paths and timelines a dataset indexes for chunk queries.
+///
+/// Entity paths match the way [`re_log_types::EntityPath`] prints them, so `a/b` and `/a/b`
+/// select the same entity. Decoding from protobuf and [`Self::explicit`] normalize them; a
+/// struct literal must use the normalized form itself.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ChunkIndexingPolicy {
     /// The entity paths the dataset indexes.
@@ -643,10 +647,35 @@ impl ChunkIndexingPolicy {
         timelines: IndexingPolicySelection::Explicit(BTreeSet::new()),
     };
 
+    /// Exactly the listed entity paths and timelines, with the entity paths normalized.
+    pub fn explicit(
+        entity_paths: impl IntoIterator<Item = impl AsRef<str>>,
+        timelines: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Self {
+        Self {
+            entity_paths: IndexingPolicySelection::Explicit(
+                entity_paths
+                    .into_iter()
+                    .map(|path| normalized_entity_path(path.as_ref()))
+                    .collect(),
+            ),
+            timelines: IndexingPolicySelection::Explicit(
+                timelines
+                    .into_iter()
+                    .map(|timeline| timeline.as_ref().to_owned())
+                    .collect(),
+            ),
+        }
+    }
+
     /// Whether this is [`Self::ALL`].
     pub fn indexes_everything(&self) -> bool {
         *self == Self::ALL
     }
+}
+
+fn normalized_entity_path(path: &str) -> String {
+    re_log_types::EntityPath::from(path).to_string()
 }
 
 impl TryFrom<crate::cloud::v1alpha1::ChunkIndexingPolicy> for ChunkIndexingPolicy {
@@ -665,8 +694,17 @@ impl TryFrom<crate::cloud::v1alpha1::ChunkIndexingPolicy> for ChunkIndexingPolic
             crate::cloud::v1alpha1::ChunkIndexingPolicy,
             "timelines"
         ))?;
+        let entity_paths = match IndexingPolicySelection::try_from(entity_paths)? {
+            IndexingPolicySelection::All => IndexingPolicySelection::All,
+            IndexingPolicySelection::Explicit(paths) => IndexingPolicySelection::Explicit(
+                paths
+                    .iter()
+                    .map(|path| normalized_entity_path(path))
+                    .collect(),
+            ),
+        };
         Ok(Self {
-            entity_paths: entity_paths.try_into()?,
+            entity_paths,
             timelines: timelines.try_into()?,
         })
     }
@@ -3506,6 +3544,30 @@ mod tests {
             ),
             "{result:?}"
         );
+    }
+
+    #[test]
+    fn chunk_indexing_policy_normalizes_entity_paths() {
+        let explicit = ChunkIndexingPolicy::explicit(["a/b"], ["a/b"]);
+        assert_eq!(
+            explicit.entity_paths,
+            IndexingPolicySelection::Explicit(["/a/b".to_owned()].into())
+        );
+        assert_eq!(
+            explicit.timelines,
+            IndexingPolicySelection::Explicit(["a/b".to_owned()].into()),
+            "timeline names are not paths"
+        );
+
+        let decoded = ChunkIndexingPolicy::try_from(crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths: Some(
+                IndexingPolicySelection::Explicit(["a/b".to_owned(), "/a/b".to_owned()].into())
+                    .into(),
+            ),
+            timelines: Some(IndexingPolicySelection::Explicit(["a/b".to_owned()].into()).into()),
+        })
+        .expect("a complete policy decodes");
+        assert_eq!(decoded, explicit);
     }
 
     #[test]
