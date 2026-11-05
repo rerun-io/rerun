@@ -695,6 +695,9 @@ impl AgentPanel {
                                     .on_hover_text("Back to conversations")
                                     .clicked();
                             ui.label(egui::RichText::new(title).strong());
+                            if !in_chat {
+                                experimental_tag_ui(ui).on_hover_text("Expect rough edges.");
+                            }
                             back.then_some(PanelAction::ShowList)
                         },
                         |ui| {
@@ -847,6 +850,25 @@ fn new_conversation_shortcut_pressed(ui: &egui::Ui, panel_rect: egui::Rect) -> b
 
     (pointer_inside || focus_inside)
         && ui.input_mut(|input| input.consume_shortcut(&NEW_CONVERSATION_SHORTCUT))
+}
+
+/// A warning-colored pill saying that the panel is experimental.
+fn experimental_tag_ui(ui: &mut egui::Ui) -> egui::Response {
+    let tokens = ui.tokens();
+    let alert = &tokens.alert_warning;
+    egui::WidgetAtom::new(
+        egui::RichText::new("Experimental")
+            .small()
+            .color(alert.icon),
+    )
+    .frame(
+        egui::Frame::new()
+            .fill(alert.fill)
+            .corner_radius(tokens.normal_corner_radius())
+            .inner_margin(egui::Margin::symmetric(6, 1)),
+    )
+    .show(ui)
+    .response
 }
 
 #[cfg(test)]
