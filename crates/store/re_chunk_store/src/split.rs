@@ -80,10 +80,17 @@ impl ChunkStore {
             .collect_vec();
 
         let mut keyframes_per_entity: IntMap<EntityPath, Vec<TimeInt>> = IntMap::default();
-        if let Some(is_start_of_gop) = is_start_of_gop {
+        // Only the keyframes before the start of a range are of any use.
+        let latest_start = ranges.iter().map(|range| range.min()).max();
+        if let (Some(is_start_of_gop), Some(latest_start)) = (is_start_of_gop, latest_start) {
             for (entity, _) in &all_entities_and_their_components {
-                let keyframes =
-                    self.extract_keyframes(tracking, entity, timeline, is_start_of_gop.as_ref());
+                let keyframes = self.extract_keyframes(
+                    tracking,
+                    entity,
+                    timeline,
+                    latest_start,
+                    is_start_of_gop.as_ref(),
+                );
                 if !keyframes.is_empty() {
                     keyframes_per_entity.insert(entity.clone(), keyframes);
                 }
@@ -210,7 +217,7 @@ impl ChunkStore {
                         %entity,
                         %timeline,
                         ?start_inclusive,
-                        "gathering all transforms/pinholes up to cutoff point due to multiplexed coordinate frames…"
+                        "gathering all transforms/pinholes before the range (multiplexed frames)…"
                     );
 
                     // Data logged next to the transforms is already covered by the base case.
@@ -246,6 +253,7 @@ impl ChunkStore {
         tracking: ChunkTrackingMode,
         entity_path: &EntityPath,
         timeline: TimelineName,
+        until: TimeInt,
         is_start_of_gop: &dyn Fn(&[u8], VideoCodec) -> anyhow::Result<bool>,
     ) -> Vec<TimeInt> {
         let Some(codec) = extract_codec(self, tracking, entity_path, timeline) else {
@@ -255,12 +263,14 @@ impl ChunkStore {
         let sample_identifier = VideoStream::descriptor_sample().component;
         let results = self.range_relevant_chunks(
             tracking,
-            &RangeQuery::everything(timeline),
+            &RangeQuery::new(timeline, AbsoluteTimeRange::new(TimeInt::MIN, until)),
             entity_path,
             sample_identifier,
         );
 
         let mut keyframes = Vec::new();
+        let mut num_failures = 0;
+        let mut last_error = None;
         for chunk in &results.chunks {
             let it = itertools::izip!(
                 chunk.iter_indices(&timeline),
@@ -287,10 +297,16 @@ impl ChunkStore {
                     Ok(false) => {}
 
                     Err(err) => {
-                        re_log::warn!(entity = %entity_path, chunk = %chunk.id(), %err, "keyframe detection failed");
+                        num_failures += 1;
+                        last_error = Some(err);
                     }
                 }
             }
+        }
+
+        // Once per entity: this also runs in the viewer, where every warning reaches the user.
+        if let Some(err) = last_error {
+            re_log::warn!(entity = %entity_path, num_failures, %err, "keyframe detection failed");
         }
 
         keyframes.sort(); // we'll be binary searching later on
