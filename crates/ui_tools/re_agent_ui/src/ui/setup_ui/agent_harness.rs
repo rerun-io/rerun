@@ -20,9 +20,7 @@ pub fn agent_choice_ui(
 ) {
     ui.label(RichText::new("Choose your agent").strong().size(15.0));
 
-    let kind = settings.profile_id.kind();
-
-    let local_selected = kind == AgentKind::AgentHarness;
+    let local_selected = settings.profile_id.kind() == AgentKind::AgentHarness;
     let picked_local = choice_card_ui(
         ui,
         local_selected,
@@ -34,7 +32,8 @@ pub fn agent_choice_ui(
         settings.profile_id = default_local_agent(agents);
     }
 
-    let model_api_selected = kind == AgentKind::ModelApi;
+    // A card's body writes `profile_id`, so each card must read the current one.
+    let model_api_selected = settings.profile_id.kind() == AgentKind::ModelApi;
     let picked_model_api = choice_card_ui(
         ui,
         model_api_selected,
