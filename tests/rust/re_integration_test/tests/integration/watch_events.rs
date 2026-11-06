@@ -100,9 +100,8 @@ pub async fn watch_events_auto_refresh_test() {
     );
     snapshot_results.add(harness.try_snapshot("watch_events_2_entries_added"));
 
-    // Open the transient table so its data is the currently-viewed content when it gets deleted
-    // below. Rows contain the string "alpha" (from the first data batch). Pick the first match,
-    // which is the entry in the left panel.
+    // Keep the transient table selected during deletion to check the resulting error state.
+    // The first table-name match is the entry in the sidebar.
     harness
         .get_all_by_label(transient_table)
         .next()
@@ -142,7 +141,7 @@ pub async fn watch_events_auto_refresh_test() {
         );
     }
 
-    // The deleted entries auto-disappear on their own while the persistent ones stay around.
+    // Deleted entries must disappear from the sidebar without removing persistent entries.
     viewer_test_utils::step_until(
         "Transient entries auto-disappear",
         &mut harness,
@@ -155,7 +154,48 @@ pub async fn watch_events_auto_refresh_test() {
                 && root.query_by_label_contains(persistent_table).is_some()
         },
     );
+    let deleted_entry_id = table.details.id.to_string();
+    let deleted_entry_message = format!("Entry {deleted_entry_id} was not found on this server.");
+    viewer_test_utils::step_until("Deleted entry error appears", &mut harness, |harness| {
+        harness.query_by_label("Could not open entry").is_some()
+            && harness.query_by_label(&deleted_entry_message).is_some()
+    });
+
+    // Monospace keeps the random ID's bounds stable; its value is checked above.
+    let id_rect = harness
+        .output()
+        .shapes
+        .iter()
+        .find_map(|shape| {
+            let egui::Shape::Text(text) = &shape.shape else {
+                return None;
+            };
+            if text.galley.job.text != deleted_entry_message {
+                return None;
+            }
+            let start = "Entry ".chars().count();
+            let end = start + deleted_entry_id.chars().count();
+            let start = text.galley.pos_from_cursor(egui::text::CCursor::new(start));
+            let end = text.galley.pos_from_cursor(egui::text::CCursor::new(end));
+            Some(start.union(end).translate(text.pos.to_vec2()))
+        })
+        .expect("deleted entry message should be rendered");
+    harness.mask(id_rect);
     snapshot_results.add(harness.try_snapshot("watch_events_3_entries_removed"));
+
+    harness
+        .get_all_by_label(persistent_table)
+        .next()
+        .expect("persistent table label should be present")
+        .click();
+    harness.run_ok();
+    viewer_test_utils::step_until(
+        "Persistent table data is rendered after deletion",
+        &mut harness,
+        |harness| harness.query_by_label_contains("alpha").is_some(),
+    );
+    assert!(harness.query_by_label("Could not open entry").is_none());
+    snapshot_results.add(harness.try_snapshot("watch_events_4_persistent_table_reopened"));
 }
 
 /// Creates a table entry and writes an initial data batch (rows `alpha`/`beta`/`gamma`).
