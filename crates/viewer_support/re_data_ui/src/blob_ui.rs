@@ -19,9 +19,13 @@ impl EntityDataUi for Blob {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        component_descriptor: &ComponentDescriptor,
-        row_id: Option<RowId>,
+        target_component_descriptor: &ComponentDescriptor,
+        source_row_id: Option<RowId>,
+        source: &re_viewer_context::VisualizerComponentSource,
     ) {
+        // Blob caches use the target component and cannot distinguish source mappings.
+        let source_row_id = source_row_id
+            .filter(|_| source.is_identity_mapping(target_component_descriptor.component));
         let compact_size_string = re_format::format_bytes(self.len() as _);
 
         // We show the actual mime of the blob here instead of doing
@@ -35,8 +39,8 @@ impl EntityDataUi for Blob {
         let blob_ui = BlobUi::new(
             ctx,
             entity_path,
-            component_descriptor,
-            row_id,
+            target_component_descriptor,
+            source_row_id,
             self.0.clone(),
             media_type.as_ref(),
             None,

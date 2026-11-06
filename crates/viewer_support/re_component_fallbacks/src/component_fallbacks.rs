@@ -652,7 +652,7 @@ fn tensor_data_range_at(
         .store_ctx()
         .memoizer_read_or_compute::<TensorStatsCache, _, _>(&TensorStatsAccessor {
             row_id,
-            component,
+            source: &re_viewer_context::VisualizerComponentSource::identity(component),
             tensor: &tensor,
         });
 

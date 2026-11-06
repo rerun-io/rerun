@@ -345,6 +345,7 @@ fn visualizer_components(
                     &data_result.entity_path,
                     target_component_descr,
                     current_value_row_id,
+                    source,
                     raw_current_value_array,
                 );
             }

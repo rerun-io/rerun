@@ -9,7 +9,7 @@ use std::sync::Arc;
 use egui::Ui;
 
 use arrow::datatypes::DataType;
-use re_chunk::ComponentIdentifier;
+use re_chunk::{ComponentIdentifier, RowId};
 use re_log_types::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use re_sdk_types::reflection::ComponentDescriptorExt as _;
@@ -325,7 +325,7 @@ fn source_component_items_ui(
         mapping_ctx.annotations,
         &VisualizerComponentSource::AnnotationContext,
     )
-    .is_some_and(|value| !value.is_empty())
+    .is_some_and(|(_, value)| !value.is_empty())
     {
         options.push(VisualizerComponentSource::AnnotationContext);
     }
@@ -582,7 +582,7 @@ fn source_component_item_ui(
 
     if selected && let Some(error) = current_selection_error {
         item = item.error(Some(error.to_owned()));
-    } else if let Some(raw_value) = raw_value {
+    } else if let Some((row_id, raw_value)) = raw_value {
         let num_values = raw_value.len();
         item = item.value_widget(move |ui: &mut Ui| {
             // We intentionally don't show the value if there are multiple values since it can get cluttery. We'll likely iterate on this in the future.
@@ -597,7 +597,8 @@ fn source_component_item_ui(
                     UiLayout::List,
                     &mapping_ctx.data_result.entity_path,
                     mapping_ctx.target_component_descr,
-                    None, // row id doesn't matter since we're only showing a single value here.
+                    row_id,
+                    source,
                     &raw_value,
                 );
             }
@@ -655,12 +656,12 @@ pub fn raw_value_for_mapping(
     mapping_ctx: &SourceMappingContext<'_>,
     annotations: Option<&re_viewer_context::Annotations>,
     new_source: &VisualizerComponentSource,
-) -> Option<Arc<dyn re_chunk::ArrowArray>> {
+) -> Option<(Option<RowId>, Arc<dyn re_chunk::ArrowArray>)> {
     let target_component = mapping_ctx.target_component();
 
     if new_source == &VisualizerComponentSource::Default {
         // Special treat for default, since it may also go to the fallback and we've already done that work.
-        Some(mapping_ctx.raw_default.clone())
+        Some((None, mapping_ctx.raw_default.clone()))
     } else {
         // Instead of trying to do an isolated query on this hypothetical source,
         // let's just pretend that the visualizer already took over this source, and see what the result would be!
@@ -676,6 +677,9 @@ pub fn raw_value_for_mapping(
             [target_component],
             Some(&hypothetical_instruction),
         );
-        query_result.get_raw_cell(target_component)
+
+        let (_, chunk) = query_result.get_unit_chunk_with_source(target_component, true)?;
+        let chunk = chunk.ok()??;
+        Some((chunk.row_id(), chunk.component_batch_raw(target_component)?))
     }
 }

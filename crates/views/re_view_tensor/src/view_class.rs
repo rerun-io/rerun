@@ -148,7 +148,7 @@ Set the displayed dimensions in a selection panel.",
                 if let Some(TensorVisualization {
                     tensor,
                     tensor_row_id,
-                    tensor_component,
+                    tensor_source,
                     ..
                 }) = &state.tensor
                 {
@@ -156,7 +156,7 @@ Set the displayed dimensions in a selection panel.",
                         ctx.viewer_ctx
                             .store_context
                             .memoizer(|c: &mut TensorStatsCache| {
-                                c.entry(*tensor_row_id, *tensor_component, tensor)
+                                c.entry(*tensor_row_id, tensor_source, tensor)
                             });
 
                     tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
@@ -446,7 +446,7 @@ impl TensorView {
         let TensorVisualization {
             entity_path: _,
             tensor_row_id,
-            tensor_component: _,
+            tensor_source: _,
             tensor,
             data_range,
         } = &tensor_view;
