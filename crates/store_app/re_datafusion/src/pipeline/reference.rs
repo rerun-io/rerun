@@ -8,7 +8,8 @@
 //!
 //! This module states those rules as plainly as possible, with a full scan of
 //! every chunk and no indexes or caches, so that a reviewer can check each
-//! rule against the code.
+//! rule against the code. The columnar row emitter ([`super::columnar`]) is tested
+//! by comparing its output with [`evaluate`] on the same chunks.
 //!
 //! With no driving column, this module agrees with `QueryHandle`, and the
 //! tests compare the two wherever no driving column is set. There are three

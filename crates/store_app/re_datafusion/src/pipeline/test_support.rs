@@ -471,6 +471,34 @@ pub async fn run_driver_projected(
     Vec<RecordBatch>,
     super::window::OverdraftAudit,
 ) {
+    run_driver_projected_with(
+        super::RowEmitterKind::QueryHandle,
+        chunk_infos,
+        timeline,
+        responses,
+        window_bytes,
+        fetch_concurrency,
+        limit_rows,
+        projected_schema,
+    )
+    .await
+}
+
+/// [`run_driver_projected`] with the caller's choice of row path.
+pub async fn run_driver_projected_with(
+    emitter_kind: super::RowEmitterKind,
+    chunk_infos: Vec<RecordBatch>,
+    timeline: &'static str,
+    responses: impl IntoIterator<Item = FetchBehavior>,
+    window_bytes: u64,
+    fetch_concurrency: usize,
+    limit_rows: Option<usize>,
+    projected_schema: Arc<Schema>,
+) -> (
+    Result<(), re_redap_client::ApiError>,
+    Vec<RecordBatch>,
+    super::window::OverdraftAudit,
+) {
     use re_dataframe::QueryExpression;
 
     use super::driver::PartitionDriver;
@@ -517,6 +545,7 @@ pub async fn run_driver_projected(
         index_values: None,
         projected_schema,
         limit_rows,
+        emitter_kind,
     };
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<RecordBatch>(64);
@@ -588,6 +617,7 @@ pub async fn run_bridge(
         client: MockFetchClient::new(responses),
         object_store_auth: Arc::new(crate::chunk_fetcher::NoOpObjectStoreAuthenticator {}),
         io_handle: tokio::runtime::Handle::current(),
+        emitter_kind: super::RowEmitterKind::QueryHandle,
         config: FetchConfig {
             fetch_concurrency,
             window_bytes: 64 * 1024 * 1024,

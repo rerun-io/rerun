@@ -11,6 +11,8 @@
 //!   `[segment, cursor key]`, which is both issuance and emission order.
 //! * [`window`] — `W`, the single flow-control knob, denominated in
 //!   plan-estimate bytes.
+//! * [`emitter`] — what turns a segment's chunks into rows, on the
+//!   `QueryHandle` path or the columnar one ([`columnar`]).
 //! * [`segment`] — per-segment state, whose plan cursor yields the safe
 //!   horizon that gates emission.
 //!
@@ -18,8 +20,10 @@
 //! [`DataframePipeline`]); the branch point is `SegmentStreamExec::execute`.
 
 mod bridge;
+mod columnar;
 mod config;
 mod driver;
+mod emitter;
 mod executor;
 pub(crate) mod plan;
 #[cfg(test)]
@@ -30,4 +34,4 @@ mod test_support;
 pub(crate) mod window;
 
 pub use bridge::{V2PartitionCtx, execute_partition};
-pub use config::{DataframePipeline, FetchConfig};
+pub use config::{DataframePipeline, FetchConfig, RowEmitterKind};

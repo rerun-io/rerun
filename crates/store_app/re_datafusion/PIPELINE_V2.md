@@ -103,6 +103,10 @@ Decision matrix (✅ good / 🟡 workable / ❌ poor):
 
 **Selected: B′**, borrowing F's primitives.
 E is rejected outright: the `QueryHandle` surface (per-ancestor clears, static chunks, overlaps, sparse fill) is deep and battle-tested; reimplementing it is where the correctness risk lives.
+The opt-in `RERUN_DATAFRAME_PIPELINE=v2-columnar` is a narrow form of E: it builds each output column with one gather over the chunk arrays instead of resolving rows one at a time, which is faster.
+It applies only a `Clear` on a column's own entity and ignores recursive `Clear`s on ancestors, which are being deprecated ([RR-6224](https://linear.app/rerun/issue/RR-6224)).
+It keeps the per-segment `ChunkStore`, its insert and its GC, and builds rows from the chunk arrays (`pipeline/columnar/`) only for queries without latest-at fill or index values.
+The correctness risk above is what `pipeline/reference.rs` answers: a brute-force statement of the row rules that the columnar path is checked against cell by cell, including on random segments.
 D is deferred until there is evidence of skew that structural bounds cannot hold.
 C remains available as a degenerate configuration (the claim is already conditional on the projection).
 

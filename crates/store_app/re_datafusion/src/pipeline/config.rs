@@ -18,16 +18,33 @@ const DEFAULT_WINDOW_BYTES: u64 = 512 * 1024 * 1024;
 
 /// Which pipeline executes dataset scans, from `RERUN_DATAFRAME_PIPELINE`.
 ///
-/// Unset or `v2` selects the streaming pipeline (`PIPELINE_V2.md`); `v1`
-/// selects the IO-loop / CPU-worker pipeline. Case and surrounding
-/// whitespace are ignored; any other value is an error.
+/// Unset or `v2` selects the streaming pipeline (`PIPELINE_V2.md`) with
+/// rows from `QueryHandle`, `v2-columnar` the same pipeline with rows built
+/// from the chunk arrays where the query allows it, and `v1` the IO-loop /
+/// CPU-worker pipeline. Case and surrounding whitespace are ignored; any
+/// other value is an error.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum DataframePipeline {
     /// The IO-loop / CPU-worker pipeline, selected only by an explicit `v1`.
     V1,
 
-    /// The streaming pipeline, with its flow-control knobs; the default.
-    V2(FetchConfig),
+    /// The streaming pipeline, with its flow-control knobs and where each
+    /// segment's rows come from; the default.
+    V2 {
+        fetch: FetchConfig,
+        emitter_kind: RowEmitterKind,
+    },
+}
+
+/// How the v2 pipeline turns a segment's chunks into rows.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RowEmitterKind {
+    /// Output columns built straight from the chunk arrays where the query
+    /// allows it (see `columnar::columnar_index`), `QueryHandle` otherwise.
+    Columnar,
+
+    /// Rows resolved one at a time by `QueryHandle`.
+    QueryHandle,
 }
 
 /// The v2 pipeline's two flow-control knobs:
@@ -69,9 +86,16 @@ impl DataframePipeline {
     ) -> Result<Self> {
         match pipeline.map(str::to_ascii_lowercase).as_deref() {
             Some("v1") => Ok(Self::V1),
-            None | Some("v2") => Ok(Self::V2(fetch_config()?)),
+            None | Some("v2") => Ok(Self::V2 {
+                fetch: fetch_config()?,
+                emitter_kind: RowEmitterKind::QueryHandle,
+            }),
+            Some("v2-columnar") => Ok(Self::V2 {
+                fetch: fetch_config()?,
+                emitter_kind: RowEmitterKind::Columnar,
+            }),
             Some(_) => Err(config_datafusion_err!(
-                "{ENV_PIPELINE} must be \"v1\" or \"v2\", got {pipeline:?}"
+                "{ENV_PIPELINE} must be \"v1\", \"v2\" or \"v2-columnar\", got {pipeline:?}"
             )),
         }
     }
@@ -147,10 +171,28 @@ mod tests {
         assert_eq!(
             DataframePipeline::parse(Some("V2"), || FetchConfig::parse(None, Some("256MiB")))
                 .unwrap(),
-            DataframePipeline::V2(FetchConfig {
-                fetch_concurrency: DEFAULT_FETCH_CONCURRENCY,
-                window_bytes: 256 * 1024 * 1024,
-            }),
+            DataframePipeline::V2 {
+                fetch: FetchConfig {
+                    fetch_concurrency: DEFAULT_FETCH_CONCURRENCY,
+                    window_bytes: 256 * 1024 * 1024,
+                },
+                emitter_kind: RowEmitterKind::QueryHandle,
+            },
+        );
+    }
+
+    #[test]
+    fn v2_columnar_selects_the_columnar_path() {
+        assert_eq!(
+            DataframePipeline::parse(Some("v2-columnar"), || FetchConfig::parse(None, None))
+                .unwrap(),
+            DataframePipeline::V2 {
+                fetch: FetchConfig {
+                    fetch_concurrency: DEFAULT_FETCH_CONCURRENCY,
+                    window_bytes: DEFAULT_WINDOW_BYTES,
+                },
+                emitter_kind: RowEmitterKind::Columnar,
+            },
         );
     }
 
@@ -176,10 +218,13 @@ mod tests {
     fn unset_selects_v2() {
         assert_eq!(
             DataframePipeline::parse(None, || FetchConfig::parse(None, None)).unwrap(),
-            DataframePipeline::V2(FetchConfig {
-                fetch_concurrency: DEFAULT_FETCH_CONCURRENCY,
-                window_bytes: DEFAULT_WINDOW_BYTES,
-            }),
+            DataframePipeline::V2 {
+                fetch: FetchConfig {
+                    fetch_concurrency: DEFAULT_FETCH_CONCURRENCY,
+                    window_bytes: DEFAULT_WINDOW_BYTES,
+                },
+                emitter_kind: RowEmitterKind::QueryHandle,
+            },
         );
     }
 
