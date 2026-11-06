@@ -311,6 +311,12 @@ fn source_component_items_ui(
     current: &VisualizerComponentSource,
     current_selection_error: Option<&str>,
 ) {
+    if !mapping_ctx.is_ui_editable {
+        // Keep the current source visible so users can see where the data comes from.
+        source_component_item_ui(ui, mapping_ctx, current, current_selection_error, current);
+        return;
+    }
+
     let mut options =
         collect_source_component_options(mapping_ctx, entity_components_with_datatype, query_info);
 
@@ -600,6 +606,11 @@ fn source_component_item_ui(
     }
 
     if ui.add(item).clicked() {
+        if !mapping_ctx.is_ui_editable {
+            ui.close();
+            return;
+        }
+
         save_component_mapping(
             mapping_ctx.view_ctx(),
             mapping_ctx.instruction,
