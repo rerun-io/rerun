@@ -18,6 +18,25 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_chunk_store/crypto-ring",
+  "re_datafusion/crypto-ring",
+  "re_redap_client/crypto-ring",
+  "re_sdk/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_chunk_store/crypto-aws-lc-rs",
+  "re_datafusion/crypto-aws-lc-rs",
+  "re_redap_client/crypto-aws-lc-rs",
+  "re_sdk/crypto-aws-lc-rs",
+]
+
 [dependencies]
 re_arrow_util = { workspace = true, features = ["test"] }
 re_chunk.workspace = true

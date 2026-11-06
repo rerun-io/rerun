@@ -22,7 +22,48 @@ all-features = true
 targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 
 [features]
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_analytics/crypto-ring",
+  "re_auth?/crypto-ring",
+  "re_chunk_store/crypto-ring",
+  "re_crash_handler?/crypto-ring",
+  "re_data_source?/crypto-ring",
+  "re_dataframe?/crypto-ring",
+  "re_entity_db/crypto-ring",
+  "re_grpc_server?/crypto-ring",
+  "re_log_encoding/crypto-ring",
+  "re_perf_telemetry?/crypto-ring",
+  "re_redap_client/crypto-ring",
+  "re_sdk?/crypto-ring",
+  "re_server?/crypto-ring",
+  "re_ui?/crypto-ring",
+  "re_viewer?/crypto-ring",
+  "re_web_viewer_server?/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_analytics/crypto-aws-lc-rs",
+  "re_auth?/crypto-aws-lc-rs",
+  "re_chunk_store/crypto-aws-lc-rs",
+  "re_crash_handler?/crypto-aws-lc-rs",
+  "re_data_source?/crypto-aws-lc-rs",
+  "re_dataframe?/crypto-aws-lc-rs",
+  "re_entity_db/crypto-aws-lc-rs",
+  "re_grpc_server?/crypto-aws-lc-rs",
+  "re_log_encoding/crypto-aws-lc-rs",
+  "re_perf_telemetry?/crypto-aws-lc-rs",
+  "re_redap_client/crypto-aws-lc-rs",
+  "re_sdk?/crypto-aws-lc-rs",
+  "re_server?/crypto-aws-lc-rs",
+  "re_ui?/crypto-aws-lc-rs",
+  "re_viewer?/crypto-aws-lc-rs",
+  "re_web_viewer_server?/crypto-aws-lc-rs",
+]
+
 default = [
+  "crypto-ring",
   "analytics",
   "importers",
   "dataframe",

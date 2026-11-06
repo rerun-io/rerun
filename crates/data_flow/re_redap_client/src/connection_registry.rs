@@ -513,6 +513,7 @@ impl ConnectionRegistryHandle {
     /// `Err(_)` with a friendly diagnostic if the origin is clearly not a Rerun server.
     #[tracing::instrument(level = "info", skip_all)]
     async fn ensure_is_rerun_server(origin: &re_uri::Origin) -> ApiResult<()> {
+        re_crypto::init();
         let res = crate::with_retry("http_version_fetch", || async {
             ehttp::fetch_async(ehttp::Request::get(format!("{}/version", origin.as_url())))
                 .await

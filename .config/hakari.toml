@@ -25,4 +25,10 @@ workspace-members = ["rerun_py"]
 third-party = [
   # Its default features need `nasm` installed, which we don't require (see the `nasm` feature of `re_video`).
   { name = "re_rav1d" },
+  # Preserve the selected crypto provider instead of unifying both into every development build.
+  { name = "aws-lc-rs" },
+  { name = "aws-lc-sys" },
+  { name = "ring" },
+  { name = "rustls" },
+  { name = "rustls-webpki" },
 ]

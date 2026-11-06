@@ -62,38 +62,53 @@ impl JwtVerifier for Hs256Verifier {
 
 // --- RS256 ---
 
-#[cfg(feature = "oauth")]
+#[cfg(all(
+    feature = "oauth",
+    any(feature = "crypto-ring", feature = "crypto-aws-lc-rs")
+))]
 struct Rs256Verifier(DecodingKey);
 
-#[cfg(feature = "oauth")]
+#[cfg(all(
+    feature = "oauth",
+    any(feature = "crypto-ring", feature = "crypto-aws-lc-rs")
+))]
 impl Rs256Verifier {
     fn new(key: &DecodingKey) -> Self {
         Self(key.clone())
     }
 }
 
-#[cfg(feature = "oauth")]
+#[cfg(all(
+    feature = "oauth",
+    any(feature = "crypto-ring", feature = "crypto-aws-lc-rs")
+))]
 impl Verifier<Vec<u8>> for Rs256Verifier {
     fn verify(&self, msg: &[u8], sig: &Vec<u8>) -> Result<(), signature::Error> {
+        #[cfg(feature = "crypto-aws-lc-rs")]
+        use aws_lc_rs::signature as rsa;
         use jsonwebtoken::DecodingKeyKind;
-        use ring::signature as ring_sig;
+        #[cfg(not(feature = "crypto-aws-lc-rs"))]
+        use ring::signature as rsa;
 
         match self.0.kind() {
             DecodingKeyKind::SecretOrDer(bytes) => {
                 let public_key =
-                    ring_sig::UnparsedPublicKey::new(&ring_sig::RSA_PKCS1_2048_8192_SHA256, bytes);
+                    rsa::UnparsedPublicKey::new(&rsa::RSA_PKCS1_2048_8192_SHA256, bytes);
                 public_key.verify(msg, sig)
             }
             DecodingKeyKind::RsaModulusExponent { n, e } => {
-                let components = ring_sig::RsaPublicKeyComponents { n, e };
-                components.verify(&ring_sig::RSA_PKCS1_2048_8192_SHA256, msg, sig)
+                let components = rsa::RsaPublicKeyComponents { n, e };
+                components.verify(&rsa::RSA_PKCS1_2048_8192_SHA256, msg, sig)
             }
         }
         .map_err(|_err| signature::Error::from_source("RSA signature verification failed"))
     }
 }
 
-#[cfg(feature = "oauth")]
+#[cfg(all(
+    feature = "oauth",
+    any(feature = "crypto-ring", feature = "crypto-aws-lc-rs")
+))]
 impl JwtVerifier for Rs256Verifier {
     fn algorithm(&self) -> Algorithm {
         Algorithm::RS256
@@ -121,8 +136,16 @@ fn verifier_factory(
 ) -> Result<Box<dyn JwtVerifier>, Error> {
     match algorithm {
         Algorithm::HS256 => Ok(Box::new(Hs256Verifier::new(key)?)),
-        #[cfg(feature = "oauth")]
+        #[cfg(all(
+            feature = "oauth",
+            any(feature = "crypto-ring", feature = "crypto-aws-lc-rs")
+        ))]
         Algorithm::RS256 => Ok(Box::new(Rs256Verifier::new(key))),
+        #[cfg(all(
+            feature = "oauth",
+            not(any(feature = "crypto-ring", feature = "crypto-aws-lc-rs"))
+        ))]
+        Algorithm::RS256 => Err(ErrorKind::InvalidAlgorithm.into()),
         other => Err(unsupported_algorithm(other)),
     }
 }
@@ -137,3 +160,6 @@ pub static PROVIDER: CryptoProvider = CryptoProvider {
 pub fn install() {
     PROVIDER.install_default().ok();
 }
+
+#[cfg(test)]
+mod tests;

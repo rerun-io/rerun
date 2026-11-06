@@ -12,6 +12,7 @@ pub async fn viewer_client(origin: Origin) -> Result<ViewerClient, tonic::transp
 pub async fn channel(origin: Origin) -> Result<tonic::transport::Channel, tonic::transport::Error> {
     use tonic::transport::Endpoint;
 
+    re_crypto::init();
     let http_url = origin.as_url();
 
     let mut endpoint = Endpoint::new(http_url)?.tls_config(

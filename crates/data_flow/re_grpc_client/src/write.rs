@@ -354,6 +354,7 @@ async fn message_proxy_client(
     connect_timeout_on_flush: Duration,
     status: Arc<AtomicCell<ClientConnectionState>>,
 ) {
+    re_crypto::init();
     let endpoint = match Endpoint::from_shared(uri.origin.as_url()) {
         Ok(endpoint) => endpoint,
         Err(err) => {
