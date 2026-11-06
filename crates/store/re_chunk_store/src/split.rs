@@ -1,7 +1,7 @@
 use ahash::{HashMap, HashSet};
 use itertools::Itertools as _;
 use nohash_hasher::IntMap;
-use re_chunk::{Chunk, ChunkId, RowId, TimeInt, TimelineName};
+use re_chunk::{Chunk, ChunkId, RowId, Span, TimeInt, TimelineName};
 use re_log_types::{AbsoluteTimeRange, EntityPath};
 use re_sdk_types::archetypes::{Pinhole, Transform3D, VideoStream};
 use re_sdk_types::components::VideoCodec;
@@ -23,7 +23,10 @@ impl ChunkStore {
     ///
     /// Yields one split per range, in the same order, each as an iterator over its chunks.
     ///
-    /// Splits are computed one at a time, as the outer iterator advances.
+    /// Splits are computed one at a time, as the outer iterator advances. Chunks that are only
+    /// partially inside a range are sliced once the split is iterated, which doesn't borrow the store
+    /// anymore (e.g. after a lock on it has been released). Latest-at rows and unsorted chunks are
+    /// copied right away.
     /// The chunks of a split are ordered by the first row they keep, to roughly preserve the order
     /// in which they were logged (see <https://github.com/rerun-io/rerun/issues/7175>).
     pub fn split_by_time_ranges<'a>(
@@ -110,7 +113,7 @@ impl ChunkStore {
             let mut all_chunks_in_split = self
                 .iter_physical_chunks()
                 .filter(|chunk| chunk.is_static())
-                .map(|chunk| (first_row_id(chunk), Chunk::clone(chunk)))
+                .map(|chunk| (first_row_id(chunk), SplitChunk::whole(Chunk::clone(chunk))))
                 .collect_vec();
 
             for (entity, components) in &all_entities_and_their_components {
@@ -246,7 +249,7 @@ impl ChunkStore {
 
             all_chunks_in_split
                 .into_iter()
-                .map(|(_row_id, chunk)| chunk)
+                .map(|(_row_id, chunk)| chunk.into_chunk())
         })
     }
 
@@ -329,7 +332,7 @@ impl ChunkStore {
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
         keep_other_components: bool,
-    ) -> impl Iterator<Item = (Option<RowId>, Chunk)> + 'a {
+    ) -> impl Iterator<Item = (Option<RowId>, SplitChunk)> + 'a {
         re_log::debug_assert!(
             start_inclusive < end_exclusive,
             "start_inclusive={start_inclusive:?}, end_exclusive={end_exclusive:?}",
@@ -388,19 +391,21 @@ impl ChunkStore {
             // Sorted by the original row, while the copy below gets a fresh row ID.
             vec![(
                 Some(row_id),
-                chunk
-                    // We're bootstrapping at the component batch level, so might as well discard everything else.
-                    .component_sliced(*component)
-                    // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
-                    .row_sliced_unit_deep(0)
-                    // This chunk might be re-used in other places in this split, and because we're slicing it
-                    // (and we really, really need to slice it), we must make sure that it doesn't share
-                    // a chunk ID nor a row ID with anything else.
-                    .clone_as(ChunkId::new(), RowId::new()),
+                SplitChunk::whole(
+                    chunk
+                        // We're bootstrapping at the component batch level, so might as well discard everything else.
+                        .component_sliced(*component)
+                        // `Chunk::latest_at` internally performs shallow-slicing, so make sure to actually deeply re-slice.
+                        .row_sliced_unit_deep(0)
+                        // This chunk might be re-used in other places in this split, and because we're slicing it
+                        // (and we really, really need to slice it), we must make sure that it doesn't share
+                        // a chunk ID nor a row ID with anything else.
+                        .clone_as(ChunkId::new(), RowId::new()),
+                ),
             )]
         });
 
-        let mut chunks: HashMap<ChunkId, (Option<RowId>, Chunk)> = Default::default();
+        let mut chunks: HashMap<ChunkId, (Option<RowId>, SplitChunk)> = Default::default();
         for component in components {
             let results = self.range_relevant_chunks(tracking, &query, entity, *component);
 
@@ -423,6 +428,7 @@ impl ChunkStore {
                     continue;
                 }
 
+                let is_sorted = chunk.is_timeline_sorted(&timeline);
                 let chunk = chunk.sorted_by_timeline_if_unsorted(&timeline); // binsearch incoming
                 let Some(time_col) = chunk.timelines().get(&timeline) else {
                     continue;
@@ -460,22 +466,19 @@ impl ChunkStore {
                 // TODO(RR-3810): If we were to implement this with a virtual store instead, this would be
                 // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
                 // extend across any 2 splits, nor does it take part in any keyframe/CoordinateFrame shenanigans).
-                let chunk = if slice_len == chunk.num_rows() {
-                    chunk
-                } else {
-                    // Reminder: always perform deep copies if the intent is to write back to disk.
-                    chunk.row_sliced_deep(re_chunk::Span::from_start_len(start_idx, slice_len))
+                let rows = (slice_len != chunk.num_rows())
+                    .then(|| Span::from_start_len(start_idx, slice_len));
+                let components =
+                    (!keep_other_components).then(|| components.iter().copied().collect_vec());
+                let mut chunk = SplitChunk {
+                    chunk,
+                    rows,
+                    components,
                 };
-
-                let mut chunk = if keep_other_components {
-                    chunk
-                } else {
-                    chunk.components_sliced(&components.iter().copied().collect_vec())
-                };
-
-                // Unsorted chunks were sorted by time for slicing, which can leave their rows out of
-                // `RowId` order: put them back, a recording with such a chunk doesn't load.
-                chunk.sort_by_row_ids_if_needed();
+                if !is_sorted {
+                    // The sorted chunk is already a copy: slice it now rather than keep all of it around.
+                    chunk = SplitChunk::whole(chunk.into_chunk());
+                }
 
                 let already_exists = chunks
                     .insert(original_chunk_id, (first_kept_row_id, chunk))
@@ -490,4 +493,53 @@ impl ChunkStore {
 
 fn first_row_id(chunk: &Chunk) -> Option<RowId> {
     chunk.row_id_range().map(|(min, _)| min)
+}
+
+/// A chunk of a split, see [`ChunkStore::split_by_time_ranges`].
+///
+/// Slicing is deferred to [`Self::into_chunk`], so that a split mostly holds references to the
+/// chunks of the store rather than copies of the rows it keeps.
+struct SplitChunk {
+    chunk: Chunk,
+
+    /// The rows to keep, or `None` to keep the chunk as-is.
+    rows: Option<Span<usize>>,
+
+    /// The components to keep, or `None` to keep all of them.
+    components: Option<Vec<ComponentIdentifier>>,
+}
+
+impl SplitChunk {
+    fn whole(chunk: Chunk) -> Self {
+        Self {
+            chunk,
+            rows: None,
+            components: None,
+        }
+    }
+
+    fn into_chunk(self) -> Chunk {
+        let Self {
+            chunk,
+            rows,
+            components,
+        } = self;
+
+        let chunk = match rows {
+            None => chunk,
+            // Reminder: always perform deep copies if the intent is to write back to disk.
+            Some(rows) => chunk.row_sliced_deep(rows),
+        };
+
+        let mut chunk = match components {
+            None => chunk,
+            Some(components) => chunk.components_sliced(&components),
+        };
+
+        // Unsorted chunks were sorted by time for slicing, which can leave their rows out of
+        // `RowId` order: put them back, a recording with such a chunk doesn't load.
+        chunk.sort_by_row_ids_if_needed();
+
+        chunk
+    }
 }
