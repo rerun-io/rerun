@@ -7,7 +7,7 @@ from inline_snapshot import snapshot as inline_snapshot
 
 
 def test_table_api() -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         table = client.create_table(

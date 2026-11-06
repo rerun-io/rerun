@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def test_dataframe_api_filter_segment_id(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
+    with rr.server.Server(host="127.0.0.1", datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
@@ -75,7 +75,7 @@ timeline: [[2000-01-01 00:00:00.000000000,2000-01-01 00:00:02.000000000]]
 
 
 def test_dataframe_api_filter_segments_unknown(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
+    with rr.server.Server(host="127.0.0.1", datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
@@ -86,7 +86,7 @@ def test_dataframe_api_filter_segments_unknown(simple_dataset_prefix: Path) -> N
 
 
 def test_dataframe_api_using_index_values_unknown(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
+    with rr.server.Server(host="127.0.0.1", datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
@@ -104,7 +104,7 @@ def test_dataframe_api_using_index_values_unknown(simple_dataset_prefix: Path) -
 
 
 def test_dataframe_api_filter_unknown_segment_id_pushdown(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
+    with rr.server.Server(host="127.0.0.1", datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
@@ -119,7 +119,7 @@ def test_dataframe_api_filter_unknown_segment_id_pushdown(simple_dataset_prefix:
 
 
 def test_dataframe_api_filter_segments_mixed_known_unknown(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
+    with rr.server.Server(host="127.0.0.1", datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
@@ -129,7 +129,7 @@ def test_dataframe_api_filter_segments_mixed_known_unknown(simple_dataset_prefix
 
 
 def test_dataframe_api_using_index_values_mixed_known_unknown(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
+    with rr.server.Server(host="127.0.0.1", datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
         ds = client.get_dataset(name="ds")
 
@@ -151,7 +151,7 @@ def test_dataframe_api_using_index_values_mixed_known_unknown(simple_dataset_pre
 
 
 def test_dataframe_api_filter_mixed_segment_id_pushdown(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server(datasets={"ds": simple_dataset_prefix}) as server:
+    with rr.server.Server(host="127.0.0.1", datasets={"ds": simple_dataset_prefix}) as server:
         client = server.client()
         ds = client.get_dataset(name="ds")
 

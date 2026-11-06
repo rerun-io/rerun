@@ -223,7 +223,7 @@ def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, N
         # No cleanup needed for external server
     else:
         # Create a local OSS server
-        server = Server()
+        server = Server(host="127.0.0.1")
         yield server.client()
         server.shutdown()
 

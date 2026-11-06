@@ -33,6 +33,7 @@ We use `pixi` for task management and dependency installation. Check `pixi.toml`
 - `pixi run toml-fmt` - Format TOML files
 
 **Testing:**
+- Read [`TESTING.md`](TESTING.md) before test work.
 - `cargo clippy -p <crate_name>` - Run rust checks before building
 - `cargo nextest run --all-features --no-fail-fast -p <crate_name>` - Run tests for specific crate
   - Example: `cargo nextest run --all-features --no-fail-fast -p re_view_spatial`

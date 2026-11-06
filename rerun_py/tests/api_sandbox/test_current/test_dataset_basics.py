@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def test_dataset_basics(complex_dataset_prefix: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
@@ -74,7 +74,7 @@ sorbet:version: '0.1.4'\
 
 
 def test_dataset_schema(complex_dataset_prefix: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
         ds = client.create_dataset("complex_dataset")
         ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
@@ -106,7 +106,7 @@ Column name: property:RecordingInfo:start_time
 
 
 def test_dataset_metadata(complex_dataset_prefix: Path, tmp_path: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
@@ -150,7 +150,7 @@ def test_dataset_metadata(complex_dataset_prefix: Path, tmp_path: Path) -> None:
 
 def test_schema_column_for_selector(complex_dataset_prefix: Path) -> None:
     """Test Schema.column_for_selector with various inputs and error cases."""
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
         ds = client.create_dataset("test_dataset")
         ds.register_prefix(complex_dataset_prefix.as_uri()).wait()

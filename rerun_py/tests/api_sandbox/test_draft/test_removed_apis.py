@@ -5,7 +5,7 @@ import rerun_draft as rr
 
 def test_removed_apis() -> None:
     """Ensure that removed APIs are indeed removed."""
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         assert "all_entries" not in dir(client)

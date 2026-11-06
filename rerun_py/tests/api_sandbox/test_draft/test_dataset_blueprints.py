@@ -25,7 +25,7 @@ def rbl_factory(tmp_path_factory: pytest.TempPathFactory) -> Generator[Callable[
 
 
 def test_dataset_blueprints(rbl_factory: Callable[[], Path]) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
