@@ -46,6 +46,27 @@ cargo nextest run -p re_XXX --all-features
 ```
 where `re_XXX` is the crate under development.
 
+### Wasm tests
+
+Run `pixi run web-test` to test all workspace packages with a `wasm-bindgen-test` dev-dependency.
+Use `pixi run web-test --package re_async` to select one package.
+CI runs this same runner.
+
+The runner executes Node and browser passes, defaulting unmarked test binaries to the browser.
+Each pass skips binaries marked for the other runtime.
+To select Node, add this at the top of a Wasm integration-test file:
+
+```rust
+#![cfg(target_arch = "wasm32")]
+
+wasm_bindgen_test::wasm_bindgen_test_configure!(run_in_node_experimental);
+```
+
+Runtime selection applies to an entire test binary, not individual functions or modules.
+Keep Node and browser tests in separate integration-test files when a package needs both.
+
+⚠️ The browser fallback is set by the `web-test` command. Invoking `wasm-bindgen-test-runner` directly defaults unmarked binaries to Node instead.
+
 ### Snapshot tests
 
 We use [insta](https://insta.rs) for snapshot tests.
