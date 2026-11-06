@@ -13,7 +13,9 @@ use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 
 /// The icon the desktop entry points at.
-const APP_ICON_PNG: &[u8] = include_bytes!("../data/app_icon.png");
+///
+/// Unlike `app_icon.png`, it has a transparent margin, so it is as large in the dock as other app icons.
+const APP_ICON_PNG: &[u8] = include_bytes!("../data/app_icon_linux.png");
 
 /// Key that marks a desktop entry as written by us, and thus ours to update.
 const GENERATED_MARKER_KEY: &str = "X-Rerun-Generated";
