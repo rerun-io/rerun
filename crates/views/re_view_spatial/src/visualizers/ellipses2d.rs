@@ -56,21 +56,20 @@ fn ellipse_segment_count(radius_in_pixels: f32) -> usize {
         .next_multiple_of(4)
 }
 
-/// Like [`ellipse_segment_count`],
-/// but ellipses outside last frame's view keep [`MIN_ELLIPSE_SEGMENTS`].
+/// Like [`ellipse_segment_count`], but `None` for ellipses whose outline is not in last frame's view.
 /// Without a 2D view, ellipses use [`FIXED_ELLIPSE_SEGMENTS_IN_3D`].
 fn ellipse_segment_count_in_view(
     screen_space: Option<&ScreenSpace2D>,
     world_from_obj: &glam::Affine3A,
     center: glam::Vec2,
     half_size: glam::Vec2,
-) -> usize {
+) -> Option<usize> {
     let Some(ScreenSpace2D {
         pixels_per_scene_unit,
         visible_scene_rect,
     }) = screen_space
     else {
-        return FIXED_ELLIPSE_SEGMENTS_IN_3D;
+        return Some(FIXED_ELLIPSE_SEGMENTS_IN_3D);
     };
 
     let padded_half_size = half_size.abs() * BOUNDING_BOX_PADDING_FACTOR;
@@ -87,7 +86,7 @@ fn ellipse_segment_count_in_view(
         }),
     );
     if !visible_scene_rect.intersects(bbox_in_scene) {
-        return MIN_ELLIPSE_SEGMENTS;
+        return None;
     }
 
     // The ellipse is convex, so if all view corners are inside it, its outline is off screen.
@@ -107,7 +106,7 @@ fn ellipse_segment_count_in_view(
         corner_in_unit_circle.length_squared() < 1.0
     });
     if view_is_inside_ellipse {
-        return MIN_ELLIPSE_SEGMENTS;
+        return None;
     }
 
     let obj_scale = world_from_obj
@@ -115,7 +114,9 @@ fn ellipse_segment_count_in_view(
         .x_axis
         .length()
         .max(world_from_obj.matrix3.y_axis.length());
-    ellipse_segment_count(half_size.abs().max_element() * obj_scale * pixels_per_scene_unit)
+    Some(ellipse_segment_count(
+        half_size.abs().max_element() * obj_scale * pixels_per_scene_unit,
+    ))
 }
 
 /// Extra padding added around the tight ellipse extents when computing the scene bounding box,
@@ -187,12 +188,15 @@ impl Ellipses2DVisualizer {
                 obj_space_bounding_box.extend((bbox_center - padded_half).extend(0.0));
                 obj_space_bounding_box.extend((bbox_center + padded_half).extend(0.0));
 
-                let segments = ellipse_segment_count_in_view(
+                let Some(segments) = ellipse_segment_count_in_view(
                     screen_space,
                     &world_from_obj,
                     bbox_center,
                     glam::vec2(rx, ry),
-                );
+                ) else {
+                    // Still counted in the bounding box, and labeled.
+                    continue;
+                };
                 let delta = std::f32::consts::TAU / segments as f32;
                 #[expect(clippy::range_plus_one)] // `RangeInclusive` is not an `ExactSizeIterator`
                 let points = (0..segments + 1).map(|n| {
@@ -330,7 +334,8 @@ impl VisualizerSystem for Ellipses2DVisualizer {
                     return Ok(());
                 }
 
-                // Each ellipse is one closed strip with at least `MIN_ELLIPSE_SEGMENTS + 1` vertices.
+                // Each drawn ellipse is one closed strip with at least `MIN_ELLIPSE_SEGMENTS + 1` vertices.
+                // This over-reserves when ellipses are skipped.
                 line_builder.reserve_strips(num_ellipses)?;
                 line_builder.reserve_vertices(num_ellipses * (MIN_ELLIPSE_SEGMENTS + 1))?;
 
@@ -432,7 +437,7 @@ mod tests {
             glam::Vec2::ZERO,
             glam::vec2(100.0, 100.0),
         );
-        assert_eq!(segments, FIXED_ELLIPSE_SEGMENTS_IN_3D);
+        assert_eq!(segments, Some(FIXED_ELLIPSE_SEGMENTS_IN_3D));
     }
 
     #[test]
@@ -448,11 +453,14 @@ mod tests {
         };
 
         // Radius 100 at 10 px per unit is 1000 px.
-        assert_eq!(segments(glam::Affine3A::IDENTITY, glam::Vec2::ZERO), 144);
+        assert_eq!(
+            segments(glam::Affine3A::IDENTITY, glam::Vec2::ZERO),
+            Some(144)
+        );
         // Straddling the right edge.
         assert_eq!(
             segments(glam::Affine3A::IDENTITY, glam::vec2(140.0, 0.0)),
-            144
+            Some(144)
         );
         // The entity transform scales the radius to 2000 px.
         // Straddling the right edge like above (center 70 * 2 = 140).
@@ -461,12 +469,12 @@ mod tests {
                 glam::Affine3A::from_scale(glam::vec3(2.0, 2.0, 1.0)),
                 glam::vec2(70.0, 0.0)
             ),
-            200
+            Some(200)
         );
     }
 
     #[test]
-    fn off_screen_ellipses_use_the_default_count() {
+    fn off_screen_ellipses_are_skipped() {
         let screen_space = screen_space();
         let segments = |world_from_obj: glam::Affine3A, center: glam::Vec2| {
             ellipse_segment_count_in_view(
@@ -479,11 +487,11 @@ mod tests {
 
         assert_eq!(
             segments(glam::Affine3A::IDENTITY, glam::vec2(1000.0, 0.0)),
-            MIN_ELLIPSE_SEGMENTS
+            None
         );
         assert_eq!(
             segments(glam::Affine3A::IDENTITY, glam::vec2(0.0, -1000.0)),
-            MIN_ELLIPSE_SEGMENTS
+            None
         );
         // Moved off screen by the entity transform.
         assert_eq!(
@@ -491,12 +499,12 @@ mod tests {
                 glam::Affine3A::from_translation(glam::vec3(1000.0, 0.0, 0.0)),
                 glam::Vec2::ZERO
             ),
-            MIN_ELLIPSE_SEGMENTS
+            None
         );
     }
 
     #[test]
-    fn ellipses_around_the_view_use_the_default_count() {
+    fn ellipses_around_the_view_are_skipped() {
         let screen_space = screen_space();
         let segments = |world_from_obj: glam::Affine3A, half_size: glam::Vec2| {
             ellipse_segment_count_in_view(
@@ -509,7 +517,7 @@ mod tests {
 
         assert_eq!(
             segments(glam::Affine3A::IDENTITY, glam::vec2(1000.0, 500.0)),
-            MIN_ELLIPSE_SEGMENTS
+            None
         );
         // Enlarged around the view by the entity transform.
         assert_eq!(
@@ -517,10 +525,21 @@ mod tests {
                 glam::Affine3A::from_scale(glam::vec3(10.0, 10.0, 1.0)),
                 glam::vec2(100.0, 50.0)
             ),
-            MIN_ELLIPSE_SEGMENTS
+            None
         );
-        // The outline passes just outside the view's corners, where a thick line still shows.
-        assert!(segments(glam::Affine3A::IDENTITY, glam::vec2(72.0, 72.0)) > MIN_ELLIPSE_SEGMENTS);
+    }
+
+    #[test]
+    fn outline_just_outside_the_view_corners_is_drawn() {
+        let screen_space = screen_space();
+        // Where a thick line still shows.
+        let segments = ellipse_segment_count_in_view(
+            Some(&screen_space),
+            &glam::Affine3A::IDENTITY,
+            glam::Vec2::ZERO,
+            glam::vec2(72.0, 72.0),
+        );
+        assert!(segments.is_some_and(|segments| segments > MIN_ELLIPSE_SEGMENTS));
     }
 
     #[test]
