@@ -19,7 +19,7 @@ mod versioned_instance_path;
 #[doc(no_inline)]
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
-pub use self::entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb};
+pub use self::entity_db::{DEFAULT_GC_TIME_BUDGET, EntityDb, ExportTimeSelection};
 pub use self::ingestion_statistics::{IngestionStatistics, LatencySnapshot, LatencyStats};
 pub use self::instance_path::{InstancePath, InstancePathHash};
 pub use self::rrd_manifest_index::{
