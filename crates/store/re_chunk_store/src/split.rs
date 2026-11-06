@@ -37,7 +37,12 @@ impl ChunkStore {
         //
         // The solution is to find the closest past keyframe, and then duplicate the entire stream
         // from there up to the cutoff point. See `extract_keyframes`.
-        let video_sample_identifier = VideoStream::descriptor_sample().component;
+        //
+        // The keyframe markers, if any, go along with the samples.
+        let video_components = [
+            VideoStream::descriptor_sample().component,
+            VideoStream::descriptor_is_keyframe().component,
+        ];
 
         // `Transform3D`s can be multiplexed on a single entity stream using `CoordinateFrame`s,
         // making them completely opaque to the query engine.
@@ -53,12 +58,14 @@ impl ChunkStore {
         let pinhole_parent_frame_identifier = Pinhole::descriptor_parent_frame().component;
         let pinhole_child_frame_identifier = Pinhole::descriptor_child_frame().component;
 
-        let special_components: HashSet<_> = itertools::chain!(
-            [video_sample_identifier],
+        let frame_components: HashSet<_> = itertools::chain!(
             Transform3D::all_component_identifiers(),
             Pinhole::all_component_identifiers(),
         )
         .collect();
+
+        let special_components: HashSet<_> =
+            itertools::chain!(video_components, frame_components.iter().copied()).collect();
 
         let no_bootstrap = HashSet::default();
 
@@ -98,6 +105,30 @@ impl ChunkStore {
                 .collect_vec();
 
             for (entity, components) in &all_entities_and_their_components {
+                // Transforms and/or pinholes with multiplexed coordinate frames, see the special case below.
+                let entity_has_multiplexed_transforms_on_timeline =
+                    self.entity_has_component_on_timeline(
+                        Some(&timeline),
+                        entity,
+                        transform_parent_frame_identifier,
+                    ) || self.entity_has_component_on_timeline(
+                        Some(&timeline),
+                        entity,
+                        transform_child_frame_identifier,
+                    );
+                let entity_has_multiplexed_pinholes_on_timeline =
+                    self.entity_has_component_on_timeline(
+                        Some(&timeline),
+                        entity,
+                        pinhole_parent_frame_identifier,
+                    ) || self.entity_has_component_on_timeline(
+                        Some(&timeline),
+                        entity,
+                        pinhole_child_frame_identifier,
+                    );
+                let entity_has_multiplexed_frames = entity_has_multiplexed_transforms_on_timeline
+                    || entity_has_multiplexed_pinholes_on_timeline;
+
                 // Base case: everything
                 {
                     // We must not try to bootstrap special components, as they will undergo some
@@ -107,10 +138,16 @@ impl ChunkStore {
                     //
                     // All components go through a single pass, so that a chunk holding both special
                     // and regular components (common after compaction) is only extracted once.
+                    // Transforms and pinholes without multiplexed coordinate frames are plain
+                    // latest-at data though.
                     let components_to_bootstrap = components
                         .iter()
                         .copied()
-                        .filter(|component| !special_components.contains(component))
+                        .filter(|component| {
+                            !special_components.contains(component)
+                                || (!entity_has_multiplexed_frames
+                                    && frame_components.contains(component))
+                        })
                         .collect();
                     let components = components.iter().copied().collect();
                     let keep_other_components = true;
@@ -150,7 +187,7 @@ impl ChunkStore {
                     });
 
                     if let Some(start_revised) = start_revised {
-                        let components = std::iter::once(video_sample_identifier).collect();
+                        let components = video_components.into_iter().collect();
                         // Data logged next to the video samples is already covered by the base case.
                         let keep_other_components = false;
                         let chunks = self.extract_chunks_for_single_split(
@@ -168,29 +205,7 @@ impl ChunkStore {
                 }
 
                 // Special cases: transforms and/or pinholes with multiplexed coordinate frames
-                let entity_has_multiplexed_transforms_on_timeline =
-                    self.entity_has_component_on_timeline(
-                        Some(&timeline),
-                        entity,
-                        transform_parent_frame_identifier,
-                    ) || self.entity_has_component_on_timeline(
-                        Some(&timeline),
-                        entity,
-                        transform_child_frame_identifier,
-                    );
-                let entity_has_multiplexed_pinholes_on_timeline =
-                    self.entity_has_component_on_timeline(
-                        Some(&timeline),
-                        entity,
-                        pinhole_parent_frame_identifier,
-                    ) || self.entity_has_component_on_timeline(
-                        Some(&timeline),
-                        entity,
-                        pinhole_child_frame_identifier,
-                    );
-                if entity_has_multiplexed_transforms_on_timeline
-                    || entity_has_multiplexed_pinholes_on_timeline
-                {
+                if entity_has_multiplexed_frames {
                     re_log::debug!(
                         %entity,
                         %timeline,
@@ -198,17 +213,12 @@ impl ChunkStore {
                         "gathering all transforms/pinholes up to cutoff point due to multiplexed coordinate frames…"
                     );
 
-                    let components = itertools::chain!(
-                        Transform3D::all_component_identifiers(),
-                        Pinhole::all_component_identifiers(),
-                    )
-                    .collect();
                     // Data logged next to the transforms is already covered by the base case.
                     let keep_other_components = false;
                     let chunks = self.extract_chunks_for_single_split(
                         tracking,
                         entity,
-                        &components,
+                        &frame_components,
                         &no_bootstrap,
                         timeline,
                         TimeInt::MIN,
