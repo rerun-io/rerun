@@ -41,6 +41,8 @@ mod external_memory;
 mod history;
 mod konami;
 mod latency_tracker;
+#[cfg(target_os = "linux")]
+mod linux_desktop_entry;
 #[cfg(target_os = "macos")]
 mod native_menu;
 mod navigation;
