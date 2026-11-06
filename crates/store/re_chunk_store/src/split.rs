@@ -384,7 +384,10 @@ impl ChunkStore {
                 // Finally, keep in mind that this only works because we enforce a single timeline
                 // when using this tool.
                 // It is much, much harder to deduplicate appropriately across multiple timelines at once.
-                if chunks.contains_key(&chunk.id()) {
+                //
+                // Sorting gives unsorted chunks a new ID, so deduplicate on the original one.
+                let original_chunk_id = chunk.id();
+                if chunks.contains_key(&original_chunk_id) {
                     continue;
                 }
 
@@ -421,18 +424,11 @@ impl ChunkStore {
                 // TODO(RR-3810): If we were to implement this with a virtual store instead, this would be
                 // our indicator that this specific data doesn't need to be loaded at all (i.e. it doesnt
                 // extend across any 2 splits, nor does it take part in any keyframe/CoordinateFrame shenanigans).
-                let (original_chunk_id, chunk) = if slice_len == chunk.num_rows() {
-                    // If we're re-using the original chunk as-is, then make sure to not update its ID.
-                    (chunk.id(), chunk)
+                let chunk = if slice_len == chunk.num_rows() {
+                    chunk
                 } else {
-                    // TODO(cmc): It could be worthwhile to implement and use a `Chunk::components_sliced` here (plural).
-                    // (We've already decided to generate a new chunk ID anyhow, so column slicing is fine at this point.)
-                    (
-                        chunk.id(),
-                        chunk
-                            // Reminder: always perform deep copies if the intent is to write back to disk.
-                            .row_sliced_deep(re_chunk::Span::from_start_len(start_idx, slice_len)),
-                    )
+                    // Reminder: always perform deep copies if the intent is to write back to disk.
+                    chunk.row_sliced_deep(re_chunk::Span::from_start_len(start_idx, slice_len))
                 };
 
                 let chunk = if keep_other_components {
