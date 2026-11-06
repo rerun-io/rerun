@@ -307,3 +307,58 @@ fn keeps_static_data() {
         ])
     );
 }
+
+/// A chunk can hold both special (pinhole, transform, video) and regular components, e.g. after compaction.
+#[test]
+fn mixed_chunks_are_not_duplicated() {
+    let mut store = new_store();
+    let projection = PinholeProjection::from([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
+    insert_chunk(
+        &mut store,
+        "/camera",
+        (1..=10)
+            .map(|t| {
+                (
+                    Some(t),
+                    vec![
+                        (Pinhole::descriptor_image_from_camera(), &projection as _),
+                        points(),
+                    ],
+                )
+            })
+            .collect(),
+    );
+
+    let child = TransformFrameId::new("child");
+    insert_chunk(
+        &mut store,
+        "/tf",
+        (1..=10)
+            .map(|t| {
+                (
+                    Some(t),
+                    vec![
+                        (
+                            Transform3D::descriptor_child_frame(),
+                            &child as &dyn ComponentBatch,
+                        ),
+                        points(),
+                    ],
+                )
+            })
+            .collect(),
+    );
+
+    let chunks = split(&store, (4, 6), None);
+
+    assert_no_duplicate_rows(&chunks);
+    let times = times_per_component(&chunks);
+    assert_eq!(times["/camera:Pinhole:image_from_camera"], some(&[4, 5, 6]));
+    assert_eq!(times["/camera:example.MyPoints:points"], some(&[4, 5, 6]));
+    // All transforms before the range are kept, but not the other data logged next to them.
+    assert_eq!(
+        times["/tf:Transform3D:child_frame"],
+        some(&[1, 2, 3, 4, 5, 6])
+    );
+    assert_eq!(times["/tf:example.MyPoints:points"], some(&[4, 5, 6]));
+}
