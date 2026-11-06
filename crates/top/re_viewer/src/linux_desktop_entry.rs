@@ -12,7 +12,7 @@ use std::io::Write as _;
 use std::os::unix::fs::PermissionsExt as _;
 use std::path::{Path, PathBuf};
 
-/// The icon we install, the same one the window uses on X11.
+/// The icon the desktop entry points at.
 const APP_ICON_PNG: &[u8] = include_bytes!("../data/app_icon.png");
 
 /// Key that marks a desktop entry as written by us, and thus ours to update.
