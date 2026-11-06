@@ -150,7 +150,10 @@ impl XdgDirs {
     /// An icon that differs from ours is only replaced if the desktop entry is ours: otherwise it may be the user's own.
     fn plan(&self, desired: &str) -> Plan {
         let user_entry_path = self.user_entry_path();
-        let ours = match std::fs::read_to_string(&user_entry_path) {
+        let ours = match read_regular_file(&user_entry_path).and_then(|bytes| {
+            String::from_utf8(bytes)
+                .map_err(|err| std::io::Error::new(std::io::ErrorKind::InvalidData, err))
+        }) {
             Ok(contents) if is_generated_by_us(&contents) => Some(contents),
             Ok(_) => return Plan::default(),
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
@@ -163,7 +166,7 @@ impl XdgDirs {
             }
         };
 
-        let icon = std::fs::read(self.icon_path());
+        let icon = read_regular_file(&self.icon_path());
         let icon_is_missing =
             matches!(&icon, Err(err) if err.kind() == std::io::ErrorKind::NotFound);
         let icon_is_ours = matches!(&icon, Ok(bytes) if bytes == APP_ICON_PNG);
@@ -221,6 +224,19 @@ fn log_write(path: &Path, result: std::io::Result<()>) {
             path.display()
         ),
     }
+}
+
+/// Reads `path`, following symlinks, but only if it is a regular file.
+///
+/// Reading a FIFO would block startup until something writes to it.
+fn read_regular_file(path: &Path) -> std::io::Result<Vec<u8>> {
+    if !std::fs::metadata(path)?.is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidInput,
+            "not a regular file",
+        ));
+    }
+    std::fs::read(path)
 }
 
 /// Whether the desktop entry contains our marker key in its `[Desktop Entry]` group.
@@ -666,5 +682,99 @@ mod tests {
                 .ok();
             assert_eq!(mode, Some(0o644), "{}", path.display());
         }
+    }
+
+    #[test]
+    fn unwritable_data_home_writes_nothing() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        write(&tmp.path().join("file"), b"");
+        let dirs = XdgDirs {
+            data_home: tmp.path().join("file/home"),
+            data_dirs: vec![tmp.path().join("sys")],
+        };
+
+        assert_eq!(dirs.plan(&desired("/opt/rerun")), Plan::default());
+
+        dirs.apply(Plan {
+            desktop_entry: Some(desired("/opt/rerun")),
+            icon: Some(APP_ICON_PNG),
+        });
+        assert!(!dirs.data_home.exists());
+    }
+
+    #[test]
+    fn unreadable_user_entry_writes_nothing() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let dirs = sandbox_dirs(tmp.path());
+        std::fs::create_dir_all(dirs.user_entry_path()).expect("create dir");
+
+        let plan = dirs.plan(&desired("/opt/rerun"));
+        assert_eq!(plan, Plan::default());
+
+        dirs.apply(plan);
+        assert!(dirs.user_entry_path().is_dir());
+        assert!(!dirs.icon_path().exists());
+    }
+
+    #[test]
+    fn failed_icon_write_still_writes_entry() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let dirs = sandbox_dirs(tmp.path());
+        std::fs::create_dir_all(dirs.icon_path()).expect("create dir");
+
+        dirs.apply(Plan {
+            desktop_entry: Some(desired("/opt/rerun")),
+            icon: Some(APP_ICON_PNG),
+        });
+        assert_eq!(
+            std::fs::read_to_string(dirs.user_entry_path()).ok(),
+            Some(desired("/opt/rerun"))
+        );
+        assert!(dirs.icon_path().is_dir());
+    }
+
+    /// Runs [`XdgDirs::plan`] on another thread, so that a test fails instead of hanging if it blocks.
+    fn plan_with_timeout(dirs: XdgDirs, desired: String) -> Option<Plan> {
+        let (tx, rx) = std::sync::mpsc::sync_channel(1);
+        std::thread::Builder::new()
+            .name("desktop_entry_plan".to_owned())
+            .spawn(move || tx.send(dirs.plan(&desired)))
+            .expect("spawn thread");
+        rx.recv_timeout(std::time::Duration::from_secs(5)).ok()
+    }
+
+    fn mkfifo(path: &Path) {
+        std::fs::create_dir_all(path.parent().expect("parent")).expect("create dir");
+        let status = std::process::Command::new("mkfifo")
+            .arg(path)
+            .status()
+            .expect("run mkfifo");
+        assert!(status.success(), "mkfifo failed");
+    }
+
+    #[test]
+    fn fifo_user_entry_does_not_block() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let dirs = sandbox_dirs(tmp.path());
+        mkfifo(&dirs.user_entry_path());
+
+        let plan = plan_with_timeout(sandbox_dirs(tmp.path()), desired("/opt/rerun"));
+        assert_eq!(plan, Some(Plan::default()));
+    }
+
+    #[test]
+    fn fifo_icon_does_not_block() {
+        let tmp = tempfile::tempdir().expect("tempdir");
+        let dirs = sandbox_dirs(tmp.path());
+        mkfifo(&dirs.icon_path());
+
+        let plan = plan_with_timeout(sandbox_dirs(tmp.path()), desired("/opt/rerun"));
+        assert_eq!(
+            plan,
+            Some(Plan {
+                desktop_entry: Some(desired("/opt/rerun")),
+                icon: None,
+            })
+        );
     }
 }
