@@ -189,7 +189,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         let chunk = Chunk::builder(entity_path.clone())
             .with_component_batch(
                 row_id2,
-                TimePoint::default(),
+                TimePoint::STATIC,
                 (MyPoints::descriptor_points(), &[point1]),
             )
             .build()?;
@@ -198,7 +198,7 @@ fn row_id_ordering_semantics() -> anyhow::Result<()> {
         let chunk = Chunk::builder(entity_path.clone())
             .with_component_batch(
                 row_id1,
-                TimePoint::default(),
+                TimePoint::STATIC,
                 (MyPoints::descriptor_points(), &[point2]),
             )
             .build()?;
@@ -407,7 +407,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(
             RowId::new(),
-            TimePoint::default()
+            TimePoint::STATIC
                 .with(timeline_log_time, now)
                 .with(timeline_frame_nr, 42),
             (MyPoints::descriptor_points(), &[point]),
@@ -438,7 +438,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(
             RowId::new(),
-            TimePoint::default()
+            TimePoint::STATIC
                 .with(timeline_log_time, now_plus_one)
                 .with(timeline_frame_nr, 54),
             (MyPoints::descriptor_points(), &[point]),
@@ -469,7 +469,7 @@ fn entity_min_time_correct() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(
             RowId::new(),
-            TimePoint::default()
+            TimePoint::STATIC
                 .with(timeline_log_time, now_minus_one)
                 .with(timeline_frame_nr, 32),
             (MyPoints::descriptor_points(), &[point]),
@@ -519,12 +519,12 @@ fn static_last_write_wins_with_interleaved_row_ids() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(
             row_id1,
-            TimePoint::default(),
+            TimePoint::STATIC,
             (MyPoints::descriptor_points(), &[point1]),
         )
         .with_component_batch(
             row_id3,
-            TimePoint::default(),
+            TimePoint::STATIC,
             (MyPoints::descriptor_points(), &[point3]),
         )
         .build()?;
@@ -533,7 +533,7 @@ fn static_last_write_wins_with_interleaved_row_ids() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(
             row_id2,
-            TimePoint::default(),
+            TimePoint::STATIC,
             (MyPoints::descriptor_points(), &[point2]),
         )
         .build()?;

@@ -30,7 +30,7 @@ crypto-ring = ["dep:ring", "re_analytics/crypto-ring", "re_crypto/crypto-ring"]
 ## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
 crypto-aws-lc-rs = ["dep:aws-lc-rs", "re_analytics/crypto-aws-lc-rs", "re_crypto/crypto-aws-lc-rs"]
 
-cli = ["dep:indicatif", "dep:webbrowser", "oauth"]
+cli = ["dep:indicatif", "dep:re_error", "dep:webbrowser", "oauth"]
 
 oauth = ["dep:directories", "dep:ehttp", "dep:getrandom", "dep:tiny_http", "dep:uuid"]
 
@@ -66,6 +66,8 @@ tower.workspace = true
 url.workspace = true
 
 ## Optional dependencies
+re_error = { workspace = true, optional = true }
+
 getrandom = { workspace = true, optional = true }
 indicatif = { workspace = true, optional = true }
 uuid = { workspace = true, optional = true, features = ["v4"] }

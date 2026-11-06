@@ -450,7 +450,7 @@ mod tests {
                 Chunk::builder(VIEWPORT_PATH)
                     .with_archetype(
                         RowId::new(),
-                        TimePoint::default(),
+                        TimePoint::STATIC,
                         &ViewportBlueprint::new()
                             .with_auto_layout(true)
                             .with_auto_views(true),
@@ -464,7 +464,7 @@ mod tests {
             let mut viewport = options;
             viewport["root_container"] = json!("aaaaaaaa-0000-4000-8000-000000000001");
             let input = json!({"/viewport": {"ViewportBlueprint": viewport}});
-            let timepoint = TimePoint::default();
+            let timepoint = TimePoint::STATIC;
             let reflection = re_sdk_types::reflection::reflection();
             let mut chunks = re_arrow_json::chunks_from_json(
                 &input,
@@ -494,7 +494,7 @@ mod tests {
     #[test]
     fn empty_blueprint_keeps_automatic_defaults() {
         let mut chunks = Vec::new();
-        default_to_manual_layout(&mut chunks, &TimePoint::default()).unwrap();
+        default_to_manual_layout(&mut chunks, &TimePoint::STATIC).unwrap();
         assert!(chunks.is_empty());
     }
 }

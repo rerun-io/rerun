@@ -161,11 +161,15 @@ fn add_button_ui(
                             .entity_dbs()
                             .filter(|entity_db| entity_db.store_id().is_recording())
                             .collect::<Vec<_>>();
-                        println!("Recording entity DBs:\n{recording_entity_dbs:#?}\n");
+                        let _err = re_error::try_println!(
+                            "Recording entity DBs:\n{recording_entity_dbs:#?}\n"
+                        );
                     }
 
                     if ui.button("Print recording panel data").clicked() {
-                        println!("Recording panel data:\n{_recording_panel_data:#?}\n");
+                        let _err = re_error::try_println!(
+                            "Recording panel data:\n{_recording_panel_data:#?}\n"
+                        );
                     }
                 }
             }),

@@ -134,7 +134,8 @@ fn conversation_row_ui(ui: &mut egui::Ui, row: &ConversationRow) {
                         status_dot_ui(ui, tokens.info_text_color).on_hover_text(hover_text);
                     }
                     ConversationStatus::Errored { message } => {
-                        status_dot_ui(ui, tokens.error_fg_color).on_hover_text(message);
+                        status_dot_ui(ui, tokens.error_fg_color)
+                            .on_hover_text(re_error::StructuredError::parse(message).summary);
                     }
                     ConversationStatus::Working => {
                         ui.inline_loading_indicator("The agent is working");

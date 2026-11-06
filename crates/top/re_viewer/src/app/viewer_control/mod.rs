@@ -2792,7 +2792,7 @@ mod tests {
                 let chunk = Chunk::builder("points")
                     .with_archetype(
                         RowId::new(),
-                        TimePoint::default().with(Timeline::new_sequence("frame"), frame),
+                        TimePoint::STATIC.with(Timeline::new_sequence("frame"), frame),
                         &re_sdk_types::archetypes::Points3D::new([(0.0, 0.0, 0.0)]),
                     )
                     .build()

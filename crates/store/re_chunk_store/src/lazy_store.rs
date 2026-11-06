@@ -318,7 +318,7 @@ mod tests {
                     .with_sparse_component_batches(
                         row_id,
                         #[expect(clippy::cast_possible_wrap)]
-                        TimePoint::default().with(timeline, frame_idx as i64),
+                        TimePoint::STATIC.with(timeline, frame_idx as i64),
                         [(MyPoints::descriptor_points(), Some(&points as _))],
                     )
                     .build()
@@ -510,7 +510,7 @@ mod tests {
         let chunk = Chunk::builder(property_entity)
             .with_sparse_component_batches(
                 row_id,
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_points(), Some(&points as _))],
             )
             .build()

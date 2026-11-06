@@ -17,7 +17,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
     harness.log_entity("boxes3d", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Boxes3D::from_centers_and_half_sizes(
                 [(1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (1.0, 1.0, 0.0)],
                 [(0.2, 0.4, 0.2), (0.2, 0.2, 0.4), (0.4, 0.2, 0.2)],
@@ -29,7 +29,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
     harness.log_entity("boxes2d", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Boxes2D::from_centers_and_half_sizes(
                 [(-1.0, 0.0), (0.0, 1.0), (1.0, 1.0)],
                 [(0.2, 0.4), (0.2, 0.2), (0.4, 0.2)],

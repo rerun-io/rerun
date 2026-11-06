@@ -4,6 +4,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use parking_lot::Mutex;
 
 use re_data_source::{FromUriOptions, LogDataSource};
+use re_error::{try_eprint, try_eprintln};
 use re_log_channel::DataSourceMessage;
 
 /// Download recordings and save them as `.rrd` files.
@@ -80,7 +81,7 @@ impl DownloadCommand {
                             } else {
                                 100.0
                             };
-                            eprint!(
+                            let _err = try_eprint!(
                                 "\r  {:.1}% ({} / {})",
                                 percent,
                                 re_format::format_bytes(bytes_downloaded as _),
@@ -88,7 +89,10 @@ impl DownloadCommand {
                             );
                         }
                         None => {
-                            eprint!("\r  {}", re_format::format_bytes(bytes_downloaded as _));
+                            let _err = try_eprint!(
+                                "\r  {}",
+                                re_format::format_bytes(bytes_downloaded as _)
+                            );
                         }
                     }
                 })),
@@ -103,7 +107,7 @@ impl DownloadCommand {
                 streaming_options,
             )?;
 
-            eprintln!("Downloading {readable_url}…");
+            try_eprintln!("Downloading {readable_url}…")?;
 
             save_to_rrd(&rx, &output_path)?;
 
@@ -119,10 +123,10 @@ impl DownloadCommand {
             let total = downloaded.load(Ordering::Relaxed);
             if 0 < total {
                 // Clear the progress line
-                eprint!("\r\x1b[2K");
+                try_eprint!("\r\x1b[2K")?;
             }
 
-            eprintln!("Saved {output_path:?}");
+            try_eprintln!("Saved {output_path:?}")?;
         }
 
         Ok(())
@@ -154,7 +158,7 @@ fn ensure_credentials(
 
         Err(err) => {
             re_log::debug!("Credential refresh failed: {err}");
-            eprintln!("Session expired. Logging in again…");
+            try_eprintln!("Session expired. Logging in again…")?;
 
             // Trigger interactive device-code login flow.
             match tokio_runtime.block_on(re_auth::DeviceCodeFlow::init(true)) {
@@ -168,13 +172,13 @@ fn ensure_credentials(
                     let login_url = flow.login_url();
                     let user_code = flow.user_code();
 
-                    eprintln!("Open this URL in your browser to log in:\n  {login_url}");
-                    eprintln!("Verify that the code shown in your browser is: {user_code}");
-                    eprintln!("Waiting for login…");
+                    try_eprintln!("Open this URL in your browser to log in:\n  {login_url}")?;
+                    try_eprintln!("Verify that the code shown in your browser is: {user_code}")?;
+                    try_eprintln!("Waiting for login…")?;
 
                     match tokio_runtime.block_on(flow.wait_for_user_confirmation()) {
                         Ok(credentials) => {
-                            eprintln!("Logged in as {}", credentials.user().email);
+                            try_eprintln!("Logged in as {}", credentials.user().email)?;
                             // Clear the cached client so a new one is created with fresh credentials.
                             connection_registry.remove_credentials(origin);
                             connection_registry

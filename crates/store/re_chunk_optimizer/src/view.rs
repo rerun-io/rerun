@@ -444,7 +444,7 @@ mod tests {
         let static_chunk = Chunk::builder_with_id(ChunkId::from_u128(1), "static_entity")
             .with_serialized_batches(
                 RowId::from_u128(1 << 32),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [MyColor::from_iter(0..=0).try_serialized(MyPoints::descriptor_colors())?],
             )
             .build()?;

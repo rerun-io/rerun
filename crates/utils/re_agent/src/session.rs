@@ -23,7 +23,7 @@ use web_time::Instant;
 use crate::agent_harness::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
 use crate::elicitation::response_note;
-use crate::error::McpStartupFailure;
+use crate::error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 use crate::reports::SessionReports;
 use crate::responder::{AgentStoppedWaiting, Responder};
 use crate::settings::AgentLaunch;
@@ -223,7 +223,13 @@ struct LaunchContext {
 /// What the agent reported about itself, and what was asked of it.
 #[derive(Default)]
 struct AgentInfo {
+    /// How the agent runs, once it has been started.
+    backend: Option<AgentBackendKind>,
+
     name: Option<String>,
+
+    /// The version the agent reported, which is ours for a model-API agent.
+    version: Option<String>,
     modes: Option<SessionModeState>,
 
     /// Set by [`AgentSession::set_mode`] until the agent confirms a mode.
@@ -319,6 +325,7 @@ impl AgentSession {
         let connection = match launch {
             AgentLaunch::AgentHarness(config) => {
                 session.startup = Some(StartupStart::new(AgentBackendKind::AgentHarness));
+                session.agent.backend = Some(AgentBackendKind::AgentHarness);
                 session.phase = Phase::Connecting {
                     status: format!("Starting {}…", config.command.display()),
                 };
@@ -337,6 +344,7 @@ impl AgentSession {
             }
             AgentLaunch::ModelApi(config) => {
                 session.startup = Some(StartupStart::new(AgentBackendKind::ModelApi));
+                session.agent.backend = Some(AgentBackendKind::ModelApi);
                 session.phase = Phase::Connecting {
                     status: format!("Connecting to {}…", config.model),
                 };
@@ -407,6 +415,53 @@ impl AgentSession {
                 .items
                 .iter()
                 .any(|entry| matches!(entry.item, TranscriptItem::User(_)))
+    }
+
+    fn push_agent_error(&mut self, request: FailedRequest, message: String) {
+        let AgentInfo {
+            backend,
+            name,
+            version,
+            ..
+        } = &self.agent;
+        let source = match backend {
+            Some(AgentBackendKind::ModelApi) => AgentErrorSource::ModelApi {
+                provider: name.clone(),
+            },
+            Some(AgentBackendKind::AgentHarness) | None => AgentErrorSource::Agent {
+                name: name.clone(),
+                version: version.clone(),
+            },
+        };
+        self.transcript.push_agent_error(AgentError {
+            source,
+            request,
+            message,
+        });
+    }
+
+    /// The prompt to send again after it failed, and the transcript index of its error.
+    ///
+    /// Only the error that ended the last turn qualifies: an earlier prompt has been superseded,
+    /// and only an idle session can take the prompt again.
+    pub fn retryable_prompt(&self) -> Option<(usize, &Prompt)> {
+        if !self.is_ready() {
+            return None;
+        }
+        let items = &self.transcript.items;
+        let error_index = items.iter().rposition(|entry| {
+            matches!(
+                &entry.item,
+                TranscriptItem::AgentError(error) if error.request == FailedRequest::Prompt
+            )
+        })?;
+        let user_index = items
+            .iter()
+            .rposition(|entry| matches!(entry.item, TranscriptItem::User(_)))?;
+        if error_index < user_index {
+            return None;
+        }
+        Some((error_index, items.get(user_index)?.item.user_prompt()?))
     }
 
     /// What the agent calls itself, once it has told us.
@@ -734,6 +789,7 @@ impl AgentSession {
                     ));
                 }
                 TranscriptItem::Note { text, is_error } if *is_error => errors.push(text.clone()),
+                TranscriptItem::AgentError(error) => errors.push(error.message.clone()),
                 TranscriptItem::Agent { content, .. } => {
                     let text = message_text(content);
                     if !text.trim().is_empty() {
@@ -947,6 +1003,7 @@ impl AgentSession {
                 capabilities,
                 ..
             } => {
+                self.agent.version = agent_info.as_ref().map(|info| info.version.clone());
                 self.agent.name = agent_info.map(|info| info.title.unwrap_or(info.name));
                 self.agent.prompt_capabilities = capabilities.prompt_capabilities;
             }
@@ -1041,7 +1098,7 @@ impl AgentSession {
                     }
                     Ok(_) => TurnOutcome::Completed,
                     Err(err) => {
-                        self.transcript.push_note(err, true);
+                        self.push_agent_error(FailedRequest::Prompt, err);
                         TurnOutcome::Error
                     }
                 };
@@ -1062,7 +1119,7 @@ impl AgentSession {
                 }
                 self.log.push_back(LogLine { direction, line });
             }
-            AgentEvent::Error(err) => self.transcript.push_note(err, true),
+            AgentEvent::Error(err) => self.push_agent_error(FailedRequest::Other, err),
             AgentEvent::Disconnected => {
                 self.finish_turn(TurnOutcome::Aborted, "The agent exited before finishing");
                 self.finish_startup(StartupOutcome::Exited);
@@ -1421,6 +1478,49 @@ mod tests {
         assert!(
             session.is_tool_call_waiting_on_user(&other),
             "unscoped questions count for all"
+        );
+    }
+
+    /// Only a failed prompt that is still the latest one can be retried, and only once the session
+    /// is idle again; the retry carries the images of the original prompt.
+    #[test]
+    fn retryable_prompt() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::SessionStarted {
+            session_id: agent_client_protocol_schema::v1::SessionId::new("test-session"),
+            modes: None,
+            config_options: Vec::new(),
+        });
+        let image = PromptImage {
+            bytes: Arc::from([0_u8].as_slice()),
+            mime_type: "image/png".to_owned(),
+            resolution: [8, 6],
+        };
+        session.transcript.push_user(Prompt {
+            text: "first".to_owned(),
+            images: vec![image.clone()],
+        });
+        assert!(session.retryable_prompt().is_none(), "nothing failed yet");
+
+        session.handle_event(AgentEvent::Error("Failed to set mode".to_owned()));
+        assert!(
+            session.retryable_prompt().is_none(),
+            "a failed setting change is not a failed prompt"
+        );
+
+        session.handle_event(AgentEvent::TurnFinished(Err("boom".to_owned())));
+        let (error_index, prompt) = session
+            .retryable_prompt()
+            .expect("the failed prompt can be retried");
+        assert_eq!(error_index, 2);
+        assert_eq!(prompt.text, "first");
+        assert_eq!(prompt.images.len(), 1);
+        assert!(Arc::ptr_eq(&prompt.images[0].bytes, &image.bytes));
+
+        session.transcript.push_user("second".into());
+        assert!(
+            session.retryable_prompt().is_none(),
+            "a newer prompt supersedes the failed one"
         );
     }
 

@@ -1743,7 +1743,7 @@ checksum = "af491d569909a7e4dee0ad7db7f5341fef5c614d5b8ec8cf765732aba3cff681"
 dependencies = [
  "serde",
  "termcolor",
- "unicode-width 0.2.2",
+ "unicode-width 0.1.14",
 ]
 
 [[package]]
@@ -3373,7 +3373,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3789,7 +3789,7 @@ dependencies = [
  "ureq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams 0.5.0",
+ "wasm-streams 0.4.2",
  "web-sys",
 ]
 
@@ -3972,7 +3972,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -7825,7 +7825,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d8fae84b431384b68627d0f9b3b1245fcf9f46f6c0e3dc902e9dce64edd1967"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -8645,9 +8645,9 @@ dependencies = [
 
 [[package]]
 name = "pulldown-cmark"
-version = "0.13.5"
+version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "278e9268c93b9e498a2da46c34d90ba93a3255eb99009646398f34bc73ab36eb"
+checksum = "3db2be46835f013dd3f4fa7f5f7402c537787b54ebb6fe2b94bbdd7e2669bb7b"
 dependencies = [
  "bitflags 2.13.1",
  "memchr",
@@ -8829,7 +8829,7 @@ dependencies = [
  "once_cell",
  "socket2",
  "tracing",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -9074,6 +9074,7 @@ dependencies = [
  "http",
  "re_async",
  "re_crypto",
+ "re_error",
  "re_log",
  "re_workspace_hack",
  "reqwest 0.13.5",
@@ -9135,6 +9136,7 @@ dependencies = [
  "pulldown-cmark",
  "re_agent",
  "re_async",
+ "re_error",
  "re_format",
  "re_log",
  "re_tracing",
@@ -9155,6 +9157,7 @@ dependencies = [
  "jiff",
  "re_build_info",
  "re_crypto",
+ "re_error",
  "re_log",
  "re_quota_channel",
  "re_workspace_hack",
@@ -9289,6 +9292,7 @@ dependencies = [
  "re_analytics",
  "re_byte_size",
  "re_crypto",
+ "re_error",
  "re_int",
  "re_log",
  "re_web",
@@ -9697,6 +9701,7 @@ dependencies = [
  "parking_lot",
  "re_analytics",
  "re_build_info",
+ "re_error",
  "re_workspace_hack",
 ]
 
@@ -10304,6 +10309,7 @@ dependencies = [
  "crossbeam",
  "log",
  "parking_lot",
+ "re_error",
  "re_workspace_hack",
  "tracing",
  "tracing-log",
@@ -10599,6 +10605,7 @@ dependencies = [
  "prometheus-client",
  "rand 0.9.5",
  "re_auth",
+ "re_error",
  "re_grpc_headers",
  "re_log",
  "re_test_mocks",
@@ -10761,6 +10768,7 @@ dependencies = [
  "itertools 0.15.0",
  "re_data_ui",
  "re_entity_db",
+ "re_error",
  "re_log",
  "re_log_channel",
  "re_log_msg",
@@ -11051,6 +11059,7 @@ dependencies = [
  "re_build_tools",
  "re_byte_size",
  "re_chunk",
+ "re_error",
  "re_grpc_client",
  "re_grpc_server",
  "re_importer",
@@ -11940,6 +11949,7 @@ dependencies = [
  "re_byte_size",
  "re_chunk_store",
  "re_data_ui",
+ "re_format",
  "re_log_types",
  "re_query",
  "re_renderer",
@@ -12949,8 +12959,9 @@ dependencies = [
 
 [[package]]
 name = "rerun-tonic-web-wasm-client"
-version = "0.8.2"
-source = "git+https://github.com/rerun-io/tonic-web-wasm-client.git?branch=patch-0.8.2#2a2c3d6e31aa61289fdc388f048044dc1c878e1d"
+version = "0.8.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9b544d507219e082268b0922e1d6abea86c75f511755dd3bfb5e7fc27aff7c1"
 dependencies = [
  "base64 0.22.1",
  "byteorder",
@@ -12967,7 +12978,7 @@ dependencies = [
  "tower-service",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams 0.5.0",
+ "wasm-streams 0.4.2",
  "web-sys",
 ]
 
@@ -12985,6 +12996,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_crash_handler",
+ "re_error",
  "re_log",
  "re_sdk",
  "re_video",
@@ -13364,7 +13376,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys 0.12.1",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -13423,7 +13435,7 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "webpki-root-certs",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -14075,7 +14087,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -14590,10 +14602,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix 1.1.4",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -16267,7 +16279,7 @@ version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2a7b1c03c876122aa43f3020e6c3c3ee5c05081c9a00739faf7503aeba10d22"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -16629,7 +16641,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d6f32a0ff4a9f6f01231eb2059cc85479330739333e0e58cadf03b6af2cca10"
 dependencies = [
  "cfg-if",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]

@@ -18,8 +18,6 @@ const MAX_ATTEMPTS: u32 = 4;
 const MAX_PART_SIZE_BYTES: u64 = 64 * 1024 * 1024;
 
 /// Retry delays for transient part or grant failures, reset for each part.
-///
-/// TODO(RR-5715): Make the retry count and delay bounds configurable.
 const RETRY_BACKOFF: re_backoff::BackoffGenerator =
     re_backoff::BackoffGenerator::new_const(Duration::from_millis(250), Duration::from_secs(1));
 

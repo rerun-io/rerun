@@ -33,6 +33,7 @@ testing = []
 [dependencies]
 re_async.workspace = true
 re_crypto.workspace = true
+re_error.workspace = true
 re_log.workspace = true
 
 agent-client-protocol-schema.workspace = true

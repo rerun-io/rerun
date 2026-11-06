@@ -28,7 +28,7 @@ fn run_bgr_test<T: ImageChannelType>(
     test_context.log_entity("bgr_image", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Image::from_elements(image, size, color_model),
         )
     });

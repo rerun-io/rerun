@@ -24,6 +24,7 @@ mod view_highlights;
 mod view_loading_indicator;
 mod view_property_ui;
 mod visualizer_query;
+mod zoomed_texture_region;
 
 use std::borrow::Cow;
 
@@ -68,6 +69,9 @@ pub use view_property_ui::{
     view_property_ui, view_property_ui_with_hidden_components, view_property_ui_with_redirect,
 };
 pub use visualizer_query::VisualizerInstructionQueryResults;
+pub use zoomed_texture_region::{
+    TextureInteractionId, paint_zoomed_texture_region_outline, zoomed_texture_region_ui,
+};
 
 pub mod external {
     pub use re_entity_db::external::*;

@@ -231,7 +231,7 @@ mod tests {
         db.add_chunk(&Arc::new(
             Chunk::builder("intrinsics")
                 .with_archetype_auto_row(
-                    re_log_types::TimePoint::default(),
+                    re_log_types::TimePoint::STATIC,
                     &Pinhole::from_focal_length_and_resolution([100.0, 200.0], [640.0, 480.0])
                         .with_parent_frame("camera")
                         .with_child_frame("image"),
@@ -241,7 +241,7 @@ mod tests {
         db.add_chunk(&Arc::new(
             Chunk::builder("unlinked")
                 .with_archetype_auto_row(
-                    re_log_types::TimePoint::default(),
+                    re_log_types::TimePoint::STATIC,
                     &CoordinateFrame::new("isolated"),
                 )
                 .build()?,

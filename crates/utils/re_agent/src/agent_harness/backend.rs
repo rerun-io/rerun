@@ -18,6 +18,7 @@ use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
 use re_async::UiWaker;
 
+use crate::agent_harness::acp_error::describe_error;
 use crate::agent_harness::{AgentHarnessConfig, McpStdioServer};
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
 use crate::{LineDirection, Responder};
@@ -460,35 +461,6 @@ fn pick_model(
         })?;
 
     (model.value != select.current_value).then(|| (selector.id.clone(), model.value.clone()))
-}
-
-/// Human-readable error text: the message, plus whatever the agent put in `data`.
-///
-/// The SDK wraps process failures as JSON in `data` with a `data` string inside; we dig that out
-/// so the user sees the agent's own stderr instead of a JSON blob.
-fn describe_error(err: &Error) -> String {
-    let mut text = err.message.clone();
-    let mut data = err.data.clone();
-    while let Some(value) = data.take() {
-        match value {
-            serde_json::Value::String(inner) => {
-                text = format!("{text}: {inner}");
-            }
-            serde_json::Value::Object(mut fields) => {
-                if let Some(inner) = fields.remove("data") {
-                    data = Some(inner);
-                } else if let Some(serde_json::Value::String(reason)) = fields.get("reason") {
-                    text = format!("{text}: {reason}");
-                } else {
-                    text = format!("{text}: {}", serde_json::Value::Object(fields));
-                }
-            }
-            other => {
-                text = format!("{text}: {other}");
-            }
-        }
-    }
-    text
 }
 
 #[cfg(test)]

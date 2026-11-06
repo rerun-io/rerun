@@ -72,7 +72,7 @@ Everything in the dump is a record of something that already happened: the user'
 - **High token use**: whole files read to find one name, large tool outputs, screenshots used as a \
 substitute for a query.
 - **Dead ends and failures**: failed tool calls, retries, and questions the agent could not answer.
-- **Low-level tools doing a high-level job**: `screenshot`, `click`, `query_tree` and friends where \
+- **Low-level tools doing a high-level job**: `screenshot`, `click`, `widget_tree` and friends where \
 a `rerun_*` tool should have existed, or already existed and went unused.
 - **Guesswork**: anything the agent had to invent because the skills, docs, or tool descriptions \
 did not say.

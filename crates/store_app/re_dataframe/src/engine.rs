@@ -198,7 +198,7 @@ mod tests {
             let chunk = Chunk::builder(EntityPath::from(entity_path))
                 .with_sparse_component_batches(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [(MyPoints::descriptor_colors(), Some(&colors as _))],
                 )
                 .build()?;

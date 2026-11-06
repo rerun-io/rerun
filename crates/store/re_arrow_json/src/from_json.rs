@@ -462,7 +462,7 @@ mod tests {
         });
         for chunk in partial_chunks_from_json(
             &update,
-            &TimePoint::default(),
+            &TimePoint::STATIC,
             re_sdk_types::reflection::reflection(),
         )
         .unwrap()
@@ -481,7 +481,7 @@ mod tests {
         assert!(
             partial_chunks_from_json(
                 &json!({}),
-                &TimePoint::default(),
+                &TimePoint::STATIC,
                 re_sdk_types::reflection::reflection(),
             )
             .unwrap()
@@ -650,7 +650,7 @@ mod tests {
                 Some((field.component_descriptor(*name), placeholder))
             });
             let chunk = Chunk::builder(format!("archetypes/{}", name.short_name()))
-                .with_row(RowId::new(), TimePoint::default(), components)
+                .with_row(RowId::new(), TimePoint::STATIC, components)
                 .build()
                 .unwrap();
             original.add_chunk(&Arc::new(chunk)).unwrap();
@@ -737,7 +737,7 @@ mod tests {
         let chunks = chunks_from_json(
             &json,
             blueprint.storage_engine().store(),
-            &TimePoint::default(),
+            &TimePoint::STATIC,
             &reflection,
         )
         .unwrap();
@@ -752,7 +752,7 @@ mod tests {
         let error = chunks_from_json(
             &json!({ "/a": { "ViewBlueprint": {} } }),
             empty_blueprint().storage_engine().store(),
-            &TimePoint::default(),
+            &TimePoint::STATIC,
             &reflection,
         )
         .unwrap_err()
@@ -825,7 +825,7 @@ mod tests {
             chunks_from_json(
                 &json,
                 empty_blueprint().storage_engine().store(),
-                &TimePoint::default(),
+                &TimePoint::STATIC,
                 re_sdk_types::reflection::reflection(),
             )
             .unwrap_err()

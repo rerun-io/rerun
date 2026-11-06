@@ -2309,7 +2309,7 @@ fn log_arrow_msg(
 
     let entity_path = EntityPath::parse_forgiving(entity_path);
 
-    let row = crate::arrow::build_row_from_components(&components, &TimePoint::default())?;
+    let row = crate::arrow::build_row_from_components(&components, &TimePoint::STATIC)?;
 
     py.detach(|| {
         // The call to `allow_threads` releases the GIL.

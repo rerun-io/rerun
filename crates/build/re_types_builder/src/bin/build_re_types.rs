@@ -5,6 +5,7 @@
 
 // TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stdout, clippy::print_stderr)] // Build tool
 
 use camino::Utf8Path;
 use re_build_tools::{

@@ -219,7 +219,11 @@ pub fn chat_ui(
                 .auto_shrink(false)
                 .stick_to_bottom(true)
                 .show(ui, |ui| {
-                    transcript_ui(ui, session, show_thoughts);
+                    if let Some(prompt) = transcript_ui(ui, session, show_thoughts)
+                        && !session.send_prompt(prompt)
+                    {
+                        re_log::warn!("The agent cannot retry the prompt at the moment");
+                    }
 
                     if let Phase::Connecting { status } = session.phase()
                         && !session.is_waiting_on_user()

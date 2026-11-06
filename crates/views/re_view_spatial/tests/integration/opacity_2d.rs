@@ -25,7 +25,7 @@ pub fn test_opacity_2d() {
 
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
                     re_sdk_types::encodings::ColorModel::RGB,
                     image,
@@ -45,7 +45,7 @@ pub fn test_opacity_2d() {
 
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::DepthImage::from_gray16(
                     bytemuck::cast_slice::<u16, u8>(&vec),
                     [width as _, height as _],

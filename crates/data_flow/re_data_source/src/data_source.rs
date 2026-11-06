@@ -23,7 +23,7 @@ pub enum LogDataSource {
     ///
     /// Could be an `.rrd` recording, `.rbl` blueprint, `.mcap`, `.png`, `.glb`, etc.
     HttpUrl {
-        /// This is a canonicalized URL path without any parameters or fragments.
+        /// The full URL, including any query parameters (e.g. the signature of a presigned URL).
         url: url::Url,
     },
 

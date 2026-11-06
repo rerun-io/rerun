@@ -32,7 +32,7 @@ impl ImuMessageParser {
         Chunk::builder(entity_path)
             .with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &SeriesLines::new().with_names([
                     "gyroscope/x",
                     "gyroscope/y",

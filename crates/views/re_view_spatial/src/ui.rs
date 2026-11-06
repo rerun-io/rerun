@@ -70,6 +70,19 @@ pub struct SpatialViewState {
     pub pinhole_at_origin: Option<Pinhole>,
 
     pub visual_bounds_2d: Option<VisualBounds2D>,
+
+    /// What last frame's 2D view showed. `None` for 3D views.
+    pub screen_space_2d: Option<ScreenSpace2D>,
+}
+
+/// Scale and visible area of last frame's 2D view.
+#[derive(Clone, Copy, Debug, PartialEq, re_byte_size::SizeBytes)]
+pub struct ScreenSpace2D {
+    /// Physical pixels per scene unit.
+    pub pixels_per_scene_unit: f32,
+
+    /// The part of the scene that was visible.
+    pub visible_scene_rect: egui::Rect,
 }
 
 impl Clone for SpatialViewState {
@@ -84,6 +97,7 @@ impl Clone for SpatialViewState {
             state_3d: self.state_3d.clone(),
             pinhole_at_origin: self.pinhole_at_origin,
             visual_bounds_2d: self.visual_bounds_2d,
+            screen_space_2d: self.screen_space_2d,
         }
     }
 }

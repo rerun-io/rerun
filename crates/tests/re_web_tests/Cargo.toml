@@ -18,6 +18,11 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[features]
+default = ["crypto-ring"]
+crypto-ring = ["re_server/crypto-ring"]
+crypto-aws-lc-rs = ["re_server/crypto-aws-lc-rs"]
+
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_build_info.workspace = true

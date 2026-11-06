@@ -103,7 +103,7 @@ def layering_errors(metadata: dict[str, Any]) -> list[str]:
     # so they have no layer to violate.
     layer_of_crate = {}
     for package in metadata["packages"]:
-        folder = str(Path(package["manifest_path"]).parent.relative_to(workspace_root).parent)
+        folder = Path(package["manifest_path"]).parent.relative_to(workspace_root).parent.as_posix()
         if folder in FOLDERS:
             layer_of_crate[package["name"]] = folder
 

@@ -21,7 +21,7 @@ fn main() -> std::process::ExitCode {
 
     if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
         // TODO(tokio-rs/tracing#2499): allow installing multiple tracing sinks (https://github.com/tokio-rs/tracing/issues/2499)
-        eprintln!(
+        let _err = re_error::try_eprintln!(
             "Turning off stderr logging because of perf_telemetry needs exclusive access to the global tracing subscriber"
         );
     } else {
@@ -42,7 +42,7 @@ fn main() -> std::process::ExitCode {
         Err(err) => {
             // Note: we do not print the backtrace here, because our error messages should be short, readable, and actionable.
             // If we instead return an `anyhow::Result` from `main`, then the backtrace will be printed if `RUST_BACKTRACE=1`.
-            eprintln!("Error: {}", re_error::format(err));
+            let _err = re_error::try_eprintln!("Error: {}", re_error::format(err));
             std::process::ExitCode::FAILURE
         }
     }

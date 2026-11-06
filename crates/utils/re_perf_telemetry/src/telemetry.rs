@@ -1035,7 +1035,7 @@ impl Telemetry {
                 // The subscriber is not guaranteed to be installed on the
                 // failure path (most error sites are pre-`try_init`), so fall
                 // back to stderr to ensure the diagnosis is visible.
-                eprintln!(
+                let _err = re_error::try_eprintln!(
                     "Telemetry init failed (enabled={enabled} service={service_name_summary} trace_mode={trace_mode} traces={traces_summary} logs={logs_summary} metrics={metrics_summary} tracy={tracy_enabled}): {err:#}"
                 );
                 Err(err)

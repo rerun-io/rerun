@@ -1,5 +1,6 @@
 // TODO(#3408): remove unwrap()
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stdout)] // Example
 
 use std::sync::atomic::AtomicUsize;
 use std::sync::atomic::Ordering::Relaxed;
@@ -103,7 +104,7 @@ fn log_messages() {
 
     let store_id = StoreId::random(StoreKind::Recording, "test_app");
     let timeline = Timeline::new_sequence("frame_nr");
-    let mut time_point = TimePoint::default();
+    let mut time_point = TimePoint::STATIC;
     time_point.insert(timeline, TimeInt::ZERO);
 
     {

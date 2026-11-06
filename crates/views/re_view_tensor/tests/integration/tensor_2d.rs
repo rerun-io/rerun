@@ -3,7 +3,7 @@ use re_log_types::{EntityPath, TimePoint};
 use re_sdk_types::archetypes;
 use re_sdk_types::encodings::TensorBuffer;
 use re_test_context::TestContext;
-use re_test_context::external::egui_kittest::SnapshotResults;
+use re_test_context::external::egui_kittest::{SnapshotResults, kittest::Queryable as _};
 use re_test_viewport::TestContextExt as _;
 use re_view_tensor::TensorView;
 use re_viewer_context::{RecommendedView, ViewClass as _, ViewId};
@@ -63,6 +63,39 @@ fn test_tensor() {
     run_test_with_origin(&mut test_context, "tensors/t2", "t2", &mut snapshot_results);
     run_test_with_origin(&mut test_context, "tensors", "both", &mut snapshot_results);
     run_test_with_origin(&mut test_context, "", "root", &mut snapshot_results);
+}
+
+#[test]
+fn test_tensor_hover() {
+    let mut test_context = TestContext::new_with_view_class::<TensorView>();
+
+    test_context.log_entity("tensor", |builder| {
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &make_test_tensor_2d(16))
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_id(
+            TensorView::identifier(),
+            RecommendedView::new_single_entity("tensor"),
+            ViewId::hashed_from_str("test-view-id"),
+        ))
+    });
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui(egui::vec2(256.0, 256.0))
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Each texel is 16x16 points, so this is the center of row 2, column 5.
+    harness.hover_at(egui::pos2(5.5 * 16.0, 2.5 * 16.0));
+    harness.run();
+
+    assert!(harness.query_by_label("2, 5").is_some());
+    // The xor test tensor stores `(row ^ column) * 16`.
+    assert!(harness.query_by_label("112").is_some());
+
+    harness.snapshot("tensor_2d_hover");
 }
 
 fn run_view_ui_and_save_snapshot(

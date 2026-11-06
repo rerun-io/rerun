@@ -59,7 +59,7 @@ fn run_mesh_face_rendering_test(
     test_context.log_entity("world/mesh", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &rainbow_tetrahedron(face_rendering, albedo_factor),
         )
     });

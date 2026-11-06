@@ -173,6 +173,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     /// Read the next message in the stream.
     fn try_read_impl(&mut self) -> Result<Option<T>, DecodeError> {
         // Enable this for easy debugging of the state machine.
+        #[expect(clippy::print_stderr)]
         if false {
             use bytes::Buf as _;
             let num_bytes = self

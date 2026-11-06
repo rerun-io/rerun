@@ -9,9 +9,11 @@
 //! Give this crate the same API design and review scrutiny as the crates in `crates/top`, since it may move there in the future.
 
 mod asset;
+mod dataset;
 mod dataset_info;
 mod dataset_selection;
 mod entry;
+mod layer;
 mod registration;
 mod segment;
 mod staging;

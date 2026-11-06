@@ -6,6 +6,7 @@ use indicatif::ProgressBar;
 use itertools::Itertools as _;
 use rayon::prelude::*;
 use re_build_info::CrateVersion;
+use re_error::try_eprintln;
 use re_log_encoding::rrd::EncodingOptions;
 
 #[derive(Debug, Clone, clap::Parser)]
@@ -27,10 +28,10 @@ impl MigrateCommand {
         let num_files = path_to_input_rrds.len();
 
         if num_files < num_files_before {
-            eprintln!(
+            try_eprintln!(
                 "Ignored {} file(s) that are called .backup.rrd, and are therefore assumed to already have been migrated",
                 num_files_before - num_files
-            );
+            )?;
         }
 
         // Sanity-check input:
@@ -38,7 +39,7 @@ impl MigrateCommand {
             anyhow::ensure!(path.exists(), "No such file: {path}");
         }
 
-        eprintln!("Migrating {num_files} .rrd file(s)…");
+        try_eprintln!("Migrating {num_files} .rrd file(s)…")?;
 
         let progress =
             ProgressBar::new(path_to_input_rrds.len() as u64).with_message("Migrating rrd:s");
@@ -60,17 +61,17 @@ impl MigrateCommand {
         progress.finish_and_clear();
 
         if failures.is_empty() {
-            eprintln!(
+            try_eprintln!(
                 "✅ {} file(s) successfully migrated.",
                 path_to_input_rrds.len()
-            );
+            )?;
             Ok(())
         } else {
             let num_failures = failures.len();
-            eprintln!("❌ Failed to migrate {num_failures}/{num_files} file(s):");
-            eprintln!();
+            let _err = try_eprintln!("❌ Failed to migrate {num_failures}/{num_files} file(s):");
+            let _err = try_eprintln!();
             for (path, err) in &failures {
-                eprintln!("  {path}: {}\n", re_error::format(err));
+                let _err = try_eprintln!("  {path}: {}\n", re_error::format(err));
             }
             anyhow::bail!("Failed to migrate {num_failures}/{num_files} file(s)");
         }
@@ -82,7 +83,8 @@ fn migrate_file_at(original_path: &Utf8PathBuf) -> anyhow::Result<()> {
     let backup_path = original_path.with_extension("backup.rrd");
 
     if backup_path.exists() {
-        eprintln!("Ignoring migration of {original_path}: {backup_path} already exists");
+        let _err =
+            try_eprintln!("Ignoring migration of {original_path}: {backup_path} already exists");
         return Ok(());
     }
 

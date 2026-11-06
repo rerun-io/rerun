@@ -88,12 +88,12 @@ pub fn setup_logging_with_filter(log_filter: &str) {
         // Forward `log` calls to `tracing`, so that if a dependency uses `log` instead of `tracing`,
         // the log messages will still be captured by our `tracing` setup.
         if let Err(err) = tracing_log::LogTracer::init() {
-            eprintln!("Failed to set log to tracing forwarding: {err}");
+            let _err = re_error::try_eprintln!("Failed to set log to tracing forwarding: {err}");
         }
 
         let subscriber = create_tracing_subscriber(log_filter);
         if tracing::subscriber::set_global_default(subscriber).is_err() {
-            eprintln!(
+            let _err = re_error::try_eprintln!(
                 "Failed to set global tracing subscriber. This can cause problems with log messages not being captured."
             );
             crate::debug_panic!(

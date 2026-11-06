@@ -451,7 +451,7 @@ mod pushdown_tests {
                         Chunk::builder(entity)
                             .with_sparse_component_batches(
                                 row_id,
-                                TimePoint::default(),
+                                TimePoint::STATIC,
                                 [(descriptor, Some(&points as _))],
                             )
                             .build()
@@ -462,7 +462,7 @@ mod pushdown_tests {
                         Chunk::builder(entity)
                             .with_sparse_component_batches(
                                 row_id,
-                                TimePoint::default(),
+                                TimePoint::STATIC,
                                 [(descriptor, Some(&colors as _))],
                             )
                             .build()
@@ -475,7 +475,7 @@ mod pushdown_tests {
                 for frame in 0..spec.num_frames {
                     let row_id = RowId::new();
                     #[expect(clippy::cast_possible_wrap)]
-                    let timepoint = TimePoint::default().with(timeline, frame as i64);
+                    let timepoint = TimePoint::STATIC.with(timeline, frame as i64);
                     builder = match spec.component {
                         TestComponent::Points => {
                             #[expect(clippy::cast_possible_truncation)]

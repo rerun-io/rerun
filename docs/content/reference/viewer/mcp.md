@@ -197,6 +197,8 @@ See [Transforms & Coordinate Frames](../../concepts/logging-and-ingestion/transf
 
 ## Reading and writing the blueprint
 
+If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
+
 `rerun_get_blueprint` with a `recording` target returns a recording's active blueprint as JSON: the layout, what each view shows, its properties, and per-entity overrides.
 The target's `store_id` defaults to the active recording.
 Without any target it reads the blueprint of what is on screen: the table if one is shown, else the active recording.

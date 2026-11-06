@@ -354,7 +354,7 @@ fn static_sorted() -> anyhow::Result<()> {
     let row_id2 = RowId::new();
     let row_id3 = RowId::new();
 
-    let timepoint = TimePoint::default();
+    let timepoint = TimePoint::STATIC;
 
     let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
     let points3 = &[
@@ -444,7 +444,7 @@ fn static_unsorted() -> anyhow::Result<()> {
     let row_id2 = RowId::new();
     let row_id3 = RowId::new();
 
-    let timepoint = TimePoint::default();
+    let timepoint = TimePoint::STATIC;
 
     let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
     let points3 = &[

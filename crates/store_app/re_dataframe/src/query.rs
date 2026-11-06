@@ -3502,7 +3502,7 @@ mod tests {
         let chunk0 = Chunk::builder(entity_path.clone())
             .with_serialized_batches(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 any_values.as_serialized_batches(),
             )
             .build()?;
@@ -4823,7 +4823,7 @@ mod tests {
         let chunk5 = Chunk::builder(entity_path.clone())
             .with_sparse_component_batches(
                 row_id5_1,
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_labels(), Some(&labels2 as _))],
             )
             .build()?;
@@ -4835,7 +4835,7 @@ mod tests {
         let chunk6 = Chunk::builder(entity_path.clone())
             .with_sparse_component_batches(
                 row_id6_1,
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_labels(), Some(&labels3 as _))],
             )
             .build()?;
@@ -4863,7 +4863,7 @@ mod tests {
         let chunk1 = Chunk::builder(entity_path.clone())
             .with_sparse_component_batches(
                 row_id1_1,
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(
                     archetypes::Clear::descriptor_is_recursive(),
                     Some(&clear_flat as _),
@@ -5360,7 +5360,7 @@ mod tests {
         let static_chunk = Chunk::builder(entity_path.clone())
             .with_sparse_component_batches(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_colors(), Some(&colors as _))],
             )
             .build()?;

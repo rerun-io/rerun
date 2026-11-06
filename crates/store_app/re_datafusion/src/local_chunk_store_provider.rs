@@ -367,7 +367,7 @@ mod tests {
         let timeline = Timeline::new_sequence("t");
         let mut builder = Chunk::builder(EntityPath::from(path));
         for t in ts {
-            let tp = TimePoint::default().with(timeline, TimeInt::new_temporal(*t));
+            let tp = TimePoint::STATIC.with(timeline, TimeInt::new_temporal(*t));
             #[expect(clippy::cast_sign_loss)]
             let pt = MyPoint::from_iter((*t as u32)..=(*t as u32));
             builder = builder.with_archetype(RowId::new(), tp, &MyPoints::new(pt));
@@ -380,7 +380,7 @@ mod tests {
         Chunk::builder(EntityPath::from(path))
             .with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &MyPoints::new(MyPoint::from_iter(0u32..1)),
             )
             .build()

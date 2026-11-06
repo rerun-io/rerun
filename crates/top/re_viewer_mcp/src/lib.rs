@@ -606,6 +606,23 @@ mod tests {
         assert_eq!(ViewerMcpServer::new(None).instructions(), INSTRUCTIONS);
     }
 
+    #[test]
+    fn instructions_name_available_tools() {
+        let tools = ViewerMcpServer::new(None).all_tools();
+        let names = INSTRUCTIONS
+            .split('`')
+            .skip(1)
+            .step_by(2)
+            .filter(|name| name.starts_with(RERUN_PREFIX))
+            .filter(|name| name.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
+        for name in names {
+            assert!(
+                tools.iter().any(|tool| tool.name == name),
+                "unknown tool: {name}"
+            );
+        }
+    }
+
     /// Snapshot of the documentation the llm will see when loading the mcp tools.
     ///
     /// It's useful to look at the snapshot output to check how much llm context the tool
@@ -635,6 +652,21 @@ mod tests {
         }
 
         insta::assert_snapshot!("agent_surface", surface);
+    }
+
+    /// The Anthropic and `OpenAI` APIs reject a tool schema with a top-level `oneOf`, `anyOf`, or
+    /// `allOf`, and some agents pass our schemas through to them unchanged.
+    #[test]
+    fn no_top_level_schema_combinators() {
+        for tool in ViewerMcpServer::new(None).all_tools() {
+            for keyword in ["allOf", "anyOf", "oneOf"] {
+                assert!(
+                    !tool.input_schema.contains_key(keyword),
+                    "`{}` has a top-level `{keyword}`",
+                    tool.name
+                );
+            }
+        }
     }
 
     #[test]

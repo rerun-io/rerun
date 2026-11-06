@@ -1,3 +1,5 @@
+#![expect(clippy::print_stderr)] // Example
+
 use re_chunk::{Chunk, LatestAtQuery, RowId, Timeline, TimelineName};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 

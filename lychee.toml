@@ -105,8 +105,9 @@ exclude = [
   'file:///does/not/exist.rrd',
   'file:///path/to/file',
   'file:///tmp/.*', # Example paths in re_data_source's `file://` URL docs and tests.
-  'file://cors.json', # AWS CLI `--cors-configuration file://…` syntax in docs/content/hub/bucket-cors.md, not a real link.
+  'file://cors.json', # AWS CLI `--cors-configuration file://…` syntax in docs/content/hub/bucket-configuration.md, not a real link.
   'file://foo',
+  'file://lifecycle.json', # AWS CLI `--lifecycle-configuration file://…` syntax in docs/content/hub/bucket-configuration.md, not a real link.
   'file://localhost/.*', # Example paths in re_data_source's `file://` URL docs and tests.
   'file://path/to/file.rrd',
   'file://server/share.*', # Example UNC path in re_data_source's `file://` URL docs and tests.

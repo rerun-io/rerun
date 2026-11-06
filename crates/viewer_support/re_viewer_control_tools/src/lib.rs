@@ -243,6 +243,12 @@ fn real_oneofs(message: &MessageDescriptor) -> impl Iterator<Item = OneofDescrip
     message.oneofs().filter(|oneof| !oneof.is_synthetic())
 }
 
+/// The keywords that the Anthropic and `OpenAI` APIs reject at the top level of a tool's input
+/// schema, failing every request that offers the tool. They are fine nested inside a property.
+///
+/// Agents such as `OpenCode` pass MCP tool schemas through to the model API unchanged.
+const TOP_LEVEL_SCHEMA_COMBINATORS: [&str; 3] = ["allOf", "anyOf", "oneOf"];
+
 /// Whether a caller may leave this `oneof` unset.
 fn is_omittable(oneof: &OneofDescriptor) -> bool {
     OMITTABLE_ONEOFS.contains(&oneof.full_name())
@@ -425,6 +431,10 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
             }
             if field.name() == SCREENSHOT_OPERATION {
                 screenshot_schema(&mut schema, screenshot);
+            }
+            // The description still names the exclusive arms, and `build_request` enforces them.
+            for keyword in TOP_LEVEL_SCHEMA_COMBINATORS {
+                schema.remove(keyword);
             }
 
             ToolDefinition {
@@ -1032,17 +1042,20 @@ mod tests {
             .as_str()
             .expect("a description listing the exclusive arms");
         assert!(description.contains("Exactly one of"), "{description}");
+    }
 
-        // A `oneof` is an enum, so the schema has to reject both no arm and two arms.
-        assert_eq!(
-            close.input_schema["oneOf"],
-            json!([
-                { "required": ["current"] },
-                { "required": ["all"] },
-                { "required": ["store_ids"] },
-                { "required": ["urls"] },
-            ])
-        );
+    /// A top-level `oneOf`, `anyOf`, or `allOf` makes the model API reject every request.
+    #[test]
+    fn no_top_level_schema_combinators() {
+        for tool in tools(ScreenshotDelivery::File) {
+            for keyword in TOP_LEVEL_SCHEMA_COMBINATORS {
+                assert!(
+                    !tool.input_schema.contains_key(keyword),
+                    "`{}` has a top-level `{keyword}`",
+                    tool.name
+                );
+            }
+        }
     }
 
     /// The blueprint tools use what is on screen when they name no target, but still refuse two.

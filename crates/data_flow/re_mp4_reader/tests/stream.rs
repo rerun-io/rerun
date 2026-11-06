@@ -7,6 +7,7 @@
 //! offsets used while streaming are correct.
 
 #![expect(clippy::unwrap_used)] // Okay to use unwrap in tests
+#![expect(clippy::print_stderr)] // This is only a test
 
 use std::path::PathBuf;
 use std::time::Duration;

@@ -5,10 +5,10 @@ use re_renderer::resource_managers::GpuTexture2D;
 use re_sdk_types::encodings::ColorModel;
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::tensor_data::TensorElement;
-use re_ui::UiExt as _;
-use re_viewer_context::{
-    AnnotationMap, Annotations, ImageInfo, StoreViewContext, ViewQuery, gpu_bridge,
+use re_view::{
+    TextureInteractionId, paint_zoomed_texture_region_outline, zoomed_texture_region_ui,
 };
+use re_viewer_context::{AnnotationMap, Annotations, ImageInfo, StoreViewContext, ViewQuery};
 
 use crate::PickableRectSourceData;
 use crate::SpaceKind;
@@ -58,7 +58,7 @@ pub fn textured_rect_hover_ui(
         if spatial_kind == SpaceKind::TwoD {
             let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(w, h));
 
-            show_zoomed_image_region_area_outline(
+            paint_zoomed_texture_region_outline(
                 ui.ctx(),
                 *ui_pan_and_zoom_from_ui.from(),
                 egui::vec2(w, h),
@@ -75,232 +75,36 @@ pub fn textured_rect_hover_ui(
 
         let annotations = annotations.find(&instance_path.entity_path);
 
-        show_zoomed_image_region(
-            ctx.render_ctx(),
+        let interaction_id = TextureInteractionId {
+            entity_path: &instance_path.entity_path,
+            interaction_idx: hover_overlay_index,
+        };
+        let render_ctx = ctx.render_ctx();
+        let pixel_value_source = image.map_or(
+            PixelValueSource::GpuTexture(&texture.texture),
+            PixelValueSource::Image,
+        );
+        let annotations = annotations.unwrap_or_else(|| Annotations::missing_ref());
+
+        zoomed_texture_region_ui(
+            render_ctx,
             ui,
-            texture,
-            image,
-            match annotations {
-                Some(annotations) => annotations,
-                None => re_viewer_context::Annotations::missing_ref(),
-            },
-            depth_meter,
-            &TextureInteractionId {
-                entity_path: &instance_path.entity_path,
-                interaction_idx: hover_overlay_index,
-            },
+            texture.clone(),
+            &interaction_id,
             [pixel_coordinates[0] as _, pixel_coordinates[1] as _],
+            &|ui| {
+                pixel_value_ui(
+                    render_ctx,
+                    ui,
+                    &interaction_id,
+                    &pixel_value_source,
+                    annotations,
+                    pixel_coordinates,
+                    depth_meter,
+                );
+            },
         );
     });
-}
-
-// Show the surrounding pixels:
-const ZOOMED_IMAGE_TEXEL_RADIUS: i64 = 10;
-
-/// Draws a border for the area zoomed in by [`show_zoomed_image_region`].
-fn show_zoomed_image_region_area_outline(
-    egui_ctx: &egui::Context,
-    ui_clip_rect: egui::Rect,
-    image_resolution: egui::Vec2,
-    [center_x, center_y]: [i64; 2],
-    image_rect: egui::Rect,
-) {
-    use egui::{Rect, pos2, remap};
-
-    let width = image_resolution.x;
-    let height = image_resolution.y;
-
-    // Show where on the original image the zoomed-in region is at:
-    // The area shown is ZOOMED_IMAGE_TEXEL_RADIUS _surrounding_ the center.
-    // Since the center is the top-left/rounded-down, coordinate, we need to add 1 to right/bottom.
-    let left = (center_x - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-    let right = (center_x + ZOOMED_IMAGE_TEXEL_RADIUS + 1) as f32;
-    let top = (center_y - ZOOMED_IMAGE_TEXEL_RADIUS) as f32;
-    let bottom = (center_y + ZOOMED_IMAGE_TEXEL_RADIUS + 1) as f32;
-
-    let left = remap(left, 0.0..=width, image_rect.x_range());
-    let right = remap(right, 0.0..=width, image_rect.x_range());
-    let top = remap(top, 0.0..=height, image_rect.y_range());
-    let bottom = remap(bottom, 0.0..=height, image_rect.y_range());
-
-    let sample_rect = Rect::from_min_max(pos2(left, top), pos2(right, bottom));
-    // TODO(emilk): use `parent_ui.painter()` and put it in a high Z layer, when https://github.com/emilk/egui/issues/1516 is done
-    let painter = egui_ctx.debug_painter().with_clip_rect(ui_clip_rect);
-    painter.rect_stroke(
-        sample_rect,
-        0.0,
-        (2.0, egui::Color32::BLACK),
-        egui::StrokeKind::Middle,
-    );
-    painter.rect_stroke(
-        sample_rect,
-        0.0,
-        (1.0, egui::Color32::WHITE),
-        egui::StrokeKind::Middle,
-    );
-}
-
-/// Identifies an image/texture interaction.
-///
-/// This is needed primarily to keep track of gpu readbacks and for debugging purposes.
-/// Therefore, this should stay roughly stable over several frames.
-pub struct TextureInteractionId<'a> {
-    pub entity_path: &'a re_log_types::EntityPath,
-
-    /// Index of the interaction. This is important in case there's multiple interactions with the same entity.
-    /// This can happen if an entity has several images all of which are inspected at the same time.
-    /// Without this, several readbacks may get the same identifier, resulting in the wrong gpu readback values.
-    pub interaction_idx: u32,
-}
-
-impl TextureInteractionId<'_> {
-    pub fn debug_label(&self, topic: &str) -> re_renderer::Label {
-        format!("{topic}__{:?}_{}", self.entity_path, self.interaction_idx).into()
-    }
-
-    pub fn gpu_readback_id(&self) -> re_renderer::GpuReadbackIdentifier {
-        re_log_types::hash::Hash64::hash((self.entity_path, self.interaction_idx)).hash64()
-    }
-
-    fn render_view_id(&self, topic: &str) -> re_renderer::ViewBuilderId {
-        re_renderer::ViewBuilderId::new(
-            re_log_types::hash::Hash64::hash((self.entity_path, self.interaction_idx, topic))
-                .hash64(),
-        )
-    }
-}
-
-/// `meter`: iff this is a depth map, how long is one meter?
-pub fn show_zoomed_image_region(
-    render_ctx: &re_renderer::RenderContext,
-    ui: &mut egui::Ui,
-    texture: ColormappedTexture,
-    image: Option<&ImageInfo>,
-    annotations: &Annotations,
-    meter: Option<f32>,
-    interaction_id: &TextureInteractionId<'_>,
-    center_texel: [i64; 2],
-) {
-    if let Err(err) = try_show_zoomed_image_region(
-        render_ctx,
-        ui,
-        image,
-        texture,
-        annotations,
-        meter,
-        interaction_id,
-        center_texel,
-    ) {
-        ui.error_with_details_on_hover(err.to_string());
-    }
-}
-
-/// `meter`: iff this is a depth map, how long is one meter?
-fn try_show_zoomed_image_region(
-    render_ctx: &re_renderer::RenderContext,
-    ui: &mut egui::Ui,
-    image: Option<&ImageInfo>,
-    colormapped_texture: ColormappedTexture,
-    annotations: &Annotations,
-    meter: Option<f32>,
-    interaction_id: &TextureInteractionId<'_>,
-    center_texel: [i64; 2],
-) -> anyhow::Result<()> {
-    let [width, height] = colormapped_texture.width_height();
-
-    const POINTS_PER_TEXEL: f32 = 5.0;
-    let size = egui::Vec2::splat(((ZOOMED_IMAGE_TEXEL_RADIUS * 2 + 1) as f32) * POINTS_PER_TEXEL);
-
-    let (_id, zoom_rect) = ui.allocate_space(size);
-    let painter = ui.painter();
-
-    painter.rect_filled(zoom_rect, 0.0, ui.visuals().extreme_bg_color);
-
-    let center_of_center_texel = egui::vec2(
-        (center_texel[0] as f32) + 0.5,
-        (center_texel[1] as f32) + 0.5,
-    );
-
-    // Paint the zoomed in region:
-    {
-        let image_rect_on_screen = egui::Rect::from_min_size(
-            zoom_rect.center() - POINTS_PER_TEXEL * center_of_center_texel,
-            POINTS_PER_TEXEL * egui::vec2(width as f32, height as f32),
-        );
-
-        gpu_bridge::render_image(
-            render_ctx,
-            &painter.with_clip_rect(zoom_rect),
-            image_rect_on_screen,
-            colormapped_texture.clone(),
-            egui::TextureOptions::NEAREST,
-            interaction_id.render_view_id("zoomed_region"),
-            interaction_id.debug_label("zoomed_region"),
-        )?;
-    }
-
-    // Outline the center texel, to indicate which texel we're printing the values of:
-    {
-        let center_texel_rect =
-            egui::Rect::from_center_size(zoom_rect.center(), egui::Vec2::splat(POINTS_PER_TEXEL));
-        painter.rect_stroke(
-            center_texel_rect.expand(1.0),
-            0.0,
-            (1.0, egui::Color32::BLACK),
-            egui::StrokeKind::Outside,
-        );
-        painter.rect_stroke(
-            center_texel_rect,
-            0.0,
-            (1.0, egui::Color32::WHITE),
-            egui::StrokeKind::Outside,
-        );
-    }
-
-    let [x, y] = center_texel;
-    if 0 <= x && (x as u32) < width && 0 <= y && (y as u32) < height {
-        ui.separator();
-
-        ui.vertical(|ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-
-            pixel_value_ui(
-                render_ctx,
-                ui,
-                interaction_id,
-                &image.map_or(
-                    PixelValueSource::GpuTexture(&colormapped_texture.texture),
-                    PixelValueSource::Image,
-                ),
-                annotations,
-                [x as _, y as _],
-                meter,
-            );
-
-            // Show a big sample of the color of the middle texel:
-            let (rect, _) = ui.allocate_exact_size(
-                egui::Vec2::splat(ui.available_height()),
-                egui::Sense::hover(),
-            );
-            // Position texture so that the center texel is at the center of the rect:
-            let zoom = rect.width();
-            let image_rect_on_screen = egui::Rect::from_min_size(
-                rect.center() - zoom * center_of_center_texel,
-                zoom * egui::vec2(width as f32, height as f32),
-            );
-            gpu_bridge::render_image(
-                render_ctx,
-                &ui.painter().with_clip_rect(rect),
-                image_rect_on_screen,
-                colormapped_texture,
-                egui::TextureOptions::NEAREST,
-                interaction_id.render_view_id("single_pixel"),
-                interaction_id.debug_label("single_pixel"),
-            )
-        })
-        .inner?;
-    }
-    Ok(())
 }
 
 /// How we figure out what value to show for a single pixel.

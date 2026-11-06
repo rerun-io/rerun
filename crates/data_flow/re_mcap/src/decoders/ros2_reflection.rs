@@ -440,7 +440,7 @@ float64[] values
                 "unexpected result for message {i}"
             );
             if result.is_ok() {
-                ctx.add_timepoint(re_log_types::TimePoint::default().with(
+                ctx.add_timepoint(re_log_types::TimePoint::STATIC.with(
                     re_log_types::Timeline::new("log_time", TimeType::TimestampNs),
                     i as i64,
                 ));

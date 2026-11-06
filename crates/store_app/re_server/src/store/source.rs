@@ -333,7 +333,7 @@ mod tests {
                 let chunk = Chunk::builder(entity_path)
                     .with_sparse_component_batches(
                         re_chunk::RowId::new(),
-                        TimePoint::default().with(timeline, frame_idx),
+                        TimePoint::STATIC.with(timeline, frame_idx),
                         [(MyPoints::descriptor_points(), Some(&points as _))],
                     )
                     .build()

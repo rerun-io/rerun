@@ -492,7 +492,7 @@ fn manual_drop_entity_path() -> anyhow::Result<()> {
         Chunk::builder(entity_path1.clone())
             .with_component_batches(
                 row_id3,
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyIndex::partial_descriptor(), &indices3 as _)],
             )
             .build()?,

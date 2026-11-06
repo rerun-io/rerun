@@ -14,6 +14,7 @@ use std::path::PathBuf;
 
 use anyhow::Context as _;
 use parking_lot::Mutex;
+use re_error::try_println;
 
 use re_log_types::{TimeType, TimelineName};
 use re_mcap::decoders::{DecoderRegistry, TopicFilter};
@@ -63,13 +64,17 @@ impl CheckCommand {
             collect_by_topic_raw(mcap_file.bytes(), &summary)?
         };
 
-        println!("{}", path.display());
-        print_timeline_checks(&by_topic, &summary, *full);
+        try_println!("{}", path.display())?;
+        print_timeline_checks(&by_topic, &summary, *full)?;
         Ok(())
     }
 }
 
-fn print_timeline_checks(by_topic: &ByTopic, summary: &mcap::Summary, full: bool) {
+fn print_timeline_checks(
+    by_topic: &ByTopic,
+    summary: &mcap::Summary,
+    full: bool,
+) -> std::io::Result<()> {
     let timeline_names = timeline_names(by_topic);
     let channel_id_by_topic: BTreeMap<&str, u16> = summary
         .channels
@@ -119,24 +124,24 @@ fn print_timeline_checks(by_topic: &ByTopic, summary: &mcap::Summary, full: bool
     }
     rows.sort_by_key(|row| row[1].parse::<u16>().unwrap_or(u16::MAX));
 
-    println!();
-    println!(
+    try_println!()?;
+    try_println!(
         "Timelines: {}",
         timeline_names
             .iter()
             .map(TimelineName::to_string)
             .collect::<Vec<_>>()
             .join(", ")
-    );
+    )?;
     if !full {
-        println!("Run with --full to decode all timelines.");
+        try_println!("Run with --full to decode all timelines.")?;
     }
-    println!();
+    try_println!()?;
     print_table(
         &["Status", "ID", "Chunks", "Topic", "Issues"],
         &rows,
         &[1, 2],
-    );
+    )
 }
 
 /// Times for a set of messages on one topic, keyed by timeline name.

@@ -493,7 +493,7 @@ mod tests {
                 test_ctx.log_entity(entity_path.clone(), |builder| {
                     builder.with_component_batches(
                         RowId::new(),
-                        TimePoint::default(),
+                        TimePoint::STATIC,
                         [(
                             MyPoints::descriptor_points(),
                             &[MyPoint::new(1.0, 2.0)] as _,
@@ -637,7 +637,7 @@ mod tests {
             let mut add_to_blueprint =
                 |path: &EntityPath, archetype: &dyn re_types_core::AsComponents| {
                     let chunk = Chunk::builder(path.clone())
-                        .with_archetype(RowId::new(), TimePoint::default(), archetype)
+                        .with_archetype(RowId::new(), TimePoint::STATIC, archetype)
                         .build()
                         .unwrap();
 

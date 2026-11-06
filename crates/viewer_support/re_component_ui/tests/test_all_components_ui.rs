@@ -1,4 +1,5 @@
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stdout)] // This is only a test
 
 use std::collections::HashSet;
 use std::fmt::Formatter;

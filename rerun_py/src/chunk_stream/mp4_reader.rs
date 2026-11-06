@@ -124,7 +124,7 @@ impl PyMp4ReaderInternal {
                 // `transcode` is validated and rejected for asset mode on the Python
                 // side, so it's simply ignored here.
                 Mode::Asset {
-                    timepoint: re_chunk::TimePoint::default(),
+                    timepoint: re_chunk::TimePoint::STATIC,
                 }
             }
             "stream" => Mode::Stream {

@@ -685,7 +685,7 @@ pub extern "C" fn rr_recording_stream_free(id: CRecordingStream) {
         }
     } else {
         // ⚠️ Don't use `re_log` here since it goes through `tracing` which _also_ may have shut down thread locals at this point, causing a panic when accessing them.
-        eprintln!(
+        let _err = re_error::try_eprintln!(
             "rr_recording_stream_free called on a thread that is shutting down and can no longer access thread locals. We can't handle this and have to ignore this call."
         );
     }
@@ -1196,7 +1196,7 @@ fn rr_recording_stream_log_impl(
 
     let row = PendingRow {
         row_id,
-        timepoint: TimePoint::default(), // we use the one in the recording stream for now
+        timepoint: TimePoint::STATIC, // we use the one in the recording stream for now
         components,
     };
 

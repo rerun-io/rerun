@@ -258,7 +258,7 @@ fn static_codec_chunk() -> Chunk {
     Chunk::builder(STREAM_ENTITY)
         .with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &EncodedImage::update_fields().with_media_type("image/png"),
         )
         .build()
@@ -269,7 +269,7 @@ fn static_image_chunk() -> Chunk {
     Chunk::builder(STREAM_ENTITY)
         .with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &EncodedImage::update_fields().with_blob(test_png_blob()),
         )
         .build()

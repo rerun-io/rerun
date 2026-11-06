@@ -418,11 +418,7 @@ mod tests {
     fn recording_with(entities: &[&str]) -> EntityDb {
         let mut recording = EntityDb::new(StoreId::random(StoreKind::Recording, "test_app"));
         for path in entities {
-            add_points(
-                &mut recording,
-                &EntityPath::from(*path),
-                TimePoint::default(),
-            );
+            add_points(&mut recording, &EntityPath::from(*path), TimePoint::STATIC);
         }
         recording
     }
@@ -583,7 +579,7 @@ mod tests {
             [false, false]
         );
 
-        add_points(&mut recording, &"second".into(), TimePoint::default());
+        add_points(&mut recording, &"second".into(), TimePoint::STATIC);
         let second = setup.run(&recording, &latest());
         assert_eq!(rebuilt(&first, &second), [true, true]);
         assert!(has_entity(&second[0], "second"));
@@ -619,7 +615,7 @@ mod tests {
         let before = setup.run(&recording, &latest());
 
         let mut replaced = EntityDb::new(recording.store_id().clone());
-        add_points(&mut replaced, &"second".into(), TimePoint::default());
+        add_points(&mut replaced, &"second".into(), TimePoint::STATIC);
         let after = setup.run(&replaced, &latest());
 
         assert_eq!(rebuilt(&before, &after), [true, true]);

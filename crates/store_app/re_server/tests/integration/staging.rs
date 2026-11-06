@@ -79,7 +79,7 @@ fn encode_rrd() -> anyhow::Result<Vec<u8>> {
     let chunk = Chunk::builder(EntityPath::from("/test/entity"))
         .with_sparse_component_batches(
             RowId::new(),
-            TimePoint::default().with(Timeline::new_sequence("frame"), 0),
+            TimePoint::STATIC.with(Timeline::new_sequence("frame"), 0),
             [(MyPoints::descriptor_points(), Some(&points as _))],
         )
         .build()?;

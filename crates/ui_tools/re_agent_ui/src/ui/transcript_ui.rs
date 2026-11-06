@@ -1,14 +1,16 @@
 use egui::RichText;
 use re_agent::acp::schema::v1::{Plan, PlanEntryStatus, ToolCallStatus};
+use re_error::StructuredError;
 use re_format::{DateVisibility, TimestampFormat};
+use re_ui::alert::Alert;
 use re_ui::{ButtonExt as _, UiExt as _, icons};
 use web_time::SystemTime;
 
 use super::conversation_list::status_dot_ui;
 use super::tool_call_ui::{content_block_ui, tool_call_ui};
 use re_agent::{
-    AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptEntry, TranscriptItem,
-    message_text,
+    AgentError, AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptEntry,
+    TranscriptItem, message_text,
 };
 
 /// Each ended turn with an agent answer gets a footer that offers to copy that answer.
@@ -17,7 +19,13 @@ use re_agent::{
 ///
 /// The copied text is the last agent message of the turn with non-blank text, not the whole turn.
 /// The last turn counts as ended only when no turn is in progress.
-pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: bool) {
+///
+/// Returns the prompt to send again, if the user asked to retry the last one after it failed.
+pub fn transcript_ui(
+    ui: &mut egui::Ui,
+    session: &AgentSession,
+    show_thoughts: bool,
+) -> Option<Prompt> {
     let transcript = session.transcript();
     ui.spacing_mut().item_spacing.y = 10.0;
 
@@ -26,6 +34,9 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
     let last_user_index = items
         .iter()
         .rposition(|entry| matches!(entry.item, TranscriptItem::User(_)));
+
+    let retryable = session.retryable_prompt();
+    let mut retry = None;
 
     let mut turn = TurnState::default();
     let mut index = 0;
@@ -45,6 +56,14 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
             if 2 <= folded_calls {
                 let run = items.get(index..next_index).unwrap_or_default();
                 Some(tool_call_group_ui(ui, session, run, transcript_id))
+            } else if let TranscriptItem::AgentError(error) = &entry.item {
+                let prompt = retryable
+                    .filter(|(error_index, _)| *error_index == index)
+                    .map(|(_, prompt)| prompt);
+                if agent_error_ui(ui, error, prompt.is_some()) {
+                    retry = prompt.cloned();
+                }
+                None
             } else {
                 entry_ui(ui, session, entry, show_thoughts, transcript_id)
             }
@@ -80,6 +99,22 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
     if session.turn_in_progress() && !session.is_waiting_on_user() && !tool_call_running {
         ui.inline_loading_indicator("The agent is working");
     }
+
+    retry
+}
+
+/// An error the agent reported, saying who reported it and what to do about it.
+///
+/// Returns `true` if the user clicked "Retry".
+fn agent_error_ui(ui: &mut egui::Ui, error: &AgentError, can_retry: bool) -> bool {
+    let title = format!("Error from {}", error.reporter());
+    Alert::error()
+        .show_with_title(ui, title, |ui| {
+            ui.structured_error_ui(&StructuredError::parse(&error.message));
+            ui.add(egui::Label::new(error.hint()).wrap());
+            can_retry && ui.button("Retry").clicked()
+        })
+        .inner
 }
 
 /// What the turn footer needs to know about the turn shown so far.
@@ -106,7 +141,8 @@ impl TurnState {
                     self.last_answer = Some((text, entry.created_at));
                 }
             }
-            TranscriptItem::McpStartupFailure(_)
+            TranscriptItem::AgentError(_)
+            | TranscriptItem::McpStartupFailure(_)
             | TranscriptItem::Note { .. }
             | TranscriptItem::ToolCall(_) => {}
         }
@@ -152,9 +188,13 @@ fn entry_ui(
             mcp_startup_failure_ui(ui, failure);
             None
         }
+        TranscriptItem::AgentError(error) => {
+            agent_error_ui(ui, error, false);
+            None
+        }
         TranscriptItem::Note { text, is_error } => {
             if *is_error {
-                ui.error_label(text.clone());
+                Alert::error().show_structured_error(ui, &StructuredError::parse(text), |_| {});
             } else {
                 ui.weak(text);
             }

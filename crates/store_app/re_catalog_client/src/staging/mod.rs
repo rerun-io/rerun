@@ -106,7 +106,7 @@ impl CatalogClient {
         opt: StageOpt,
     ) -> Result<url::Url, StagingError> {
         let StageOpt { upload_methods } = opt;
-        // TODO(RR-5890): Accept sequential sources without requiring the total size up front.
+        // TODO(RR-6198): Accept sequential sources without requiring the total size up front.
         let source_size_bytes = source.size().await?;
         let request = GetWriteAccessGrantRequest {
             key,
@@ -123,7 +123,7 @@ impl CatalogClient {
         match grant.redemption {
             Redemption::HttpRequest(request) => {
                 check_expiry(expires_at)?;
-                // TODO(RR-5715): Stream the HTTP request body instead of buffering the whole source.
+                // TODO(RR-6198): Stream the HTTP request body instead of buffering the whole source.
                 let body = source
                     .read_exact_at(Span {
                         start: 0,

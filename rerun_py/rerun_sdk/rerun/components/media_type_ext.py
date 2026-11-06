@@ -127,7 +127,7 @@ class MediaTypeExt:
 
     OGG: ClassVar[MediaType]
     """
-    [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis or Opus): `audio/ogg`.
+    [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis; Opus is not supported): `audio/ogg`.
 
     <https://www.iana.org/assignments/media-types/audio/ogg>
     """

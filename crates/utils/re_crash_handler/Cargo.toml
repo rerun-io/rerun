@@ -31,6 +31,7 @@ default = ["crypto-ring"]
 [dependencies]
 re_analytics.workspace = true
 re_build_info.workspace = true
+re_error.workspace = true
 
 econtext.workspace = true
 itertools.workspace = true

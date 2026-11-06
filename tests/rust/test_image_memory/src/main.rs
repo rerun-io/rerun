@@ -2,6 +2,7 @@
 
 // Allow unwrap() in tests (allow-unwrap-in-tests doesn't apply)
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stderr)] // This is only a test
 
 use mimalloc::MiMalloc;
 use re_memory::AccountingAllocator;
