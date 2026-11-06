@@ -83,6 +83,7 @@ chrono = { workspace = true, features = ["wasmbind"] }
 
 
 [dev-dependencies]
+insta.workspace = true
 re_uri.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 

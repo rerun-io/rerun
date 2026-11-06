@@ -22,6 +22,8 @@ mod config;
 mod driver;
 mod executor;
 pub(crate) mod plan;
+#[cfg(test)]
+mod reference;
 pub(crate) mod segment;
 #[cfg(test)]
 mod test_support;

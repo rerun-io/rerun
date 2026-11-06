@@ -9818,6 +9818,7 @@ dependencies = [
  "futures",
  "futures-util",
  "getrandom 0.3.4",
+ "insta",
  "itertools 0.15.0",
  "jiff",
  "opentelemetry",
