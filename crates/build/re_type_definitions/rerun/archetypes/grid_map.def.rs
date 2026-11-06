@@ -38,7 +38,6 @@ pub struct GridMap {
     /// lower-left image corner relative to the map's parent coordinate frame.
     ///
     /// If not set, the lower-left image corner is placed at origin of the map's parent coordinate frame.
-    #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub translation: Option<rerun::components::Translation3D>,
 
@@ -49,7 +48,6 @@ pub struct GridMap {
     ///
     /// Note: either this or [`rerun::components::RotationQuat`] can be set to specify the grid map's rotation, but not both.
     /// If both this and [`rerun::components::RotationQuat`] are set, this is ignored in favor of the quaternion.
-    #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub rotation_axis_angle: Option<rerun::components::RotationAxisAngle>,
 
@@ -57,7 +55,6 @@ pub struct GridMap {
     ///
     /// Together with [`rerun::components::Translation3D`], this defines the pose of the
     /// lower-left image corner relative to the map's parent coordinate frame.
-    #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub quaternion: Option<rerun::components::RotationQuat>,
 

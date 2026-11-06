@@ -50,7 +50,7 @@ use re_sdk_types::components::{
     MagnificationFilter, MarkerSize, MeshFaceRendering, Name, Opacity, OpticalDensity,
     PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, SphericalHarmonicsDegree,
     StrokeWidth, Text, Thumbnail, Timestamp, TransformRelation, Translation3D, Unit, Url,
-    ValueRange, Vector3D, VideoCodec, Visible,
+    ValueRange, Vector3D, VideoCodec, Visible, VoxelSize,
 };
 use re_sdk_types::{archetypes, components};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui_with_selection;
@@ -179,6 +179,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
     registry.add_singleline_edit_or_view::<Translation3D>(edit_or_view_vec3d);
     registry.add_singleline_edit_or_view::<Vector3D>(edit_or_view_vec3d);
+    registry.add_singleline_edit_or_view::<VoxelSize>(edit_or_view_vec3d_positive);
 
     // Components that refer to views:
     registry.add_singleline_edit_or_view::<ViewMaximized>(view_view_id);
