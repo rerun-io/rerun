@@ -339,6 +339,10 @@ impl App {
             state.app_options.video.hw_acceleration = video_decoder_hw_acceleration;
         }
 
+        if cfg!(debug_assertions) {
+            state.app_options.experimental.agent_panel = true;
+        }
+
         if is_test {
             creation_context.egui_ctx.mark_as_test();
             state.app_options = AppOptions::test();
