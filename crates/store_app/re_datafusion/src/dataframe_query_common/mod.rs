@@ -362,7 +362,8 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
         let (schema, trace_id) = if let Some(schema) = arrow_schema {
             (schema, None)
         } else {
-            let request = tonic::Request::new(GetDatasetSchemaRequest {}).with_entry_id(dataset_id);
+            let request =
+                tonic::Request::new(GetDatasetSchemaRequest::default()).with_entry_id(dataset_id);
             let response = client
                 .get_dataset_schema(request)
                 .await

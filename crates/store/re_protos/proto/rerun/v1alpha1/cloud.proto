@@ -991,6 +991,21 @@ message ScanDatasetManifestResponse {
 message GetDatasetSchemaRequest {
   reserved 1;
   reserved "dataset_id";
+
+  // Which data the schema covers. Defaults to `DATASET_QUERY_SCOPE_FULL`.
+  DatasetQueryScope scope = 2;
+}
+
+// Which data of a dataset a request covers.
+enum DatasetQueryScope {
+  // Same as `DATASET_QUERY_SCOPE_FULL`.
+  DATASET_QUERY_SCOPE_UNSPECIFIED = 0;
+
+  // All data, indexed or not.
+  DATASET_QUERY_SCOPE_FULL = 1;
+
+  // Only the entities and timelines the dataset's chunk indexing policy indexes.
+  DATASET_QUERY_SCOPE_INDEXED = 2;
 }
 
 // Response for `GetDatasetSchema`.

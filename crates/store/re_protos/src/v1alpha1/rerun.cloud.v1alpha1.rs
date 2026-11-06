@@ -1075,7 +1075,11 @@ impl ::prost::Name for ScanDatasetManifestResponse {
 ///
 /// The dataset is identified by the standard dataset headers (see the `Headers` section at the top of this file).
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct GetDatasetSchemaRequest {}
+pub struct GetDatasetSchemaRequest {
+    /// Which data the schema covers. Defaults to `DATASET_QUERY_SCOPE_FULL`.
+    #[prost(enumeration = "DatasetQueryScope", tag = "2")]
+    pub scope: i32,
+}
 impl ::prost::Name for GetDatasetSchemaRequest {
     const NAME: &'static str = "GetDatasetSchemaRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
@@ -3303,6 +3307,39 @@ impl DataSourceKind {
         match value {
             "DATA_SOURCE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
             "DATA_SOURCE_KIND_RRD" => Some(Self::Rrd),
+            _ => None,
+        }
+    }
+}
+/// Which data of a dataset a request covers.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum DatasetQueryScope {
+    /// Same as `DATASET_QUERY_SCOPE_FULL`.
+    Unspecified = 0,
+    /// All data, indexed or not.
+    Full = 1,
+    /// Only the entities and timelines the dataset's chunk indexing policy indexes.
+    Indexed = 2,
+}
+impl DatasetQueryScope {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "DATASET_QUERY_SCOPE_UNSPECIFIED",
+            Self::Full => "DATASET_QUERY_SCOPE_FULL",
+            Self::Indexed => "DATASET_QUERY_SCOPE_INDEXED",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "DATASET_QUERY_SCOPE_UNSPECIFIED" => Some(Self::Unspecified),
+            "DATASET_QUERY_SCOPE_FULL" => Some(Self::Full),
+            "DATASET_QUERY_SCOPE_INDEXED" => Some(Self::Indexed),
             _ => None,
         }
     }

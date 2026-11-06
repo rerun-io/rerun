@@ -11,10 +11,11 @@ use re_protos::cloud::v1alpha1::ext::{
     UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
 };
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, GetDatasetManifestSchemaRequest, GetDatasetManifestSchemaResponse,
-    GetDatasetSchemaRequest, GetSegmentTableSchemaRequest, GetSegmentTableSchemaResponse,
-    LayerNameFilter, LayerNameList, ReadDatasetEntryRequest, ScanDatasetManifestRequest,
-    ScanSegmentTableRequest, SegmentIdFilter, SegmentIdList, layer_name_filter, segment_id_filter,
+    CreateDatasetEntryRequest, DatasetQueryScope, GetDatasetManifestSchemaRequest,
+    GetDatasetManifestSchemaResponse, GetDatasetSchemaRequest, GetSegmentTableSchemaRequest,
+    GetSegmentTableSchemaResponse, LayerNameFilter, LayerNameList, ReadDatasetEntryRequest,
+    ScanDatasetManifestRequest, ScanSegmentTableRequest, SegmentIdFilter, SegmentIdList,
+    layer_name_filter, segment_id_filter,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
@@ -59,7 +60,11 @@ where
 {
     /// Get the Arrow schema for a dataset entry.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_schema(&mut self, entry_id: EntryId) -> ApiResult<DatasetSchema> {
+    pub async fn get_dataset_schema(
+        &mut self,
+        entry_id: EntryId,
+        scope: DatasetQueryScope,
+    ) -> ApiResult<DatasetSchema> {
         let client = self.inner().clone();
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             crate::rpc_retry::retry(|| {
@@ -67,7 +72,10 @@ where
                 async move {
                     client
                         .get_dataset_schema(
-                            tonic::Request::new(GetDatasetSchemaRequest {}).with_entry_id(entry_id),
+                            tonic::Request::new(GetDatasetSchemaRequest {
+                                scope: scope.into(),
+                            })
+                            .with_entry_id(entry_id),
                         )
                         .await
                 }
