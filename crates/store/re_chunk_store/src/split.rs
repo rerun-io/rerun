@@ -24,6 +24,8 @@ impl ChunkStore {
     /// Yields one split per range, in the same order, each as an iterator over its chunks.
     ///
     /// Splits are computed one at a time, as the outer iterator advances.
+    /// The chunks of a split are ordered by the first row they keep, to roughly preserve the order
+    /// in which they were logged (see <https://github.com/rerun-io/rerun/issues/7175>).
     pub fn split_by_time_ranges<'a>(
         &'a self,
         tracking: ChunkTrackingMode,
@@ -108,7 +110,7 @@ impl ChunkStore {
             let mut all_chunks_in_split = self
                 .iter_physical_chunks()
                 .filter(|chunk| chunk.is_static())
-                .map(|chunk| (chunk.id(), Chunk::clone(chunk)))
+                .map(|chunk| (first_row_id(chunk), Chunk::clone(chunk)))
                 .collect_vec();
 
             for (entity, components) in &all_entities_and_their_components {
@@ -236,14 +238,15 @@ impl ChunkStore {
                 }
             }
 
-            // We must make sure that the new recordings have their chunks in the same order as the original
-            // one (as dictated by their chunk IDs), otherwise the loading experience would be absolutely awful,
-            // given that we've just queried the data per-entity per-component.
-            all_chunks_in_split.sort_by_key(|(original_chunk_id, _)| *original_chunk_id);
+            // We must make sure that the new recordings have their chunks in roughly the same order as
+            // the original one, otherwise the loading experience would be absolutely awful, given that
+            // we've just queried the data per-entity per-component.
+            // Chunk IDs don't work for this: the store gives new IDs to chunks it splits or compacts.
+            all_chunks_in_split.sort_by_key(|(row_id, _)| *row_id);
 
             all_chunks_in_split
                 .into_iter()
-                .map(|(_original_chunk_id, chunk)| chunk)
+                .map(|(_row_id, chunk)| chunk)
         })
     }
 
@@ -326,7 +329,7 @@ impl ChunkStore {
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
         keep_other_components: bool,
-    ) -> impl Iterator<Item = (ChunkId, Chunk)> + 'a {
+    ) -> impl Iterator<Item = (Option<RowId>, Chunk)> + 'a {
         re_log::debug_assert!(
             start_inclusive < end_exclusive,
             "start_inclusive={start_inclusive:?}, end_exclusive={end_exclusive:?}",
@@ -341,7 +344,9 @@ impl ChunkStore {
         // TODO(cmc): There are certainly opportunities to do better on the bootstrap path, especially
         // when it comes to sharing chunks across components, using e.g. an approach somewhat similar
         // to what we do below for ranges.
-        let chunks_bootstrap = components_to_bootstrap.iter().flat_map(move |component| {
+        // Sorted, so that saving the same range twice gives the chunks in the same order.
+        let sorted_bootstrap = components_to_bootstrap.iter().sorted().collect_vec();
+        let chunks_bootstrap = sorted_bootstrap.into_iter().flat_map(move |component| {
             let chunks = self
                 .latest_at_relevant_chunks(tracking, &query_bootstrap, entity, *component)
                 .chunks
@@ -367,7 +372,7 @@ impl ChunkStore {
 
             re_log::debug_assert!(chunk.num_rows() == 1);
 
-            let (time, _row_id) = chunk
+            let (time, row_id) = chunk
                 .iter_indices(&timeline)
                 .next()
                 .expect("non-empty latest-at chunk must have a single row");
@@ -380,8 +385,9 @@ impl ChunkStore {
                 return vec![];
             }
 
+            // Sorted by the original row, while the copy below gets a fresh row ID.
             vec![(
-                chunk.id(),
+                Some(row_id),
                 chunk
                     // We're bootstrapping at the component batch level, so might as well discard everything else.
                     .component_sliced(*component)
@@ -394,7 +400,7 @@ impl ChunkStore {
             )]
         });
 
-        let mut chunks: HashMap<ChunkId, Chunk> = Default::default();
+        let mut chunks: HashMap<ChunkId, (Option<RowId>, Chunk)> = Default::default();
         for component in components {
             let results = self.range_relevant_chunks(tracking, &query, entity, *component);
 
@@ -433,6 +439,10 @@ impl ChunkStore {
                 }
 
                 let end_idx = end_idx_excl.saturating_sub(1);
+                let first_kept_row_id = chunk.row_ids_slice()[start_idx..end_idx_excl]
+                    .iter()
+                    .min()
+                    .copied();
 
                 re_log::debug_assert!(
                     start_inclusive.as_i64() <= times[start_idx]
@@ -467,11 +477,17 @@ impl ChunkStore {
                 // `RowId` order: put them back, a recording with such a chunk doesn't load.
                 chunk.sort_by_row_ids_if_needed();
 
-                let already_exists = chunks.insert(original_chunk_id, chunk).is_some();
+                let already_exists = chunks
+                    .insert(original_chunk_id, (first_kept_row_id, chunk))
+                    .is_some();
                 re_log::debug_assert!(!already_exists);
             }
         }
 
-        std::iter::chain(chunks_bootstrap, chunks)
+        std::iter::chain(chunks_bootstrap, chunks.into_values())
     }
+}
+
+fn first_row_id(chunk: &Chunk) -> Option<RowId> {
+    chunk.row_id_range().map(|(min, _)| min)
 }

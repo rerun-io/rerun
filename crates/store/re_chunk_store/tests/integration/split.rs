@@ -518,3 +518,39 @@ fn keeps_latest_transform_and_pinhole_before_range() {
     assert_eq!(times["/tf:Transform3D:translation"], some(&[1]));
     assert_eq!(times["/camera:Pinhole:image_from_camera"], some(&[0]));
 }
+
+#[test]
+fn keeps_logging_order() {
+    let mut store = new_store();
+    insert_chunk(&mut store, "/a", vec![(Some(1), vec![points()])]);
+    insert_chunk(&mut store, "/b", vec![(Some(5), vec![points()])]);
+    insert_chunk(
+        &mut store,
+        "/c",
+        [1, 3, 5, 9].map(|t| (Some(t), vec![points()])).into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    // Chunks follow the first row they keep: `/a` and `/b` were logged before `/c`, and the latest
+    // `/c` before the range before the one inside it.
+    let order = chunks
+        .iter()
+        .map(|chunk| {
+            let times = chunk
+                .iter_indices(frame().name())
+                .map(|(time, _row_id)| time.as_i64())
+                .collect::<Vec<_>>();
+            (chunk.entity_path().to_string(), times)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        order,
+        [
+            ("/a".to_owned(), vec![1]),
+            ("/b".to_owned(), vec![5]),
+            ("/c".to_owned(), vec![3]),
+            ("/c".to_owned(), vec![5]),
+        ]
+    );
+}
