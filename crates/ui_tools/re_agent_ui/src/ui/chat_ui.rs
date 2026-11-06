@@ -18,7 +18,7 @@ use re_ui::{ButtonExt as _, UiExt as _, icons};
 use super::MAX_REQUEST_CONTENT_HEIGHT;
 use super::elicitation_ui::ElicitationUi;
 use super::pasted_image;
-use super::tool_call_ui::{code_ui, tool_input_ui};
+use super::tool_call_ui::{code_ui, tool_fields_ui, tool_input_ui};
 use super::transcript_ui::{plan_ui, transcript_ui};
 use re_agent::{AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
 
@@ -714,19 +714,34 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
                 .clone()
                 .or_else(|| known_call.map(|call| call.title.clone()))
                 .unwrap_or_else(|| "Tool call".to_owned());
-            ui.label(RichText::new(title).monospace());
-
             let raw_input = request
                 .tool_call
                 .fields
                 .raw_input
                 .as_ref()
                 .or_else(|| known_call?.raw_input.as_ref());
-            if let Some(raw_input) = raw_input {
-                egui::ScrollArea::vertical()
-                    .max_height(MAX_REQUEST_CONTENT_HEIGHT)
-                    .id_salt(&request.tool_call.tool_call_id.0)
-                    .show(ui, |ui| tool_input_ui(ui, raw_input));
+            let scroll_area = egui::ScrollArea::vertical()
+                .max_height(MAX_REQUEST_CONTENT_HEIGHT)
+                .id_salt(&request.tool_call.tool_call_id.0);
+            let command_input = raw_input.and_then(CommandInput::parse);
+
+            if let Some(description) = command_input.as_ref().and_then(|input| input.description) {
+                ui.strong(description);
+            } else {
+                ui.add(
+                    egui::Label::new(RichText::new(title).monospace())
+                        .truncate()
+                        .show_tooltip_when_elided(false),
+                );
+            }
+
+            if let Some(command_input) = &command_input {
+                scroll_area.show(ui, |ui| {
+                    code_ui(ui, command_input.command, None);
+                    tool_fields_ui(ui, command_input.other_fields());
+                });
+            } else if let Some(raw_input) = raw_input {
+                scroll_area.show(ui, |ui| tool_input_ui(ui, raw_input));
             }
 
             ui.horizontal_wrapped(|ui| {
@@ -1070,6 +1085,45 @@ fn context_usage_ui(ui: &mut egui::Ui, used_tokens: u64, max_tokens: u64) {
     );
     ui.add(re_ui::ProgressRing::new(fraction).label(description.clone()))
         .on_hover_text(description);
+}
+
+/// A tool input that runs a shell command, which the permission dialog shows as code.
+///
+/// ACP leaves `raw_input` free-form, so the key names below are a convention between agents and
+/// not part of the protocol. Inputs without a string [`Self::COMMAND`] get the generic layout.
+struct CommandInput<'a> {
+    command: &'a str,
+    description: Option<&'a str>,
+    fields: &'a serde_json::Map<String, serde_json::Value>,
+}
+
+impl<'a> CommandInput<'a> {
+    /// The shell command line the user approves.
+    ///
+    /// claude-agent-acp and codex-acp both send it as a string.
+    const COMMAND: &'static str = "command";
+
+    /// A short summary of the command, written by the agent for the user.
+    ///
+    /// claude-agent-acp sends it. codex-acp does not, so the tool call title is shown instead.
+    const DESCRIPTION: &'static str = "description";
+
+    fn parse(input: &'a serde_json::Value) -> Option<Self> {
+        let fields = input.as_object()?;
+        Some(Self {
+            command: fields.get(Self::COMMAND)?.as_str()?,
+            description: fields
+                .get(Self::DESCRIPTION)
+                .and_then(serde_json::Value::as_str),
+            fields,
+        })
+    }
+
+    fn other_fields(&self) -> impl Iterator<Item = (&'a String, &'a serde_json::Value)> {
+        self.fields
+            .iter()
+            .filter(|(key, _)| key.as_str() != Self::COMMAND && key.as_str() != Self::DESCRIPTION)
+    }
 }
 
 #[cfg(test)]
