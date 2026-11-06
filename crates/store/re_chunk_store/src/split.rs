@@ -431,11 +431,15 @@ impl ChunkStore {
                     chunk.row_sliced_deep(re_chunk::Span::from_start_len(start_idx, slice_len))
                 };
 
-                let chunk = if keep_other_components {
+                let mut chunk = if keep_other_components {
                     chunk
                 } else {
                     chunk.components_sliced(&components.iter().copied().collect_vec())
                 };
+
+                // Unsorted chunks were sorted by time for slicing, which can leave their rows out of
+                // `RowId` order: put them back, a recording with such a chunk doesn't load.
+                chunk.sort_by_row_ids_if_needed();
 
                 let already_exists = chunks.insert(original_chunk_id, chunk).is_some();
                 re_log::debug_assert!(!already_exists);
