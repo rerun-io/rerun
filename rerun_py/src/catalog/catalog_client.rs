@@ -86,7 +86,7 @@ pub fn _get_write_access_grant(
     })?;
     let request = match response.grant.redemption {
         Redemption::HttpRequest(request) => request,
-        Redemption::MultipartRequest(_) => {
+        Redemption::MultipartSession(_) => {
             return Err(PyRuntimeError::new_err(
                 "server returned a multipart grant, which this client did not accept",
             ));
@@ -421,7 +421,7 @@ impl PyCatalogClientInternal {
     ) -> PyResult<Py<PyDatasetEntryInternal>> {
         let _span = read_trace_context_from_python(py, "CatalogClient.create_dataset").entered();
         let connection = self_.borrow_mut(py).connection.clone();
-        let dataset_entry = connection.create_dataset(py, name.to_owned())?;
+        let dataset_entry = connection.create_dataset(py, name.to_owned(), None)?;
 
         Py::new(
             py,

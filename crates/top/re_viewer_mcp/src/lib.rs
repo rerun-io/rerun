@@ -37,7 +37,7 @@ use rmcp::{
     model::{
         CacheScope, CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock,
         Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig,
-        Tool,
+        Tool, ToolAnnotations,
     },
     schemars,
     service::{RequestContext, RoleServer},
@@ -54,7 +54,7 @@ use re_protos::viewer_control::v1alpha1::{
     EguiInspectRequest, GetLogsRequest, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
-use re_viewer_control_tools::ScreenshotDelivery;
+use re_viewer_control_tools::{ScreenshotDelivery, ToolEffect};
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
 
@@ -325,13 +325,14 @@ impl ViewerMcpServer {
                          name,
                          description,
                          input_schema,
-                         requires_approval: _,
+                         effect,
                      }| {
                         Tool::new(
                             name,
                             format!("{description}{REQUIRES_CONNECT}"),
                             Arc::new(input_schema),
                         )
+                        .with_annotations(annotations(effect))
                     },
                 ),
         );
@@ -402,7 +403,12 @@ impl ViewerMcpServer {
     /// Connecting again to the same endpoint is a no-op. Connecting to a different endpoint
     /// replaces the old connection once the new connection succeeds. Call `rerun_disconnect` to drop
     /// the connection without replacing it.
-    #[tool]
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        idempotent_hint = true,
+        open_world_hint = false
+    ))]
     async fn connect(
         &self,
         Parameters(args): Parameters<ConnectArgs>,
@@ -424,7 +430,12 @@ impl ViewerMcpServer {
 
     /// Disconnect from the viewer, dropping the gRPC-backed bridge.
     /// The tools stop working until `rerun_connect` is called again.
-    #[tool]
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        idempotent_hint = true,
+        open_world_hint = false
+    ))]
     async fn disconnect(
         &self,
         Parameters(_args): Parameters<EmptyArgs>,
@@ -436,6 +447,27 @@ impl ViewerMcpServer {
         } else {
             Err("not connected".to_owned())
         }
+    }
+}
+
+/// The MCP hints for a viewer-control tool, telling the agent harness what it can change.
+fn annotations(effect: ToolEffect) -> ToolAnnotations {
+    match effect {
+        ToolEffect::ReadOnly => ToolAnnotations::new()
+            .read_only(true)
+            .destructive(false)
+            .idempotent(true)
+            .open_world(false),
+        ToolEffect::NonDestructive => ToolAnnotations::new()
+            .read_only(false)
+            .destructive(false)
+            .idempotent(false)
+            .open_world(false),
+        ToolEffect::Destructive => ToolAnnotations::new()
+            .read_only(false)
+            .destructive(true)
+            .idempotent(false)
+            .open_world(true),
     }
 }
 

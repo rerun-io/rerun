@@ -405,7 +405,7 @@ pub mod access_grant {
         HttpRequest(super::HttpRequest),
         /// Multipart upload session and the initial part-upload requests.
         #[prost(message, tag = "3")]
-        MultipartRequest(super::MultipartRequest),
+        MultipartSession(super::MultipartSession),
     }
 }
 impl ::prost::Name for AccessGrant {
@@ -419,10 +419,9 @@ impl ::prost::Name for AccessGrant {
     }
 }
 /// Describes a multipart upload session and its initial part-upload requests.
-///
-/// TODO(RR-6103): Define multipart upload size limits.
+/// Limits guide clients; provider constraints and server validation remain authoritative.
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct MultipartRequest {
+pub struct MultipartSession {
     /// Bearer token for renewal, completion, and abort. Return it unchanged.
     #[prost(bytes = "bytes", tag = "1")]
     pub upload_token: ::prost::bytes::Bytes,
@@ -435,15 +434,19 @@ pub struct MultipartRequest {
     /// Expired requests can be renewed before the session deadline.
     #[prost(message, repeated, tag = "3")]
     pub part_requests: ::prost::alloc::vec::Vec<HttpRequest>,
+    /// Maximum number of parts, including the final part. Must be positive when present.
+    /// New servers always set this. Absence selects the legacy limit of 10,000 parts.
+    #[prost(uint32, optional, tag = "4")]
+    pub max_part_count: ::core::option::Option<u32>,
 }
-impl ::prost::Name for MultipartRequest {
-    const NAME: &'static str = "MultipartRequest";
+impl ::prost::Name for MultipartSession {
+    const NAME: &'static str = "MultipartSession";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.MultipartRequest".into()
+        "rerun.cloud.v1alpha1.MultipartSession".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.MultipartRequest".into()
+        "/rerun.cloud.v1alpha1.MultipartSession".into()
     }
 }
 /// Requests HTTP upload instructions for selected parts of an active multipart upload.
@@ -2454,6 +2457,10 @@ pub struct CreateDatasetEntryRequest {
     /// If specified, create the entry using this specific ID. Use at your own risk.
     #[prost(message, optional, tag = "2")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// Dataset policies, such as the chunk indexing policy.
+    /// If omitted (e.g. by older clients), the server will make a choice on its own.
+    #[prost(message, optional, tag = "100")]
+    pub policy: ::core::option::Option<DatasetPolicy>,
 }
 impl ::prost::Name for CreateDatasetEntryRequest {
     const NAME: &'static str = "CreateDatasetEntryRequest";
@@ -2841,6 +2848,10 @@ pub struct DatasetDetails {
     /// any other.
     #[prost(message, optional, tag = "7")]
     pub asset_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
+    /// Dataset policies, such as the chunk indexing policy.
+    /// If omitted (e.g. by older clients), the server will make a choice on its own.
+    #[prost(message, optional, tag = "100")]
+    pub policy: ::core::option::Option<DatasetPolicy>,
 }
 impl ::prost::Name for DatasetDetails {
     const NAME: &'static str = "DatasetDetails";
@@ -2850,6 +2861,92 @@ impl ::prost::Name for DatasetDetails {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.DatasetDetails".into()
+    }
+}
+/// Policy of a single dataset.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct DatasetPolicy {
+    /// Selects the entity paths and timelines the dataset indexes for chunk queries.
+    /// Unset means no preference: the server decides and stores its choice
+    /// (see `CreateDatasetEntryRequest.policy` and `DatasetDetails.policy`).
+    #[prost(message, optional, tag = "1")]
+    pub chunk_indexing_policy: ::core::option::Option<ChunkIndexingPolicy>,
+}
+impl ::prost::Name for DatasetPolicy {
+    const NAME: &'static str = "DatasetPolicy";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.DatasetPolicy".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.DatasetPolicy".into()
+    }
+}
+/// Which entity paths and timelines a dataset indexes for chunk queries.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ChunkIndexingPolicy {
+    /// The entity paths to index. Required.
+    #[prost(message, optional, tag = "1")]
+    pub entity_paths: ::core::option::Option<IndexingPolicySelection>,
+    /// The timelines to index. Required.
+    #[prost(message, optional, tag = "2")]
+    pub timelines: ::core::option::Option<IndexingPolicySelection>,
+}
+impl ::prost::Name for ChunkIndexingPolicy {
+    const NAME: &'static str = "ChunkIndexingPolicy";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ChunkIndexingPolicy".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ChunkIndexingPolicy".into()
+    }
+}
+/// Selects every name of a dimension, or an explicit list.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct IndexingPolicySelection {
+    /// The name set. Required.
+    #[prost(oneof = "indexing_policy_selection::Selection", tags = "1, 2")]
+    pub selection: ::core::option::Option<indexing_policy_selection::Selection>,
+}
+/// Nested message and enum types in `IndexingPolicySelection`.
+pub mod indexing_policy_selection {
+    /// The name set. Required.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Selection {
+        /// Every name, including names that appear later.
+        #[prost(message, tag = "1")]
+        All(()),
+        /// Exactly the listed names.
+        #[prost(message, tag = "2")]
+        Explicit(super::IndexingPolicyNameList),
+    }
+}
+impl ::prost::Name for IndexingPolicySelection {
+    const NAME: &'static str = "IndexingPolicySelection";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.IndexingPolicySelection".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.IndexingPolicySelection".into()
+    }
+}
+/// An explicit list of names for an indexing policy.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct IndexingPolicyNameList {
+    /// The names. Entity paths and timeline names match exactly. An empty list selects nothing.
+    #[prost(string, repeated, tag = "1")]
+    pub names: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for IndexingPolicyNameList {
+    const NAME: &'static str = "IndexingPolicyNameList";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.IndexingPolicyNameList".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.IndexingPolicyNameList".into()
     }
 }
 /// Everything the catalog knows about one dataset.
@@ -3123,7 +3220,7 @@ pub enum UploadMethod {
     Unspecified = 0,
     /// `AccessGrant.http_request`.
     SingleRequest = 1,
-    /// `AccessGrant.multipart_request`.
+    /// `AccessGrant.multipart_session`.
     Multipart = 2,
 }
 impl UploadMethod {

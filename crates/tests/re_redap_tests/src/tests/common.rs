@@ -100,6 +100,7 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
         self.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
             name: Some(dataset_name.to_owned()),
             id: None,
+            policy: Some(Default::default()),
         }))
         .await
         .expect("create_dataset_entry should succeed")

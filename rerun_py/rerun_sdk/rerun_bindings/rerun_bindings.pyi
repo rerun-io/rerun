@@ -232,6 +232,12 @@ def format_uint(number: int) -> str:
 def format_index_value(timeline_type: str, value: int) -> str:
     """Format one index value of a timeline, as the viewer does, with timestamps in UTC and always dated."""
 
+def timeline_datatype(timeline_type: str) -> pa.DataType:
+    """The Arrow datatype of index columns of a timeline type."""
+
+def timeline_type_from_datatype(datatype: pa.DataType) -> str | None:
+    """The short name (`sequence`, `duration`, or `timestamp`) of the timeline type an index column of this Arrow datatype holds, if any."""
+
 def _get_write_access_grant(
     client: CatalogClientInternal, *, key: str, size_bytes: int | None
 ) -> tuple[str, str, str, str, list[tuple[str, bytes]]]:

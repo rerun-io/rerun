@@ -10,7 +10,7 @@ use re_viewer_context::{
     Contents, MissingChunkReporter, ViewId, ViewerContext, VisitorControlFlow,
 };
 use re_viewport_blueprint::{ViewBlueprint, ViewportBlueprint};
-pub use test_view::TestView;
+pub use test_view::{TestSystem, TestView};
 
 /// Extension trait to [`TestContext`] for blueprint-related features.
 pub trait TestContextExt {

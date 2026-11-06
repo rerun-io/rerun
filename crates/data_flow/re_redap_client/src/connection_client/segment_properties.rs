@@ -10,7 +10,8 @@ use re_protos::headers::RerunHeadersInjectorExt as _;
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
-use super::{RedapClient, TonicResponseExt};
+use super::RedapClient;
+use super::client::TonicResponseExt;
 use crate::{ApiError, ApiResult};
 
 impl<T> RedapClient<T>

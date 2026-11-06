@@ -16,7 +16,7 @@ use crate::{CodecError, CodecResult};
 pub struct HubRrdManifest {
     pub store_id: StoreId,
     pub sorbet_schema: arrow::datatypes::Schema,
-    pub sorbet_schema_sha256: [u8; 32],
+    pub sorbet_schema_sha256: re_sorbet::SchemaId,
 
     /// The raw manifest's columns plus the three hub columns appended in this order:
     /// `chunk_partition_id`, `rerun_partition_layer`, `chunk_key`.

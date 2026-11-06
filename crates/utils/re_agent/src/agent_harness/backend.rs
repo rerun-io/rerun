@@ -332,7 +332,7 @@ async fn start_session(
                 cx,
                 &response.session_id,
                 response.modes.as_ref(),
-                config.preferred_mode.as_ref(),
+                &config.mode_preferences,
             )
             .await
                 && let Some(modes) = &mut response.modes
@@ -363,40 +363,37 @@ async fn start_session(
     }
 }
 
-/// Restores the preferred mode before the session can receive its first prompt.
+/// Selects the preferred mode before the session can receive its first prompt.
 async fn select_mode(
     cx: &ConnectionTo<Agent>,
     session_id: &SessionId,
     modes: Option<&SessionModeState>,
-    preference: Option<&SessionModeId>,
+    preferences: &[SessionModeId],
 ) -> Option<SessionModeId> {
-    let mode = pick_mode(modes, preference)?;
+    let mode = pick_mode(modes, preferences)?;
     let request = SetSessionModeRequest::new(session_id.clone(), mode.clone());
     match cx.send_request(request).block_task().await {
         Ok(_) => Some(mode),
         Err(err) => {
-            re_log::debug!("Failed to restore session mode: {}", describe_error(&err));
+            re_log::debug!("Failed to select session mode: {}", describe_error(&err));
             None
         }
     }
 }
 
-/// Returns the preferred offered mode when it differs from the agent's default.
+/// Returns the first preferred mode the agent offers, when it differs from the agent's default.
 fn pick_mode(
     modes: Option<&SessionModeState>,
-    preference: Option<&SessionModeId>,
+    preferences: &[SessionModeId],
 ) -> Option<SessionModeId> {
     let modes = modes?;
-    let preference = preference?;
-    (&modes.current_mode_id != preference)
-        .then(|| {
-            modes
-                .available_modes
-                .iter()
-                .find(|mode| &mode.id == preference)
-                .map(|mode| mode.id.clone())
-        })
-        .flatten()
+    let preference = preferences.iter().find(|preference| {
+        modes
+            .available_modes
+            .iter()
+            .any(|mode| &mode.id == *preference)
+    })?;
+    (&modes.current_mode_id != preference).then(|| preference.clone())
 }
 
 /// Restores an offered saved model, otherwise selects the first offered model preference.
@@ -518,42 +515,32 @@ mod tests {
     }
 
     #[test]
-    fn picks_an_offered_preferred_mode() {
+    fn picks_the_first_preferred_mode_that_is_offered() {
         let modes = SessionModeState::new(
             "manual",
             vec![
                 SessionMode::new("manual", "Manual"),
                 SessionMode::new("plan", "Plan"),
+                SessionMode::new("auto", "Auto"),
             ],
         );
-        assert_eq!(
-            pick_mode(Some(&modes), Some(&SessionModeId::new("plan")))
-                .expect("preferred mode")
-                .0
-                .as_ref(),
-            "plan"
-        );
-    }
+        let pick = |preferences: &[&str]| {
+            let preferences: Vec<_> = preferences
+                .iter()
+                .map(|id| SessionModeId::new(*id))
+                .collect();
+            pick_mode(Some(&modes), &preferences).map(|mode| mode.0.to_string())
+        };
 
-    #[test]
-    fn leaves_the_default_mode_when_the_preference_does_not_apply() {
-        let modes = SessionModeState::new(
-            "manual",
-            vec![
-                SessionMode::new("manual", "Manual"),
-                SessionMode::new("plan", "Plan"),
-            ],
-        );
-        assert_eq!(pick_mode(Some(&modes), None), None);
-        assert_eq!(
-            pick_mode(Some(&modes), Some(&SessionModeId::new("manual"))),
-            None
-        );
-        assert_eq!(
-            pick_mode(Some(&modes), Some(&SessionModeId::new("auto"))),
-            None
-        );
-        assert_eq!(pick_mode(None, Some(&SessionModeId::new("plan"))), None);
+        assert_eq!(pick(&["plan", "auto"]).as_deref(), Some("plan"));
+        assert_eq!(pick(&["yolo", "auto"]).as_deref(), Some("auto"));
+
+        // Nothing to change when the agent already is in the preferred mode.
+        assert_eq!(pick(&["manual", "auto"]), None);
+
+        assert_eq!(pick(&[]), None);
+        assert_eq!(pick(&["yolo"]), None);
+        assert_eq!(pick_mode(None, &[SessionModeId::new("plan")]), None);
     }
 
     #[test]

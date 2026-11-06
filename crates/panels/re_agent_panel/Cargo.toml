@@ -59,6 +59,7 @@ crossbeam.workspace = true
 egui.workspace = true
 futures.workspace = true
 jiff = { workspace = true, features = ["serde"] }
+parking_lot.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 thiserror.workspace = true

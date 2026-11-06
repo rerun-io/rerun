@@ -7,7 +7,6 @@ use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, EntityPathSubs};
 use re_mutex::Mutex;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
@@ -312,10 +311,9 @@ impl ViewportBlueprint {
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
 
-            let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
-            let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
-
-            let spawn_heuristics = entry.class.spawn_heuristics(ctx, &include_entity);
+            let spawn_heuristics = entry
+                .class
+                .spawn_heuristics(ctx, re_viewer_context::ViewSpawnContext::Automatic);
             let mut recommended_views = spawn_heuristics.into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);

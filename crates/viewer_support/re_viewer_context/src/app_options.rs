@@ -46,6 +46,12 @@ pub struct AppOptions {
     )]
     pub enable_welcome_screen: bool,
 
+    /// Switch to a recording as soon as it starts streaming in from an SDK.
+    ///
+    /// If false, such a recording is only added to the recordings panel while another
+    /// recording is being shown.
+    pub switch_to_streamed_recordings: bool,
+
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -118,6 +124,8 @@ impl AppOptions {
             custom_window_decorations,
 
             enable_welcome_screen: true,
+
+            switch_to_streamed_recordings: true,
 
             show_picking_debug_overlay: false,
 

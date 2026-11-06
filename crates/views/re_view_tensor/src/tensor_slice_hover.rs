@@ -10,21 +10,22 @@ use crate::visualizer_system::TensorVisualization;
 
 /// Shows the index and value of the hovered tensor element, next to a magnified view of the slice around it.
 ///
-/// `response` is the hover response of the slice texture, which is stretched over `response.rect`.
+/// `response` is the hover response of the view, and the slice texture is stretched over `image_rect`.
 pub fn tensor_slice_hover_ui(
     ctx: &ViewContext<'_>,
     ui: &egui::Ui,
     response: egui::Response,
+    image_rect: egui::Rect,
     texture: ColormappedTexture,
     tensor_view: &TensorVisualization,
     slice_selection: &TensorSliceSelection,
 ) {
-    let Some(pointer) = response.hover_pos() else {
+    let Some(pointer) = response.hover_pos().filter(|pos| image_rect.contains(*pos)) else {
         return;
     };
     let tensor = &tensor_view.tensor;
     let [width, height] = texture.width_height();
-    let texel = texel_at(response.rect, pointer, [width, height]);
+    let texel = texel_at(image_rect, pointer, [width, height]);
     let Some(index) = tensor_index_at(slice_selection, tensor.shape(), texel) else {
         return;
     };
@@ -32,10 +33,10 @@ pub fn tensor_slice_hover_ui(
     let center_texel = texel.map(i64::from);
     paint_zoomed_texture_region_outline(
         ui.ctx(),
-        ui.clip_rect(),
+        ui.clip_rect().intersect(response.rect),
         egui::vec2(width as f32, height as f32),
         center_texel,
-        response.rect,
+        image_rect,
     );
 
     // One hovered slice per view and no GPU readback, so a fixed index is safe.

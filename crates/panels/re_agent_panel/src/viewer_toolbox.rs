@@ -1,4 +1,7 @@
 //! The viewer's own tools for a model-API agent: the viewer-control operations, run in-process.
+//!
+//! An agent harness reaches the same operations through `rerun viewer-mcp` instead, and its
+//! permission requests for them are judged by the same rules.
 
 use std::sync::Arc;
 
@@ -165,10 +168,13 @@ impl AgentToolbox for ViewerToolbox {
                 .and_then(CommandKind::from_id)
                 .is_none_or(|command| !command.is_easily_undone());
         }
-        self.tools
-            .iter()
-            .find(|tool| Some(tool.name.as_str()) == operation)
-            .is_none_or(|tool| tool.requires_approval)
+        operation.is_none_or(|operation| {
+            re_viewer_control_tools::call_effect(operation, arguments).requires_approval()
+        })
+    }
+
+    fn mcp_server_name(&self) -> Option<&str> {
+        Some(crate::MCP_SERVER_NAME)
     }
 
     fn call(

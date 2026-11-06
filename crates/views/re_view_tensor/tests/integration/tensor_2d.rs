@@ -98,6 +98,50 @@ fn test_tensor_hover() {
     harness.snapshot("tensor_2d_hover");
 }
 
+#[test]
+fn test_tensor_zoom_hover() {
+    let mut test_context = TestContext::new_with_view_class::<TensorView>();
+
+    test_context.log_entity("tensor", |builder| {
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &make_test_tensor_2d(16))
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
+        blueprint.add_view_at_root(ViewBlueprint::new_with_id(
+            TensorView::identifier(),
+            RecommendedView::new_single_entity("tensor"),
+            ViewId::hashed_from_str("test-view-id"),
+        ))
+    });
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui(egui::vec2(256.0, 256.0))
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+
+    // Zooming 2x around the center shows elements 4 to 12 on both axes.
+    harness.hover_at(egui::pos2(128.0, 128.0));
+    harness.event(egui::Event::Zoom(2.0));
+    harness.run();
+
+    // Each texel is now 32x32 points, so this is the center of row 6, column 9.
+    harness.hover_at(egui::pos2(5.5 * 32.0, 2.5 * 32.0));
+    harness.run();
+
+    assert!(
+        harness.query_by_label("6, 9").is_some(),
+        "hover tooltip should show the index of the zoomed-in element"
+    );
+    // The xor test tensor stores `(row ^ column) * 16`.
+    assert!(
+        harness.query_by_label("240").is_some(),
+        "hover tooltip should show the value of the zoomed-in element"
+    );
+
+    harness.snapshot("tensor_2d_zoom_hover");
+}
+
 fn run_view_ui_and_save_snapshot(
     test_context: &TestContext,
     view_id: ViewId,

@@ -141,12 +141,7 @@ fn setup_screen_without_agents_or_keys() {
         harness.state().settings().profile_id,
         ModelApiProvider::Anthropic.profile_id()
     );
-    assert!(
-        harness
-            .get_by_label_contains("Start ")
-            .accesskit_node()
-            .is_disabled()
-    );
+    assert!(harness.get_by_label("Start").accesskit_node().is_disabled());
     harness.snapshot("setup_screen_without_agents_or_keys");
 }
 
@@ -159,12 +154,7 @@ fn setup_screen_without_agents_with_a_key() {
         harness.state().settings().profile_id,
         ModelApiProvider::OpenAi.profile_id()
     );
-    assert!(
-        !harness
-            .get_by_label_contains("Start ")
-            .accesskit_node()
-            .is_disabled()
-    );
+    assert!(!harness.get_by_label("Start").accesskit_node().is_disabled());
 }
 
 /// Picking the model-API card selects a provider even without a key, so the screen can say

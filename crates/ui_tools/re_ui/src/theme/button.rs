@@ -213,6 +213,22 @@ fn metrics(args: &StyleArgs<'_>) -> Metrics {
     let is_icon = args.classes.has_class(class::ICON);
     let is_custom = args.classes.has_class(Size::CLASS_CUSTOM);
 
+    // `egui_commonmark` places its code-block copy button (a `small()` button) assuming
+    // egui's width: glyph plus `button_padding`. A [`Size::Small`] button is wider than that,
+    // overhangs the code block, and `ui.put` grows the parent by the overhang on every frame.
+    // TODO(lampsitter/egui_commonmark#112): drop once released.
+    if args.has_class(class::UNCONTROLLED_EXTERNAL_UI)
+        && args.classes.has_class(Button::CLASS_SMALL.as_str())
+    {
+        return Metrics {
+            padding: Vec2::new(args.style.spacing.button_padding.x, 0.0),
+            corner_radius: CornerRadius::same(args.style.tokens().small_corner_radius()),
+            min_size: Vec2::new(0.0, Size::Small.height()),
+            gap: args.style.spacing.icon_spacing,
+            outer_margin: Margin::ZERO,
+        };
+    }
+
     // In a popup, buttons are sized from its spacing the way egui sizes them, so they stack as
     // compact menu items instead of standalone buttons. `menu_style` tunes that spacing for menu
     // items and applies to every button under it; in other popups, only to buttons that didn't

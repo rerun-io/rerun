@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use arrow::array::{Array, ArrayRef, RecordBatch, StringArray};
@@ -10,6 +11,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntryId, TimeInt};
+use re_sorbet::SchemaId;
 use re_types_core::LayerName;
 
 use crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
@@ -19,7 +21,7 @@ use crate::cloud::v1alpha1::{
     UploadMethod,
 };
 use crate::common::v1alpha1::ext as common_ext;
-use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SchemaId, SegmentId};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
 use crate::{TypeConversionError, invalid_field, missing_field};
 
@@ -551,6 +553,220 @@ pub struct InconsistentBlueprintDetailsError {
     entry_kind: &'static str,
 }
 
+// --- DatasetPolicy ---
+
+/// Selects every name of a dimension, or an explicit set.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum IndexingPolicySelection {
+    /// Every name, including names that appear later.
+    All,
+
+    /// Exactly the listed names. An empty set selects nothing.
+    Explicit(BTreeSet<String>),
+}
+
+impl IndexingPolicySelection {
+    /// Whether `name` is selected. Names match exactly.
+    pub fn contains(&self, name: &str) -> bool {
+        match self {
+            Self::All => true,
+            Self::Explicit(names) => names.contains(name),
+        }
+    }
+
+    /// The names both selections contain.
+    pub fn intersection(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Self::All, other) | (other, Self::All) => other.clone(),
+            (Self::Explicit(a), Self::Explicit(b)) => Self::Explicit(a & b),
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexingPolicySelection> for IndexingPolicySelection {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::IndexingPolicySelection,
+    ) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::indexing_policy_selection::Selection;
+
+        let selection = value.selection.ok_or(missing_field!(
+            crate::cloud::v1alpha1::IndexingPolicySelection,
+            "selection"
+        ))?;
+        Ok(match selection {
+            Selection::All(()) => Self::All,
+            Selection::Explicit(list) => Self::Explicit(list.names.into_iter().collect()),
+        })
+    }
+}
+
+impl From<IndexingPolicySelection> for crate::cloud::v1alpha1::IndexingPolicySelection {
+    fn from(value: IndexingPolicySelection) -> Self {
+        use crate::cloud::v1alpha1::indexing_policy_selection::Selection;
+
+        let selection = match value {
+            IndexingPolicySelection::All => Selection::All(()),
+            IndexingPolicySelection::Explicit(names) => {
+                Selection::Explicit(crate::cloud::v1alpha1::IndexingPolicyNameList {
+                    names: names.into_iter().collect(),
+                })
+            }
+        };
+        Self {
+            selection: Some(selection),
+        }
+    }
+}
+
+/// Which entity paths and timelines a dataset indexes for chunk queries.
+///
+/// Entity paths match the way [`re_log_types::EntityPath`] prints them, so `a/b` and `/a/b`
+/// select the same entity. Decoding from protobuf and [`Self::explicit`] normalize them; a
+/// struct literal must use the normalized form itself.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ChunkIndexingPolicy {
+    /// The entity paths the dataset indexes.
+    pub entity_paths: IndexingPolicySelection,
+
+    /// The timelines the dataset indexes.
+    pub timelines: IndexingPolicySelection,
+}
+
+impl ChunkIndexingPolicy {
+    /// Every entity path and every timeline.
+    pub const ALL: Self = Self {
+        entity_paths: IndexingPolicySelection::All,
+        timelines: IndexingPolicySelection::All,
+    };
+
+    /// No entity path and no timeline.
+    pub const NOTHING: Self = Self {
+        entity_paths: IndexingPolicySelection::Explicit(BTreeSet::new()),
+        timelines: IndexingPolicySelection::Explicit(BTreeSet::new()),
+    };
+
+    /// Exactly the listed entity paths and timelines, with the entity paths normalized.
+    pub fn explicit(
+        entity_paths: impl IntoIterator<Item = impl AsRef<str>>,
+        timelines: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Self {
+        Self {
+            entity_paths: IndexingPolicySelection::Explicit(
+                entity_paths
+                    .into_iter()
+                    .map(|path| normalized_entity_path(path.as_ref()))
+                    .collect(),
+            ),
+            timelines: IndexingPolicySelection::Explicit(
+                timelines
+                    .into_iter()
+                    .map(|timeline| timeline.as_ref().to_owned())
+                    .collect(),
+            ),
+        }
+    }
+
+    /// Whether this is [`Self::ALL`].
+    pub fn indexes_everything(&self) -> bool {
+        *self == Self::ALL
+    }
+
+    /// The entity paths and timelines both policies index.
+    pub fn intersection(&self, other: &Self) -> Self {
+        Self {
+            entity_paths: self.entity_paths.intersection(&other.entity_paths),
+            timelines: self.timelines.intersection(&other.timelines),
+        }
+    }
+}
+
+fn normalized_entity_path(path: &str) -> String {
+    re_log_types::EntityPath::from(path).to_string()
+}
+
+impl TryFrom<crate::cloud::v1alpha1::ChunkIndexingPolicy> for ChunkIndexingPolicy {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::ChunkIndexingPolicy) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths,
+            timelines,
+        } = value;
+        let entity_paths = entity_paths.ok_or(missing_field!(
+            crate::cloud::v1alpha1::ChunkIndexingPolicy,
+            "entity_paths"
+        ))?;
+        let timelines = timelines.ok_or(missing_field!(
+            crate::cloud::v1alpha1::ChunkIndexingPolicy,
+            "timelines"
+        ))?;
+        let entity_paths = match IndexingPolicySelection::try_from(entity_paths)? {
+            IndexingPolicySelection::All => IndexingPolicySelection::All,
+            IndexingPolicySelection::Explicit(paths) => IndexingPolicySelection::Explicit(
+                paths
+                    .iter()
+                    .map(|path| normalized_entity_path(path))
+                    .collect(),
+            ),
+        };
+        Ok(Self {
+            entity_paths,
+            timelines: timelines.try_into()?,
+        })
+    }
+}
+
+impl From<ChunkIndexingPolicy> for crate::cloud::v1alpha1::ChunkIndexingPolicy {
+    fn from(value: ChunkIndexingPolicy) -> Self {
+        let ChunkIndexingPolicy {
+            entity_paths,
+            timelines,
+        } = value;
+        Self {
+            entity_paths: Some(entity_paths.into()),
+            timelines: Some(timelines.into()),
+        }
+    }
+}
+
+/// Dataset-level policies.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DatasetPolicy {
+    /// `None` states no preference. The server that stores the entry then picks a policy.
+    pub chunk_indexing_policy: Option<ChunkIndexingPolicy>,
+}
+
+impl DatasetPolicy {
+    /// Replaces an unset chunk indexing policy with `default`.
+    pub fn resolve_chunk_indexing_policy(&mut self, default: ChunkIndexingPolicy) {
+        self.chunk_indexing_policy.get_or_insert(default);
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::DatasetPolicy> for DatasetPolicy {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::DatasetPolicy) -> Result<Self, Self::Error> {
+        Ok(Self {
+            chunk_indexing_policy: value
+                .chunk_indexing_policy
+                .map(TryInto::try_into)
+                .transpose()?,
+        })
+    }
+}
+
+impl From<DatasetPolicy> for crate::cloud::v1alpha1::DatasetPolicy {
+    fn from(value: DatasetPolicy) -> Self {
+        Self {
+            chunk_indexing_policy: value.chunk_indexing_policy.map(Into::into),
+        }
+    }
+}
+
 // --- DatasetDetails ---
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -559,6 +775,9 @@ pub struct DatasetDetails {
     pub asset_dataset: Option<EntryId>,
     pub default_blueprint_segment: Option<SegmentId>,
     pub default_segment_table_blueprint_segment: Option<SegmentId>,
+
+    /// The dataset's policies. On an update, `None` keeps the stored policy.
+    pub policy: Option<DatasetPolicy>,
 }
 
 impl DatasetDetails {
@@ -599,6 +818,14 @@ impl DatasetDetails {
             .as_ref()
             .map(|default| (blueprint.clone(), default.clone()))
     }
+
+    /// Replaces an absent or unset chunk indexing policy with `default`, so the details name an
+    /// explicit one.
+    pub fn resolve_chunk_indexing_policy(&mut self, default: ChunkIndexingPolicy) {
+        self.policy
+            .get_or_insert_default()
+            .resolve_chunk_indexing_policy(default);
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
@@ -620,6 +847,7 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
             asset_dataset: value.asset_dataset.map(TryInto::try_into).transpose()?,
             default_blueprint_segment,
             default_segment_table_blueprint_segment,
+            policy: value.policy.map(TryInto::try_into).transpose()?,
         })
     }
 }
@@ -634,6 +862,7 @@ impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
                 .default_segment_table_blueprint_segment
                 .clone()
                 .map(Into::into),
+            policy: value.policy.map(Into::into),
         }
     }
 }
@@ -754,6 +983,9 @@ pub struct CreateDatasetEntryRequest {
 
     /// Override, use at your own risk.
     pub id: Option<EntryId>,
+
+    /// The dataset's policies. An unset chunk indexing policy states no preference.
+    pub policy: DatasetPolicy,
 }
 
 impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEntryRequest {
@@ -761,6 +993,7 @@ impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEn
         Self {
             name: Some(value.name.to_string()),
             id: value.id.map(Into::into),
+            policy: Some(value.policy.into()),
         }
     }
 }
@@ -778,6 +1011,11 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for CreateDatase
         Ok(Self {
             name: EntryName::new(name_str).map_err(TypeConversionError::InvalidEntryName)?,
             id: value.id.map(TryInto::try_into).transpose()?,
+            policy: value
+                .policy
+                .map(TryInto::try_into)
+                .transpose()?
+                .unwrap_or_default(),
         })
     }
 }
@@ -2144,30 +2382,33 @@ pub enum Redemption {
     /// An HTTP request the caller performs directly.
     HttpRequest(HttpRequest),
     /// A multipart session whose bytes are uploaded directly to storage.
-    MultipartRequest(MultipartRequest),
+    MultipartSession(MultipartSession),
 }
 
 /// A multipart session with initial part requests and an opaque token.
 #[derive(Debug, Clone)]
-pub struct MultipartRequest {
+pub struct MultipartSession {
     /// Bearer token for part grants, completion, and abort. Return unchanged; do not log it.
     pub upload_token: prost::bytes::Bytes,
     /// Size of each part except the last, which may be smaller.
     pub part_size_bytes: std::num::NonZeroU64,
     /// Requests for consecutive parts starting at 1, in part-number order.
     pub part_requests: Vec<HttpRequest>,
+    /// Maximum part count, including the final part. Absence selects the legacy 10,000-part limit.
+    pub max_part_count: Option<NonZeroU32>,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
+impl TryFrom<crate::cloud::v1alpha1::MultipartSession> for MultipartSession {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::cloud::v1alpha1::MultipartRequest) -> Result<Self, Self::Error> {
-        use crate::cloud::v1alpha1::MultipartRequest as Proto;
+    fn try_from(value: crate::cloud::v1alpha1::MultipartSession) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::MultipartSession as Proto;
 
         let Proto {
             upload_token,
             part_size_bytes,
             part_requests,
+            max_part_count,
         } = value;
         if upload_token.is_empty() {
             return Err(invalid_field!(
@@ -2179,9 +2420,17 @@ impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
         let part_size_bytes = std::num::NonZeroU64::new(part_size_bytes).ok_or_else(|| {
             invalid_field!(Proto, "part_size_bytes", "expected a positive part size")
         })?;
+        let max_part_count = max_part_count
+            .map(|count| {
+                NonZeroU32::new(count).ok_or_else(|| {
+                    invalid_field!(Proto, "max_part_count", "expected a positive part count")
+                })
+            })
+            .transpose()?;
         Ok(Self {
             upload_token,
             part_size_bytes,
+            max_part_count,
             part_requests: part_requests
                 .into_iter()
                 .map(TryInto::try_into)
@@ -2190,18 +2439,20 @@ impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
     }
 }
 
-impl TryFrom<MultipartRequest> for crate::cloud::v1alpha1::MultipartRequest {
+impl TryFrom<MultipartSession> for crate::cloud::v1alpha1::MultipartSession {
     type Error = TypeConversionError;
 
-    fn try_from(value: MultipartRequest) -> Result<Self, Self::Error> {
-        let MultipartRequest {
+    fn try_from(value: MultipartSession) -> Result<Self, Self::Error> {
+        let MultipartSession {
             upload_token,
             part_size_bytes,
             part_requests,
+            max_part_count,
         } = value;
         Ok(Self {
             upload_token,
             part_size_bytes: part_size_bytes.get(),
+            max_part_count: max_part_count.map(NonZeroU32::get),
             part_requests: part_requests
                 .into_iter()
                 .map(TryInto::try_into)
@@ -2227,8 +2478,8 @@ impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
             crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(request) => {
                 Redemption::HttpRequest(request.try_into()?)
             }
-            crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(request) => {
-                Redemption::MultipartRequest(request.try_into()?)
+            crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(request) => {
+                Redemption::MultipartSession(request.try_into()?)
             }
         };
         Ok(Self {
@@ -2263,8 +2514,8 @@ impl TryFrom<AccessGrant> for crate::cloud::v1alpha1::AccessGrant {
                         request.try_into()?,
                     )
                 }
-                Redemption::MultipartRequest(request) => {
-                    crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
+                Redemption::MultipartSession(request) => {
+                    crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(
                         request.try_into()?,
                     )
                 }
@@ -2941,7 +3192,7 @@ mod tests {
         let last_updated_at = vec![2];
         let num_chunks = vec![1];
         let size_bytes = vec![2];
-        let schema_sha256 = vec![[1; 32]];
+        let schema_sha256 = vec![SchemaId::from_sha256([1; 32])];
         let registration_status = vec![LayerRegistrationStatus::Done.to_string()];
 
         let batch = ScanDatasetManifestDataframe::new(
@@ -3101,32 +3352,47 @@ mod tests {
                 jiff::Timestamp::new(1_700_000_000, 0).unwrap(),
             )),
             redemption: Some(
-                crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
-                    crate::cloud::v1alpha1::MultipartRequest {
+                crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(
+                    crate::cloud::v1alpha1::MultipartSession {
                         upload_token: b"opaque-token".as_slice().into(),
                         part_size_bytes: 8 * 1024 * 1024,
                         part_requests: vec![],
+                        max_part_count: None,
                     },
                 ),
             ),
         };
         let parsed = AccessGrant::try_from(grant.clone()).unwrap();
-        assert!(matches!(parsed.redemption, Redemption::MultipartRequest(_)));
+        assert!(matches!(parsed.redemption, Redemption::MultipartSession(_)));
         assert_eq!(
             crate::cloud::v1alpha1::AccessGrant::try_from(parsed).unwrap(),
             grant
         );
 
-        let Some(crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(mut request)) =
+        let Some(crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(mut request)) =
             grant.redemption
         else {
-            panic!("expected multipart request");
+            panic!("expected multipart session");
         };
+        for max_part_count in [None, Some(1), Some(u32::MAX)] {
+            request.max_part_count = max_part_count;
+            let parsed = MultipartSession::try_from(request.clone())
+                .expect("valid multipart session should parse");
+            assert_eq!(parsed.max_part_count.map(NonZeroU32::get), max_part_count);
+            assert_eq!(
+                crate::cloud::v1alpha1::MultipartSession::try_from(parsed)
+                    .expect("valid multipart session should serialize"),
+                request
+            );
+        }
+        request.max_part_count = Some(0);
+        assert!(MultipartSession::try_from(request.clone()).is_err());
+        request.max_part_count = Some(1);
         request.part_size_bytes = 0;
-        assert!(MultipartRequest::try_from(request.clone()).is_err());
+        assert!(MultipartSession::try_from(request.clone()).is_err());
         request.part_size_bytes = 1;
         request.upload_token = prost::bytes::Bytes::new();
-        assert!(MultipartRequest::try_from(request).is_err());
+        assert!(MultipartSession::try_from(request).is_err());
     }
 
     #[test]
@@ -3261,5 +3527,109 @@ mod tests {
         };
 
         assert!(crate::cloud::v1alpha1::HttpRequest::try_from(request).is_err());
+    }
+
+    #[test]
+    fn name_selection_round_trips() {
+        let explicit = IndexingPolicySelection::Explicit(["b".to_owned(), "a".to_owned()].into());
+        for selection in [IndexingPolicySelection::All, explicit] {
+            let proto = crate::cloud::v1alpha1::IndexingPolicySelection::from(selection.clone());
+            let back =
+                IndexingPolicySelection::try_from(proto).expect("a set selection converts back");
+            assert_eq!(back, selection);
+        }
+
+        let proto = crate::cloud::v1alpha1::IndexingPolicySelection::from(
+            IndexingPolicySelection::Explicit(["b".to_owned(), "a".to_owned()].into()),
+        );
+        let Some(crate::cloud::v1alpha1::indexing_policy_selection::Selection::Explicit(list)) =
+            proto.selection
+        else {
+            panic!("expected an explicit selection");
+        };
+        assert_eq!(list.names, vec!["a".to_owned(), "b".to_owned()]);
+    }
+
+    #[test]
+    fn policy_conversion_reports_the_missing_field() {
+        let result =
+            IndexingPolicySelection::try_from(crate::cloud::v1alpha1::IndexingPolicySelection {
+                selection: None,
+            });
+        assert!(
+            matches!(
+                result,
+                Err(TypeConversionError::MissingField {
+                    field_name: "selection",
+                    ..
+                })
+            ),
+            "{result:?}"
+        );
+
+        let result = ChunkIndexingPolicy::try_from(crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths: Some(IndexingPolicySelection::All.into()),
+            timelines: None,
+        });
+        assert!(
+            matches!(
+                result,
+                Err(TypeConversionError::MissingField {
+                    field_name: "timelines",
+                    ..
+                })
+            ),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn chunk_indexing_policy_normalizes_entity_paths() {
+        let explicit = ChunkIndexingPolicy::explicit(["a/b"], ["a/b"]);
+        assert_eq!(
+            explicit.entity_paths,
+            IndexingPolicySelection::Explicit(["/a/b".to_owned()].into())
+        );
+        assert_eq!(
+            explicit.timelines,
+            IndexingPolicySelection::Explicit(["a/b".to_owned()].into()),
+            "timeline names are not paths"
+        );
+
+        let decoded = ChunkIndexingPolicy::try_from(crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths: Some(
+                IndexingPolicySelection::Explicit(["a/b".to_owned(), "/a/b".to_owned()].into())
+                    .into(),
+            ),
+            timelines: Some(IndexingPolicySelection::Explicit(["a/b".to_owned()].into()).into()),
+        })
+        .expect("a complete policy decodes");
+        assert_eq!(decoded, explicit);
+    }
+
+    #[test]
+    fn resolve_chunk_indexing_policy_fills_only_an_unset_policy() {
+        let mut details = DatasetDetails::default();
+        details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::NOTHING);
+        assert_eq!(
+            details.policy,
+            Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::NOTHING),
+            })
+        );
+
+        let mut details = DatasetDetails {
+            policy: Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::ALL),
+            }),
+            ..Default::default()
+        };
+        details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::NOTHING);
+        assert_eq!(
+            details.policy,
+            Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::ALL),
+            })
+        );
     }
 }

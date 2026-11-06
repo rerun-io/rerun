@@ -17,7 +17,8 @@ use re_protos::cloud::v1alpha1::ext as cloud_ext;
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::cloud::v1alpha1::ext::TableEntry;
 use re_protos::cloud::v1alpha1::ext::{
-    DatasetDetails, EntriesTableDataframe, EntryDetails, ProviderDetails, TableDetails,
+    ChunkIndexingPolicy, DatasetDetails, DatasetPolicy, EntriesTableDataframe, EntryDetails,
+    ProviderDetails, TableDetails,
 };
 use re_protos::common::v1alpha1::ext::DatasetKind;
 #[cfg(not(target_arch = "wasm32"))]
@@ -228,7 +229,7 @@ impl InMemoryStore {
         let entry_name = EntryName::new(entry_name).map_err(Error::InvalidEntryName)?;
 
         let dataset_id = self
-            .create_dataset(entry_name, None)
+            .create_dataset(entry_name, None, DatasetPolicy::default())
             .expect("Name cannot yet exist");
 
         let mut entries = tokio::fs::read_dir(&directory).await?;
@@ -417,8 +418,9 @@ impl InMemoryStore {
         &mut self,
         dataset_name: EntryName,
         dataset_id: Option<EntryId>,
+        policy: DatasetPolicy,
     ) -> Result<EntryId, Error> {
-        self.create_dataset_with_kind(dataset_name, dataset_id, DatasetKind::Recording)
+        self.create_dataset_with_kind(dataset_name, dataset_id, DatasetKind::Recording, policy)
     }
 
     pub(crate) fn create_blueprint_dataset_for_entry(
@@ -464,6 +466,7 @@ impl InMemoryStore {
         dataset_name: EntryName,
         dataset_id: Option<EntryId>,
         dataset_kind: DatasetKind,
+        policy: DatasetPolicy,
     ) -> Result<EntryId, Error> {
         let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
 
@@ -472,11 +475,16 @@ impl InMemoryStore {
                 let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(dataset_id)?;
                 let asset_dataset_id = self.create_asset_dataset_for_entry(dataset_id)?;
 
+                // The OSS server has no configurable default: an unset policy indexes everything.
+                let mut policy = policy;
+                policy.resolve_chunk_indexing_policy(ChunkIndexingPolicy::ALL);
+
                 let dataset_details = DatasetDetails {
                     blueprint_dataset: Some(blueprint_dataset_id),
                     asset_dataset: Some(asset_dataset_id),
                     default_blueprint_segment: None,
                     default_segment_table_blueprint_segment: None,
+                    policy: Some(policy),
                 };
 
                 self.create_dataset_impl(

@@ -31,7 +31,9 @@ pub use highlights::{
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
 pub use noop_visualizer::NoopVisualizer;
-pub use spawn_heuristics::{MAX_VIEWS_SPAWNED, RecommendedView, ViewSpawnHeuristics};
+pub use spawn_heuristics::{
+    MAX_VIEWS_SPAWNED, RecommendedView, ViewSpawnContext, ViewSpawnHeuristics,
+};
 pub use system_execution_output::{
     SystemExecutionOutput, VisualizerTypeReport, VisualizerViewReport,
 };

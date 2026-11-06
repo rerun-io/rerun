@@ -27,8 +27,8 @@ use crate::rrd::CodecError;
 /// same `raw` schema, or the index columns won't match the migrated schema.
 pub fn migrate_rrd_manifest_sorbet_schema(
     raw: &arrow::datatypes::SchemaRef,
-    raw_sha256: [u8; 32],
-) -> Result<(arrow::datatypes::Schema, [u8; 32]), arrow::error::ArrowError> {
+    raw_sha256: re_sorbet::SchemaId,
+) -> Result<(arrow::datatypes::Schema, re_sorbet::SchemaId), arrow::error::ArrowError> {
     let migrated = std::sync::Arc::unwrap_or_clone(re_sorbet::migrate_schema_ref(raw.clone()));
     let sha256 = if migrated.fields() == raw.fields() {
         raw_sha256
@@ -118,7 +118,7 @@ impl ToTransport for RawRrdManifest {
 
         Ok(Self::Output {
             store_id: Some(self.store_id.clone().into()),
-            sorbet_schema_sha256: Some(self.sorbet_schema_sha256.to_vec().into()),
+            sorbet_schema_sha256: Some(self.sorbet_schema_sha256.sha256().to_vec().into()),
             sorbet_schema: Some(sorbet_schema),
             data: Some(data),
         })
@@ -227,8 +227,9 @@ impl ToApplication for re_protos::log_msg::v1alpha1::RrdManifest {
             .sorbet_schema_sha256
             .as_ref()
             .ok_or_else(|| re_protos::missing_field!(Self, "sorbet_schema_sha256"))?;
-        let sorbet_schema_sha256: [u8; 32] = (**sorbet_schema_sha256)
+        let sorbet_schema_sha256 = (**sorbet_schema_sha256)
             .try_into()
+            .map(re_sorbet::SchemaId::from_sha256)
             .map_err(|err| re_protos::invalid_field!(Self, "sorbet_schema_sha256", err))?;
 
         let data = self

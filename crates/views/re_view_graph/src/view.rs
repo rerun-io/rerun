@@ -146,9 +146,9 @@ impl ViewClass for GraphView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
-        suggest_view_for_each_entity::<NodeVisualizer>(ctx, include_entity)
+        suggest_view_for_each_entity::<NodeVisualizer>(ctx, spawn_context)
     }
 
     /// Additional UI displayed when the view is selected.

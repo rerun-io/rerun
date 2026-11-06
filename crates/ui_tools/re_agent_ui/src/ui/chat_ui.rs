@@ -102,6 +102,12 @@ impl ChatInput {
         self.focus = true;
     }
 
+    /// Attaches an image to the prompt being composed, and focuses the input.
+    pub fn attach_image(&mut self, image: PromptImage) {
+        self.prompt.images.push(image);
+        self.focus = true;
+    }
+
     /// Starts over for a new session, except for the prompt being composed and a pending focus
     /// request.
     pub fn reset_keeping_prompt(&mut self) {
@@ -895,7 +901,7 @@ fn pending_images_ui(ui: &mut egui::Ui, input: &mut ChatInput) {
             let [width, height] = image.resolution;
             let aspect = width as f32 / height as f32;
             let size = egui::vec2(PREVIEW_HEIGHT * aspect, PREVIEW_HEIGHT);
-            let hover_text = format!("Pasted image, {width}×{height} pixels");
+            let hover_text = format!("Attached image, {width}×{height} pixels");
             if let Some(texture) = previews.get(ui.ctx(), image) {
                 ui.image((texture, size)).on_hover_text(hover_text);
             } else {

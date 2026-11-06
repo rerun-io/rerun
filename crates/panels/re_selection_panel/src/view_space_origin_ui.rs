@@ -1,6 +1,6 @@
 use re_log_types::EntityPath;
-use re_viewer_context::ViewerContext;
-use re_viewport_blueprint::{ViewBlueprint, default_created_views};
+use re_viewer_context::{ViewSpawnContext, ViewerContext};
+use re_viewport_blueprint::ViewBlueprint;
 
 /// Display the space origin of a view.
 pub fn view_space_origin_widget_ui(
@@ -11,10 +11,11 @@ pub fn view_space_origin_widget_ui(
     // All suggestions for this class of views.
     // TODO(#4895): we should have/use a much simpler heuristic API to get a list of compatible entity sub-tree
     let suggestions = || -> Vec<EntityPath> {
-        default_created_views(ctx)
+        view.class(ctx.view_class_registry())
+            .spawn_heuristics(ctx, ViewSpawnContext::Automatic)
+            .into_vec()
             .into_iter()
-            .filter(|this_view| this_view.class_identifier() == view.class_identifier())
-            .map(|this_view| this_view.space_origin)
+            .map(|recommendation| recommendation.origin)
             .collect()
     };
 

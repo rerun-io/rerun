@@ -6650,6 +6650,7 @@ fn generate_view_reflection() -> ViewReflectionMap {
                     ArchetypeName::from("rerun.blueprint.archetypes.TensorSliceSelection"),
                     ArchetypeName::from("rerun.blueprint.archetypes.TensorScalarMapping"),
                     ArchetypeName::from("rerun.blueprint.archetypes.TensorViewFit"),
+                    ArchetypeName::from("rerun.blueprint.archetypes.VisualBounds2D"),
                 ],
             },
         ),
