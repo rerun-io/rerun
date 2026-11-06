@@ -7,8 +7,10 @@ use re_chunk::{Chunk, RowId, TimeInt};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkTrackingMode, IsStartOfGop};
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{AbsoluteTimeRange, TimePoint, Timeline};
-use re_sdk_types::archetypes::{Transform3D, VideoStream};
-use re_sdk_types::components::{TransformFrameId, Translation3D, VideoCodec, VideoSample};
+use re_sdk_types::archetypes::{Pinhole, Transform3D, VideoStream};
+use re_sdk_types::components::{
+    PinholeProjection, TransformFrameId, Translation3D, VideoCodec, VideoSample,
+};
 use re_types_core::ComponentBatch;
 
 fn frame() -> Timeline {
@@ -258,5 +260,50 @@ fn splits_multiple_ranges() {
     assert_eq!(
         times[2]["/video:VideoStream:sample"],
         some(&[5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+    );
+}
+
+#[test]
+fn keeps_static_data() {
+    let mut store = new_store();
+    let projection = PinholeProjection::from([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
+    let translation = Translation3D::new(1.0, 2.0, 3.0);
+    insert_chunk(
+        &mut store,
+        "/camera",
+        vec![(
+            None,
+            vec![(Pinhole::descriptor_image_from_camera(), &projection as _)],
+        )],
+    );
+    insert_chunk(
+        &mut store,
+        "/static_tf",
+        vec![(
+            None,
+            vec![(Transform3D::descriptor_translation(), &translation as _)],
+        )],
+    );
+    insert_chunk(&mut store, "/static_points", vec![(None, vec![points()])]);
+    insert_chunk(
+        &mut store,
+        "/points",
+        [5].map(|t| (Some(t), vec![points()])).into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    assert_no_duplicate_rows(&chunks);
+    assert_eq!(
+        times_per_component(&chunks),
+        BTreeMap::from([
+            ("/camera:Pinhole:image_from_camera".to_owned(), vec![None]),
+            ("/points:example.MyPoints:points".to_owned(), some(&[5])),
+            (
+                "/static_points:example.MyPoints:points".to_owned(),
+                vec![None]
+            ),
+            ("/static_tf:Transform3D:translation".to_owned(), vec![None]),
+        ])
     );
 }

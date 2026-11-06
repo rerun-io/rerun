@@ -87,7 +87,13 @@ impl ChunkStore {
             let start_inclusive = range.min();
             let end_exclusive = range.max().inc();
 
-            let mut all_chunks_in_split = Vec::new();
+            // Static data applies to all times, so it is kept as-is in every split.
+            // The latest-at bootstrap below skips it, and doesn't cover special components anyway.
+            let mut all_chunks_in_split = self
+                .iter_physical_chunks()
+                .filter(|chunk| chunk.is_static())
+                .map(|chunk| (chunk.id(), Chunk::clone(chunk)))
+                .collect_vec();
 
             for (entity, components) in &all_entities_and_their_components {
                 // Base case: everything
@@ -336,6 +342,11 @@ impl ChunkStore {
                     }) else {
                         return vec![];
                     };
+
+                    if chunk.is_static() {
+                        // Static data is kept as-is, see `split_by_time_ranges`.
+                        return vec![];
+                    }
 
                     re_log::debug_assert!(chunk.num_rows() == 1);
 
