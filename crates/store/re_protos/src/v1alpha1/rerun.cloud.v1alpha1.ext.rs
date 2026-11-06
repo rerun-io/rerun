@@ -3074,6 +3074,28 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
     }
 }
 
+/// Fixed fragments of the Lance messages that `WriteTable` reports when the caller's batch
+/// does not fit the table. `re_redap_tests::write_table_rejects_bad_batches` triggers each
+/// one, so a Lance upgrade that rewords them fails CI.
+const BAD_WRITE_TABLE_INPUT_MESSAGES: &[&str] = &[
+    "Append with different schema",
+    "contained null values even though the field is marked non-null",
+    "Cannot insert rows with a partial-schema source",
+    "Ambiguous merge inserts are prohibited",
+    "Failed to encode JSON",
+];
+
+/// Whether a failed table write was caused by the caller's batch, judged by the message of
+/// any error in the `source` chain.
+pub fn is_bad_write_table_input(err: &(dyn std::error::Error + 'static)) -> bool {
+    std::iter::successors(Some(err), |err| err.source()).any(|err| {
+        let message = err.to_string();
+        BAD_WRITE_TABLE_INPUT_MESSAGES
+            .iter()
+            .any(|fragment| message.contains(fragment))
+    })
+}
+
 // ---
 
 /// Ergonomic counterpart to the codegen'd [`crate::cloud::v1alpha1::VersionResponse`].
