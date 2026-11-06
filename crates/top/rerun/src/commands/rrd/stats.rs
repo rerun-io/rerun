@@ -501,7 +501,7 @@ fn print_chunk_index_stats(
         let byte_size_uncompressed_total: u64 =
             chunk_index.col_chunk_byte_size_uncompressed_iter()?.sum();
 
-        let sha256 = re_chunk_index::sha256_to_hex(&chunk_index.sorbet_schema_sha256);
+        let sha256 = chunk_index.sorbet_schema_sha256;
 
         try_println!()?;
         try_println!("Chunk index for {:?}", chunk_index.store_id)?;

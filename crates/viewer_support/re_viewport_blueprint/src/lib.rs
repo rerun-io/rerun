@@ -19,8 +19,6 @@ mod test_view_class;
 pub use container::ContainerBlueprint;
 pub use data_query_result_cache::query_results_for_views;
 pub use entity_add_info::{CanAddToView, EntityAddInfo, create_entity_add_info};
-use re_chunk::EntityPath;
-use re_viewer_context::ViewerContext;
 pub use re_viewer_context::entity_path_for_view_property;
 pub use view::ViewBlueprint;
 pub use view_contents::ViewContents;
@@ -63,24 +61,4 @@ pub fn container_kind_from_egui(
         egui_tiles::ContainerKind::Vertical => ContainerKind::Vertical,
         egui_tiles::ContainerKind::Grid => ContainerKind::Grid,
     }
-}
-
-/// List out all views we generate by default for the available data.
-///
-/// TODO(andreas): This is transitional. We want to pass on the view spawn heuristics
-/// directly and make more high level decisions with it.
-pub fn default_created_views(ctx: &ViewerContext<'_>) -> Vec<ViewBlueprint> {
-    re_tracing::profile_function!();
-
-    ctx.view_class_registry()
-        .iter_registry()
-        .flat_map(|entry| {
-            let include_entity = |_: &EntityPath| true;
-            let spawn_heuristics = entry.class.spawn_heuristics(ctx, &include_entity);
-            spawn_heuristics
-                .into_vec()
-                .into_iter()
-                .map(|recommendation| ViewBlueprint::new(entry.identifier, recommendation))
-        })
-        .collect()
 }

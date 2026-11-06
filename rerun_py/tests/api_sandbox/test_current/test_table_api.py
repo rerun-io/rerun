@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def test_table_api(tmp_path_factory: pytest.TempPathFactory) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         tmp_path = tmp_path_factory.mktemp("my_table")

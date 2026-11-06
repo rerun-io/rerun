@@ -11,8 +11,8 @@ use super::{ViewContext, ViewerDiagnostic};
 use crate::{
     DragAndDropFeedback, DragAndDropPayload, IndicatedEntities, PerVisualizerType, QueryRange,
     RecommendedMappings, SystemExecutionOutput, ViewClassRegistryError, ViewId, ViewQuery,
-    ViewSpawnHeuristics, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
-    ViewerContext, VisualizableReason,
+    ViewSpawnContext, ViewSpawnHeuristics, ViewSystemExecutionError, ViewSystemIdentifier,
+    ViewSystemRegistrator, ViewerContext, VisualizableReason,
 };
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd, Ord, Eq)]
@@ -323,15 +323,14 @@ pub trait ViewClass: Send + Sync {
         recommended
     }
 
-    /// Determines which views should be spawned by default for this class.
+    /// Recommends views for automatic spawning or explicit user creation.
     ///
-    /// Only entities matching `include_entity` should be considered,
-    /// though this is only a suggestion and may be
-    /// overwritten if a view decides to display more data.
+    /// Automatic recommendations should not be triggered by property entities.
+    /// Explicit creation considers all entities and will use the first returned recommendation.
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: ViewSpawnContext,
     ) -> ViewSpawnHeuristics;
 
     /// Configures the UI shown when the user selects a view of this class.

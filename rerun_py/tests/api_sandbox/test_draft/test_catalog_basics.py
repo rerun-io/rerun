@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 def test_catalog_basics(tmp_path: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         client.create_dataset("my_dataset")
@@ -31,7 +31,7 @@ def test_catalog_basics(tmp_path: Path) -> None:
 
 
 def test_catalog_modify() -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         table1 = client.create_table("table1", pa.schema([]))

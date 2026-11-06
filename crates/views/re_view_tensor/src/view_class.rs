@@ -1,18 +1,21 @@
 use egui::epaint::TextShape;
-use egui::{Align2, NumExt as _, Vec2};
+use egui::{Align2, NumExt as _, Pos2, Rect, Vec2};
 use ndarray::Axis;
 use re_data_ui::tensor_summary_ui_grid_contents;
 use re_log_types::EntityPath;
 use re_renderer::renderer::ColormappedTexture;
-use re_sdk_types::blueprint::archetypes::{self, TensorScalarMapping, TensorViewFit};
-use re_sdk_types::blueprint::components::ViewFit;
+use re_sdk_types::blueprint::archetypes::{
+    self, TensorScalarMapping, TensorViewFit, VisualBounds2D,
+};
+use re_sdk_types::blueprint::components::{self as blueprint_components, ViewFit};
 use re_sdk_types::components::{
     Colormap, GammaCorrection, MagnificationFilter, TensorDimensionIndexSelection,
 };
 use re_sdk_types::encodings::TensorData;
 use re_sdk_types::{View as _, ViewClassIdentifier};
-use re_ui::{Help, UiExt as _, list_item};
-use re_view::view_property_ui;
+use re_ui::{Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
+use re_view::controls::DRAG_PAN2D_BUTTON;
+use re_view::{VisualBoundsFit, pan_zoom_visual_bounds_2d, view_property_ui};
 use re_viewer_context::{
     ColormapWithRange, IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
     TensorStatsCache, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext, ViewId,
@@ -37,6 +40,20 @@ pub struct ViewTensorState {
     /// Last viewed tensor, copied each frame.
     /// Used for the selection view.
     tensor: Option<TensorVisualization>,
+
+    /// Fallback for the [`VisualBounds2D`] of the view, in element coordinates of the shown slice.
+    default_visual_bounds: Option<Rect>,
+
+    /// Layout of the last shown slice; the visual bounds are cleared when it changes.
+    slice_layout: Option<SliceLayout>,
+}
+
+/// The slice dimensions and fit mode that the visual bounds were set for.
+#[derive(Clone, Copy, PartialEq, Eq, re_byte_size::SizeBytes)]
+struct SliceLayout {
+    width_dimension: Option<u32>,
+    height_dimension: Option<u32>,
+    view_fit: ViewFit,
 }
 
 impl ViewState for ViewTensorState {
@@ -66,7 +83,9 @@ impl ViewClass for TensorView {
         &re_ui::icons::VIEW_TENSOR
     }
 
-    fn help(&self, _os: egui::os::OperatingSystem) -> Help {
+    fn help(&self, os: egui::os::OperatingSystem) -> Help {
+        let egui::InputOptions { zoom_modifier, .. } = egui::InputOptions::default(); // This is OK, since we don't allow the user to change this modifier.
+
         Help::new("Tensor view")
             .docs_link("https://rerun.io/docs/reference/types/views/tensor_view")
             .markdown(
@@ -74,6 +93,12 @@ impl ViewClass for TensorView {
 
 Set the displayed dimensions in a selection panel.",
             )
+            .control("Pan", (MouseButtonText(DRAG_PAN2D_BUTTON), "+", "drag"))
+            .control(
+                "Zoom",
+                IconText::from_modifiers_and(os, zoom_modifier, icons::SCROLL),
+            )
+            .control("Reset view", ("double", icons::LEFT_MOUSE_CLICK))
     }
 
     fn on_register(
@@ -83,6 +108,17 @@ Set the displayed dimensions in a selection panel.",
         system_registry.register_fallback_provider(
             TensorScalarMapping::descriptor_colormap().component,
             |_| Colormap::Viridis,
+        );
+        system_registry.register_fallback_provider(
+            VisualBounds2D::descriptor_range().component,
+            |ctx| {
+                ctx.view_state()
+                    .downcast_ref::<ViewTensorState>()
+                    .ok()
+                    .and_then(|state| state.default_visual_bounds)
+                    .map(blueprint_components::VisualBounds2D::from)
+                    .unwrap_or_default()
+            },
         );
 
         system_registry.register_visualizer::<TensorSystem>()
@@ -112,7 +148,7 @@ Set the displayed dimensions in a selection panel.",
                 if let Some(TensorVisualization {
                     tensor,
                     tensor_row_id,
-                    tensor_component,
+                    tensor_source,
                     ..
                 }) = &state.tensor
                 {
@@ -120,7 +156,7 @@ Set the displayed dimensions in a selection panel.",
                         ctx.viewer_ctx
                             .store_context
                             .memoizer(|c: &mut TensorStatsCache| {
-                                c.entry(*tensor_row_id, *tensor_component, tensor)
+                                c.entry(*tensor_row_id, tensor_source, tensor)
                             });
 
                     tensor_summary_ui_grid_contents(ui, tensor, &tensor_stats);
@@ -130,6 +166,7 @@ Set the displayed dimensions in a selection panel.",
             list_item::list_item_scope(ui, "tensor_selection_ui", |ui| {
                 view_property_ui::<TensorScalarMapping>(ctx, ui);
                 view_property_ui::<TensorViewFit>(ctx, ui);
+                view_property_ui::<VisualBounds2D>(ctx, ui);
             });
 
             // TODO(#6075): Listitemify
@@ -183,11 +220,11 @@ Set the displayed dimensions in a selection panel.",
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // For tensors create one view for each tensor (even though we're able to stack them in one view)
-        suggest_view_for_each_entity::<TensorSystem>(ctx, include_entity)
+        suggest_view_for_each_entity::<TensorSystem>(ctx, spawn_context)
     }
 
     fn ui(
@@ -226,7 +263,7 @@ Set the displayed dimensions in a selection panel.",
                     });
             } else if let Some(tensor_view) = tensors.first() {
                 state.tensor = Some(tensor_view.clone());
-                self.view_tensor(
+                let (slice_layout, default_visual_bounds) = self.view_tensor(
                     ctx,
                     &mut ui,
                     state,
@@ -234,6 +271,15 @@ Set the displayed dimensions in a selection panel.",
                     query.space_origin,
                     &tensor_view.tensor,
                 )?;
+
+                let previous_layout = state.slice_layout.replace(slice_layout);
+                if previous_layout.is_some_and(|previous| previous != slice_layout) {
+                    ViewProperty::from_archetype_for_view::<VisualBounds2D>(ctx, query.view_id)
+                        .clear_blueprint_component(ctx, VisualBounds2D::descriptor_range());
+                }
+                if default_visual_bounds.is_some() {
+                    state.default_visual_bounds = default_visual_bounds;
+                }
             } else {
                 ui.centered_and_justified(|ui| ui.label("(empty)"));
             }
@@ -263,7 +309,7 @@ impl TensorView {
         view_id: ViewId,
         space_origin: &EntityPath,
         tensor: &TensorData,
-    ) -> Result<(), ViewSystemExecutionError> {
+    ) -> Result<(SliceLayout, Option<Rect>), ViewSystemExecutionError> {
         re_tracing::profile_function!();
 
         let slice_property = ViewProperty::from_archetype_for_view::<
@@ -314,15 +360,30 @@ impl TensorView {
         ];
 
         let view_ctx = self.view_context(ctx, view_id, state, space_origin);
-        egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-            if let Err(err) =
-                Self::tensor_slice_ui(&view_ctx, ui, state, dimension_labels, &slice_selection)
-            {
-                ui.error_label(err.to_string());
-            }
-        });
+        let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(&view_ctx)
+            .component_or_fallback(&view_ctx, TensorViewFit::descriptor_scaling().component)?;
+        let slice_layout = SliceLayout {
+            width_dimension: slice_selection.width.map(|width| width.dimension),
+            height_dimension: slice_selection.height.map(|height| height.dimension),
+            view_fit,
+        };
 
-        Ok(())
+        let default_visual_bounds = match Self::tensor_slice_ui(
+            &view_ctx,
+            ui,
+            state,
+            dimension_labels,
+            &slice_selection,
+            view_fit,
+        ) {
+            Ok(default_visual_bounds) => Some(default_visual_bounds),
+            Err(err) => {
+                ui.error_label(err.to_string());
+                None
+            }
+        };
+
+        Ok((slice_layout, default_visual_bounds))
     }
 
     fn tensor_slice_ui(
@@ -331,17 +392,43 @@ impl TensorView {
         state: &ViewTensorState,
         dimension_labels: [Option<(String, bool)>; 2],
         slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<()> {
-        let (response, texture) = Self::paint_tensor_slice(ctx, ui, state, slice_selection)?;
+        view_fit: ViewFit,
+    ) -> anyhow::Result<Rect> {
+        let PaintedSlice {
+            response,
+            texture,
+            image_rect,
+            default_visual_bounds,
+        } = Self::paint_tensor_slice(ctx, ui, state, slice_selection, view_fit)?;
+
+        // The slice covers the whole view and senses clicks and drags, which takes them from the view's own response.
+        if response.hovered() {
+            ctx.viewer_ctx
+                .selection_state()
+                .set_hovered(Item::View(ctx.view_id));
+        }
+        if response.clicked() {
+            ctx.viewer_ctx
+                .command_sender()
+                .send_system(SystemCommand::set_selection(Item::View(ctx.view_id)));
+        }
 
         if !response.hovered() {
             let font_id = egui::TextStyle::Body.resolve(ui.style());
             paint_axis_names(ui, response.rect, &font_id, dimension_labels);
         } else if let Some(tensor_view) = &state.tensor {
-            tensor_slice_hover_ui(ctx, ui, response, texture, tensor_view, slice_selection);
+            tensor_slice_hover_ui(
+                ctx,
+                ui,
+                response,
+                image_rect,
+                texture,
+                tensor_view,
+                slice_selection,
+            );
         }
 
-        Ok(())
+        Ok(default_visual_bounds)
     }
 
     fn paint_tensor_slice(
@@ -349,7 +436,8 @@ impl TensorView {
         ui: &mut egui::Ui,
         state: &ViewTensorState,
         slice_selection: &TensorSliceSelection,
-    ) -> anyhow::Result<(egui::Response, ColormappedTexture)> {
+        view_fit: ViewFit,
+    ) -> anyhow::Result<PaintedSlice> {
         re_tracing::profile_function!();
 
         let Some(tensor_view) = state.tensor.as_ref() else {
@@ -358,7 +446,7 @@ impl TensorView {
         let TensorVisualization {
             entity_path: _,
             tensor_row_id,
-            tensor_component: _,
+            tensor_source: _,
             tensor,
             data_range,
         } = &tensor_view;
@@ -386,22 +474,42 @@ impl TensorView {
             gamma,
         )?;
         let [width, height] = colormapped_texture.width_height();
+        let slice_rect = Rect::from_min_size(
+            Pos2::ZERO,
+            Vec2::max(Vec2::splat(1.0), egui::vec2(width as _, height as _)),
+        );
 
-        let view_fit: ViewFit = ViewProperty::from_archetype::<TensorViewFit>(ctx)
-            .component_or_fallback(ctx, TensorViewFit::descriptor_scaling().component)?;
+        let (response, painter) =
+            ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
-        let img_size = egui::vec2(width as _, height as _);
-        let img_size = Vec2::max(Vec2::splat(1.0), img_size); // better safe than sorry
-        let desired_size = match view_fit {
-            ViewFit::Original => img_size,
-            ViewFit::Fill => ui.available_size(),
-            ViewFit::FillKeepAspectRatio => {
-                let scale = (ui.available_size() / img_size).min_elem();
-                img_size * scale
-            }
+        // In `Original`, one element covers one point, starting at the top left corner of the view.
+        let default_visual_bounds = match view_fit {
+            ViewFit::Original => Rect::from_min_size(
+                Pos2::ZERO,
+                Vec2::max(Vec2::splat(1.0), response.rect.size()),
+            ),
+            ViewFit::Fill | ViewFit::FillKeepAspectRatio => slice_rect,
         };
-
-        let (response, painter) = ui.allocate_painter(desired_size, egui::Sense::hover());
+        // The registered fallback is only updated after this frame, and `Original` depends on the view size,
+        // so the default bounds are applied here instead.
+        let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(ctx);
+        let bounds = bounds_property
+            .component_or_empty::<blueprint_components::VisualBounds2D>(
+                VisualBounds2D::descriptor_range().component,
+            )?
+            .unwrap_or_else(|| default_visual_bounds.into());
+        let ui_from_scene = pan_zoom_visual_bounds_2d(
+            ctx.viewer_ctx,
+            &response,
+            &bounds_property,
+            bounds,
+            match view_fit {
+                ViewFit::Fill => VisualBoundsFit::Stretch,
+                ViewFit::FillKeepAspectRatio | ViewFit::Original => VisualBoundsFit::Letterbox,
+            },
+            Some(slice_rect.size()),
+        );
+        let image_rect = ui_from_scene.transform_rect(slice_rect);
         let texture_options = egui::TextureOptions {
             magnification: match mag_filter {
                 MagnificationFilter::Nearest => egui::TextureFilter::Nearest,
@@ -417,15 +525,32 @@ impl TensorView {
         gpu_bridge::render_image(
             ctx.render_ctx(),
             &painter,
-            response.rect,
+            image_rect,
             colormapped_texture.clone(),
             texture_options,
             ctx.view_id.render_view_id(),
             re_renderer::Label::from("tensor_slice"),
         )?;
 
-        Ok((response, colormapped_texture))
+        Ok(PaintedSlice {
+            response,
+            texture: colormapped_texture,
+            image_rect,
+            default_visual_bounds,
+        })
     }
+}
+
+struct PaintedSlice {
+    /// Covers the whole view, which `image_rect` may only partially overlap.
+    response: egui::Response,
+
+    texture: ColormappedTexture,
+
+    /// The screen rect the slice texture is stretched over.
+    image_rect: Rect,
+
+    default_visual_bounds: Rect,
 }
 
 // ----------------------------------------------------------------------------

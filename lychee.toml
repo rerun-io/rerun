@@ -183,6 +183,10 @@ exclude = [
   # that follows the release — so the newest links 404 until then.
   'https://rerun.io/docs/changelog/changeset-.*',
 
+  # Each `CHANGELOG.md` release heading links to the compare view up to the release's tag,
+  # which only exists once the release is tagged.
+  'https://github.com/rerun-io/rerun/compare/.*',
+
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
   'https://github.com/rerun-io/documentation',

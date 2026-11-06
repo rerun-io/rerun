@@ -285,14 +285,15 @@ fn test_single_component_ui_as_list_item(
                         ui,
                         UiLayout::List,
                         &EntityPath::root(),
-                        // As of writing, `ComponentDescriptor` the descriptor part is only used for
-                        // caching and actual lookup of uis is only done via `ComponentType`.
                         &ComponentDescriptor {
                             component: test_case.label.into(),
                             archetype: None,
                             component_type: Some(test_case.component_type),
                         },
                         None,
+                        &re_viewer_context::VisualizerComponentSource::identity(
+                            test_case.label.into(),
+                        ),
                         &*test_case.component_data,
                     );
                 },

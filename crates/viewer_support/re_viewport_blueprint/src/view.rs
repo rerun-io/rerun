@@ -66,6 +66,24 @@ impl ViewBlueprint {
         Self::new_with_id(view_class, recommended, ViewId::random())
     }
 
+    /// Creates a view of the requested class without an explicit configuration.
+    ///
+    /// Uses the first explicit-creation recommendation, or the root subtree if there are none.
+    pub fn new_for_user_request(ctx: &ViewerContext<'_>, view_class: ViewClassIdentifier) -> Self {
+        let heuristics = ctx
+            .view_class_registry()
+            .get_class_or_log_error(view_class)
+            .spawn_heuristics(ctx, re_viewer_context::ViewSpawnContext::Explicit);
+        Self::new(
+            view_class,
+            heuristics
+                .into_vec()
+                .into_iter()
+                .next()
+                .unwrap_or_else(RecommendedView::root),
+        )
+    }
+
     /// Creates a new [`ViewBlueprint`] with a single [`ViewContents`] containing everything under the root.
     ///
     /// This [`ViewBlueprint`] is ephemeral. If you want to make it permanent, you

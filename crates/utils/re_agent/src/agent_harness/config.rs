@@ -58,6 +58,8 @@ pub struct AgentHarnessConfig {
     /// Exact saved model ID, restored only if the agent still offers it.
     pub preferred_model: Option<SessionConfigValueId>,
 
-    /// Exact session mode id to restore when the agent offers it.
-    pub preferred_mode: Option<SessionModeId>,
+    /// Session modes to prefer, best first.
+    ///
+    /// The first one the agent offers is selected before the session takes its first prompt.
+    pub mode_preferences: Vec<SessionModeId>,
 }

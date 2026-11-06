@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use re_chunk_store::RowId;
 use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-use re_log_types::{EntityPath, TimePoint, Timeline};
+use re_log_types::{EntityPath, EntityPathFilter, TimePoint, Timeline};
 use re_sdk_types::blueprint;
 use re_sdk_types::blueprint::archetypes::{RawDataRows, RawDataViewFormat};
 use re_sdk_types::components::Visible;
@@ -390,6 +390,62 @@ fn test_hidden_timestamp_removes_the_navigation_bar() {
         );
     }
     assert_eq!(shown_components(&harness), ["colors", "points"]);
+}
+
+#[test]
+fn user_request_selects_one_entity_without_auto_spawning() {
+    let test_context = test_context();
+    test_context.run(&egui::Context::default(), |ctx| {
+        let heuristics =
+            RawDataView.spawn_heuristics(ctx, re_viewer_context::ViewSpawnContext::Automatic);
+        assert!(heuristics.into_vec().is_empty());
+
+        let view = ViewBlueprint::new_for_user_request(ctx, RawDataView::identifier());
+        assert_eq!(
+            view.contents.entity_path_filter(),
+            &EntityPathFilter::single_entity_filter(&EntityPath::from(ENTITY))
+                .resolve_without_substitutions()
+        );
+    });
+}
+
+#[test]
+fn explicit_creation_prefers_first_entity_with_data() {
+    for timepoint in [TimePoint::STATIC, TimePoint::from([(frame_timeline(), 10)])] {
+        let mut test_context = TestContext::new_with_view_class::<RawDataView>();
+        test_context
+            .store_hub
+            .lock()
+            .entity_db_mut(&test_context.recording_store_id)
+            .unwrap()
+            .drop_entity_path_recursive(&EntityPath::root());
+        test_context.log_entity("a", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                TimePoint::from([(Timeline::new_sequence("other"), 10)]),
+                &re_sdk_types::archetypes::TextLog::new("other timeline"),
+            )
+        });
+        log_text(&mut test_context, "z/child");
+        test_context.log_entity("b/child", |builder| {
+            builder.with_archetype(
+                RowId::new(),
+                timepoint,
+                &re_sdk_types::archetypes::TextLog::new("eligible"),
+            )
+        });
+        test_context.set_active_timeline(*frame_timeline().name());
+
+        test_context.run(&egui::Context::default(), |ctx| {
+            let view = ViewBlueprint::new_for_user_request(ctx, RawDataView::identifier());
+            assert_eq!(view.space_origin, EntityPath::from("b/child"));
+            assert_eq!(
+                view.contents.entity_path_filter(),
+                &EntityPathFilter::single_entity_filter(&EntityPath::from("b/child"))
+                    .resolve_without_substitutions()
+            );
+        });
+    }
 }
 
 // ---------------------------------------------------------------------------------------------

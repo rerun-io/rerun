@@ -271,7 +271,7 @@ impl ViewClass for TimeSeriesView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -286,7 +286,10 @@ impl ViewClass for TimeSeriesView {
 
         ViewSpawnHeuristics::new_with_order_preserved(
             entities
-                .filter(|entity_path| include_entity(entity_path))
+                .filter(|entity_path| {
+                    spawn_context == re_viewer_context::ViewSpawnContext::Explicit
+                        || !entity_path.is_property()
+                })
                 .unique()
                 .map(|entity_path| RecommendedView::new_single_entity(entity_path.clone())),
         )

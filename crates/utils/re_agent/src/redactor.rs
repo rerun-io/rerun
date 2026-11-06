@@ -552,7 +552,7 @@ mod tests {
             preamble: None,
             model_preferences: Vec::new(),
             preferred_model: Some(crate::acp::schema::v1::SessionConfigValueId::new("opus")),
-            preferred_mode: None,
+            mode_preferences: Vec::new(),
         };
         let mut redactor = Redactor::default();
         let config = redactor

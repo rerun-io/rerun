@@ -22,7 +22,7 @@ def rrd_paths(complex_dataset_prefix: Path) -> Generator[list[Path], None, None]
 
 
 def test_dataset_basics(complex_dataset_prefix: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
@@ -87,7 +87,7 @@ sorbet:version: '0.1.4'\
 
 
 def test_dataset_register(rrd_paths: list[Path]) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         ds = client.create_dataset("dataset")
@@ -147,7 +147,7 @@ def test_dataset_register(rrd_paths: list[Path]) -> None:
 
 
 def test_dataset_schema(complex_dataset_prefix: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
         ds = client.create_dataset("complex_dataset")
         ds.register_prefix(complex_dataset_prefix.as_uri()).wait()
@@ -222,7 +222,7 @@ sorbet:version: '0.1.4'\
 
 
 def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
@@ -270,7 +270,7 @@ def test_dataset_metadata(complex_dataset_prefix: Path) -> None:
 
 def test_manifest_diagnostic_data(complex_dataset_prefix: Path) -> None:
     """Test the include_diagnostic_data parameter on _manifest()."""
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
         ds = client.create_dataset("dataset")
         ds.register_prefix(complex_dataset_prefix.as_uri()).wait()

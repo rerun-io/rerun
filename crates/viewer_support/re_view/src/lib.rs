@@ -15,6 +15,7 @@ mod component_mapping_error;
 mod component_mapping_query_plan;
 mod instance_hash_conversions;
 mod outlines;
+mod pan_zoom_2d;
 mod query;
 mod range_result_bootstrapping;
 mod source_selector;
@@ -46,6 +47,7 @@ pub use instance_hash_conversions::{
 pub use outlines::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES, outline_config,
 };
+pub use pan_zoom_2d::{VisualBoundsFit, pan_zoom_visual_bounds_2d};
 pub use query::{
     ComponentCastRule, DataResultQuery, latest_at_with_blueprint_resolved_data,
     latest_at_with_blueprint_resolved_data_polymorphic, range_with_blueprint_resolved_data,

@@ -177,6 +177,7 @@ Asset datasets have some restrictions to keep them light, and the server rejects
 When the Rerun Viewer opens a segment, it loads the dataset's assets along with the segment's own data.
 The asset data is cached, so opening another segment of the same dataset does not download it again.
 The assets tab of a dataset lists the registered assets and their metadata, and lets you register and unregister them right in the viewer.
+If the server accepts uploads, the viewer can also upload a `.rrd` from your machine and register it as an asset.
 
 Assets also show up in the [python chunk processing api](../logging-and-ingestion/chunk-processing-api.md) if `include_assets` is `True`:
 

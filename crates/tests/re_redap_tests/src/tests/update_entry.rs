@@ -1,8 +1,8 @@
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{
-    CreateDatasetEntryRequest, DatasetDetails, DatasetEntry, EntryDetailsUpdate, TableDetails,
-    TableEntry, UpdateDatasetEntryRequest, UpdateEntryRequest, UpdateEntryResponse,
-    UpdateTableEntryRequest,
+    ChunkIndexingPolicy, CreateDatasetEntryRequest, DatasetDetails, DatasetEntry, DatasetPolicy,
+    EntryDetailsUpdate, IndexingPolicySelection, TableDetails, TableEntry,
+    UpdateDatasetEntryRequest, UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{DeleteEntryRequest, ReadTableEntryRequest};
@@ -320,6 +320,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
                 default_segment_table_blueprint_segment: Some(
                     default_segment_table_blueprint_segment.clone(),
                 ),
+                policy: None,
             },
         },
     )
@@ -349,6 +350,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
                 asset_dataset: None,
                 default_blueprint_segment: Some(SegmentId::from("missing_blueprint_dataset")),
                 default_segment_table_blueprint_segment: None,
+                policy: None,
             },
         },
     )
@@ -369,6 +371,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
                 asset_dataset: Some(EntryId::new()),
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
+                policy: None,
             },
         },
     )
@@ -392,6 +395,7 @@ pub async fn update_dataset_entry_rejects_invalid_blueprint_details(
                 asset_dataset: None,
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
+                policy: None,
             },
         },
     )
@@ -425,6 +429,7 @@ pub async fn update_dataset_entry_keeps_asset_dataset(service: impl RerunCloudSe
                 asset_dataset: None,
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
+                policy: None,
             },
         },
     )
@@ -435,6 +440,69 @@ pub async fn update_dataset_entry_keeps_asset_dataset(service: impl RerunCloudSe
         Some(hidden_asset),
         "an update without an asset dataset should keep the existing one"
     );
+}
+
+/// Updating a dataset without a policy keeps the stored one, so a client that does not know the
+/// field cannot clear it.
+pub async fn update_dataset_entry_keeps_policy(service: impl RerunCloudService) {
+    let policy = DatasetPolicy {
+        chunk_indexing_policy: Some(ChunkIndexingPolicy {
+            entity_paths: IndexingPolicySelection::Explicit(["/robot".to_owned()].into()),
+            timelines: IndexingPolicySelection::All,
+        }),
+    };
+    let dataset_entry: DatasetEntry = service
+        .create_dataset_entry(tonic::Request::new(
+            CreateDatasetEntryRequest {
+                name: entry_name("dataset_keeps_policy"),
+                id: None,
+                policy: policy.clone(),
+            }
+            .into(),
+        ))
+        .await
+        .expect("create should succeed")
+        .into_inner()
+        .dataset
+        .expect("dataset")
+        .try_into()
+        .expect("ext conversion");
+
+    let updated = update_dataset_entry(
+        &service,
+        UpdateDatasetEntryRequest {
+            id: dataset_entry.details.id,
+            dataset_details: DatasetDetails {
+                blueprint_dataset: dataset_entry.dataset_details.blueprint_dataset,
+                asset_dataset: None,
+                default_blueprint_segment: None,
+                default_segment_table_blueprint_segment: None,
+                policy: None,
+            },
+        },
+    )
+    .await
+    .expect("update should succeed");
+    assert_eq!(updated.dataset_details.policy, Some(policy));
+}
+
+/// The server rejects a `IndexingPolicySelection` with neither variant set, before it stores anything.
+pub async fn create_dataset_entry_rejects_an_unset_selection(service: impl RerunCloudService) {
+    use re_protos::cloud::v1alpha1 as proto;
+    let err = service
+        .create_dataset_entry(tonic::Request::new(proto::CreateDatasetEntryRequest {
+            name: Some(entry_name("dataset_unset_selection").to_string()),
+            id: None,
+            policy: Some(proto::DatasetPolicy {
+                chunk_indexing_policy: Some(proto::ChunkIndexingPolicy {
+                    entity_paths: Some(proto::IndexingPolicySelection { selection: None }),
+                    timelines: Some(IndexingPolicySelection::All.into()),
+                }),
+            }),
+        }))
+        .await
+        .expect_err("an unset selection is invalid");
+    assert_eq!(err.code(), tonic::Code::InvalidArgument, "{err}");
 }
 
 /// A dataset whose asset dataset was deleted is left with a dangling reference. Updating the
@@ -468,6 +536,7 @@ pub async fn update_dataset_entry_replaces_deleted_asset_dataset(service: impl R
                 asset_dataset: None,
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
+                policy: None,
             },
         },
     )
@@ -496,6 +565,7 @@ pub async fn update_dataset_entry_replaces_deleted_asset_dataset(service: impl R
                 asset_dataset: Some(replacement),
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
+                policy: None,
             },
         },
     )
@@ -525,6 +595,7 @@ pub async fn update_dataset_entry_rejects_invalid_asset_details(service: impl Re
                 asset_dataset: Some(EntryId::new()),
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
+                policy: None,
             },
         },
     )
@@ -548,6 +619,7 @@ pub async fn update_dataset_entry_rejects_invalid_asset_details(service: impl Re
                 asset_dataset: Some(recording_dataset.details.id),
                 default_blueprint_segment: None,
                 default_segment_table_blueprint_segment: None,
+                policy: None,
             },
         },
     )
@@ -636,6 +708,7 @@ async fn create_dataset_entry(
             CreateDatasetEntryRequest {
                 name: entry_name(name),
                 id: None,
+                policy: Default::default(),
             }
             .into(),
         ))

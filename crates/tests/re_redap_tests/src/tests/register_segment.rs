@@ -427,6 +427,7 @@ pub async fn register_with_prefix(fe: impl RerunCloudService) {
     fe.create_dataset_entry(tonic::Request::new(CreateDatasetEntryRequest {
         name: Some(dataset_name.to_owned()),
         id: None,
+        policy: Some(Default::default()),
     }))
     .await
     .unwrap();

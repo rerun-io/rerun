@@ -1,17 +1,59 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal, TypeAlias
+from enum import StrEnum
+from typing import TYPE_CHECKING, TypeAlias
 
 import numpy as np
 
-from rerun_bindings import format_bytes, format_index_value, format_uint
+from rerun_bindings import (
+    format_bytes,
+    format_index_value,
+    format_uint,
+    timeline_datatype,
+    timeline_type_from_datatype,
+)
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from rerun_bindings import DatasetInfoInternal
 
-TimelineKind: TypeAlias = Literal["sequence", "timestamp", "duration"]
 TimelineValue: TypeAlias = np.int64 | np.datetime64 | np.timedelta64
+
+
+class TimelineKind(StrEnum):
+    """
+    The kind of values a timeline holds, which fixes the Arrow datatype of its index column.
+
+    Attributes:
+        SEQUENCE: Integer steps, such as frame numbers, stored as `int64`.
+        DURATION: Nanoseconds relative to an arbitrary origin, stored as `duration[ns]`.
+        TIMESTAMP: Nanoseconds since the Unix epoch, stored as `timestamp[ns]`.
+
+    """
+
+    SEQUENCE = "sequence"
+    DURATION = "duration"
+    TIMESTAMP = "timestamp"
+
+    @property
+    def datatype(self) -> pa.DataType:
+        """The Arrow datatype of index columns of this kind, with no timezone for timestamps."""
+        return timeline_datatype(self.value)
+
+    @classmethod
+    def from_datatype(cls, datatype: pa.DataType) -> TimelineKind:
+        """
+        The kind of timeline an index column of this Arrow datatype holds.
+
+        Timestamps match with any timezone, since their values are UTC regardless.
+        Raises `ValueError` for any other datatype, including other time units.
+        """
+        name = timeline_type_from_datatype(datatype)
+        if name is None:
+            raise ValueError(f"Not a timeline datatype: {datatype}; expected int64, duration[ns], or timestamp[ns]")
+        return cls(name)
 
 
 @dataclass(frozen=True)
@@ -113,7 +155,8 @@ def _dataset_info_from_internal(info: DatasetInfoInternal) -> DatasetInfo:
                 min=_to_numpy(kind, min_ns),
                 max=_to_numpy(kind, max_ns),
             )
-            for name, kind, count, min_ns, max_ns in info.timelines
+            for name, kind_str, count, min_ns, max_ns in info.timelines
+            for kind in [TimelineKind(kind_str)]
         ),
         num_entities=info.num_entities,
         num_component_columns=info.num_component_columns,
@@ -122,11 +165,13 @@ def _dataset_info_from_internal(info: DatasetInfoInternal) -> DatasetInfo:
 
 
 def _to_numpy(kind: TimelineKind, value: int) -> TimelineValue:
-    if kind == "timestamp":
-        return np.datetime64(value, "ns")
-    if kind == "duration":
-        return np.timedelta64(value, "ns")
-    return np.int64(value)
+    match kind:
+        case TimelineKind.SEQUENCE:
+            return np.int64(value)
+        case TimelineKind.DURATION:
+            return np.timedelta64(value, "ns")
+        case TimelineKind.TIMESTAMP:
+            return np.datetime64(value, "ns")
 
 
 def _count(n: int, singular: str, plural: str | None = None) -> str:
@@ -141,4 +186,4 @@ def _format_value(kind: TimelineKind, value: TimelineValue) -> str:
         nanos = int(value.astype("timedelta64[ns]").astype(np.int64))
     else:
         nanos = int(value)
-    return format_index_value(kind, nanos)
+    return format_index_value(kind.value, nanos)

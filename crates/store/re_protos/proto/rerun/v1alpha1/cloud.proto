@@ -580,7 +580,7 @@ enum UploadMethod {
   // `AccessGrant.http_request`.
   UPLOAD_METHOD_SINGLE_REQUEST = 1;
 
-  // `AccessGrant.multipart_request`.
+  // `AccessGrant.multipart_session`.
   UPLOAD_METHOD_MULTIPART = 2;
 }
 
@@ -624,7 +624,7 @@ message AccessGrant {
     // The HTTP request that redeems this grant.
     HttpRequest http_request = 2;
     // Multipart upload session and the initial part-upload requests.
-    MultipartRequest multipart_request = 3;
+    MultipartSession multipart_session = 3;
   }
 
   // Effective signing mode for all HTTP requests in this grant, including renewed part requests.
@@ -633,9 +633,8 @@ message AccessGrant {
 }
 
 // Describes a multipart upload session and its initial part-upload requests.
-//
-// TODO(RR-6103): Define multipart upload size limits.
-message MultipartRequest {
+// Limits guide clients; provider constraints and server validation remain authoritative.
+message MultipartSession {
   // Bearer token for renewal, completion, and abort. Return it unchanged.
   bytes upload_token = 1;
 
@@ -647,6 +646,10 @@ message MultipartRequest {
   // HTTP requests for consecutive parts starting at 1, using the grant's signing mode.
   // Expired requests can be renewed before the session deadline.
   repeated HttpRequest part_requests = 3;
+
+  // Maximum number of parts, including the final part. Must be positive when present.
+  // New servers always set this. Absence selects the legacy limit of 10,000 parts.
+  optional uint32 max_part_count = 4;
 }
 
 // Requests HTTP upload instructions for selected parts of an active multipart upload.
@@ -988,6 +991,21 @@ message ScanDatasetManifestResponse {
 message GetDatasetSchemaRequest {
   reserved 1;
   reserved "dataset_id";
+
+  // Which data the schema covers. Defaults to `DATASET_QUERY_SCOPE_FULL`.
+  DatasetQueryScope scope = 2;
+}
+
+// Which data of a dataset a request covers.
+enum DatasetQueryScope {
+  // Same as `DATASET_QUERY_SCOPE_FULL`.
+  DATASET_QUERY_SCOPE_UNSPECIFIED = 0;
+
+  // All data, indexed or not.
+  DATASET_QUERY_SCOPE_FULL = 1;
+
+  // Only the entities and timelines the dataset's chunk indexing policy indexes.
+  DATASET_QUERY_SCOPE_INDEXED = 2;
 }
 
 // Response for `GetDatasetSchema`.
@@ -1801,6 +1819,10 @@ message CreateDatasetEntryRequest {
   // If specified, create the entry using this specific ID. Use at your own risk.
   optional rerun.common.v1alpha1.EntryId id = 2;
 
+  // Dataset policies, such as the chunk indexing policy.
+  // If omitted (e.g. by older clients), the server will make a choice on its own.
+  DatasetPolicy policy = 100;
+
   //TODO(ab): add IfExistingBehavior?
 }
 
@@ -2045,8 +2067,47 @@ message DatasetDetails {
   // any other.
   optional rerun.common.v1alpha1.EntryId asset_dataset = 7;
 
+  // Dataset policies, such as the chunk indexing policy.
+  // If omitted (e.g. by older clients), the server will make a choice on its own.
+  DatasetPolicy policy = 100;
+
   reserved 4;
   reserved "default_blueprint";
+}
+
+// --- Dataset policies ---
+
+// Policy of a single dataset.
+message DatasetPolicy {
+  // Selects the entity paths and timelines the dataset indexes for chunk queries.
+  // Unset means no preference: the server decides and stores its choice
+  // (see `CreateDatasetEntryRequest.policy` and `DatasetDetails.policy`).
+  ChunkIndexingPolicy chunk_indexing_policy = 1;
+}
+
+// Which entity paths and timelines a dataset indexes for chunk queries.
+message ChunkIndexingPolicy {
+  // The entity paths to index. Required.
+  IndexingPolicySelection entity_paths = 1;
+  // The timelines to index. Required.
+  IndexingPolicySelection timelines = 2;
+}
+
+// Selects every name of a dimension, or an explicit list.
+message IndexingPolicySelection {
+  // The name set. Required.
+  oneof selection {
+    // Every name, including names that appear later.
+    google.protobuf.Empty all = 1;
+    // Exactly the listed names.
+    IndexingPolicyNameList explicit = 2;
+  }
+}
+
+// An explicit list of names for an indexing policy.
+message IndexingPolicyNameList {
+  // The names. Entity paths and timeline names match exactly. An empty list selects nothing.
+  repeated string names = 1;
 }
 
 // Everything the catalog knows about one dataset.

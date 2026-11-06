@@ -335,6 +335,10 @@ impl App {
             state.app_options.video.hw_acceleration = video_decoder_hw_acceleration;
         }
 
+        if cfg!(debug_assertions) {
+            state.app_options.experimental.agent_panel = true;
+        }
+
         if is_test {
             creation_context.egui_ctx.mark_as_test();
             state.app_options = AppOptions::test();
@@ -1164,14 +1168,18 @@ impl AppCore {
             .map(|tc| tc.current_query())
     }
 
+    /// Loads dropped files, except that images go to the agent prompt when there is an
+    /// `agent_drop_target`.
     fn handle_dropping_files(
         egui_ctx: &egui::Context,
         command_sender: &CommandSender,
         route: &Route,
+        central_panel_rect: Option<egui::Rect>,
+        agent_drop_target: Option<&re_agent_panel::ImageDropTarget>,
     ) {
         #![allow(clippy::allow_attributes, clippy::needless_continue)] // false positive, depending on target_arch
 
-        ui::preview_files_being_dropped(egui_ctx);
+        ui::preview_files_being_dropped(egui_ctx, central_panel_rect, agent_drop_target);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
 
@@ -1184,6 +1192,15 @@ impl AppCore {
         let mut force_store_info = false;
 
         for file in dropped_files {
+            // TODO(rust-windowing/winit#1550): pick the target from where the file is dropped
+            // instead of from its type, once winit tells us the cursor position during a drag.
+            if let Some(agent_drop_target) = agent_drop_target
+                && ui::is_agent_image_path(file.path())
+            {
+                add_dropped_image_to_agent_panel(egui_ctx, &agent_drop_target.images, &file);
+                continue;
+            }
+
             #[cfg(target_arch = "wasm32")]
             let Some(web_file) = file.web_file().cloned() else {
                 continue;
@@ -1238,6 +1255,43 @@ impl AppCore {
                             assets: Vec::new(),
                         },
                     ));
+                }
+            }
+        }
+    }
+}
+
+/// Reads a dropped image file into the agent prompt.
+fn add_dropped_image_to_agent_panel(
+    egui_ctx: &egui::Context,
+    agent_images: &re_agent_panel::DroppedImages,
+    file: &egui::DroppedFileHandle,
+) {
+    re_tracing::profile_function!();
+
+    cfg_select! {
+        target_arch = "wasm32" => {
+            let egui_ctx = egui_ctx.clone();
+            let agent_images = agent_images.clone();
+            let file = file.clone();
+            re_async::spawn_local(async move {
+                match file.bytes_async().await {
+                    Ok(bytes) => {
+                        agent_images.push(re_agent_panel::EncodedImage(bytes));
+                        egui_ctx.request_repaint();
+                    }
+                    Err(err) => {
+                        re_log::warn!(path = ?file.path(), "Could not read the dropped image: {err}");
+                    }
+                }
+            });
+        }
+        _ => {
+            let _ = egui_ctx; // The drop already requested a repaint.
+            match file.bytes() {
+                Ok(bytes) => agent_images.push(re_agent_panel::EncodedImage(bytes)),
+                Err(err) => {
+                    re_log::warn!(path = ?file.path(), "Could not read the dropped image: {err}");
                 }
             }
         }
@@ -1684,7 +1738,17 @@ impl AppCore {
             }
 
             let route = self.state.navigation.current().clone();
-            Self::handle_dropping_files(ui, &self.command_sender, &route);
+            let agent_drop_target = self
+                .agent_panel_open()
+                .then(|| self.agent_panel.image_drop_target())
+                .flatten();
+            Self::handle_dropping_files(
+                ui,
+                &self.command_sender,
+                &route,
+                self.state.central_panel_rect,
+                agent_drop_target.as_ref(),
+            );
 
             // Run pending commands last (so we don't have to wait for a repaint before they are run):
             self.run_pending_ui_commands(

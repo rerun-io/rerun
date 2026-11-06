@@ -76,6 +76,7 @@ egui_table.workspace = true
 egui.workspace = true
 futures.workspace = true
 itertools.workspace = true
+rfd = { workspace = true, features = ["file-handle-inner"] }
 serde_json.workspace = true
 serde.workspace = true
 url.workspace = true
@@ -86,9 +87,6 @@ re_ui = { workspace = true, features = ["testing"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
 
 egui_kittest.workspace = true
-
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
-rfd.workspace = true
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 re_web.workspace = true
@@ -101,7 +99,7 @@ re_web.workspace = true
 #         There should be no errors in the browser console.
 #     For details see https://github.com/rerun-io/rerun/issues/8766
 wasm-bindgen = "=0.2.129" # ⚠️ read above notice before touching this!
-web-sys = { workspace = true, features = ["Storage", "Window"] }
+web-sys = { workspace = true, features = ["File", "Storage", "Window"] }
 uuid.workspace = true
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]

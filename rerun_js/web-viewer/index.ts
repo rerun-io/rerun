@@ -1316,6 +1316,12 @@ export class WebViewer {
   #allow_fullscreen = false;
 
   constructor() {
+    if (typeof window === "undefined" || typeof document === "undefined") {
+      throw new Error(
+        "WebViewer requires a browser document and canvas. " +
+          "In Node.js, use Playwright to run the viewer in a browser, or launch the native headless viewer with `rerun --headless`.",
+      );
+    }
     injectStyle();
     setupGlobalEventListeners();
   }

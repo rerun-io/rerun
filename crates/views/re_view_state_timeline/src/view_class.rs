@@ -11,7 +11,7 @@ use re_viewer_context::{
     DataResultInteractionAddress, DragAndDropFeedback, DragAndDropPayload, GLOBAL_VIEW_ID,
     IdentifiedViewSystem as _, Item, QueryRange, TimeControlCommand, TimeView, ViewClass,
     ViewClassExt as _, ViewClassLayoutPriority, ViewClassRegistryError, ViewContext, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
+    ViewSpawnContext, ViewState, ViewStateExt as _, ViewSystemExecutionError, ViewerContext,
     default_view_entity_drop,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -157,20 +157,13 @@ impl ViewClass for StateTimelineView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: ViewSpawnContext,
     ) -> re_viewer_context::ViewSpawnHeuristics {
-        re_tracing::profile_function!();
-
-        // Show every state change stream in a single view by default.
-        if ctx
-            .indicated_entities_per_visualizer
-            .get(&crate::StateVisualizer::identifier())
-            .is_some_and(|entities| entities.iter().any(include_entity))
-        {
-            ViewSpawnHeuristics::root()
-        } else {
-            ViewSpawnHeuristics::empty()
-        }
+        re_viewer_context::suggest_root_view_if_indicated_for(
+            ctx,
+            spawn_context,
+            [crate::StateVisualizer::identifier()],
+        )
     }
 
     fn selection_ui<'a>(

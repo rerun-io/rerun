@@ -15,9 +15,9 @@ use re_arrow_util::RecordBatchExt as _;
 use re_log_encoding::ToTransport as _;
 use re_log_types::{EntryId, StoreKind, TimelineName};
 use re_protos::cloud::v1alpha1::ext::{
-    AssetMode, ChunkCandidatesDataframe, QueryTasksDataframe, RegisterWithDatasetDataframe,
-    ScanDatasetManifestDataframe, ScanSegmentTableDataframe, asset_applies_to_segment,
-    read_asset_mode, read_asset_segments,
+    AssetMode, ChunkCandidatesDataframe, ChunkIndexingPolicy, QueryTasksDataframe,
+    RegisterWithDatasetDataframe, ScanDatasetManifestDataframe, ScanSegmentTableDataframe,
+    asset_applies_to_segment, read_asset_mode, read_asset_segments,
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::cloud::v1alpha1::ext::{CreateTableEntryResponse, ProviderDetails};
@@ -35,7 +35,7 @@ use re_protos::cloud::v1alpha1::{
 };
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
-use re_protos::common::v1alpha1::ext::{DatasetKind, SchemaId, SegmentId};
+use re_protos::common::v1alpha1::ext::{DatasetKind, SegmentId};
 use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
 use re_protos::{
@@ -196,7 +196,9 @@ impl RerunCloudHandlerBuilder {
         on_duplicate: IfDuplicateBehavior,
         on_error: crate::OnError,
     ) -> Result<Self, crate::store::Error> {
-        let dataset_id = self.store.create_dataset(dataset_name, None)?;
+        let dataset_id = self
+            .store
+            .create_dataset(dataset_name, None, Default::default())?;
 
         for rrd_path in rrd_paths {
             let load_result = self
@@ -937,10 +939,11 @@ impl RerunCloudService for RerunCloudHandler {
         let CreateDatasetEntryRequest {
             name: dataset_name,
             id: dataset_id,
+            policy,
         } = request.into_inner().try_into()?;
 
         let mut store = self.store.write().await;
-        let dataset_id = store.create_dataset(dataset_name, dataset_id)?;
+        let dataset_id = store.create_dataset(dataset_name, dataset_id, policy)?;
         let dataset = store.dataset(dataset_id)?;
 
         self.notify(watch_events_response::Kind::EntryCreated(
@@ -996,6 +999,10 @@ impl RerunCloudService for RerunCloudHandler {
         // datasets were introduced have none, so create the missing one on demand, and replace a
         // reference left dangling by a deleted asset dataset the same way.
         let dataset = store.dataset(request.id)?;
+        if dataset_details.policy.is_none() {
+            dataset_details.policy = dataset.dataset_details().policy.clone();
+        }
+        dataset_details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::ALL);
         let stored_asset_dataset = dataset.dataset_details().asset_dataset;
         let dataset_kind = dataset.dataset_kind();
         let client_chosen_asset_dataset = dataset_details.asset_dataset.is_some()
@@ -1319,8 +1326,8 @@ impl RerunCloudService for RerunCloudHandler {
                     tonic::Status::invalid_argument("no data frame in WriteTableRequest")
                 })?
                 .try_into()
-                .map_err(|err| {
-                    tonic::Status::internal(format!("Could not decode chunk: {err:#}"))
+                .map_err(|err: re_protos::TypeConversionError| {
+                    tonic::Status::new(err.grpc_code(), format!("Could not decode chunk: {err:#}"))
                 })?;
 
             let insert_op = TableInsertMode::try_from(write_msg.insert_mode)
@@ -1332,9 +1339,11 @@ impl RerunCloudService for RerunCloudHandler {
                     let Some(table) = store.table_mut(entry_id) else {
                         return Err(tonic::Status::not_found("table not found"));
                     };
-                    table.write_table(rb, insert_op).await.map_err(|err| {
-                        tonic::Status::internal(format!("error writing to table: {err:#}"))
-                    })?;
+                    check_merge_keys(&table.schema(), &rb, insert_op)?;
+                    table
+                        .write_table(rb, insert_op)
+                        .await
+                        .map_err(|err| table_write_error_to_status(&err))?;
                 }
                 _ => {
                     let mut table = {
@@ -1344,9 +1353,11 @@ impl RerunCloudService for RerunCloudHandler {
                             .cloned()
                             .ok_or_else(|| tonic::Status::not_found("table not found"))?
                     };
-                    table.write_table(rb, insert_op).await.map_err(|err| {
-                        tonic::Status::internal(format!("error writing to table: {err:#}"))
-                    })?;
+                    check_merge_keys(&table.schema(), &rb, insert_op)?;
+                    table
+                        .write_table(rb, insert_op)
+                        .await
+                        .map_err(|err| table_write_error_to_status(&err))?;
                 }
             }
         }
@@ -1529,7 +1540,7 @@ impl RerunCloudService for RerunCloudHandler {
                 break;
             }
 
-            let schema_id = SchemaId::from_sha256(source.schema_sha256());
+            let schema_id = source.schema_sha256();
             if remaining.remove(&schema_id) {
                 let response = ext::GetSchemasResponse {
                     schema_id,
@@ -2262,6 +2273,53 @@ fn segment_properties_response(
         segment_id: Some(segment_id.clone().into()),
         properties: Some((&stored.properties).into()),
         revision: stored.revision,
+    }
+}
+
+/// Write failures caused by the caller's batch are invalid arguments, everything else is internal.
+fn table_write_error_to_status(err: &datafusion::error::DataFusionError) -> tonic::Status {
+    let message = format!("error writing to table: {err:#}");
+    if ext::is_bad_write_table_input(err) {
+        tonic::Status::invalid_argument(message)
+    } else {
+        tonic::Status::internal(message)
+    }
+}
+
+/// `Replace` and `Update` match rows on the table index columns, so the batch must contain them.
+fn check_merge_keys(
+    table_schema: &arrow::datatypes::Schema,
+    batch: &RecordBatch,
+    insert_op: TableInsertMode,
+) -> tonic::Result<()> {
+    if !matches!(
+        insert_op,
+        TableInsertMode::Replace | TableInsertMode::Update
+    ) {
+        return Ok(());
+    }
+
+    let batch_schema = batch.schema();
+    let missing = table_schema
+        .fields()
+        .iter()
+        .filter(|field| {
+            field
+                .metadata()
+                .get(re_sorbet::metadata::SORBET_IS_TABLE_INDEX)
+                .is_some_and(|value| value.eq_ignore_ascii_case("true"))
+        })
+        .filter(|field| batch_schema.field_with_name(field.name()).is_err())
+        .map(|field| field.name().as_str())
+        .collect::<Vec<_>>();
+
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(tonic::Status::invalid_argument(format!(
+            "batch is missing table index column(s): {}",
+            missing.join(", ")
+        )))
     }
 }
 

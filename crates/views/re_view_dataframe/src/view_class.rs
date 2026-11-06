@@ -2,7 +2,7 @@ use std::any::Any;
 
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
 use re_dataframe::QueryEngine;
-use re_log_types::{EntityPath, TimeInt};
+use re_log_types::TimeInt;
 use re_types_core::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _, list_item};
 use re_viewer_context::{
@@ -100,7 +100,7 @@ Configure in the selection panel:
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _include_entity: &dyn Fn(&EntityPath) -> bool,
+        _spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
         // Doesn't spawn anything by default.
         ViewSpawnHeuristics::empty()

@@ -384,6 +384,9 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // formatting
     crate::formatting::register(m)?;
 
+    // timeline types
+    crate::timeline_type::register(m)?;
+
     // lenses
     crate::lenses::register(m)?;
 

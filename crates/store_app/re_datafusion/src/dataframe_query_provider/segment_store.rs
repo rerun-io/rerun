@@ -43,8 +43,8 @@ use crate::dataframe_query_common::{
 ///
 /// These mirror the values used by `SizedCoalesceBatchesExec` so that the
 /// downstream coalescer is mostly a pass-through.
-const FLUSH_BATCH_ROWS: usize = DEFAULT_BATCH_ROWS;
-const FLUSH_BATCH_BYTES: usize = DEFAULT_BATCH_BYTES as usize;
+pub const FLUSH_BATCH_ROWS: usize = DEFAULT_BATCH_ROWS;
+pub const FLUSH_BATCH_BYTES: usize = DEFAULT_BATCH_BYTES as usize;
 
 #[tracing::instrument(level = "trace", skip_all, fields(segment_id = %segment_id))]
 async fn send_next_row_batch(
@@ -189,7 +189,7 @@ pub struct GcOutcome {
 /// saving an `Arc::clone` pair per cycle.
 pub struct SegmentStore {
     /// The server this query is running against, named in the errors we produce.
-    origin: re_uri::Origin,
+    pub origin: re_uri::Origin,
 
     pub segment_id: SegmentId,
     pub store: ChunkStoreHandle,
@@ -352,8 +352,8 @@ impl SegmentStore {
     /// above this layer: `using_index_values` segments must never take
     /// the incremental path (the explicit value list overrides
     /// `filtered_index_range`, so every cycle would replay all rows —
-    /// debug-asserted below), and the horizon itself comes from the
-    /// caller's tracking structure.
+    /// debug-asserted in [`Self::begin_incremental_flush`]), and the
+    /// horizon itself comes from the caller's tracking structure.
     pub async fn flush_incremental_to(
         &mut self,
         horizon: TimeInt,
@@ -362,10 +362,36 @@ impl SegmentStore {
         rows_sent: &mut usize,
         limit_rows: Option<usize>,
     ) -> ApiResult<IncrementalFlushOutcome> {
+        if let Some(outcome) = self.begin_incremental_flush(horizon) {
+            return Ok(outcome);
+        }
+
+        // Path 2: emit + GC up to the new horizon.
+        let rows_before = *rows_sent;
+        self.emit_up_to(
+            Some(horizon),
+            projected_schema,
+            output_channel,
+            rows_sent,
+            limit_rows,
+        )
+        .await?;
+        let gc = self.gc_up_to_horizon(horizon);
+        Ok(IncrementalFlushOutcome {
+            rows_emitted: *rows_sent - rows_before,
+            gc,
+        })
+    }
+
+    /// The checks and fast paths every incremental flush starts with,
+    /// whichever path emits its rows: `Some` is the whole outcome of a
+    /// flush that has nothing to emit, `None` means rows past
+    /// `processed_through_time` may emit up to `horizon`.
+    pub fn begin_incremental_flush(&mut self, horizon: TimeInt) -> Option<IncrementalFlushOutcome> {
         // Catch a caller that failed to gate the incremental path on
-        // `using_index_values` (see this method's docs). In release the
-        // failure is silent: duplicated rows plus carry-forward values
-        // the GC below has already stripped.
+        // `using_index_values` (see `flush_incremental_to`'s docs). In
+        // release the failure is silent: duplicated rows plus carry-forward
+        // values the GC that follows has already stripped.
         re_log::debug_assert!(
             self.query_expression.using_index_values.is_none(),
             "flush_incremental_to called on a using_index_values segment",
@@ -390,46 +416,31 @@ impl SegmentStore {
         if let Some(last) = self.processed_through_time
             && horizon <= last
         {
-            return Ok(IncrementalFlushOutcome::default());
+            return Some(IncrementalFlushOutcome::default());
         }
 
         // Path 1b (no-arrivals-in-range fast skip): no arrived chunk
         // has rows past `processed_through_time`, so the upcoming emit
-        // cycle cannot produce output. Skip the `QueryHandle` build but
-        // still run GC — the horizon advanced (per path 1's check
-        // above), and GC at the new horizon may free chunks even when
-        // no new rows are emittable. Advance `processed_through_time`
-        // so the next cycle's `filtered_index_range.min` skips the
-        // empty range we just confirmed; safe because the caller's
-        // horizon invariant guarantees no future chunk arrives with
-        // `time_min` <= horizon.
+        // cycle cannot produce output. Skip the emit but still run GC —
+        // the horizon advanced (per path 1's check above), and GC at the
+        // new horizon may free chunks even when no new rows are
+        // emittable. Advance `processed_through_time` so the next
+        // cycle's range skips the empty range we just confirmed; safe
+        // because the caller's horizon invariant guarantees no future
+        // chunk arrives with `time_min` <= horizon.
         if self
             .max_arrived_time_max
             .is_none_or(|tmax| self.processed_through_time.is_some_and(|p| tmax <= p))
         {
             let gc = self.gc_up_to_horizon(horizon);
             self.processed_through_time = Some(horizon);
-            return Ok(IncrementalFlushOutcome {
+            return Some(IncrementalFlushOutcome {
                 rows_emitted: 0,
                 gc,
             });
         }
 
-        // Path 2: emit + GC up to the new horizon.
-        let rows_before = *rows_sent;
-        self.emit_up_to(
-            Some(horizon),
-            projected_schema,
-            output_channel,
-            rows_sent,
-            limit_rows,
-        )
-        .await?;
-        let gc = self.gc_up_to_horizon(horizon);
-        Ok(IncrementalFlushOutcome {
-            rows_emitted: *rows_sent - rows_before,
-            gc,
-        })
+        None
     }
 
     /// Build a fresh `QueryHandle` constrained to
@@ -446,7 +457,7 @@ impl SegmentStore {
     /// such queries are static-only and `processed_through_time` is set
     /// to `MAX` after the first call so subsequent invocations short-
     /// circuit.
-    async fn emit_up_to(
+    pub async fn emit_up_to(
         &mut self,
         horizon: Option<TimeInt>,
         projected_schema: &Arc<Schema>,
@@ -454,23 +465,9 @@ impl SegmentStore {
         rows_sent: &mut usize,
         limit_rows: Option<usize>,
     ) -> ApiResult<()> {
-        // Range_min = processed_through + 1, defaulting to MIN on first
-        // emit. `TimeInt::inc` handles the saturating add and the
-        // `processed_through == MAX` edge — `.inc()` of `MAX` returns
-        // `MAX`, so the `range_min > range_max` guard below catches it.
-        let range_min = match self.processed_through_time {
-            Some(t) => {
-                if t == TimeInt::MAX {
-                    return Ok(());
-                }
-                t.inc()
-            }
-            None => TimeInt::MIN,
-        };
-        let range_max = horizon.unwrap_or(TimeInt::MAX);
-        if range_min > range_max {
+        let Some(range) = self.next_emit_range(horizon) else {
             return Ok(());
-        }
+        };
 
         // `QueryEngine::query(QueryExpression)` consumes the expression
         // by value, so we can't borrow `self.query_expression` here —
@@ -479,7 +476,7 @@ impl SegmentStore {
         // per-cycle allocation cost is acceptable next to the much
         // larger `next_n_rows` work that follows.
         let mut q = self.query_expression.clone();
-        q.filtered_index_range = Some(AbsoluteTimeRange::new(range_min, range_max));
+        q.filtered_index_range = Some(range);
 
         let mut handle: QueryHandle<StorageEngine> = self.engine.query(q);
         while send_next_row_batch(
@@ -495,8 +492,27 @@ impl SegmentStore {
         .is_some()
         {}
 
-        self.processed_through_time = Some(range_max);
+        self.mark_processed(range);
         Ok(())
+    }
+
+    /// Record that every row in `range`, the last [`Self::next_emit_range`],
+    /// has been emitted.
+    pub fn mark_processed(&mut self, range: AbsoluteTimeRange) {
+        self.processed_through_time = Some(range.max());
+    }
+
+    /// The range an emit cycle up to `horizon` (`None` = to the end) must
+    /// cover: `(processed_through_time, horizon]`, or `None` when nothing
+    /// in it is left to emit.
+    pub fn next_emit_range(&self, horizon: Option<TimeInt>) -> Option<AbsoluteTimeRange> {
+        let min = match self.processed_through_time {
+            Some(TimeInt::MAX) => return None,
+            Some(t) => t.inc(),
+            None => TimeInt::MIN,
+        };
+        let max = horizon.unwrap_or(TimeInt::MAX);
+        (min <= max).then(|| AbsoluteTimeRange::new(min, max))
     }
 
     /// Drop chunks no longer needed once the safe horizon has

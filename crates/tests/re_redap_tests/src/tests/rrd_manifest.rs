@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::{Float32Array, RecordBatch};
 use itertools::Itertools as _;
 use re_arrow_util::{RecordBatchExt as _, RecordBatchTestExt as _, SchemaTestExt as _};
-use re_chunk_index::{RawRrdManifest, sha256_to_hex};
+use re_chunk_index::RawRrdManifest;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetRrdManifestRequest, ScanSegmentTableRequest,
@@ -366,7 +366,7 @@ async fn dataset_rrd_manifest_snapshot(
     );
     insta::assert_snapshot!(
         format!("{snapshot_name}_sorbet_schema_sha256"),
-        sha256_to_hex(&rrd_manifest.sorbet_schema_sha256),
+        rrd_manifest.sorbet_schema_sha256.to_string(),
     );
 
     Ok(rrd_manifest)

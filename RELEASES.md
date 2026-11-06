@@ -194,7 +194,7 @@ For a final release, the same workflow also does the post-release chores:
 - Waits for the website to redeploy, then runs [`scripts/ci/verify_release.py`](./scripts/ci/verify_release.py), which fails the job if anything is missing and writes its summary to the workflow run.
   It checks PyPI, npm, crates.io and conda-forge, the GitHub release, rerun.io/docs, rerun.io/viewer, app.rerun.io, the web viewer embedded by `rerun-io/landing`, `docs-latest`, and the gradio-rerun-viewer release.
   conda-forge often lags behind by hours, so a missing conda-forge version is only a warning.
-  The same goes for `rerun-io/landing`: Dependabot opens its `@rerun-io/web-viewer` bump PR within a day, and someone must merge it by hand.
+  The same goes for `rerun-io/landing`: Dependabot opens its `@rerun-io/web-viewer` bump PR within a day, and it merges itself once its CI is green.
 
 Follow up on anything the check reports as failed.
 The `#ship-room` Slack announcement is done by the release captain, or the release agent via the `oss-release` skill.

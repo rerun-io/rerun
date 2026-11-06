@@ -22,7 +22,7 @@ import rerun_draft as rr  # noqa: E402
 def populated_client(simple_dataset_prefix: Path) -> Iterator[rr.catalog.CatalogClient]:
     """Create a temporary dataset prefix with a few simple recordings."""
 
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         ds = client.create_dataset("basic_dataset")
@@ -50,7 +50,7 @@ def populated_client(simple_dataset_prefix: Path) -> Iterator[rr.catalog.Catalog
 def populated_client_complex(complex_dataset_prefix: Path) -> Iterator[rr.catalog.CatalogClient]:
     """Create a temporary dataset prefix with a few simple recordings."""
 
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         ds = client.create_dataset("complex_dataset")

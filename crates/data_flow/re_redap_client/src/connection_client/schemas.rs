@@ -5,9 +5,9 @@ use arrow::datatypes::Schema as ArrowSchema;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::GetSchemasRequest;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
-use re_protos::common::v1alpha1::ext::SchemaId;
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_sorbet::SchemaId;
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 

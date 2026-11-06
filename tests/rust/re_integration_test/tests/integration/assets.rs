@@ -19,6 +19,7 @@ use re_integration_test::{
 };
 use re_log_channel::{DataSourceMessage, LogSource, RecordingOpenBehavior};
 use re_protos::cloud::v1alpha1::ext::AssetMode;
+use re_redap_browser::UploadAssetExt as _;
 use re_redap_client::{
     ApiError, ApiErrorKind, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
     StreamingOptions,
@@ -300,6 +301,65 @@ async fn register_asset_stores_the_coverage_it_is_given() {
         .expect("Failed to get assets")
         .expect("the dataset should have assets");
     assert_eq!(segments, vec![asset_segment_id]);
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset should have assets");
+    assert!(segments.is_empty());
+}
+
+/// Uploading a file from this machine registers the server's own copy of it as an asset, rather
+/// than the file where it is. The asset only reaches the segments its coverage lists.
+#[tokio::test(flavor = "multi_thread")]
+async fn upload_asset_registers_an_uploaded_copy_with_its_coverage() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
+        .client()
+        .await
+        .expect("Failed to connect to server");
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let local_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let asset_id = catalog_client
+        .upload_asset_path(
+            dataset_id(),
+            asset.path().to_owned(),
+            Some(&AssetCoverage {
+                mode: AssetMode::OptIn,
+                segments: vec![segment_id.clone()],
+            }),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
+        .await
+        .expect("Failed to upload asset");
+
+    let registered = catalog_client
+        .registered_assets(dataset_id())
+        .await
+        .expect("Failed to list the registered assets")
+        .expect("the dataset should have an asset dataset");
+    let registered_ids: Vec<_> = registered.assets.iter().map(|asset| &asset.id).collect();
+    assert_eq!(registered_ids, vec![&asset_id]);
+
+    let layers = &registered.assets[0].layers;
+    assert!(
+        layers.iter().all(|layer| layer.storage_url != local_url),
+        "the asset should be registered from the uploaded copy, got {layers:?}"
+    );
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id(), Some(segment_id))
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset should have assets");
+    assert_eq!(segments, vec![asset_id]);
 
     let (_entry, segments) = client
         .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))

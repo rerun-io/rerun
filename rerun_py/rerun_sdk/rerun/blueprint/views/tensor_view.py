@@ -100,6 +100,7 @@ class TensorView(View):
         slice_selection: blueprint_archetypes.TensorSliceSelection | None = None,
         scalar_mapping: blueprint_archetypes.TensorScalarMapping | None = None,
         view_fit: blueprint_archetypes.TensorViewFit | blueprint_components.ViewFitLike | None = None,
+        visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
     ) -> None:
         """
         Construct a blueprint for a new TensorView view.
@@ -150,6 +151,11 @@ class TensorView(View):
             Configures how scalars are mapped to color.
         view_fit:
             Configures how the selected slice should fit into the view.
+        visual_bounds:
+            The visible region of the selected slice, in element coordinates.
+
+            Use this to control pan & zoom of the view.
+            It is cleared when the dimensions shown as width or height change, or when the view fit changes.
 
         """
 
@@ -168,6 +174,11 @@ class TensorView(View):
             if not isinstance(view_fit, blueprint_archetypes.TensorViewFit):
                 view_fit = blueprint_archetypes.TensorViewFit(view_fit)
             properties["TensorViewFit"] = view_fit
+
+        if visual_bounds is not None:
+            if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
+                visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
+            properties["VisualBounds2D"] = visual_bounds
 
         super().__init__(
             class_identifier="Tensor",

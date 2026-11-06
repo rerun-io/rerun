@@ -5,8 +5,9 @@ use arrow::datatypes::Schema as ArrowSchema;
 use itertools::Itertools as _;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{LayerRegistrationStatus, ScanDatasetManifestDataframe};
-use re_protos::common::v1alpha1::ext::{SchemaId, SegmentId};
+use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::external::prost::bytes::Bytes;
+use re_sorbet::SchemaId;
 use re_types_core::LayerName;
 use tonic::codegen::{Body, StdError};
 
@@ -214,9 +215,7 @@ where
                         ),
                     ));
                 };
-                layer_schema_ids
-                    .schema_ids
-                    .insert(SchemaId::from_sha256(schema_sha256));
+                layer_schema_ids.schema_ids.insert(schema_sha256);
                 layer_schema_ids.segment_ids.insert(segment_id);
             }
         }

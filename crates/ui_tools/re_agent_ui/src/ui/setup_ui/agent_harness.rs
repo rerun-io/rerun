@@ -9,7 +9,7 @@ use re_agent::{
     AgentEntry, AgentKind, AgentProfileId, AgentSettings, McpServerConfig, ModelApiProvider,
 };
 
-use super::{default_model_api, model_api_list_ui, tag_ui};
+use super::{ApiKeySource, default_model_api, model_api_key_ui, tag_ui};
 
 /// The two choice cards: an agent on this machine, or a model API.
 pub fn agent_choice_ui(
@@ -18,9 +18,9 @@ pub fn agent_choice_ui(
     agents: &mut [AgentEntry],
     available_model_apis: &[ModelApiProvider],
 ) {
-    let kind = settings.profile_id.kind();
+    ui.label(RichText::new("Choose your agent").strong().size(15.0));
 
-    let local_selected = kind == AgentKind::AgentHarness;
+    let local_selected = settings.profile_id.kind() == AgentKind::AgentHarness;
     let picked_local = choice_card_ui(
         ui,
         local_selected,
@@ -32,13 +32,23 @@ pub fn agent_choice_ui(
         settings.profile_id = default_local_agent(agents);
     }
 
-    let model_api_selected = kind == AgentKind::ModelApi;
+    // A card's body writes `profile_id`, so each card must read the current one.
+    let model_api_selected = settings.profile_id.kind() == AgentKind::ModelApi;
     let picked_model_api = choice_card_ui(
         ui,
         model_api_selected,
         "A model API with your own key",
         "Nothing to install. Pay per token. Reads the key from your environment.",
-        |ui| model_api_list_ui(ui, settings, available_model_apis),
+        |ui| {
+            model_api_key_ui(
+                ui,
+                &mut settings.profile_id,
+                available_model_apis,
+                |provider| ApiKeySource::Environment {
+                    found: available_model_apis.contains(&provider),
+                },
+            );
+        },
     );
     if picked_model_api && !model_api_selected {
         settings.profile_id = default_model_api(available_model_apis).profile_id();

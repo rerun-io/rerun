@@ -124,11 +124,12 @@ pub struct AssetRegistrationError {
 
 impl AssetRegistrationError {
     /// A failure from before the server started registering an asset, so nothing is registered.
-    fn without_asset(error: ApiError) -> Self {
+    pub fn without_asset(error: ApiError) -> Self {
         Self::new(None, error)
     }
 
-    fn new(asset_id: Option<SegmentId>, error: ApiError) -> Self {
+    /// A failure while registering `asset_id`, or before registering started when it is `None`.
+    pub fn new(asset_id: Option<SegmentId>, error: ApiError) -> Self {
         Self {
             asset_id,
             error: Box::new(error),
@@ -362,32 +363,21 @@ impl CatalogClient {
         let asset_id = registration
             .descriptors()
             .first()
-            .map(|descriptor| descriptor.segment_id.clone());
-
-        let registered = registration
-            .wait(timeout)
-            .await
-            .map_err(|err| AssetRegistrationError::new(asset_id.clone(), err.into()))?
-            .into_iter()
-            .next();
-
-        let registered = registered.ok_or_else(|| {
-            AssetRegistrationError::new(
-                asset_id,
-                ApiError::internal(
+            .map(|descriptor| descriptor.segment_id.clone())
+            .ok_or_else(|| {
+                AssetRegistrationError::without_asset(ApiError::internal(
                     self.origin(),
-                    "the server registered the asset but returned no segment",
-                ),
-            )
-        })?;
+                    "the server accepted the asset but returned no segment",
+                ))
+            })?;
 
-        // The asset only exists once the server registered it, so its coverage is written after
-        // the fact. Until this lands the asset applies to every segment.
+        // Properties are stored by segment id, whether or not the segment is registered, so the
+        // coverage is in place by the time the asset is.
         if let Some(coverage) = coverage {
             let written = self
                 .set_segment_properties(
                     asset_dataset,
-                    registered.clone(),
+                    asset_id.clone(),
                     &coverage.to_properties(),
                     None,
                 )
@@ -398,14 +388,21 @@ impl CatalogClient {
 
                 // A server without segment properties loads every asset into every segment.
                 Err(err) if err.kind == ApiErrorKind::Unimplemented => {
-                    re_log::debug_once!("The server does not store asset coverage");
+                    re_log::warn!(
+                        "The server does not store asset coverage, so the asset applies to every segment"
+                    );
                 }
 
-                Err(err) => return Err(AssetRegistrationError::new(Some(registered), err)),
+                Err(err) => return Err(AssetRegistrationError::new(Some(asset_id), err)),
             }
         }
 
-        Ok(registered)
+        registration
+            .wait(timeout)
+            .await
+            .map_err(|err| AssetRegistrationError::new(Some(asset_id.clone()), err.into()))?;
+
+        Ok(asset_id)
     }
 
     /// Read which segments of `dataset_id` load one of its assets, and the revision that gates

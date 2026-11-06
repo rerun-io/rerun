@@ -8,12 +8,12 @@ use pyo3::{PyResult, Python};
 use re_catalog_client::{CatalogClient, DatasetSelection, RegistrationHandle, StageOpt};
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
-use re_protos::cloud::v1alpha1::EntryFilter;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     DataSource, DatasetDetails, DatasetEntry, EntryDetails, ObjectKey, TableDetails, TableEntry,
     VersionResponse,
 };
+use re_protos::cloud::v1alpha1::{DatasetQueryScope, EntryFilter};
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle, DatasetSchema, TraceId};
@@ -83,9 +83,7 @@ impl PyConnectionHandle {
                     path.display()
                 ))
             })?;
-            let url = self
-                .inner
-                .stage_opt(key, file, opt)
+            let url = Box::pin(self.inner.stage_opt(key, file, opt))
                 .await
                 .map_err(to_py_err)?;
             Ok(url.to_string())
@@ -105,9 +103,7 @@ impl PyConnectionHandle {
         let bytes = bytes::Bytes::copy_from_slice(bytes);
 
         wait_for_future(py, async move {
-            let url = self
-                .inner
-                .stage_opt(key, bytes, opt)
+            let url = Box::pin(self.inner.stage_opt(key, bytes, opt))
                 .await
                 .map_err(to_py_err)?;
             Ok(url.to_string())
@@ -174,10 +170,18 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
+    pub fn create_dataset(
+        &self,
+        py: Python<'_>,
+        name: String,
+        policy: Option<re_protos::cloud::v1alpha1::ext::DatasetPolicy>,
+    ) -> PyResult<DatasetEntry> {
         let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
         wait_for_future(py, async {
-            self.inner.create_dataset(name).await.map_err(to_py_err)
+            self.inner
+                .create_dataset(name, policy)
+                .await
+                .map_err(to_py_err)
         })
     }
 
@@ -391,7 +395,7 @@ impl PyConnectionHandle {
     pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetSchema> {
         wait_for_future(py, async {
             self.inner
-                .get_dataset_schema(entry_id)
+                .get_dataset_schema(entry_id, DatasetQueryScope::Full)
                 .await
                 .map_err(to_py_err)
         })

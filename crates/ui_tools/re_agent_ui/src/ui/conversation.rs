@@ -26,7 +26,8 @@ pub struct Conversation {
     /// Where a model-API agent runs. Without it, a model-API agent fails to start.
     pub async_runtime: Option<AsyncRuntimeHandle>,
 
-    /// The tools a model-API agent gets. See [`super::AgentPanel::set_toolbox`].
+    /// The tools a model-API agent gets, and that an agent harness may reach over MCP.
+    /// See [`super::AgentPanel::set_toolbox`].
     pub toolbox: Option<Arc<dyn AgentToolbox>>,
 
     /// The model-API providers whose key was found, offered on the setup screen.
@@ -119,6 +120,7 @@ impl Conversation {
 
                 self.session = AgentSession::start(launch, self.async_runtime.as_ref(), waker);
                 self.session.set_auto_approve(auto_approve);
+                self.session.set_toolbox(self.toolbox.clone());
                 self.seen_finished_items = 0;
                 self.input.reset_keeping_prompt();
                 self.screen = Screen::Chat;
