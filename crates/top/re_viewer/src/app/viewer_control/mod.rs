@@ -1424,7 +1424,10 @@ impl AppCore {
 
         self.async_runtime.spawn_future(async move {
             let (schema, assets) = futures::join!(
-                catalog.get_dataset_schema(entry.entry_id),
+                catalog.get_dataset_schema(
+                    entry.entry_id,
+                    re_protos::cloud::v1alpha1::DatasetQueryScope::Full
+                ),
                 catalog.registered_assets(entry.entry_id)
             );
 

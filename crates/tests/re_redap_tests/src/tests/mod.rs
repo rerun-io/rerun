@@ -222,6 +222,7 @@ define_redap_tests! {
     update_entry::update_table_entry_blueprint_details,
     update_entry::update_table_entry_rejects_invalid_blueprint_details,
     write_table::write_table,
+    write_table::write_table_rejects_bad_batches,
     ; // Tests that return `anyhow::Result<()>`:
     register_asset::asset_dataset_enforces_segment_limit,
     register_asset::asset_dataset_segment_limit_counts_layers,

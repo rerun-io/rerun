@@ -8,7 +8,7 @@ use tokio_stream::StreamExt as _;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::{
-    ScanSegmentTableRequest, SegmentIdFilter, SegmentIdList, segment_id_filter,
+    DatasetQueryScope, ScanSegmentTableRequest, SegmentIdFilter, SegmentIdList, segment_id_filter,
 };
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_redap_client::{
@@ -139,9 +139,19 @@ impl CatalogClient {
     }
 
     /// The union of the schemas of every registered layer of every segment in the dataset.
+    ///
+    /// With [`DatasetQueryScope::Indexed`], a server that applies a chunk indexing policy returns only
+    /// the indexed part; other servers return the full schema.
     #[tracing::instrument(level = "info", skip_all)]
-    pub async fn get_dataset_schema(&self, dataset_id: EntryId) -> ApiResult<DatasetSchema> {
-        self.client().await?.get_dataset_schema(dataset_id).await
+    pub async fn get_dataset_schema(
+        &self,
+        dataset_id: EntryId,
+        scope: DatasetQueryScope,
+    ) -> ApiResult<DatasetSchema> {
+        self.client()
+            .await?
+            .get_dataset_schema(dataset_id, scope)
+            .await
     }
 
     /// The schema of the data `selection` keeps: the union of the schemas of its segments, without
@@ -206,7 +216,10 @@ async fn selected_segments_schema(
 ) -> ApiResult<ArrowSchema> {
     let dataset_id = selection.dataset_id();
     let Some(segment_ids) = selection.segment_filter() else {
-        return Ok(client.get_dataset_schema(dataset_id).await?.schema);
+        return Ok(client
+            .get_dataset_schema(dataset_id, DatasetQueryScope::Full)
+            .await?
+            .schema);
     };
 
     // Falling back to one `/GetRrdManifest` per segment would take minutes for a thousand

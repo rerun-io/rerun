@@ -175,6 +175,31 @@ fn picking_the_model_api_card_without_a_key() {
     harness.snapshot("setup_screen_model_api");
 }
 
+/// Picking the local card back must not be undone by the model-API card in the same frame.
+#[test]
+fn picking_the_local_card_after_the_model_api_card() {
+    let mut harness = harness(panel());
+    harness.run_steps(2);
+
+    harness
+        .get_by_label("A model API with your own key")
+        .click();
+    harness.run_steps(4);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        ModelApiProvider::Anthropic.profile_id()
+    );
+
+    harness
+        .get_by_label("A coding agent on this machine")
+        .click();
+    harness.run_steps(4);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        AgentProfileId::new("claude")
+    );
+}
+
 #[test]
 fn setup_screen() {
     snapshot("setup_screen", panel());

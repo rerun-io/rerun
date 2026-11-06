@@ -397,7 +397,7 @@ async fn assert_property_visible(
     let entity_path = format!("/__properties/{property}");
     let dataset_schema = service
         .get_dataset_schema(
-            tonic::Request::new(GetDatasetSchemaRequest {})
+            tonic::Request::new(GetDatasetSchemaRequest::default())
                 .with_entry_name(entry_name(dataset_name)),
         )
         .await

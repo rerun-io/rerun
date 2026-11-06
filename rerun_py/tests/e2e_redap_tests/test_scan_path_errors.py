@@ -57,7 +57,7 @@ def test_datafusion_error_surfaces_to_python_with_trace_id(grpc_method: str, exp
                 rec.log("points", rr.Points2D([[float(i), float(i)]]))
             rec.flush()
 
-        with Server() as server:
+        with Server(host="127.0.0.1") as server:
             client = server.client()
 
             ds = client.create_dataset(f"scan_error_test_{grpc_method}")

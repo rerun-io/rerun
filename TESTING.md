@@ -25,6 +25,12 @@ This is an overview of our testing infrastructure.
 * Keep fixtures small (a handful of rows or messages), and keep tests fast: no waiting for many seconds.
 * For small, pure functions, consider a doc test.
 
+## Network tests in sandboxes
+
+Use `127.0.0.1` and OS-assigned ports (`port=0`) for local test servers; sandboxes may reject wildcard binds.
+Keep wildcard binds only when testing wildcard behavior.
+Report blocked socket access rather than silently skipping tests.
+
 ## Rust unit tests
 
 We use the standard Rust test framework.

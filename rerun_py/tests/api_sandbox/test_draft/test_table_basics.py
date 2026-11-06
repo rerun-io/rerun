@@ -7,7 +7,7 @@ from inline_snapshot import snapshot as inline_snapshot
 
 def test_create_table_and_append() -> None:
     """Create a table and append data using Python values."""
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         # Create a table with a schema
@@ -55,7 +55,7 @@ def test_create_table_and_append() -> None:
 
 def test_write_table_with_record_batches() -> None:
     """Write PyArrow RecordBatches to a table."""
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         schema = pa.schema([
@@ -112,7 +112,7 @@ def test_write_table_with_record_batches() -> None:
 
 def test_table_overwrite_mode() -> None:
     """Demonstrate APPEND vs OVERWRITE modes when writing to tables."""
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         schema = pa.schema([
@@ -196,7 +196,7 @@ def test_table_overwrite_mode() -> None:
 
 def test_read_table() -> None:
     """Demonstrate two ways to read table data: get_table and via DataFusion context."""
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         schema = pa.schema([pa.field("product_id", pa.int32()), pa.field("price", pa.float64())])

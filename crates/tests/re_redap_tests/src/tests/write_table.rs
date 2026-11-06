@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+use std::sync::Arc;
+
 use arrow::array::{RecordBatch, record_batch};
 use arrow::datatypes as arrow_schema;
 use futures::TryStreamExt as _;
@@ -152,4 +155,204 @@ pub async fn write_table(service: impl RerunCloudService) {
     assert_eq!(returned_rows, original_rows + 1);
     let combined = concat_record_batches(&returned_batches);
     insta::assert_snapshot!("replace_rows", combined.format_snapshot(false));
+}
+
+/// A batch that doesn't decode or doesn't fit the table is the caller's fault, not an internal
+/// error. The expected message fragments pin the Lance messages that
+/// `re_protos::cloud::v1alpha1::ext::is_bad_write_table_input` matches.
+pub async fn write_table_rejects_bad_batches(service: impl RerunCloudService) {
+    use arrow::array::{ArrayRef, Int32Array, Int64Array, StringArray};
+    use arrow::datatypes::{DataType, Field, Schema};
+    use re_protos::cloud::v1alpha1::ext::{CreateTableEntryRequest, LanceTable, ProviderDetails};
+
+    fn batch(fields: Vec<Field>, columns: Vec<ArrayRef>) -> RecordBatch {
+        RecordBatch::try_new(Arc::new(Schema::new(fields)), columns)
+            .expect("Unable to create record batch")
+    }
+
+    fn id_field() -> Field {
+        Field::new("id", DataType::Int64, false).with_metadata(HashMap::from([(
+            re_sorbet::metadata::SORBET_IS_TABLE_INDEX.to_owned(),
+            "true".to_owned(),
+        )]))
+    }
+
+    fn ids(values: &[i64]) -> ArrayRef {
+        Arc::new(Int64Array::from(values.to_vec()))
+    }
+
+    fn strings(values: Vec<Option<&str>>) -> ArrayRef {
+        Arc::new(StringArray::from(values))
+    }
+
+    let table_fields = vec![
+        id_field(),
+        Field::new("value", DataType::Utf8, false),
+        Field::new("note", DataType::Utf8, true),
+    ];
+
+    let tmp_dir = tempfile::tempdir().expect("create temp dir");
+    let table_url =
+        url::Url::from_directory_path(tmp_dir.path()).expect("create url from tmp directory");
+    let table = service
+        .create_table_entry(tonic::Request::new(
+            CreateTableEntryRequest {
+                name: entry_name("bad_batches_table"),
+                schema: Schema::new(table_fields.clone()),
+                provider_details: Some(ProviderDetails::LanceTable(LanceTable { table_url })),
+            }
+            .try_into()
+            .expect("Unable to create table request"),
+        ))
+        .await
+        .expect("create table entry")
+        .into_inner()
+        .table
+        .expect("table missing in create_table response");
+    let entry: EntryDetails = table
+        .details
+        .expect("table entry details missing")
+        .try_into()
+        .expect("Failed to convert to EntryDetails");
+
+    let write = |insert_mode: TableInsertMode,
+                 dataframe_part: re_protos::common::v1alpha1::DataframePart| {
+        service.write_table(
+            make_streaming_request(vec![WriteTableRequest {
+                dataframe_part: Some(dataframe_part),
+                insert_mode: insert_mode.into(),
+            }])
+            .with_entry_id(entry.id),
+        )
+    };
+
+    let seed = batch(
+        table_fields.clone(),
+        vec![
+            ids(&[1, 2]),
+            strings(vec![Some("a"), Some("b")]),
+            strings(vec![None, None]),
+        ],
+    );
+    write(TableInsertMode::Append, seed.into())
+        .await
+        .expect("Failed to seed table");
+
+    let malformed_payload = re_protos::common::v1alpha1::DataframePart {
+        encoder_version: re_protos::common::v1alpha1::EncoderVersion::V0.into(),
+        payload: Some(b"not arrow ipc".as_slice().into()),
+        ..Default::default()
+    };
+    let wrong_type = batch(
+        vec![id_field(), Field::new("value", DataType::Int32, false)],
+        vec![ids(&[3]), Arc::new(Int32Array::from(vec![3]))],
+    );
+    let null_in_non_nullable = batch(
+        vec![
+            id_field(),
+            Field::new("value", DataType::Utf8, true),
+            Field::new("note", DataType::Utf8, true),
+        ],
+        vec![ids(&[3]), strings(vec![None]), strings(vec![None])],
+    );
+    let partial_schema = batch(
+        vec![id_field(), Field::new("note", DataType::Utf8, true)],
+        vec![ids(&[3]), strings(vec![Some("c")])],
+    );
+    let missing_merge_key = batch(
+        vec![
+            Field::new("value", DataType::Utf8, false),
+            Field::new("note", DataType::Utf8, true),
+        ],
+        vec![strings(vec![Some("c")]), strings(vec![None])],
+    );
+    let duplicate_keys = batch(
+        table_fields.clone(),
+        vec![
+            ids(&[1, 1]),
+            strings(vec![Some("c"), Some("d")]),
+            strings(vec![None, None]),
+        ],
+    );
+    let invalid_json = batch(
+        vec![
+            Field::new("doc", DataType::Utf8, true).with_metadata(HashMap::from([(
+                "ARROW:extension:name".to_owned(),
+                "arrow.json".to_owned(),
+            )])),
+        ],
+        vec![strings(vec![Some("{not json")])],
+    );
+
+    for (case, insert_mode, dataframe_part, expected_fragment) in [
+        (
+            "malformed payload",
+            TableInsertMode::Append,
+            malformed_payload,
+            None,
+        ),
+        (
+            "wrong type",
+            TableInsertMode::Append,
+            wrong_type.into(),
+            Some("Append with different schema"),
+        ),
+        (
+            "null in non-nullable",
+            TableInsertMode::Append,
+            null_in_non_nullable.into(),
+            Some("contained null values even though the field is marked non-null"),
+        ),
+        (
+            "partial schema",
+            TableInsertMode::Replace,
+            partial_schema.into(),
+            Some("Cannot insert rows with a partial-schema source"),
+        ),
+        (
+            // The Hub and OSS servers word this one differently.
+            "missing merge key",
+            TableInsertMode::Replace,
+            missing_merge_key.into(),
+            None,
+        ),
+        (
+            "duplicate keys",
+            TableInsertMode::Replace,
+            duplicate_keys.into(),
+            Some("Ambiguous merge inserts are prohibited"),
+        ),
+        (
+            "invalid JSON",
+            TableInsertMode::Overwrite,
+            invalid_json.into(),
+            Some("Failed to encode JSON"),
+        ),
+    ] {
+        let status = write(insert_mode, dataframe_part).await.expect_err(case);
+
+        assert_eq!(
+            status.code(),
+            tonic::Code::InvalidArgument,
+            "{case}: {status:?}"
+        );
+        if let Some(fragment) = expected_fragment {
+            assert!(
+                status.message().contains(fragment),
+                "{case}: expected {fragment:?} in {status:?}"
+            );
+        }
+    }
+
+    // No rejected write may change the table.
+    let rows = concat_record_batches(&get_table_batches(&service, &entry).await);
+    assert_eq!(rows.num_rows(), 2);
+    assert_eq!(
+        rows.schema()
+            .fields()
+            .iter()
+            .map(|field| field.name().as_str())
+            .collect_vec(),
+        ["id", "value", "note"]
+    );
 }

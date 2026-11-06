@@ -21,6 +21,7 @@ mod deselect_on_escape;
 mod drag_and_drop_selection;
 mod drop_component_to_state_timeline_view;
 mod drop_stream_to_view;
+mod entry_errors;
 mod get_schemas;
 mod heuristics_mixed_2d_and_3d_test;
 mod heuristics_mixed_all_root_test;

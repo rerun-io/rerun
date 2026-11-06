@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
 
 def test_catalog_basics(tmp_path: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         client.create_dataset("my_dataset")

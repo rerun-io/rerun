@@ -14,7 +14,7 @@ if TYPE_CHECKING:
 
 
 def test_table_to_polars(tmp_path: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
 
         table = client.create_table(
@@ -40,7 +40,7 @@ shape: (1, 2)
 
 
 def test_segment_table_to_polars(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
         ds = client.create_dataset("my_dataset")
         ds.register_prefix(simple_dataset_prefix.as_uri()).wait()
@@ -83,7 +83,7 @@ shape: (3, 5)
 
 
 def test_dataframe_query_to_polars(simple_dataset_prefix: Path) -> None:
-    with rr.server.Server() as server:
+    with rr.server.Server(host="127.0.0.1") as server:
         client = server.client()
         ds = client.create_dataset("my_dataset")
         ds.register_prefix(simple_dataset_prefix.as_uri()).wait()
