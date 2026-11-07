@@ -650,12 +650,13 @@ impl EyeController {
 
             // X=right, Y=up, Z=back
             let mut local_movement = Vec3::ZERO;
-            local_movement.z -= input.key_down(egui::Key::W) as i32 as f32;
-            local_movement.z += input.key_down(egui::Key::S) as i32 as f32;
+            // Custom keyboard layout: Q/E move forward/backward (zoom-like motion).
+            local_movement.z += input.key_down(egui::Key::Q) as i32 as f32;
+            local_movement.z -= input.key_down(egui::Key::E) as i32 as f32;
             local_movement.x -= input.key_down(egui::Key::A) as i32 as f32;
             local_movement.x += input.key_down(egui::Key::D) as i32 as f32;
-            local_movement.y -= input.key_down(egui::Key::Q) as i32 as f32;
-            local_movement.y += input.key_down(egui::Key::E) as i32 as f32;
+            local_movement.y += input.key_down(egui::Key::W) as i32 as f32;
+            local_movement.y -= input.key_down(egui::Key::S) as i32 as f32;
             local_movement = local_movement.normalize_or_zero();
 
             let rot = self.rotation();
