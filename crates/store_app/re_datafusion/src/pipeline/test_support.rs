@@ -31,6 +31,8 @@ use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, FetchChunksResponse, FindChunksRequest, FindChunksResponse,
     GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetRequest, QueryDatasetResponse,
 };
+use re_sorbet::ComponentColumnSelector;
+use re_types_core::ComponentDescriptor;
 use tonic::codec::DecodeBuf;
 use tonic::{Request, Response, Status};
 
@@ -143,8 +145,8 @@ pub fn chunk_info_batch_sized(
 pub const TEST_ENTITY: &str = "/points";
 
 /// The component every fixture chunk carries.
-pub fn test_component() -> re_types_core::ComponentDescriptor {
-    re_types_core::ComponentDescriptor::partial("value")
+pub fn test_component() -> ComponentDescriptor {
+    ComponentDescriptor::partial("value")
 }
 
 /// One real chunk holding a single scalar row at `time` on `timeline`,
@@ -174,7 +176,7 @@ pub fn scalar_chunk_on_component(
     timeline: &'static str,
     time: Option<i64>,
     value: i64,
-    component: re_types_core::ComponentDescriptor,
+    component: ComponentDescriptor,
 ) -> Chunk {
     let timepoint: TimePoint = match time {
         Some(t) => TimePoint::from([(Timeline::new_sequence(timeline), TimeInt::new_temporal(t))]),
@@ -469,6 +471,34 @@ pub async fn run_driver_projected(
     Vec<RecordBatch>,
     super::window::OverdraftAudit,
 ) {
+    run_driver_projected_with(
+        super::RowEmitterKind::QueryHandle,
+        chunk_infos,
+        timeline,
+        responses,
+        window_bytes,
+        fetch_concurrency,
+        limit_rows,
+        projected_schema,
+    )
+    .await
+}
+
+/// [`run_driver_projected`] with the caller's choice of row path.
+pub async fn run_driver_projected_with(
+    emitter_kind: super::RowEmitterKind,
+    chunk_infos: Vec<RecordBatch>,
+    timeline: &'static str,
+    responses: impl IntoIterator<Item = FetchBehavior>,
+    window_bytes: u64,
+    fetch_concurrency: usize,
+    limit_rows: Option<usize>,
+    projected_schema: Arc<Schema>,
+) -> (
+    Result<(), re_redap_client::ApiError>,
+    Vec<RecordBatch>,
+    super::window::OverdraftAudit,
+) {
     use re_dataframe::QueryExpression;
 
     use super::driver::PartitionDriver;
@@ -515,6 +545,7 @@ pub async fn run_driver_projected(
         index_values: None,
         projected_schema,
         limit_rows,
+        emitter_kind,
     };
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<RecordBatch>(64);
@@ -586,6 +617,7 @@ pub async fn run_bridge(
         client: MockFetchClient::new(responses),
         object_store_auth: Arc::new(crate::chunk_fetcher::NoOpObjectStoreAuthenticator {}),
         io_handle: tokio::runtime::Handle::current(),
+        emitter_kind: super::RowEmitterKind::QueryHandle,
         config: FetchConfig {
             fetch_concurrency,
             window_bytes: 64 * 1024 * 1024,
@@ -761,4 +793,150 @@ mod smoke {
         );
         assert_eq!(client.call_count(), 1);
     }
+}
+
+/// A multi-row chunk of [`test_component`] values on `entity`, one row per
+/// `(time, value)` in the given order, with ascending `RowId`s.
+///
+/// Repeating a time builds an equal-time run inside the chunk.
+pub fn scalar_rows_chunk(entity: &str, timeline: &'static str, rows: &[(i64, i64)]) -> Chunk {
+    let mut builder = Chunk::builder(EntityPath::from(entity));
+    for &(time, value) in rows {
+        let timepoint = TimePoint::from([(
+            Timeline::new_sequence(timeline),
+            TimeInt::new_temporal(time),
+        )]);
+        let array: ArrayRef = Arc::new(Int64Array::from(vec![value]));
+        builder = builder.with_row(RowId::new(), timepoint, [(test_component(), array)]);
+    }
+    builder.build().expect("fixture chunk is well-formed")
+}
+
+/// The frame-naming column of [`transform_rows_chunk`].
+pub fn child_frame_component() -> ComponentDescriptor {
+    ComponentDescriptor::partial("child_frame")
+}
+
+/// The value column of [`transform_rows_chunk`].
+pub fn translation_component() -> ComponentDescriptor {
+    ComponentDescriptor::partial("translation")
+}
+
+/// A `Transform3D`-shaped chunk: `child_frame` plus a `translation` stand-in
+/// carrying one `i64` so values stay easy to assert on.
+pub fn transform_rows_chunk(
+    entity: &str,
+    timeline: &'static str,
+    rows: &[(i64, &str, i64)],
+) -> Chunk {
+    let rows: Vec<_> = rows
+        .iter()
+        .map(|&(time, frame, value)| (time, Some(frame), Some(value)))
+        .collect();
+    sparse_transform_rows_chunk(entity, timeline, &rows)
+}
+
+/// [`transform_rows_chunk`] with either column left unlogged (`None`) per row.
+pub fn sparse_transform_rows_chunk(
+    entity: &str,
+    timeline: &'static str,
+    rows: &[(i64, Option<&str>, Option<i64>)],
+) -> Chunk {
+    let child_frame = child_frame_component();
+    let translation = translation_component();
+
+    let mut builder = Chunk::builder(EntityPath::from(entity));
+    for &(time, frame, value) in rows {
+        let timepoint = TimePoint::from([(
+            Timeline::new_sequence(timeline),
+            TimeInt::new_temporal(time),
+        )]);
+        let frame: Option<ArrayRef> = frame.map(|f| Arc::new(StringArray::from(vec![f])) as _);
+        let value: Option<ArrayRef> = value.map(|v| Arc::new(Int64Array::from(vec![v])) as _);
+        builder = builder.with_sparse_row(
+            RowId::new(),
+            timepoint,
+            [(child_frame.clone(), frame), (translation.clone(), value)],
+        );
+    }
+    builder.build().expect("fixture chunk is well-formed")
+}
+
+/// A one-row flat `Clear` on `entity` at `time`, or static for `None`.
+pub fn clear_chunk(entity: &str, timeline: &'static str, time: Option<i64>) -> Chunk {
+    clear_chunk_with_flag(entity, timeline, time, false)
+}
+
+/// Like [`clear_chunk`], with the deprecated recursive flag set.
+pub fn recursive_clear_chunk(entity: &str, timeline: &'static str, time: Option<i64>) -> Chunk {
+    clear_chunk_with_flag(entity, timeline, time, true)
+}
+
+fn clear_chunk_with_flag(
+    entity: &str,
+    timeline: &'static str,
+    time: Option<i64>,
+    recursive: bool,
+) -> Chunk {
+    let timepoint: TimePoint = match time {
+        Some(t) => TimePoint::from([(Timeline::new_sequence(timeline), TimeInt::new_temporal(t))]),
+        None => TimePoint::STATIC,
+    };
+    let flag: ArrayRef = Arc::new(BooleanArray::from(vec![recursive]));
+    Chunk::builder(EntityPath::from(entity))
+        .with_row(
+            RowId::new(),
+            timepoint,
+            [(
+                re_types_core::archetypes::Clear::descriptor_is_recursive(),
+                flag,
+            )],
+        )
+        .build()
+        .expect("fixture chunk is well-formed")
+}
+
+/// A column's header in a rendered table: `` `entity:component` ``.
+pub fn column_header(column: &ComponentColumnSelector) -> String {
+    format!("`{}:{}`", column.entity_path, column.component)
+}
+
+/// One cell's list element: `null`, `[]`, one value bare, several in brackets.
+pub fn render_value(value: Option<ArrayRef>) -> String {
+    let Some(array) = value else {
+        return "null".to_owned();
+    };
+    let quote = matches!(array.data_type(), DataType::Utf8 | DataType::LargeUtf8);
+    let values: Vec<String> = (0..array.len())
+        .map(|i| {
+            let text = arrow::util::display::array_value_to_string(&array, i).unwrap();
+            if quote { format!("`{text}`") } else { text }
+        })
+        .collect();
+    match values.as_slice() {
+        [one] => one.clone(),
+        _ => format!("[{}]", values.join(", ")),
+    }
+}
+
+/// A markdown table with every column padded to its widest cell.
+pub fn markdown(header: &[String], body: &[Vec<String>]) -> String {
+    let widths: Vec<usize> = (0..header.len())
+        .map(|c| {
+            std::iter::chain(std::iter::once(&header[c]), body.iter().map(|row| &row[c]))
+                .map(|cell| cell.chars().count())
+                .max()
+                .unwrap_or(0)
+        })
+        .collect();
+    let line = |cells: &[String]| {
+        let padded: Vec<String> = std::iter::zip(cells, &widths)
+            .map(|(cell, &w)| format!(" {cell:<w$} "))
+            .collect();
+        format!("|{}|", padded.join("|"))
+    };
+    let separator: Vec<String> = widths.iter().map(|&w| "-".repeat(w + 2)).collect();
+    let mut lines = vec![line(header), format!("|{}|", separator.join("|"))];
+    lines.extend(body.iter().map(|row| line(row)));
+    lines.join("\n")
 }

@@ -684,6 +684,77 @@ fn chat_permission_request() {
     snapshot("chat_permission_request", panel);
 }
 
+fn long_command_panel(extra_fields: serde_json::Map<String, serde_json::Value>) -> AgentPanel {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+
+    let body = (0..36)
+        .map(|index| format!("print(\"step {index}\")"))
+        .collect::<Vec<_>>()
+        .join("\n");
+    let command = format!(
+        "mkdir -p /tmp/arm_speed && cat > /tmp/arm_speed/arm_speed.py <<'EOF'\n{body}\nEOF\nuv run python /tmp/arm_speed/arm_speed.py 2>&1 | tail -40"
+    );
+    let mut raw_input = serde_json::Map::new();
+    raw_input.insert("command".to_owned(), command.clone().into());
+    raw_input.insert("timeout".to_owned(), 300_000.into());
+    raw_input.insert(
+        "description".to_owned(),
+        "Run arm speed query via uv".into(),
+    );
+    raw_input.extend(extra_fields);
+
+    session
+        .transcript_mut()
+        .push_user("Which episodes have the fastest arm?".into());
+    session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
+        ToolCall::new("exec-1", command)
+            .kind(ToolKind::Execute)
+            .status(ToolCallStatus::Pending)
+            .raw_input(serde_json::Value::Object(raw_input)),
+    )));
+    session.push_test_permission_request(RequestPermissionRequest::new(
+        SessionId::new("test-session"),
+        ToolCallUpdate::new("exec-1", ToolCallUpdateFields::new()),
+        vec![
+            PermissionOption::new("allow", "Yes", PermissionOptionKind::AllowOnce),
+            PermissionOption::new("reject", "No", PermissionOptionKind::RejectOnce),
+        ],
+    ));
+    panel
+}
+
+fn assert_answer_buttons_visible(harness: &egui_kittest::Harness<'_, AgentPanel>) {
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, SIZE);
+    for label in ["Yes", "No"] {
+        let button = harness.get_by_label(label).rect();
+        assert!(
+            screen.contains_rect(button),
+            "{label} button at {button:?} is outside the panel {screen:?}"
+        );
+    }
+}
+
+#[test]
+fn chat_permission_request_long_command() {
+    let mut harness = harness(long_command_panel(serde_json::Map::new()));
+    harness.run_steps(4);
+    assert_answer_buttons_visible(&harness);
+    harness.snapshot("chat_permission_request_long_command");
+}
+
+#[test]
+fn chat_permission_request_long_command_many_fields() {
+    let extra_fields = (0..60)
+        .map(|index| (format!("env_{index}"), format!("value {index}").into()))
+        .collect();
+    let mut harness = harness(long_command_panel(extra_fields));
+    harness.run_steps(4);
+    assert_answer_buttons_visible(&harness);
+}
+
 /// The agent log with its direction markers and a stderr line, expanded via the footer toggle.
 ///
 /// Also guards the non-ASCII glyphs the chat relies on (arrows here, `⏎`, `⇧`, `…`, `·` in the

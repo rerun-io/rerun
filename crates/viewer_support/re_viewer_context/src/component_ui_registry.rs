@@ -8,7 +8,7 @@ use re_log_types::{Instance, StoreId};
 use re_sdk_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
-use crate::{AppContext, MaybeMutRef, QueryContext, StoreViewContext};
+use crate::{AppContext, MaybeMutRef, QueryContext, StoreViewContext, VisualizerComponentSource};
 
 /// Describes where an edit should be written to if any
 pub struct EditTarget {
@@ -56,6 +56,7 @@ type LegacyDisplayComponentUiCallback = Box<
             &EntityPath,
             &ComponentDescriptor,
             Option<RowId>,
+            &VisualizerComponentSource,
             &dyn arrow::array::Array,
         ) + Send
         + Sync,
@@ -636,6 +637,7 @@ impl ComponentUiRegistry {
             entity_path,
             component_descr,
             unit.row_id(),
+            &VisualizerComponentSource::identity(component_descr.component),
             component_raw.as_ref(),
         );
 
@@ -697,20 +699,23 @@ impl ComponentUiRegistry {
     }
 
     /// Show a UI for a single raw component.
+    ///
+    /// `source` identifies the data for caching, independently of the descriptor used to select the UI.
     pub fn component_ui_raw(
         &self,
         ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
-        row_id: Option<RowId>,
+        target_component_descriptor: &ComponentDescriptor,
+        source_row_id: Option<RowId>,
+        source: &VisualizerComponentSource,
         component_raw: &dyn arrow::array::Array,
     ) {
-        re_tracing::profile_function!(component_descr.display_name());
+        re_tracing::profile_function!(target_component_descriptor.display_name());
 
         // Prefer the versatile UI callback if there is one.
-        if let Some(ui_callback) = component_descr
+        if let Some(ui_callback) = target_component_descriptor
             .component_type
             .and_then(|cn| self.legacy_display_component_uis.get(&cn))
         {
@@ -719,30 +724,33 @@ impl ComponentUiRegistry {
                 ui,
                 ui_layout,
                 entity_path,
-                component_descr,
-                row_id,
+                target_component_descriptor,
+                source_row_id,
+                source,
                 component_raw,
             );
             return;
         }
 
         // Fallback to the more specialized UI callbacks (which are only available for known components).
-        if component_descr.component_type.is_some() {
+        if target_component_descriptor.component_type.is_some() {
             let allow_multiline = ui_layout == UiLayout::SelectionPanel;
             let is_single_value = component_raw.len() == 1;
             let edit_or_view_ui = self.untyped_component_ui_callback(
-                component_descr,
+                target_component_descriptor,
                 allow_multiline,
                 is_single_value,
             );
 
             if let Some(edit_or_view_ui) = edit_or_view_ui {
-                // Use it in view mode (no mutation).
+                // These callbacks cannot distinguish source mappings in their cache keys.
+                let source_row_id = source_row_id
+                    .filter(|_| source.is_identity_mapping(target_component_descriptor.component));
                 (*edit_or_view_ui)(
                     ctx,
                     ui,
-                    component_descr,
-                    row_id,
+                    target_component_descriptor,
+                    source_row_id,
                     component_raw,
                     EditOrView::View,
                 );
@@ -796,6 +804,7 @@ impl ComponentUiRegistry {
             entity_path,
             component_descr,
             row_id,
+            &VisualizerComponentSource::identity(component_descr.component),
             component_raw,
         );
         None
@@ -928,6 +937,7 @@ impl ComponentUiRegistry {
                 query_ctx.target_entity_path,
                 component_descr,
                 row_id,
+                &VisualizerComponentSource::identity(component_descr.component),
                 component_raw,
             );
         }

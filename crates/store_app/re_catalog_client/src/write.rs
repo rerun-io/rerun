@@ -18,12 +18,29 @@ use crate::{CatalogClient, RegistrationError, RegistrationHandle, StagingError};
 #[must_use = "registration continues asynchronously; wait for it"]
 #[derive(Clone, Debug)]
 pub struct WriteHandle {
+    /// The dataset the segments are registered into.
+    ///
+    /// For assets and blueprints this is the asset or blueprint dataset, not the dataset passed
+    /// to the write call.
+    pub dataset_id: EntryId,
+
     /// The uploaded object's URL, retained even if no new segments are registered.
     pub storage_url: url::Url,
+
     registration: RegistrationHandle,
 }
 
 impl WriteHandle {
+    /// The ids of the segments being registered, in submission order.
+    ///
+    /// These are known before registration finishes.
+    pub fn segment_ids(&self) -> impl Iterator<Item = &SegmentId> {
+        self.registration
+            .descriptors()
+            .iter()
+            .map(|descriptor| &descriptor.segment_id)
+    }
+
     /// Wait for all recordings in the uploaded RRD to be registered.
     pub async fn wait(&self, timeout: Duration) -> Result<Vec<SegmentId>, RegistrationError> {
         self.registration.wait(timeout).await
@@ -307,6 +324,7 @@ impl CatalogClient {
             .await
             .map_err(|source| WriteError::register(dataset_id, &staged_url, source))?;
         Ok(WriteHandle {
+            dataset_id,
             storage_url: staged_url,
             registration,
         })

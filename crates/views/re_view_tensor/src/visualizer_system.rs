@@ -1,8 +1,8 @@
 use re_chunk_store::{LatestAtQuery, RowId};
 use re_log_types::EntityPath;
+use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::Tensor;
 use re_sdk_types::components::{TensorData, ValueRange};
-use re_sdk_types::{Archetype as _, ComponentIdentifier};
 use re_view::latest_at_with_blueprint_resolved_data;
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewQuery, ViewSystemExecutionError,
@@ -14,7 +14,7 @@ use re_viewer_context::{
 pub struct TensorVisualization {
     pub entity_path: EntityPath,
     pub tensor_row_id: RowId,
-    pub tensor_component: ComponentIdentifier,
+    pub tensor_source: VisualizerComponentSource,
     // Tensor is already counted as part of the store.
     #[size_bytes(ignore)]
     pub tensor: TensorData,
@@ -74,12 +74,11 @@ impl VisualizerSystem for TensorSystem {
                 re_view::VisualizerInstructionQueryResults::new(instruction, &results, &output);
 
             let tensor_component = Tensor::descriptor_data().component;
-            let source_component = match instruction.component_mappings.get(&tensor_component) {
-                Some(VisualizerComponentSource::SourceComponent {
-                    source_component, ..
-                }) => *source_component,
-                _ => tensor_component,
-            };
+            let tensor_source = instruction
+                .component_mappings
+                .get(&tensor_component)
+                .cloned()
+                .unwrap_or_else(|| VisualizerComponentSource::identity(tensor_component));
             let all_tensor_chunks = results.iter_required(tensor_component);
             if all_tensor_chunks.is_empty() {
                 continue;
@@ -116,7 +115,7 @@ impl VisualizerSystem for TensorSystem {
                 tensors.push(TensorVisualization {
                     entity_path: data_result.entity_path.clone(),
                     tensor_row_id,
-                    tensor_component: source_component,
+                    tensor_source: tensor_source.clone(),
                     tensor: tensor.clone(),
                     data_range,
                 });

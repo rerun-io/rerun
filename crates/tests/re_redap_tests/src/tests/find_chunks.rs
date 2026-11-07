@@ -22,7 +22,10 @@ use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{Connection, ConnectionRegistry};
 use re_types_core::{ChunkId, LayerName, SegmentId};
 
-use crate::tests::common::{RerunCloudServiceExt as _, concat_record_batches, entry_name};
+use crate::tests::common::{
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
+    entry_name,
+};
 use crate::utils::rerun::next_chunk_id_generator;
 use crate::utils::{
     assert_one_empty_batch, chunk_ids, register_layered_dataset, register_mixed_timelines_dataset,
@@ -454,6 +457,83 @@ pub async fn find_chunks_samples(service: impl RerunCloudService) {
         BTreeSet::from([t1[0], t3[0], s1, s2, s3]),
         "Samples without latest-at must select only the chunks with data at the sample times, \
          plus statics"
+    );
+}
+
+/// Samples keeps each segment's chunks apart when two segments hold the same chunk ids.
+///
+/// Two recordings with different recording ids are built from the same `tuid_prefix`, so their
+/// chunk ids are identical, as for copies of one recording registered under other recording ids.
+pub async fn find_chunks_samples_shared_chunk_ids(service: impl RerunCloudService) {
+    let dataset_name = "samples_shared_chunk_ids";
+    let tuid_prefix = 650;
+    let recording = |segment_id| {
+        DataSourcesDefinition::new_with_tuid_prefix(
+            tuid_prefix,
+            [LayerDefinition::simple_one_chunk_per_frame_with_time(
+                segment_id,
+                &["my/entity"],
+                1000,
+                TimeType::Sequence,
+            )],
+        )
+    };
+    let seg_a = recording("seg_a");
+    let seg_b = recording("seg_b");
+
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(
+            dataset_name,
+            itertools::chain!(seg_a.to_data_sources(), seg_b.to_data_sources()).collect(),
+        )
+        .await;
+
+    let (temporal, static_id) = one_chunk_per_frame_ids(tuid_prefix);
+    let samples = BTreeMap::from([
+        (
+            SegmentId::from("seg_a"),
+            BTreeSet::from([TimeInt::new_temporal(1010)]),
+        ),
+        (
+            SegmentId::from("seg_b"),
+            BTreeSet::from([TimeInt::new_temporal(1030)]),
+        ),
+    ]);
+
+    let batches = find_chunks_batches(
+        &service,
+        dataset_name,
+        samples_request("frame_nr", samples, FillMode::None),
+    )
+    .await;
+
+    let mut actual: BTreeMap<SegmentId, BTreeSet<ChunkId>> = BTreeMap::new();
+    for batch in &batches {
+        let ids = ChunkCandidatesDataframe::COLUMN_CHUNK_ID
+            .extract(batch)
+            .expect("bad chunk_id column");
+        let segments = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
+            .extract(batch)
+            .expect("bad chunk_segment_id column");
+        for (id, segment) in std::iter::zip(ids.iter_owned(), segments.iter_owned()) {
+            actual.entry(segment).or_default().insert(id);
+        }
+    }
+
+    let expected = BTreeMap::from([
+        (
+            SegmentId::from("seg_a"),
+            BTreeSet::from([temporal[0], static_id]),
+        ),
+        (
+            SegmentId::from("seg_b"),
+            BTreeSet::from([temporal[2], static_id]),
+        ),
+    ]);
+    assert_eq!(
+        actual, expected,
+        "each segment must get only the chunks sampled for it"
     );
 }
 

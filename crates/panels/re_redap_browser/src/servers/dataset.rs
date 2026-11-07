@@ -24,8 +24,9 @@ use crate::asset_coverage_modal::{ASSETS_DOCS_URL, AssetTarget, card_frame};
 use crate::asset_registration::{AssetRegistration, RegistrationState};
 use crate::context::Context;
 use crate::entry_meta::{AssetsRef, DatasetSegments, EntryMeta, EntryMetaQuery, StoredCoverage};
-use crate::register_asset_modal::{AssetSlots, AssetSourcesCapabilities};
+use crate::register_asset_modal::{ASSET_FILE, AssetSlots};
 use crate::servers::Command;
+use crate::source_field::SourceCapabilities;
 use crate::{
     Server,
     entries::{Dataset, Entry, EntryInner},
@@ -92,8 +93,7 @@ impl Server {
         view_states: &mut ViewStates,
         kind: Option<re_viewer_context::EntryKind>,
     ) {
-        let asset_sources =
-            AssetSourcesCapabilities::new(app_ctx.connection_registry, &dataset.origin);
+        let asset_sources = SourceCapabilities::new(app_ctx.connection_registry, &dataset.origin);
 
         let resource = match kind {
             Some(re_viewer_context::EntryKind::Dataset(resource)) => resource,
@@ -277,7 +277,7 @@ impl Server {
         app_ctx: &AppContext<'_>,
         ctx: &Context<'_>,
         dataset: &Dataset,
-        asset_sources: &AssetSourcesCapabilities,
+        asset_sources: &SourceCapabilities,
     ) {
         let assets = dataset.requests().assets(
             self.entry_meta_query(ui.ctx(), dataset),
@@ -1225,7 +1225,7 @@ fn no_assets_ui(
     ctx: &Context<'_>,
     asset_target: &AssetTarget,
     asset_slots: &AssetSlots,
-    asset_sources: &AssetSourcesCapabilities,
+    asset_sources: &SourceCapabilities,
 ) {
     /// The explanation wraps within this width, so it stays readable on a wide screen.
     const EXPLANATION_WIDTH: f32 = 460.0;
@@ -1248,7 +1248,7 @@ fn no_assets_ui(
 
     // A server that takes no asset has nothing to walk the reader through, so the empty list only
     // says that it is empty.
-    if !asset_sources.registers_assets() {
+    if !asset_sources.can_register() {
         ui.add_space(48.0);
         ui.vertical_centered(|ui| {
             ui.label(egui::RichText::new("This dataset has no assets").color(tokens.text_subdued));
@@ -1314,7 +1314,7 @@ fn no_assets_ui(
 
                 ui.add_space(20.0);
 
-                let source_example = asset_sources.source_example();
+                let source_example = asset_sources.source_example(ASSET_FILE);
                 let sdk_label = || egui::RichText::new("or use the SDK").color(tokens.text_subdued);
 
                 // The call shrinks into what the row leaves it. Under `SDK_CALL_MIN_WIDTH` too

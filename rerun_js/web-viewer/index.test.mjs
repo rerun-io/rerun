@@ -19,6 +19,16 @@ const packed_files = new Set(
   )[0].files.map((file) => file.path),
 );
 
+test("constructing a viewer in Node reports the browser requirement", async () => {
+  const { WebViewer } = await import("./index.js");
+  assert.throws(() => new WebViewer(), {
+    name: "Error",
+    message:
+      "WebViewer requires a browser document and canvas. " +
+      "In Node.js, use Playwright to run the viewer in a browser, or launch the native headless viewer with `rerun --headless`.",
+  });
+});
+
 test("the bundle has relative imports to check", () => {
   assert.notEqual(relative_imports.length, 0);
 });
