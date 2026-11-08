@@ -1634,7 +1634,22 @@ impl RecordingStream {
                 err,
             })?;
 
-        self.with(|inner| inner.importer_handles.lock().push(handle));
+        self.with(|inner| {
+            let finished = {
+                let mut importer_handles = inner.importer_handles.lock();
+                let finished = importer_handles
+                    .extract_if(.., |handle| handle.is_finished())
+                    .collect::<Vec<_>>();
+                importer_handles.push(handle);
+                finished
+            };
+
+            // Join the importer threads that are already done, so that their resources are
+            // released now rather than on the next flush.
+            for handle in finished {
+                handle.join().ok();
+            }
+        });
 
         Ok(())
     }
@@ -3541,6 +3556,29 @@ mod tests {
             std::env::remove_var("RERUN_FLUSH_TICK_SECS");
             std::env::remove_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED");
         }
+    }
+
+    #[cfg(feature = "importers")]
+    #[test]
+    fn finished_importer_threads_are_joined() {
+        let (rec, _storage) = RecordingStreamBuilder::new("rerun_example_finished_importers")
+            .memory()
+            .unwrap();
+
+        for _ in 0..20 {
+            rec.log_file_from_contents("hello.txt", b"hello".into(), None, false)
+                .unwrap();
+            // Give the importer thread time to finish before the next import.
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
+
+        let pending_importers = rec
+            .with(|inner| inner.importer_handles.lock().len())
+            .unwrap();
+        assert!(
+            pending_importers < 20,
+            "finished importer threads should not pile up until a flush, got {pending_importers}"
+        );
     }
 
     #[test]
