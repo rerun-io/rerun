@@ -16,6 +16,33 @@ We have a bunch of Bash and Python scripts that [we want to replace with Rust](h
 For configs we like JSON and TOML, and [dislike YAML](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell).
 
 
+## TypeScript and JavaScript code
+
+Follow the [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html), and apply its language-independent rules to JavaScript, with the exceptions below.
+
+### Exceptions
+
+- **Naming:** Use `snake_case` for functions, methods, parameters, variables, fields, and module aliases, not the usual JS/TS [`lowerCamelCase`](https://google.github.io/styleguide/tsguide.html#identifiers).
+  Use `PascalCase` for types and classes, and `SCREAMING_SNAKE_CASE` for module-level constants.
+- **Private members:** Use `#private`, despite the guide's [ban](https://google.github.io/styleguide/tsguide.html#no-private-fields): it enforces privacy for JavaScript consumers, and our `esnext` target avoids downlevel compilation costs.
+  Use TypeScript `private` only for documented runtime integration access.
+
+### Formatting and checks
+
+Separate top-level declarations and class methods with a blank line. Group static imports at the top of the file.
+
+Follow Google's [type-only import and re-export rules](https://google.github.io/styleguide/tsguide.html#import-and-export-type): use `import type` or inline `type` imports, and `export type` for type-only re-exports.
+These markers require explicit import/export changes to add runtime dependencies or expose runtime values.
+
+Use the repository's [Prettier configuration](.prettierrc.toml) for formatting and [oxlint configuration](.oxlintrc.json) for linting.
+JavaScript and TypeScript use two-space indentation, semicolons and trailing commas.
+
+Run these commands from `rerun/` to enforce some of the rules (also done by CI):
+
+- `pixi run misc-fmt` — format with Prettier.
+- `pixi run misc-fmt-check` — check formatting without changing files.
+- `pixi run js-lint` — lint with oxlint (requires built web-viewer bindings).
+
 ## Rust code
 
 ### Avoid `unsafe`

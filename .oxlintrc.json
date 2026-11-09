@@ -5,7 +5,11 @@
     "correctness": "error"
   },
   "rules": {
-    "typescript/no-deprecated": "error"
+    "typescript/no-deprecated": "error",
+    // Type-only dependencies must use `import type` so they do not become runtime imports.
+    "typescript/consistent-type-imports": "error",
+    // Static imports must precede other statements; import order and dynamic imports are unrestricted.
+    "import/first": "error"
   },
   "ignorePatterns": ["rerun_js/web-viewer/proto/**/*_pb.ts"]
 }

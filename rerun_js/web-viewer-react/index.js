@@ -76,11 +76,7 @@ export default class WebViewer extends React.Component {
         return;
       }
 
-      syncRecordings(
-        this.#handle,
-        toArray(prevProps.rrd),
-        toArray(this.props.rrd),
-      );
+      syncRecordings(this.#handle, toArray(prevProps.rrd), toArray(this.props.rrd));
     }
   }
 
@@ -188,14 +184,10 @@ function syncRecordings(handle, prev, current) {
 
   // One at a time, so that a URL with nothing loaded does not keep the others open.
   for (const url of removed) {
-    handle
-      .close(url)
-      .catch((err) => console.error("Failed to close recording:", err));
+    handle.close(url).catch((err) => console.error("Failed to close recording:", err));
   }
   for (const url of added) {
-    handle
-      .open(url)
-      .catch((err) => console.error("Failed to open recording:", err));
+    handle.open(url).catch((err) => console.error("Failed to open recording:", err));
   }
 }
 

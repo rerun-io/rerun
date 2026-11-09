@@ -1,6 +1,8 @@
 import { error_code, expect, test } from "./fixtures";
 
-test("a started viewer is ready and has a canvas, and a stopped one refuses calls", async ({ viewer }) => {
+test("a started viewer is ready and has a canvas, and a stopped one refuses calls", async ({
+  viewer,
+}) => {
   expect(await viewer.evaluate(() => window.viewer.ready)).toBe(true);
   expect(await viewer.evaluate(() => window.viewer.canvas instanceof HTMLCanvasElement)).toBe(true);
 
@@ -10,8 +12,12 @@ test("a started viewer is ready and has a canvas, and a stopped one refuses call
   expect(await error_code(viewer, "viewer.get_state()")).toBe("FAILED_PRECONDITION");
 
   // The same `WebViewer` can start again.
-  await viewer.evaluate(() => window.viewer.start(null, document.getElementById("viewer")!, { hide_welcome_screen: true }));
-  expect(await viewer.evaluate(async () => (await window.viewer.get_state()).recordings.length)).toBe(0);
+  await viewer.evaluate(() =>
+    window.viewer.start(null, document.getElementById("viewer")!, { hide_welcome_screen: true }),
+  );
+  expect(
+    await viewer.evaluate(async () => (await window.viewer.get_state()).recordings.length),
+  ).toBe(0);
 });
 
 test("panel overrides and credentials are accepted", async ({ viewer }) => {
@@ -40,6 +46,10 @@ test("a failed call rejects with a ViewerControlError carrying a code", async ({
       };
     }
   });
-  expect(error).toMatchObject({ instance: true, name: "ViewerControlError", code: "INVALID_ARGUMENT" });
+  expect(error).toMatchObject({
+    instance: true,
+    name: "ViewerControlError",
+    code: "INVALID_ARGUMENT",
+  });
   expect(error?.message).toBeTruthy();
 });

@@ -2,7 +2,8 @@ import { expect, test } from "./fixtures";
 
 test("on, once, and off deliver playback events", async ({ viewer }) => {
   const result = await viewer.evaluate(async () => {
-    const next = (event: "play" | "pause") => new Promise((resolve) => window.viewer.once(event, resolve));
+    const next = (event: "play" | "pause") =>
+      new Promise((resolve) => window.viewer.once(event, resolve));
 
     // The viewer plays the recording on its own after loading: stop that before listening.
     await window.viewer.set_time({ play_state: "paused" });
@@ -67,7 +68,10 @@ test("seeking and switching timeline emit time_update and timeline_change", asyn
     // The events arrive with the frames that apply the changes, which can be slow on CI.
     const names = recording.timelines.map((timeline) => timeline.name);
     const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline && (time_updates === 0 || names.slice(1).some((name) => !timelines.includes(name)))) {
+    while (
+      Date.now() < deadline &&
+      (time_updates === 0 || names.slice(1).some((name) => !timelines.includes(name)))
+    ) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     return { timelines, time_updates, names };

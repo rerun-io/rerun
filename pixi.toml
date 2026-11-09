@@ -340,8 +340,8 @@ pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 # ------------------------------------------------------------------------------------------
 
 # Misc formatting tasks.
-misc-fmt = "prettier --write '**/*.{yml,yaml,js,css,html}'"
-misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,css,html}'"
+misc-fmt = "prettier --write '**/*.{yml,yaml,js,mjs,cjs,ts,css,html}'"
+misc-fmt-check = "prettier --check '**/*.{yml,yaml,js,mjs,cjs,ts,css,html}'"
 
 nb-strip = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"
 nb-strip-check = "python scripts/nbstripout.py --directories mypy examples/ scripts/ tests/python/ docs/snippets/ -- --verify --extra-keys='metadata.language_info metadata.vscode metadata.kernelspec cell.metadata.vscode' --drop-empty-cells"

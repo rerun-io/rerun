@@ -52,7 +52,7 @@ function show(value: unknown): string {
   return (
     JSON.stringify(
       value,
-      (_key, value) =>
+      (...[, value]) =>
         typeof value === "bigint"
           ? `${value}n`
           : value instanceof Uint8Array

@@ -28,7 +28,7 @@ interface WidgetModel {
 
 type Opt<T> = T | null | undefined;
 
-function _resize(el: HTMLElement, width: number | string, height: number | string) {
+function resize(el: HTMLElement, width: number | string, height: number | string) {
   const style = el.style;
 
   if (typeof width === "string" && width === "auto") {
@@ -77,8 +77,14 @@ class ViewerWidget {
     this.panel_states = model.get("_panel_states");
     model.on("change:_panel_states", this.on_change_panel_states);
 
-    model.on("change:_width", (_, width) => this.on_resize(el, width, model.get("_height")));
-    model.on("change:_height", (_, height) => this.on_resize(el, model.get("_width"), height));
+    const on_width_change = (...[, width]: [unknown, number | string]) => {
+      this.on_resize(el, width, model.get("_height"));
+    };
+    const on_height_change = (...[, height]: [unknown, number | string]) => {
+      this.on_resize(el, model.get("_width"), height);
+    };
+    model.on("change:_width", on_width_change);
+    model.on("change:_height", on_height_change);
 
     model.on("msg:custom", this.on_custom_message);
 
@@ -106,13 +112,10 @@ class ViewerWidget {
   }
 
   on_resize(parent: HTMLElement, width: number | string, height: number | string) {
-    _resize(parent, width, height)
-  };
+    resize(parent, width, height);
+  }
 
-  on_change_panel_states = (
-    _: unknown,
-    new_panel_states?: Opt<PanelStates>,
-  ) => {
+  on_change_panel_states = (...[, new_panel_states]: [unknown, Opt<PanelStates>?]) => {
     for (const panel of PANELS) {
       // TODO(jprochazk): update `override_panel_state` to accept `PanelState | undefined | null` as value
       this.viewer.override_panel_state(panel, new_panel_states?.[panel]);
@@ -123,14 +126,12 @@ class ViewerWidget {
   on_custom_message = (msg: any, buffers: DataView[]) => {
     switch (msg?.type) {
       case "rrd": {
-        if (!this.channel)
-          throw new Error("on_custom_message called before channel init");
+        if (!this.channel) throw new Error("on_custom_message called before channel init");
         this.channel.send_rrd(new Uint8Array(buffers[0].buffer));
         break;
       }
       case "table": {
-        if (!this.channel)
-          throw new Error("on_custom_message called before channel init")
+        if (!this.channel) throw new Error("on_custom_message called before channel init");
         this.channel.send_table(new Uint8Array(buffers[0].buffer));
         break;
       }
@@ -139,7 +140,7 @@ class ViewerWidget {
         break;
       }
       case "recording_id": {
-        this.set_recording_id(msg.recording_id ?? null)
+        this.set_recording_id(msg.recording_id ?? null);
         break;
       }
       case "open_url": {
@@ -157,7 +158,7 @@ class ViewerWidget {
         break;
       }
       case "set_credentials": {
-        this.viewer.set_credentials(msg.access_token, msg.email)
+        this.viewer.set_credentials(msg.access_token, msg.email);
         break;
       }
       default: {
@@ -194,7 +195,7 @@ class ViewerWidget {
         play_state: msg.play ? "playing" : "paused",
       }),
     );
-  };
+  }
 
   /** Show the open recording with this recording id. */
   set_recording_id(recording_id: string | null) {
@@ -211,17 +212,13 @@ class ViewerWidget {
         await this.viewer.set_location(recording.location);
       }
     });
-  };
+  }
 
   /** Run `operation` once the earlier operations are done, and log if it fails. */
   queue_operation(failure: string, operation: () => Promise<void>) {
-    this.operations = this.operations
-      .then(operation)
-      .catch((err) => console.warn(failure, err));
+    this.operations = this.operations.then(operation).catch((err) => console.warn(failure, err));
   }
 }
-
-
 
 const render: Render<WidgetModel> = ({ model, el }) => {
   el.classList.add("rerun_notebook");
@@ -247,6 +244,5 @@ function error_boundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
 
   return wrapper as any;
 }
-
 
 export default { render: error_boundary(render) };

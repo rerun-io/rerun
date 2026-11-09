@@ -11,7 +11,8 @@ test("get_state reports the open recording and its timelines", async ({ viewer }
       timelines: recording.timelines.map((timeline) => ({
         name: timeline.name,
         time_type: timeline.time_type,
-        has_range: timeline.time_range !== undefined && timeline.time_range.start <= timeline.time_range.end,
+        has_range:
+          timeline.time_range !== undefined && timeline.time_range.start <= timeline.time_range.end,
       })),
       views: state.views.length,
       viewer_version: state.viewer_version,
@@ -34,7 +35,9 @@ test("set_time seeks, switches timeline, and plays, pauses, or follows", async (
   const result = await viewer.evaluate(async () => {
     const before = await window.viewer.get_state();
     const recording = before.recordings[0];
-    const timeline = recording.timelines.find((timeline) => timeline.time_type === "sequence") ?? recording.timelines[0];
+    const timeline =
+      recording.timelines.find((timeline) => timeline.time_type === "sequence") ??
+      recording.timelines[0];
     const range = timeline.time_range!;
     const at = (time: bigint) =>
       timeline.time_type === "sequence"
@@ -43,7 +46,11 @@ test("set_time seeks, switches timeline, and plays, pauses, or follows", async (
           ? { timestamp_nanos: time }
           : { duration_nanos: time };
 
-    await window.viewer.set_time({ timeline: timeline.name, ...at(range.start), play_state: "paused" });
+    await window.viewer.set_time({
+      timeline: timeline.name,
+      ...at(range.start),
+      play_state: "paused",
+    });
     const after_seek = (await window.viewer.get_state()).recordings[0];
 
     await window.viewer.set_time({ play_state: "playing" });
@@ -78,15 +85,15 @@ test("set_time seeks, switches timeline, and plays, pauses, or follows", async (
 });
 
 test("set_time rejects what it cannot do", async ({ viewer }) => {
-  expect(await error_code(viewer, 'viewer.set_time({ timeline: "no such timeline", sequence: 0 })')).toBe(
-    "INVALID_ARGUMENT",
-  );
-  expect(await error_code(viewer, 'viewer.set_time({ recording: "Recording:nope:nope", sequence: 0 })')).toBe(
-    "INVALID_ARGUMENT",
-  );
-  expect(await error_code(viewer, 'viewer.set_time({ sequence: 0, play_state: "following" })')).toBe(
-    "INVALID_ARGUMENT",
-  );
+  expect(
+    await error_code(viewer, 'viewer.set_time({ timeline: "no such timeline", sequence: 0 })'),
+  ).toBe("INVALID_ARGUMENT");
+  expect(
+    await error_code(viewer, 'viewer.set_time({ recording: "Recording:nope:nope", sequence: 0 })'),
+  ).toBe("INVALID_ARGUMENT");
+  expect(
+    await error_code(viewer, 'viewer.set_time({ sequence: 0, play_state: "following" })'),
+  ).toBe("INVALID_ARGUMENT");
   // Two times at once never reaches the viewer.
   expect(await error_code(viewer, "viewer.set_time({ sequence: 0, duration_nanos: 0 })")).toMatch(
     /^not a ViewerControlError/,
@@ -105,10 +112,15 @@ test("get_location and set_location go back to where the viewer was", async ({ v
   expect(result.elsewhere).toBe("about:settings");
   expect(result.again).toBe(result.location);
 
-  expect(await error_code(viewer, 'viewer.set_location("not a location")')).toBe("INVALID_ARGUMENT");
-  expect(await error_code(viewer, 'viewer.set_location("about:recording?app_id=nope&recording_id=nope")')).toBe(
-    "NOT_FOUND",
+  expect(await error_code(viewer, 'viewer.set_location("not a location")')).toBe(
+    "INVALID_ARGUMENT",
   );
+  expect(
+    await error_code(
+      viewer,
+      'viewer.set_location("about:recording?app_id=nope&recording_id=nope")',
+    ),
+  ).toBe("NOT_FOUND");
 });
 
 test("get_logs returns only what is new after a sequence number", async ({ viewer }) => {

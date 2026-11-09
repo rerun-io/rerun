@@ -1,28 +1,17 @@
 #!/usr/bin/env node
 // @ts-check
 
-import {
-  $,
-  fs,
-  script_dir,
-  path,
-  inferTag,
-  isPublished,
-} from "./common.mjs";
+import { $, fs, script_dir, path, inferTag, isPublished } from "./common.mjs";
 
 const root_dir = path.resolve(script_dir, "..");
 
 /** @type {{ workspaces: string[] }} */
-const root_package_json = JSON.parse(
-  fs.readFileSync(path.join(root_dir, "package.json"), "utf-8"),
-);
+const root_package_json = JSON.parse(fs.readFileSync(path.join(root_dir, "package.json"), "utf-8"));
 
 const all_packages = await Promise.all(
   root_package_json.workspaces.map(async (pkg) => {
     const dir = path.join(root_dir, pkg);
-    const { name, version } = JSON.parse(
-      fs.readFileSync(path.join(dir, "package.json"), "utf-8"),
-    );
+    const { name, version } = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf-8"));
     const published = await isPublished(name, version);
 
     return { dir, name, version, published };
@@ -53,7 +42,6 @@ if (unpublished.length === 0) {
     $(`npm publish --tag ${tag}`, { cwd: pkg.dir });
   }
 }
-
 
 const tarballs = [];
 for (const pkg of all_packages) {
