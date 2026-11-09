@@ -262,7 +262,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         with `parent_frame` and `child_frame` fields set.
 
         Documentation about transforms in Rerun can be found here:
-        https://rerun.io/docs/concepts/transforms
+        https://rerun.io/docs/concepts/logging-and-ingestion/transforms
         """
         for transform in tf_msg.transforms:
             time = Time.from_msg(transform.header.stamp)

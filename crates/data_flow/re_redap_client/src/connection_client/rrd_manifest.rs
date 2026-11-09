@@ -269,7 +269,7 @@ where
     /// The server may answer with manifest keys instead of inline manifests, in which case each
     /// part is fetched directly from the object store. In a browser that direct fetch only works
     /// when the bucket has a CORS configuration that allows it (see
-    /// <https://rerun.io/docs/hub/bucket-cors>), so wasm clients fall back to
+    /// <https://rerun.io/docs/hub/bucket-configuration#cors>), so wasm clients fall back to
     /// server-provided manifests when the first part fails.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_rrd_manifest_stream(
@@ -307,7 +307,7 @@ where
                          falling back to slower server-provided manifests. \
                          This usually means the bucket is missing a CORS configuration that \
                          allows the Web Viewer to read it — see \
-                         https://rerun.io/docs/hub/bucket-cors for how to set it up.",
+                         https://rerun.io/docs/hub/bucket-configuration#cors for how to set it up.",
                         err.to_string(),
                     )
                 );

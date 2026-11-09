@@ -65,7 +65,7 @@ Data from schemas containing a `.timestamp` field is put onto a `timestamp` time
 Transform messages are converted to [`Transform3D`](../../../reference/types/archetypes/transform3d.md), with `parent_frame` and `child_frame` set according to the `frame_id` and `child_frame_id` of each `geometry_msgs/TransformStamped` contained in the message's `transforms` list.
 The timestamps of the individual transforms are put onto the respective timelines, allowing the viewer to resolve the spatial relationships between frames over time similar to a TF buffer in ROS.
 
-> You can read more about how Rerun handles transforms and "TF-style" frame names [here](https://rerun.io/docs/concepts/transforms#named-transform-frames).
+> You can read more about how Rerun handles transforms and "TF-style" frame names [here](https://rerun.io/docs/concepts/logging-and-ingestion/transforms#named-transform-frames).
 
 To see the transforms in the viewer, you can select the entity corresponding to the topic and add a visualizer for `TransformAxes3D` as shown in the video here.
 If you have transforms that correspond to joints in a robot model, you can also read more about how to load `URDF` models into a recording [here](https://rerun.io/docs/howto/logging-and-ingestion/urdf#load-urdf-into-an-existing-recording).

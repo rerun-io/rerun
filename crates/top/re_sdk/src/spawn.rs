@@ -221,7 +221,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
     * Using `pip`: `pip3 install rerun-sdk`
 
     For more information, refer to our complete install documentation over at:
-    https://rerun.io/docs/overview/installing-rerun/viewer
+    https://rerun.io/docs/getting-started/install-rerun/viewer
     ";
 
     const MSG_INSTALL_HOW_TO_VERSIONED: &str = //
@@ -232,7 +232,7 @@ pub fn spawn(opts: &SpawnOptions) -> Result<SpawnInfo, SpawnError> {
     * Using `pip`: `pip3 install rerun-sdk==__VIEWER_VERSION__`
 
     For more information, refer to our complete install documentation over at:
-    https://rerun.io/docs/overview/installing-rerun/viewer
+    https://rerun.io/docs/getting-started/install-rerun/viewer
     ";
 
     const MSG_VERSION_MISMATCH: &str = //

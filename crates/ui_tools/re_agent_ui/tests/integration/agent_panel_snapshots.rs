@@ -338,7 +338,7 @@ fn chat_conversation() {
             "Found it. The left camera was logged under `world/camera_left`, but the blueprint expects `world/camera/left`.\n\n",
         ))),
         SessionUpdate::AgentMessageChunk(ContentChunk::new(text(
-            "I changed the entity path:\n\n```python\nrr.log(\"world/camera/left\", rr.Image(left))\n```\n\nNext steps:\n\n1. Re-run the script\n2. Check the viewer\n\nSee https://rerun.io/docs/concepts/entity-path for the entity path rules.\n",
+            "I changed the entity path:\n\n```python\nrr.log(\"world/camera/left\", rr.Image(left))\n```\n\nNext steps:\n\n1. Re-run the script\n2. Check the viewer\n\nSee https://rerun.io/docs/concepts/entity-path for the entity path rules.\n", // NOLINT: test input; changing it changes the snapshot
         ))),
         SessionUpdate::Plan(Plan::new(vec![
             PlanEntry::new(
