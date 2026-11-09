@@ -458,7 +458,7 @@ mod tests {
         assert_eq!(elem.format(), "3.17");
 
         let elem = TensorElement::I64(-123456789);
-        assert_eq!(elem.format(), "−123\u{2009}456\u{2009}789");
+        assert_eq!(elem.format(), "−123\u{202F}456\u{202F}789");
     }
 
     #[test]
