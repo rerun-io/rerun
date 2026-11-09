@@ -41,7 +41,7 @@ pyo3::create_exception!(
     rerun_bindings.rerun_bindings,
     ChunkNotIndexedError,
     PyException,
-    "Raised when a query names an entity path or timeline the dataset's chunk indexing policy excludes."
+    "Raised when a query reads data the dataset's chunk indexing policy excludes and the server can't serve it."
 );
 
 fn is_chunk_not_indexed(err: &re_redap_client::ApiError) -> bool {
@@ -52,7 +52,11 @@ fn is_chunk_not_indexed(err: &re_redap_client::ApiError) -> bool {
         .and_then(|status| status.as_ref().get_details_error_info())
         .is_some_and(|info| {
             info.domain == re_protos::error::ERROR_DOMAIN
-                && info.reason == re_protos::error::CHUNK_NOT_INDEXED
+                && [
+                    re_protos::error::CHUNK_NOT_INDEXED,
+                    re_protos::error::UNINDEXED_DATA_NEEDS_SEGMENTS,
+                ]
+                .contains(&info.reason.as_str())
         })
 }
 

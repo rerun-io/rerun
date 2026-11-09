@@ -59,6 +59,7 @@ pub async fn simple_dataset_fetch_chunk_snapshot(service: impl RerunCloudService
                         },
                     },
                     direct_url_mode: re_protos::cloud::v1alpha1::ext::DirectUrlMode::Omit,
+                    scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
                 }
                 .into(),
             )
@@ -166,6 +167,7 @@ pub async fn multi_dataset_fetch_chunk_completeness(service: impl RerunCloudServ
             },
         },
         direct_url_mode: re_protos::cloud::v1alpha1::ext::DirectUrlMode::Omit,
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     };
 
     let mut chunk_info_1 = service

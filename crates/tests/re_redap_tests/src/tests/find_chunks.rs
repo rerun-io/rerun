@@ -39,6 +39,7 @@ fn static_request(segments: SegmentSelection) -> FindChunksRequest {
         contents: ContentSelection::All,
         mode: ChunkMode::Static { segments },
         direct_url_mode: DirectUrlMode::Signed,
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 
@@ -61,6 +62,7 @@ pub fn range_request(
             },
         },
         direct_url_mode: DirectUrlMode::Signed,
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 
@@ -77,6 +79,7 @@ fn samples_request(
             fill_mode,
         },
         direct_url_mode: DirectUrlMode::Signed,
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 

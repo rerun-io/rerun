@@ -612,6 +612,7 @@ fn build_dataframe_query_table_provider(
         )
         .await
     })
+    .map(|provider| provider.with_scope(scope))
     .map(|provider| {
         // The query request would read every segment for an empty selection; keep the
         // provider's schema and validation, but return no rows.

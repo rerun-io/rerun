@@ -663,6 +663,7 @@ fn find_static(
         } else {
             DirectUrlMode::Signed
         },
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 
@@ -691,6 +692,7 @@ fn find_range(
         } else {
             DirectUrlMode::Signed
         },
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 
@@ -712,6 +714,7 @@ fn find_samples(
         } else {
             DirectUrlMode::Signed
         },
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 

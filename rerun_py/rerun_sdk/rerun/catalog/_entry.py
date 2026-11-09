@@ -75,13 +75,16 @@ class OnDuplicateSegmentLayer(StrEnum):
 
 class DatasetQueryScope(StrEnum):
     """
-    Which columns a dataset schema or reader covers.
+    Which data a dataset query reads, relative to the dataset's chunk indexing policy.
 
+    Dataset schemas take a scope too.
     The OSS server ignores the scope.
 
     Attributes:
         FULL: Every entity path and timeline in the dataset, indexed or not.
+            On Rerun Hub, a query that needs data outside the policy fails.
         INDEXED: Only the entity paths and timelines the dataset's chunk indexing policy indexes.
+            Naming one the policy excludes raises [`ChunkNotIndexedError`][rerun.catalog.ChunkNotIndexedError].
 
     """
 
@@ -1356,7 +1359,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 rows to the result. Validate client-side if you need to catch
                 unknown segment IDs.
         scope
-            Which schema the reader uses. See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope].
+            Which data the query reads. See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope].
 
         Returns
         -------
@@ -1652,7 +1655,7 @@ class DatasetSelection:
         fill_latest_at
             Whether to fill null values with the latest valid data.
         scope
-            Which schema the reader uses. See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope].
+            Which data the query reads. See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope].
 
         Returns
         -------

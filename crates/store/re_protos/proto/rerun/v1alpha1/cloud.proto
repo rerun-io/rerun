@@ -1444,6 +1444,17 @@ message FindChunksRequest {
 
   // Which direct chunk URLs to return. Defaults to `DIRECT_URL_MODE_SIGNED`.
   DirectUrlMode direct_url_mode = 5;
+
+  // Which data the request reads in regards to the current indexing policy.
+  // Defaults to `DATASET_QUERY_SCOPE_FULL`.
+  //
+  // - `DATASET_QUERY_SCOPE_INDEXED`: read only indexed data.
+  //   Selecting every entity selects only the indexed ones.
+  //   Naming unindexed data fails with `FailedPrecondition`.
+  // - `DATASET_QUERY_SCOPE_FULL`: all data, indexed or not.
+  //   A request that touches unindexed data fails with `FailedPrecondition` when it selects
+  //   every segment, and with `Unimplemented` when it filters by segments (TODO(ilya)).
+  DatasetQueryScope scope = 6;
 }
 
 // One batch of chunk candidates yielded by `FindChunks`.

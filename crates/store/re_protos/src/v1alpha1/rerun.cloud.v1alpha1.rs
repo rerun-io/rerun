@@ -1708,6 +1708,17 @@ pub struct FindChunksRequest {
     /// Which direct chunk URLs to return. Defaults to `DIRECT_URL_MODE_SIGNED`.
     #[prost(enumeration = "DirectUrlMode", tag = "5")]
     pub direct_url_mode: i32,
+    /// Which data the request reads in regards to the current indexing policy.
+    /// Defaults to `DATASET_QUERY_SCOPE_FULL`.
+    ///
+    /// - `DATASET_QUERY_SCOPE_INDEXED`: read only indexed data.
+    ///    Selecting every entity selects only the indexed ones.
+    ///    Naming unindexed data fails with `FailedPrecondition`.
+    /// - `DATASET_QUERY_SCOPE_FULL`: all data, indexed or not.
+    ///    A request that touches unindexed data fails with `FailedPrecondition` when it selects
+    ///    every segment, and with `Unimplemented` when it filters by segments (TODO(ilya)).
+    #[prost(enumeration = "DatasetQueryScope", tag = "6")]
+    pub scope: i32,
     /// The selection mode. Required.
     ///
     /// A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset

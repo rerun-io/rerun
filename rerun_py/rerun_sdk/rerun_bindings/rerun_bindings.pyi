@@ -1511,7 +1511,7 @@ class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
 
 class ChunkNotIndexedError(Exception):
-    """Raised when a query names an entity path or timeline the dataset's chunk indexing policy excludes."""
+    """Raised when a query reads data the dataset's chunk indexing policy excludes and the server can't serve it."""
 
 # The `asset` property layout, shared with the servers that read it.
 ASSET_PROPERTY: str
