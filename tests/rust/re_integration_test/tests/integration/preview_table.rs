@@ -2,8 +2,10 @@
 //!
 //! Builds remote tables whose rows carry recording URIs and an embedded table blueprint
 //! that defines `Spatial3DView`s.
+//! The recordings' dataset has its own default blueprint.
 //! The viewer loads the referenced recordings on demand and renders them in preview columns.
-//! The tests verify that the recordings load and that the rendered previews match snapshots.
+//! The tests verify that the recordings load, that the rendered previews match snapshots, and
+//! that a recording opened from its card shows the dataset blueprint.
 //!
 //! The referenced recording logs its `Points3D` statically, so the preview renders the same
 //! at every point on its looping preview timeline and the snapshot stays stable.
@@ -33,6 +35,7 @@ const DATASET_ID: &str = "187b552b95a5c2f73f37894708825ba5";
 const PREVIEW_COLUMN: &str = "recording_uri";
 const SECOND_PREVIEW_COLUMN: &str = "recording_uri_2";
 const TITLE_COLUMN: &str = "name";
+const DATASET_BLUEPRINT_VIEW_NAME: &str = "Dataset blueprint view";
 const SEGMENT_COUNT: usize = 4;
 
 #[derive(Clone, Copy)]
@@ -104,6 +107,19 @@ pub async fn preview_table() {
         },
         Duration::from_millis(100),
         Duration::from_secs(15),
+    );
+
+    // The preview recording is already loaded, but the opened recording shows the dataset's
+    // default blueprint instead of a heuristic one.
+    viewer_test_utils::step_until(
+        "Opened recording shows the dataset blueprint",
+        &mut harness,
+        |harness| {
+            harness
+                .query_all_by_label(DATASET_BLUEPRINT_VIEW_NAME)
+                .next()
+                .is_some()
+        },
     );
 
     viewer_test_utils::step_until_with_custom_timeout(
@@ -286,6 +302,17 @@ async fn preview_table_fixture(preview_columns: &[PreviewColumnSpec]) -> Preview
     re_integration_test::register_table_blueprint(&catalog_client, &table, blueprint_rbl.path())
         .await
         .expect("Failed to register table blueprint");
+
+    let dataset_blueprint_rbl =
+        re_integration_test::spatial_3d_blueprint_rbl(DATASET_BLUEPRINT_VIEW_NAME)
+            .expect("Failed to write dataset blueprint");
+    re_integration_test::register_dataset_blueprint(
+        &catalog_client,
+        dataset_id.into(),
+        dataset_blueprint_rbl.path(),
+    )
+    .await
+    .expect("Failed to register dataset blueprint");
 
     PreviewTableFixture {
         startup_url: format!(
