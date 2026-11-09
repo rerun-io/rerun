@@ -859,7 +859,7 @@ impl AgentSession {
         }
     }
 
-    /// Asks the agent to switch the session to another model, e.g. from [`Transcript::model_selector`].
+    /// Asks the agent to change a session setting; its confirmed value arrives in a config update.
     pub fn set_config_option(&self, config_id: SessionConfigId, value: SessionConfigValueId) {
         if let Some(connection) = &self.connection {
             connection.send(AgentCommand::SetConfigOption { config_id, value });

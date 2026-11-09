@@ -366,6 +366,7 @@ impl Redactor {
         config.mcp_servers.clear();
         config.cwd = self.scratch.as_ref()?.path().to_owned();
         config.preferred_model = None;
+        config.preferred_speed = None;
         config.model_preferences = REDACTION_MODELS
             .iter()
             .map(|&model| model.to_owned())
@@ -552,6 +553,7 @@ mod tests {
             preamble: None,
             model_preferences: Vec::new(),
             preferred_model: Some(crate::acp::schema::v1::SessionConfigValueId::new("opus")),
+            preferred_speed: None,
             mode_preferences: Vec::new(),
         };
         let mut redactor = Redactor::default();

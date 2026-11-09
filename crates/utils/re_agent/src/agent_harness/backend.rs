@@ -328,6 +328,20 @@ async fn start_session(
             {
                 response.config_options = Some(config_options);
             }
+            if let Some((config_id, speed)) = pick_speed(
+                response.config_options.as_deref().unwrap_or_default(),
+                config.preferred_speed.as_ref(),
+            ) {
+                let request = SetSessionConfigOptionRequest::new(
+                    response.session_id.clone(),
+                    config_id,
+                    speed,
+                );
+                match cx.send_request(request).block_task().await {
+                    Ok(updated) => response.config_options = Some(updated.config_options),
+                    Err(err) => re_log::debug!("Failed to select speed: {}", describe_error(&err)),
+                }
+            }
             if let Some(selected_mode) = select_mode(
                 cx,
                 &response.session_id,
@@ -418,6 +432,21 @@ async fn select_model(
     }
 }
 
+/// The speed to restore at startup, as a `session/set_config_option` request.
+///
+/// `None` when the agent does not offer the preferred speed, or already uses it.
+fn pick_speed(
+    config_options: &[SessionConfigOption],
+    preferred_speed: Option<&SessionConfigValueId>,
+) -> Option<(SessionConfigId, SessionConfigValueId)> {
+    let speed = preferred_speed?;
+    let (config_id, select) = crate::transcript::speed_selector(config_options)?;
+    let offered = crate::transcript::select_options(select)
+        .iter()
+        .any(|option| option.value == *speed);
+    (select.current_value != *speed && offered).then(|| (config_id.clone(), speed.clone()))
+}
+
 /// The model selector and the model to set it to, or `None` when there is nothing to do.
 ///
 /// `None` also when the preferred model is already the current one, so that an agent that has
@@ -462,8 +491,10 @@ fn pick_model(
 
 #[cfg(test)]
 mod tests {
+    use agent_client_protocol::Channel;
     use agent_client_protocol_schema::v1::{
-        SessionConfigSelectGroup, SessionConfigSelectOption, SessionMode,
+        NewSessionResponse, SessionConfigSelectGroup, SessionConfigSelectOption, SessionMode,
+        SetSessionConfigOptionResponse,
     };
 
     use super::*;
@@ -618,5 +649,212 @@ mod tests {
             pick_model(&claude_models("sonnet"), None, &preferences(&["sonnet"])),
             None
         );
+    }
+
+    /// A saved speed is restored also when the agent groups its speed options.
+    #[test]
+    fn picks_a_grouped_speed() {
+        let group = SessionConfigSelectGroup::new(
+            "tiers",
+            "Tiers",
+            vec![
+                SessionConfigSelectOption::new("off", "Off"),
+                SessionConfigSelectOption::new("on", "On"),
+            ],
+        );
+        let options = vec![SessionConfigOption::select(
+            "fast",
+            "Speed",
+            "off",
+            vec![group],
+        )];
+        let on = SessionConfigValueId::new("on");
+        assert_eq!(
+            pick_speed(&options, Some(&on)),
+            Some((SessionConfigId::new("fast"), on))
+        );
+    }
+
+    /// Startup selects the model before restoring a speed that only that model offers.
+    #[test]
+    fn restores_speed_from_the_selected_models_options() {
+        check_startup(
+            Some(OfferedSpeed {
+                current: "off",
+                values: &["off", "on"],
+            }),
+            SpeedRequest::Accepted,
+        );
+    }
+
+    /// Missing, unsupported, and already-selected speeds cause no speed request.
+    #[test]
+    fn skips_speed_requests_that_do_not_apply() {
+        check_startup(None, SpeedRequest::Omitted);
+        check_startup(
+            Some(OfferedSpeed {
+                current: "off",
+                values: &["off"],
+            }),
+            SpeedRequest::Omitted,
+        );
+        check_startup(
+            Some(OfferedSpeed {
+                current: "on",
+                values: &["off", "on"],
+            }),
+            SpeedRequest::Omitted,
+        );
+    }
+
+    /// A rejected speed request leaves the session ready with its confirmed settings.
+    #[test]
+    fn a_speed_request_failure_does_not_abort_startup() {
+        check_startup(
+            Some(OfferedSpeed {
+                current: "off",
+                values: &["off", "on"],
+            }),
+            SpeedRequest::Rejected,
+        );
+    }
+
+    /// The speed selector offered after selecting the chosen model.
+    #[derive(Clone, Copy)]
+    struct OfferedSpeed {
+        current: &'static str,
+        values: &'static [&'static str],
+    }
+
+    #[derive(Clone, Copy)]
+    enum SpeedRequest {
+        Accepted,
+        Omitted,
+        Rejected,
+    }
+
+    fn startup_options(model: &str, speed: Option<OfferedSpeed>) -> Vec<SessionConfigOption> {
+        let mut options = vec![
+            SessionConfigOption::select(
+                "model",
+                "Model",
+                model.to_owned(),
+                vec![
+                    SessionConfigSelectOption::new("initial", "Initial"),
+                    SessionConfigSelectOption::new("chosen", "Chosen"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::Model),
+        ];
+        if let Some(OfferedSpeed { current, values }) = speed {
+            options.push(SessionConfigOption::select(
+                "fast",
+                "Speed",
+                current.to_owned(),
+                values
+                    .iter()
+                    .map(|&value| SessionConfigSelectOption::new(value.to_owned(), value))
+                    .collect::<Vec<_>>(),
+            ));
+        }
+        options
+    }
+
+    /// Runs startup against an in-process ACP agent that offers `speed` only after model selection.
+    ///
+    /// Checks the request order and the confirmed options reported in `SessionStarted`.
+    fn check_startup(speed: Option<OfferedSpeed>, speed_request: SpeedRequest) {
+        let config = AgentHarnessConfig {
+            command: "unused".into(),
+            args: Vec::new(),
+            env: Vec::new(),
+            cwd: ".".into(),
+            additional_directories: Vec::new(),
+            off_limits_directories: Vec::new(),
+            mcp_servers: Vec::new(),
+            log_protocol: false,
+            preamble: None,
+            model_preferences: Vec::new(),
+            preferred_model: Some(SessionConfigValueId::new("chosen")),
+            preferred_speed: Some(SessionConfigValueId::new("on")),
+            mode_preferences: Vec::new(),
+        };
+        let post_model = startup_options("chosen", speed);
+        let confirmed = match speed_request {
+            SpeedRequest::Accepted => startup_options(
+                "chosen",
+                speed.map(|speed| OfferedSpeed {
+                    current: "on",
+                    ..speed
+                }),
+            ),
+            SpeedRequest::Omitted | SpeedRequest::Rejected => post_model.clone(),
+        };
+        let response_options = confirmed.clone();
+        let (request_tx, mut request_rx) = futures::channel::mpsc::unbounded();
+        let (client_channel, agent_channel) = Channel::duplex();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+        let (events, event_rx) = EventSender::new(UiWaker::noop());
+
+        futures::executor::block_on(async {
+            let agent = Agent
+                .builder()
+                .on_receive_request(
+                    async |_request: NewSessionRequest, responder, _cx| {
+                        responder.respond(
+                            NewSessionResponse::new("test-session")
+                                .config_options(startup_options("initial", None)),
+                        )
+                    },
+                    agent_client_protocol::on_receive_request!(),
+                )
+                .on_receive_request(
+                    async move |request: SetSessionConfigOptionRequest, responder, _cx| {
+                        request_tx
+                            .unbounded_send((request.config_id.clone(), request.value.clone()))
+                            .expect("request receiver open");
+                        if request.config_id.0.as_ref() == "model" {
+                            responder
+                                .respond(SetSessionConfigOptionResponse::new(post_model.clone()))
+                        } else if matches!(speed_request, SpeedRequest::Rejected) {
+                            responder.respond_with_error(Error::internal_error())
+                        } else {
+                            responder.respond(SetSessionConfigOptionResponse::new(
+                                response_options.clone(),
+                            ))
+                        }
+                    },
+                    agent_client_protocol::on_receive_request!(),
+                )
+                .connect_with(agent_channel, async move |_cx| {
+                    // Keep the agent connected until the client has finished startup.
+                    done_rx.await.expect("startup completed");
+                    Ok::<_, Error>(())
+                });
+            let client = Client.builder().connect_with(
+                client_channel,
+                async move |cx: ConnectionTo<Agent>| {
+                    let session_id = start_session(&cx, &config, &events, &[]).await;
+                    assert_eq!(session_id.unwrap().0.as_ref(), "test-session");
+                    done_tx.send(()).expect("agent waiting");
+                    Ok::<_, Error>(())
+                },
+            );
+            let (client, agent) = futures::join!(client, agent);
+            client.expect("client connection");
+            agent.expect("agent connection");
+        });
+
+        let mut expected = vec![("model".into(), "chosen".into())];
+        if !matches!(speed_request, SpeedRequest::Omitted) {
+            expected.push(("fast".into(), "on".into()));
+        }
+        let requests: Vec<_> = std::iter::from_fn(|| request_rx.try_recv().ok()).collect();
+        assert_eq!(requests, expected);
+        let started = event_rx.try_iter().find_map(|event| match event {
+            AgentEvent::SessionStarted { config_options, .. } => Some(config_options),
+            _ => None,
+        });
+        assert_eq!(started, Some(confirmed));
     }
 }

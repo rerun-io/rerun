@@ -76,6 +76,6 @@ pub use settings::{AgentLaunch, AgentLaunchError, AgentSettings, McpServerConfig
 pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};
 pub use transcript::{
     ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,
-    truncate_bytes,
+    select_options, truncate_bytes,
 };
 pub use turn::{TurnOutcome, TurnReport};

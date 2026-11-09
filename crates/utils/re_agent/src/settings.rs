@@ -123,6 +123,9 @@ pub struct AgentSettings {
     /// Exact model choice per agent profile; model IDs belong to the agent that offered them.
     pub preferred_models: BTreeMap<AgentProfileId, SessionConfigValueId>,
 
+    /// Exact speed choice per agent profile; values belong to the agent that offered them.
+    pub preferred_speeds: BTreeMap<AgentProfileId, SessionConfigValueId>,
+
     /// Share prompts and responses with Rerun after redacting sensitive text.
     pub share_redacted_prompts: bool,
 
@@ -279,6 +282,7 @@ impl Default for AgentSettings {
             model_api_hosted_tools: HostedTools::default(),
             preferred_mode: None,
             preferred_models: BTreeMap::new(),
+            preferred_speeds: BTreeMap::new(),
             share_redacted_prompts: false,
             setup_done: false,
             #[cfg(target_arch = "wasm32")]

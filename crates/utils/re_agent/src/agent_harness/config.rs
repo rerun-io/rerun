@@ -58,6 +58,9 @@ pub struct AgentHarnessConfig {
     /// Exact saved model ID, restored only if the agent still offers it.
     pub preferred_model: Option<SessionConfigValueId>,
 
+    /// Exact saved speed, restored only if the selected model offers it.
+    pub preferred_speed: Option<SessionConfigValueId>,
+
     /// Session modes to prefer, best first.
     ///
     /// The first one the agent offers is selected before the session takes its first prompt.

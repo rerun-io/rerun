@@ -89,6 +89,7 @@ impl AgentSettings {
                 .map(|&model| model.to_owned())
                 .collect(),
             preferred_model: self.preferred_models.get(&self.profile_id).cloned(),
+            preferred_speed: self.preferred_speeds.get(&self.profile_id).cloned(),
             mode_preferences: std::iter::chain(self.preferred_mode.clone(), default_mode).collect(),
         })
     }

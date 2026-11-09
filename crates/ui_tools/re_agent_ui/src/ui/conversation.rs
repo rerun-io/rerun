@@ -254,12 +254,14 @@ impl Conversation {
             .map(|agent| agent.profile.login_hint.as_str())
             .filter(|hint| !hint.is_empty());
         let mut preferred_model = settings.preferred_models.get(&self.profile_id).cloned();
+        let mut preferred_speed = settings.preferred_speeds.get(&self.profile_id).cloned();
         chat_ui(
             ui,
             &mut self.session,
             &mut self.input,
             &mut settings.preferred_mode,
             &mut preferred_model,
+            &mut preferred_speed,
             settings.show_thoughts,
             login_hint,
             example_prompts,
@@ -269,6 +271,11 @@ impl Conversation {
             settings
                 .preferred_models
                 .insert(self.profile_id.clone(), model);
+        }
+        if let Some(speed) = preferred_speed {
+            settings
+                .preferred_speeds
+                .insert(self.profile_id.clone(), speed);
         }
         if let Some(prompt) = self.input.example_prompt_clicked.take() {
             self.pending_prompts.push_back(prompt.into());

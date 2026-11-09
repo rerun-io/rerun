@@ -244,6 +244,11 @@ impl Transcript {
         }
     }
 
+    /// The agent's speed selector and its config id, if it offers one.
+    pub fn speed_selector(&self) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
+        speed_selector(&self.config_options)
+    }
+
     /// The name of the model the agent says it is using, if it offers a model selector.
     pub fn current_model(&self) -> Option<&str> {
         let (_, select) = self.model_selector()?;
@@ -663,6 +668,32 @@ pub fn model_name(model: &SessionConfigSelectOption) -> &str {
         .map(str::trim)
         .filter(|head| has_version(head) && head.split_whitespace().count() <= 3);
     concrete.unwrap_or(&model.name)
+}
+
+/// Claude and Codex expose speed with the config ids `fast` and `fast-mode`, respectively.
+pub fn speed_selector(
+    options: &[SessionConfigOption],
+) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
+    options.iter().find_map(|option| {
+        if !matches!(option.id.0.as_ref(), "fast" | "fast-mode") {
+            return None;
+        }
+        match &option.kind {
+            SessionConfigKind::Select(select) => Some((&option.id, select)),
+            _ => None,
+        }
+    })
+}
+
+/// All options of a select, flattening groups.
+pub fn select_options(select: &SessionConfigSelect) -> Vec<&SessionConfigSelectOption> {
+    match &select.options {
+        SessionConfigSelectOptions::Ungrouped(options) => options.iter().collect(),
+        SessionConfigSelectOptions::Grouped(groups) => {
+            groups.iter().flat_map(|group| &group.options).collect()
+        }
+        _ => Vec::new(),
+    }
 }
 
 #[cfg(test)]
