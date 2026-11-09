@@ -418,9 +418,11 @@ impl AgentPanel {
         self.session().modes()
     }
 
-    /// Switches the shown conversation's permission mode, and makes it the default for new ones.
+    /// Switches the shown conversation's permission mode, and makes it the default for new
+    /// conversations with the same agent.
     pub fn set_mode(&mut self, mode_id: SessionModeId) {
-        self.settings.preferred_mode = Some(mode_id.clone());
+        let profile_id = self.active_conversation().profile_id.clone();
+        self.settings.preferences_mut(profile_id).mode = Some(mode_id.clone());
         self.session_mut().set_mode(mode_id);
     }
 

@@ -139,14 +139,8 @@ pub struct AgentSettings {
     /// The tools a model-API agent's provider runs for it on its own servers.
     pub model_api_hosted_tools: HostedTools,
 
-    /// Session mode to restore when an agent offers it.
-    pub preferred_mode: Option<SessionModeId>,
-
-    /// Exact model choice per agent profile; model IDs belong to the agent that offered them.
-    pub preferred_models: BTreeMap<AgentProfileId, SessionConfigValueId>,
-
-    /// Exact speed choice per agent profile; values belong to the agent that offered them.
-    pub preferred_speeds: BTreeMap<AgentProfileId, SessionConfigValueId>,
+    /// What the user last picked in the chat footer, per agent profile.
+    pub preferences: BTreeMap<AgentProfileId, AgentPreferences>,
 
     /// Share prompts and responses with Rerun after redacting sensitive text.
     pub share_redacted_prompts: bool,
@@ -169,6 +163,22 @@ pub struct AgentSettings {
     /// The desktop viewer reads keys from the environment only, and never stores them.
     #[cfg(target_arch = "wasm32")]
     pub api_keys: BTreeMap<AgentProfileId, String>,
+}
+
+/// What the user last picked for one agent profile, restored when that agent offers it.
+///
+/// The ids belong to the agent that offered them, so they are not shared between profiles.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct AgentPreferences {
+    /// Session mode, e.g. `acceptEdits` for Claude or `read-only` for Codex.
+    pub mode: Option<SessionModeId>,
+
+    /// Model, e.g. `sonnet` for Claude or `gpt-5-codex` for Codex.
+    pub model: Option<SessionConfigValueId>,
+
+    /// Speed, e.g. `on` for the fast mode of both Claude and Codex.
+    pub speed: Option<SessionConfigValueId>,
 }
 
 /// Why [`AgentSettings`] could not be resolved into an agent to start.
@@ -267,10 +277,13 @@ impl AgentSettings {
         let api_key = self
             .api_key(provider)
             .ok_or_else(|| AgentLaunchError::missing_api_key(provider))?;
-        let model = self.preferred_models.get(&self.profile_id).map_or_else(
-            || provider.default_model().to_owned(),
-            |model| model.0.to_string(),
-        );
+        let model = self
+            .preferences(&self.profile_id)
+            .and_then(|preferences| preferences.model.as_ref())
+            .map_or_else(
+                || provider.default_model().to_owned(),
+                |model| model.0.to_string(),
+            );
         Ok(AgentLaunch::ModelApi(ModelApiConfig {
             provider,
             api_key,
@@ -279,6 +292,16 @@ impl AgentSettings {
             hosted_tools: self.model_api_hosted_tools,
             toolbox: None,
         }))
+    }
+
+    /// What the user last picked for `profile_id`.
+    pub fn preferences(&self, profile_id: &AgentProfileId) -> Option<&AgentPreferences> {
+        self.preferences.get(profile_id)
+    }
+
+    /// What the user last picked for `profile_id`, inserting empty preferences if there are none.
+    pub fn preferences_mut(&mut self, profile_id: AgentProfileId) -> &mut AgentPreferences {
+        self.preferences.entry(profile_id).or_default()
     }
 
     /// The key for `provider`: from the settings or from the environment, as
@@ -308,9 +331,7 @@ impl Default for AgentSettings {
             show_thoughts: true,
             log_protocol: false,
             model_api_hosted_tools: HostedTools::default(),
-            preferred_mode: None,
-            preferred_models: BTreeMap::new(),
-            preferred_speeds: BTreeMap::new(),
+            preferences: BTreeMap::new(),
             share_redacted_prompts: false,
             setup_done: false,
             saved_conversations: Vec::new(),
@@ -325,7 +346,7 @@ impl Default for AgentSettings {
 mod tests {
     use agent_client_protocol_schema::v1::SessionConfigValueId;
 
-    use super::{AgentProfileId, AgentSettings, HostedTools};
+    use super::{AgentPreferences, AgentProfileId, AgentSettings, HostedTools};
 
     #[test]
     fn old_settings_use_new_defaults() {
@@ -334,8 +355,7 @@ mod tests {
         };
         assert!(!settings.share_redacted_prompts);
         assert_eq!(settings.model_api_hosted_tools, HostedTools::default());
-        assert_eq!(settings.preferred_mode, None);
-        assert!(settings.preferred_models.is_empty());
+        assert!(settings.preferences.is_empty());
     }
 
     #[test]
@@ -344,15 +364,18 @@ mod tests {
             profile_id: AgentProfileId::new("codex"),
             ..Default::default()
         };
-        settings.preferred_models.insert(
+        settings.preferences.insert(
             AgentProfileId::new("claude"),
-            SessionConfigValueId::new("sonnet"),
+            AgentPreferences {
+                model: Some(SessionConfigValueId::new("sonnet")),
+                ..Default::default()
+            },
         );
         let Ok(json) = serde_json::to_value(&settings) else {
             panic!("settings should serialize");
         };
         assert_eq!(json["profile_id"], "codex");
-        assert_eq!(json["preferred_models"]["claude"], "sonnet");
+        assert_eq!(json["preferences"]["claude"]["model"], "sonnet");
         assert_eq!(
             serde_json::from_value::<AgentSettings>(json).ok(),
             Some(settings)

@@ -5,8 +5,9 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 
 use re_agent::{
-    AgentEntry, AgentLaunch, AgentProfileId, AgentSession, AgentSettings, AgentToolbox,
-    ModelApiProvider, Phase, Prompt, SavedConversation, SessionContext, SessionReports,
+    AgentEntry, AgentLaunch, AgentPreferences, AgentProfileId, AgentSession, AgentSettings,
+    AgentToolbox, ModelApiProvider, Phase, Prompt, SavedConversation, SessionContext,
+    SessionReports,
 };
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_ui::UiExt as _;
@@ -331,29 +332,22 @@ impl Conversation {
             .find(|agent| agent.profile.id == self.profile_id)
             .map(|agent| agent.profile.login_hint.as_str())
             .filter(|hint| !hint.is_empty());
-        let mut preferred_model = settings.preferred_models.get(&self.profile_id).cloned();
-        let mut preferred_speed = settings.preferred_speeds.get(&self.profile_id).cloned();
+        let mut preferences = settings
+            .preferences(&self.profile_id)
+            .cloned()
+            .unwrap_or_default();
         chat_ui(
             ui,
             &mut self.session,
             &mut self.input,
-            &mut settings.preferred_mode,
-            &mut preferred_model,
-            &mut preferred_speed,
+            &mut preferences,
             settings.show_thoughts,
             login_hint,
             example_prompts,
             home_ui,
         );
-        if let Some(model) = preferred_model {
-            settings
-                .preferred_models
-                .insert(self.profile_id.clone(), model);
-        }
-        if let Some(speed) = preferred_speed {
-            settings
-                .preferred_speeds
-                .insert(self.profile_id.clone(), speed);
+        if preferences != AgentPreferences::default() {
+            *settings.preferences_mut(self.profile_id.clone()) = preferences;
         }
         if let Some(prompt) = self.input.example_prompt_clicked.take() {
             self.pending_prompts.push_back(prompt.into());

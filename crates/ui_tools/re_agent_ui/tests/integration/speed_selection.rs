@@ -58,8 +58,8 @@ fn speed_selection_is_saved_for_the_conversations_agent_profile() {
     harness.run_steps(2);
 
     let saved = serde_json::to_value(harness.state().settings()).expect("save settings");
-    assert_eq!(saved["preferred_speeds"]["claude"], "ultrafast");
-    assert!(saved["preferred_speeds"]["codex"].is_null());
+    assert_eq!(saved["preferences"]["claude"]["speed"], "ultrafast");
+    assert!(saved["preferences"]["codex"].is_null());
     let mut restored: AgentSettings = serde_json::from_value(saved).expect("reload settings");
     restored.profile_id = AgentProfileId::new("claude");
     let agents = AgentProfile::builtin()
@@ -114,9 +114,12 @@ fn claude_fast_toggle_is_shown_as_standard_and_fast() {
     harness.get_by_label("Fast").click();
     harness.run_steps(2);
     assert_eq!(
-        harness.state().settings().preferred_speeds[&AgentProfileId::new("claude")]
-            .0
-            .as_ref(),
-        "on"
+        harness
+            .state()
+            .settings()
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.speed.as_ref())
+            .map(|speed| speed.0.as_ref()),
+        Some("on")
     );
 }

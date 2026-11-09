@@ -20,7 +20,7 @@ use super::elicitation_ui::ElicitationUi;
 use super::pasted_image;
 use super::tool_call_ui::{code_ui, tool_fields_ui, tool_input_ui};
 use super::transcript_ui::{plan_ui, transcript_ui};
-use re_agent::{AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
+use re_agent::{AgentPreferences, AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
 
 /// Height a pasted image is previewed at in the composer, in points.
 const PREVIEW_HEIGHT: f32 = 48.0;
@@ -177,9 +177,7 @@ pub fn chat_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
-    preferred_speed: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
     show_thoughts: bool,
     login_hint: Option<&str>,
     example_prompts: &[String],
@@ -193,15 +191,7 @@ pub fn chat_ui(
     egui::Panel::bottom("agent_composer")
         .frame(egui::Frame::new().inner_margin(8))
         .show(ui, |ui| {
-            composer_ui(
-                ui,
-                session,
-                input,
-                preferred_mode,
-                preferred_model,
-                preferred_speed,
-                login_hint,
-            );
+            composer_ui(ui, session, input, preferences, login_hint);
         });
 
     egui::CentralPanel::default()
@@ -478,9 +468,7 @@ fn composer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
-    preferred_speed: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
     login_hint: Option<&str>,
 ) {
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -506,14 +494,7 @@ fn composer_ui(
     }
 
     queue_ui(ui, session, input);
-    input_ui(
-        ui,
-        session,
-        input,
-        preferred_mode,
-        preferred_model,
-        preferred_speed,
-    );
+    input_ui(ui, session, input, preferences);
 
     if input.log_open {
         log_ui(ui, session);
@@ -605,10 +586,9 @@ fn footer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
-    preferred_speed: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
 ) {
+    let AgentPreferences { mode, model, speed } = preferences;
     let usage = session
         .transcript()
         .usage
@@ -630,10 +610,10 @@ fn footer_ui(
                 let mut clip_rect = ui.clip_rect();
                 clip_rect.max.x = clip_rect.max.x.min(ui.max_rect().max.x);
                 ui.set_clip_rect(clip_rect);
-                mode_picker_ui(ui, session, preferred_mode);
+                mode_picker_ui(ui, session, mode);
 
-                model_picker_ui(ui, session, preferred_model);
-                speed_picker_ui(ui, session, preferred_speed);
+                model_picker_ui(ui, session, model);
+                speed_picker_ui(ui, session, speed);
 
                 match session.phase() {
                     Phase::Connecting { status } => {
@@ -844,9 +824,7 @@ fn input_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
-    preferred_speed: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
 ) {
     let hint = if session.turn_in_progress() {
         "The agent is working… (⏎ to queue a message, Esc to stop)"
@@ -891,14 +869,7 @@ fn input_ui(
             input.completion_open = output.is_open;
             let response = output.text_edit.response.response;
 
-            footer_ui(
-                ui,
-                session,
-                input,
-                preferred_mode,
-                preferred_model,
-                preferred_speed,
-            );
+            footer_ui(ui, session, input, preferences);
 
             response
         })
