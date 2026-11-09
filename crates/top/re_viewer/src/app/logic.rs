@@ -575,11 +575,11 @@ impl AppCore {
 
         if entity_db.store_kind() == StoreKind::Recording {
             #[cfg(feature = "analytics")]
-            if let Some(analytics) = re_analytics::Analytics::global_or_init()
-                && let Some(event) =
-                    crate::viewer_analytics::event::open_recording(&self.startup.app_env, entity_db)
-            {
-                analytics.record(event);
+            if let Some(analytics) = re_analytics::Analytics::global_or_init() {
+                analytics.record(crate::viewer_analytics::event::open_recording(
+                    &self.startup.app_env,
+                    entity_db,
+                ));
             }
 
             if let Some(event_dispatcher) = self.event_dispatcher.as_ref() {
