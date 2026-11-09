@@ -1013,28 +1013,13 @@ impl AppCore {
 
             let time_cursor = match open_kind {
                 RecordingOpenKind::Active => self.state.time_cursor_for(recording.store_id()),
-                RecordingOpenKind::Preview => {
-                    let timelines = recording.timelines();
-                    let timeline =
-                        re_chunk::Timeline::pick_best_timeline(timelines.values(), |t| {
-                            recording.num_temporal_rows_on_timeline(t.name())
-                        });
-
-                    Some(re_entity_db::PrefetchTimeCursor {
-                        time_cursor: re_log_types::TimelinePoint {
-                            name: *timeline.name(),
-                            typ: timeline.typ(),
-                            // TODO(RR-4257): Don't hack mid-point time
-                            time: recording
-                                .rrd_manifest_index()
-                                .timeline_range(timeline.name())
-                                .map(|r| r.center())
-                                .unwrap_or(re_chunk::TimeInt::ZERO),
-                        },
-                        speed_if_unpaused: 1.0,
-                        loop_range: None,
-                    })
-                }
+                RecordingOpenKind::Preview => self
+                    .state
+                    .view_states
+                    .preview_state
+                    .as_ref()
+                    .and_then(|previews| previews.active_preview(recording.store_id()))
+                    .and_then(|preview| preview.time_control.time_cursor()),
                 RecordingOpenKind::Inactive => None,
             };
             if let Some(redap_uri) = recording.redap_uri() {
