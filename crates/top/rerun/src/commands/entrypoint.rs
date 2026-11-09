@@ -682,6 +682,12 @@ enum Command {
         /// `connect` tool.
         #[arg(long)]
         endpoint: Option<url::Url>,
+
+        /// Marks a server started by the viewer's agent panel.
+        ///
+        /// Only analytics reads it, the server behaves the same either way.
+        #[arg(long, hide = true)]
+        from_agent_panel: bool,
     },
 
     /// Reset the memory of the Rerun Viewer.
@@ -847,9 +853,10 @@ where
             Command::Mcap(mcap) => mcap.run(),
 
             #[cfg(feature = "native_viewer")]
-            Command::ViewerMcp { endpoint } => {
-                tokio_runtime.block_on(re_viewer_mcp::serve(endpoint))
-            }
+            Command::ViewerMcp {
+                endpoint,
+                from_agent_panel: _,
+            } => tokio_runtime.block_on(re_viewer_mcp::serve(endpoint)),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -2133,6 +2140,18 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         integration_test: _,
     } = args;
 
+    let mcp_launcher = cfg_select! {
+        feature = "native_viewer" => match command {
+            Some(Command::ViewerMcp {
+                from_agent_panel: true,
+                ..
+            }) => Some(re_analytics::event::McpLauncher::AgentPanel),
+            Some(Command::ViewerMcp { .. }) => Some(re_analytics::event::McpLauncher::Unknown),
+            _ => None,
+        },
+        _ => None,
+    };
+
     let (command, subcommand) = match command {
         #[cfg(feature = "analytics")]
         Some(Command::Analytics(cmd)) => {
@@ -2204,6 +2223,7 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         hide_welcome_screen: *hide_welcome_screen,
         detach_process: *detach_process,
         test_receive: *test_receive,
+        mcp_launcher,
     });
 }
 
@@ -2331,7 +2351,33 @@ mod cli_data_source_tests {
 mod tests {
     use super::*;
 
+    use std::assert_matches;
+
     use clap::Parser as _;
+
+    #[test]
+    fn viewer_mcp_parses_from_agent_panel() {
+        let args = Args::try_parse_from(["rerun", "viewer-mcp", "--from-agent-panel"]).unwrap();
+        assert_matches!(
+            args.command,
+            Some(Command::ViewerMcp {
+                from_agent_panel: true,
+                ..
+            })
+        );
+    }
+
+    #[test]
+    fn viewer_mcp_is_not_from_agent_panel_by_default() {
+        let args = Args::try_parse_from(["rerun", "viewer-mcp"]).unwrap();
+        assert_matches!(
+            args.command,
+            Some(Command::ViewerMcp {
+                from_agent_panel: false,
+                ..
+            })
+        );
+    }
 
     #[test]
     fn detach_relaunches_a_native_viewer_exactly_once() {

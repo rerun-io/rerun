@@ -242,12 +242,14 @@ pub fn record_mcp_startup_failures(reports: &[re_agent::McpStartupReport]) {
 /// It is case-insensitive because the macOS bundle names the executable `Rerun`.
 fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
     let current_exe = std::env::current_exe();
+    let mut args = vec!["viewer-mcp".to_owned()];
     let rerun = match &current_exe {
         Ok(exe)
             if exe
                 .file_stem()
                 .is_some_and(|stem| stem.to_string_lossy().to_lowercase().starts_with("rerun")) =>
         {
+            args.push("--from-agent-panel".to_owned());
             exe.clone()
         }
         _ => {
@@ -265,7 +267,6 @@ fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
         }
     };
 
-    let mut args = vec!["viewer-mcp".to_owned()];
     if let Some(endpoint) = viewer_endpoint {
         args.push("--endpoint".to_owned());
         args.push(endpoint.to_owned());

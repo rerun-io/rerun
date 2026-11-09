@@ -1021,6 +1021,9 @@ pub struct CliCommandInvoked {
     pub hide_welcome_screen: bool,
     pub detach_process: bool,
     pub test_receive: bool,
+
+    /// `Some` only for the `viewer-mcp` command.
+    pub mcp_launcher: Option<McpLauncher>,
 }
 
 impl Event for CliCommandInvoked {
@@ -1046,6 +1049,7 @@ impl Properties for CliCommandInvoked {
             hide_welcome_screen,
             detach_process,
             test_receive,
+            mcp_launcher,
         } = self;
 
         build_info.serialize(event);
@@ -1064,6 +1068,29 @@ impl Properties for CliCommandInvoked {
         event.insert("hide_welcome_screen", hide_welcome_screen);
         event.insert("detach_process", detach_process);
         event.insert("test_receive", test_receive);
+        event.insert_opt("mcp_launcher", mcp_launcher.map(McpLauncher::as_str));
+    }
+}
+
+/// What started a `rerun viewer-mcp` process.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum McpLauncher {
+    /// The process got `--from-agent-panel`, which only the viewer's agent panel passes.
+    AgentPanel,
+
+    /// The process did not get `--from-agent-panel`.
+    ///
+    /// The agent panel also lands here when it runs a `rerun` from `PATH`,
+    /// so `AgentPanel` counts are a lower bound on agent panel launches.
+    Unknown,
+}
+
+impl McpLauncher {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::AgentPanel => "agent_panel",
+            Self::Unknown => "unknown",
+        }
     }
 }
 
@@ -1121,6 +1148,48 @@ mod tests {
     use std::assert_matches;
 
     use super::*;
+
+    fn cli_event(command: &'static str, mcp_launcher: Option<McpLauncher>) -> AnalyticsEvent {
+        let mut event = AnalyticsEvent::new(CliCommandInvoked::NAME, CliCommandInvoked::KIND);
+        CliCommandInvoked {
+            build_info: re_build_info::cargo_build_info!(),
+            command,
+            subcommand: None,
+            web_viewer: false,
+            serve_web: false,
+            serve_grpc: false,
+            connect: false,
+            save: false,
+            screenshot_to: false,
+            newest_first: false,
+            persist_state_disabled: false,
+            profile: false,
+            expect_data_soon: false,
+            hide_welcome_screen: false,
+            detach_process: false,
+            test_receive: false,
+            mcp_launcher,
+        }
+        .serialize(&mut event);
+        event
+    }
+
+    #[test]
+    fn viewer_mcp_reports_its_launcher() {
+        let event = cli_event("viewer-mcp", Some(McpLauncher::AgentPanel));
+        assert_matches!(&event.props["mcp_launcher"],
+            Property::String(launcher) if launcher == "agent_panel");
+    }
+
+    #[test]
+    fn other_commands_send_no_launcher() {
+        let event = cli_event("viewer", None);
+        assert!(
+            !event.props.contains_key("mcp_launcher"),
+            "expected no mcp_launcher, got {:?}",
+            event.props.get("mcp_launcher")
+        );
+    }
 
     /// The text fields must not overwrite the counts that [`AgentTurnUsage`] already inserted.
     #[test]
