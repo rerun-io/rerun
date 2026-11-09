@@ -7,6 +7,7 @@ import {
   GetStateResponseSchema,
   ViewerControlRequestSchema,
   ViewerControlResponseSchema,
+  type GetSelectionResponse,
   type GetStateResponse,
   PlayState as ProtoPlayState,
   type RecordingEntitySchema,
@@ -32,6 +33,9 @@ export {
   type StoreId,
   type StoreIdParts,
 } from "./store_id.js";
+
+/** A UUID in the hyphenated form, e.g. `67e55044-10b1-426f-9247-bb680e5fe0c8`. */
+export type Uuid = string;
 
 /** What the viewer shows, as {@link WebViewer.get_state} reports it. */
 export interface ViewerState {
@@ -127,7 +131,7 @@ export type PlayState = "paused" | "playing" | "following";
 
 /** A view of the current blueprint. */
 export interface ViewerView {
-  view_id: string;
+  view_id: Uuid;
 
   /** The view's class, e.g. `Spatial3D`. */
   class: string;
@@ -188,6 +192,72 @@ export interface ViewerLoadingSource {
 
   /** The same thing the viewer's own loading screen says. */
   status: string;
+}
+
+/** What the user has selected in the viewer, as {@link WebViewer.get_selection} reports it. */
+export interface Selection {
+  /** The recording that the selected entities and components belong to: the active recording. */
+  store_id?: StoreId;
+
+  /** The selected items, in selection order. Empty if nothing is selected. */
+  items: SelectedItem[];
+}
+
+/** One selected item. */
+export type SelectedItem =
+  | {
+    type: "entity";
+    entity_path: string;
+
+    /** The index of the selected instance, e.g. one point of a point cloud. Absent when the whole entity is selected. */
+    instance?: bigint;
+
+    /** The view it was selected in, as a `view_id` from {@link WebViewer.get_state}. Absent when selected outside of a view. */
+    view_id?: Uuid;
+  }
+  | {
+    type: "component";
+    entity_path: string;
+
+    /** The component, e.g. `Points3D:positions`. */
+    component: string;
+  }
+  | { type: "view"; view_id: Uuid }
+  | { type: "container"; container_id: Uuid }
+  | { type: "recording"; store_id: StoreId };
+
+/** The public {@link Selection} of a `GetSelection` response, leaving out kinds this version does not know. */
+function selection_of(selection: GetSelectionResponse): Selection {
+  const items: SelectedItem[] = [];
+  for (const { kind } of selection.items) {
+    switch (kind.case) {
+      case "entity":
+        items.push({
+          type: "entity",
+          entity_path: kind.value.entityPath,
+          instance: kind.value.instance,
+          view_id: kind.value.viewId?.uuid,
+        });
+        break;
+      case "component":
+        items.push({
+          type: "component",
+          entity_path: kind.value.entityPath,
+          component: kind.value.component,
+        });
+        break;
+      case "view":
+        items.push({ type: "view", view_id: kind.value.viewId?.uuid ?? "" });
+        break;
+      case "container":
+        items.push({ type: "container", container_id: kind.value.containerId?.uuid ?? "" });
+        break;
+      case "recording":
+        items.push({ type: "recording", store_id: kind.value.storeId as StoreId });
+        break;
+    }
+  }
+  return { store_id: selection.storeId as StoreId | undefined, items };
 }
 
 /** The public {@link ViewerState} of a `GetState` response. */
@@ -448,7 +518,7 @@ export interface TableColumnSchema {
 /** What {@link WebViewer.take_screenshot} captures. */
 export interface ScreenshotOptions {
   /** The view to capture, as a `view_id` from {@link WebViewer.get_state}. If omitted, the whole viewer. */
-  view_id?: string;
+  view_id?: Uuid;
 
   /** Longest side of the image, in pixels. A larger screenshot is scaled down to fit. If omitted, full resolution. */
   max_size?: number;
@@ -1884,6 +1954,17 @@ export class WebViewer {
    */
   async get_state(): Promise<ViewerState> {
     return viewer_state_of(await this.#viewer_control("getState", {}));
+  }
+
+  /**
+   * What the user has selected: entities or instances of them, components, views, containers, and recordings.
+   *
+   * Other things the user can select, such as servers and catalog entries, are left out.
+   *
+   * This API is experimental, and may change between releases.
+   */
+  async get_selection(): Promise<Selection> {
+    return selection_of(await this.#viewer_control("getSelection", {}));
   }
 
   /**

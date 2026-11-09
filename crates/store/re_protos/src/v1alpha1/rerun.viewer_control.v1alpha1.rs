@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -323,6 +323,12 @@ pub mod viewer_control_request {
         /// Fails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.
         #[prost(message, tag = "22")]
         SubmitFeedback(super::SubmitFeedbackRequest),
+        /// Report what the user has selected, in selection order, e.g. to answer "why is this not shown?".
+        ///
+        /// Entities and components belong to the active recording.
+        /// Blueprint entities, servers, catalog entries, and similar are left out.
+        #[prost(message, tag = "23")]
+        GetSelection(super::GetSelectionRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -341,7 +347,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -413,6 +419,9 @@ pub mod viewer_control_response {
         /// Result of `submit_feedback`.
         #[prost(message, tag = "22")]
         SubmitFeedback(super::SubmitFeedbackResponse),
+        /// Result of `get_selection`.
+        #[prost(message, tag = "23")]
+        GetSelection(super::GetSelectionResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -1265,6 +1274,192 @@ impl ::prost::Name for ViewerLogEntry {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.ViewerLogEntry".into()
+    }
+}
+/// A UUID.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct Uuid {
+    /// In the hyphenated form, e.g. `67e55044-10b1-426f-9247-bb680e5fe0c8`.
+    #[prost(string, tag = "1")]
+    pub uuid: ::prost::alloc::string::String,
+}
+impl ::prost::Name for Uuid {
+    const NAME: &'static str = "Uuid";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.Uuid".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.Uuid".into()
+    }
+}
+/// Request for `GetSelection`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSelectionRequest {}
+impl ::prost::Name for GetSelectionRequest {
+    const NAME: &'static str = "GetSelectionRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetSelectionRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetSelectionRequest".into()
+    }
+}
+/// Response for `GetSelection`: what the user has selected in the viewer.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSelectionResponse {
+    /// The recording that the selected entities and components belong to: the active recording, as
+    /// `{kind}:{application_id}:{recording_id}`. Absent if no recording is active.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// The selected items, in selection order. Empty if nothing is selected.
+    #[prost(message, repeated, tag = "2")]
+    pub items: ::prost::alloc::vec::Vec<SelectedItem>,
+}
+impl ::prost::Name for GetSelectionResponse {
+    const NAME: &'static str = "GetSelectionResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetSelectionResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetSelectionResponse".into()
+    }
+}
+/// One selected item.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedItem {
+    /// What kind of thing is selected.
+    #[prost(oneof = "selected_item::Kind", tags = "1, 2, 3, 4, 5")]
+    pub kind: ::core::option::Option<selected_item::Kind>,
+}
+/// Nested message and enum types in `SelectedItem`.
+pub mod selected_item {
+    /// What kind of thing is selected.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        /// An entity, or one instance of it.
+        #[prost(message, tag = "1")]
+        Entity(super::SelectedEntity),
+        /// A component of an entity.
+        #[prost(message, tag = "2")]
+        Component(super::SelectedComponent),
+        /// A view.
+        #[prost(message, tag = "3")]
+        View(super::SelectedView),
+        /// A container in the layout of the views.
+        #[prost(message, tag = "4")]
+        Container(super::SelectedContainer),
+        /// A recording or a blueprint.
+        #[prost(message, tag = "5")]
+        Recording(super::SelectedRecording),
+    }
+}
+impl ::prost::Name for SelectedItem {
+    const NAME: &'static str = "SelectedItem";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedItem".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedItem".into()
+    }
+}
+/// A selected entity, or one instance of it.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedEntity {
+    /// The entity path, e.g. `/world/robot`.
+    #[prost(string, tag = "1")]
+    pub entity_path: ::prost::alloc::string::String,
+    /// The index of the selected instance, e.g. one point of a point cloud. Absent when the whole
+    /// entity is selected.
+    #[prost(uint64, optional, tag = "2")]
+    pub instance: ::core::option::Option<u64>,
+    /// The view it was selected in, as a `view_id` from `GetState`. Absent when it was selected
+    /// outside of a view, e.g. in the time panel.
+    #[prost(message, optional, tag = "3")]
+    pub view_id: ::core::option::Option<Uuid>,
+}
+impl ::prost::Name for SelectedEntity {
+    const NAME: &'static str = "SelectedEntity";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedEntity".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedEntity".into()
+    }
+}
+/// A selected component of an entity.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedComponent {
+    /// The entity path, e.g. `/world/robot`.
+    #[prost(string, tag = "1")]
+    pub entity_path: ::prost::alloc::string::String,
+    /// The component, as `GetRecordingSchema` names it, e.g. `Points3D:positions`.
+    #[prost(string, tag = "2")]
+    pub component: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SelectedComponent {
+    const NAME: &'static str = "SelectedComponent";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedComponent".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedComponent".into()
+    }
+}
+/// A selected view.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedView {
+    /// The view id, as `GetState` reports it.
+    #[prost(message, optional, tag = "1")]
+    pub view_id: ::core::option::Option<Uuid>,
+}
+impl ::prost::Name for SelectedView {
+    const NAME: &'static str = "SelectedView";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedView".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedView".into()
+    }
+}
+/// A selected container.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedContainer {
+    /// The container id, as in the blueprint entity path `/container/<id>` of `GetBlueprint`.
+    #[prost(message, optional, tag = "1")]
+    pub container_id: ::core::option::Option<Uuid>,
+}
+impl ::prost::Name for SelectedContainer {
+    const NAME: &'static str = "SelectedContainer";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedContainer".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedContainer".into()
+    }
+}
+/// A selected recording or blueprint.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedRecording {
+    /// The store id, as `{kind}:{application_id}:{recording_id}`.
+    #[prost(string, tag = "1")]
+    pub store_id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SelectedRecording {
+    const NAME: &'static str = "SelectedRecording";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedRecording".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedRecording".into()
     }
 }
 /// Request for `GetState`. Empty: the whole state is always returned.

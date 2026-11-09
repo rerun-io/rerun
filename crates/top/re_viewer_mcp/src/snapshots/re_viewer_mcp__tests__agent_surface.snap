@@ -1071,6 +1071,24 @@ Conventions:
   }
 }
 
+## rerun_get_selection
+
+{
+  "name": "rerun_get_selection",
+  "description": "Report what the user has selected, in selection order, e.g. to answer \"why is this not shown?\".\n\nEntities and components belong to the active recording.\nBlueprint entities, servers, catalog entries, and similar are left out.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "description": "Request for `GetSelection`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
 ## rerun_get_state
 
 {

@@ -12117,6 +12117,7 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "url",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

@@ -22,8 +22,8 @@ use re_protos::viewer_control::v1alpha1::{
     GetBlueprintResponse, GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse,
     GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse,
     GetLogsRequest, GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse,
-    GetStateRequest, GetStateResponse, GetTableSchemaRequest, GetTableSchemaResponse,
-    HighlightRectRequest, HighlightRectResponse, OpenRequest, OpenResponse,
+    GetSelectionRequest, GetStateRequest, GetStateResponse, GetTableSchemaRequest,
+    GetTableSchemaResponse, HighlightRectRequest, HighlightRectResponse, OpenRequest, OpenResponse,
     RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse,
     ScreenRect, SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
     SetTimeCursorRequest, SetTimeCursorResponse, TableColumnSchema, TimeCursor,
@@ -46,6 +46,7 @@ use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
 mod blueprint;
 mod commands;
+mod selection;
 mod transform_graph;
 
 /// How many entities `get_recording_schema` describes when the request does not say.
@@ -455,6 +456,9 @@ impl AppCore {
                         );
                     }
                 }
+            }
+            Kind::GetSelection(GetSelectionRequest {}) => {
+                on_done.call(Ok(self.collect_selection(store_hub).into()));
             }
             Kind::GetState(GetStateRequest {}) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
