@@ -251,6 +251,10 @@ impl ViewerAgentPanel {
                     panel.ui(ui);
                 }
             });
+        if *open {
+            settings.panel_ever_opened = true;
+        }
+
         self.rect = response
             .filter(|_| *open)
             .map(|response| response.response.rect);
