@@ -8789,9 +8789,9 @@ dependencies = [
 
 [[package]]
 name = "quiver"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa4b67ff3fc53fdac8d985bbd8db693a0b1ca2860bdc7598fd04318f69e8b4f4"
+checksum = "e78fdb79160da70123c398dbec7ca47540896c89f76ace32a625d90af7e70167"
 dependencies = [
  "quiver_derive",
  "quiver_types",
@@ -8799,9 +8799,9 @@ dependencies = [
 
 [[package]]
 name = "quiver_derive"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7d5a8903a7773d8b42bf21db36097ad6cf69ff0548f0b89ea6d6a519347e4dd3"
+checksum = "84003a73d257c049229eed105389e7420af37a45c21e01d081bd93e6553a1e64"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -8810,9 +8810,9 @@ dependencies = [
 
 [[package]]
 name = "quiver_types"
-version = "0.6.1"
+version = "0.6.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "02028169904220de9932e9bc93c2a726117b0c126e7d932fb6e7694b42970332"
+checksum = "ed36a8a992727b809bc873a21841471ba6ebef36ce302f00bf9b6bed3c643bf5"
 dependencies = [
  "arrow",
  "bytemuck",

@@ -207,7 +207,7 @@ re_web = { path = "crates/utils/re_web", version = "=0.43.0-alpha.1", default-fe
 re_dump_puffin = { path = "crates/utils/re_dump_puffin", version = "=0.43.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-quiver = { version = "0.6.1", default-features = false }
+quiver = { version = "0.6.2", default-features = false }
 re_mp4 = "0.5.1"
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
