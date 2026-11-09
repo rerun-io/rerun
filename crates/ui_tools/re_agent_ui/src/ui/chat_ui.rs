@@ -788,28 +788,41 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
                 scroll_area.show(ui, |ui| tool_input_ui(ui, raw_input));
             }
 
-            ui.horizontal_wrapped(|ui| {
-                for option in &request.options {
-                    let button = match option.kind {
-                        PermissionOptionKind::AllowOnce => {
-                            egui::Button::new(&option.name).primary().size_small()
+            // Bound the row so right alignment does not stretch the UI vertically.
+            ui.allocate_ui_with_layout(
+                egui::vec2(ui.available_width(), re_ui::Size::Small.height()),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        for option in &request.options {
+                            let button = match option.kind {
+                                PermissionOptionKind::AllowOnce => {
+                                    egui::Button::new(&option.name).primary().size_small()
+                                }
+                                _ => egui::Button::new(&option.name).outlined().size_small(),
+                            };
+                            let clicked = ui.add(button).clicked();
+                            let shortcut = is_first
+                                && match option.kind {
+                                    PermissionOptionKind::AllowOnce => enter,
+                                    PermissionOptionKind::RejectOnce => escape,
+                                    _ => false,
+                                };
+                            if (clicked || shortcut) && answered.is_none() {
+                                answered = Some((index, option.option_id.clone()));
+                            }
                         }
-                        _ => egui::Button::new(&option.name).outlined().size_small(),
-                    };
-                    let clicked = ui.add(button).clicked();
-                    let shortcut = is_first
-                        && match option.kind {
-                            PermissionOptionKind::AllowOnce => enter,
-                            PermissionOptionKind::RejectOnce => escape,
-                            _ => false,
-                        };
-                    if (clicked || shortcut) && answered.is_none() {
-                        answered = Some((index, option.option_id.clone()));
-                    }
-                }
-            });
+                    });
+                },
+            );
             if is_first {
-                ui.weak("⏎ allow once · Esc reject once");
+                ui.allocate_ui_with_layout(
+                    egui::vec2(ui.available_width(), re_ui::Size::Small.height()),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    |ui| {
+                        ui.weak("Esc reject once · ⏎ allow once");
+                    },
+                );
             }
         });
     }
