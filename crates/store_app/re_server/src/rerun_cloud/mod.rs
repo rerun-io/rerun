@@ -41,11 +41,11 @@ use re_protos::missing_field;
 use re_protos::{
     EntryName,
     cloud::v1alpha1::ext::{
-        self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-        DataSource, EntryDetailsUpdate, QueryDatasetRequest, ReadDatasetEntryResponse,
-        ReadTableEntryResponse, TableInsertMode, UpdateDatasetEntryRequest,
-        UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
-        UpdateTableEntryRequest, UpdateTableEntryResponse,
+        self, ApplyDatasetPolicyRequest, ApplyDatasetPolicyResponse, CreateDatasetEntryRequest,
+        CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, EntryDetailsUpdate,
+        QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+        UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+        UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
     },
 };
 #[cfg(not(target_arch = "wasm32"))]
@@ -999,10 +999,8 @@ impl RerunCloudService for RerunCloudHandler {
         // datasets were introduced have none, so create the missing one on demand, and replace a
         // reference left dangling by a deleted asset dataset the same way.
         let dataset = store.dataset(request.id)?;
-        if dataset_details.policy.is_none() {
-            dataset_details.policy = dataset.dataset_details().policy.clone();
-        }
-        dataset_details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::ALL);
+        // Only `ApplyDatasetPolicy` changes the policy.
+        dataset_details.policy = dataset.dataset_details().policy.clone();
         let stored_asset_dataset = dataset.dataset_details().asset_dataset;
         let dataset_kind = dataset.dataset_kind();
         let client_chosen_asset_dataset = dataset_details.asset_dataset.is_some()
@@ -1024,6 +1022,30 @@ impl RerunCloudService for RerunCloudHandler {
         Ok(tonic::Response::new(
             UpdateDatasetEntryResponse {
                 dataset_entry: dataset.as_dataset_entry(),
+            }
+            .into(),
+        ))
+    }
+
+    async fn apply_dataset_policy(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::ApplyDatasetPolicyRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ApplyDatasetPolicyResponse>>
+    {
+        let mut store = self.store.write().await;
+        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let ApplyDatasetPolicyRequest { mut policy } = request.into_inner().try_into()?;
+        policy.resolve_chunk_indexing_policy(ChunkIndexingPolicy::ALL);
+
+        let dataset = store.dataset_mut(entry_id)?;
+        let mut dataset_details = dataset.dataset_details().clone();
+        dataset_details.policy = Some(policy);
+        dataset.set_dataset_details(dataset_details);
+
+        Ok(tonic::Response::new(
+            ApplyDatasetPolicyResponse {
+                dataset_entry: dataset.as_dataset_entry(),
+                task_ids: Vec::new(),
             }
             .into(),
         ))

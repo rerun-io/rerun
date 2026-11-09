@@ -37,6 +37,25 @@ pyo3::create_exception!(
     "Raised when trying to create a resource that already exists."
 );
 
+pyo3::create_exception!(
+    rerun_bindings.rerun_bindings,
+    ChunkNotIndexedError,
+    PyException,
+    "Raised when a query names an entity path or timeline the dataset's chunk indexing policy excludes."
+);
+
+fn is_chunk_not_indexed(err: &re_redap_client::ApiError) -> bool {
+    use re_protos::external::tonic_types::StatusExt as _;
+    err.source
+        .as_ref()
+        .and_then(|source| source.downcast_ref::<TonicStatusError>())
+        .and_then(|status| status.as_ref().get_details_error_info())
+        .is_some_and(|info| {
+            info.domain == re_protos::error::ERROR_DOMAIN
+                && info.reason == re_protos::error::CHUNK_NOT_INDEXED
+        })
+}
+
 // ---
 
 /// Private error type to server as a bridge between various external error type and the
@@ -194,6 +213,9 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
                 ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
+                ApiErrorKind::FailedPrecondition if is_chunk_not_indexed(&err) => {
+                    ChunkNotIndexedError::new_err(err.to_string())
+                }
                 ApiErrorKind::Unimplemented
                 | ApiErrorKind::Internal
                 | ApiErrorKind::FailedPrecondition => PyRuntimeError::new_err(err.to_string()),

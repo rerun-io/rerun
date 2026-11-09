@@ -43,7 +43,9 @@ if TYPE_CHECKING:
 
     from . import (
         CatalogClient,
+        ChunkIndexingPolicy,
         DatasetInfo,
+        DatasetPolicyHandle,
         EntryKind,
         IndexValuesLike,
         Layer,
@@ -69,6 +71,22 @@ class OnDuplicateSegmentLayer(StrEnum):
     ERROR = "error"
     SKIP = "skip"
     REPLACE = "replace"
+
+
+class DatasetQueryScope(StrEnum):
+    """
+    Which columns a dataset schema or reader covers.
+
+    The OSS server ignores the scope.
+
+    Attributes:
+        FULL: Every entity path and timeline in the dataset, indexed or not.
+        INDEXED: Only the entity paths and timelines the dataset's chunk indexing policy indexes.
+
+    """
+
+    FULL = "full"
+    INDEXED = "indexed"
 
 
 #: Maps the user-facing asset mode to the string stored in the `asset` property's `mode` component.
@@ -217,6 +235,46 @@ class Entry(ABC, Generic[InternalEntryT]):
 
 class DatasetEntry(Entry[DatasetEntryInternal]):
     """A dataset entry in the catalog."""
+
+    @property
+    def chunk_indexing_policy(self) -> ChunkIndexingPolicy | None:
+        """
+        The dataset's chunk indexing policy.
+
+        This is the value from when the entry was fetched or last set through it.
+        Fetch the entry again to see changes made elsewhere.
+        `None` on servers that don't support chunk indexing policies.
+        """
+        from ._chunk_indexing_policy import ChunkIndexingPolicy
+
+        policy = self._internal.chunk_indexing_policy()
+        if policy is None:
+            return None
+        entity_paths, timelines = policy
+        return ChunkIndexingPolicy(entity_paths=entity_paths, timelines=timelines)
+
+    def set_chunk_indexing_policy(self, policy: ChunkIndexingPolicy | None) -> DatasetPolicyHandle:
+        """
+        Set which entity paths and timelines the dataset indexes.
+
+        On Rerun Hub, this re-indexes the registered segments in the background and returns
+        before that finishes. Call `wait()` on the returned handle to block until it does.
+
+        Parameters
+        ----------
+        policy
+            The new policy. Expand wildcard entity paths with
+            [`ChunkIndexingPolicy.match`][rerun.catalog.ChunkIndexingPolicy.match] first.
+            `None` resets the dataset to index everything.
+
+        """
+        from ._dataset_policy_handle import DatasetPolicyHandle
+
+        return DatasetPolicyHandle(
+            self._internal.set_chunk_indexing_policy(
+                None if policy is None else (policy.entity_paths, policy.timelines)
+            )
+        )
 
     @property
     def manifest_url(self) -> str:
@@ -591,11 +649,11 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         ds = self._internal.asset_dataset()
         return None if ds is None else DatasetEntry(ds)
 
-    def schema(self) -> Schema:
-        """Return the schema of the data contained in the dataset."""
+    def schema(self, *, scope: DatasetQueryScope = DatasetQueryScope.FULL) -> Schema:
+        """Return the schema of the data contained in the dataset, for the given `scope`."""
         from ._schema import Schema
 
-        return Schema(self._internal.schema())
+        return Schema(self._internal.schema(scope=scope))
 
     @with_tracing("DatasetEntry.info")
     def info(self) -> DatasetInfo:
@@ -1222,6 +1280,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
         using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | IndexValuesLike | None = None,
+        scope: DatasetQueryScope = DatasetQueryScope.FULL,
     ) -> datafusion.DataFrame:
         """
         Create a reader over this dataset.
@@ -1296,6 +1355,8 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 Unknown segment IDs are silently ignored — they contribute no
                 rows to the result. Validate client-side if you need to catch
                 unknown segment IDs.
+        scope
+            Which schema the reader uses. See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope].
 
         Returns
         -------
@@ -1310,6 +1371,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             include_tombstone_columns=include_tombstone_columns,
             fill_latest_at=fill_latest_at,
             using_index_values=using_index_values,
+            scope=scope,
         )
 
     def do_maintenance(  # noqa: PLR0917
@@ -1397,13 +1459,18 @@ class DatasetSelection:
     def dataset(self) -> DatasetEntry:
         return DatasetEntry(self._internal.dataset)
 
-    def schema(self) -> Schema:
+    def schema(self, *, scope: DatasetQueryScope = DatasetQueryScope.FULL) -> Schema:
         """
         Return the filtered schema for this selection.
 
         The schema covers only the selected segments, and reflects any content filters applied to the selection.
         A segment filter requires a server running Rerun 0.41 or Rerun Hub 0.20 or later.
         Use `selection.dataset.schema()` for the schema of the whole dataset.
+
+        Parameters
+        ----------
+        scope
+            Which data the schema covers. See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope].
 
         Returns
         -------
@@ -1413,11 +1480,16 @@ class DatasetSelection:
         """
         from ._schema import Schema
 
-        return Schema(self._internal.schema())
+        return Schema(self._internal.schema(scope=scope))
 
-    def arrow_schema(self) -> pa.Schema:
+    def arrow_schema(self, *, scope: DatasetQueryScope = DatasetQueryScope.FULL) -> pa.Schema:
         """
         Return the filtered Arrow schema for this selection.
+
+        Parameters
+        ----------
+        scope
+            Which data the schema covers. See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope].
 
         Returns
         -------
@@ -1425,7 +1497,7 @@ class DatasetSelection:
             The filtered Arrow schema.
 
         """
-        return self._internal.arrow_schema()
+        return self._internal.arrow_schema(scope=scope)
 
     @with_tracing("DatasetSelection.info")
     def info(self) -> DatasetInfo:
@@ -1504,6 +1576,7 @@ class DatasetSelection:
         include_tombstone_columns: bool = False,
         using_index_values: dict[str, IndexValuesLike] | datafusion.DataFrame | IndexValuesLike | None = None,
         fill_latest_at: bool = False,
+        scope: DatasetQueryScope = DatasetQueryScope.FULL,
     ) -> datafusion.DataFrame:
         """
         Create a reader over this DatasetSelection.
@@ -1578,6 +1651,8 @@ class DatasetSelection:
                 unknown segment IDs.
         fill_latest_at
             Whether to fill null values with the latest valid data.
+        scope
+            Which schema the reader uses. See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope].
 
         Returns
         -------
@@ -1592,6 +1667,7 @@ class DatasetSelection:
             include_tombstone_columns=include_tombstone_columns,
             fill_latest_at=fill_latest_at,
             using_index_values=index_values_dict,
+            scope=scope,
         )
 
     def _read_arrow(

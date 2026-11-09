@@ -4,6 +4,7 @@ from typing import Any
 
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
+    ChunkNotIndexedError as ChunkNotIndexedError,
     ComponentColumnDescriptor as ComponentColumnDescriptor,
     ComponentColumnSelector as ComponentColumnSelector,
     EntryId as EntryId,
@@ -17,6 +18,7 @@ from rerun_bindings.types import (
 )
 
 from ._catalog_client import CatalogClient as CatalogClient, VersionInfo as VersionInfo
+from ._chunk_indexing_policy import ChunkIndexingPolicy as ChunkIndexingPolicy
 from ._content_filter import ContentFilter as ContentFilter
 from ._dataset_info import (
     DatasetInfo as DatasetInfo,
@@ -24,8 +26,10 @@ from ._dataset_info import (
     TimelineInfo as TimelineInfo,
     TimelineKind as TimelineKind,
 )
+from ._dataset_policy_handle import DatasetPolicyHandle as DatasetPolicyHandle
 from ._entry import (
     DatasetEntry as DatasetEntry,
+    DatasetQueryScope as DatasetQueryScope,
     DatasetSelection as DatasetSelection,
     Entry as Entry,
     OnDuplicateSegmentLayer as OnDuplicateSegmentLayer,

@@ -1,12 +1,14 @@
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::ext::{
-    ChunkIndexingPolicy, CreateDatasetEntryRequest, DatasetDetails, DatasetEntry, DatasetPolicy,
-    EntryDetailsUpdate, IndexingPolicySelection, TableDetails, TableEntry,
-    UpdateDatasetEntryRequest, UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
+    ApplyDatasetPolicyRequest, ApplyDatasetPolicyResponse, ChunkIndexingPolicy,
+    CreateDatasetEntryRequest, DatasetDetails, DatasetEntry, DatasetPolicy, EntryDetailsUpdate,
+    IndexingPolicySelection, TableDetails, TableEntry, UpdateDatasetEntryRequest,
+    UpdateEntryRequest, UpdateEntryResponse, UpdateTableEntryRequest,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{DeleteEntryRequest, ReadTableEntryRequest};
 use re_protos::common::v1alpha1::ext::SegmentId;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use super::common::{create_table_entry_with_name, entry_name};
 
@@ -442,8 +444,8 @@ pub async fn update_dataset_entry_keeps_asset_dataset(service: impl RerunCloudSe
     );
 }
 
-/// Updating a dataset without a policy keeps the stored one, so a client that does not know the
-/// field cannot clear it.
+/// Updating a dataset keeps the stored policy, whatever the request's policy: only
+/// `ApplyDatasetPolicy` changes it.
 pub async fn update_dataset_entry_keeps_policy(service: impl RerunCloudService) {
     let policy = DatasetPolicy {
         chunk_indexing_policy: Some(ChunkIndexingPolicy {
@@ -468,22 +470,58 @@ pub async fn update_dataset_entry_keeps_policy(service: impl RerunCloudService) 
         .try_into()
         .expect("ext conversion");
 
-    let updated = update_dataset_entry(
-        &service,
-        UpdateDatasetEntryRequest {
-            id: dataset_entry.details.id,
-            dataset_details: DatasetDetails {
-                blueprint_dataset: dataset_entry.dataset_details.blueprint_dataset,
-                asset_dataset: None,
-                default_blueprint_segment: None,
-                default_segment_table_blueprint_segment: None,
-                policy: None,
+    for requested in [None, Some(DatasetPolicy::default())] {
+        let updated = update_dataset_entry(
+            &service,
+            UpdateDatasetEntryRequest {
+                id: dataset_entry.details.id,
+                dataset_details: DatasetDetails {
+                    blueprint_dataset: dataset_entry.dataset_details.blueprint_dataset,
+                    asset_dataset: None,
+                    default_blueprint_segment: None,
+                    default_segment_table_blueprint_segment: None,
+                    policy: requested.clone(),
+                },
             },
-        },
-    )
-    .await
-    .expect("update should succeed");
-    assert_eq!(updated.dataset_details.policy, Some(policy));
+        )
+        .await
+        .expect("update should succeed");
+        assert_eq!(
+            updated.dataset_details.policy,
+            Some(policy.clone()),
+            "{requested:?}"
+        );
+    }
+}
+
+/// `ApplyDatasetPolicy` stores the policy, and an omitted chunk indexing policy indexes everything.
+pub async fn apply_dataset_policy_stores_the_policy(service: impl RerunCloudService) {
+    let dataset_id = create_dataset_entry(&service, "dataset_apply_policy")
+        .await
+        .unwrap()
+        .details
+        .id;
+
+    let robot = DatasetPolicy {
+        chunk_indexing_policy: Some(ChunkIndexingPolicy {
+            entity_paths: IndexingPolicySelection::Explicit(["/robot".to_owned()].into()),
+            timelines: IndexingPolicySelection::All,
+        }),
+    };
+    let applied = apply_dataset_policy(&service, dataset_id, robot.clone())
+        .await
+        .expect("apply should succeed");
+    assert_eq!(applied.dataset_details.policy, Some(robot));
+
+    let reset = apply_dataset_policy(&service, dataset_id, DatasetPolicy::default())
+        .await
+        .expect("apply should succeed");
+    assert_eq!(
+        reset.dataset_details.policy,
+        Some(DatasetPolicy {
+            chunk_indexing_policy: Some(ChunkIndexingPolicy::ALL),
+        })
+    );
 }
 
 /// The server rejects a `IndexingPolicySelection` with neither variant set, before it stores anything.
@@ -734,6 +772,24 @@ async fn update_dataset_entry(
         .update_dataset_entry(tonic::Request::new(request.into()))
         .await
         .map(|response| response.into_inner().dataset.unwrap().try_into().unwrap())
+}
+
+async fn apply_dataset_policy(
+    service: &impl RerunCloudService,
+    dataset_id: EntryId,
+    policy: DatasetPolicy,
+) -> tonic::Result<DatasetEntry> {
+    service
+        .apply_dataset_policy(
+            tonic::Request::new(ApplyDatasetPolicyRequest { policy }.into())
+                .with_entry_id(dataset_id),
+        )
+        .await
+        .map(|response| {
+            ApplyDatasetPolicyResponse::try_from(response.into_inner())
+                .unwrap()
+                .dataset_entry
+        })
 }
 
 async fn update_table_entry(

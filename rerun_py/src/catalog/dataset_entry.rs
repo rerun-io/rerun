@@ -7,17 +7,19 @@ use arrow::datatypes::Schema as ArrowSchema;
 use arrow::pyarrow::PyArrowType;
 use parking_lot::Mutex;
 use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
-use pyo3::types::PyAnyMethods as _;
+use pyo3::types::{PyAnyMethods as _, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
 use re_catalog_client::DatasetSelection;
 use re_chunk_store::LazyStore;
 use re_datafusion::{DatasetManifestProvider, SegmentTableProvider};
 use re_log_types::EntryId;
+use re_protos::cloud::v1alpha1::DatasetQueryScope;
 use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails, ObjectKey};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_redap_client::{DatasetSchema, SegmentChunkProvider};
 use re_types_core::LayerName;
 
+use super::chunk_indexing_policy::{PyNameSelection, to_policy, to_py_tuple};
 use super::registration_handle::PyRegistrationHandleInternal;
 use super::write_operation::PyWriteOperationInternal;
 use super::{
@@ -26,6 +28,7 @@ use super::{
 };
 use crate::catalog::PySchemaInternal;
 use crate::catalog::entry::set_entry_name;
+use crate::catalog::policy_handle::PyDatasetPolicyHandleInternal;
 use crate::catalog::unregistration_handle::PyUnregistrationHandleInternal;
 use crate::chunk_stream::lazy_store::PyLazyStoreInternal;
 use crate::trace_context::read_trace_context_from_python;
@@ -168,6 +171,46 @@ impl PyDatasetEntryInternal {
     //
     // Dataset entry methods
     //
+
+    /// The stored policy as `(entity_paths, timelines)`, each a sorted list or `"all"`.
+    ///
+    /// `None` if the server reported no policy.
+    fn chunk_indexing_policy(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+    ) -> PyResult<Option<Py<PyTuple>>> {
+        self_
+            .dataset_details
+            .policy
+            .as_ref()
+            .and_then(|policy| policy.chunk_indexing_policy.as_ref())
+            .map(|policy| to_py_tuple(py, policy))
+            .transpose()
+    }
+
+    /// Applies the policy to the dataset. `None` resets the dataset to index everything.
+    #[pyo3(signature = (policy))]
+    fn set_chunk_indexing_policy(
+        mut self_: PyRefMut<'_, Self>,
+        py: Python<'_>,
+        policy: Option<(PyNameSelection, PyNameSelection)>,
+    ) -> PyResult<PyDatasetPolicyHandleInternal> {
+        let _span =
+            read_trace_context_from_python(py, "DatasetEntry.set_chunk_indexing_policy").entered();
+        let chunk_indexing_policy = policy
+            .map(|(entity_paths, timelines)| to_policy(entity_paths, timelines))
+            .transpose()?;
+        let policy = re_protos::cloud::v1alpha1::ext::DatasetPolicy {
+            chunk_indexing_policy,
+        };
+        let connection = self_.client.borrow(py).connection().clone();
+        let result = connection.apply_dataset_policy(py, self_.entry_details.id, policy)?;
+        self_.dataset_details = result.dataset_entry.dataset_details;
+        Ok(PyDatasetPolicyHandleInternal::new(
+            self_.client.clone_ref(py),
+            result.task_ids,
+        ))
+    }
 
     fn segment(self_: PyRef<'_, Self>, segment_id: String) -> PyResult<super::PySegmentInternal> {
         let py = self_.py();
@@ -401,9 +444,13 @@ impl PyDatasetEntryInternal {
     }
 
     /// Return the schema of the data contained in the dataset.
-    fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
+    #[pyo3(signature = (*, scope = "full"))]
+    fn schema(self_: PyRef<'_, Self>, scope: &str) -> PyResult<PySchemaInternal> {
         let _span = read_trace_context_from_python(self_.py(), "DatasetEntry.schema").entered();
-        PySchemaInternal::from_arrow_schema(Self::fetch_arrow_schema(&self_)?)
+        PySchemaInternal::from_arrow_schema(Self::fetch_arrow_schema(
+            &self_,
+            parse_dataset_scope(scope)?,
+        )?)
     }
 
     /// Returns a list of segment IDs for the dataset.
@@ -955,32 +1002,44 @@ impl PyDatasetEntryInternal {
 }
 
 impl PyDatasetEntryInternal {
-    /// The dataset's schema, reused while this process has seen no newer dataset revision.
+    /// The dataset's schema for `scope`, reused while this process has seen no newer dataset
+    /// revision.
+    ///
+    /// Only the full scope is cached. Other scopes always fetch from the server.
     ///
     /// A change made by another client is not seen until some response for this dataset advances
     /// the watermark, e.g. the first response of a query.
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn cached_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
+    pub fn cached_arrow_schema(
+        self_: &PyRef<'_, Self>,
+        scope: DatasetQueryScope,
+    ) -> PyResult<ArrowSchema> {
         let revision = re_redap_client::dataset_revisions().get(self_.entry_details.id);
 
-        if let Some(revision) = revision
+        if scope == DatasetQueryScope::Full
+            && let Some(revision) = revision
             && let Some(cached) = self_.dataset_schema.try_get(revision)
         {
             return Ok(cached);
         }
 
-        Self::fetch_arrow_schema(self_)
+        Self::fetch_arrow_schema(self_, scope)
     }
 
-    /// The dataset's current schema, fetched from the server.
+    /// The dataset's current schema for `scope`, fetched from the server.
     ///
-    /// Refreshes the schema served by [`Self::cached_arrow_schema`].
+    /// A full-scope fetch refreshes the schema served by [`Self::cached_arrow_schema`].
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn fetch_arrow_schema(self_: &PyRef<'_, Self>) -> PyResult<ArrowSchema> {
+    pub fn fetch_arrow_schema(
+        self_: &PyRef<'_, Self>,
+        scope: DatasetQueryScope,
+    ) -> PyResult<ArrowSchema> {
         let connection = self_.client.borrow(self_.py()).connection().clone();
-        let ds_schema = connection.get_dataset_schema(self_.py(), self_.entry_details.id)?;
+        let ds_schema = connection.get_dataset_schema(self_.py(), self_.entry_details.id, scope)?;
 
-        self_.dataset_schema.observe(&ds_schema);
+        if scope == DatasetQueryScope::Full {
+            self_.dataset_schema.observe(&ds_schema);
+        }
 
         Ok(ds_schema.schema)
     }
@@ -1002,6 +1061,17 @@ impl WriteKind {
                 "invalid write kind: {kind:?}. Expected 'asset', 'blueprint', or 'segment'"
             ))),
         }
+    }
+}
+
+/// Parse the Python `scope` string into the corresponding `DatasetQueryScope`.
+pub fn parse_dataset_scope(scope: &str) -> PyResult<DatasetQueryScope> {
+    match scope {
+        "full" => Ok(DatasetQueryScope::Full),
+        "indexed" => Ok(DatasetQueryScope::Indexed),
+        _ => Err(PyValueError::new_err(format!(
+            "invalid scope value: '{scope}'. Expected 'full' or 'indexed'"
+        ))),
     }
 }
 

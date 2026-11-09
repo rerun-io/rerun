@@ -10,8 +10,8 @@ use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DatasetDetails, DatasetEntry, EntryDetails, ObjectKey, TableDetails, TableEntry,
-    VersionResponse,
+    ApplyDatasetPolicyResponse, DataSource, DatasetDetails, DatasetEntry, DatasetPolicy,
+    EntryDetails, ObjectKey, TableDetails, TableEntry, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::{DatasetQueryScope, EntryFilter};
 use re_protos::common::v1alpha1::TaskId;
@@ -208,6 +208,21 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    pub fn apply_dataset_policy(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        policy: DatasetPolicy,
+    ) -> PyResult<ApplyDatasetPolicyResponse> {
+        wait_for_future(py, async {
+            self.inner
+                .apply_dataset_policy(entry_id, policy)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn get_dataset_segment_ids(
         &self,
         py: Python<'_>,
@@ -392,10 +407,15 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetSchema> {
+    pub fn get_dataset_schema(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        scope: DatasetQueryScope,
+    ) -> PyResult<DatasetSchema> {
         wait_for_future(py, async {
             self.inner
-                .get_dataset_schema(entry_id, DatasetQueryScope::Full)
+                .get_dataset_schema(entry_id, scope)
                 .await
                 .map_err(to_py_err)
         })

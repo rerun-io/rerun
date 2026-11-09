@@ -20,10 +20,13 @@ use re_catalog_client::DatasetSelection;
 use re_chunk_store::{QueryExpression, SparseFillStrategy, TimeInt, ViewContentsSelector};
 use re_datafusion::DataframeQueryTableProvider;
 use re_log_types::EntityPathFilter;
+use re_protos::cloud::v1alpha1::DatasetQueryScope;
 use re_redap_client::ApiErrorKind;
 use re_sorbet::ColumnDescriptor;
 use re_types_core::SegmentId;
 
+use super::chunk_indexing_policy::matching_entity_paths;
+use super::dataset_entry::parse_dataset_scope;
 use crate::catalog::{
     IndexValuesLike, PyDatasetEntryInternal, PyDatasetInfoInternal, PySchemaInternal,
     PyTableProviderAdapterInternal, to_py_err,
@@ -104,9 +107,11 @@ impl PyDatasetSelectionInternal {
     }
 
     /// Return the schema of the data contained in this selection.
-    fn schema(self_: PyRef<'_, Self>) -> PyResult<PySchemaInternal> {
+    #[pyo3(signature = (*, scope = "full"))]
+    fn schema(self_: PyRef<'_, Self>, scope: &str) -> PyResult<PySchemaInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetSelection.schema").entered();
+        let scope = parse_dataset_scope(scope)?;
         let connection = self_
             .dataset
             .borrow(py)
@@ -118,7 +123,7 @@ impl PyDatasetSelectionInternal {
         let schema = wait_for_future(py, async {
             connection
                 .inner()
-                .get_selection_schema(&selection)
+                .get_selection_schema(&selection, scope)
                 .await
                 .map_err(|mut err| {
                     //TODO(RR-6250): remove this when all production servers support /GetSchemas
@@ -134,10 +139,11 @@ impl PyDatasetSelectionInternal {
     }
 
     /// Return the Arrow schema of the data contained in this selection.
-    fn arrow_schema(self_: PyRef<'_, Self>) -> PyResult<PyArrowType<ArrowSchema>> {
+    #[pyo3(signature = (*, scope = "full"))]
+    fn arrow_schema(self_: PyRef<'_, Self>, scope: &str) -> PyResult<PyArrowType<ArrowSchema>> {
         let _span =
             read_trace_context_from_python(self_.py(), "DatasetSelection.arrow_schema").entered();
-        Ok(Self::schema(self_)?.into_arrow_schema().into())
+        Ok(Self::schema(self_, scope)?.into_arrow_schema().into())
     }
 
     /// Return an overview of the segments and contents this selection keeps.
@@ -225,6 +231,8 @@ impl PyDatasetSelectionInternal {
     ///     Whether to fill null values with the latest valid data.
     /// using_index_values : IndexValuesLike | None
     ///     If provided, the specific index values to sample from all segments.
+    /// scope : str
+    ///     Which schema the reader uses: `"full"` or `"indexed"`.
     #[expect(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
@@ -233,6 +241,7 @@ impl PyDatasetSelectionInternal {
         include_tombstone_columns = false,
         fill_latest_at = false,
         using_index_values = None,
+        scope = "full",
     ))]
     fn reader<'py>(
         self_: PyRef<'py, Self>,
@@ -241,6 +250,7 @@ impl PyDatasetSelectionInternal {
         include_tombstone_columns: bool,
         fill_latest_at: bool,
         using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
+        scope: &str,
     ) -> PyResult<Bound<'py, PyAny>> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetSelection.reader").entered();
@@ -257,6 +267,7 @@ impl PyDatasetSelectionInternal {
             include_tombstone_columns,
             fill_latest_at,
             using_index_values,
+            parse_dataset_scope(scope)?,
         )?;
 
         let table = PyTableProviderAdapterInternal::new(provider);
@@ -311,6 +322,7 @@ impl PyDatasetSelectionInternal {
             include_tombstone_columns,
             fill_latest_at,
             using_index_values,
+            DatasetQueryScope::Full,
         )?;
 
         let stream =
@@ -444,6 +456,8 @@ fn has_index(schema: &ArrowSchema, index: &str) -> bool {
 }
 
 /// Build a `ViewContentsSelector` from the selection's content filters.
+///
+/// Keeps exact paths the schema lacks, so the server can tell unindexed paths from unknown ones.
 fn build_view_contents(schema: &ArrowSchema, selection: &DatasetSelection) -> ViewContentsSelector {
     // Like `DatasetEntry.reader()`, dataframe queries exclude properties unless a content filter names them.
     let selection = if selection.content_filters().is_empty() {
@@ -452,19 +466,18 @@ fn build_view_contents(schema: &ArrowSchema, selection: &DatasetSelection) -> Vi
         selection.clone()
     };
 
-    schema
+    let schema_entity_paths = schema
         .fields()
         .iter()
         .filter_map(|field| ColumnDescriptor::try_from_arrow_field(None, field.as_ref()).ok())
-        .filter_map(|descriptor| {
-            if let ColumnDescriptor::Component(component) = descriptor {
-                Some(component)
-            } else {
-                None
-            }
-        })
-        .filter(|comp| selection.selects_entity(&comp.entity_path))
-        .map(|comp| (comp.entity_path.clone(), None))
+        .filter_map(|descriptor| match descriptor {
+            ColumnDescriptor::Component(component) => Some(component.entity_path),
+            ColumnDescriptor::RowId(_) | ColumnDescriptor::Time(_) => None,
+        });
+
+    matching_entity_paths(schema_entity_paths, selection.content_filters())
+        .into_iter()
+        .map(|entity_path| (entity_path, None))
         .collect()
 }
 
@@ -479,10 +492,11 @@ fn build_dataframe_query_table_provider(
     include_tombstone_columns: bool,
     fill_latest_at: bool,
     using_index_values: Option<BTreeMap<SegmentId, BTreeSet<TimeInt>>>,
+    scope: DatasetQueryScope,
 ) -> PyResult<Arc<dyn TableProvider + Send>> {
     let dataset_ref = dataset.borrow(py);
     let dataset_id = dataset_ref.entry_id();
-    let mut schema = PyDatasetEntryInternal::cached_arrow_schema(&dataset_ref)?;
+    let mut schema = PyDatasetEntryInternal::cached_arrow_schema(&dataset_ref, scope)?;
 
     // Error if the queried index is unknown.
     if let Some(index) = index.as_deref() {
@@ -490,13 +504,28 @@ fn build_dataframe_query_table_provider(
         // watermark: an index added by another client would stay invisible on this handle. Refetch
         // once before giving up.
         if !has_index(&schema, index) {
-            schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset_ref)?;
+            schema = PyDatasetEntryInternal::fetch_arrow_schema(&dataset_ref, scope)?;
         }
 
+        // The indexed schema omits both excluded and unknown timelines. The full schema
+        // distinguishes a policy error from an unknown index.
         if !has_index(&schema, index) {
-            return Err(PyValueError::new_err(format!(
-                "Index '{index}' does not exist in the dataset."
-            )));
+            let unindexed = scope == DatasetQueryScope::Indexed
+                && has_index(
+                    &PyDatasetEntryInternal::fetch_arrow_schema(
+                        &dataset_ref,
+                        DatasetQueryScope::Full,
+                    )?,
+                    index,
+                );
+            return Err(if unindexed {
+                super::errors::ChunkNotIndexedError::new_err(format!(
+                    "timeline {index:?} is not indexed by this dataset's chunk indexing policy; add it \
+                     with `DatasetEntry.set_chunk_indexing_policy`"
+                ))
+            } else {
+                PyValueError::new_err(format!("Index '{index}' does not exist in the dataset."))
+            });
         }
     }
 

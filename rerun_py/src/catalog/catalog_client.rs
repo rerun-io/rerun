@@ -10,6 +10,7 @@ use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
 use re_datafusion::{NoOpObjectStoreAuthenticator, ObjectStoreAuthenticator};
 
+use crate::catalog::chunk_indexing_policy::{PyNameSelection, to_policy};
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProviderList;
 use crate::catalog::{
     AnyObjectStoreAuthenticator, PyConnectionHandle, PyDatasetEntryInternal, PyEntryId,
@@ -414,14 +415,25 @@ impl PyCatalogClientInternal {
     // ---
 
     /// Create a new dataset with the provided name.
+    #[pyo3(signature = (name, chunk_indexing_policy = None))]
     fn create_dataset(
         self_: Py<Self>,
         py: Python<'_>,
         name: &str,
+        chunk_indexing_policy: Option<(PyNameSelection, PyNameSelection)>,
     ) -> PyResult<Py<PyDatasetEntryInternal>> {
         let _span = read_trace_context_from_python(py, "CatalogClient.create_dataset").entered();
         let connection = self_.borrow_mut(py).connection.clone();
-        let dataset_entry = connection.create_dataset(py, name.to_owned(), None)?;
+
+        let policy = chunk_indexing_policy
+            .map(|(entity_paths, timelines)| to_policy(entity_paths, timelines))
+            .transpose()?
+            .map(
+                |chunk_indexing_policy| re_protos::cloud::v1alpha1::ext::DatasetPolicy {
+                    chunk_indexing_policy: Some(chunk_indexing_policy),
+                },
+            );
+        let dataset_entry = connection.create_dataset(py, name.to_owned(), policy)?;
 
         Py::new(
             py,
