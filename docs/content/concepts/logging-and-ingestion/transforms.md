@@ -167,8 +167,30 @@ With the right setup, pinholes allow a bunch of powerful visualizations:
 * 3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
     * Both the [nuscenes](https://rerun.io/examples/robotics/nuscenes_dataset) and [arkit](https://rerun.io/examples/spatial-computing/arkit_scenes) examples make use of this
 
-If a transform frame relationship has both a pinhole projection & regular transforms (in this context often regarded as the camera extrinsics),
-the regular transform is applied first.
+A transform frame relationship can have both a `Pinhole` and a regular `Transform3D` (in this context often regarded as the camera extrinsics).
+Both are used: the `Transform3D` places the camera in the parent space, and the `Pinhole` projects from the camera's 3D space onto the 2D image.
+So when going from the parent 3D space to the image, the regular transform is applied first, then the projection.
+
+#### Sizing the frustum
+
+The `Pinhole` archetype has three fields that only change how the camera looks in 3D views:
+
+- `image_plane_distance`: how far from the camera origin the image plane (and thus the frustum) is drawn.
+  It does not affect the projection.
+  By default, it is derived from the size of the scene.
+- `color`: the color of the frustum wireframe.
+- `line_width`: the width of the frustum wireframe lines.
+
+```python
+rr.log(
+    "world/camera",
+    rr.Pinhole(focal_length=500, width=640, height=480, image_plane_distance=0.5, color=[255, 128, 0], line_width=0.01),
+)
+```
+
+You can also set these for all cameras in a view with a [view default](../visualization/customize-views.md#per-view-component-default), e.g. `rrb.Spatial3DView(defaults=[rr.Pinhole.from_fields(image_plane_distance=0.5)])`.
+
+A [`DepthImage`](../../reference/types/archetypes/depth_image.md) logged under a pinhole entity is back-projected into a 3D point cloud in 3D views, using the pinhole's intrinsics.
 
 #### Example: 3D scene with 2D projections
 
@@ -239,6 +261,48 @@ snippet: archetypes/mesh3d_instancing
 In this example, the mesh at `"shape"` is instantiated four times with different translations and rotations.
 The box at `"shape/box"` is not affected by its parent's instance poses and appears only once.
 
+## Rotation conventions and precision
+
+- **Quaternions are `xyzw`**, with the scalar last: `rr.Quaternion(xyzw=[x, y, z, w])`.
+  Libraries such as Eigen or ROS messages may store them in a different order, so check before passing them on.
+- **There are no Euler angles.**
+  Convert them yourself, e.g. with `scipy.spatial.transform.Rotation.from_euler("xyz", angles).as_quat()` (which also returns `xyzw`).
+  You can also use `rr.RotationAxisAngle(axis=…, degrees=…)` or a 3×3 matrix (`mat3x3`).
+- **Order of operations:** the components of `Transform3D` are applied in the reverse order they are listed: `mat3x3` first, then `scale`, then the rotation, then `translation`.
+- **Transforms are 32-bit floats.**
+  All transform values (translation, rotation, scale, and matrices) are stored as `Float32`, so 64-bit values are converted when logged.
+  Very large coordinates, such as GPS or UTM positions, lose precision and can make the scene jitter.
+  Subtract a local origin before logging so the values stay small.
+  64-bit transforms are [not supported yet](../../development/roadmap.md#missing-features).
+
+## Visualizing transforms
+
+In 3D views, a transform can be shown as three axis arrows (red, green, and blue for X, Y, and Z).
+
+- The arrows are shown when the entity has a [`TransformAxes3D`](../../reference/types/archetypes/transform_axes3d.md) archetype, and automatically for entities with a `Pinhole`.
+  A `Transform3D` alone shows no arrows.
+  To show them, log `TransformAxes3D` on the same entity:
+
+  ```python
+  rr.log("robot/arm", rr.Transform3D(translation=[0, 1, 0]), rr.TransformAxes3D(axis_length=0.5))
+  ```
+
+- `axis_length` sets the arrow length, in the local units of the transform.
+  You can also set it with a blueprint override or [view default](../visualization/customize-views.md#per-view-component-default).
+- To hide the arrows, select the entity and remove the `TransformAxes3D` visualizer in the selection panel.
+- To show axes at the origin of the 3D view itself, set `show_axes` on the view: `rrb.Spatial3DView(spatial_information=rrb.SpatialInformation(show_axes=True))`.
+
+## Reading transforms back
+
+There is no SDK API that resolves the final pose of an entity in the world (the composition of all transforms up the tree).
+
+You can:
+
+- Query the logged `Transform3D` (and `Pinhole`) columns with the [dataframe API](../../howto/query-and-transform/get-data-out.md), and compose the transforms yourself.
+- Ask a running Viewer with the experimental `rerun.experimental.ViewerClient.get_transform_graph()`.
+  It returns the frames and the latest _direct_ parent-child edges at the Viewer's current time, not composed world poses.
+  Pass `include_transforms=True` to get the transform values.
+
 ## Debugging transform trees
 
 The Rerun viewer features a debugging UI for visual introspection of the 3D transform cache.
@@ -257,10 +321,6 @@ Agents can also inspect the transform graph through the [Viewer's MCP server](..
 The tool provides a machine-readable JSON snapshot of the transform graph, including frame connections and optional transform values.
 
 <!--
-
-Visualizing transforms
-
-TODO(andreas, grtlr): write about how transforms can be visualized
 
 2D Transforms
 

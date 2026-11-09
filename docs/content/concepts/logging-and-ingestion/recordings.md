@@ -76,6 +76,21 @@ When these files are loaded into the Viewer, they are treated as a single logica
 You can learn more about this in the [shared recordings guide](../../howto/logging-and-ingestion/shared-recordings.md).
 
 
+### View several recordings
+
+The Viewer can have many recordings open, but it shows one active recording at a time.
+Switch between them in the recording panel on the left.
+Recordings that share an application ID are grouped together and use the same blueprint.
+
+To combine several `.rrd` files:
+
+- `rerun rrd merge` writes all inputs into one file, but keeps each recording separate.
+  Data is only combined if it already has the same application ID and recording ID.
+- `rerun rrd route --application-id … --recording-id …` rewrites the IDs, so all inputs become one recording.
+
+To log several recordings from one process, see [Log to several recordings from one process](../../howto/logging-and-ingestion/multiple-recordings.md).
+
+
 ### Storage formats
 
 Rerun recordings are stored in `.rrd` files. [Blueprints](../visualization/blueprints.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.

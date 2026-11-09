@@ -101,3 +101,18 @@ Consider the following example:
 The path prefix `__` is considered reserved for use by the Rerun SDK itself and should not be used for logging
 user data. This is where Rerun will log additional information such as properties (`__properties`) and warnings
 (`__warnings`).
+
+### Performance considerations
+
+There is no hard limit on the number of entities, but each entity has a cost in the Viewer: it is queried, stored in its own chunks, and listed in the UI.
+Many thousands of entities make the Viewer slow, even if each one holds little data.
+
+- **Batch instances into one entity.**
+  Log a point cloud as one `Points3D` entity with many points, not one entity per point.
+  The same goes for boxes, arrows, and other batched archetypes.
+- **Use entities for things you want to see, hide, or style separately.**
+  For example, one entity per tracked object or per sensor.
+- **Avoid unbounded entity names**, such as an entity per timestamp or per message ID.
+  Use a [timeline](timelines.md) for the time, and keep the entity path stable.
+
+See also [Optimize chunk count](../../howto/logging-and-ingestion/optimize-chunks.md).

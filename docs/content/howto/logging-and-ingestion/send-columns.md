@@ -17,6 +17,35 @@ This is what the `send_columns` API is for: it lets you efficiently update the s
 To learn more about the concepts behind the columnar APIs, and the Rerun data model in general, [refer to this page](../../concepts/logging-and-ingestion/chunks.md).
 
 
+## Choosing `log` vs `send_columns`
+
+Each `log` call has a fixed overhead per call.
+For many small rows (for example a scalar at 1 kHz, or a long history of poses), this per-call overhead dominates, and `send_columns` is much faster.
+
+- Use `send_columns` (or [`send_dataframe`](send-dataframe.md)) for bulk or historical data that you already have in arrays or tables.
+- Use `log` for live data that is produced one sample at a time.
+  The [micro-batcher](../../reference/sdk/micro-batching.md) groups these rows into chunks in the background.
+
+## How columns are formed
+
+In Python, `Archetype.columns(**fields)` builds one column per field you pass.
+This section uses Python.
+In Rust and C++, you set the fields with the builder methods and pass the row lengths to `.columns(lengths)` (or use `columns_of_unit_batches()` in Rust and `.columns()` in C++ for one element per row).
+
+- **One row per element by default.**
+  `rr.Scalars.columns(scalars=[1.0, 2.0, 3.0])` gives three rows, one value each.
+  The number of rows must match the length of the index columns.
+- **Several instances per row:** use `.partition(lengths)`.
+  `rr.Points3D.columns(positions=positions).partition(lengths=[2, 4, 3])` gives three rows with 2, 4, and 3 points.
+  The lengths must sum to the total number of elements.
+- **Send only some fields.**
+  You don't need to pass every field: only the components you pass are sent.
+  The others keep their latest value, or their default.
+- **Log constant fields once.**
+  If a field does not change over time (for example the format of an image, or the color of a point cloud), log it once with `rr.log(…, static=True)` and send only the changing fields with `send_columns`.
+- **Images:** reshape the image stack to `(N, -1)` with a `uint8` view, so each row is one image buffer: `rr.Image.columns(buffer=images.view(np.uint8).reshape(len(times), -1))`.
+  Log the image format once as static, as in the [image example](#updating-an-image-over-time-in-a-single-operation) below.
+
 ## Reference
 
 * [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)

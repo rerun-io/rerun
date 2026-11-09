@@ -27,6 +27,30 @@ Once that is done, the joints can be updated by sending [`Transform3D`](../../re
 > Previous versions (< 0.28) required you to send transforms with _implicit_ frame IDs, i.e. having to send each joint transform on a specific entity path.
 > This was dropped in favor of _named_ frame IDs, which is more in line with ROS and allows you to send all transform updates on one entity (e.g. a `transforms` entity like in the example below).
 
+## Meshes and `package://` paths
+
+Mesh paths in the URDF are resolved like this:
+
+- Relative paths are resolved relative to the folder of the `.urdf` file.
+- `package://my_package/meshes/arm.stl` is resolved by looking for `my_package` in each folder of `ROS_PACKAGE_PATH` (ROS 1), then in `<prefix>/share/my_package` for each prefix in `AMENT_PREFIX_PATH` (ROS 2).
+  If neither variable is set, or the package is not found, the mesh is skipped and a warning is logged.
+  Source your ROS workspace (or set one of these variables) before you start the Viewer or your logging script.
+- `file://`, `http://`, and `https://` URIs are also supported.
+
+Mesh files can be in any format that [`Asset3D`](../../reference/types/archetypes/asset3d.md) supports, including `.stl`, `.obj`, `.glb`/`.gltf`, and `.dae` (COLLADA).
+The `scale` attribute of a `<mesh>` is applied.
+Material textures are not supported yet; material colors are.
+
+## Entity paths and collision geometries
+
+The importer logs the geometry of the robot under an entity named after the robot:
+
+- `<robot_name>/visual_geometries/…` for the visual geometries.
+- `<robot_name>/collision_geometries/<geometry_type>/<link_name>/…` for the collision geometries.
+
+Collision geometries are visible by default.
+To hide them, hide the `collision_geometries` subtree in the blueprint, for example with `rrb.EntityBehavior(visible=False)` as an override on `<robot_name>/collision_geometries`, or click the eye icon next to it in the blueprint panel.
+
 ## Example
 
 Here is an example that demonstrates how to load and update a `URDF` with the Python SDK:
@@ -96,6 +120,37 @@ Use `compute_transform()` to get a [`Transform3D`](../../reference/types/archety
 transform = joint.compute_transform(angle)
 rec.log("transforms", transform)
 ```
+
+By default, values outside the joint limits are clamped, with a warning.
+Pass `clamp=False` to use the value as is: `joint.compute_transform(angle, clamp=False)`.
+
+To send many joint values at once, use `compute_transform_columns()` with [`send_columns`](send-columns.md):
+
+```python
+angles = [0.0, 0.1, 0.2, 0.3]
+rec.send_columns(
+    "transforms",
+    indexes=[rr.TimeColumn("step", sequence=range(len(angles)))],
+    columns=joint.compute_transform_columns(angles),
+)
+```
+
+#### Mimic joints
+
+Mimic joints are not resolved automatically.
+`joint.mimic` returns the `<mimic>` specification (`joint`, `multiplier`, and `offset`), or `None`.
+Compute the value of the mimic joint from its driver joint yourself, then call `compute_transform()` with it:
+
+```python
+if (mimic := joint.mimic) is not None:
+    value = mimic.multiplier * driver_value + mimic.offset
+    rec.log("transforms", joint.compute_transform(value))
+```
+
+### Streaming the model as chunks
+
+`UrdfTree.stream()` returns the chunks of the model as an experimental `rerun.chunk.LazyChunkStream`, for use with the [Chunk Processing API](../../concepts/logging-and-ingestion/chunk-processing-api.md).
+Pass `include_joint_transforms=False` to leave out the static joint transforms.
 
 ## Load URDF into an existing recording
 

@@ -18,6 +18,8 @@ All of them are optional: when none of these modes are active, the client will s
 
 > [!WARNING]
 > These modes will override each other and destroy any existing sinks; if you want to run multiple sinks concurrently, you'll need to use `set_sinks()`.
+>
+> To start a Viewer without replacing your sinks, call `spawn` with `connect=False` (Python: `rr.spawn(connect=False)`), then use `set_sinks()` to stream and save at the same time.
 
 ### `spawn`
 

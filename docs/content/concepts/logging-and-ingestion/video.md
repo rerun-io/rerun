@@ -18,12 +18,25 @@ This will use up a lot of space and bandwidth. You can also encode them as PNG a
 though it should be noted that PNG encoding usually does very little for the file size of photographic images.
 
 If you want to reduce bandwidth and storage cost, you can encode each frame as a JPEG and log it using `EncodedImage`. This can easily reduce the file sizes by almost two orders of magnitude with minimal perceptual loss.
-This is also very simple to do, and the Python logging SDK has built-in support for it using [`Image.compress`](https://ref.rerun.io/docs/python/stable/archetypes/#rerun.archetypes.Image.compress).
+This is also very simple to do, and the Python logging SDK has built-in support for it using [`Image.compress`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Image.compress).
 
 Finally, for the best compression ratio, you can encode the images as an encoded video.
 There are two options to choose from:
 * Raw video frames [`VideoStream`](../../reference/types/archetypes/video_stream.md)
 * Video files using [`AssetVideo`](../../reference/types/archetypes/asset_video.md)
+
+## Logging many images efficiently
+
+Logging many high-resolution images as raw `Image`s quickly uses up memory, disk, and bandwidth.
+To keep this under control:
+
+- **Compress each frame as JPEG** with `EncodedImage`.
+  In Python, `rr.Image(frame).compress(jpeg_quality=80)` does this for you (8-bit RGB, BGR, or grayscale images only).
+  If you already have JPEG bytes (e.g. from the camera), log them directly with `rr.EncodedImage(contents=jpeg_bytes, media_type="image/jpeg")`.
+- **Encode a video stream** with [`VideoStream`](../../reference/types/archetypes/video_stream.md) for the best compression, as shown [below](#streaming-video--raw-encoded-video-frames).
+- **Send recorded frames in bulk** with [`send_columns`](../../howto/logging-and-ingestion/send-columns.md) instead of one `log` call per frame.
+- **Limit the Viewer's memory** with `--memory-limit`; when it is reached, the Viewer drops the oldest data.
+  See [Limit the Viewer's memory usage](../../howto/visualization/limit-ram.md).
 
 > [!WARNING]
 > Do not use compressed video if you need accurate pixel replication:

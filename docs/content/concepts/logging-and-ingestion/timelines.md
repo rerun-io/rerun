@@ -42,6 +42,35 @@ On one timeline the points will appear blue, on the other they appear red.
 To get full control over the logged timelines you can use [`send_columns`](../../howto/logging-and-ingestion/send-columns.md).
 This is often a lot more efficient when you already have a chunk of temporal data, e.g. some sensor value over time.
 
+### Can I use floats or custom units on a timeline?
+
+No.
+All timelines store `i64` values, and the only types are sequence, timestamp, and duration.
+There are no float timelines, and no custom units.
+
+To index data by something that is not time, such as distance traveled or a rotation angle, scale it to an integer and use a sequence timeline.
+For example, log distance in millimeters:
+
+```python
+rr.set_time("distance_mm", sequence=round(distance_m * 1000))
+```
+
+Durations and timestamps given as floats (in seconds) are converted to integer nanoseconds.
+
+### Several timestamps per sample
+
+If one sample has several times (for example a capture time, a receive time, and a frame number), set each of them on its own timeline before the `log` call.
+The logged data appears on all of these timelines:
+
+```python
+rr.set_time("frame", sequence=frame_idx)
+rr.set_time("capture_time", timestamp=np.datetime64(capture_ns, "ns"))
+rr.set_time("receive_time", timestamp=np.datetime64(receive_ns, "ns"))
+rr.log("camera/image", rr.Image(image))
+```
+
+With `send_columns`, pass one `rr.TimeColumn` per timeline in `indexes`.
+
 
 ## Events
 

@@ -5,7 +5,15 @@
 ///
 /// The audio starts playing at the time it was logged,
 /// so log it on a temporal timeline (duration or timestamp) at the point where playback should begin.
-/// The viewer plays it while time is playing, in an [`rerun::blueprint::views::AudioView`].
+/// The viewer plays it while time is playing, in an [`rerun::blueprint::views::AudioView`],
+/// which also shows the waveform.
+///
+/// The viewer can also open audio files directly, like any other supported file.
+///
+/// Streaming raw PCM samples (e.g. from a microphone) is not supported yet.
+/// As a workaround, encode the samples as an in-memory WAV file and log that.
+/// For live audio, encode short segments, and log each segment at the time it starts.
+/// To plot the raw signal instead of playing it, log the samples as [`rerun::archetypes::Scalars`].
 ///
 /// \example archetypes/asset_audio_simple title="Simple audio asset"
 #[rerun::rerun_type]

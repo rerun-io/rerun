@@ -53,6 +53,33 @@ rerun mcap convert input.mcap -o output.rrd
 rerun output.rrd
 ```
 
+## ROS bags that are not MCAP
+
+Rerun only reads ROS bags stored as MCAP.
+
+- **ROS 2 `.db3` (SQLite) bags** are not supported.
+  Convert them to MCAP with `ros2 bag convert` (part of [rosbag2](https://github.com/ros2/rosbag2), not Rerun), which takes an output-options YAML file:
+
+  ```yaml
+  # convert.yaml
+  output_bags:
+    - uri: my_bag_mcap
+      storage_id: mcap
+      all_topics: true # Use `all: true` on ROS 2 Humble.
+  ```
+
+  Without a topic selection, the output bag is empty.
+  See the [rosbag2 docs](https://github.com/ros2/rosbag2#convert) for all options.
+
+  ```bash
+  ros2 bag convert -i my_bag -o convert.yaml
+  ```
+
+  This needs the MCAP storage plugin for rosbag2 (`ros-$ROS_DISTRO-rosbag2-storage-mcap`).
+  Newer ROS 2 distributions record to MCAP by default.
+- **ROS 1 `.bag` files** are not supported.
+  Convert them to a ROS 2 MCAP with [`rosbags-convert`](https://ternaris.gitlab.io/rosbags/), see [ROS 1 message types](../../concepts/logging-and-ingestion/mcap/message-formats.md#ros1-message-types).
+
 ## Recording ROS 2 bags as RRD
 
 If you use rosbag2, you can record straight to RRD with [`rosbag2_storage_rrd`](https://github.com/rerun-io/rosbag2_storage_rrd), an experimental rosbag2 storage plugin:

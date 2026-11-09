@@ -64,6 +64,25 @@ snippet: concepts/static/log_static_10x
 In practice, the Rerun datastore will rely on these semantics to physically drop the superfluous static data where possible, therefore drastically reducing memory costs. See ["Understanding storage costs"](#understanding-storage-costs) for more information.
 
 
+### Log once, move many times
+
+To move a large asset (a mesh, a point cloud, or an image) over time, log the asset once as static, and log only its pose over time:
+
+```python
+rr.log("robot/body", rr.Asset3D(path="robot.glb"), static=True)
+
+for t, pose in enumerate(poses):
+    rr.set_time("frame", sequence=t)
+    rr.log("robot/body", rr.Transform3D(translation=pose.translation, quaternion=pose.quaternion))
+```
+
+The asset is stored once, and each frame only adds a small transform.
+
+To show the same asset several times within one entity, log [`InstancePoses3D`](../../reference/types/archetypes/instance_poses3d.md) with one pose per copy (see [instancing](transforms.md#instancing)).
+
+Reusing one logged asset across _different_ entities is [not supported yet](../../development/roadmap.md#missing-features): log it once on each entity that needs it.
+
+
 ## Understanding storage costs
 
 In ["Memory savings"](#memory-savings), we mentioned that the following snippet _semantically_ stores a single image:
