@@ -66,7 +66,7 @@ pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin};
 pub use error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
 pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
-pub use reports::SessionReports;
+pub use reports::{McpStartupReport, SessionReports};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, ElicitationId, LogLine, PendingElicitation, PendingPermission, Phase,

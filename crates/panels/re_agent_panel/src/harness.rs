@@ -218,9 +218,10 @@ impl Harness {
 
 /// Record every MCP server that failed to start, without its name (unless it is ours),
 /// command, or error.
-pub fn record_mcp_startup_failures(failures: &[re_agent::McpStartupFailure]) {
-    for failure in failures {
+pub fn record_mcp_startup_failures(reports: &[re_agent::McpStartupReport]) {
+    for re_agent::McpStartupReport { agent, failure } in reports {
         re_analytics::record(|| re_analytics::event::AgentMcpStartupFailure {
+            agent: agent.clone(),
             server: if failure.server_name == MCP_SERVER_NAME {
                 re_analytics::event::Server::Rerun
             } else {

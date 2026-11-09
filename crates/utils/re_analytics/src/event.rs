@@ -496,8 +496,12 @@ impl Server {
 /// An MCP server that the agent in the Rerun Viewer's agent panel was asked to start did not start.
 ///
 /// This event contains no server name (other than whether it is ours), command, or error text.
-/// Only Codex reports MCP startup failures, so only Codex sessions emit it.
+/// Only Codex and Claude Code report MCP startup failures, so only their sessions emit it.
+/// Codex reports them when the session opens, Claude Code only once the first prompt is sent.
 pub struct AgentMcpStartupFailure {
+    /// Which agent reported the failure, e.g. "Claude Code", if it introduced itself.
+    pub agent: Option<String>,
+
     /// Which server failed to start.
     pub server: Server,
 
@@ -514,9 +518,11 @@ impl Event for AgentMcpStartupFailure {
 impl Properties for AgentMcpStartupFailure {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
+            agent,
             server,
             replaced_by_agent_config,
         } = self;
+        event.insert_opt("agent", agent);
         event.insert("server", server.as_str());
         event.insert("replaced_by_agent_config", replaced_by_agent_config);
     }

@@ -25,7 +25,7 @@ use crate::agent_harness::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection, SessionOrigin};
 use crate::elicitation::response_note;
 use crate::error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
-use crate::reports::SessionReports;
+use crate::reports::{McpStartupReport, SessionReports};
 use crate::responder::{AgentStoppedWaiting, Responder};
 use crate::settings::AgentLaunch;
 use crate::startup::{AgentBackendKind, StartupOutcome, StartupStart};
@@ -1124,9 +1124,12 @@ impl AgentSession {
                     self.agent.requested_mode = None;
                 }
                 if let Some(failure) =
-                    McpStartupFailure::from_codex_update(&update, &self.launch.mcp_servers)
+                    McpStartupFailure::from_update(&update, &self.launch.mcp_servers)
                 {
-                    self.reports.mcp_startup_failures.push(failure.clone());
+                    self.reports.mcp_startup_failures.push(McpStartupReport {
+                        agent: self.agent.name.clone(),
+                        failure: failure.clone(),
+                    });
                     if let Some(note) = failure.replaced_by_agent_config_note() {
                         self.transcript.push_note(note, false);
                     } else {
@@ -2023,7 +2026,7 @@ mod tests {
 
         let failures = session.take_reports().mcp_startup_failures;
         assert_eq!(failures.len(), 1);
-        assert_eq!(failures[0].server_name, "rerun");
+        assert_eq!(failures[0].failure.server_name, "rerun");
         assert!(session.take_reports().mcp_startup_failures.is_empty());
 
         session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
@@ -2061,7 +2064,12 @@ mod tests {
 
         let failures = session.take_reports().mcp_startup_failures;
         assert_eq!(failures.len(), 1);
-        assert!(failures[0].replaced_by_agent_config_note().is_some());
+        assert!(
+            failures[0]
+                .failure
+                .replaced_by_agent_config_note()
+                .is_some()
+        );
     }
 
     #[test]
@@ -2075,6 +2083,67 @@ mod tests {
             session.transcript.items[0].item,
             TranscriptItem::ToolCall(_)
         );
+    }
+
+    /// What claude-agent-acp sends for a host-provided MCP server, verbatim.
+    fn claude_code_mcp_status(status: &str, text: &str) -> SessionUpdate {
+        let meta = serde_json::json!({
+            "claudeCode": { "kind": "mcpServerStatus", "server": "rerun", "status": status },
+        });
+        SessionUpdate::AgentMessageChunk(
+            ContentChunk::new(ContentBlock::Text(TextContent::new(text)))
+                .meta(meta.as_object().cloned()),
+        )
+    }
+
+    #[test]
+    fn claude_code_mcp_startup_failures_are_reported() {
+        let requested = McpStdioServer {
+            name: "rerun".to_owned(),
+            command: PathBuf::from("/Applications/Rerun.app/Contents/MacOS/rerun"),
+            args: vec!["viewer-mcp".to_owned()],
+        };
+        let mut session = AgentSession::default();
+        session.launch.mcp_servers = vec![requested.clone()];
+        session.begin_turn("show the recording".into());
+        session.handle_event(AgentEvent::Update(claude_code_mcp_status(
+            "failed",
+            "**MCP server \"rerun\" failed to start:** Its tools are unavailable in this \
+             session. Run /mcp for the error.",
+        )));
+
+        let TranscriptItem::McpStartupFailure(failure) = &session.transcript.items[1].item else {
+            panic!("expected a dedicated MCP startup failure");
+        };
+        assert_eq!(failure.requested_command.as_ref(), Some(&requested.command));
+        assert_eq!(
+            failure.error,
+            "Its tools are unavailable in this session. Run /mcp for the error."
+        );
+
+        let failures = session.take_reports().mcp_startup_failures;
+        assert_eq!(failures.len(), 1);
+        assert_eq!(failures[0].failure.server_name, "rerun");
+
+        session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
+        let report = session.take_reports().turns.pop().unwrap();
+        assert_eq!(report.response, "");
+    }
+
+    #[test]
+    fn claude_code_mcp_needs_auth_is_not_a_startup_failure() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::Update(claude_code_mcp_status(
+            "needs-auth",
+            "**MCP server \"rerun\" needs authentication:** Its tools are unavailable until \
+             the server is authenticated.",
+        )));
+
+        assert!(session.take_reports().mcp_startup_failures.is_empty());
+        assert!(!matches!(
+            session.transcript.items[0].item,
+            TranscriptItem::McpStartupFailure(_)
+        ));
     }
 
     fn call(
