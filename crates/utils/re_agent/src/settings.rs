@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::path::PathBuf;
 
-use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
+use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionId, SessionModeId};
 
 use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
 use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProvider};
@@ -87,6 +87,28 @@ pub struct SessionContext {
     pub off_limits_directories: Vec<PathBuf>,
 }
 
+/// A conversation with an agent harness, kept so that it can be continued after a restart.
+///
+/// Only the agent's session id is kept: the agent stores the history, and replays it when the
+/// session is loaded again. See [`crate::AgentHarnessConfig::session_to_load`].
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SavedConversation {
+    /// The agent profile that ran it. Session ids belong to the agent that gave them.
+    pub profile_id: AgentProfileId,
+
+    /// The agent's id for the session.
+    pub session_id: SessionId,
+
+    /// Working directory of the session, which some agents need to find it again.
+    pub cwd: PathBuf,
+
+    /// What the conversation list shows until the agent has replayed the history.
+    pub title: String,
+
+    /// When the user last sent a message, for sorting the conversation list.
+    pub last_prompt_at: jiff::Timestamp,
+}
+
 /// Everything needed to launch an agent. Serializable so the host app can persist it.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -132,6 +154,9 @@ pub struct AgentSettings {
     /// Set once the user has started an agent from the setup screen.
     /// From then on the panel starts the agent right away instead of showing setup again.
     pub setup_done: bool,
+
+    /// Conversations to list again after a restart, most recent first.
+    pub saved_conversations: Vec<SavedConversation>,
 
     /// API keys as the user typed them, by model-API profile.
     ///
@@ -210,7 +235,7 @@ impl AgentLaunchError {
 #[derive(Debug)]
 pub enum AgentLaunch {
     /// Spawn an agent (Claude Code, Codex, …) and talk to it over the Agent Client Protocol.
-    AgentHarness(AgentHarnessConfig),
+    AgentHarness(Box<AgentHarnessConfig>),
 
     /// Run the agent loop ourselves, calling the model provider's API directly.
     ModelApi(ModelApiConfig),
@@ -227,7 +252,7 @@ impl AgentSettings {
             return cfg_select! {
                 agent_harness_backend => self
                     .agent_harness_config(agents, context)
-                    .map(AgentLaunch::AgentHarness),
+                    .map(|config| AgentLaunch::AgentHarness(Box::new(config))),
                 _ => {{
                     _ = agents;
                     Err(AgentLaunchError::AgentHarnessUnavailable {
@@ -285,6 +310,7 @@ impl Default for AgentSettings {
             preferred_speeds: BTreeMap::new(),
             share_redacted_prompts: false,
             setup_done: false,
+            saved_conversations: Vec::new(),
             #[cfg(target_arch = "wasm32")]
             api_keys: BTreeMap::new(),
         }

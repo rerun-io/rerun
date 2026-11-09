@@ -62,7 +62,7 @@ pub use agent_harness::{
     AgentEntry, AgentHarnessConfig, AgentKind, AgentProfile, AgentProfileId, McpStdioServer,
 };
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
-pub use backend::{AgentCommand, AgentEvent, LineDirection};
+pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin};
 pub use error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
 pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
@@ -72,7 +72,10 @@ pub use session::{
     AgentSession, AuthPrompt, ElicitationId, LogLine, PendingElicitation, PendingPermission, Phase,
     Prompt, PromptImage,
 };
-pub use settings::{AgentLaunch, AgentLaunchError, AgentSettings, McpServerConfig, SessionContext};
+pub use settings::{
+    AgentLaunch, AgentLaunchError, AgentSettings, McpServerConfig, SavedConversation,
+    SessionContext,
+};
 pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};
 pub use transcript::{
     ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,

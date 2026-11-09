@@ -324,10 +324,10 @@ impl Redactor {
         } = agent;
         let launch = match launch {
             AgentLaunch::AgentHarness(config) => cfg_select! {
-                agent_harness_backend => AgentLaunch::AgentHarness(
-                    self.harness_config(config)
+                agent_harness_backend => AgentLaunch::AgentHarness(Box::new(
+                    self.harness_config(*config)
                         .ok_or(RedactionError::NoScratchDirectory)?,
-                ),
+                )),
                 _ => {{
                     drop(config);
                     return Err(RedactionError::NoHarness);
@@ -555,6 +555,7 @@ mod tests {
             preferred_model: Some(crate::acp::schema::v1::SessionConfigValueId::new("opus")),
             preferred_speed: None,
             mode_preferences: Vec::new(),
+            session_to_load: None,
         };
         let mut redactor = Redactor::default();
         let config = redactor

@@ -13,6 +13,10 @@ use super::{DOCS_SUBDIR, MCP_SERVER_NAME, SKILLS_SUBDIR, preamble, self_improve}
 /// Sub-directory of the viewer cache that the agent may read. Holds the skills and docs.
 const AGENT_CACHE_SUBDIR: &str = "agent";
 
+/// Sub-directory of the viewer cache that the agent works in, in our own development builds.
+/// See [`Harness::user_like_cwd`].
+const SCRATCH_CWD_SUBDIR: &str = "agent-cwd";
+
 /// The skills and docs from the repository, embedded by `build.rs`.
 mod embedded {
     include!(concat!(env!("OUT_DIR"), "/agent_files.rs"));
@@ -21,12 +25,13 @@ mod embedded {
 /// What the agent panel keeps for agent harnesses.
 #[derive(Default)]
 pub struct Harness {
-    /// Empty working directory handed to the agent in our own development builds, kept alive
-    /// for as long as the panel is, since dropping it deletes the directory.
+    /// Working directory handed to the agent in our own development builds, instead of the
+    /// Rerun checkout.
     ///
     /// One directory for the whole panel, so every conversation in it shares a working
     /// directory — as they already do for a user who spawns several agents in one viewer.
-    scratch_cwd: Option<tempfile::TempDir>,
+    /// The same directory on every run, since agents find the sessions to load by it.
+    scratch_cwd: Option<std::path::PathBuf>,
 
     /// The Rerun checkout the viewer was started from, in our own development builds.
     /// Hidden from the default chat agent, but used for self-improvement.
@@ -87,7 +92,7 @@ impl Harness {
 
         // Only applied when the user has not set a working directory of their own.
         let rerun_workspace = is_in_rerun_workspace
-            .then(|| self.user_like_cwd())
+            .then(|| self.user_like_cwd(cache_dir))
             .flatten();
         self.rerun_workspace.clone_from(&rerun_workspace);
         let off_limits_directories: Vec<_> = rerun_workspace.iter().cloned().collect();
@@ -105,10 +110,7 @@ impl Harness {
             ),
             model_api_preamble: Some(preamble::model_api_text()),
             additional_directories: agent_dir.iter().cloned().collect(),
-            default_cwd: self
-                .scratch_cwd
-                .as_ref()
-                .map(|scratch| scratch.path().to_owned()),
+            default_cwd: self.scratch_cwd.clone(),
             off_limits_directories,
         });
         panel
@@ -181,8 +183,8 @@ impl Harness {
         );
     }
 
-    /// Point the agent at an empty scratch directory instead of the Rerun checkout, and return
-    /// the checkout it was spared.
+    /// Point the agent at a scratch directory in `cache_dir` instead of the Rerun checkout, and
+    /// return the checkout it was spared.
     ///
     /// A released viewer runs in the user's own directory, so the agent sees the user's project
     /// and not ours. Started from the Rerun workspace, the same code hands the agent our source
@@ -193,16 +195,18 @@ impl Harness {
     /// binary run from somewhere else has none of our source to hide, and the directory it did
     /// start in belongs to whoever is running it — or when there is no scratch directory to use
     /// instead.
-    fn user_like_cwd(&mut self) -> Option<std::path::PathBuf> {
+    fn user_like_cwd(&mut self, cache_dir: Option<&Path>) -> Option<std::path::PathBuf> {
         let workspace = self_improve::rerun_checkout(&std::env::current_dir().ok()?)?;
 
         if self.scratch_cwd.is_none() {
-            match tempfile::TempDir::with_prefix("rerun-agent-") {
-                Ok(dir) => self.scratch_cwd = Some(dir),
+            let scratch = cache_dir?.join(SCRATCH_CWD_SUBDIR);
+            match std::fs::create_dir_all(&scratch) {
+                Ok(()) => self.scratch_cwd = Some(scratch),
                 Err(err) => {
                     re_log::warn_once!(
                         "Failed to create a scratch directory for the agent, \
-                         so it can read the Rerun source tree: {err}"
+                         so it can read the Rerun source tree: {err}\nDirectory: {}",
+                        scratch.display()
                     );
                     return None;
                 }
@@ -334,11 +338,12 @@ mod tests {
     #[test]
     fn a_development_build_hides_the_rerun_checkout() {
         let mut harness = Harness::default();
+        let cache_dir = tempfile::tempdir().expect("tempdir");
 
         // The checkout, not the directory the test happens to run in: `cargo` starts a test in
         // its own crate directory, well inside the checkout.
         let workspace = harness
-            .user_like_cwd()
+            .user_like_cwd(Some(cache_dir.path()))
             .expect("a working directory to hide");
         assert!(
             std::env::current_dir()
@@ -352,12 +357,7 @@ mod tests {
                 .is_file()
         );
 
-        let scratch = harness
-            .scratch_cwd
-            .as_ref()
-            .expect("a scratch directory")
-            .path()
-            .to_owned();
+        let scratch = harness.scratch_cwd.clone().expect("a scratch directory");
         assert!(scratch.is_dir());
         assert!(!workspace.starts_with(&scratch));
         assert_eq!(
@@ -368,17 +368,13 @@ mod tests {
 
         // Asking twice keeps the same directory, so reopening the panel does not litter.
         let again = harness
-            .user_like_cwd()
+            .user_like_cwd(Some(cache_dir.path()))
             .expect("a working directory to hide");
         assert_eq!(again, workspace);
-        assert_eq!(
-            harness
-                .scratch_cwd
-                .as_ref()
-                .expect("a scratch directory")
-                .path(),
-            scratch
-        );
+        assert_eq!(harness.scratch_cwd.as_ref(), Some(&scratch));
+
+        // Without a cache, there is nowhere stable to put it.
+        assert_eq!(Harness::default().user_like_cwd(None), None);
     }
 
     #[test]

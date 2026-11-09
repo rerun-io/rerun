@@ -189,6 +189,7 @@ impl ViewerAgentPanel {
         is_in_rerun_workspace: bool,
         recording: Option<&re_entity_db::EntityDb>,
     ) {
+        re_tracing::profile_function!();
         let was_open = *open;
         if *open && self.panel.is_none() {
             self.initialize(
@@ -248,7 +249,6 @@ impl ViewerAgentPanel {
 
                 if let Some(panel) = panel {
                     panel.ui(ui);
-                    settings.clone_from(panel.settings());
                 }
             });
         self.rect = response
@@ -261,6 +261,8 @@ impl ViewerAgentPanel {
         let Some(panel) = &mut self.panel else {
             return;
         };
+        // Also while collapsed, since its conversations keep running and are saved as they go.
+        settings.clone_from(panel.settings());
         #[cfg(agent_harness_backend)]
         self.harness.handle_self_improve_request(panel);
         // Before the redactors run, so that turning sharing off drops what is queued before any

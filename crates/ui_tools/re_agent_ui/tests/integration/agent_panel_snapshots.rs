@@ -82,6 +82,7 @@ fn open_session(session: &mut AgentSession) {
     });
     session.handle_event(AgentEvent::SessionStarted {
         session_id: SessionId::new("test-session"),
+        origin: re_agent::SessionOrigin::New,
         modes: Some(SessionModeState::new(
             "default",
             vec![

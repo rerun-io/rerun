@@ -85,6 +85,7 @@ pub fn ready_panel() -> AgentPanel {
     });
     session.handle_event(AgentEvent::SessionStarted {
         session_id: SessionId::new("test-session"),
+        origin: re_agent::SessionOrigin::New,
         modes: Some(SessionModeState::new(
             "default",
             vec![

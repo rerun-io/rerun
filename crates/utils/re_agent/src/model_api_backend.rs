@@ -31,7 +31,7 @@ use rig_core::streaming::{Item, StreamEvent};
 use crate::AgentProfileId;
 use crate::Responder;
 use crate::agent_toolbox::{AgentToolbox, ToolOutput};
-use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
+use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin};
 
 /// The id of the model selector the backend offers as a session config option.
 const MODEL_CONFIG_ID: &str = "model";
@@ -544,6 +544,7 @@ async fn run(
         session_id: SessionId::new(SESSION_ID),
         modes: None,
         config_options: selection.config_options(),
+        origin: SessionOrigin::New,
     });
 
     while let Some(command) = command_rx.next().await {

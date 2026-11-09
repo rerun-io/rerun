@@ -7,12 +7,12 @@ use agent_client_protocol_schema::ProtocolVersion;
 use agent_client_protocol_schema::v1::{
     AuthMethod, AuthenticateRequest, CancelNotification, ClientCapabilities, ConfigOptionUpdate,
     CreateElicitationRequest, CurrentModeUpdate, ElicitationCapabilities,
-    ElicitationFormCapabilities, Implementation, InitializeRequest, McpServer, McpServerStdio,
-    NewSessionRequest, PromptRequest, RequestPermissionRequest, SessionConfigId, SessionConfigKind,
-    SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption,
-    SessionConfigSelectOptions, SessionConfigValueId, SessionId, SessionModeId, SessionModeState,
-    SessionNotification, SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest,
-    StopReason,
+    ElicitationFormCapabilities, Implementation, InitializeRequest, InitializeResponse,
+    LoadSessionRequest, McpServer, McpServerStdio, NewSessionRequest, PromptRequest,
+    RequestPermissionRequest, SessionConfigId, SessionConfigKind, SessionConfigOption,
+    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigSelectOptions,
+    SessionConfigValueId, SessionId, SessionModeId, SessionModeState, SessionNotification,
+    SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
 };
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
@@ -20,7 +20,7 @@ use re_async::UiWaker;
 
 use crate::agent_harness::acp_error::describe_error;
 use crate::agent_harness::{AgentHarnessConfig, McpStdioServer};
-use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
+use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin};
 use crate::{LineDirection, Responder};
 
 /// Spawns an agent subprocess and connects to it over ACP.
@@ -189,7 +189,14 @@ async fn drive(
         auth_methods: init.auth_methods.clone(),
     });
 
-    let mut session_id = start_session(&cx, &config, &events, &init.auth_methods).await;
+    let mut session_id = start_session(
+        &cx,
+        &config,
+        &events,
+        &init,
+        config.session_to_load.as_ref(),
+    )
+    .await;
 
     while let Some(command) = command_rx.next().await {
         match command {
@@ -272,7 +279,11 @@ async fn drive(
                     .await
                 {
                     Ok(_) => {
-                        session_id = start_session(&cx, &config, &events, &init.auth_methods).await;
+                        // Continue the conversation the login interrupted, if there was one.
+                        let session_to_load = session_id.or_else(|| config.session_to_load.clone());
+                        session_id =
+                            start_session(&cx, &config, &events, &init, session_to_load.as_ref())
+                                .await;
                     }
                     Err(err) => {
                         events.send(AgentEvent::Error(format!(
@@ -290,15 +301,24 @@ async fn drive(
     Ok(())
 }
 
+/// A session the agent has opened, before the preferred model and mode are applied.
+struct OpenedSession {
+    session_id: SessionId,
+    modes: Option<SessionModeState>,
+    config_options: Option<Vec<SessionConfigOption>>,
+
+    origin: SessionOrigin,
+}
+
+/// Loads `session_to_load` if the agent can, and otherwise opens a new session.
 async fn start_session(
     cx: &ConnectionTo<Agent>,
     config: &AgentHarnessConfig,
     events: &EventSender,
-    auth_methods: &[AuthMethod],
+    init: &InitializeResponse,
+    session_to_load: Option<&SessionId>,
 ) -> Option<SessionId> {
-    events.send(AgentEvent::Status("Starting session…".to_owned()));
-
-    let mcp_servers = config
+    let mcp_servers: Vec<McpServer> = config
         .mcp_servers
         .iter()
         .map(|server| {
@@ -311,58 +331,89 @@ async fn start_session(
         })
         .collect();
 
-    let request = NewSessionRequest::new(config.cwd.clone())
-        .additional_directories(config.additional_directories.clone())
-        .mcp_servers(mcp_servers);
+    if session_to_load.is_some() {
+        // Also when the agent cannot load sessions, so that the user is told the conversation
+        // starts over.
+        events.send(AgentEvent::LoadingSession);
+    }
+    let loadable = session_to_load.filter(|_| init.agent_capabilities.load_session);
+    let opened = match loadable {
+        Some(session_id) => {
+            let request = LoadSessionRequest::new(session_id.clone(), config.cwd.clone())
+                .additional_directories(config.additional_directories.clone())
+                .mcp_servers(mcp_servers.clone());
+            match cx.send_request(request).block_task().await {
+                Ok(response) => Ok(OpenedSession {
+                    session_id: session_id.clone(),
+                    modes: response.modes,
+                    config_options: response.config_options,
+                    origin: SessionOrigin::Loaded,
+                }),
+                Err(err) if err.code == Error::auth_required().code => Err(err),
+                Err(err) => {
+                    re_log::warn!(
+                        "Failed to load the earlier agent session, so starting a new one: {}",
+                        describe_error(&err)
+                    );
+                    new_session(cx, config, events, mcp_servers).await
+                }
+            }
+        }
+        None => new_session(cx, config, events, mcp_servers).await,
+    };
 
-    match cx.send_request(request).block_task().await {
-        Ok(mut response) => {
+    match opened {
+        Ok(mut opened) => {
             if let Some(config_options) = select_model(
                 cx,
-                &response.session_id,
-                response.config_options.as_deref().unwrap_or_default(),
+                &opened.session_id,
+                opened.config_options.as_deref().unwrap_or_default(),
                 config.preferred_model.as_ref(),
                 &config.model_preferences,
             )
             .await
             {
-                response.config_options = Some(config_options);
+                opened.config_options = Some(config_options);
             }
             if let Some((config_id, speed)) = pick_speed(
-                response.config_options.as_deref().unwrap_or_default(),
+                opened.config_options.as_deref().unwrap_or_default(),
                 config.preferred_speed.as_ref(),
             ) {
-                let request = SetSessionConfigOptionRequest::new(
-                    response.session_id.clone(),
-                    config_id,
-                    speed,
-                );
+                let request =
+                    SetSessionConfigOptionRequest::new(opened.session_id.clone(), config_id, speed);
                 match cx.send_request(request).block_task().await {
-                    Ok(updated) => response.config_options = Some(updated.config_options),
+                    Ok(updated) => opened.config_options = Some(updated.config_options),
                     Err(err) => re_log::debug!("Failed to select speed: {}", describe_error(&err)),
                 }
             }
             if let Some(selected_mode) = select_mode(
                 cx,
-                &response.session_id,
-                response.modes.as_ref(),
+                &opened.session_id,
+                opened.modes.as_ref(),
                 &config.mode_preferences,
             )
             .await
-                && let Some(modes) = &mut response.modes
+                && let Some(modes) = &mut opened.modes
             {
                 modes.current_mode_id = selected_mode;
             }
+            let OpenedSession {
+                session_id,
+                modes,
+                config_options,
+                origin,
+            } = opened;
             events.send(AgentEvent::SessionStarted {
-                session_id: response.session_id.clone(),
-                modes: response.modes,
-                config_options: response.config_options.unwrap_or_default(),
+                session_id: session_id.clone(),
+                modes,
+                config_options: config_options.unwrap_or_default(),
+                origin,
             });
-            Some(response.session_id)
+            Some(session_id)
         }
         Err(err) if err.code == Error::auth_required().code => {
             events.send(AgentEvent::AuthRequired {
-                methods: auth_methods.to_vec(),
+                methods: init.auth_methods.clone(),
                 message: describe_error(&err),
             });
             None
@@ -375,6 +426,25 @@ async fn start_session(
             None
         }
     }
+}
+
+async fn new_session(
+    cx: &ConnectionTo<Agent>,
+    config: &AgentHarnessConfig,
+    events: &EventSender,
+    mcp_servers: Vec<McpServer>,
+) -> Result<OpenedSession, Error> {
+    events.send(AgentEvent::Status("Starting session…".to_owned()));
+    let request = NewSessionRequest::new(config.cwd.clone())
+        .additional_directories(config.additional_directories.clone())
+        .mcp_servers(mcp_servers);
+    let response = cx.send_request(request).block_task().await?;
+    Ok(OpenedSession {
+        session_id: response.session_id,
+        modes: response.modes,
+        config_options: response.config_options,
+        origin: SessionOrigin::New,
+    })
 }
 
 /// Selects the preferred mode before the session can receive its first prompt.
@@ -778,7 +848,9 @@ mod tests {
             preferred_model: Some(SessionConfigValueId::new("chosen")),
             preferred_speed: Some(SessionConfigValueId::new("on")),
             mode_preferences: Vec::new(),
+            session_to_load: None,
         };
+        let init = InitializeResponse::new(ProtocolVersion::V1);
         let post_model = startup_options("chosen", speed);
         let confirmed = match speed_request {
             SpeedRequest::Accepted => startup_options(
@@ -834,7 +906,7 @@ mod tests {
             let client = Client.builder().connect_with(
                 client_channel,
                 async move |cx: ConnectionTo<Agent>| {
-                    let session_id = start_session(&cx, &config, &events, &[]).await;
+                    let session_id = start_session(&cx, &config, &events, &init, None).await;
                     assert_eq!(session_id.unwrap().0.as_ref(), "test-session");
                     done_tx.send(()).expect("agent waiting");
                     Ok::<_, Error>(())

@@ -217,6 +217,23 @@ impl Transcript {
         self.push(TranscriptItem::User(prompt));
     }
 
+    /// Adds one text block of a prompt from a loaded session's history.
+    ///
+    /// The agent replays each block of a prompt separately, so consecutive blocks join into one
+    /// prompt.
+    pub fn push_replayed_user_text(&mut self, text: &str) {
+        if let Some(TranscriptEntry {
+            item: TranscriptItem::User(prompt),
+            ..
+        }) = self.items.last_mut()
+        {
+            prompt.text.push_str("\n\n");
+            prompt.text.push_str(text);
+        } else {
+            self.push_user(Prompt::from(text.to_owned()));
+        }
+    }
+
     pub fn push_mcp_startup_failure(&mut self, failure: McpStartupFailure) {
         self.push(TranscriptItem::McpStartupFailure(failure));
     }

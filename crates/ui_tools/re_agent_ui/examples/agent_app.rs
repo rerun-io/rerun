@@ -107,9 +107,9 @@ fn run_headless(args: &Args, async_runtime: re_async::AsyncRuntimeHandle) {
 
     let mut harness = egui_kittest::Harness::builder()
         .with_size(WINDOW_SIZE)
+        .with_context_setup(re_ui::apply_style_and_install_loaders)
         .wgpu()
         .build_eframe(|_cc| app);
-    re_ui::apply_style_and_install_loaders(&harness.ctx);
 
     match egui_inspection::attach_from_env(&harness.ctx, Some("agent_app".to_owned())) {
         Ok(true) => re_log::info!("egui inspection enabled"),

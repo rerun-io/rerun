@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
+use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionId, SessionModeId};
 
 /// An MCP server the agent spawns itself over stdio.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -65,4 +65,10 @@ pub struct AgentHarnessConfig {
     ///
     /// The first one the agent offers is selected before the session takes its first prompt.
     pub mode_preferences: Vec<SessionModeId>,
+
+    /// An earlier session to continue, if the agent can load it.
+    ///
+    /// The agent replays its history before the session opens. When the agent cannot load
+    /// sessions, or no longer has this one, a new session starts instead.
+    pub session_to_load: Option<SessionId>,
 }
