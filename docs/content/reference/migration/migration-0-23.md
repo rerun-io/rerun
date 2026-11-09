@@ -7,7 +7,7 @@ hidden: true
 ## Reserved namespaces
 Starting with this release, the SDKs will log Rerun-related information to reserved entity path namespaces that are prefixed with `__`.
 Most notably, there is `__warnings/`, which used to be called `rerun/` and can be used to log exceptions that occurred in the SDKs.
-We also introduced `__properties/`, which stores recording-level information that is logged via the new `set_property` methods in the SDKs.
+We also introduced `__properties/`, which stores recording-level information that is logged via the new [`send_property`](https://ref.rerun.io/docs/python/stable/common/property_functions/#rerun.send_property) methods in the SDKs.
 Reserved namespaces are highlighted with a ⚙️ icon in the viewer UI.
 
 ## Timelines are uniquely identified by name

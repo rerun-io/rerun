@@ -1,7 +1,7 @@
 ---
 title: Diagnose latency and performance
 order: 50
-description: Use the latency indicator and the built-in profiler to find out what is slow
+description: Find out what is slow with the latency indicator and the built-in profiler, and what to do when the Viewer can't keep up or uses CPU while idle
 ---
 
 Rerun is built to be fast, but sometimes it falls short. This guide is here to help you diagnose performance problems in the Viewer and during live streaming.
@@ -108,3 +108,46 @@ All values are a rolling average over the last second of incoming data.
 | `gRPC sink`, `encode and transmit` | Increase the [batch sizes](../../reference/sdk/micro-batching.md) for larger chunks and less overhead                     |
 | `receive and decode`               | Send less data, for instance by compressing images                                                                       |
 | `ingest into viewer`               | The Viewer is the bottleneck: hide all views to check whether it is the rendering that is slowing down ingestion          |
+
+## The Viewer can't keep up with my data
+
+If you log at a high rate, the Viewer can fall further and further behind the live data.
+
+The Viewer ingests new data as part of its frame loop, and spends at most about 10 ms per frame on it.
+So when frames are slow, for example because a view is expensive to render, less data is ingested per second.
+On the SDK side, the amount of data waiting to be sent is bounded (about 100 MiB by default).
+When that buffer is full, `log` calls block until there is room again, so a slow Viewer can also slow down your program.
+
+To find out which side is the bottleneck, use the [latency indicator](#latency-indicator) and the frame rate in the [performance metrics](#show-performance-metrics).
+
+Things to try on the data side:
+
+* Log fewer, larger batches.
+  One `Points3D` with 10 000 points is much cheaper than 10 000 entities with one point each.
+* Use [`send_columns`](../logging-and-ingestion/send-columns.md) to send many time points of the same data in one call.
+* Send compressed images with `EncodedImage`, or video with `VideoStream`, instead of raw `Image` data.
+* Log at a lower rate, for example only every *n*-th frame of a high-rate sensor.
+* Tune the [micro-batching](../../reference/sdk/micro-batching.md) settings.
+  Larger batches mean less overhead per log call.
+
+Things to try on the Viewer side:
+
+* Hide or close expensive views, for example views with many entities, large point clouds, or many plotted series.
+  If the Viewer keeps up with all views hidden, rendering is the bottleneck.
+* Use a release build of the Viewer.
+  Debug builds are much slower.
+* [Limit the memory use](limit-ram.md).
+  When the Viewer is close to its memory limit, it spends time on dropping old data.
+
+## Why does the Viewer use CPU when idle?
+
+The Viewer only redraws when something changes.
+Enable "Show performance metrics" (see [above](#show-performance-metrics)) and look at the frame rate while you don't touch the Viewer.
+If it keeps redrawing, the most common causes are:
+
+* Data is streaming in.
+  Every incoming message wakes the Viewer up, even if the new data is not visible.
+* The time cursor is playing.
+  Pause playback to stop redrawing.
+
+To see what the Viewer is spending its time on, use the [built-in profiler](#built-in-profiler).
