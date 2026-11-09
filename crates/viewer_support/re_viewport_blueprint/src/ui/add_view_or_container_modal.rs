@@ -223,5 +223,5 @@ fn row_ui(ui: &mut egui::Ui, icon: &re_ui::Icon, title: &str, subtitle: &str) ->
 
     ui.add_space(row_space / 2.0);
 
-    resp
+    resp.on_hover_cursor(egui::CursorIcon::PointingHand)
 }
