@@ -465,7 +465,7 @@ rexif = "0.7.5"
 rfd = { version = "0.17.2", default-features = false, features = ["xdg-portal"] }
 rig-core = { version = "0.45.0", default-features = false }
 rig-reqwest = { version = "0.45.0", default-features = false } # No `rustls` feature: it pulls in aws-lc-rs and the banned `cmake`. TLS goes through `reqwest013` with ring.
-rmcp = { version = "3.4", features = ["macros", "schemars", "server", "transport-io"] }
+rmcp = { version = "3.9", features = ["macros", "schemars", "server", "transport-io"] }
 ron = { version = "0.12.2", features = ["integer128"] }
 roxmltree = "0.20.0" # 0.21 would duplicate the 0.20 that `resvg` (via egui_extras) requires. Bump once egui_extras/resvg move to roxmltree 0.21.
 ring = "0.17.14"

@@ -501,9 +501,13 @@ Conventions:
         "required": [
           "id",
           "role",
+          "label",
+          "value",
+          "bounds",
           "focused",
           "disabled",
-          "hidden"
+          "hidden",
+          "parent_id"
         ]
       },
       "Id": {
@@ -539,6 +543,10 @@ Conventions:
         ]
       }
     },
+    "required": [
+      "node"
+    ],
+    "type": "object",
     "properties": {
       "node": {
         "anyOf": [
@@ -550,8 +558,7 @@ Conventions:
           }
         ]
       }
-    },
-    "type": "object"
+    }
   },
   "annotations": {
     "readOnlyHint": true,
