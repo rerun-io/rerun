@@ -970,6 +970,23 @@ impl Properties for CustomTableFilterShown {
 
 // -----------------------------------------------
 
+/// Sent when incoming viewer data contains a component with both static and temporal data.
+///
+/// Sent at most once per process. Contains no entity or component identifiers.
+pub struct StaticTemporalComponentDetected {}
+
+impl Event for StaticTemporalComponentDetected {
+    const NAME: &'static str = "static-temporal-component-detected";
+}
+
+impl Properties for StaticTemporalComponentDetected {
+    fn serialize(self, _event: &mut AnalyticsEvent) {
+        let Self {} = self;
+    }
+}
+
+// -----------------------------------------------
+
 /// Links the current anonymous analytics ID to an authenticated user.
 ///
 /// This is sent when a user logs in, allowing us to connect their

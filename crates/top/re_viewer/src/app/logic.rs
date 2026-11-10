@@ -513,9 +513,52 @@ impl AppCore {
             store_hub.entity_db_and_cache(store_id, &self.registries.view_classes)
         {
             cache.on_store_events(store_events, entity_db);
+            Self::detect_static_temporal_components(entity_db, store_events);
         }
 
         self.validate_loaded_events(store_events);
+    }
+
+    fn detect_static_temporal_components(
+        entity_db: &re_entity_db::EntityDb,
+        store_events: &[re_chunk_store::ChunkStoreEvent],
+    ) {
+        if entity_db.store_kind() != StoreKind::Recording {
+            return;
+        }
+
+        use std::sync::atomic::{AtomicBool, Ordering};
+
+        static DETECTED: AtomicBool = AtomicBool::new(false);
+        if DETECTED.load(Ordering::Relaxed) {
+            return;
+        }
+
+        let engine = entity_db.storage_engine();
+        let store = engine.store();
+        for event in store_events {
+            let Some(addition) = event.to_addition() else {
+                continue;
+            };
+            let chunk = addition.delta_chunk();
+            let entity_path = chunk.entity_path();
+            for descriptor in chunk.components().component_descriptors() {
+                let component = descriptor.component;
+                if store.num_physical_static_events_for_component(entity_path, component) > 0
+                    && store.num_physical_temporal_events_for_component_on_all_timelines(
+                        entity_path,
+                        component,
+                    ) > 0
+                {
+                    if !DETECTED.swap(true, Ordering::Relaxed) {
+                        re_analytics::record(|| {
+                            re_analytics::event::StaticTemporalComponentDetected {}
+                        });
+                    }
+                    return;
+                }
+            }
+        }
     }
 
     fn receive_table_msg(
