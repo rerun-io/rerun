@@ -45,10 +45,7 @@ impl InternalCatalog {
                     )
                 })?;
                 url::Url::from_file_path(&file).map_err(|()| {
-                    anyhow::anyhow!(
-                        "failed to create file URL\nFile path: {}",
-                        file.display()
-                    )
+                    anyhow::anyhow!("failed to create file URL\nFile path: {}", file.display())
                 })
             }
         }

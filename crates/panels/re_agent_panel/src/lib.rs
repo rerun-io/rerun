@@ -304,15 +304,13 @@ impl ViewerAgentPanel {
         re_tracing::profile_function!();
 
         let mut panel = cfg_select! {
-            agent_harness_backend => {
-                self.harness.new_panel(
-                    settings,
-                    async_runtime.clone(),
-                    viewer_endpoint,
-                    cache_dir,
-                    is_in_rerun_workspace,
-                )
-            }
+            agent_harness_backend => self.harness.new_panel(
+                settings,
+                async_runtime.clone(),
+                viewer_endpoint,
+                cache_dir,
+                is_in_rerun_workspace,
+            ),
             _ => {{
                 let _ = (viewer_endpoint, cache_dir, is_in_rerun_workspace);
                 let mut panel = AgentPanel::new(settings, async_runtime.clone());

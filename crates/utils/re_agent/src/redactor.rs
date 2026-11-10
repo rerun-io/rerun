@@ -279,7 +279,10 @@ impl Redactor {
         cfg_select! {
             target_arch = "wasm32" => {
                 while self.queue.step(waker.clone()) {}
-                self.queue.in_flight.is_some().then_some(Duration::from_secs(1))
+                self.queue
+                    .in_flight
+                    .is_some()
+                    .then_some(Duration::from_secs(1))
             }
             _ => {
                 let _ = waker;

@@ -608,7 +608,8 @@ impl AppCore {
                             // The text is only sent with "Share redacted prompts with Rerun",
                             // after the panel's agent has redacted it.
                             let share_text = self.state.agent_settings.share_redacted_prompts;
-                            self.agent_panel.submit_product_feedback(request, share_text);
+                            self.agent_panel
+                                .submit_product_feedback(request, share_text);
                             on_done.call(Ok(SubmitFeedbackResponse {}.into()));
                         }
                     }

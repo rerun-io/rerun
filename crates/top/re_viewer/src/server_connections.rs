@@ -45,7 +45,7 @@ impl ServerConnections {
     pub fn sources_of_url(&self, url: &ViewerUrl) -> Vec<LogSource> {
         let sources = url.data_sources();
         cfg_select! {
-            target_arch = "wasm32" => { sources }
+            target_arch = "wasm32" => sources,
             _ => {
                 let segments: Vec<LogSource> = sources
                     .iter()
