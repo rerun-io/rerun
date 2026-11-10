@@ -209,6 +209,8 @@ snippet: tutorials/dna_connect_grpc
 
 Run `rerun --help` for more options.
 
+To view data from a remote machine, a Docker container, or over SSH, see [View data from a remote or headless machine](../howto/visualization/remote-viewing.md).
+
 ### Saving & loading to/from RRD files
 
 Sometimes, sending data over the network is not an option. Maybe you'd like to share the data, attach it to a bug report, etc.

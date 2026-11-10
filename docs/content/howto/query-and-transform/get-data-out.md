@@ -6,6 +6,9 @@ description: Load Rerun data into Pandas, Polars, or DuckDB
 
 Rerun comes with the ability to get data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
+To read an `.rrd` file in Python, you can either load it into a local catalog server (described first on this page), or [read it without a server](#reading-an-rrd-file-without-a-server).
+To read it from Rust, see [Querying from Rust](#querying-from-rust).
+
 ## Starting a server with recordings
 
 The first step to query data is to start a catalog server and load it with a dataset containing your recording.
@@ -233,6 +236,25 @@ Column names must be double-quoted.
 Component columns are [lists](../../concepts/query-and-transform/dataframe-queries.md#why-are-component-columns-lists), and SQL list indices start at 1.
 Catalog tables can be queried by name without registering them, e.g. `SELECT * FROM "my_table"`.
 
+### Query across datasets
+
+Dataframes from different datasets on the same server share `client.ctx`, so you can register each one as a view and combine them in one SQL query:
+
+```python
+ctx = client.ctx
+ctx.register_view("run_a", client.get_dataset("run_a").reader(index="frame_nr"))
+ctx.register_view("run_b", client.get_dataset("run_b").reader(index="frame_nr"))
+
+df = ctx.sql("""
+    SELECT rerun_segment_id, frame_nr, "/robot/gripper/force:Scalars:scalars"[1] AS force FROM run_a
+    UNION ALL
+    SELECT rerun_segment_id, frame_nr, "/robot/gripper/force:Scalars:scalars"[1] AS force FROM run_b
+""")
+```
+
+`UNION ALL` needs the same columns on both sides, so select them explicitly.
+You can also `JOIN` the views, for example on `rerun_segment_id` and the index column.
+
 ## Converting to other formats
 
 Likewise, DataFusion offers a rich set of tools to convert a dataframe to various formats.
@@ -282,3 +304,68 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
     table = dataset.reader(index="frame_nr").to_arrow_table()
     rel = duckdb.arrow(table)
 ```
+
+### Export to CSV
+
+Convert to Pandas, then use its `to_csv()` method:
+
+```python
+dataset.reader(index="frame_nr").to_pandas().to_csv("recording.csv", index=False)
+```
+
+Component columns are [lists](../../concepts/query-and-transform/dataframe-queries.md#why-are-component-columns-lists), which CSV has no type for, so they are written as text.
+To get one value per cell, select the list elements first, for example with SQL as shown in [Querying with SQL](#querying-with-sql).
+Exclude image and video columns, since their blobs can be very large.
+
+## Reading an `.rrd` file without a server
+
+The [Chunk Processing API](../../concepts/logging-and-ingestion/chunk-processing-api.md) can read an `.rrd` file directly with `RrdReader`.
+Collect its chunks into a `ChunkStore`, and query that with the same `reader()` method as a dataset:
+
+```python
+from rerun.chunk import RrdReader
+
+store = RrdReader("recording.rrd").stream().collect()
+df = store.reader(index="frame_nr")
+
+print(df.to_pandas())
+```
+
+`collect()` loads the whole recording into memory.
+The result has no `rerun_segment_id` column, since there is only one recording.
+If the file holds several recordings, pick one with `RrdReader(…).recordings()` and the `store` argument of `stream()`.
+
+## Querying from Rust
+
+The Rust SDK can load an `.rrd` file and query it with `QueryEngine`, in the `rerun::dataframe` module (enabled by the default `dataframe` feature):
+
+```rust
+use rerun::ChunkStoreConfig;
+use rerun::dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let engines = QueryEngine::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, "recording.rrd")?;
+
+    for (store_id, engine) in engines {
+        if !store_id.is_recording() {
+            continue;
+        }
+
+        let query = QueryExpression {
+            filtered_index: Some(TimelineName::from("frame_nr")),
+            sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+            ..Default::default()
+        };
+
+        let mut query_handle = engine.query(query);
+        for batch in query_handle.batch_iter() {
+            println!("{batch:?}"); // An Arrow `RecordBatch`
+        }
+    }
+
+    Ok(())
+}
+```
+
+`from_rrd_filepath` returns one engine per store in the file, including blueprints, which is why the loop skips everything but recordings.
+For a complete program, see the [`dataframe_query` example](https://github.com/rerun-io/rerun/tree/main/examples/rust/dataframe_query).

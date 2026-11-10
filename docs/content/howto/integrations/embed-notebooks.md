@@ -4,8 +4,8 @@ order: 0
 description: How to embed Rerun in notebooks like Jupyter, Colab, or marimo
 ---
 
-Starting with version 0.15.1, Rerun has improved support for embedding the Rerun Viewer directly within IPython-style
-notebooks. This makes it easy to iterate on API calls as well as to share data with others.
+Rerun can embed the Rerun Viewer directly within IPython-style notebooks.
+This makes it easy to iterate on API calls as well as to share data with others.
 
 Rerun has been tested with:
 
@@ -214,6 +214,35 @@ $ marimo edit cube_marimo.py
 marimo handles messages from the viewer only between cells, so a viewer cannot receive data until the cell that created it has finished.
 To stream data live, create the viewer in one cell and log to it from a later one.
 `block_until_ready` has no effect in marimo.
+
+## Troubleshooting: the viewer is blank or does not load
+
+The notebook viewer is a widget that your browser downloads as two files: `widget.js` and the Viewer compiled to WebAssembly.
+By default, the browser downloads them from `app.rerun.io`, for the installed version of `rerun-notebook`.
+If the browser cannot reach that address (for example behind a firewall, or offline), the viewer stays blank.
+
+Set the `RERUN_NOTEBOOK_ASSET` environment variable to choose where the files come from.
+Set it before you import `rerun`, since it is only read at import time (restart the kernel if you already imported it):
+
+```python
+import os
+
+os.environ["RERUN_NOTEBOOK_ASSET"] = "inline"
+
+import rerun as rr
+```
+
+| Value                             | Where the browser gets the widget                                                                                                   |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| (not set)                         | From `app.rerun.io`.                                                                                                                |
+| `inline`                          | Sent by the kernel through the notebook connection. Works everywhere, but is slower to load and uses more memory.                   |
+| `serve-local`                     | From a small HTTP server that the kernel starts on `localhost`. Only works when the browser and the kernel run on the same machine. |
+| `https://example.com/…/widget.js` | From your own server, which must also serve `re_viewer_bg.wasm` next to `widget.js`.                                                |
+
+When the kernel runs on another machine than your browser (a remote Jupyter server, VS Code Remote, or a hosted notebook service such as Databricks), `serve-local` does not work, because `localhost` in your browser is not the kernel's machine.
+Use the default if the browser can reach `app.rerun.io`, and `inline` if it cannot.
+
+To host the files yourself, `python -m rerun_notebook serve` starts a server for them.
 
 ## Limitations
 

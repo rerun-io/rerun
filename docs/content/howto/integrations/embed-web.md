@@ -1,6 +1,7 @@
 ---
 title: Embed Rerun in Web pages
 order: 100
+description: Embed the web Viewer in a page with an iframe, the JavaScript package, or Gradio
 ---
 
 For the full JavaScript API, see the [Web Viewer API reference](https://ref.rerun.io/docs/js/).
@@ -16,16 +17,22 @@ This approach is straightforward and requires minimal setup. However, the drawba
 ```
 
 To implement this, fill in the placeholders:
-- `RRD_URL` - The URL of the recording to display in the viewer.
-- `RERUN_VERSION` - The version of the Rerun SDK used to generate the recording.
+- `RRD_URL` - The URL of the recording to display in the viewer, URL-encoded.
+- `RERUN_VERSION` - A Rerun release, such as `0.38.1`, or `latest` for the newest release.
 
-The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd`), or a connection to an SDK using our [`serve_grpc`](../../reference/sdk/operating-modes.md#serve_grpc) API (e.g. `rerun+http://localhost:4321/proxy`).
+The `RRD_URL` can be a file served over `http` (e.g. `https://app.rerun.io/version/latest/examples/dna.rrd`), or a connection to an SDK using our [`serve_grpc`](../../reference/sdk/operating-modes.md#serve_grpc) API (e.g. `rerun+http://localhost:9876/proxy`).
+See [Open a file by URL](../../reference/viewer/urls.md#open-a-file-by-url) for URL-encoding and the CORS headers that the file host must send.
+For gRPC connections, see [Connecting to a gRPC server from another origin](#connecting-to-a-grpc-server-from-another-origin-cors).
 
 For instance:
 
 ```html
-<iframe src="https://app.rerun.io/version/0.20.3/?url=https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd"></iframe>
+<iframe src="https://app.rerun.io/version/latest/?url=https%3A%2F%2Fapp.rerun.io%2Fversion%2Flatest%2Fexamples%2Fdna.rrd"></iframe>
 ```
+
+Choose a Viewer version that can read your recordings.
+RRD files written by Rerun 0.23 or later can be opened by newer Viewers, but compatibility is only guaranteed across adjacent minor versions (see [RRD file backwards compatibility](../../getting-started/data-in.md#rrd-file-backwards-compatibility)).
+`latest` changes with every release, so pin a version if the files you show will not be regenerated.
 
 ### Matching the host page's theme
 
@@ -46,7 +53,9 @@ Various packages are available:
 - [@rerun-io/web-viewer-react](https://www.npmjs.com/package/@rerun-io/web-viewer-react): Designed specifically for React apps.
 
 > [!NOTE]
-> The stability of the `rrd` format is still evolving, so the package version corresponds to the supported Rerun SDK version. Therefore, `@rerun-io/web-viewer@0.10.0` can only connect to a data source (`.rrd` file, gRPC connection, etc.) originating from a Rerun SDK with version `0.10.0`!
+> The package version matches the Rerun SDK version.
+> The Viewer in the package reads data from the same version, and from older versions as described in [RRD file backwards compatibility](../../getting-started/data-in.md#rrd-file-backwards-compatibility).
+> To be safe, use the same version for the package and for the SDK that writes your data.
 
 ### Basic example
 
@@ -110,7 +119,7 @@ await viewer.start(null, parentElement);
 The Viewer API supports adding and removing recordings:
 
 ```js,id=embed-web-viewer-api-js-open-close
-const rrdUrl = "https://app.rerun.io/version/0.20.3/examples/arkit_scenes.rrd";
+const rrdUrl = "https://app.rerun.io/version/latest/examples/dna.rrd";
 
 // Open a recording, and wait for it to load:
 const { store_ids } = await viewer.open(rrdUrl);
@@ -168,3 +177,48 @@ viewer.on("selection_change", (event) => {
 });
 ```
 
+## Connecting to a gRPC server from another origin (CORS)
+
+A web Viewer that connects to a gRPC server (`serve_grpc`, `rerun --serve-grpc`, or `rerun server`) sends its requests from the origin of the page it runs on.
+By default, the server only accepts requests from pages on `localhost`, `127.0.0.1`, and `rerun.io` (including its subdomains, such as `app.rerun.io`).
+If your page is served from another origin, allow it on the server:
+
+```python
+rr.serve_grpc(cors_allow_origin=["https://my-app.example.com"])
+```
+
+```sh
+rerun --serve-grpc --cors-allow-origin "https://my-app.example.com"
+rerun server --cors-allow-origin "https://my-app.example.com"
+```
+
+Patterns can use `*` as a wildcard, for example `"https://*.example.com"` or `"https://example.com:*"`.
+
+This is for gRPC servers. For `.rrd` files that you load over `http`, the file host must allow your page's origin instead (see [CORS for files](../../reference/viewer/urls.md#cors)).
+
+## Authentication
+
+The Viewer authenticates to Rerun servers with a bearer token (a JWT).
+In the JavaScript package, pass it as the `fallback_token` option of `start`, or set it later with `viewer.set_credentials(access_token, email)`.
+The `login` option enables the OAuth login UI for Rerun Hub.
+
+You cannot add arbitrary HTTP headers, such as cookies or custom auth headers, to the Viewer's requests (see [missing features](../../development/roadmap.md#missing-features)).
+To show files that need other credentials, give the Viewer presigned URLs instead.
+
+## Memory and performance
+
+The web Viewer is the same Viewer as the native one, compiled to WebAssembly.
+It runs in the browser tab, so it is slower than the native Viewer, and has less memory: a WebAssembly process can use at most 4 GiB, and the Viewer limits itself to 2.5 GB by default.
+Use the `memory_limit` option of `start` to lower that limit.
+When the limit is reached, the Viewer drops the oldest data.
+
+## Gradio
+
+To show the Viewer in a [Gradio](https://www.gradio.app/) app, use the [`gradio_rerun`](https://github.com/rerun-io/gradio-rerun-viewer) component:
+
+```sh
+pip install gradio_rerun
+```
+
+It embeds the web Viewer, so the memory and performance limits above apply.
+See its README for examples of streaming data to it from a Gradio app.
