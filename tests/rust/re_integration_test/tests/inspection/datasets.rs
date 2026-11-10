@@ -174,6 +174,8 @@ async fn source_chevrons_preserve_manual_collapse() {
         ..Default::default()
     });
     assert_segment_revealed_in_sources(&mut harness);
+    // Finishing loads change the selection, which re-expands collapsed ancestors.
+    harness.step_until("Segment finishes loading", |harness| !harness.is_loading());
 
     for (ancestor, child) in [
         ("my_dataset", "new_recording_id"),
@@ -231,23 +233,23 @@ fn collapse_source_and_check(harness: &mut InspectionHarness, ancestor: &str, ch
 }
 
 fn assert_segment_revealed_in_sources(harness: &mut InspectionHarness) {
-    // The root folder appears only after the server's entry list has loaded.
-    harness.step_until("Segment and server entry list load", |harness| {
-        harness.query_by_label_contains("STREAMS").is_some()
-            && !harness.is_loading()
-            && harness
-                .section_node(Some("_recording_panel"))
-                .query_by_label("parent")
-                .is_some()
-    });
+    harness.step_until(
+        "Segment and its ancestor folders appear in sources",
+        |harness| {
+            if harness.query_by_label_contains("STREAMS").is_none() {
+                return false;
+            }
+            // Make sure all expected segments and folders are present in the sources:
+            let sources = harness.section_node(Some("_recording_panel"));
+            sources.query_by_label("parent").is_some()
+                && sources.query_by_label("child").is_some()
+                && sources.query_by_label("my_dataset").is_some()
+                && sources
+                    .query_by_label_contains("new_recording_id")
+                    .is_some()
+        },
+    );
     harness.run_ok();
-
-    // Make sure all expected segments and folders are present in the sources.
-    let sources = harness.section_node(Some("_recording_panel"));
-    sources.get_by_label("parent");
-    sources.get_by_label("child");
-    sources.get_by_label("my_dataset");
-    sources.get_by_label_contains("new_recording_id");
 }
 
 #[tokio::test(flavor = "multi_thread")]
