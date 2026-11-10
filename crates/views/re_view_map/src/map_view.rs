@@ -254,6 +254,7 @@ impl ViewClass for MapView {
             span.zoom_for_screen_size(
                 (ui.available_size() - egui::vec2(15.0, 15.0)).at_least(egui::Vec2::ZERO),
             )
+            .filter(|&zoom| zoom <= 16.0)
         });
         let zoom_level = blueprint_zoom_level.or(default_zoom_level).unwrap_or(16.0);
 
