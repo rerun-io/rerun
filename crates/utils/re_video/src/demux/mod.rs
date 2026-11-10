@@ -770,7 +770,7 @@ impl VideoDataDescription {
             total_secs += duration.into_secs(timescale);
         }
 
-        (total_secs > 0.0).then(|| total_bytes as f64 * 8.0 / total_secs)
+        (total_secs > 0.0).then_some(total_bytes as f64 * 8.0 / total_secs)
     }
 
     /// Determines the video timestamps of all present frames inside a video, returning raw time values.

@@ -82,9 +82,7 @@ export function inferTag(version) {
  * @type {(packageName: string, version: string) => Promise<boolean>}
  */
 export async function isPublished(packageName, version) {
-  const response = await fetch(
-    `https://registry.npmjs.org/${packageName}/${version}`,
-  );
+  const response = await fetch(`https://registry.npmjs.org/${packageName}/${version}`);
   return response.status === 200;
 }
 

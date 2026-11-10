@@ -277,8 +277,7 @@ impl Properties for ServeWasm {
 pub struct ViewerStarted {
     /// The URL on which the web viewer is running.
     ///
-    /// This will be used to populate `hashed_root_domain` property for all urls.
-    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
+    /// Sent as the `web_host` category, and as `rerun_url` on Rerun's own sites.
     pub url: Option<String>,
 
     /// The environment in which the viewer is running.
@@ -292,31 +291,85 @@ impl Event for ViewerStarted {
     const NAME: &'static str = "viewer_started";
 }
 
-const RERUN_DOMAINS: [&str; 1] = ["rerun.io"];
+/// The only hosts whose page URL is sent, as `rerun_url`.
+///
+/// Must not match other `*.rerun.io` hosts: Rerun Hub viewers are served from
+/// `<stack>.cloud.rerun.io`, where the stack name identifies a customer.
+const RERUN_URL_HOSTS: [&str; 3] = ["rerun.io", "www.rerun.io", "app.rerun.io"];
 
-/// Given a URL, extract the root domain.
-fn extract_root_domain(url: &str) -> Option<String> {
-    let parsed = Url::parse(url).ok()?;
-    let domain = parsed.domain()?;
-    let parts = domain.split('.').collect::<Vec<_>>();
-    if parts.len() >= 2 {
-        Some(parts[parts.len() - 2..].join("."))
-    } else {
-        None
+/// Public hosting platforms whose name is sent as `web_host`.
+///
+/// They say where a web viewer runs without identifying who runs it.
+/// A host matches an entry if it is the entry or one of its subdomains.
+const PUBLIC_WEB_HOSTS: [&str; 12] = [
+    "cloud.rerun.io", // Rerun Hub; the subdomain is the stack, which is never sent
+    "cloudfront.net",
+    "github.dev",
+    "github.io",
+    "googleusercontent.com", // Google Colab
+    "hf.space",
+    "kaggleusercontent.com",
+    "netlify.app",
+    "pages.dev",
+    "rerun.io",
+    "ts.net",
+    "vercel.app",
+];
+
+/// Where a web viewer runs, coarse enough to never identify a site or its owner.
+///
+/// One of [`PUBLIC_WEB_HOSTS`], `"local"` for this machine or a private network, or `"other"`.
+fn web_host(url: &str) -> Option<&'static str> {
+    // `Url` lowercases the host of `http` and `https` URLs.
+    let host = Url::parse(url).ok()?.host()?.to_owned();
+    let is_local = match &host {
+        url::Host::Domain(domain) => {
+            matches!(domain.rsplit('.').next(), Some("localhost" | "local"))
+        }
+        url::Host::Ipv4(ip) => ip.is_loopback() || ip.is_private() || ip.is_link_local(),
+        url::Host::Ipv6(ip) => {
+            ip.is_loopback() || ip.is_unique_local() || ip.is_unicast_link_local()
+        }
+    };
+    if is_local {
+        return Some("local");
     }
+    let url::Host::Domain(domain) = host else {
+        return Some("other");
+    };
+
+    // The longest match wins, so that Rerun Hub is not counted as `rerun.io`.
+    let public = PUBLIC_WEB_HOSTS
+        .into_iter()
+        .filter(|public| {
+            domain == *public
+                || domain
+                    .strip_suffix(public)
+                    .is_some_and(|prefix| prefix.ends_with('.'))
+        })
+        .max_by_key(|public| public.len());
+    Some(public.unwrap_or("other"))
+}
+
+/// The page URL to send as `rerun_url`: only for [`RERUN_URL_HOSTS`], and without the query or
+/// fragment, which can name the data being viewed.
+fn sanitized_rerun_url(url: &str) -> Option<String> {
+    let mut parsed = Url::parse(url).ok()?;
+    if !RERUN_URL_HOSTS.contains(&parsed.domain()?) {
+        return None;
+    }
+    parsed.set_query(None);
+    parsed.set_fragment(None);
+    Some(parsed.into())
 }
 
 fn add_sanitized_url_properties(event: &mut AnalyticsEvent, url: Option<String>) {
-    let Some(root_domain) = url.as_ref().and_then(|url| extract_root_domain(url)) else {
+    let Some(url) = url else {
         return;
     };
 
-    if RERUN_DOMAINS.contains(&root_domain.as_str()) {
-        event.insert_opt("rerun_url", url);
-    }
-
-    let hashed = Property::from(root_domain).hashed();
-    event.insert("hashed_root_domain", hashed);
+    event.insert_opt("rerun_url", sanitized_rerun_url(&url));
+    event.insert_opt("web_host", web_host(&url));
 }
 
 impl Properties for ViewerStarted {
@@ -341,8 +394,7 @@ impl Properties for ViewerStarted {
 pub struct OpenRecording {
     /// The URL on which the web viewer is running.
     ///
-    /// This will be used to populate `hashed_root_domain` property for all urls.
-    /// This will also populate `rerun_url` property if the url root domain is `rerun.io`.
+    /// Sent as the `web_host` category, and as `rerun_url` on Rerun's own sites.
     pub url: Option<String>,
 
     /// The environment in which the viewer is running.
@@ -496,8 +548,12 @@ impl Server {
 /// An MCP server that the agent in the Rerun Viewer's agent panel was asked to start did not start.
 ///
 /// This event contains no server name (other than whether it is ours), command, or error text.
-/// Only Codex reports MCP startup failures, so only Codex sessions emit it.
+/// Only Codex and Claude Code report MCP startup failures, so only their sessions emit it.
+/// Codex reports them when the session opens, Claude Code only once the first prompt is sent.
 pub struct AgentMcpStartupFailure {
+    /// Which agent reported the failure, e.g. "Claude Code", if it introduced itself.
+    pub agent: Option<String>,
+
     /// Which server failed to start.
     pub server: Server,
 
@@ -514,9 +570,11 @@ impl Event for AgentMcpStartupFailure {
 impl Properties for AgentMcpStartupFailure {
     fn serialize(self, event: &mut AnalyticsEvent) {
         let Self {
+            agent,
             server,
             replaced_by_agent_config,
         } = self;
+        event.insert_opt("agent", agent);
         event.insert("server", server.as_str());
         event.insert("replaced_by_agent_config", replaced_by_agent_config);
     }
@@ -1015,6 +1073,9 @@ pub struct CliCommandInvoked {
     pub hide_welcome_screen: bool,
     pub detach_process: bool,
     pub test_receive: bool,
+
+    /// `Some` only for the `viewer-mcp` command.
+    pub mcp_launcher: Option<McpLauncher>,
 }
 
 impl Event for CliCommandInvoked {
@@ -1040,6 +1101,7 @@ impl Properties for CliCommandInvoked {
             hide_welcome_screen,
             detach_process,
             test_receive,
+            mcp_launcher,
         } = self;
 
         build_info.serialize(event);
@@ -1058,6 +1120,29 @@ impl Properties for CliCommandInvoked {
         event.insert("hide_welcome_screen", hide_welcome_screen);
         event.insert("detach_process", detach_process);
         event.insert("test_receive", test_receive);
+        event.insert_opt("mcp_launcher", mcp_launcher.map(McpLauncher::as_str));
+    }
+}
+
+/// What started a `rerun viewer-mcp` process.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum McpLauncher {
+    /// The process got `--from-agent-panel`, which only the viewer's agent panel passes.
+    AgentPanel,
+
+    /// The process did not get `--from-agent-panel`.
+    ///
+    /// The agent panel also lands here when it runs a `rerun` from `PATH`,
+    /// so `AgentPanel` counts are a lower bound on agent panel launches.
+    Unknown,
+}
+
+impl McpLauncher {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::AgentPanel => "agent_panel",
+            Self::Unknown => "unknown",
+        }
     }
 }
 
@@ -1115,6 +1200,48 @@ mod tests {
     use std::assert_matches;
 
     use super::*;
+
+    fn cli_event(command: &'static str, mcp_launcher: Option<McpLauncher>) -> AnalyticsEvent {
+        let mut event = AnalyticsEvent::new(CliCommandInvoked::NAME, CliCommandInvoked::KIND);
+        CliCommandInvoked {
+            build_info: re_build_info::cargo_build_info!(),
+            command,
+            subcommand: None,
+            web_viewer: false,
+            serve_web: false,
+            serve_grpc: false,
+            connect: false,
+            save: false,
+            screenshot_to: false,
+            newest_first: false,
+            persist_state_disabled: false,
+            profile: false,
+            expect_data_soon: false,
+            hide_welcome_screen: false,
+            detach_process: false,
+            test_receive: false,
+            mcp_launcher,
+        }
+        .serialize(&mut event);
+        event
+    }
+
+    #[test]
+    fn viewer_mcp_reports_its_launcher() {
+        let event = cli_event("viewer-mcp", Some(McpLauncher::AgentPanel));
+        assert_matches!(&event.props["mcp_launcher"],
+            Property::String(launcher) if launcher == "agent_panel");
+    }
+
+    #[test]
+    fn other_commands_send_no_launcher() {
+        let event = cli_event("viewer", None);
+        assert!(
+            !event.props.contains_key("mcp_launcher"),
+            "expected no mcp_launcher, got {:?}",
+            event.props.get("mcp_launcher")
+        );
+    }
 
     /// The text fields must not overwrite the counts that [`AgentTurnUsage`] already inserted.
     #[test]
@@ -1216,40 +1343,46 @@ mod tests {
     }
 
     #[test]
-    fn test_root_domain() {
-        // Valid urls
+    fn web_host_never_names_a_private_site() {
+        for (url, expected) in [
+            ("https://rerun.io/viewer?url=x", Some("rerun.io")),
+            ("https://App.Rerun.io/version/0.15.1/", Some("rerun.io")),
+            ("https://my-stack.cloud.rerun.io/", Some("cloud.rerun.io")),
+            ("https://someone-demo.hf.space/", Some("hf.space")),
+            ("https://lab-pc.tail1234.ts.net:9090/", Some("ts.net")),
+            ("http://localhost:9090/", Some("local")),
+            ("http://robot.local:9090/", Some("local")),
+            ("http://127.0.0.1:9090/", Some("local")),
+            ("http://192.168.1.20:9090/", Some("local")),
+            ("http://[::1]:9090/", Some("local")),
+            ("https://viewer.example.com/", Some("other")),
+            ("https://notrerun.io/", Some("other")),
+            ("http://8.8.8.8/", Some("other")),
+            ("not a url", None),
+        ] {
+            assert_eq!(web_host(url), expected, "{url}");
+        }
+    }
+
+    #[test]
+    fn rerun_url_is_only_sent_for_rerun_hosts_and_without_the_query() {
         assert_eq!(
-            extract_root_domain("https://rerun.io"),
-            Some("rerun.io".to_owned())
-        );
-        assert_eq!(
-            extract_root_domain("https://ReRun.io"),
-            Some("rerun.io".to_owned())
-        );
-        assert_eq!(
-            extract_root_domain("http://app.rerun.io"),
-            Some("rerun.io".to_owned())
-        );
-        assert_eq!(
-            extract_root_domain(
-                "https://www.rerun.io/viewer?url=https://app.rerun.io/version/0.15.1/examples/detect_and_track_objects.rrd"
+            sanitized_rerun_url(
+                "https://rerun.io/viewer?url=rerun://api.example.cloud.rerun.io/dataset/1#frag"
             ),
-            Some("rerun.io".to_owned())
-        );
-
-        // Local domains
-        assert_eq!(
-            extract_root_domain("http://localhost:9090/?url=rerun%2Bhttp://localhost:9877"),
-            None
+            Some("https://rerun.io/viewer".to_owned())
         );
         assert_eq!(
-            extract_root_domain("http://127.0.0.1:9090/?url=rerun%2Bhttp://localhost:9877"),
-            None
+            sanitized_rerun_url("https://app.rerun.io/version/0.15.1/"),
+            Some("https://app.rerun.io/version/0.15.1/".to_owned())
         );
 
-        // Invalid urls
-        assert_eq!(extract_root_domain("rerun.io"), None);
-        assert_eq!(extract_root_domain("https:/rerun"), None);
-        assert_eq!(extract_root_domain("https://rerun"), None);
+        // Hub viewers, other domains and local servers send no page URL.
+        assert_eq!(
+            sanitized_rerun_url("https://example.cloud.rerun.io/?url=rerun://example"),
+            None
+        );
+        assert_eq!(sanitized_rerun_url("https://example.com/viewer"), None);
+        assert_eq!(sanitized_rerun_url("http://localhost:9090/"), None);
     }
 }

@@ -8,6 +8,7 @@ mod model_selection;
 mod new_conversation_shortcut;
 mod pasted_images;
 mod self_improve;
+mod speed_selection;
 
 /// Offered by an empty conversation in the test panels.
 fn example_prompts() -> Vec<String> {

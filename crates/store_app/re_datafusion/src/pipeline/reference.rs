@@ -784,10 +784,9 @@ mod tests {
         time: Option<i64>,
         cells: impl IntoIterator<Item = (ComponentDescriptor, ArrayRef)>,
     ) -> Chunk {
-        let timepoint = time.map_or_else(
-            || TimePoint::STATIC,
-            |t| TimePoint::from([(Timeline::new_sequence(INDEX), TimeInt::new_temporal(t))]),
-        );
+        let timepoint = time.map_or(TimePoint::STATIC, |t| {
+            TimePoint::from([(Timeline::new_sequence(INDEX), TimeInt::new_temporal(t))])
+        });
         Chunk::builder(EntityPath::from(entity))
             .with_row(RowId::new(), timepoint, cells)
             .build()

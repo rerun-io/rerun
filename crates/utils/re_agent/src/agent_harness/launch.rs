@@ -74,6 +74,7 @@ impl AgentSettings {
             });
         }
 
+        let preferences = self.preferences(&self.profile_id);
         Ok(AgentHarnessConfig {
             command,
             args,
@@ -88,8 +89,14 @@ impl AgentSettings {
                 .iter()
                 .map(|&model| model.to_owned())
                 .collect(),
-            preferred_model: self.preferred_models.get(&self.profile_id).cloned(),
-            mode_preferences: std::iter::chain(self.preferred_mode.clone(), default_mode).collect(),
+            preferred_model: preferences.and_then(|preferences| preferences.model.clone()),
+            preferred_speed: preferences.and_then(|preferences| preferences.speed.clone()),
+            mode_preferences: std::iter::chain(
+                preferences.and_then(|preferences| preferences.mode.clone()),
+                default_mode,
+            )
+            .collect(),
+            session_to_load: None,
         })
     }
 }

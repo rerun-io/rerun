@@ -8,9 +8,7 @@ fn build_handler() -> RerunCloudHandler {
     let builder = RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!());
     cfg_select! {
         target_arch = "wasm32" => builder.build(),
-        _ => builder
-            .build()
-            .expect("failed to build handler"),
+        _ => builder.build().expect("failed to build handler"),
     }
 }
 

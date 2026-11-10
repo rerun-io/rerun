@@ -7,6 +7,7 @@ import {
   GetStateResponseSchema,
   ViewerControlRequestSchema,
   ViewerControlResponseSchema,
+  type GetSelectionResponse,
   type GetStateResponse,
   PlayState as ProtoPlayState,
   type RecordingEntitySchema,
@@ -32,6 +33,9 @@ export {
   type StoreId,
   type StoreIdParts,
 } from "./store_id.js";
+
+/** A UUID in the hyphenated form, e.g. `67e55044-10b1-426f-9247-bb680e5fe0c8`. */
+export type Uuid = string;
 
 /** What the viewer shows, as {@link WebViewer.get_state} reports it. */
 export interface ViewerState {
@@ -127,7 +131,7 @@ export type PlayState = "paused" | "playing" | "following";
 
 /** A view of the current blueprint. */
 export interface ViewerView {
-  view_id: string;
+  view_id: Uuid;
 
   /** The view's class, e.g. `Spatial3D`. */
   class: string;
@@ -190,6 +194,72 @@ export interface ViewerLoadingSource {
   status: string;
 }
 
+/** What the user has selected in the viewer, as {@link WebViewer.get_selection} reports it. */
+export interface Selection {
+  /** The recording that the selected entities and components belong to: the active recording. */
+  store_id?: StoreId;
+
+  /** The selected items, in selection order. Empty if nothing is selected. */
+  items: SelectedItem[];
+}
+
+/** One selected item. */
+export type SelectedItem =
+  | {
+      type: "entity";
+      entity_path: string;
+
+      /** The index of the selected instance, e.g. one point of a point cloud. Absent when the whole entity is selected. */
+      instance?: bigint;
+
+      /** The view it was selected in, as a `view_id` from {@link WebViewer.get_state}. Absent when selected outside of a view. */
+      view_id?: Uuid;
+    }
+  | {
+      type: "component";
+      entity_path: string;
+
+      /** The component, e.g. `Points3D:positions`. */
+      component: string;
+    }
+  | { type: "view"; view_id: Uuid }
+  | { type: "container"; container_id: Uuid }
+  | { type: "recording"; store_id: StoreId };
+
+/** The public {@link Selection} of a `GetSelection` response, leaving out kinds this version does not know. */
+function selection_of(selection: GetSelectionResponse): Selection {
+  const items: SelectedItem[] = [];
+  for (const { kind } of selection.items) {
+    switch (kind.case) {
+      case "entity":
+        items.push({
+          type: "entity",
+          entity_path: kind.value.entityPath,
+          instance: kind.value.instance,
+          view_id: kind.value.viewId?.uuid,
+        });
+        break;
+      case "component":
+        items.push({
+          type: "component",
+          entity_path: kind.value.entityPath,
+          component: kind.value.component,
+        });
+        break;
+      case "view":
+        items.push({ type: "view", view_id: kind.value.viewId?.uuid ?? "" });
+        break;
+      case "container":
+        items.push({ type: "container", container_id: kind.value.containerId?.uuid ?? "" });
+        break;
+      case "recording":
+        items.push({ type: "recording", store_id: kind.value.storeId as StoreId });
+        break;
+    }
+  }
+  return { store_id: selection.storeId as StoreId | undefined, items };
+}
+
 /** The public {@link ViewerState} of a `GetState` response. */
 function viewer_state_of(state: GetStateResponse): ViewerState {
   return {
@@ -212,7 +282,11 @@ function viewer_state_of(state: GetStateResponse): ViewerState {
       name: view.name,
       origin: view.origin,
       visible: view.visible,
-      reports: view.reports.map(({ severity, summary, details }) => ({ severity, summary, details })),
+      reports: view.reports.map(({ severity, summary, details }) => ({
+        severity,
+        summary,
+        details,
+      })),
     })),
     loading: state.loading.map(({ name, status }) => ({ name, status })),
     servers: state.servers.map((server) => ({
@@ -310,12 +384,7 @@ export interface ViewerLogEntry {
  * the recordings loaded from these URLs, which also stops loading from them,
  * these recordings by store id, the active recording (`"current"`), or every recording (`"all"`).
  */
-export type CloseTarget =
-  | (string & {})
-  | string[]
-  | { store_ids: StoreId[] }
-  | "current"
-  | "all";
+export type CloseTarget = (string & {}) | string[] | { store_ids: StoreId[] } | "current" | "all";
 
 /** How {@link WebViewer.open} opens URLs. */
 export interface OpenOptions {
@@ -448,7 +517,7 @@ export interface TableColumnSchema {
 /** What {@link WebViewer.take_screenshot} captures. */
 export interface ScreenshotOptions {
   /** The view to capture, as a `view_id` from {@link WebViewer.get_state}. If omitted, the whole viewer. */
-  view_id?: string;
+  view_id?: Uuid;
 
   /** Longest side of the image, in pixels. A larger screenshot is scaled down to fit. If omitted, full resolution. */
   max_size?: number;
@@ -696,7 +765,6 @@ const EDGE_FILTERS = {
   all: GetTransformGraphRequest_EdgeFilter.ALL,
 } as const;
 
-
 /**
  * Where to move the time cursor to, for {@link WebViewer.set_time}, and on which recording and timeline.
  *
@@ -817,7 +885,7 @@ function time_of(options: SetTimeOptions): bigint | undefined {
 }
 
 let get_wasm_bindgen: (() => typeof wasm_bindgen) | null = null;
-let _wasm_module: WebAssembly.Module | null = null;
+let wasm_module: WebAssembly.Module | null = null;
 
 /**
  * Feature-detect WebAssembly SIMD (`simd128`).
@@ -831,10 +899,12 @@ let _wasm_module: WebAssembly.Module | null = null;
  */
 function has_wasm_simd(): boolean {
   try {
-    return WebAssembly.validate(new Uint8Array([
-      0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0,
-      10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11,
-    ]));
+    return WebAssembly.validate(
+      new Uint8Array([
+        0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0,
+        253, 15, 253, 98, 11,
+      ]),
+    );
   } catch {
     return false;
   }
@@ -857,7 +927,7 @@ function export_stream(bytes: Uint8Array): ReadableStream<Uint8Array> {
   });
 }
 
-async function fetch_viewer_js(): Promise<(() => typeof wasm_bindgen)> {
+async function fetch_viewer_js(): Promise<() => typeof wasm_bindgen> {
   // @ts-ignore
   return (await import("./re_viewer.js")).default;
 }
@@ -872,9 +942,7 @@ async function fetch_viewer_wasm(
     : new URL("./re_viewer_bg.wasm", import.meta.url);
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(
-      `Failed to fetch viewer Wasm: ${response.status} ${response.statusText}`,
-    );
+    throw new Error(`Failed to fetch viewer Wasm: ${response.status} ${response.statusText}`);
   }
   return wrap_fetch_with_progress(response, on_progress);
   //!<INLINE-MARKER-CLOSE>
@@ -954,14 +1022,14 @@ async function load(
 
   // instantiate wbg globals+module for every invocation of `load`,
   // but don't load the JS/Wasm source every time
-  if (!get_wasm_bindgen || !_wasm_module) {
-    [get_wasm_bindgen, _wasm_module] = await Promise.all([
+  if (!get_wasm_bindgen || !wasm_module) {
+    [get_wasm_bindgen, wasm_module] = await Promise.all([
       fetch_viewer_js(),
       WebAssembly.compileStreaming(fetch_viewer_wasm(base_url, on_progress)),
     ]);
   }
   let bindgen = get_wasm_bindgen();
-  await bindgen({ module_or_path: _wasm_module });
+  await bindgen({ module_or_path: wasm_module });
   return class extends bindgen.WebHandle {
     free() {
       super.free();
@@ -971,7 +1039,7 @@ async function load(
   };
 }
 
-let _minimize_current_fullscreen_viewer: (() => void) | null = null;
+let minimize_current_fullscreen_viewer: (() => void) | null = null;
 
 export type Panel = "top" | "blueprint" | "selection" | "time";
 export type PanelState = "hidden" | "collapsed" | "expanded";
@@ -1121,7 +1189,7 @@ export type ViewerEventBase = {
   application_id: string;
   recording_id: string;
   partition_id?: string;
-}
+};
 
 /**
  * Fired when the timeline starts playing.
@@ -1135,7 +1203,7 @@ export type PlayEvent = ViewerEventBase & {
  */
 export type PauseEvent = ViewerEventBase & {
   type: "pause";
-}
+};
 
 /**
  * Fired when the timepoint changes.
@@ -1143,7 +1211,7 @@ export type PauseEvent = ViewerEventBase & {
 export type TimeUpdateEvent = ViewerEventBase & {
   type: "time_update";
   time: number;
-}
+};
 
 /**
  * Fired when a different timeline is selected.
@@ -1152,7 +1220,7 @@ export type TimelineChangeEvent = ViewerEventBase & {
   type: "timeline_change";
   timeline: string;
   time: number;
-}
+};
 
 /**
  * Fired when the selection changes.
@@ -1164,7 +1232,7 @@ export type TimelineChangeEvent = ViewerEventBase & {
 export type SelectionChangeEvent = ViewerEventBase & {
   type: "selection_change";
   items: SelectionChangeItem[];
-}
+};
 
 /**
  * Fired when a new recording is opened in the Viewer.
@@ -1192,24 +1260,23 @@ export type RecordingOpenEvent = ViewerEventBase & {
    * Uses semver format.
    */
   version?: string;
-}
+};
 
 // A bit of TypeScript metaprogramming to automatically produce a
 // mapping of event names to event payloads given the above type
 // definitions.
 
 // Yield the event with type `K`.
-type _GetViewerEvent<K> =
-  Extract<ViewerEvent, { type: K }>;
+type GetViewerEvent<K> = Extract<ViewerEvent, { type: K }>;
 
 // `ViewerEvent` is a union of all events, so its `type` field
 // is a union of all `type` fields.
-type _ViewerEventNames = ViewerEvent["type"];
+type ViewerEventNames = ViewerEvent["type"];
 
 // For every event, get its payload type.
 type ViewerEventMap = {
-  [K in _ViewerEventNames]: _GetViewerEvent<K>
-}
+  [K in ViewerEventNames]: GetViewerEvent<K>;
+};
 
 /**
  * Selected an entity, or an instance of an entity.
@@ -1257,16 +1324,12 @@ export interface WebViewerEvents extends ViewerEventMap {
 // https://www.typescriptlang.org/docs/handbook/2/mapped-types.html#key-remapping-via-as
 export type EventsWithValue = {
   [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-  ? never
-  : K]: WebViewerEvents[K] extends any[]
-  ? WebViewerEvents[K]
-  : [WebViewerEvents[K]];
+    ? never
+    : K]: WebViewerEvents[K] extends any[] ? WebViewerEvents[K] : [WebViewerEvents[K]];
 };
 
 export type EventsWithoutValue = {
-  [K in keyof WebViewerEvents as WebViewerEvents[K] extends void
-  ? K
-  : never]: WebViewerEvents[K];
+  [K in keyof WebViewerEvents as WebViewerEvents[K] extends void ? K : never]: WebViewerEvents[K];
 };
 
 function delay(ms: number) {
@@ -1274,7 +1337,7 @@ function delay(ms: number) {
 }
 
 /** Resolve a potentially relative URL against the current origin. */
-function resolveAbsoluteUrl(url: string): string {
+function resolve_absolute_url(url: string): string {
   return new URL(url, window.location.href).toString();
 }
 
@@ -1322,8 +1385,8 @@ export class WebViewer {
           "In Node.js, use Playwright to run the viewer in a browser, or launch the native headless viewer with `rerun --headless`.",
       );
     }
-    injectStyle();
-    setupGlobalEventListeners();
+    inject_style();
+    setup_global_event_listeners();
   }
 
   /**
@@ -1346,7 +1409,7 @@ export class WebViewer {
 
     if (this.#state !== "stopped") return;
     this.#state = "starting";
-    this.#clearLoader();
+    this.#clear_loader();
 
     this.#canvas = document.createElement("canvas");
     this.#canvas.style.width = options.width ?? "640px";
@@ -1398,20 +1461,20 @@ export class WebViewer {
     try {
       WebHandle_class = await load(base_url, on_progress);
     } catch (e) {
-      this.#clearLoader();
+      this.#clear_loader();
       this.#fail("Failed to load rerun", String(e));
       throw e;
     }
     if (this.#state !== "starting") {
-      this.#clearLoader();
+      this.#clear_loader();
       return;
     }
 
     const fullscreen = this.#allow_fullscreen
       ? {
-        get_state: () => this.#fullscreen,
-        on_toggle: () => this.toggle_fullscreen(),
-      }
+          get_state: () => this.#fullscreen,
+          on_toggle: () => this.toggle_fullscreen(),
+        }
       : undefined;
 
     const on_viewer_event = (event_json: string) => {
@@ -1422,16 +1485,13 @@ export class WebViewer {
 
       // for JS users, we dispatch the parsed event
       let event: ViewerEvent = JSON.parse(event_json);
-      this.#dispatch_event(
-        event.type as any,
-        event,
-      );
-    }
+      this.#dispatch_event(event.type as any, event);
+    };
 
     const login = options.login
       ? {
-          signed_in_url: resolveAbsoluteUrl(options.login.signed_in_url),
-          signed_out_url: resolveAbsoluteUrl(options.login.signed_out_url),
+          signed_in_url: resolve_absolute_url(options.login.signed_in_url),
+          signed_out_url: resolve_absolute_url(options.login.signed_out_url),
         }
       : undefined;
 
@@ -1444,16 +1504,16 @@ export class WebViewer {
     try {
       await this.#handle.start(this.#canvas);
     } catch (e) {
-      this.#clearLoader();
+      this.#clear_loader();
       this.#fail("Failed to start", String(e));
       throw e;
     }
     if (this.#state !== "starting") {
-      this.#clearLoader();
+      this.#clear_loader();
       return;
     }
 
-    this.#clearLoader();
+    this.#clear_loader();
     this.#state = "ready";
     this.#dispatch_event("ready");
 
@@ -1493,15 +1553,10 @@ export class WebViewer {
     return () => this.#raw_events.delete(callback);
   }
 
-  #event_map: Map<
-    keyof WebViewerEvents,
-    Map<(...args: any[]) => void, { once: boolean }>
-  > = new Map();
+  #event_map: Map<keyof WebViewerEvents, Map<(...args: any[]) => void, { once: boolean }>> =
+    new Map();
 
-  #dispatch_event<E extends keyof EventsWithValue>(
-    event: E,
-    ...args: EventsWithValue[E]
-  ): void;
+  #dispatch_event<E extends keyof EventsWithValue>(event: E, ...args: EventsWithValue[E]): void;
   #dispatch_event<E extends keyof EventsWithoutValue>(event: E): void;
   #dispatch_event(event: any, ...args: any[]): void {
     // Dispatch events on next tick.
@@ -1531,10 +1586,7 @@ export class WebViewer {
     event: E,
     callback: (...args: EventsWithValue[E]) => void,
   ): () => void;
-  on<E extends keyof EventsWithoutValue>(
-    event: E,
-    callback: () => void,
-  ): () => void;
+  on<E extends keyof EventsWithoutValue>(event: E, callback: () => void): () => void;
   on(event: any, callback: any): () => void {
     const callbacks = this.#event_map.get(event) ?? new Map();
     callbacks.set(callback, { once: false });
@@ -1553,10 +1605,7 @@ export class WebViewer {
     event: E,
     callback: (value: EventsWithValue[E]) => void,
   ): () => void;
-  once<E extends keyof EventsWithoutValue>(
-    event: E,
-    callback: () => void,
-  ): () => void;
+  once<E extends keyof EventsWithoutValue>(event: E, callback: () => void): () => void;
   once(event: any, callback: any): () => void {
     const callbacks = this.#event_map.get(event) ?? new Map();
     callbacks.set(callback, { once: true });
@@ -1669,7 +1718,7 @@ export class WebViewer {
     this.#state = "stopped";
 
     this.#canvas?.remove();
-    this.#clearLoader();
+    this.#clear_loader();
 
     try {
       this.#handle?.destroy();
@@ -1719,7 +1768,7 @@ export class WebViewer {
     this.stop();
   }
 
-  #clearLoader() {
+  #clear_loader() {
     this.#loader?.remove();
     this.#loader = null;
   }
@@ -1733,9 +1782,7 @@ export class WebViewer {
    */
   open_channel(channel_name: string = "rerun-io/web-viewer"): LogChannel {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to open channel "${channel_name}" in a stopped web viewer`,
-      );
+      throw new Error(`attempted to open channel "${channel_name}" in a stopped web viewer`);
     }
 
     const id = crypto.randomUUID();
@@ -1775,7 +1822,7 @@ export class WebViewer {
         this.#fail("Failed to send table", String(e));
         throw e;
       }
-    }
+    };
 
     const on_close = () => {
       if (!this.#handle) {
@@ -1805,9 +1852,7 @@ export class WebViewer {
    */
   override_panel_state(panel: Panel, state: PanelState | undefined | null) {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to set ${panel} panel to ${state} in a stopped web viewer`,
-      );
+      throw new Error(`attempted to set ${panel} panel to ${state} in a stopped web viewer`);
     }
 
     try {
@@ -1825,9 +1870,7 @@ export class WebViewer {
    */
   toggle_panel_overrides(value?: boolean | null) {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to toggle panel overrides in a stopped web viewer`,
-      );
+      throw new Error(`attempted to toggle panel overrides in a stopped web viewer`);
     }
 
     try {
@@ -1845,9 +1888,7 @@ export class WebViewer {
    */
   get_active_recording_id(): string | null {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to get active recording id in a stopped web viewer`,
-      );
+      throw new Error(`attempted to get active recording id in a stopped web viewer`);
     }
 
     const store_id = this.#viewer_state()?.active_store_id;
@@ -1863,9 +1904,7 @@ export class WebViewer {
    */
   set_active_recording_id(value: string) {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to set active recording id to ${value} in a stopped web viewer`,
-      );
+      throw new Error(`attempted to set active recording id to ${value} in a stopped web viewer`);
     }
 
     const recording = this.#recording(value);
@@ -1884,6 +1923,17 @@ export class WebViewer {
    */
   async get_state(): Promise<ViewerState> {
     return viewer_state_of(await this.#viewer_control("getState", {}));
+  }
+
+  /**
+   * What the user has selected: entities or instances of them, components, views, containers, and recordings.
+   *
+   * Other things the user can select, such as servers and catalog entries, are left out.
+   *
+   * This API is experimental, and may change between releases.
+   */
+  async get_selection(): Promise<Selection> {
+    return selection_of(await this.#viewer_control("getSelection", {}));
   }
 
   /**
@@ -2061,7 +2111,9 @@ export class WebViewer {
    *
    * This API is experimental, and may change between releases.
    */
-  async get_dataset_assets_schema(options: DatasetSchemaOptions = {}): Promise<DatasetAssetSchema[]> {
+  async get_dataset_assets_schema(
+    options: DatasetSchemaOptions = {},
+  ): Promise<DatasetAssetSchema[]> {
     const { assets } = await this.#viewer_control("getDatasetAssetsSchema", {
       datasetUrl: options.dataset_url,
       ...schema_request_of(options),
@@ -2246,8 +2298,7 @@ export class WebViewer {
   set_playing(recording_id: string, value: boolean) {
     if (!this.#handle) {
       throw new Error(
-        `attempted to set play state to ${value ? "playing" : "paused"
-        } in a stopped web viewer`,
+        `attempted to set play state to ${value ? "playing" : "paused"} in a stopped web viewer`,
       );
     }
 
@@ -2297,9 +2348,7 @@ export class WebViewer {
    */
   set_current_time(recording_id: string, timeline: string, time: number) {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to set current time to ${time} in a stopped web viewer`,
-      );
+      throw new Error(`attempted to set current time to ${time} in a stopped web viewer`);
     }
 
     const recording = this.#recording(recording_id);
@@ -2312,7 +2361,10 @@ export class WebViewer {
           : time_type === "duration"
             ? { duration_nanos: value }
             : { sequence: value };
-      this.#log_failure("set_time", this.set_time({ recording: recording.store_id, timeline, ...at }));
+      this.#log_failure(
+        "set_time",
+        this.set_time({ recording: recording.store_id, timeline, ...at }),
+      );
     }
   }
 
@@ -2325,9 +2377,7 @@ export class WebViewer {
    */
   get_active_timeline(recording_id: string): string | null {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to get active timeline in a stopped web viewer`,
-      );
+      throw new Error(`attempted to get active timeline in a stopped web viewer`);
     }
 
     return this.#recording(recording_id)?.current_time?.timeline ?? null;
@@ -2342,9 +2392,7 @@ export class WebViewer {
    */
   set_active_timeline(recording_id: string, timeline: string) {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to set active timeline to ${timeline} in a stopped web viewer`,
-      );
+      throw new Error(`attempted to set active timeline to ${timeline} in a stopped web viewer`);
     }
 
     const recording = this.#recording(recording_id);
@@ -2360,10 +2408,7 @@ export class WebViewer {
    *
    * @deprecated Use the timeline's `time_range` from {@link WebViewer.get_state} instead.
    */
-  get_time_range(
-    recording_id: string,
-    timeline: string,
-  ): { min: number; max: number } | null {
+  get_time_range(recording_id: string, timeline: string): { min: number; max: number } | null {
     if (!this.#handle) {
       throw new Error(`attempted to get time range in a stopped web viewer`);
     }
@@ -2441,9 +2486,7 @@ export class WebViewer {
     if (!this.#allow_fullscreen) return;
 
     if (!this.#handle || !this.#canvas) {
-      throw new Error(
-        `attempted to toggle fullscreen mode in a stopped web viewer`,
-      );
+      throw new Error(`attempted to toggle fullscreen mode in a stopped web viewer`);
     }
 
     if (this.#fullscreen) {
@@ -2455,19 +2498,15 @@ export class WebViewer {
 
   set_credentials(access_token: string, email: string) {
     if (!this.#handle) {
-      throw new Error(
-        `attempted to set credentials in a stopped web viewer`,
-      );
+      throw new Error(`attempted to set credentials in a stopped web viewer`);
     }
     this.#handle.set_credentials(access_token, email);
   }
 
-
-
-  #minimize = () => { };
+  #minimize = () => {};
 
   #maximize = () => {
-    _minimize_current_fullscreen_viewer?.();
+    minimize_current_fullscreen_viewer?.();
 
     const canvas = this.#canvas!;
     const rect = canvas.getBoundingClientRect();
@@ -2510,12 +2549,12 @@ export class WebViewer {
         canvas.classList.remove(classes.fullscreen_base, classes.transition);
       });
 
-      _minimize_current_fullscreen_viewer = null;
+      minimize_current_fullscreen_viewer = null;
       this.#fullscreen = false;
       this.#dispatch_event("fullscreen", false);
     };
 
-    _minimize_current_fullscreen_viewer = () => this.#minimize();
+    minimize_current_fullscreen_viewer = () => this.#minimize();
     this.#fullscreen = true;
   };
 
@@ -2529,7 +2568,10 @@ export class WebViewer {
     request: OperationRequest<K>,
   ): Promise<OperationResponse<K>> {
     if (!this.#handle) {
-      throw new ViewerControlError("FAILED_PRECONDITION", "attempted to control a stopped web viewer");
+      throw new ViewerControlError(
+        "FAILED_PRECONDITION",
+        "attempted to control a stopped web viewer",
+      );
     }
 
     const kind = { case: operation, value: request } as MessageInitShape<
@@ -2596,7 +2638,7 @@ export class LogChannel {
 
   send_table(table_bytes: Uint8Array) {
     if (!this.ready) return;
-    this.#on_send_table(table_bytes)
+    this.#on_send_table(table_bytes);
   }
 
   /**
@@ -2644,7 +2686,7 @@ const css = `
   }
 `;
 
-function injectStyle() {
+function inject_style() {
   const ID = "__rerun_viewer_style";
 
   if (document.getElementById(ID)) {
@@ -2658,10 +2700,10 @@ function injectStyle() {
   document.head.appendChild(style);
 }
 
-function setupGlobalEventListeners() {
+function setup_global_event_listeners() {
   window.addEventListener("keyup", (e) => {
     if (e.code === "Escape") {
-      _minimize_current_fullscreen_viewer?.();
+      minimize_current_fullscreen_viewer?.();
     }
   });
 }

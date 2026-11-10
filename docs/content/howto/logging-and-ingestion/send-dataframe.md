@@ -5,7 +5,14 @@ description: Log a whole table into a recording in a single call
 ---
 
 If your data is already in a table, you can log the whole table in a single call instead of logging it row by row or column by column.
-In Python, `rr.send_dataframe` takes a pandas `DataFrame` or an Arrow table and logs it into the active recording, so it's saved with the rest of your data and can be shown next to your other views.
+In Python, `rr.send_dataframe` logs a table into the active recording, so it's saved with the rest of your data and can be shown next to your other views.
+
+It accepts:
+- a pyarrow `Table`, `RecordBatch`, or `RecordBatchReader`,
+- a datafusion `DataFrame`,
+- any other object that implements the Arrow C stream interface (`__arrow_c_stream__`).
+  Recent versions of pandas and polars implement it, so you can pass their dataframes directly.
+  With older versions, convert first, e.g. with `pa.Table.from_pandas(df)` or `df.to_arrow()` (polars).
 
 Pass the timeline columns as `index` and the desired entity path for the remaining columns as `entity_path`:
 

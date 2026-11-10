@@ -36,6 +36,38 @@ This pattern is useful when:
 - You're debugging and want both live feedback and a recording to analyze later
 - You need to stream to multiple viewers or save to multiple files
 
+### Stream to a Viewer and save to a file at the same time (`tee`ing)
+
+Use `set_sinks` with both a `GrpcSink` and a `FileSink`, as in the snippet above.
+
+Calling `rr.spawn()`, `rr.connect_grpc()`, or `rr.save()` replaces all existing sinks.
+To start a Viewer without touching your sinks, call `rr.spawn(connect=False)`: it only starts the Viewer process, and your `GrpcSink` can then connect to it.
+
+```python
+rr.init("rerun_example_spawn_and_save")
+rr.spawn(connect=False)  # Start a Viewer, but leave the sinks alone.
+rr.set_sinks(rr.GrpcSink(), rr.FileSink("data.rrd"))
+```
+
+## Connection lifecycle
+
+These rules apply to the gRPC sink (`connect_grpc`, `spawn`, and `GrpcSink`):
+
+- **Connecting:** the SDK connects in the background and retries forever, with a backoff of up to one second between attempts.
+  You can start logging before the Viewer is running: data is queued until the connection is up.
+  If the queue fills up before a connection is made, log calls block.
+- **Flushing:** `flush` waits for queued data to be sent.
+  If the SDK has not connected yet, `flush` gives up after about 5 seconds.
+  In Python, use `rec.flush(timeout_sec=…)` on a `RecordingStream` (for example the one returned by `rr.get_global_data_recording()`) to limit how long it waits; it raises an error on timeout.
+- **Shutdown:** at shutdown, the SDK waits at most about 5 seconds for a final connection attempt.
+  If it still cannot connect, the queued data is dropped and an error is logged.
+- **Disconnects:** if an established connection fails (for example because the Viewer was closed), the SDK does _not_ reconnect.
+  Data logged after that is lost for this sink.
+  If you need the data, also log to a `FileSink`.
+- **Status:** only the Rust SDK exposes the connection state, through the experimental `GrpcSink::status`.
+
+If the Viewer cannot start because its port is taken, run `rerun --port auto` (or `rerun --new`) to start a new Viewer on a free port, and connect to the port it prints.
+
 ## See also
 
 - [Recordings](recordings.md): Understand how recordings relate to sinks

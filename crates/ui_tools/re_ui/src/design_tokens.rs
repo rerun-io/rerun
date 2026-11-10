@@ -309,6 +309,9 @@ pub struct DesignTokens {
     pub success_text_color: Color32,
     pub info_text_color: Color32,
 
+    /// Blue color of a status dot marking something new, e.g. unread messages or an unused button.
+    pub attention_dot_color: Color32,
+
     /// Opacity multiplier for the background of 2D labels in spatial views.
     pub spatial_label_bg_opacity: f32,
 
@@ -693,6 +696,7 @@ impl DesignTokens {
 
             success_text_color: get_color("success_text_color"),
             info_text_color: get_color("info_text_color"),
+            attention_dot_color: get_color("attention_dot_color"),
 
             spatial_label_bg_opacity: get_scalar("spatial_label_bg_opacity")?,
             disabled_opacity: get_scalar("disabled_opacity")?,

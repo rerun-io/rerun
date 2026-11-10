@@ -13,7 +13,13 @@ FetchContent_Declare(rerun_sdk URL
 FetchContent_MakeAvailable(rerun_sdk)
 ```
 
-For more details see [Build & Distribution](https://ref.rerun.io/docs/cpp/stable/index.html#autotoc_md8) in the C++ reference documentation.
+For more details see [Build & distribution](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/README.md#build--distribution).
+The SDK is also available as the `librerun-sdk` conda package and the `rerun-sdk` vcpkg port.
+
+### Bazel
+
+There is no official Bazel support.
+A community-maintained example is available at [kyle-figure/bazel-minimal-rerun](https://github.com/kyle-figure/bazel-minimal-rerun).
 
 You'll additionally need to install the [Viewer](./viewer.md).
 

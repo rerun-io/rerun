@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::path::PathBuf;
 
-use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
+use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionId, SessionModeId};
 
 use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
 use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProvider};
@@ -87,6 +87,28 @@ pub struct SessionContext {
     pub off_limits_directories: Vec<PathBuf>,
 }
 
+/// A conversation with an agent harness, kept so that it can be continued after a restart.
+///
+/// Only the agent's session id is kept: the agent stores the history, and replays it when the
+/// session is loaded again. See [`crate::AgentHarnessConfig::session_to_load`].
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct SavedConversation {
+    /// The agent profile that ran it. Session ids belong to the agent that gave them.
+    pub profile_id: AgentProfileId,
+
+    /// The agent's id for the session.
+    pub session_id: SessionId,
+
+    /// Working directory of the session, which some agents need to find it again.
+    pub cwd: PathBuf,
+
+    /// What the conversation list shows until the agent has replayed the history.
+    pub title: String,
+
+    /// When the user last sent a message, for sorting the conversation list.
+    pub last_prompt_at: jiff::Timestamp,
+}
+
 /// Everything needed to launch an agent. Serializable so the host app can persist it.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
@@ -117,11 +139,8 @@ pub struct AgentSettings {
     /// The tools a model-API agent's provider runs for it on its own servers.
     pub model_api_hosted_tools: HostedTools,
 
-    /// Session mode to restore when an agent offers it.
-    pub preferred_mode: Option<SessionModeId>,
-
-    /// Exact model choice per agent profile; model IDs belong to the agent that offered them.
-    pub preferred_models: BTreeMap<AgentProfileId, SessionConfigValueId>,
+    /// What the user last picked in the chat footer, per agent profile.
+    pub preferences: BTreeMap<AgentProfileId, AgentPreferences>,
 
     /// Share prompts and responses with Rerun after redacting sensitive text.
     pub share_redacted_prompts: bool,
@@ -129,6 +148,12 @@ pub struct AgentSettings {
     /// Set once the user has started an agent from the setup screen.
     /// From then on the panel starts the agent right away instead of showing setup again.
     pub setup_done: bool,
+
+    /// Conversations to list again after a restart, most recent first.
+    pub saved_conversations: Vec<SavedConversation>,
+
+    /// Set once the agent panel has been open, however it was opened.
+    pub panel_ever_opened: bool,
 
     /// API keys as the user typed them, by model-API profile.
     ///
@@ -138,6 +163,22 @@ pub struct AgentSettings {
     /// The desktop viewer reads keys from the environment only, and never stores them.
     #[cfg(target_arch = "wasm32")]
     pub api_keys: BTreeMap<AgentProfileId, String>,
+}
+
+/// What the user last picked for one agent profile, restored when that agent offers it.
+///
+/// The ids belong to the agent that offered them, so they are not shared between profiles.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct AgentPreferences {
+    /// Session mode, e.g. `acceptEdits` for Claude or `read-only` for Codex.
+    pub mode: Option<SessionModeId>,
+
+    /// Model, e.g. `sonnet` for Claude or `gpt-5-codex` for Codex.
+    pub model: Option<SessionConfigValueId>,
+
+    /// Speed, e.g. `on` for the fast mode of both Claude and Codex.
+    pub speed: Option<SessionConfigValueId>,
 }
 
 /// Why [`AgentSettings`] could not be resolved into an agent to start.
@@ -207,7 +248,7 @@ impl AgentLaunchError {
 #[derive(Debug)]
 pub enum AgentLaunch {
     /// Spawn an agent (Claude Code, Codex, …) and talk to it over the Agent Client Protocol.
-    AgentHarness(AgentHarnessConfig),
+    AgentHarness(Box<AgentHarnessConfig>),
 
     /// Run the agent loop ourselves, calling the model provider's API directly.
     ModelApi(ModelApiConfig),
@@ -224,7 +265,7 @@ impl AgentSettings {
             return cfg_select! {
                 agent_harness_backend => self
                     .agent_harness_config(agents, context)
-                    .map(AgentLaunch::AgentHarness),
+                    .map(|config| AgentLaunch::AgentHarness(Box::new(config))),
                 _ => {{
                     _ = agents;
                     Err(AgentLaunchError::AgentHarnessUnavailable {
@@ -236,10 +277,13 @@ impl AgentSettings {
         let api_key = self
             .api_key(provider)
             .ok_or_else(|| AgentLaunchError::missing_api_key(provider))?;
-        let model = self.preferred_models.get(&self.profile_id).map_or_else(
-            || provider.default_model().to_owned(),
-            |model| model.0.to_string(),
-        );
+        let model = self
+            .preferences(&self.profile_id)
+            .and_then(|preferences| preferences.model.as_ref())
+            .map_or_else(
+                || provider.default_model().to_owned(),
+                |model| model.0.to_string(),
+            );
         Ok(AgentLaunch::ModelApi(ModelApiConfig {
             provider,
             api_key,
@@ -248,6 +292,16 @@ impl AgentSettings {
             hosted_tools: self.model_api_hosted_tools,
             toolbox: None,
         }))
+    }
+
+    /// What the user last picked for `profile_id`.
+    pub fn preferences(&self, profile_id: &AgentProfileId) -> Option<&AgentPreferences> {
+        self.preferences.get(profile_id)
+    }
+
+    /// What the user last picked for `profile_id`, inserting empty preferences if there are none.
+    pub fn preferences_mut(&mut self, profile_id: AgentProfileId) -> &mut AgentPreferences {
+        self.preferences.entry(profile_id).or_default()
     }
 
     /// The key for `provider`: from the settings or from the environment, as
@@ -277,10 +331,11 @@ impl Default for AgentSettings {
             show_thoughts: true,
             log_protocol: false,
             model_api_hosted_tools: HostedTools::default(),
-            preferred_mode: None,
-            preferred_models: BTreeMap::new(),
+            preferences: BTreeMap::new(),
             share_redacted_prompts: false,
             setup_done: false,
+            saved_conversations: Vec::new(),
+            panel_ever_opened: false,
             #[cfg(target_arch = "wasm32")]
             api_keys: BTreeMap::new(),
         }
@@ -291,7 +346,7 @@ impl Default for AgentSettings {
 mod tests {
     use agent_client_protocol_schema::v1::SessionConfigValueId;
 
-    use super::{AgentProfileId, AgentSettings, HostedTools};
+    use super::{AgentPreferences, AgentProfileId, AgentSettings, HostedTools};
 
     #[test]
     fn old_settings_use_new_defaults() {
@@ -300,8 +355,7 @@ mod tests {
         };
         assert!(!settings.share_redacted_prompts);
         assert_eq!(settings.model_api_hosted_tools, HostedTools::default());
-        assert_eq!(settings.preferred_mode, None);
-        assert!(settings.preferred_models.is_empty());
+        assert!(settings.preferences.is_empty());
     }
 
     #[test]
@@ -310,15 +364,18 @@ mod tests {
             profile_id: AgentProfileId::new("codex"),
             ..Default::default()
         };
-        settings.preferred_models.insert(
+        settings.preferences.insert(
             AgentProfileId::new("claude"),
-            SessionConfigValueId::new("sonnet"),
+            AgentPreferences {
+                model: Some(SessionConfigValueId::new("sonnet")),
+                ..Default::default()
+            },
         );
         let Ok(json) = serde_json::to_value(&settings) else {
             panic!("settings should serialize");
         };
         assert_eq!(json["profile_id"], "codex");
-        assert_eq!(json["preferred_models"]["claude"], "sonnet");
+        assert_eq!(json["preferences"]["claude"]["model"], "sonnet");
         assert_eq!(
             serde_json::from_value::<AgentSettings>(json).ok(),
             Some(settings)

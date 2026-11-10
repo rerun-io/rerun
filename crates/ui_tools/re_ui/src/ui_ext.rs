@@ -1117,76 +1117,55 @@ pub trait UiExt {
         ui.spacing_mut().item_spacing.x = old_item_spacing_x;
     }
 
-    /// Shows a `?` help button that will show a help UI when clicked.
+    /// Shows a `?` help button that will show a help UI when clicked or hovered.
     ///
-    /// Until the user has interacted with a help button (any help button), we
-    /// highlight the button extra to draw user attention to it.
+    /// Until the help UI of any help button has been shown, we mark the button
+    /// with a dot to draw user attention to it.
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
-        // The help menu appears when clicked and/or hovered
         let mut help_ui: Option<_> = Some(help_ui);
 
         let ui = self.ui_mut();
 
-        // Have we ever shown any help UI anywhere?
         let has_shown_help_id = egui::Id::unique("has_shown_help");
-        let user_has_clicked_any_help_button: bool =
+        let has_shown_help: bool =
             ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
 
-        // Draw attention to the help button by highlighting it when the user hovers
-        // over its container (e.g. the tab bar of a view).
-        let is_hovering_container = ui.rect_contains_pointer(ui.max_rect());
+        let mut show_help = |ui: &mut egui::Ui| {
+            if let Some(help_ui) = help_ui.take() {
+                help_ui(ui);
+                let is_first_time = ui.data_mut(|d| {
+                    !std::mem::replace(d.get_persisted_mut_or_default(has_shown_help_id), true)
+                });
+                if is_first_time {
+                    re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
+                }
+            }
+        };
 
         ui.scope(|ui| {
-            let where_to_paint_background =
-                if !user_has_clicked_any_help_button && is_hovering_container {
-                    Some(ui.painter().add(egui::Shape::Noop))
-                } else {
-                    None
-                };
-
             let menu_button = egui::containers::menu::MenuButton::from_button(
                 ui.small_icon_button_widget(&icons::HELP, "Help"),
             );
 
-            let button_response = menu_button
-                .ui(ui, |ui| {
-                    if let Some(help_ui) = help_ui.take() {
-                        help_ui(ui);
-                        if !user_has_clicked_any_help_button {
-                            // Remember that the user has found and used the help button at least once,
-                            // to stop it from animating in the future:
-                            ui.data_mut(|d| {
-                                d.insert_persisted(has_shown_help_id, true);
-                            });
+            let button_response = menu_button.ui(ui, &mut show_help).0;
 
-                            re_analytics::record(|| re_analytics::event::HelpButtonFirstClicked {});
-                        }
-                    }
-                })
-                .0;
-
-            if let Some(where_to_paint_background) = where_to_paint_background
-                && !button_response.hovered()
-            {
-                // The same footprint the button's own hover fill has, so the two read as one
-                // button rather than two sizes of it.
-                ui.painter().set(
-                    where_to_paint_background,
-                    egui::Shape::rect_filled(
-                        button_response.rect,
-                        ui.tokens().normal_corner_radius(),
-                        ui.tokens().highlight_color,
-                    ),
-                );
+            if !has_shown_help {
+                ui.paint_button_dot(button_response.rect, ui.tokens().attention_dot_color);
             }
 
-            if let Some(help_ui) = help_ui.take() {
-                button_response.on_hover_ui(help_ui)
-            } else {
-                button_response
-            }
+            button_response.on_hover_ui(show_help)
         })
         .inner
+    }
+
+    /// Paints a small status dot in the top-right corner of a button.
+    ///
+    /// Use [`DesignTokens::attention_dot_color`] to mark something new,
+    /// e.g. a feature the user has not discovered yet.
+    fn paint_button_dot(&self, button_rect: egui::Rect, color: egui::Color32) {
+        let radius = self.tokens().status_dot_radius();
+        let center = button_rect.right_top() + egui::vec2(-radius, radius);
+        self.ui().painter().circle_filled(center, radius, color);
     }
 
     /// Show some markdown

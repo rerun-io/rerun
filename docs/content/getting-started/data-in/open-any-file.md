@@ -25,7 +25,7 @@ The following data types have built-in support in the Rerun Viewer and SDK:
 -   Images: `avif`, `bmp`, `dds`, `exr`, `farbfeld`, `ff`, `gif`, `hdr`, `ico`, `jpeg`, `jpg`, `pam`, `pbm`, `pgm`, `png`, `ppm`, `tga`, `tif`, `tiff`, `webp`
 -   Depth images: `rvl`
 -   Video: `mp4`
--   Audio: `aac`, `flac`, `m4a`, `mp3`, `oga`, `ogg`, `opus`, `wav`
+-   Audio: `aac`, `flac`, `m4a`, `mp3`, `oga`, `ogg`, `wav`
 -   Point clouds: `ply`
 -   Parquet files: `parquet`
 -   Text files: `md`, `txt`
@@ -45,3 +45,51 @@ To log the contents of a file from the SDK you can use the `log_file_from_path` 
 > When calling these APIs from the SDK, the data will be loaded by the process running the SDK, not the Viewer!
 
 snippet: tutorials/log-file
+
+## Formats without a built-in importer
+
+For other formats, read the file with your own code and log the data, or write an [importer](../../concepts/logging-and-ingestion/importers/overview.md) so the Viewer can open the file directly.
+
+### CSV
+
+There is no CSV importer.
+Load the file with pandas (or polars), and log the table with [`rr.send_dataframe`](../../howto/logging-and-ingestion/send-dataframe.md):
+
+```python
+import pandas as pd
+import pyarrow as pa
+import rerun as rr
+
+rr.init("rerun_example_csv", spawn=True)
+
+df = pd.read_csv("data.csv")  # e.g. columns: frame, x, y
+rr.send_dataframe(pa.Table.from_pandas(df), index="frame", entity_path="/data")
+```
+
+To show the values as points, boxes, or other archetypes, log them with [`send_columns`](../../howto/logging-and-ingestion/send-columns.md) instead.
+
+### HDF5
+
+There is no built-in HDF5 importer.
+In Python, the experimental `rerun.experimental.Hdf5Reader` maps each HDF5 group to an entity and its datasets to components:
+
+```python
+import rerun as rr
+from rerun.experimental import Hdf5Reader
+
+rr.init("rerun_example_hdf5", spawn=True)
+
+reader = Hdf5Reader("episode.hdf5")
+rr.send_chunks(reader.stream())  # Rows are indexed on a generated `row_index` timeline.
+```
+
+All non-scalar datasets must have the same number of rows.
+Pass `index_column=` to `stream()` to use one of the datasets as the timeline (e.g. `IndexColumn.sequence("/frame_id")` from `rerun.chunk`), and `ignore_datasets=` to skip datasets that don't fit.
+
+Use `reader.groups()`, `reader.datasets()`, and `reader.attributes()` to inspect the file first.
+You can also read the file with `h5py` and log the arrays yourself.
+
+### Parquet
+
+`.parquet` files have a built-in importer (see the list above).
+For more control in Python, the experimental `rerun.experimental.ParquetReader` reads a file into a `LazyChunkStream` that you can reshape with [lenses](../../concepts/query-and-transform/lenses.md) before sending it with `rr.send_chunks`.

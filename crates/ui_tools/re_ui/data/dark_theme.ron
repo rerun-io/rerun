@@ -83,6 +83,9 @@
     "info_text_color": {
       "color": "{Blue.700}"
     },
+    "attention_dot_color": {
+      "color": "{Blue.700}"
+    },
 
     "viewport_background": {
       "color": "{Gray.100}"

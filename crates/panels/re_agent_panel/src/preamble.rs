@@ -98,9 +98,9 @@ impl Preamble<'_> {
         if let Some(agent_dir) = *agent_dir {
             writeln!(
                 text,
-                "- Rerun skills (data model, blueprints, MCAP, LeRobot, …) are in `{}`, \
-                 indexed by the `README.md` there, which says in one line what each one covers. \
-                 Read the relevant `SKILL.md` before answering questions on those topics.",
+                "- Rerun skills (data model, blueprints, catalog/dataset queries, MCAP, LeRobot, …) are in `{}`. \
+                 Always check its `README.md` first to see which skills are available, then read the relevant `SKILL.md` \
+                 before starting the task.",
                 agent_dir.join(SKILLS_SUBDIR).display()
             )
             .ok();

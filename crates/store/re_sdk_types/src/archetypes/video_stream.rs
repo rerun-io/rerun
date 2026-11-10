@@ -27,7 +27,7 @@ use ::std::borrow::Cow;
 /// **Archetype**: Video stream consisting of raw video chunks.
 ///
 /// For logging video containers like mp4, refer to [`archetypes::AssetVideo`][crate::archetypes::AssetVideo] and [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
-/// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
+/// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/concepts/logging-and-ingestion/video).
 ///
 /// All components except `sample` are typically logged statically once per entity.
 /// `sample` is then logged repeatedly for each frame on the timeline.

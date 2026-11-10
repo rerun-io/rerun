@@ -64,7 +64,14 @@ pub fn viewer_started(
 pub fn open_recording(
     app_env: &AppEnvironment,
     entity_db: &re_entity_db::EntityDb,
-) -> Option<OpenRecording> {
+) -> OpenRecording {
+    let data_source = entity_db.primary_data_source();
+
+    // Don't share recording ids from a Rerun server
+    let is_redap = matches!(
+        data_source,
+        Some(re_log_channel::LogSource::RedapGrpcStream { .. })
+    );
     let store_info = entity_db.store_info().map(|store_info| {
         let re_log_msg::StoreInfo {
             store_id,
@@ -149,22 +156,72 @@ pub fn open_recording(
         }
     });
 
-    let data_source = entity_db.primary_data_source().map(|v| match v {
-        re_log_channel::LogSource::File { .. } => Some("file"), // .rrd, .png, .glb, …
-        re_log_channel::LogSource::HttpStream { .. } => Some("http"),
-        re_log_channel::LogSource::RedapGrpcStream { .. } => None,
-        re_log_channel::LogSource::MessageProxy { .. } => Some("grpc"),
+    let data_source = data_source.map(|data_source| match data_source {
+        re_log_channel::LogSource::File { .. } => "file", // .rrd, .png, .glb, …
+        re_log_channel::LogSource::HttpStream { .. } => "http",
+        re_log_channel::LogSource::RedapGrpcStream { .. } => "redap",
+        re_log_channel::LogSource::MessageProxy { .. } => "grpc",
         // vvv spawn(), connect() vvv
-        re_log_channel::LogSource::RrdWebEvent => Some("web_event"),
-        re_log_channel::LogSource::JsChannel { .. } => Some("javascript"), // mediated via rerun-js
-        re_log_channel::LogSource::Sdk => Some("sdk"),                     // show()
-        re_log_channel::LogSource::Stdin => Some("stdin"),
-    })?;
+        re_log_channel::LogSource::RrdWebEvent => "web_event",
+        re_log_channel::LogSource::JsChannel { .. } => "javascript", // mediated via rerun-js
+        re_log_channel::LogSource::Sdk => "sdk",                     // show()
+        re_log_channel::LogSource::Stdin => "stdin",
+    });
 
-    Some(OpenRecording {
+    OpenRecording {
         url: app_env.url().cloned(),
         app_env: app_env.name(),
-        store_info,
+        store_info: store_info.filter(|_| !is_redap),
         data_source,
-    })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_log_channel::LogSource;
+    use re_log_msg::{SetStoreInfo, StoreInfo, StoreSource};
+    use re_log_types::{StoreId, StoreKind};
+
+    use super::*;
+
+    fn opened_from(source: Option<LogSource>) -> OpenRecording {
+        let store_id = StoreId::random(StoreKind::Recording, "my_dataset");
+        let mut entity_db = re_entity_db::EntityDb::new(store_id.clone());
+        entity_db.set_store_info(SetStoreInfo {
+            row_id: re_chunk::RowId::new().as_tuid(),
+            info: StoreInfo::new(store_id, StoreSource::Unknown),
+        });
+        if let Some(source) = source {
+            entity_db.add_data_source(&Arc::new(source));
+        }
+        open_recording(&AppEnvironment::Test, &entity_db)
+    }
+
+    #[test]
+    fn server_recordings_are_reported_without_their_ids() {
+        let segment = opened_from(Some(LogSource::RedapGrpcStream {
+            uri: "rerun://127.0.0.1:1234/dataset/00000000000000000000000000000001?segment_id=pid"
+                .parse()
+                .unwrap(),
+            open_behavior: re_log_channel::RecordingOpenBehavior::OpenAndSelect,
+        }));
+        assert_eq!(segment.data_source, Some("redap"));
+        assert!(
+            segment.store_info.is_none(),
+            "the IDs name the dataset and segment"
+        );
+
+        let from_sdk = opened_from(Some(LogSource::Sdk));
+        assert_eq!(from_sdk.data_source, Some("sdk"));
+        assert!(from_sdk.store_info.is_some());
+    }
+
+    #[test]
+    fn recordings_without_a_data_source_are_reported() {
+        let unknown = opened_from(None);
+        assert_eq!(unknown.data_source, None);
+        assert!(unknown.store_info.is_some());
+    }
 }

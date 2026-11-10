@@ -15,7 +15,7 @@ const mimeTypes = {
   ".jpeg": "image/jpeg",
   ".gif": "image/gif",
   ".svg": "image/svg+xml",
-  ".txt": "text/plain"
+  ".txt": "text/plain",
 };
 
 // Root directory to serve (default: current working directory)

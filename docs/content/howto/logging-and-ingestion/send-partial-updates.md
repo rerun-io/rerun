@@ -16,6 +16,19 @@ Here, only the positions of the points have been specified but, looking at the [
 > **Recommended** & **Optional**: [`Radius`](../../reference/types/components/radius.md), [`Color`](../../reference/types/components/color.md), [`Text`](../../reference/types/components/text.md), [`ShowLabels`](../../reference/types/components/show_labels.md), [`PointShading`](../../reference/types/components/point_shading.md), [`ClassId`](../../reference/types/components/class_id.md), [`KeypointId`](../../reference/types/components/keypoint_id.md)
 
 
+### Log only what changed
+
+The SDK does not deduplicate: if you log the same value again, it is stored again.
+To save bandwidth and memory, skip values that did not change yourself.
+The Viewer uses [latest-at semantics](../../concepts/logging-and-ingestion/latest-at.md): each component keeps its last logged value until you log a new one, so values you skip carry forward.
+
+```python
+if not np.array_equal(colors, last_colors):
+    rr.log("points", rr.Points3D.from_fields(colors=colors))
+    last_colors = colors.copy()  # Copy, in case `colors` is updated in place.
+rr.log("points", rr.Points3D.from_fields(positions=positions))
+```
+
 All three languages for which we provide logging SDKs (Python, Rust, C++) expose APIs that allow fine-grained control over which components of an archetypes, when, and how.
 
 The best way to learn about these APIs is to see them in action: check out the examples below.

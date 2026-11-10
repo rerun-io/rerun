@@ -27,8 +27,10 @@ export function parse_exact_json(text: string): unknown {
       i += 1;
     }
   }
-  return JSON.parse(quoted, (_key, value) =>
-    typeof value === "string" && value.startsWith(marker) ? BigInt(value.slice(marker.length)) : value,
+  return JSON.parse(quoted, (...[, value]) =>
+    typeof value === "string" && value.startsWith(marker)
+      ? BigInt(value.slice(marker.length))
+      : value,
   );
 }
 

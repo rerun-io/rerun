@@ -20,7 +20,7 @@ use super::elicitation_ui::ElicitationUi;
 use super::pasted_image;
 use super::tool_call_ui::{code_ui, tool_fields_ui, tool_input_ui};
 use super::transcript_ui::{plan_ui, transcript_ui};
-use re_agent::{AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
+use re_agent::{AgentPreferences, AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
 
 /// Height a pasted image is previewed at in the composer, in points.
 const PREVIEW_HEIGHT: f32 = 48.0;
@@ -177,8 +177,7 @@ pub fn chat_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
     show_thoughts: bool,
     login_hint: Option<&str>,
     example_prompts: &[String],
@@ -192,14 +191,7 @@ pub fn chat_ui(
     egui::Panel::bottom("agent_composer")
         .frame(egui::Frame::new().inner_margin(8))
         .show(ui, |ui| {
-            composer_ui(
-                ui,
-                session,
-                input,
-                preferred_mode,
-                preferred_model,
-                login_hint,
-            );
+            composer_ui(ui, session, input, preferences, login_hint);
         });
 
     egui::CentralPanel::default()
@@ -400,6 +392,58 @@ fn model_picker_ui(
     }
 }
 
+fn speed_picker_ui(
+    ui: &mut egui::Ui,
+    session: &AgentSession,
+    preferred_speed: &mut Option<SessionConfigValueId>,
+) {
+    let Some((config_id, select)) = session.transcript().speed_selector() else {
+        return;
+    };
+    let options = re_agent::select_options(select);
+    let current_name = options
+        .iter()
+        .find(|option| option.value == select.current_value)
+        .map_or_else(
+            || select.current_value.0.to_string(),
+            |option| speed_label(option),
+        );
+    let mut selected = None;
+    ui.drop_down_menu("agent_speed", current_name, |ui| {
+        for option in &options {
+            if ui
+                .list_item()
+                .selected(option.value == select.current_value)
+                .show_flat(ui, re_ui::list_item::LabelContent::new(speed_label(option)))
+                .clicked()
+            {
+                selected = Some(option.value.clone());
+            }
+        }
+    })
+    .on_hover_text("Speed");
+    if let Some(value) = selected {
+        *preferred_speed = Some(value.clone());
+        if value != select.current_value {
+            session.set_config_option(config_id.clone(), value);
+        }
+    }
+}
+
+/// The label of a speed option in the speed picker.
+///
+/// Claude and Codex both expose their fast mode as a toggle with the values `on` and `off`,
+/// which would show up as a lone "On" or "Off" in the footer.
+/// We show them as "Fast" and "Standard" instead.
+/// Other values are shown with the name the agent gives them.
+fn speed_label(option: &SessionConfigSelectOption) -> String {
+    match option.value.0.as_ref() {
+        "off" => "Standard".to_owned(),
+        "on" => "Fast".to_owned(),
+        _ => option.name.clone(),
+    }
+}
+
 /// Modes that let the agent act without asking are shown in warning colors.
 ///
 /// ACP has no flag for this, so we go by the mode's id and name.
@@ -424,8 +468,7 @@ fn composer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
     login_hint: Option<&str>,
 ) {
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -451,7 +494,7 @@ fn composer_ui(
     }
 
     queue_ui(ui, session, input);
-    input_ui(ui, session, input, preferred_mode, preferred_model);
+    input_ui(ui, session, input, preferences);
 
     if input.log_open {
         log_ui(ui, session);
@@ -537,15 +580,15 @@ fn stop_agent(session: &mut AgentSession, input: &mut ChatInput) {
     session.cancel();
 }
 
-/// The row at the bottom of the input: mode picker, model, connection status, and the agent
+/// The row at the bottom of the input: mode, model, speed, connection status, and the agent
 /// log toggle on the left; context usage and the send or stop button on the right.
 fn footer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
 ) {
+    let AgentPreferences { mode, model, speed } = preferences;
     let usage = session
         .transcript()
         .usage
@@ -567,9 +610,10 @@ fn footer_ui(
                 let mut clip_rect = ui.clip_rect();
                 clip_rect.max.x = clip_rect.max.x.min(ui.max_rect().max.x);
                 ui.set_clip_rect(clip_rect);
-                mode_picker_ui(ui, session, preferred_mode);
+                mode_picker_ui(ui, session, mode);
 
-                model_picker_ui(ui, session, preferred_model);
+                model_picker_ui(ui, session, model);
+                speed_picker_ui(ui, session, speed);
 
                 match session.phase() {
                     Phase::Connecting { status } => {
@@ -744,28 +788,41 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
                 scroll_area.show(ui, |ui| tool_input_ui(ui, raw_input));
             }
 
-            ui.horizontal_wrapped(|ui| {
-                for option in &request.options {
-                    let button = match option.kind {
-                        PermissionOptionKind::AllowOnce => {
-                            egui::Button::new(&option.name).primary().size_small()
+            // Bound the row so right alignment does not stretch the UI vertically.
+            ui.allocate_ui_with_layout(
+                egui::vec2(ui.available_width(), re_ui::Size::Small.height()),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        for option in &request.options {
+                            let button = match option.kind {
+                                PermissionOptionKind::AllowOnce => {
+                                    egui::Button::new(&option.name).primary().size_small()
+                                }
+                                _ => egui::Button::new(&option.name).outlined().size_small(),
+                            };
+                            let clicked = ui.add(button).clicked();
+                            let shortcut = is_first
+                                && match option.kind {
+                                    PermissionOptionKind::AllowOnce => enter,
+                                    PermissionOptionKind::RejectOnce => escape,
+                                    _ => false,
+                                };
+                            if (clicked || shortcut) && answered.is_none() {
+                                answered = Some((index, option.option_id.clone()));
+                            }
                         }
-                        _ => egui::Button::new(&option.name).outlined().size_small(),
-                    };
-                    let clicked = ui.add(button).clicked();
-                    let shortcut = is_first
-                        && match option.kind {
-                            PermissionOptionKind::AllowOnce => enter,
-                            PermissionOptionKind::RejectOnce => escape,
-                            _ => false,
-                        };
-                    if (clicked || shortcut) && answered.is_none() {
-                        answered = Some((index, option.option_id.clone()));
-                    }
-                }
-            });
+                    });
+                },
+            );
             if is_first {
-                ui.weak("⏎ allow once · Esc reject once");
+                ui.allocate_ui_with_layout(
+                    egui::vec2(ui.available_width(), re_ui::Size::Small.height()),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    |ui| {
+                        ui.weak("Esc reject once · ⏎ allow once");
+                    },
+                );
             }
         });
     }
@@ -780,8 +837,7 @@ fn input_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
 ) {
     let hint = if session.turn_in_progress() {
         "The agent is working… (⏎ to queue a message, Esc to stop)"
@@ -826,7 +882,7 @@ fn input_ui(
             input.completion_open = output.is_open;
             let response = output.text_edit.response.response;
 
-            footer_ui(ui, session, input, preferred_mode, preferred_model);
+            footer_ui(ui, session, input, preferences);
 
             response
         })

@@ -212,6 +212,7 @@ define_redap_tests! {
     unregister_segment::unregister_segment_drops_its_logged_properties,
     unregister_segment::unregister_simple,
     unregister_segment::unregister_then_query,
+    update_entry::apply_dataset_policy_stores_the_policy,
     update_entry::create_dataset_entry_rejects_an_unset_selection,
     update_entry::update_dataset_entry_keeps_asset_dataset,
     update_entry::update_dataset_entry_keeps_policy,

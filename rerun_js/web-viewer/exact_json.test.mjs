@@ -11,9 +11,10 @@ test("keeps integers beyond 2^53 exact, both ways", () => {
 });
 
 test("leaves safe integers, floats, and exponents as numbers", () => {
-  assert.deepEqual(parse_exact_json("[9007199254740991, 1.5, 1e300, -0.25]"), [
-    9007199254740991, 1.5, 1e300, -0.25,
-  ]);
+  assert.deepEqual(
+    parse_exact_json("[9007199254740991, 1.5, 1e300, -0.25]"),
+    [9007199254740991, 1.5, 1e300, -0.25],
+  );
 });
 
 test("leaves digits inside strings alone, escaped quotes included", () => {

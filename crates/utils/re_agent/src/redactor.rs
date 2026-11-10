@@ -279,7 +279,10 @@ impl Redactor {
         cfg_select! {
             target_arch = "wasm32" => {
                 while self.queue.step(waker.clone()) {}
-                self.queue.in_flight.is_some().then_some(Duration::from_secs(1))
+                self.queue
+                    .in_flight
+                    .is_some()
+                    .then_some(Duration::from_secs(1))
             }
             _ => {
                 let _ = waker;
@@ -324,10 +327,10 @@ impl Redactor {
         } = agent;
         let launch = match launch {
             AgentLaunch::AgentHarness(config) => cfg_select! {
-                agent_harness_backend => AgentLaunch::AgentHarness(
-                    self.harness_config(config)
+                agent_harness_backend => AgentLaunch::AgentHarness(Box::new(
+                    self.harness_config(*config)
                         .ok_or(RedactionError::NoScratchDirectory)?,
-                ),
+                )),
                 _ => {{
                     drop(config);
                     return Err(RedactionError::NoHarness);
@@ -366,6 +369,7 @@ impl Redactor {
         config.mcp_servers.clear();
         config.cwd = self.scratch.as_ref()?.path().to_owned();
         config.preferred_model = None;
+        config.preferred_speed = None;
         config.model_preferences = REDACTION_MODELS
             .iter()
             .map(|&model| model.to_owned())
@@ -552,7 +556,9 @@ mod tests {
             preamble: None,
             model_preferences: Vec::new(),
             preferred_model: Some(crate::acp::schema::v1::SessionConfigValueId::new("opus")),
+            preferred_speed: None,
             mode_preferences: Vec::new(),
+            session_to_load: None,
         };
         let mut redactor = Redactor::default();
         let config = redactor

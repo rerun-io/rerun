@@ -1,15 +1,7 @@
 #!/usr/bin/env node
 // @ts-check
 
-import {
-  fs,
-  script_dir,
-  path,
-  argv,
-  fail,
-  isSemver,
-  stripSemverBuildMetadata,
-} from "./common.mjs";
+import { fs, script_dir, path, argv, fail, isSemver, stripSemverBuildMetadata } from "./common.mjs";
 
 if (argv.length != 1) {
   fail("expected one positional argument: version");
@@ -22,9 +14,7 @@ if (!isSemver(version)) {
   fail(`${version} is not valid according to semver`);
 }
 
-const root_package_json = JSON.parse(
-  fs.readFileSync(path.join(root_dir, "package.json"), "utf-8"),
-);
+const root_package_json = JSON.parse(fs.readFileSync(path.join(root_dir, "package.json"), "utf-8"));
 for (const pkg_path of root_package_json.workspaces) {
   const package_json_path = path.join(root_dir, pkg_path, "package.json");
   const readme_path = path.join(root_dir, pkg_path, "README.md");
@@ -41,8 +31,7 @@ for (const pkg_path of root_package_json.workspaces) {
   if ("dependencies" in package_json) {
     for (const dependency of Object.keys(package_json.dependencies)) {
       if (dependency.startsWith("@rerun-io/")) {
-        package_json.dependencies[dependency] =
-          stripSemverBuildMetadata(version);
+        package_json.dependencies[dependency] = stripSemverBuildMetadata(version);
       }
     }
   }
@@ -62,14 +51,13 @@ for (const pkg_path of root_package_json.workspaces) {
     const js_docs_version = stripSemverBuildMetadata(version).includes("-") ? "dev" : version;
     readme = readme.replace(
       /https:\/\/ref\.rerun\.io\/docs\/js\/[^/]+\/web-viewer/g,
-      `https://ref.rerun.io/docs/js/${js_docs_version}/web-viewer`
-    )
+      `https://ref.rerun.io/docs/js/${js_docs_version}/web-viewer`,
+    );
     if (index_ts) {
       index_ts = index_ts.replace(
         /https:\/\/app\.rerun\.io\/version\/.*\/examples\/dna\.rrd/,
         `https://app.rerun.io/version/${version}/examples/dna.rrd`,
-      )
-
+      );
     }
   }
 

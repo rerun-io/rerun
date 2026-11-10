@@ -1247,6 +1247,75 @@ impl TryFrom<crate::cloud::v1alpha1::UpdateDatasetEntryResponse> for UpdateDatas
     }
 }
 
+// --- ApplyDatasetPolicyRequest ---
+
+#[derive(Debug, Clone, Default)]
+pub struct ApplyDatasetPolicyRequest {
+    pub policy: DatasetPolicy,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::ApplyDatasetPolicyRequest> for ApplyDatasetPolicyRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::ApplyDatasetPolicyRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            policy: value
+                .policy
+                .map(TryInto::try_into)
+                .transpose()?
+                .unwrap_or_default(),
+        })
+    }
+}
+
+impl From<ApplyDatasetPolicyRequest> for crate::cloud::v1alpha1::ApplyDatasetPolicyRequest {
+    fn from(value: ApplyDatasetPolicyRequest) -> Self {
+        Self {
+            policy: Some(value.policy.into()),
+        }
+    }
+}
+
+// --- ApplyDatasetPolicyResponse ---
+
+#[derive(Debug, Clone)]
+pub struct ApplyDatasetPolicyResponse {
+    pub dataset_entry: DatasetEntry,
+
+    /// The tasks that apply the policy.
+    pub task_ids: Vec<crate::common::v1alpha1::TaskId>,
+}
+
+impl From<ApplyDatasetPolicyResponse> for crate::cloud::v1alpha1::ApplyDatasetPolicyResponse {
+    fn from(value: ApplyDatasetPolicyResponse) -> Self {
+        Self {
+            dataset: Some(value.dataset_entry.into()),
+            task_ids: value.task_ids,
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::ApplyDatasetPolicyResponse> for ApplyDatasetPolicyResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::ApplyDatasetPolicyResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            dataset_entry: value
+                .dataset
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::ApplyDatasetPolicyResponse,
+                    "dataset"
+                ))?
+                .try_into()?,
+            task_ids: value.task_ids,
+        })
+    }
+}
+
 // --- DeleteEntryRequest ---
 
 impl TryFrom<crate::cloud::v1alpha1::DeleteEntryRequest> for re_log_types::EntryId {

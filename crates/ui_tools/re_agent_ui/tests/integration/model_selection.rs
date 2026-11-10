@@ -28,10 +28,10 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         .session_mut()
         .transcript_mut()
         .push_user("Hello".into());
-    panel.settings_mut().preferred_models.insert(
-        AgentProfileId::new("codex"),
-        SessionConfigValueId::new("gpt-5.6-high"),
-    );
+    panel
+        .settings_mut()
+        .preferences_mut(AgentProfileId::new("codex"))
+        .model = Some(SessionConfigValueId::new("gpt-5.6-high"));
     panel
         .session_mut()
         .handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
@@ -72,8 +72,8 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         harness
             .state()
             .settings()
-            .preferred_models
-            .get(&AgentProfileId::new("claude")),
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.model.as_ref()),
         Some(&SessionConfigValueId::new("opus-fast"))
     );
     assert_eq!(
@@ -90,16 +90,16 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         harness
             .state()
             .settings()
-            .preferred_models
-            .get(&AgentProfileId::new("claude")),
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.model.as_ref()),
         Some(&SessionConfigValueId::new("opus-thinking"))
     );
     assert_eq!(
         harness
             .state()
             .settings()
-            .preferred_models
-            .get(&AgentProfileId::new("codex")),
+            .preferences(&AgentProfileId::new("codex"))
+            .and_then(|preferences| preferences.model.as_ref()),
         Some(&SessionConfigValueId::new("gpt-5.6-high"))
     );
 

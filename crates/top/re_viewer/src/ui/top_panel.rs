@@ -545,7 +545,7 @@ fn software_rasterizer_warning_ui(ui: &mut egui::Ui, info: &wgpu::AdapterInfo) {
         egui::RichText::new("⚠ Software rasterizer")
             .small()
             .color(ui.visuals().warn_fg_color),
-        "https://www.rerun.io/docs/overview/installing-rerun/troubleshooting#graphics-issues",
+        "https://www.rerun.io/docs/getting-started/install-rerun/troubleshooting#graphics-issues",
     )
     .on_hover_ui(|ui| {
         ui.label("Software rasterizer detected - expect poor performance.");
@@ -669,11 +669,13 @@ fn panel_buttons_r2l(
 
     if app.app_options().experimental.agent_panel {
         let mut open = app.agent_panel_open();
-        if ui
+        let response = ui
             .medium_icon_toggle_button(&re_ui::icons::AGENT, "Agent panel toggle", &mut open)
-            .on_hover_ui(|ui| UICommand::ToggleAgentPanel.tooltip_ui(ui))
-            .clicked()
-        {
+            .on_hover_ui(|ui| UICommand::ToggleAgentPanel.tooltip_ui(ui));
+        if !app.state.agent_settings.panel_ever_opened {
+            ui.paint_button_dot(response.rect, ui.tokens().attention_dot_color);
+        }
+        if response.clicked() {
             app.toggle_agent_panel();
         }
     }

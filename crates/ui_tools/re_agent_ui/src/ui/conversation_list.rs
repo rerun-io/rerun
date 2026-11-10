@@ -131,7 +131,7 @@ fn conversation_row_ui(ui: &mut egui::Ui, row: &ConversationRow) {
                         } else {
                             "New messages"
                         };
-                        status_dot_ui(ui, tokens.info_text_color).on_hover_text(hover_text);
+                        status_dot_ui(ui, tokens.attention_dot_color).on_hover_text(hover_text);
                     }
                     ConversationStatus::Errored { message } => {
                         status_dot_ui(ui, tokens.error_fg_color)

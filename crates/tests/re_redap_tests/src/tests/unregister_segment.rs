@@ -701,6 +701,7 @@ async fn find_chunks_snapshot(
             },
         },
         direct_url_mode: re_protos::cloud::v1alpha1::ext::DirectUrlMode::Omit,
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     };
 
     let chunk_info = service

@@ -379,6 +379,12 @@ message ViewerControlRequest {
     // Fails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.
     SubmitFeedbackRequest submit_feedback = 22;
 
+    // Report what the user has selected, in selection order, e.g. to answer "why is this not shown?".
+    //
+    // Entities and components belong to the active recording.
+    // Blueprint entities, servers, catalog entries, and similar are left out.
+    GetSelectionRequest get_selection = 23;
+
     // When adding an operation, decide whether agents may run it without asking the user:
     // see `OPERATIONS_WITHOUT_APPROVAL` in `crates/viewer_support/re_viewer_control_tools/src/lib.rs`.
   }
@@ -449,6 +455,9 @@ message ViewerControlResponse {
 
     // Result of `submit_feedback`.
     SubmitFeedbackResponse submit_feedback = 22;
+
+    // Result of `get_selection`.
+    GetSelectionResponse get_selection = 23;
   }
 }
 
@@ -919,6 +928,93 @@ message ViewerLogEntry {
 
   // The log message.
   string message = 4;
+}
+
+// ----------------------------------------------------------------------------
+// Uuid
+
+// A UUID.
+message Uuid {
+  // In the hyphenated form, e.g. `67e55044-10b1-426f-9247-bb680e5fe0c8`.
+  string uuid = 1;
+}
+
+// ----------------------------------------------------------------------------
+// GetSelection
+
+// Request for `GetSelection`.
+message GetSelectionRequest {}
+
+// Response for `GetSelection`: what the user has selected in the viewer.
+message GetSelectionResponse {
+  // The recording that the selected entities and components belong to: the active recording, as
+  // `{kind}:{application_id}:{recording_id}`. Absent if no recording is active.
+  optional string store_id = 1;
+
+  // The selected items, in selection order. Empty if nothing is selected.
+  repeated SelectedItem items = 2;
+}
+
+// One selected item.
+message SelectedItem {
+  // What kind of thing is selected.
+  oneof kind {
+    // An entity, or one instance of it.
+    SelectedEntity entity = 1;
+
+    // A component of an entity.
+    SelectedComponent component = 2;
+
+    // A view.
+    SelectedView view = 3;
+
+    // A container in the layout of the views.
+    SelectedContainer container = 4;
+
+    // A recording or a blueprint.
+    SelectedRecording recording = 5;
+  }
+}
+
+// A selected entity, or one instance of it.
+message SelectedEntity {
+  // The entity path, e.g. `/world/robot`.
+  string entity_path = 1;
+
+  // The index of the selected instance, e.g. one point of a point cloud. Absent when the whole
+  // entity is selected.
+  optional uint64 instance = 2;
+
+  // The view it was selected in, as a `view_id` from `GetState`. Absent when it was selected
+  // outside of a view, e.g. in the time panel.
+  Uuid view_id = 3;
+}
+
+// A selected component of an entity.
+message SelectedComponent {
+  // The entity path, e.g. `/world/robot`.
+  string entity_path = 1;
+
+  // The component, as `GetRecordingSchema` names it, e.g. `Points3D:positions`.
+  string component = 2;
+}
+
+// A selected view.
+message SelectedView {
+  // The view id, as `GetState` reports it.
+  Uuid view_id = 1;
+}
+
+// A selected container.
+message SelectedContainer {
+  // The container id, as in the blueprint entity path `/container/<id>` of `GetBlueprint`.
+  Uuid container_id = 1;
+}
+
+// A selected recording or blueprint.
+message SelectedRecording {
+  // The store id, as `{kind}:{application_id}:{recording_id}`.
+  string store_id = 1;
 }
 
 // ----------------------------------------------------------------------------

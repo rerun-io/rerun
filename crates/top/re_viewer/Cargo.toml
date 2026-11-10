@@ -190,6 +190,7 @@ tap.workspace = true
 thiserror.workspace = true
 tokio-stream.workspace = true
 url.workspace = true
+uuid.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
 

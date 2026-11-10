@@ -18,7 +18,9 @@ test("open names the recording it opened, and close by URL closes it", async ({ 
   expect(result.left).toBe(0);
 
   // Nothing is loaded from it anymore.
-  expect(await error_code(viewer, 'viewer.close(new URL("/example.rrd", location.href).href)')).toBe("NOT_FOUND");
+  expect(
+    await error_code(viewer, 'viewer.close(new URL("/example.rrd", location.href).href)'),
+  ).toBe("NOT_FOUND");
 });
 
 test("close selects by store id, the active recording, or all of them", async ({ viewer }) => {
@@ -39,19 +41,27 @@ test("close selects by store id, the active recording, or all of them", async ({
   expect(result.current).toEqual([result.store_id]);
   expect(result.all).toEqual([result.store_id]);
 
-  expect(await error_code(viewer, 'viewer.close({ store_ids: ["Recording:nope:nope"] })')).toBe("NOT_FOUND");
+  expect(await error_code(viewer, 'viewer.close({ store_ids: ["Recording:nope:nope"] })')).toBe(
+    "NOT_FOUND",
+  );
   // A selector that is not `true` never reaches the viewer, rather than closing everything.
-  expect(await error_code(viewer, "viewer.close({ all: false })")).toMatch(/^not a ViewerControlError/);
+  expect(await error_code(viewer, "viewer.close({ all: false })")).toMatch(
+    /^not a ViewerControlError/,
+  );
 });
 
 test("open rejects a recording location it cannot load", async ({ viewer }) => {
-  expect(await error_code(viewer, 'viewer.open("about:recording?app_id=nope&recording_id=nope")')).toBe("NOT_FOUND");
+  expect(
+    await error_code(viewer, 'viewer.open("about:recording?app_id=nope&recording_id=nope")'),
+  ).toBe("NOT_FOUND");
 });
 
 test("save_recording and save_blueprint stream .rrd bytes", async ({ viewer }) => {
   const magic = await viewer.evaluate(async () => {
     const head = async (stream: ReadableStream<Uint8Array>) =>
-      new TextDecoder().decode(new Uint8Array(await new Response(stream).arrayBuffer()).slice(0, 4));
+      new TextDecoder().decode(
+        new Uint8Array(await new Response(stream).arrayBuffer()).slice(0, 4),
+      );
     return {
       recording: await head(window.viewer.save_recording()),
       blueprint: await head(window.viewer.save_blueprint()),

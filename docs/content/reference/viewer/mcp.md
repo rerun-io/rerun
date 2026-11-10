@@ -95,6 +95,8 @@ Besides the accessibility tree and screenshots, the server gives the agent the s
   It matters most while a large import is running, because the Viewer paints no frames then and the low-level tools all stall — this one keeps answering.
 - **Where the Viewer is**: `rerun_get_location` reports what the Viewer shows as a [Viewer URL](urls.md), and `rerun_set_location` navigates back to it without loading anything.
   Each recording in `rerun_get_state` carries its own `location`, so switching recordings needs no clicking either.
+- **What you selected**: `rerun_get_selection` lists the entities, instances, components, views, containers, and recordings you have selected.
+  So you can point the agent at something by clicking it, and ask about "this".
 - **Connected servers**: `rerun_get_state` lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, or the error that kept the catalog from loading.
   So "open a dataset on that server" goes straight to `rerun_open`, without clicking through the tree.
 

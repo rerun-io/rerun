@@ -53,7 +53,7 @@ pub struct ProcMeshDrawableBuilder<'ctx> {
 ///
 /// TODO(#7026): Document how the number of instances is derived from this data.
 ///
-/// [batch]: https://rerun.io/docs/concepts/batches
+/// [batch]: https://rerun.io/docs/concepts/logging-and-ingestion/batches
 pub struct ProcMeshBatch<'a, IMesh, IFill> {
     pub half_sizes: &'a [components::HalfSize3D],
 

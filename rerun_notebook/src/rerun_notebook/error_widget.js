@@ -36,14 +36,12 @@ void (async function () {
   async function check_if_widgets_exist() {
     const widget_url = new window.URL("{{widget_url}}");
 
-    let urls = [
-      widget_url,
-      set_url_filename(widget_url, "re_viewer_bg.wasm"),
-    ].map(async (url) => [url, await url_exists(url)]);
+    let urls = [widget_url, set_url_filename(widget_url, "re_viewer_bg.wasm")].map(async (url) => [
+      url,
+      await url_exists(url),
+    ]);
 
-    let bad_urls = (await Promise.all(urls))
-      .filter(([, exists]) => !exists)
-      .map(([url]) => url);
+    let bad_urls = (await Promise.all(urls)).filter(([, exists]) => !exists).map(([url]) => url);
 
     if (bad_urls.length > 0) {
       const container = document.getElementById("{{widget_id}}");

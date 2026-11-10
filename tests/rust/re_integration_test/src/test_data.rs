@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use re_catalog_client::CatalogClient;
 use re_protos::EntryName;
-use re_protos::cloud::v1alpha1::ext::{DataSource, TableDetails, TableEntry};
+use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails, TableDetails, TableEntry};
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_sdk::external::re_log_types::EntryId;
@@ -214,6 +214,75 @@ pub async fn register_asset(
         .ok_or_else(|| "Asset registration returned no segment".into())
 }
 
+/// Build an `.rbl` file holding a blueprint with a single `Spatial3DView` named `view_name`.
+pub fn spatial_3d_blueprint_rbl(
+    view_name: &str,
+) -> Result<tempfile::NamedTempFile, Box<dyn Error>> {
+    let file = tempfile::Builder::new().suffix(".rbl").tempfile()?;
+    let stream = RecordingStreamBuilder::new("rerun_example_integration_test")
+        .blueprint()
+        .save(file.path())?;
+    re_sdk::blueprint::Blueprint::new(re_sdk::blueprint::Spatial3DView::new(view_name))
+        .send(&stream, re_sdk::blueprint::BlueprintActivation::default())?;
+    stream.flush_with_timeout(Duration::from_mins(1))?;
+    Ok(file)
+}
+
+/// Register a `.rbl` blueprint file with `blueprint_dataset` and return its segment id.
+pub async fn register_blueprint_segment(
+    catalog_client: &CatalogClient,
+    blueprint_dataset: EntryId,
+    blueprint_rbl: &std::path::Path,
+) -> Result<SegmentId, Box<dyn Error>> {
+    let data_source = DataSource::new_rrd(file_url(blueprint_rbl)?, None)?;
+
+    let registration = catalog_client
+        .register_with_dataset(
+            blueprint_dataset,
+            vec![data_source],
+            IfDuplicateBehavior::Overwrite,
+        )
+        .await?;
+    Ok(registration
+        .wait(Duration::from_secs(10))
+        .await?
+        .into_iter()
+        .next()
+        .ok_or("Blueprint registration returned no segment")?)
+}
+
+/// Register a `.rbl` blueprint file with the dataset's implicit blueprint dataset and set it as
+/// the dataset's default blueprint.
+///
+/// The viewer fetches this blueprint when it opens a segment of the dataset.
+pub async fn register_dataset_blueprint(
+    catalog_client: &CatalogClient,
+    dataset_id: EntryId,
+    blueprint_rbl: &std::path::Path,
+) -> Result<SegmentId, Box<dyn Error>> {
+    let mut client = catalog_client.client().await?;
+    let entry = client.read_dataset_entry(dataset_id).await?;
+    let blueprint_dataset = entry
+        .dataset_details
+        .blueprint_dataset
+        .ok_or("dataset is missing its implicit blueprint dataset")?;
+
+    let segment_id =
+        register_blueprint_segment(catalog_client, blueprint_dataset, blueprint_rbl).await?;
+
+    client
+        .update_dataset_entry(
+            dataset_id,
+            DatasetDetails {
+                default_blueprint_segment: Some(segment_id.clone()),
+                ..entry.dataset_details
+            },
+        )
+        .await?;
+
+    Ok(segment_id)
+}
+
 /// Register a `.rbl` blueprint file with `table`'s implicit blueprint dataset and set it as the
 /// table's default blueprint, mirroring `TableEntry.register_blueprint` in the Python SDK.
 ///
@@ -229,21 +298,8 @@ pub async fn register_table_blueprint(
         .blueprint_dataset
         .ok_or("table is missing its implicit blueprint dataset")?;
 
-    let data_source = DataSource::new_rrd(file_url(blueprint_rbl)?, None)?;
-
-    let registration = catalog_client
-        .register_with_dataset(
-            blueprint_dataset,
-            vec![data_source],
-            IfDuplicateBehavior::Overwrite,
-        )
-        .await?;
-    let segment_id = registration
-        .wait(Duration::from_secs(10))
-        .await?
-        .into_iter()
-        .next()
-        .ok_or("Blueprint registration returned no segment")?;
+    let segment_id =
+        register_blueprint_segment(catalog_client, blueprint_dataset, blueprint_rbl).await?;
 
     catalog_client
         .client()

@@ -15,7 +15,7 @@ thumbnail_dimensions = [768, 576]
 </picture>
 
 The simplest example of how to use Rerun, showing how to log a point cloud.
-This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/data-in/cpp).
+This is part of the [Quick Start guide](https://www.rerun.io/docs/getting-started/data-in).
 
 To build it from a checkout of the repository (requires a Rust toolchain):
 ```bash

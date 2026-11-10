@@ -136,6 +136,15 @@ service RerunCloudService {
   // body `id` field (see the `Headers` section at the top of this file).
   rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
 
+  // Set the policies of a dataset and apply them to the data already registered.
+  //
+  // Applying runs asynchronously: wait for the tasks in the response with
+  // `QueryTasksOnCompletion` before relying on the new policies.
+  //
+  // The dataset is identified by the `x-rerun-entry-id` header (see the `Headers` section at the
+  // top of this file).
+  rpc ApplyDatasetPolicy(ApplyDatasetPolicyRequest) returns (ApplyDatasetPolicyResponse) {}
+
   // Fetch metadata about a specific table.
   //
   // The table is identified by the `x-rerun-entry-id` header, falling back to the deprecated
@@ -1435,6 +1444,17 @@ message FindChunksRequest {
 
   // Which direct chunk URLs to return. Defaults to `DIRECT_URL_MODE_SIGNED`.
   DirectUrlMode direct_url_mode = 5;
+
+  // Which data the request reads in regards to the current indexing policy.
+  // Defaults to `DATASET_QUERY_SCOPE_FULL`.
+  //
+  // - `DATASET_QUERY_SCOPE_INDEXED`: read only indexed data.
+  //   Selecting every entity selects only the indexed ones.
+  //   Naming unindexed data fails with `FailedPrecondition`.
+  // - `DATASET_QUERY_SCOPE_FULL`: all data, indexed or not.
+  //   A request that touches unindexed data fails with `FailedPrecondition` when it selects
+  //   every segment, and with `Unimplemented` when it filters by segments (TODO(ilya)).
+  DatasetQueryScope scope = 6;
 }
 
 // One batch of chunk candidates yielded by `FindChunks`.
@@ -1898,6 +1918,25 @@ message UpdateDatasetEntryResponse {
   DatasetEntry dataset = 1;
 }
 
+// ApplyDatasetPolicy
+
+// Request for `ApplyDatasetPolicy`.
+//
+// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+message ApplyDatasetPolicyRequest {
+  // The new policies. An omitted chunk indexing policy indexes everything.
+  DatasetPolicy policy = 1;
+}
+
+// Response for `ApplyDatasetPolicy`.
+message ApplyDatasetPolicyResponse {
+  // The updated dataset entry.
+  DatasetEntry dataset = 1;
+
+  // The tasks that apply the policies. Empty if nothing was applied.
+  repeated rerun.common.v1alpha1.TaskId task_ids = 2;
+}
+
 // RegisterTable
 
 // Request for `RegisterTable`.
@@ -2068,7 +2107,8 @@ message DatasetDetails {
   optional rerun.common.v1alpha1.EntryId asset_dataset = 7;
 
   // Dataset policies, such as the chunk indexing policy.
-  // If omitted (e.g. by older clients), the server will make a choice on its own.
+  //
+  // `UpdateDatasetEntry` ignores this field: use `ApplyDatasetPolicy` to change it.
   DatasetPolicy policy = 100;
 
   reserved 4;

@@ -1,6 +1,7 @@
 ---
 title: Logging Controls
 order: 600
+description: Turn logging to Rerun on or off, and control what Rerun prints to the console
 ---
 
 ## Controlling logging globally
@@ -55,3 +56,24 @@ prev_rec = rr.set_global_data_recording(None)
 # Re-enabling logging
 rr.set_global_data_recording(prev_rec)
 ```
+
+## Silencing console output
+
+The settings above control the data you log to Rerun.
+Rerun also prints its own messages (warnings, errors, and info) to the console.
+You control those with the `RUST_LOG` environment variable:
+
+```sh
+RUST_LOG=error python my_script.py   # only show errors
+RUST_LOG=off python my_script.py     # show nothing
+RUST_LOG=debug rerun                 # show a lot more
+```
+
+The defaults are:
+
+* Python SDK: `warn`.
+* C++ SDK, and the `rerun` CLI and Viewer: `info`.
+* Rust SDK: the SDK prints through the [`tracing`](https://crates.io/crates/tracing) crate, and does not set up a subscriber itself.
+  What is printed depends on how your application sets up logging.
+
+A Viewer started with `rr.spawn()` inherits the environment, including `RUST_LOG`, from the process that started it.

@@ -2,8 +2,9 @@ import path from "node:path";
 import fs from "node:fs";
 import { script_dir } from "./common.mjs";
 
-
-const root_package_json = JSON.parse(fs.readFileSync(path.resolve(script_dir, "../package.json"), "utf-8"));
+const root_package_json = JSON.parse(
+  fs.readFileSync(path.resolve(script_dir, "../package.json"), "utf-8"),
+);
 const root_docs_dir = path.resolve(script_dir, "../docs/");
 
 for (const pkg of root_package_json.workspaces) {

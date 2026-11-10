@@ -69,7 +69,7 @@ Overview
 num_chunks = 576
 num_entity_paths = 52
 num_chunks_without_components = 0 (0.000%)
-num_rows = 1 563
+num_rows = 1 563
 num_rows_min = 1
 num_rows_max = 101
 num_rows_avg = 2.714
@@ -130,7 +130,7 @@ Overview
 num_chunks = 278
 num_entity_paths = 52
 num_chunks_without_components = 0 (0.000%)
-num_rows = 1 084
+num_rows = 1 084
 num_rows_min = 1
 num_rows_max = 101
 num_rows_avg = 3.899

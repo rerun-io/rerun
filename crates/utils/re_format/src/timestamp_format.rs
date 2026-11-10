@@ -231,14 +231,14 @@ mod tests {
     fn format_nanos_full_i64_range() {
         let utc = TimestampFormat::utc().with_date_visibility(DateVisibility::ShowDate);
         assert_eq!(utc.format_nanos(0), "1970-01-01 00:00:00Z");
-        assert_eq!(utc.format_nanos(-1), "1969-12-31 23:59:59.999\u{2009}999Z");
+        assert_eq!(utc.format_nanos(-1), "1969-12-31 23:59:59.999\u{202F}999Z");
         assert_eq!(
             utc.format_nanos(i64::MIN),
-            "1677-09-21 00:12:43.145\u{2009}224Z"
+            "1677-09-21 00:12:43.145\u{202F}224Z"
         );
         assert_eq!(
             utc.format_nanos(i64::MAX),
-            "2262-04-11 23:47:16.854\u{2009}775Z"
+            "2262-04-11 23:47:16.854\u{202F}775Z"
         );
     }
 

@@ -19,7 +19,10 @@ const screenshotLink = $<HTMLAnchorElement>("screenshot-link");
 const screenshotImage = $<HTMLImageElement>("screenshot-image");
 
 // Resolve relative URLs, which the viewer doesn't accept.
-const rrdUrl = new URL(new URLSearchParams(location.search).get("url") ?? DEFAULT_RRD_URL, location.href).href;
+const rrdUrl = new URL(
+  new URLSearchParams(location.search).get("url") ?? DEFAULT_RRD_URL,
+  location.href,
+).href;
 
 const viewer = new WebViewer();
 await viewer.start(rrdUrl, $("viewer"), {
@@ -38,9 +41,13 @@ function logError(err: unknown) {
 }
 
 /** Ask the viewer for its active recording, and the timeline its time cursor is on. */
-async function getActive(): Promise<{ recording: ViewerRecording; timeline?: ViewerTimeline } | undefined> {
+async function getActive(): Promise<
+  { recording: ViewerRecording; timeline?: ViewerTimeline } | undefined
+> {
   const state = await viewer.get_state();
-  const recording = state.recordings.find((recording) => recording.store_id === state.active_store_id);
+  const recording = state.recordings.find(
+    (recording) => recording.store_id === state.active_store_id,
+  );
   if (recording === undefined) {
     return undefined;
   }

@@ -61,9 +61,9 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 </picture>
 
 ## Getting started
-* [**C++**](https://www.rerun.io/docs/getting-started/data-in/cpp)
-* [**Python**](https://www.rerun.io/docs/getting-started/data-in/python): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
-* [**Rust**](https://www.rerun.io/docs/getting-started/data-in/rust): `cargo add rerun`
+* [**C++**](https://www.rerun.io/docs/getting-started/data-in)
+* [**Python**](https://www.rerun.io/docs/getting-started/data-in): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
+* [**Rust**](https://www.rerun.io/docs/getting-started/data-in): `cargo add rerun`
 
 ### Installing the Rerun Viewer binary
 To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
@@ -84,7 +84,7 @@ You should now be able to run `rerun --help` in any terminal.
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp)
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python)
 - 🦀 [Rust API docs](https://docs.rs/rerun/)
-- ⁉️ [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
+- ⁉️ [Troubleshooting](https://www.rerun.io/docs/getting-started/install-rerun/troubleshooting)
 
 
 ### Agent skills

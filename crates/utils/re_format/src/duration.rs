@@ -1,7 +1,7 @@
 use itertools::Itertools as _;
 use re_log::debug_assert;
 
-use crate::{THIN_SPACE, format_uint};
+use crate::{NARROW_NO_BREAK_SPACE, format_uint};
 
 /// How to round sub-seconds
 enum Rounding {
@@ -145,7 +145,7 @@ impl DurationFormatOptions {
         let us = if 9 <= min_decimals || (9 <= max_decimals && !ns.is_multiple_of(1_000)) {
             min_decimals = 9; // make sure we include the next parts
             back_rev.push(format!("{:03}", ns % 1_000));
-            back_rev.push(THIN_SPACE.to_string());
+            back_rev.push(NARROW_NO_BREAK_SPACE.to_string());
             ns / 1_000
         } else {
             match rounding {
@@ -157,7 +157,7 @@ impl DurationFormatOptions {
         let ms = if 6 <= min_decimals || (6 <= max_decimals && !us.is_multiple_of(1_000)) {
             min_decimals = 6; // make sure we include the next parts
             back_rev.push(format!("{:03}", us % 1_000));
-            back_rev.push(THIN_SPACE.to_string());
+            back_rev.push(NARROW_NO_BREAK_SPACE.to_string());
             us / 1_000
         } else {
             match rounding {
@@ -312,14 +312,14 @@ fn test_format_duration() {
             .with_max_decimals(9)
             .with_only_seconds(true)
             .format_nanos(59_123_456_789),
-        "59.123 456 789s"
+        "59.123 456 789s"
     );
     assert_eq!(
         DurationFormatOptions::default()
             .with_max_decimals(6)
             .with_only_seconds(true)
             .format_nanos(59_123_456_789),
-        "59.123 457s"
+        "59.123 457s"
     );
     assert_eq!(
         DurationFormatOptions::default()
@@ -369,7 +369,7 @@ fn test_format_duration() {
             .with_max_decimals(9)
             .with_only_seconds(true)
             .format_nanos(59_999_999_987),
-        "59.999 999 987s"
+        "59.999 999 987s"
     );
     assert_eq!(
         DurationFormatOptions::default()
@@ -393,7 +393,7 @@ fn test_format_duration() {
             .with_only_seconds(false)
             .round_towards_zero()
             .format_nanos(59_999_999_987),
-        "59.999 999s"
+        "59.999 999s"
     );
 
     fn format_as_secs(nanos: i64) -> String {
@@ -404,13 +404,13 @@ fn test_format_duration() {
     }
 
     assert_eq!(format_as_secs(0), "0s");
-    assert_eq!(format_as_secs(1_000), "0.000 001s");
+    assert_eq!(format_as_secs(1_000), "0.000 001s");
     assert_eq!(format_as_secs(2_000_000), "0.002s");
-    assert_eq!(format_as_secs(1_200_300_400_500_789), "1 200 300.400 501s");
-    assert_eq!(format_as_secs(1_200_300_000_000_000), "1 200 300s");
+    assert_eq!(format_as_secs(1_200_300_400_500_789), "1 200 300.400 501s");
+    assert_eq!(format_as_secs(1_200_300_000_000_000), "1 200 300s");
     assert_eq!(format_as_secs(12_000_000_000), "12s");
     assert_eq!(format_as_secs(12_100_000_000), "12.1s");
     assert_eq!(format_as_secs(12_120_000_000), "12.120s");
-    assert_eq!(format_as_secs(12_120_340_001), "12.120 340s");
+    assert_eq!(format_as_secs(12_120_340_001), "12.120 340s");
     assert_eq!(format_as_secs(12_100_000_001), "12.1s");
 }

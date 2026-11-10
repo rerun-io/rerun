@@ -344,10 +344,10 @@ mod tests {
             ),
             "2026-08-14 14:20:39"
         );
-        // Without `short`, the sub-second digits are grouped by a thin space and a suffix is added.
+        // Without `short`, the sub-second digits are grouped by a narrow no-break space and a suffix is added.
         assert_eq!(
             &datetime.format(TimestampFormat::utc()),
-            "2026-08-14 14:20:39.020\u{2009}119Z"
+            "2026-08-14 14:20:39.020\u{202F}119Z"
         );
     }
 
@@ -365,7 +365,7 @@ mod tests {
         let datetime = Timestamp::from_str("2022-02-28 22:35:42.0690427Z").unwrap();
         assert_eq!(
             &datetime.format(TimestampFormat::utc()),
-            "2022-02-28 22:35:42.069 042Z"
+            "2022-02-28 22:35:42.069 042Z"
         ); // format function is not rounding
     }
 
@@ -488,19 +488,19 @@ mod tests {
                         .unwrap()
                 ))
             );
-            // Full date and time with microseconds
-            assert_eq!(
-                parse(
-                    "1954-04-11 22:35:42.069 123 987",
-                    TimestampFormat::local_timezone()
-                ),
-                Some(Timestamp::from(
-                    jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069123987")
-                        .unwrap()
-                        .to_zoned(tz)
-                        .unwrap()
-                ))
-            );
+            // Full date and time with microseconds, grouped by narrow no-break space or thin space
+            let expected = Some(Timestamp::from(
+                jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069123987")
+                    .unwrap()
+                    .to_zoned(tz)
+                    .unwrap(),
+            ));
+            for text in [
+                "1954-04-11 22:35:42.069\u{202F}123\u{202F}987",
+                "1954-04-11 22:35:42.069\u{2009}123\u{2009}987",
+            ] {
+                assert_eq!(parse(text, TimestampFormat::local_timezone()), expected);
+            }
         }
 
         // Test invalid formats

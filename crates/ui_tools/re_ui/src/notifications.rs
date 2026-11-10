@@ -505,10 +505,11 @@ impl NotificationUi {
         );
 
         if let Some(level) = self.unread_notification_level {
-            let pos = button_response.rect.right_top() + egui::vec2(-2.0, 2.0);
-            let radius = 3.0;
-            let color = level.color(ui);
-            ui.painter().circle_filled(pos, radius, color);
+            let color = match level {
+                NotificationLevel::Tip | NotificationLevel::Info => ui.tokens().attention_dot_color,
+                _ => level.color(ui),
+            };
+            ui.paint_button_dot(button_response.rect, color);
         }
 
         let gap = 2.0;

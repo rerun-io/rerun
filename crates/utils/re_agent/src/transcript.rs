@@ -217,6 +217,23 @@ impl Transcript {
         self.push(TranscriptItem::User(prompt));
     }
 
+    /// Adds one text block of a prompt from a loaded session's history.
+    ///
+    /// The agent replays each block of a prompt separately, so consecutive blocks join into one
+    /// prompt.
+    pub fn push_replayed_user_text(&mut self, text: &str) {
+        if let Some(TranscriptEntry {
+            item: TranscriptItem::User(prompt),
+            ..
+        }) = self.items.last_mut()
+        {
+            prompt.text.push_str("\n\n");
+            prompt.text.push_str(text);
+        } else {
+            self.push_user(Prompt::from(text.to_owned()));
+        }
+    }
+
     pub fn push_mcp_startup_failure(&mut self, failure: McpStartupFailure) {
         self.push(TranscriptItem::McpStartupFailure(failure));
     }
@@ -242,6 +259,11 @@ impl Transcript {
             SessionConfigKind::Select(select) => Some((&selector.id, select)),
             _ => None,
         }
+    }
+
+    /// The agent's speed selector and its config id, if it offers one.
+    pub fn speed_selector(&self) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
+        speed_selector(&self.config_options)
     }
 
     /// The name of the model the agent says it is using, if it offers a model selector.
@@ -663,6 +685,32 @@ pub fn model_name(model: &SessionConfigSelectOption) -> &str {
         .map(str::trim)
         .filter(|head| has_version(head) && head.split_whitespace().count() <= 3);
     concrete.unwrap_or(&model.name)
+}
+
+/// Claude and Codex expose speed with the config ids `fast` and `fast-mode`, respectively.
+pub fn speed_selector(
+    options: &[SessionConfigOption],
+) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
+    options.iter().find_map(|option| {
+        if !matches!(option.id.0.as_ref(), "fast" | "fast-mode") {
+            return None;
+        }
+        match &option.kind {
+            SessionConfigKind::Select(select) => Some((&option.id, select)),
+            _ => None,
+        }
+    })
+}
+
+/// All options of a select, flattening groups.
+pub fn select_options(select: &SessionConfigSelect) -> Vec<&SessionConfigSelectOption> {
+    match &select.options {
+        SessionConfigSelectOptions::Ungrouped(options) => options.iter().collect(),
+        SessionConfigSelectOptions::Grouped(groups) => {
+            groups.iter().flat_map(|group| &group.options).collect()
+        }
+        _ => Vec::new(),
+    }
 }
 
 #[cfg(test)]

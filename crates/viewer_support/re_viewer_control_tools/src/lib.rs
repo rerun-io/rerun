@@ -93,6 +93,7 @@ const READ_ONLY_OPERATIONS: &[&str] = &[
     "get_location",
     "get_logs",
     "get_recording_schema",
+    "get_selection",
     "get_state",
     "get_table_schema",
     "get_transform_graph",

@@ -85,6 +85,7 @@ pub fn ready_panel() -> AgentPanel {
     });
     session.handle_event(AgentEvent::SessionStarted {
         session_id: SessionId::new("test-session"),
+        origin: re_agent::SessionOrigin::New,
         modes: Some(SessionModeState::new(
             "default",
             vec![
@@ -203,10 +204,19 @@ fn mode_picker_requests_the_clicked_mode() {
         harness
             .state()
             .settings()
-            .preferred_mode
-            .as_ref()
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.mode.as_ref())
             .map(|mode| mode.0.as_ref()),
         Some("acceptEdits")
+    );
+
+    // The mode belongs to the agent that offered it.
+    assert_eq!(
+        harness
+            .state()
+            .settings()
+            .preferences(&AgentProfileId::new("codex")),
+        None
     );
 }
 

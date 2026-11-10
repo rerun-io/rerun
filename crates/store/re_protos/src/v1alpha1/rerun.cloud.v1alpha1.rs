@@ -1708,6 +1708,17 @@ pub struct FindChunksRequest {
     /// Which direct chunk URLs to return. Defaults to `DIRECT_URL_MODE_SIGNED`.
     #[prost(enumeration = "DirectUrlMode", tag = "5")]
     pub direct_url_mode: i32,
+    /// Which data the request reads in regards to the current indexing policy.
+    /// Defaults to `DATASET_QUERY_SCOPE_FULL`.
+    ///
+    /// - `DATASET_QUERY_SCOPE_INDEXED`: read only indexed data.
+    ///    Selecting every entity selects only the indexed ones.
+    ///    Naming unindexed data fails with `FailedPrecondition`.
+    /// - `DATASET_QUERY_SCOPE_FULL`: all data, indexed or not.
+    ///    A request that touches unindexed data fails with `FailedPrecondition` when it selects
+    ///    every segment, and with `Unimplemented` when it filters by segments (TODO(ilya)).
+    #[prost(enumeration = "DatasetQueryScope", tag = "6")]
+    pub scope: i32,
     /// The selection mode. Required.
     ///
     /// A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset
@@ -2617,6 +2628,45 @@ impl ::prost::Name for UpdateDatasetEntryResponse {
         "/rerun.cloud.v1alpha1.UpdateDatasetEntryResponse".into()
     }
 }
+/// Request for `ApplyDatasetPolicy`.
+///
+/// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ApplyDatasetPolicyRequest {
+    /// The new policies. An omitted chunk indexing policy indexes everything.
+    #[prost(message, optional, tag = "1")]
+    pub policy: ::core::option::Option<DatasetPolicy>,
+}
+impl ::prost::Name for ApplyDatasetPolicyRequest {
+    const NAME: &'static str = "ApplyDatasetPolicyRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ApplyDatasetPolicyRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ApplyDatasetPolicyRequest".into()
+    }
+}
+/// Response for `ApplyDatasetPolicy`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ApplyDatasetPolicyResponse {
+    /// The updated dataset entry.
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+    /// The tasks that apply the policies. Empty if nothing was applied.
+    #[prost(message, repeated, tag = "2")]
+    pub task_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::TaskId>,
+}
+impl ::prost::Name for ApplyDatasetPolicyResponse {
+    const NAME: &'static str = "ApplyDatasetPolicyResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ApplyDatasetPolicyResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ApplyDatasetPolicyResponse".into()
+    }
+}
 /// Request for `RegisterTable`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RegisterTableRequest {
@@ -2853,7 +2903,8 @@ pub struct DatasetDetails {
     #[prost(message, optional, tag = "7")]
     pub asset_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Dataset policies, such as the chunk indexing policy.
-    /// If omitted (e.g. by older clients), the server will make a choice on its own.
+    ///
+    /// `UpdateDatasetEntry` ignores this field: use `ApplyDatasetPolicy` to change it.
     #[prost(message, optional, tag = "100")]
     pub policy: ::core::option::Option<DatasetPolicy>,
 }
@@ -3936,6 +3987,32 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.unary(req, path, codec).await
         }
+        /// Set the policies of a dataset and apply them to the data already registered.
+        ///
+        /// Applying runs asynchronously: wait for the tasks in the response with
+        /// `QueryTasksOnCompletion` before relying on the new policies.
+        ///
+        /// The dataset is identified by the `x-rerun-entry-id` header (see the `Headers` section at the
+        /// top of this file).
+        pub async fn apply_dataset_policy(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ApplyDatasetPolicyRequest>,
+        ) -> std::result::Result<tonic::Response<super::ApplyDatasetPolicyResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/ApplyDatasetPolicy",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "ApplyDatasetPolicy",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Fetch metadata about a specific table.
         ///
         /// The table is identified by the `x-rerun-entry-id` header, falling back to the deprecated
@@ -4857,6 +4934,17 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::UpdateDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::UpdateDatasetEntryResponse>, tonic::Status>;
+        /// Set the policies of a dataset and apply them to the data already registered.
+        ///
+        /// Applying runs asynchronously: wait for the tasks in the response with
+        /// `QueryTasksOnCompletion` before relying on the new policies.
+        ///
+        /// The dataset is identified by the `x-rerun-entry-id` header (see the `Headers` section at the
+        /// top of this file).
+        async fn apply_dataset_policy(
+            &self,
+            request: tonic::Request<super::ApplyDatasetPolicyRequest>,
+        ) -> std::result::Result<tonic::Response<super::ApplyDatasetPolicyResponse>, tonic::Status>;
         /// Fetch metadata about a specific table.
         ///
         /// The table is identified by the `x-rerun-entry-id` header, falling back to the deprecated
@@ -5748,6 +5836,49 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UpdateDatasetEntrySvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/ApplyDatasetPolicy" => {
+                    #[allow(non_camel_case_types)]
+                    struct ApplyDatasetPolicySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::ApplyDatasetPolicyRequest>
+                        for ApplyDatasetPolicySvc<T>
+                    {
+                        type Response = super::ApplyDatasetPolicyResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ApplyDatasetPolicyRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::apply_dataset_policy(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ApplyDatasetPolicySvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

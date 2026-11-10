@@ -52,13 +52,13 @@ class Detector:
     …
     def detect(self, frame):
         downscaled = self.downscale(frame.image)
-        # Log the downscaled image
+        # Log the downscaled image, with the detections as a child entity
         rr.log("detections/source", rr.Image(downscaled))
         result = self.model(downscaled)
         detection = self.post_process(result)
         # Log the detections together with the downscaled image
         # Image and detections will update at the same frequency
-        rr.log("downscaled/detections", rr.Boxes2D(array=detection.bounds, array_format=rr.Box2DFormat.XYXY))
+        rr.log("detections/source/boxes", rr.Boxes2D(array=detection.bounds, array_format=rr.Box2DFormat.XYXY))
         return detection
 …
 for frame in sensors.read():
@@ -90,3 +90,22 @@ rr.log("short_lived", rr.Clear(recursive=False))  # or `rr.Clear.flat()`
 # Set the time back so other data isn't accidentally logged in the future.
 rr.set_time("time", duration=start_time)
 ```
+
+## Deleting data
+
+A `Clear` does not delete anything.
+It is a tombstone: new data that hides older data from that time on.
+The cleared data stays in the recording, can still be seen at earlier times, and still uses memory.
+
+There is no API to delete the data of a single entity from a recording.
+Instead, you can:
+
+- **Close a whole recording** in the Viewer, from the recording panel.
+  From code, use the experimental `rerun.experimental.ViewerClient.close(…)` on a running Viewer, e.g. `ViewerClient.connect().close("current")`.
+- **Drop entities from a file** with the Rerun CLI:
+
+  ```sh
+  rerun rrd filter --drop-entity /camera/raw input.rrd > output.rrd
+  ```
+
+- **Limit memory use** of the Viewer with `--memory-limit`: when the limit is reached, the Viewer drops the oldest data.
