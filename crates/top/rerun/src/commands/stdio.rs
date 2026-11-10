@@ -114,7 +114,7 @@ fn read_any_rrd_streams_from_file_or_stdin<
                 // stdin
 
                 let source = InputSource::Stdin;
-                let stdin = std::io::BufReader::new(std::io::stdin().lock());
+                let stdin = std::io::stdin().lock();
                 let mut decoder = re_log_encoding::Decoder::decode_lazy(stdin);
 
                 for res in &mut decoder {

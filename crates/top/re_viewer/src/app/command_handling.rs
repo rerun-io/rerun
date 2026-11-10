@@ -1702,11 +1702,8 @@ impl AppCore {
             ViewerUrl::IntraRecordingSelection(_) => false,
 
             ViewerUrl::WebViewer { url_parameters, .. } => {
-                if url_parameters.len() == 1 {
-                    self.is_back_destination_open(store_hub, url_parameters.first(), closing)
-                } else {
-                    false
-                }
+                url_parameters.len() == 1
+                    && self.is_back_destination_open(store_hub, url_parameters.first(), closing)
             }
 
             // Not a place to land on after closing a recording.

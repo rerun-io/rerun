@@ -62,7 +62,7 @@ enum StreamingJoinState<'a> {
     Retrofilled(UnitChunkShared),
 }
 
-/// Per-row index data resolved by [`QueryHandle::_resolve_one_row`]: the max value
+/// Per-row index data resolved by [`QueryHandle::resolve_one_row`]: the max value
 /// seen on each timeline for this row.
 type ResolvedRow = IntMap<TimelineName, (TimeInt, ArrowScalarBuffer<i64>)>;
 
@@ -76,12 +76,12 @@ pub struct NextNRowsOutput {
     pub num_rows: usize,
 }
 
-/// Minimum bulk-emit run length below which `_next_n_rows` falls through to the
-/// per-row streaming-join path. Avoids paying bulk-machinery overhead on very
+/// Minimum bulk-emit run length below which [`QueryHandle::next_n_rows_in_store`] falls
+/// through to the per-row streaming-join path. Avoids paying bulk-machinery overhead on very
 /// short eligible runs.
 const BULK_MIN_RUN: usize = 4;
 
-/// One step in the deferred-replay finalizer inside `_next_n_rows`.
+/// One step in the deferred-replay finalizer inside [`QueryHandle::next_n_rows_in_store`].
 ///
 /// Each output column accumulates a list of [`ColumnExtend`] entries during the
 /// row-resolution loop and replays them via `MutableArrayData` once the batch is
@@ -107,7 +107,7 @@ enum ColumnExtend {
     Nulls { len: usize },
 }
 
-/// Per-output-column emission state used by [`QueryHandle::_next_n_rows`].
+/// Per-output-column emission state used by [`QueryHandle::next_n_rows_in_store`].
 ///
 /// `Source` columns accumulate [`ColumnExtend`] entries that reference shared
 /// source arrays (deduplicated by chunk pointer), then replay them through
@@ -1248,7 +1248,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         } = self;
         let state = state.get().expect("state was just initialized by init()");
         let iter_state = iter_state.get_or_insert_with(|| IterState::new(state));
-        engine.with(|store, cache| Self::_next_row(query, state, iter_state, store, cache))
+        engine.with(|store, cache| Self::next_row_in_store(query, state, iter_state, store, cache))
     }
 
     /// Asynchronously returns the next row's worth of data.
@@ -1288,7 +1288,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let res: Option<Option<_>> = engine.try_with(|store, cache| {
             let st = state.get_or_init(|| Self::init_(query, store, cache));
             let it = iter_state.get_or_insert_with(|| IterState::new(st));
-            Self::_next_row(query, st, it, store, cache)
+            Self::next_row_in_store(query, st, it, store, cache)
         });
 
         let engine = engine.clone();
@@ -1319,7 +1319,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         })
     }
 
-    fn _next_row<'state>(
+    fn next_row_in_store<'state>(
         query: &QueryExpression,
         state: &'state QueryHandleState,
         iter_state: &mut IterState,
@@ -1330,7 +1330,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
         let mut scratch: Vec<Option<StreamingJoinState<'state>>> =
             Vec::with_capacity(state.view_chunks.len());
-        let resolved = Self::_resolve_one_row(query, state, iter_state, cache, &mut scratch)?;
+        let resolved = Self::resolve_one_row(query, state, iter_state, cache, &mut scratch)?;
 
         // NOTE: Non-component entries have no data to slice, hence the optional layer.
         //
@@ -1424,7 +1424,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns `None` once the query is exhausted. On success, `view_streaming_state` holds the
     /// per-view-column resolved state for this row (component chunks, retrofills, statics) and
     /// the returned [`ResolvedRow`] holds the max value seen on each timeline.
-    fn _resolve_one_row<'state>(
+    fn resolve_one_row<'state>(
         query: &QueryExpression,
         state: &'state QueryHandleState,
         iter_state: &mut IterState,
@@ -1729,7 +1729,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let state = state.get().expect("state was just initialized by init()");
         let iter_state = iter_state.get_or_insert_with(|| IterState::new(state));
         engine.with(|store, cache| {
-            Self::_next_n_rows(query, state, iter_state, store, cache, max_rows, max_bytes)
+            Self::next_n_rows_in_store(query, state, iter_state, store, cache, max_rows, max_bytes)
         })
     }
 
@@ -1763,7 +1763,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             let res = engine.try_with(|store, cache| {
                 let st = state.get_or_init(|| Self::init_(query, store, cache));
                 let it = iter_state.get_or_insert_with(|| IterState::new(st));
-                Self::_next_n_rows(query, st, it, store, cache, max_rows, max_bytes)
+                Self::next_n_rows_in_store(query, st, it, store, cache, max_rows, max_bytes)
             });
 
             if let Some(out) = res {
@@ -1785,7 +1785,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     #[tracing::instrument(level = "debug", skip_all, fields(max_rows, max_bytes))]
-    fn _next_n_rows(
+    fn next_n_rows_in_store(
         query: &QueryExpression,
         state: &QueryHandleState,
         iter_state: &mut IterState,
@@ -1861,7 +1861,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             }
 
             let Some(resolved) =
-                Self::_resolve_one_row(query, state, iter_state, cache, &mut scratch)
+                Self::resolve_one_row(query, state, iter_state, cache, &mut scratch)
             else {
                 break;
             };
@@ -2079,7 +2079,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     // The schema field's datatype is the source of truth. An
                     // `IndexColumnDescriptor::new_null` produces `datatype = Null`
                     // even though `descr.timeline().typ()` returns the placeholder
-                    // `Sequence` (Int64); mirror `_next_row`, which falls back to
+                    // `Sequence` (Int64); mirror `next_row_in_store`, which falls back to
                     // `new_null_array(&column.arrow_data_type(), 1)` and therefore
                     // emits a `Null` array whenever the schema says so.
                     if matches!(datatype, ArrowDataType::Null) {
@@ -2111,7 +2111,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         NextNRowsOutput { columns, num_rows }
     }
 
-    /// Fast path for [`Self::_next_n_rows`]: bulk-emit a run of rows from
+    /// Fast path for [`Self::next_n_rows_in_store`]: bulk-emit a run of rows from
     /// lonely+dense chunks without going through the per-row streaming join.
     ///
     /// For each non-empty view column at `cur_row`, classify the column's
@@ -2176,7 +2176,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         let uiv_total = state.unique_index_values.len();
         if uiv_total <= cur_row {
             // Query exhausted: no more rows to emit. The caller's outer loop
-            // will see `_resolve_one_row` return `None` and break the batch.
+            // will see `resolve_one_row` return `None` and break the batch.
             return None;
         }
 
@@ -2300,7 +2300,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 }
             });
             if has_other_timeline_selected {
-                // `_resolve_one_row` computes max-across-cells for every
+                // `resolve_one_row` computes max-across-cells for every
                 // selected non-`filtered_index` timeline. With multiple Slice
                 // columns we'd have to do that comparison per row inside the
                 // bulk path; leave it to the per-row path until that's worth
@@ -3997,7 +3997,7 @@ mod tests {
         Ok(())
     }
 
-    /// Exercises the lonely-chunk bulk-emit fast path in `_next_n_rows`.
+    /// Exercises the lonely-chunk bulk-emit fast path in [`QueryHandle::next_n_rows_in_store`].
     ///
     /// Constructs a single-entity, single-component store with multiple disjoint
     /// chunks on the query timeline so that each chunk is `is_disjoint_in_column`,
@@ -4317,7 +4317,8 @@ mod tests {
     /// Any overlap anywhere in a view column forces `try_bulk_emit_run` to bail for the
     /// *entire* run (not just null out that column) -- confirmed here via `next_n_rows`,
     /// complementing [`pruning_walk_overlapping_chunks_rowid_invariance`] which only drives
-    /// the same overlapping fixture through `next_row`/`_resolve_one_row`.
+    /// the same overlapping fixture through [`QueryHandle::next_row`] /
+    /// [`QueryHandle::resolve_one_row`].
     #[test]
     fn next_n_rows_bails_entirely_on_overlap() -> anyhow::Result<()> {
         re_log::setup_logging();
@@ -4503,8 +4504,9 @@ mod tests {
     /// excludes it otherwise, `TODO(#9922)`).
     ///
     /// This intentionally does *not* use [`assert_bulk_matches_reference`]: the per-row path
-    /// (`next_row` / `_resolve_one_row`) unconditionally sources `RowId` from the *first view
-    /// column* rather than whichever column contributed the current row (same `TODO(#9922)`).
+    /// ([`QueryHandle::next_row`] / [`QueryHandle::resolve_one_row`]) unconditionally sources
+    /// `RowId` from the *first view column* rather than whichever column contributed the
+    /// current row (same `TODO(#9922)`).
     /// Since view columns are time-columns-first, that's the `frame_nr` `Time` column here,
     /// which has no chunks -- so the per-row path emits an all-null `RowId` column, while the
     /// bulk path correctly emits the real values. This is a known divergence, not a bug in this
@@ -5072,8 +5074,8 @@ mod tests {
     /// Verifies that the H3 init-sort by `time_min` (which is now unconditional, vs. the
     /// previous "only after clear-chunk merge" policy) leaves emitted output unchanged
     /// when two chunks overlap on the same `filtered_index` value, exercised through both
-    /// the batched (`next_n_rows` -> `next_row_batch`) and the per-row (`next_row` ->
-    /// `_resolve_one_row`) paths.
+    /// the batched ([`QueryHandle::next_n_rows`] -> [`QueryHandle::next_row_batch`]) and the
+    /// per-row ([`QueryHandle::next_row`] -> [`QueryHandle::resolve_one_row`]) paths.
     ///
     /// Why both paths matter: the streaming-join's overlap resolution at `query.rs:1243`
     /// picks max-`RowId` for value columns, which is order-independent by construction.
@@ -5161,7 +5163,7 @@ mod tests {
             assert_eq!(rb_fwd, rb_rev, "{label}: batched fwd vs reversed");
             assert_eq!(rb_fwd, rb_shuf, "{label}: batched fwd vs shuffled");
 
-            // Per-row path drives `_resolve_one_row` directly.
+            // Per-row path drives `resolve_one_row` directly.
             let rows_fwd = collect_per_row_arrays(&store_fwd, query.clone())?;
             let rows_rev = collect_per_row_arrays(&store_rev, query.clone())?;
             let rows_shuf = collect_per_row_arrays(&store_shuf, query)?;

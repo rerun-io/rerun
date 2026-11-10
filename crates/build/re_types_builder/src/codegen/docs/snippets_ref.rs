@@ -523,12 +523,10 @@ fn contains_whole_word(contents: &str, needle: &str) -> bool {
             return false;
         }
     }
-    if pos + needle.len() < contents.len()
-        && contents.as_bytes()[pos + needle.len()].is_ascii_alphanumeric()
-    {
-        return false;
-    }
-    true
+    contents
+        .as_bytes()
+        .get(pos + needle.len())
+        .is_none_or(|byte_after| !byte_after.is_ascii_alphanumeric())
 }
 
 #[test]
