@@ -1118,17 +1118,12 @@ pub trait UiExt {
     }
 
     /// Shows a `?` help button that will show a help UI when clicked or hovered.
-    ///
-    /// Until the help UI of any help button has been shown, we mark the button
-    /// with a dot to draw user attention to it.
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
         let mut help_ui: Option<_> = Some(help_ui);
 
         let ui = self.ui_mut();
 
         let has_shown_help_id = egui::Id::unique("has_shown_help");
-        let has_shown_help: bool =
-            ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
 
         let mut show_help = |ui: &mut egui::Ui| {
             if let Some(help_ui) = help_ui.take() {
@@ -1148,14 +1143,24 @@ pub trait UiExt {
             );
 
             let button_response = menu_button.ui(ui, &mut show_help).0;
-
-            if !has_shown_help {
-                ui.paint_button_dot(button_response.rect, ui.tokens().attention_dot_color);
-            }
-
             button_response.on_hover_ui(show_help)
         })
         .inner
+    }
+
+    /// Paints a discovery dot on a button, if [`crate::discovery`] says it is this feature's turn.
+    ///
+    /// `already_discovered` is whether the user has already used the feature,
+    /// in which case no dot is shown.
+    fn maybe_paint_discovery_dot(
+        &self,
+        button_rect: egui::Rect,
+        feature: crate::discovery::Feature,
+        already_discovered: bool,
+    ) {
+        if crate::discovery::claim_dot(self.ui().ctx(), feature, already_discovered) {
+            self.paint_button_dot(button_rect, self.tokens().attention_dot_color);
+        }
     }
 
     /// Paints a small status dot in the top-right corner of a button.

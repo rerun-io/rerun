@@ -554,7 +554,11 @@ impl AppCore {
         let entity_db = store_hub.entity_db_entry(store_id);
         let is_example = entity_db.store_class().is_example();
 
-        if cfg!(target_arch = "wasm32") && !self.startup.options.is_in_notebook && !is_example {
+        if cfg!(target_arch = "wasm32")
+            && !self.startup.options.is_in_notebook
+            && !is_example
+            && re_ui::discovery::Message::NativeViewerTip.is_unlocked(egui_ctx)
+        {
             use std::sync::Once;
             static ONCE: Once = Once::new();
             ONCE.call_once(|| {

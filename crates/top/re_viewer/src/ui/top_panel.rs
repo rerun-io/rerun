@@ -672,9 +672,11 @@ fn panel_buttons_r2l(
         let response = ui
             .medium_icon_toggle_button(&re_ui::icons::AGENT, "Agent panel toggle", &mut open)
             .on_hover_ui(|ui| UICommand::ToggleAgentPanel.tooltip_ui(ui));
-        if !app.state.agent_panel_ever_opened {
-            ui.paint_button_dot(response.rect, ui.tokens().attention_dot_color);
-        }
+        ui.maybe_paint_discovery_dot(
+            response.rect,
+            re_ui::discovery::Feature::AgentPanel,
+            app.state.agent_panel_ever_opened,
+        );
         if response.clicked() {
             app.toggle_agent_panel();
         }

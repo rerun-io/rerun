@@ -510,6 +510,7 @@ impl NotificationUi {
                 _ => level.color(ui),
             };
             ui.paint_button_dot(button_response.rect, color);
+            crate::discovery::report_notification_dot(ui.ctx());
         }
 
         let gap = 2.0;

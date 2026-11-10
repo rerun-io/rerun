@@ -62,6 +62,25 @@ const RERUN_VERSION_KEY: &str = "rerun.version";
 
 const REDAP_TOKEN_KEY: &str = "rerun.redap_token";
 
+/// Storage key for how many times the viewer has been launched.
+const LAUNCH_COUNT_KEY: &str = "rerun.launch_count";
+
+/// How many times the viewer has been launched, counting this launch.
+fn current_launch_count(storage: Option<&dyn eframe::Storage>) -> u32 {
+    let Some(storage) = storage else {
+        return 1;
+    };
+    let previous_launch_count = match storage.get_string(LAUNCH_COUNT_KEY) {
+        Some(count) => count.parse::<u32>().unwrap_or(0),
+        // Users who ran a version from before we counted launches are not new.
+        None if storage.get_string(RERUN_VERSION_KEY).is_some() => {
+            re_ui::discovery::PREVIOUS_LAUNCHES_OF_RETURNING_USER
+        }
+        None => 0,
+    };
+    previous_launch_count.saturating_add(1)
+}
+
 /// The egui temp-data key under which the `on_begin_pass` hook stashes the timeline
 /// keyboard shortcut it consumed this frame.
 ///
@@ -116,6 +135,11 @@ struct Startup {
     app_env: crate::AppEnvironment,
     options: StartupOptions,
     start_time: web_time::Instant,
+
+    /// How many times the viewer has been launched, including this launch.
+    ///
+    /// Zero when state is not persisted, which hides all nagging.
+    launch_count: u32,
 
     /// Graphics backend of the wgpu adapter, or [`wgpu::Backend::Noop`] without one.
     adapter_backend: wgpu::Backend,
@@ -360,7 +384,16 @@ impl App {
             state.app_options.check_for_updates_on_startup = check_for_updates_on_startup;
         }
 
-        if state.app_options.check_for_updates_on_startup {
+        let launch_count = if startup_options.persist_state {
+            current_launch_count(creation_context.storage)
+        } else {
+            0
+        };
+        re_ui::discovery::install(&creation_context.egui_ctx, launch_count);
+
+        if state.app_options.check_for_updates_on_startup
+            && re_ui::discovery::Message::VersionCheck.is_unlocked(&creation_context.egui_ctx)
+        {
             crate::version_check::check_for_new_version(build_info.version, &app_env, ehttp::fetch);
         }
 
@@ -514,6 +547,7 @@ impl App {
                 app_env,
                 options: startup_options,
                 start_time: web_time::Instant::now(),
+                launch_count,
                 adapter_backend,
             },
             welcome_screen_revealed: false,
@@ -1333,6 +1367,7 @@ impl eframe::App for App {
             RERUN_VERSION_KEY,
             self.startup.build_info.version.to_string(),
         );
+        storage.set_string(LAUNCH_COUNT_KEY, self.startup.launch_count.to_string());
 
         // Save the app state
         eframe::set_value(storage, eframe::APP_KEY, &self.state);

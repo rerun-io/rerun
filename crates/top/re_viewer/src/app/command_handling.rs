@@ -1618,6 +1618,12 @@ impl AppCore {
         if let Err(err) = crate::reset_viewer_persistence() {
             re_log::warn!("Failed to reset viewer: {err}");
         }
+
+        // Treat this session as the first launch, so the next launch is the second.
+        if self.startup.options.persist_state {
+            self.startup.launch_count = 1;
+            re_ui::discovery::set_launch_count(egui_ctx, 1);
+        }
     }
 
     pub(crate) fn toggle_fullscreen(&self) {
