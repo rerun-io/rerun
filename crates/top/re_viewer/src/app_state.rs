@@ -1026,16 +1026,19 @@ impl AppState {
             route.item(),
         );
 
-        if let SelectionChange::SelectionChanged(selection) = selection_change
-            && let Some(event_dispatcher) = event_dispatcher
-            && let Some(active_store_context) = active_store_context
-            && let Some(viewport_ui) = viewport_ui
-        {
-            event_dispatcher.on_selection_change(
-                active_store_context.recording,
-                selection,
-                &viewport_ui.blueprint,
-            );
+        if let SelectionChange::SelectionChanged(selection) = selection_change {
+            self.recording_panel.on_selection_changed(selection);
+
+            if let Some(event_dispatcher) = event_dispatcher
+                && let Some(active_store_context) = active_store_context
+                && let Some(viewport_ui) = viewport_ui
+            {
+                event_dispatcher.on_selection_change(
+                    active_store_context.recording,
+                    selection,
+                    &viewport_ui.blueprint,
+                );
+            }
         }
     }
 

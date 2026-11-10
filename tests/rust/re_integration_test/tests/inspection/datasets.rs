@@ -100,6 +100,157 @@ pub async fn start_with_dataset_url() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn startup_segment_url_expands_ancestor_folders() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(
+            "parent.child.my_dataset",
+            TEST_DATASET_ID,
+            "new_recording_id",
+        )
+        .await;
+
+    let mut harness = InspectionHarness::spawn(HarnessConfig {
+        startup_url: Some(format!(
+            "rerun+http://localhost:{}/dataset/{TEST_DATASET_ID}?segment_id={segment_id}",
+            server.port()
+        )),
+        ..Default::default()
+    });
+
+    assert_segment_revealed_in_sources(&mut harness);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn command_palette_segment_url_expands_ancestor_folders() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(
+            "parent.child.my_dataset",
+            TEST_DATASET_ID,
+            "new_recording_id",
+        )
+        .await;
+    let mut harness = InspectionHarness::spawn(HarnessConfig::default());
+
+    harness.get_by_label_contains("Search commands…").click();
+    harness.run();
+    harness
+        .get_by_role(egui::Role::TextInput)
+        .type_text(&format!(
+            "rerun+http://localhost:{}/dataset/{TEST_DATASET_ID}?segment_id={segment_id}",
+            server.port()
+        ));
+    harness.run();
+    for pressed in [true, false] {
+        harness.queue_event(egui::Event::Key {
+            key: egui::Key::Enter,
+            physical_key: None,
+            pressed,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+
+    assert_segment_revealed_in_sources(&mut harness);
+}
+
+/// Chevron collapses must persist while the selection remains unchanged.
+#[tokio::test(flavor = "multi_thread")]
+async fn source_chevrons_preserve_manual_collapse() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(
+            "parent.child.my_dataset",
+            TEST_DATASET_ID,
+            "new_recording_id",
+        )
+        .await;
+    let mut harness = InspectionHarness::spawn(HarnessConfig {
+        startup_url: Some(format!(
+            "rerun+http://localhost:{}/dataset/{TEST_DATASET_ID}?segment_id={segment_id}",
+            server.port()
+        )),
+        ..Default::default()
+    });
+    assert_segment_revealed_in_sources(&mut harness);
+
+    for (ancestor, child) in [
+        ("my_dataset", "new_recording_id"),
+        ("child", "my_dataset"),
+        ("parent", "child"),
+        ("localhost:", "parent"),
+    ] {
+        collapse_source_and_check(&mut harness, ancestor, child);
+    }
+
+    harness
+        .section_node(Some("_recording_panel"))
+        .get_by_label_contains("localhost:")
+        .click();
+    harness.step_until("Selecting the server reveals its entries", |harness| {
+        harness
+            .section_node(Some("_recording_panel"))
+            .query_by_label("parent")
+            .is_some()
+    });
+    assert_eq!(
+        harness
+            .section_node(Some("_recording_panel"))
+            .get_by_label_contains("localhost:")
+            .accesskit_node()
+            .toggled(),
+        Some(egui::accesskit::Toggled::True)
+    );
+    collapse_source_and_check(&mut harness, "localhost:", "parent");
+}
+
+fn collapse_source_and_check(harness: &mut InspectionHarness, ancestor: &str, child: &str) {
+    harness
+        .section_node(Some("_recording_panel"))
+        .get_by_label_contains(ancestor)
+        .parent()
+        .expect("Source items have a row containing their chevron")
+        .get_by_role(egui::Role::DisclosureTriangle)
+        .click();
+    harness.step_until("Chevron collapses the source item", |harness| {
+        harness
+            .section_node(Some("_recording_panel"))
+            .query_by_label_contains(child)
+            .is_none()
+    });
+
+    harness.run_ok();
+    assert!(
+        harness
+            .section_node(Some("_recording_panel"))
+            .query_by_label_contains(child)
+            .is_none(),
+        "{ancestor} must stay collapsed after the chevron click"
+    );
+}
+
+fn assert_segment_revealed_in_sources(harness: &mut InspectionHarness) {
+    // The root folder appears only after the server's entry list has loaded.
+    harness.step_until("Segment and server entry list load", |harness| {
+        harness.query_by_label_contains("STREAMS").is_some()
+            && !harness.is_loading()
+            && harness
+                .section_node(Some("_recording_panel"))
+                .query_by_label("parent")
+                .is_some()
+    });
+    harness.run_ok();
+
+    // Make sure all expected segments and folders are present in the sources.
+    let sources = harness.section_node(Some("_recording_panel"));
+    sources.get_by_label("parent");
+    sources.get_by_label("child");
+    sources.get_by_label("my_dataset");
+    sources.get_by_label_contains("new_recording_id");
+}
+
+#[tokio::test(flavor = "multi_thread")]
 pub async fn start_with_segment_fragment_url() {
     let (server, segment_id) = TestServer::spawn().await.with_test_data().await;
 
