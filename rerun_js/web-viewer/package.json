@@ -52,6 +52,9 @@
     }
   },
   "files": [
+    "compat.d.ts",
+    "compat.d.ts.map",
+    "compat.ts",
     "exact_json.d.ts",
     "exact_json.d.ts.map",
     "exact_json.ts",

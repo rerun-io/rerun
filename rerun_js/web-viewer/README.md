@@ -48,7 +48,7 @@ The `rrd` in the snippet above should be a URL pointing to either:
 - A gRPC connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API
 
 If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.
-This can be disabled by setting `hide_welcome_screen` to `true` in the options object of `viewer.start`.
+This can be disabled by setting `hideWelcomeScreen` to `true` in the options object of `viewer.start`.
 
 ⚠ It's important to set the viewer's width and height, as without it the viewer may not display correctly.
 Setting the values to empty strings is valid, as long as you style the canvas through other means.

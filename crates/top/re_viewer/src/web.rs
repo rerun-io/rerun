@@ -570,6 +570,9 @@ impl From<PanelState> for re_sdk_types::blueprint::components::PanelState {
 
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
+// `WebViewer.start` passes its camelCase options through without converting the keys,
+// and `web_viewer/index.html` uses the same keys.
+#[serde(rename_all = "camelCase")]
 pub struct AppOptions {
     manifest_url: Option<String>,
     render_backend: Option<String>,
@@ -597,6 +600,8 @@ pub struct AppOptions {
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
 #[derive(Clone, Deserialize)]
+// JavaScript callers pass camelCase keys, like for `AppOptions`.
+#[serde(rename_all = "camelCase")]
 pub struct FullscreenOptions {
     /// This returns the current fullscreen state, which is a boolean representing on/off.
     pub get_state: Callback,

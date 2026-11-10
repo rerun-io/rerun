@@ -22,10 +22,23 @@ Follow the [Google TypeScript Style Guide](https://google.github.io/styleguide/t
 
 ### Exceptions
 
-- **Naming:** Use `snake_case` for functions, methods, parameters, variables, fields, and module aliases, not the usual JS/TS [`lowerCamelCase`](https://google.github.io/styleguide/tsguide.html#identifiers).
-  Use `PascalCase` for types and classes, and `SCREAMING_SNAKE_CASE` for module-level constants.
+- **External names:** Preserve generated names and wire-protocol keys, including viewer event names and notebook messages.
+  Quote wire keys; alias generated imports to local camelCase or PascalCase names.
+
+  ```ts
+  viewer.on("recording_open", (event) => {
+    const message = { "recording_id": event.recordingId };
+    console.log(JSON.stringify(message));
+  });
+  ```
+
 - **Private members:** Use `#private`, despite the guide's [ban](https://google.github.io/styleguide/tsguide.html#no-private-fields): it enforces privacy for JavaScript consumers, and our `esnext` target avoids downlevel compilation costs.
   Use TypeScript `private` only for documented runtime integration access.
+
+### Naming and types
+
+Use `camelCase` for functions, methods, parameters, variables, fields, and module aliases, `PascalCase` for types and classes, and `SCREAMING_SNAKE_CASE` for constants.
+Use interfaces for named object shapes; keep type aliases for unions, mapped types, and other types that interfaces cannot express.
 
 ### Formatting and checks
 

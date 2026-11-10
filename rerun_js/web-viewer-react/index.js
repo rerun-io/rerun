@@ -1,7 +1,7 @@
 import React, { createRef } from "react";
 import * as rerun from "@rerun-io/web-viewer";
 
-// NOTE: We're intentionally not exposing `allow_fullscreen` and `enable_history`.
+// NOTE: We're intentionally not exposing `allowFullscreen` and `enableHistory`.
 //       Those features are already pretty sensitive to the environment, especially
 //       so in React where all normal behavior of web APIs goes out of the window.
 /**
@@ -13,7 +13,7 @@ import * as rerun from "@rerun-io/web-viewer";
  * @property {string} [height] CSS height of the viewer's parent div
  *
  * @typedef {(
- *   Omit<import("@rerun-io/web-viewer").WebViewerOptions, "allow_fullscreen" | "enable_history">
+ *   Omit<import("@rerun-io/web-viewer").WebViewerOptions, "allowFullscreen" | "enableHistory" | "allow_fullscreen" | "enable_history">
  *   & BaseProps
  *   & import("./types.d.ts").ViewerEvents
  * )} Props
@@ -51,6 +51,10 @@ export default class WebViewer extends React.Component {
   componentDidUpdate(/** @type {Props} */ prevProps) {
     if (
       keysChanged(prevProps, this.props, [
+        "hideWelcomeScreen",
+        "checkForUpdatesOnStartup",
+        "manifestUrl",
+        "renderBackend",
         "hide_welcome_screen",
         "check_for_updates_on_startup",
         "manifest_url",
@@ -124,10 +128,13 @@ function startViewer(handle, parent, getProps) {
   const initial = toArray(props.rrd);
   handle
     .start(initial, parent, {
-      manifest_url: props.manifest_url,
-      render_backend: props.render_backend,
-      hide_welcome_screen: props.hide_welcome_screen,
-      check_for_updates_on_startup: props.check_for_updates_on_startup,
+      // oxlint-disable typescript/no-deprecated -- Accept legacy React props at the API boundary.
+      manifestUrl: props.manifestUrl ?? props.manifest_url,
+      renderBackend: props.renderBackend ?? props.render_backend,
+      hideWelcomeScreen: props.hideWelcomeScreen ?? props.hide_welcome_screen,
+      checkForUpdatesOnStartup:
+        props.checkForUpdatesOnStartup ?? props.check_for_updates_on_startup,
+      // oxlint-enable typescript/no-deprecated
       theme: props.theme,
 
       // NOTE: `width`, `height` intentionally ignored, they will

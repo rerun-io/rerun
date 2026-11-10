@@ -9,6 +9,8 @@ use crate::event::ViewerEventCallback;
 /// Both URLs must be absolute (e.g. `https://example.com/signed-in`).
 /// The JS layer resolves relative URLs before passing them here.
 #[derive(Clone, Default, serde::Deserialize)]
+// The web viewer's JavaScript callers pass camelCase keys, like for the web `AppOptions`.
+#[serde(rename_all = "camelCase")]
 pub struct LoginOptions {
     /// Absolute URL to redirect to after successful `OAuth` login.
     pub signed_in_url: String,

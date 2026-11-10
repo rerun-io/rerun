@@ -135,7 +135,7 @@ This section lists features that users often ask for, with the best workaround w
     - [#12747](https://github.com/rerun-io/rerun/issues/12747) (video)
 
 ### Web and server
-- Custom request headers (for example auth) when the web Viewer fetches an `.rrd` over HTTP. Workaround: fetch the file yourself and pass the bytes to `open_channel(…).send_rrd(…)` in the JS package. For Rerun servers, set `fallback_token`.
+- Custom request headers (for example auth) when the web Viewer fetches an `.rrd` over HTTP. Workaround: fetch the file yourself and pass the bytes to `openChannel(…).sendRrd(…)` in the JS package. For Rerun servers, set `fallbackToken`.
 - Per-client sessions in the `serve_grpc` proxy: every connected Viewer gets the same stream. Workaround: one recording and port per client.
 - Watching a folder for new files, and registering data from object stores (S3, GCS) in the open-source `rerun server`. It only registers local files, either at startup with `--dataset` or later with `register`.
 - Live streams larger than RAM. Data streamed from the SDK to the Viewer is kept in memory, and the oldest data is dropped at the memory limit. Workaround: save to an `.rrd` file and open the file, which is read on demand (see [Limit memory usage](../howto/visualization/limit-ram.md)).

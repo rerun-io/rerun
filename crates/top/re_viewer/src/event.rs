@@ -26,6 +26,8 @@ pub struct ViewerEvent {
     #[serde(with = "serde::recording_id")]
     pub recording_id: RecordingId,
 
+    // The JavaScript `ViewerEvent` types declare absent fields as optional, not `null`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub segment_id: Option<SegmentId>,
 
     #[serde(flatten)]
@@ -96,6 +98,7 @@ pub enum ViewerEventKind {
         /// Version of the SDK used to create this recording.
         ///
         /// Uses semver format.
+        #[serde(skip_serializing_if = "Option::is_none")]
         version: Option<String>,
     },
 }

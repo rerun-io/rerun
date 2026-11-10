@@ -122,7 +122,7 @@ The Viewer API supports adding and removing recordings:
 const rrdUrl = "https://app.rerun.io/version/latest/examples/dna.rrd";
 
 // Open a recording, and wait for it to load:
-const { store_ids } = await viewer.open(rrdUrl);
+const { storeIds } = await viewer.open(rrdUrl);
 
 // Later on…
 await viewer.close(rrdUrl);
@@ -144,13 +144,13 @@ The Viewer can report what it shows, and be driven from code:
 
 ```js,id=embed-web-viewer-control
 // What the Viewer shows: the open recordings, their timelines, and time cursors.
-const state = await viewer.get_state();
+const state = await viewer.getState();
 
 // On a duration timeline, seek the active recording to one second, and play from there.
-await viewer.set_time({ duration_nanos: 1_000_000_000n, play_state: "playing" });
+await viewer.setTime({ durationNanos: 1_000_000_000n, playState: "playing" });
 
 // Show another open recording.
-await viewer.set_location(state.recordings[0].location);
+await viewer.setLocation(state.recordings[0].location);
 ```
 
 Each of these methods returns a promise, because the Viewer handles each request on its next frame.
@@ -171,7 +171,7 @@ For example, here is how you would react to entities being selected in the Viewe
 viewer.on("selection_change", (event) => {
   for (const item of event.items) {
     if (item.type === "entity") {
-      console.log(item.entity_path);
+      console.log(item.entityPath);
     }
   }
 });
