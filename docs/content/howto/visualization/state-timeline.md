@@ -1,10 +1,12 @@
 ---
-title: Visualize state changes
+title: Visualize state changes and events
 order: 700
-description: Show entities transitioning between discrete states over time
+description: Show discrete states, events, and time spans (like a Gantt chart) over time, with one lane per entity or instance
 ---
 
-The [StateTimelineView](../../reference/types/views/state_timeline_view.md) shows how entities transition between discrete states over time. Each entity becomes a horizontal lane, and each logged state is rendered as a colored band that runs until the next change. This is a good fit for state machines, mode transitions, sensor health, or any other piece of data that's better described as "what state am I in right now?" than as a numerical value.
+The [StateTimelineView](../../reference/types/views/state_timeline_view.md) shows how entities transition between discrete states over time.
+Each entity becomes a group of horizontal lanes, one lane per instance of its `state` (most entities log one state, and get one lane), and each logged state is rendered as a colored band that runs until the next change.
+This is a good fit for state machines, mode transitions, sensor health, or any other piece of data that's better described as "what state am I in right now?" than as a numerical value.
 
 ## Logging state changes
 
@@ -21,10 +23,27 @@ snippet: howto/state_timeline[log_changes]
 </picture>
 
 ### Notes
-- The view groups state changes by entity path, so logging to `/door` and `/window` produces two separate lanes.
+- The view groups state changes by entity path, so logging to `/door` and `/window` produces two separate lane groups.
+- If you log several states at once, for example `rr.StateChange(state=["open", "closed"])`, each instance gets its own lane.
+  Keep the number of states the same over time.
 - Logging the same state value twice in a row is a no-op for visualization, only transitions to a different value start a new phase.
 - Each phase runs from its `StateChange` time to the next `StateChange` time on the same entity.
 The final phase is drawn up to the end of the recording's timeline or the configured visible time range, whichever comes first.
+
+### Ending a state, gaps, and time spans
+
+To end a state without starting a new one, log a reset.
+The lane then shows a gap until the next state.
+An empty string, a null entry, or an empty state array all act as a reset:
+
+```python
+rr.set_time("time", duration=1.0)
+rr.log("tasks/download", rr.StateChange(state="running"))
+rr.set_time("time", duration=4.5)
+rr.log("tasks/download", rr.StateChange(state=""))  # The span ends here.
+```
+
+This is how you show events with a start and an end (spans), like a Gantt chart: one entity (or one instance) per task, with a state at the start and a reset at the end.
 
 ## Customizing labels, colors, and visibility
 

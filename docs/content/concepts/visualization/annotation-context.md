@@ -54,6 +54,7 @@ The Annotation Context is defined as a list of Class Descriptions that define ho
 
 Annotation contexts are logged with:
 
+* C++: 🌊[`rerun::AnnotationContext`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AnnotationContext.html)
 * Python: 🐍[`rr.AnnotationContext`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.AnnotationContext)
 * Rust: 🦀[`rerun::AnnotationContext`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AnnotationContext.html#)
 
@@ -85,3 +86,25 @@ you can explicitly determine the color of each class.
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/768w.png">
   <img src="https://static.rerun.io/segmentation_image/f48e7db9a1253f35b55205acd55d4b84ab1d8434/full.png" alt="screenshot of a segmentation image">
 </picture>
+
+
+## Overlaying annotations on images
+
+To draw boxes, labels, points, or masks on top of an image, log them under the same parent entity as the image, and show that parent in one 2D view:
+
+```python
+rr.log("camera/image", rr.Image(rgb))
+rr.log("camera/detections", rr.Boxes2D(mins=mins, sizes=sizes, labels=labels, class_ids=class_ids))
+rr.log("camera/mask", rr.SegmentationImage(mask, opacity=0.5))
+```
+
+Everything under `camera` is drawn in the same 2D coordinate space as the image, in pixel coordinates.
+If the image is part of a 3D scene under a [`Pinhole`](../../reference/types/archetypes/pinhole.md), log the 2D annotations under the pinhole entity too.
+
+- `opacity` on [`Image`](../../reference/types/archetypes/image.md) and [`SegmentationImage`](../../reference/types/archetypes/segmentation_image.md) makes them translucent.
+  A segmentation image defaults to an opacity of 0.5 when there are other images in the view.
+- `draw_order` on images, boxes, points, and lines sets what is drawn on top.
+  Higher values are drawn on top of lower values.
+
+The class IDs of the boxes and of the segmentation image use the same annotation context, so they get the same colors and labels.
+

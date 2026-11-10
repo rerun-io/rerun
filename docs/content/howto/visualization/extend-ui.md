@@ -23,6 +23,17 @@ The Rerun Viewer is defined by the crate [`re_viewer`](https://github.com/rerun-
 
 The best way to get started is by reading [the source code of the `extend_viewer_ui` example](https://github.com/rerun-io/rerun/tree/main/examples/rust/extend_viewer_ui).
 
+To run your custom Viewer in a browser, compile it to WebAssembly.
+See [Building for the web](https://github.com/rerun-io/rerun/blob/main/BUILD.md#building-for-the-web) for how we build the Rerun web viewer.
+
+To react to Viewer events (selection, time changes, …) from your own app, see the [`viewer_callbacks`](https://github.com/rerun-io/rerun/tree/latest/examples/rust/viewer_callbacks) example and [React to events in the Viewer](callbacks.md).
+
+### Bevy and other game engines
+
+There is no maintained Bevy integration.
+To visualize data from a Bevy app, log it with the [Rust SDK](https://docs.rs/rerun/) like from any other Rust program.
+[Revy](https://github.com/rerun-io/revy) is a proof-of-concept that snapshots the Bevy ECS into Rerun every frame.
+
 
 ## Custom visualizers for built-in views
 

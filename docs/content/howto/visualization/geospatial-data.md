@@ -4,8 +4,8 @@ order: 300
 description: Use the map view with GPS-style latitudes and longitudes
 ---
 
-Rerun 0.20 introduced a new [map view](../../reference/types/views/map_view.md).
-This guide provides a short overview on how to use it to visualize geospatial data.
+The [map view](../../reference/types/views/map_view.md) shows geospatial data (GPS coordinates) on top of a background map.
+This guide provides a short overview on how to use it.
 
 ## Coordinate system
 
@@ -71,3 +71,17 @@ blueprint = rrb.Blueprint(
 ```
 
 Check the [map view](../../reference/types/views/map_view.md) reference for details.
+
+
+## Limitations
+
+- **No heading or orientation.** `GeoPoints` are drawn as circles, without a direction.
+  As a workaround, log a short [`GeoLineStrings`](../../reference/types/archetypes/geo_line_strings.md) segment from the position in the direction of the heading.
+- **No custom tile servers.** The background map can only be one of the built-in providers: OpenStreetMap and four Mapbox styles (see `rrb.MapProvider`).
+  You cannot set your own tile URL or use offline tiles.
+- **2D only.** The map view is a flat 2D map.
+  There is no 3D terrain, and no altitude.
+- **No polygons** yet, see above.
+
+See [missing features](../../development/roadmap.md#missing-features).
+

@@ -168,3 +168,16 @@ And as before, this also shows up in the View's component defaults.
 <picture>
   <img src="https://static.rerun.io/viscomp-component-default-2/c6943e2139dc7271075999a71b09596f07aa0776/full.png" alt="">
 </picture>
+
+## Hide entities by default
+
+To hide an entity (and its children) in a view, use the [`EntityBehavior`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes/#rerun.blueprint.archetypes.EntityBehavior) blueprint archetype as an override.
+The entity is still part of the view, so the user can show it again by clicking the eye icon in the blueprint panel.
+You can also make entities non-interactive, so that they cannot be hovered or selected in the view.
+
+snippet: archetypes/entity_behavior
+
+`EntityBehavior` currently only has an effect when you set it in the blueprint, as above.
+Logging it together with your data does nothing yet.
+
+To remove an entity from a view completely, exclude it in the view's [entity query](entity-queries.md) instead, for example with `contents=["+ /**", "- /debug/**"]`.

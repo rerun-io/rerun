@@ -1,7 +1,7 @@
 ---
 title: Component mappings
 order: 250
-description: Redirect a visualizer's input to a different component
+description: Redirect a visualizer's input to a different component, for example to switch the coloring of a point cloud (by height, intensity, or class) per view
 ---
 
 By default, each visualizer reads its input components from its own archetype — for example, the `Points3D` visualizer reads colors from `Points3D:colors`.
@@ -10,6 +10,26 @@ By default, each visualizer reads its input components from its own archetype �
 To learn more about how visualizers are set up in general, also have a look at the [concept page on customizing Views](https://rerun.io/docs/concepts/visualization/customize-views).
 
 This guide uses a point cloud with two color sets as a running example, but the same technique works for any component!
+
+## Color a point cloud by height or intensity
+
+[`Points3D`](../../reference/types/archetypes/points3d.md) has no colormap and no scalar-to-color input.
+To color points by a value (height, intensity, temperature, …), compute one RGB(A) color per point yourself and pass it as `colors`.
+For example, with a matplotlib colormap:
+
+```python
+import matplotlib
+import numpy as np
+import rerun as rr
+
+heights = positions[:, 2]
+normalized = (heights - heights.min()) / max(np.ptp(heights), 1e-9)
+colors = matplotlib.colormaps["viridis"](normalized)  # RGBA floats in 0-1
+
+rr.log("points", rr.Points3D(positions, colors=colors))
+```
+
+To switch between several colorings without logging the points again, log each color set as its own component and use component mappings, as shown below.
 
 ## Full example
 

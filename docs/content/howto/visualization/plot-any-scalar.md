@@ -21,6 +21,7 @@ The supported data types are:
 - Any of the above nested inside of [Arrow structs](https://arrow.apache.org/docs/format/Intro.html#struct).
 
 For background on how visualizers resolve component values, see [Customize views](../../concepts/visualization/customize-views.md).
+For styling, axes, histograms, and XY plots, see [Customize plots](customize-plots.md).
 
 ## Logging custom data
 

@@ -7,6 +7,9 @@ description: Configure time series views to show a sliding window
 The [TimeSeriesView](../../reference/types/views/time_series_view.md) supports direct manipulation of the visible time range.
 This allows you to create a plot that only shows a fixed window of data.
 
+Visible time ranges also work in 2D and 3D views, for example for trails.
+See [Show trails, history, and sliding time windows](visible-time-ranges.md) for the general guide, per-entity ranges, and linked time axes.
+
 ## VisibleTimeRange
 
 To specify the visible time range, you must pass one or more `VisibleTimeRange` objects to the `time_ranges` parameter of the `TimeSeriesView` blueprint type. If your app only uses a single timeline, you can directly pass a single `VisibleTimeRange` object instead of wrapping it in a list.

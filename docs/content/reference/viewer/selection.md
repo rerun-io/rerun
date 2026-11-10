@@ -48,3 +48,16 @@ Multi Selection
 ---------------
 By holding `cmd/ctrl` upon click, you can add or remove selections from the set of currently selected objects.
 The selection view shows all selected objects in the order they were added.
+
+Linking views
+-------------
+Hovering and selection are shared by all views.
+When you hover or select an entity, or one instance of it (for example one point of a point cloud), it is highlighted in every view that shows the same entity path and instance.
+
+This only links the _same_ entity path.
+Different entities are not linked, even if they describe the same object, for example `/camera/image` and `/world/points`.
+To link them, give the related data the same entity path, or build your own linking with [callbacks](../../howto/visualization/callbacks.md).
+
+Time is also shared: all views show the same time cursor.
+Right-click in a time series view to move the time cursor to that time.
+To pan and zoom the time axis of several plots together, see [linked time axes](../../howto/visualization/visible-time-ranges.md#link-the-time-axis-of-several-plots).

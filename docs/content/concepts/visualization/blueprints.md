@@ -95,8 +95,8 @@ Blueprint files are portable and can be version-controlled alongside your code.
 
 ### 3. Programmatically
 Write blueprint code that configures the Viewer automatically:
--   Define layouts in Python using `rerun.blueprint` APIs
--   Send blueprints with `rr.send_blueprint()` or via `default_blueprint` parameter
+-   Define layouts in Python using `rerun.blueprint`, or in Rust using `rerun::blueprint`
+-   Send blueprints with `rr.send_blueprint()` or via `default_blueprint` parameter (Python), or `RecordingStreamBuilder::with_blueprint` and `Blueprint::send` (Rust)
 -   Generate layouts dynamically based on your data
 -   Perfect for creating consistent views for specific debugging scenarios
 
@@ -117,6 +117,58 @@ if robot_error:
 ```
 
 See [Configure the Viewer](../../getting-started/configure-the-viewer/navigating-the-viewer.md#programmatic-blueprints) for detailed examples and our guide on how to [build a blueprint programmatically](../../howto/visualization/build-a-blueprint-programmatically.md).
+
+The Python API covers all blueprint features.
+The Rust API covers layouts, view contents, defaults, overrides, and panel states, but most view-specific properties (for example eye controls or visible time ranges) are not available in Rust yet.
+C++ has no blueprint API: create a `.rbl` file with Python or the Viewer, and load it with `log_file_from_path` (see [Loading blueprints from any language](../../howto/visualization/build-a-blueprint-programmatically.md#loading-blueprints-from-any-language)).
+
+## Why is my blueprint ignored?
+
+Check these common causes:
+
+-   **Different application ID.** A blueprint applies only to recordings with the same [Application ID](../logging-and-ingestion/recordings.md).
+    `rr.send_blueprint` uses the application ID of the recording stream it is sent on, so send it on the same stream as your data.
+-   **`make_active=False`.** `rr.send_blueprint(…, make_active=False, make_default=True)` only sets the default blueprint.
+    It becomes active only if no other blueprint is active, or when the user resets the blueprint.
+    The same is true for the `default_blueprint` parameter of `rr.spawn`, `rr.connect_grpc`, `rr.save`, and `rr.serve_grpc`.
+-   **The Viewer keeps your edits.** The native Viewer remembers the blueprint of each application ID, including changes you made in the UI, across restarts.
+    A default blueprint does not replace it.
+    Use "Reset to default blueprint" in the blueprint panel, or send the blueprint with `make_active=True` (the default for `rr.send_blueprint`).
+-   **Wrong override paths.** The keys of `overrides={…}` must be full entity paths, starting at the root.
+    `$origin` and wildcards like `/**` are not supported there.
+-   **Wrong `origin` or `contents`.** If a view is empty, check that the [entity query](entity-queries.md) matches the entity paths you log to.
+    Select the view in the Viewer to see its query.
+
+## Why did the Viewer create these views?
+
+When there is no blueprint, or when the blueprint has `auto_views` enabled, the Viewer creates views with heuristics:
+
+-   It creates views for each view class that can show your data, for example one 3D view and one time series view.
+-   Spatial views are created per _subspace_: a [`Pinhole`](../../reference/types/archetypes/pinhole.md) starts a new 2D space, so each camera gets its own 2D view.
+-   2D views are split by image size, so images of different sizes are not stacked in the same view.
+-   At most 8 views of the same class are created automatically.
+
+To stop this, send a blueprint that lists the views you want.
+A blueprint with at least one container or view has `auto_views=False` by default.
+A blueprint with no containers or views has `auto_views=True` by default; to create an empty layout, set `rrb.Blueprint(auto_views=False, auto_layout=False)`.
+
+## Containers and tabs
+
+There are four container kinds: `rrb.Horizontal`, `rrb.Vertical`, `rrb.Grid`, and `rrb.Tabs`.
+Use `active_tab` to choose which tab is shown first, by index or by name:
+
+```python
+rrb.Blueprint(
+    rrb.Tabs(
+        rrb.Spatial3DView(name="Scene", origin="/world"),
+        rrb.TimeSeriesView(name="Plots", origin="/metrics"),
+        active_tab="Plots",
+    )
+)
+```
+
+There is no scrollable container yet: all views in a container share the available space.
+See [missing features](../../development/roadmap.md#missing-features).
 
 ## Common use cases
 
@@ -165,4 +217,4 @@ This means the Viewer output is a deterministic function of the blueprint and th
 -   **Learn to use blueprints**: See [Configure the Viewer](../../getting-started/configure-the-viewer.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
 -   **Understand the UI**: Check the [Blueprint Panel Reference](../../reference/viewer/blueprints.md) for details on UI controls
 -   **Customize visualizations**: Learn about [Visualizers and Overrides](customize-views.md) for advanced per-entity customization
--   **Explore the API**: Browse the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control (Python)
+-   **Explore the API**: Browse the [Python Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) or the [Rust `rerun::blueprint` module](https://docs.rs/rerun/latest/rerun/blueprint/index.html)

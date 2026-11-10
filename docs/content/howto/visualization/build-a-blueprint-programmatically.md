@@ -1,10 +1,11 @@
 ---
 title: Building blueprints programmatically
 order: 500
-description: Configure the Viewer in code using the Python Blueprint API
+description: Configure the Viewer layout in code using the Blueprint API in Python or Rust
 ---
 
-For maximum control and automation, you can define [Blueprints](../../concepts/visualization/blueprints.md) in code using the Python Blueprint API. This is ideal for:
+For maximum control and automation, you can define [Blueprints](../../concepts/visualization/blueprints.md) in code using the Blueprint API in Python or Rust.
+This is ideal for:
 
 -   Creating layouts dynamically based on your data
 -   Ensuring consistent views for specific debugging scenarios
@@ -13,6 +14,11 @@ For maximum control and automation, you can define [Blueprints](../../concepts/v
 
 This guide configures the viewport for individual recordings.
 To configure catalog table columns or embedded segment previews instead, see [Configure table layouts and segment previews](configure-table-blueprints.md).
+
+Most of this guide uses Python.
+For Rust, see [Rust Blueprint API](#rust-blueprint-api) below.
+C++ has no Blueprint API yet, but can [load blueprint files](#loading-blueprints-from-any-language).
+If your blueprint has no effect, see [Why is my blueprint ignored?](../../concepts/visualization/blueprints.md#why-is-my-blueprint-ignored).
 
 ### Getting started example
 
@@ -350,7 +356,7 @@ snippet: howto/visualization/save_blueprint
 #### Loading blueprints from any language
 
 Existing blueprint files (e.g. created with the Python SDK or saved from the viewer) can be programmatically loaded into Rerun.
-This is particularly useful when using the C++ SDK, since the blueprint API is not yet available for C++:
+This is particularly useful when using the C++ SDK, since the Blueprint API is not available for C++:
 
 snippet: howto/visualization/load_blueprint
 
@@ -398,6 +404,55 @@ rrb.TimeSeriesView(
 ```
 
 See [Visualizers and Overrides](../../concepts/visualization/customize-views.md) for information on overriding component values and controlling visualizers from code.
+
+### Rust blueprint API
+
+Rust has a builder API in the [`rerun::blueprint`](https://docs.rs/rerun/latest/rerun/blueprint/index.html) module.
+It supports containers (`Horizontal`, `Vertical`, `Grid`, `Tabs`), all view classes, view origin and contents, component defaults and overrides, and the state of the panels.
+Most view-specific properties (for example eye controls or visible time ranges) are only available in Python for now.
+
+This example is adapted from [`examples/rust/blueprint`](https://github.com/rerun-io/rerun/tree/latest/examples/rust/blueprint):
+
+```rust
+use rerun::blueprint::components::PanelState;
+use rerun::blueprint::{Blueprint, ContainerLike, Grid, SelectionPanel, Spatial2DView};
+
+fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let blueprint = Blueprint::new(Grid::new(vec![
+        ContainerLike::from(
+            Spatial2DView::new("Image and first rect")
+                .with_origin("/")
+                .with_contents(["image", "rect/0"]),
+        ),
+        ContainerLike::from(
+            Spatial2DView::new("Everything")
+                .with_origin("/")
+                .with_contents(["/**"])
+                .with_defaults(&rerun::Boxes2D::update_fields().with_radii([2.0]))
+                .with_override(
+                    "rect/0",
+                    &rerun::Boxes2D::update_fields().with_radii([1.0]),
+                ),
+        ),
+    ]))
+    .with_selection_panel(SelectionPanel::from_state(PanelState::Collapsed));
+
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_blueprint")
+        .with_blueprint(blueprint)
+        .spawn()?;
+
+    rec.log(
+        "rect/0",
+        &rerun::Boxes2D::from_mins_and_sizes([(16.0, 16.0)], [(64.0, 64.0)]),
+    )?;
+
+    Ok(())
+}
+```
+
+`with_blueprint` makes the blueprint active immediately.
+`with_default_blueprint` only sets it as the default, which the user gets when they reset the blueprint.
+To send a blueprint to a stream that already exists, use `blueprint.send(&rec, BlueprintActivation { make_active: true, make_default: true })`.
 
 ---
 

@@ -64,3 +64,9 @@ For example, the above query could be rewritten as:
     ),
 )
 ```
+
+## Recording properties are excluded by default
+
+Every query implicitly excludes `__properties/**`, where [recording properties](../query-and-transform/properties-and-segments.md) are stored.
+So `+ /**` does not show them.
+To include them in a view, add the rule `+ __properties/**` to the view's contents explicitly.

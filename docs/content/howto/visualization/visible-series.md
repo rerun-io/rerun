@@ -20,4 +20,6 @@ If the list is shorter than the number of series, its last value is repeated.
 Hidden series stay in the legend, so you can click them to show them again.
 For series drawn as points, use [`SeriesPoints`](../../reference/types/archetypes/series_points.md) instead.
 
+For other plot settings, see [Customize plots](customize-plots.md).
+
 snippet: howto/visible_series

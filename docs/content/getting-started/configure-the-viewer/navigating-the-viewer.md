@@ -217,6 +217,21 @@ For a complete guide, see [Build a blueprint programmatically](../../howto/visua
 
 ---
 
+## Theme: dark or light mode
+
+By default, the Viewer follows the dark or light theme of your operating system.
+To change it:
+
+- **Native Viewer:** open "Settings…" from the Rerun menu, and choose System, Dark, or Light under "Theme".
+- **Web Viewer:** add `theme=dark`, `theme=light`, or `theme=system` to the URL, for example `https://app.rerun.io/?url=…&theme=dark`.
+  See also [Matching the host page's theme](../../howto/integrations/embed-web.md#matching-the-host-pages-theme).
+- **Notebooks:** pass `theme="dark"`, `"light"`, or `"system"` to `rerun.notebook.Viewer(…)`.
+- **JavaScript:** pass the `theme` option (`"dark"`, `"light"`, or `"system"`) to `WebViewer.start`.
+
+The Viewer remembers your choice.
+
+---
+
 ## Next steps
 
 - **Explore view types**: Check the [View Type Reference](../../reference/types/views/) to see all available views and their configuration options
