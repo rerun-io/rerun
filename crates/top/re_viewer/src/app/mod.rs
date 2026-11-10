@@ -671,6 +671,11 @@ impl AppCore {
         self.app_options().experimental.agent_panel && self.state.agent_panel_open
     }
 
+    /// Whether the agent panel has ever been shown, which hides the attention dot on its button.
+    pub fn agent_panel_ever_opened(&self) -> bool {
+        self.state.agent_panel_ever_opened
+    }
+
     pub fn toggle_agent_panel(&mut self) {
         if self.app_options().experimental.agent_panel {
             self.state.agent_panel_open ^= true;

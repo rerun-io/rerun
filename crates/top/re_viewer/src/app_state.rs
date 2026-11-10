@@ -60,6 +60,9 @@ pub struct AppState {
     /// Whether the agent panel is open. Persisted, so it comes back on the next run.
     pub(crate) agent_panel_open: bool,
 
+    /// Set once the agent panel has been open, however it was opened.
+    pub(crate) agent_panel_ever_opened: bool,
+
     /// Where the central panel of the current route was last shown, if it has one.
     #[serde(skip)]
     pub(crate) central_panel_rect: Option<egui::Rect>,
@@ -175,6 +178,7 @@ impl Default for AppState {
             audio_output: Default::default(),
             agent_settings: Default::default(),
             agent_panel_open: false,
+            agent_panel_ever_opened: false,
             central_panel_rect: None,
             time_controls: Default::default(),
             app_caches: Default::default(),

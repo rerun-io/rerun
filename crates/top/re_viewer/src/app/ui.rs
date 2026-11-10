@@ -272,6 +272,7 @@ impl AppCore {
             startup.build_info.is_in_rerun_workspace,
             recording,
         );
+        state.agent_panel_ever_opened |= state.agent_panel_open;
     }
 
     fn egui_debug_panel_ui(&mut self, ui: &mut egui::Ui) {

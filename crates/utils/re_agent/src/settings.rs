@@ -152,9 +152,6 @@ pub struct AgentSettings {
     /// Conversations to list again after a restart, most recent first.
     pub saved_conversations: Vec<SavedConversation>,
 
-    /// Set once the agent panel has been open, however it was opened.
-    pub panel_ever_opened: bool,
-
     /// API keys as the user typed them, by model-API profile.
     ///
     /// Only the web viewer uses these, since on native we want to implement a more secure storage
@@ -335,7 +332,6 @@ impl Default for AgentSettings {
             share_redacted_prompts: false,
             setup_done: false,
             saved_conversations: Vec::new(),
-            panel_ever_opened: false,
             #[cfg(target_arch = "wasm32")]
             api_keys: BTreeMap::new(),
         }
