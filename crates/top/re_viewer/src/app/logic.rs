@@ -204,6 +204,13 @@ impl AppCore {
                 | DataSourceMessage::ViewerControl(_) => None,
             };
 
+            if !self.is_from_latest_blueprint_stream(&msg, &channel_source) {
+                re_log::debug!(
+                    "Ignoring a message from an older stream of the same blueprint from {channel_source}"
+                );
+                continue;
+            }
+
             let maybe_new_store = msg_store_id
                 .as_ref()
                 .filter(|sid| !store_hub.store_bundle().contains(sid));
@@ -269,6 +276,44 @@ impl AppCore {
         self.run_pending_system_commands(store_hub, egui_ctx);
     }
 
+    /// Returns false for a blueprint message from a catalog server stream when a later stream of
+    /// the same blueprint has started.
+    ///
+    /// Each stream of a blueprint starts with a [`LogMsg::SetStoreInfo`], which makes that stream
+    /// the latest one.
+    fn is_from_latest_blueprint_stream(
+        &mut self,
+        msg: &DataSourceMessage,
+        channel_source: &LogSource,
+    ) -> bool {
+        if !matches!(channel_source, LogSource::RedapGrpcStream { .. }) {
+            return true;
+        }
+
+        let blueprint_id = match msg {
+            DataSourceMessage::LogMsg(log_msg) => log_msg.store_id(),
+            DataSourceMessage::RrdManifest(store_id, _)
+            | DataSourceMessage::RrdManifestComplete(store_id) => store_id,
+            DataSourceMessage::DefaultBlueprintRegistration(registration) => {
+                &registration.blueprint_id
+            }
+            DataSourceMessage::TableMsg(_) | DataSourceMessage::ViewerControl(_) => return true,
+        };
+        if !blueprint_id.is_blueprint() {
+            return true;
+        }
+
+        if matches!(msg, DataSourceMessage::LogMsg(LogMsg::SetStoreInfo(_))) {
+            self.latest_blueprint_streams
+                .insert(blueprint_id.clone(), channel_source.clone());
+            return true;
+        }
+
+        self.latest_blueprint_streams
+            .get(blueprint_id)
+            .is_none_or(|latest| latest == channel_source)
+    }
+
     fn receive_default_blueprint_registration(
         &mut self,
         registration: DefaultBlueprintRegistration,
@@ -322,6 +367,18 @@ impl AppCore {
             re_log::warn_once!(
                 "Loading a blueprint {store_id:?} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."
             );
+        }
+
+        // A blueprint from a catalog server has the same store id every time it is streamed, and
+        // each stream holds all of its data, so a new stream replaces what the store had.
+        if matches!(msg, LogMsg::SetStoreInfo(_))
+            && store_id.is_blueprint()
+            && matches!(channel_source, LogSource::RedapGrpcStream { .. })
+            && store_hub
+                .entity_db(store_id)
+                .is_some_and(|db| db.num_physical_chunks() > 0)
+        {
+            store_hub.clear_store_data(store_id);
         }
 
         // NOTE: store materialization, `data_source` attachment, and the `on_new_store`
@@ -403,7 +460,7 @@ impl AppCore {
                             if self.state.navigation.current().app_id() != Some(&app_id) {
                                 // Switch to this app:
 
-                                store_hub.load_persisted_blueprints_for_app(&app_id);
+                                store_hub.load_legacy_path_blueprint_for_app(&app_id);
                                 if let Some(recording_id) =
                                     store_hub.earliest_recording_for_app(&app_id)
                                 {

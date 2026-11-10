@@ -14,7 +14,7 @@ use re_log_channel::{
     BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, ViewerControlCommand,
 };
 use re_log_msg::{BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreInfo, StoreSource};
-use re_log_types::{EntryId, StoreId, StoreKind};
+use re_log_types::{ApplicationId, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::DatasetKind;
 use re_types_core::SegmentId;
@@ -677,6 +677,17 @@ impl std::fmt::Debug for StreamingOptions {
     }
 }
 
+/// The store id of a blueprint streamed from a segment of a blueprint dataset.
+///
+/// The recording id is the blueprint's segment id, so streaming the same blueprint again uses the
+/// same store.
+pub fn blueprint_store_id_for_segment(
+    application_id: ApplicationId,
+    blueprint_segment: &SegmentId,
+) -> StoreId {
+    StoreId::new(StoreKind::Blueprint, application_id, blueprint_segment)
+}
+
 async fn stream_blueprint_segment(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
@@ -876,10 +887,9 @@ pub async fn stream_blueprint_and_segment_from_server(
         {
             re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-            // For blueprint, we can use a random recording ID
-            let blueprint_store_id = StoreId::random(
-                StoreKind::Blueprint,
+            let blueprint_store_id = blueprint_store_id_for_segment(
                 recording_store_id.application_id().clone(),
+                &blueprint_segment,
             );
 
             match stream_blueprint_segment(

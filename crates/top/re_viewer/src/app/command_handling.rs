@@ -244,7 +244,7 @@ impl AppCore {
                 }
             }
             SystemCommand::ActivateApp(app_id) => {
-                store_hub.load_persisted_blueprints_for_app(&app_id);
+                store_hub.load_legacy_path_blueprint_for_app(&app_id);
                 if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
                     store_hub
                         .load_blueprint_and_caches(&recording_id, &self.registries.view_classes);

@@ -178,6 +178,11 @@ pub struct AppCore {
 
     pub(crate) table_blueprints: re_dataframe_ui::TableBlueprints,
 
+    /// For each blueprint streamed from a catalog server, the source of its latest stream.
+    ///
+    /// Only that stream writes to the blueprint's store.
+    latest_blueprint_streams: ahash::HashMap<StoreId, re_log_channel::LogSource>,
+
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
 
@@ -532,7 +537,7 @@ impl App {
         }
 
         let store_hub = StoreHub::new(
-            if is_test {
+            if is_test || !startup_options.persist_state {
                 noop_blueprint_loader(component_reflection)
             } else {
                 blueprint_loader(component_reflection)
@@ -571,6 +576,7 @@ impl App {
             state,
             background_tasks: Default::default(),
             table_blueprints: Default::default(),
+            latest_blueprint_streams: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
             viewer_control: Default::default(),
 
@@ -1601,7 +1607,7 @@ impl AppCore {
                     .min()
                     .cloned();
                 if let Some(app_id) = any_other_app_id {
-                    store_hub.load_persisted_blueprints_for_app(&app_id);
+                    store_hub.load_legacy_path_blueprint_for_app(&app_id);
                     if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
                         store_hub.load_blueprint_and_caches(
                             &recording_id,
@@ -1863,14 +1869,7 @@ fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> Bluepr
     use re_entity_db::{EntityDb, StoreBundle};
     use re_viewer_context::store_hub::BlueprintPersistenceKey;
 
-    fn blueprint_path(key: &BlueprintPersistenceKey) -> anyhow::Result<std::path::PathBuf> {
-        match key {
-            BlueprintPersistenceKey::Recording(app_id) => {
-                crate::saving::recording_blueprint_path(app_id)
-            }
-            BlueprintPersistenceKey::Table(key) => crate::saving::table_blueprint_path(key),
-        }
-    }
+    use crate::saving::blueprint_path;
 
     fn load_blueprint_from_disk(
         key: &BlueprintPersistenceKey,
@@ -1918,6 +1917,9 @@ fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> Bluepr
         })),
         deleter: Some(Box::new(crate::saving::delete_blueprint)),
         table_blueprint_clearer: Some(Box::new(crate::saving::clear_table_blueprints)),
+        app_blueprint_clearer: Some(Box::new(crate::saving::clear_app_blueprints)),
+        legacy_path_blueprint_loader: Some(Box::new(crate::saving::load_legacy_path_blueprint)),
+        legacy_path_blueprint_deleter: Some(Box::new(crate::saving::delete_legacy_path_blueprint)),
     }
 }
 

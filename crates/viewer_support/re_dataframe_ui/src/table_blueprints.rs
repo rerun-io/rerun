@@ -425,9 +425,12 @@ mod tests {
             table_blueprint_clearer: Some(Box::new(move || {
                 clearer_state
                     .lock()
-                    .retain(|key, _| matches!(key, BlueprintPersistenceKey::Recording(_)));
+                    .retain(|key, _| matches!(key, BlueprintPersistenceKey::Recording { .. }));
                 Ok(())
             })),
+            app_blueprint_clearer: None,
+            legacy_path_blueprint_loader: None,
+            legacy_path_blueprint_deleter: None,
         };
 
         (StoreHub::new(persistence, &|_| {}), persisted)
