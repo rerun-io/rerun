@@ -55,6 +55,7 @@ fn is_chunk_not_indexed(err: &re_redap_client::ApiError) -> bool {
                 && [
                     re_protos::error::CHUNK_NOT_INDEXED,
                     re_protos::error::UNINDEXED_DATA_NEEDS_SEGMENTS,
+                    re_protos::error::UNINDEXED_DATA_TOO_LARGE,
                 ]
                 .contains(&info.reason.as_str())
         })

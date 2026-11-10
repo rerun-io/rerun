@@ -1715,8 +1715,8 @@ pub struct FindChunksRequest {
     ///    Selecting every entity selects only the indexed ones.
     ///    Naming unindexed data fails with `FailedPrecondition`.
     /// - `DATASET_QUERY_SCOPE_FULL`: all data, indexed or not.
-    ///    A request that touches unindexed data fails with `FailedPrecondition` when it selects
-    ///    every segment, and with `Unimplemented` when it filters by segments (TODO(ilya)).
+    ///    Unindexed data is read from the recordings themselves, so it needs explicit segments.
+    ///    Without them, a request that touches unindexed data fails with `FailedPrecondition`.
     #[prost(enumeration = "DatasetQueryScope", tag = "6")]
     pub scope: i32,
     /// The selection mode. Required.

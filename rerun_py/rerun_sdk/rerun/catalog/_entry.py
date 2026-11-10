@@ -82,7 +82,9 @@ class DatasetQueryScope(StrEnum):
 
     Attributes:
         FULL: Every entity path and timeline in the dataset, indexed or not.
-            On Rerun Hub, a query that needs data outside the policy fails.
+            On Rerun Hub, data outside the policy is read from the recordings themselves, which works only for
+            specific segments: filter the dataset to them first, or the query raises
+            [`ChunkNotIndexedError`][rerun.catalog.ChunkNotIndexedError].
         INDEXED: Only the entity paths and timelines the dataset's chunk indexing policy indexes.
             Naming one the policy excludes raises [`ChunkNotIndexedError`][rerun.catalog.ChunkNotIndexedError].
 
