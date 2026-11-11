@@ -150,7 +150,7 @@ The fast path keeps the same outputs: it runs the detector and the backbone as T
 ## Run the code
 
 This is an external example in the [posekit package](https://github.com/rerun-io/examples-monorepo/tree/main/packages/posekit) of the Rerun examples monorepo.
-It needs Linux with an NVIDIA GPU (CUDA 13 driver) and about 30 GB of disk.
+It needs Linux (glibc 2.35 or newer) with an NVIDIA GPU (CUDA 13 driver) and about 30 GB of disk.
 
 ### With a coding agent
 
@@ -160,7 +160,7 @@ It checks your machine, asks before it installs anything, and runs the example.
 ```agent-prompt
 Install and run the Rerun EgoHand example on this machine: NVIDIA's EgoHand finds both hands in a head-camera video and logs 3D joints and hand meshes to the Rerun viewer. Do the steps in order and stop at the first that fails.
 
-1. Check the machine. This example needs Linux (x86_64 or aarch64) with an NVIDIA GPU and a driver for CUDA 13 or newer. Run `uname -sm` and `nvidia-smi`. If it is not Linux, `nvidia-smi` is missing, or the "CUDA Version" it prints is below 13.0, stop: tell me why, and that I can try the example in the browser at https://pablovela5620-egohand-rerun.hf.space instead.
+1. Check the machine. This example needs Linux (x86_64 or aarch64) with an NVIDIA GPU and a driver for CUDA 13 or newer. Run `uname -sm`, `nvidia-smi` and `ldd --version`. If it is not Linux, `nvidia-smi` is missing, the "CUDA Version" it prints is below 13.0, or glibc is older than 2.35, stop: tell me why, and that I can try the example in the browser at https://pablovela5620-egohand-rerun.hf.space instead.
 2. Check Pixi with `pixi --version`; it must be 0.83 or newer. Use Pixi for everything; do not use pip, uv or conda.
 3. Choose where the code goes. Propose `~/rerun-examples/examples-monorepo` (not /tmp: the environment and model weights need about 30 GB and must survive a reboot). Run `df -h` on its nearest existing parent (e.g. `df -h ~`), because the folder does not exist yet. Then ask me ONE question that covers everything: the folder, the free space there, and, if needed, that you will install Pixi (`curl -fsSL https://pixi.sh/install.sh | sh`) or update it (`pixi self-update`). Wait for my answer, and use another folder if I name one. If less than 30 GB is free there, say so in the question.
 4. Get the code. If the folder already holds a clone of https://github.com/rerun-io/examples-monorepo, run `git pull` in it; otherwise `git clone --depth 1 https://github.com/rerun-io/examples-monorepo.git <folder>`. Then `cd <folder>`. If you installed Pixi, open a new shell (or source the shell rc) so `pixi` is on PATH.
