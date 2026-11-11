@@ -323,7 +323,7 @@ impl WebHandle {
             .store_hub
             .active_blueprint_for_app(recording_id.application_id())
             .ok_or_else(|| JsValue::from_str("No active blueprint to save"))?;
-        let undo_state = app.state.blueprint_undo_state.get(blueprint.store_id());
+        let undo_state = app.stores.blueprint_undo_state.get(blueprint.store_id());
 
         RrdSnapshot::blueprint(blueprint, undo_state)
             .and_then(RrdSnapshot::encode)

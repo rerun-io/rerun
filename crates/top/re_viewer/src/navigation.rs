@@ -1,4 +1,80 @@
-use re_viewer_context::Route;
+use re_log_types::StoreId;
+use re_redap_browser::RedapServers;
+use re_viewer_context::{EntryKind, Route};
+
+use crate::history::History;
+
+/// Where the user is, and where they have been.
+#[derive(Default)]
+pub(crate) struct NavigationState {
+    /// A stack of [`Route`]s that represents tab-like navigation of the user.
+    pub routes: Navigation,
+
+    /// A history of urls the viewer has visited.
+    ///
+    /// This is not updated if this is a web viewer with control over web history.
+    pub history: History,
+}
+
+impl NavigationState {
+    /// The active recording [`StoreId`], if any, derived from the current [`Route`].
+    pub fn active_recording_id(&self) -> Option<&StoreId> {
+        self.routes.current().recording_id()
+    }
+
+    /// Makes the entry kind of the current route agree with the catalog, once the catalog knows.
+    pub fn resolve_route(&mut self, redap_servers: &RedapServers) {
+        let Route::RedapEntry {
+            origin,
+            entry_id,
+            kind,
+        } = self.routes.current()
+        else {
+            return;
+        };
+
+        let (origin, entry_id, kind) = (origin.clone(), *entry_id, *kind);
+
+        let resolved_kind = resolve_entry_kind(kind, redap_servers.entry_kind(&origin, entry_id));
+
+        if resolved_kind != kind {
+            self.routes.replace(Route::RedapEntry {
+                origin,
+                entry_id,
+                kind: resolved_kind,
+            });
+        }
+    }
+
+    /// Whether the current route may still change as data or metadata loads.
+    pub fn is_resolving_route(&self, redap_servers: &RedapServers) -> bool {
+        match self.routes.current() {
+            Route::Loading(_) => true,
+            Route::RedapEntry {
+                origin,
+                entry_id,
+                kind,
+            } => {
+                redap_servers.is_entry_kind_pending(origin, *entry_id)
+                    || resolve_entry_kind(*kind, redap_servers.entry_kind(origin, *entry_id))
+                        != *kind
+            }
+            _ => false,
+        }
+    }
+}
+
+/// The entry kind a route should carry, given what it has and what the catalog says.
+fn resolve_entry_kind(
+    route_kind: Option<EntryKind>,
+    catalog_kind: Option<EntryKind>,
+) -> Option<EntryKind> {
+    match (catalog_kind, route_kind) {
+        (Some(EntryKind::Dataset(_)), Some(dataset @ EntryKind::Dataset(_))) => Some(dataset),
+        (Some(catalog_kind), _) => Some(catalog_kind),
+        (None, route_kind) => route_kind,
+    }
+}
 
 /// Keeps track of the current [`Route`] of the viewer.
 pub(crate) struct Navigation {
@@ -79,6 +155,9 @@ mod tests {
     use std::path::PathBuf;
 
     use re_log_channel::LogSource;
+    use re_log_types::EntryId;
+    use re_viewer_context::StoreHub;
+    use re_viewer_context::viewer_url::ViewerUrl;
 
     use super::*;
 
@@ -120,5 +199,69 @@ mod tests {
 
         assert_eq!(navigation.current(), &destination);
         assert_eq!(navigation.history_route(), &destination);
+    }
+
+    /// A url can call an entry a dataset when the catalog knows it to be a table. The route then
+    /// shows a table, and the url it shares is an entry url.
+    #[test]
+    fn a_table_behind_a_dataset_url_shares_an_entry_url() {
+        let origin: re_uri::Origin = "rerun://localhost:51234".parse().expect("valid origin");
+        let entry_id = EntryId::new();
+
+        let kind = resolve_entry_kind(
+            Some(EntryKind::Dataset(re_uri::DatasetResource::default())),
+            Some(EntryKind::Table),
+        );
+        assert_eq!(kind, Some(EntryKind::Table));
+
+        let url = ViewerUrl::from_route(
+            &StoreHub::test_hub(),
+            &Route::RedapEntry {
+                origin: origin.clone(),
+                entry_id,
+                kind,
+            },
+        )
+        .expect("a redap entry route has a url");
+
+        assert_eq!(
+            url,
+            ViewerUrl::RedapEntry(re_uri::EntryUri::new(origin, entry_id))
+        );
+    }
+
+    /// The catalog says nothing about which resource of a dataset is on display, so a route that
+    /// already shows one keeps it. A route that shows a table instead falls back to the default
+    /// resource.
+    #[test]
+    fn a_dataset_route_keeps_its_resource() {
+        let catalog_kind = Some(EntryKind::Dataset(re_uri::DatasetResource::default()));
+
+        assert_eq!(
+            resolve_entry_kind(
+                Some(EntryKind::Dataset(re_uri::DatasetResource::Assets)),
+                catalog_kind
+            ),
+            Some(EntryKind::Dataset(re_uri::DatasetResource::Assets))
+        );
+        assert_eq!(
+            resolve_entry_kind(Some(EntryKind::Table), catalog_kind),
+            catalog_kind
+        );
+    }
+
+    /// A route that names no kind takes the one from the catalog, and a catalog that knows nothing
+    /// leaves the route as it is.
+    #[test]
+    fn an_unknown_kind_follows_the_catalog() {
+        assert_eq!(
+            resolve_entry_kind(None, Some(EntryKind::Table)),
+            Some(EntryKind::Table)
+        );
+        assert_eq!(resolve_entry_kind(None, None), None);
+        assert_eq!(
+            resolve_entry_kind(Some(EntryKind::Table), None),
+            Some(EntryKind::Table)
+        );
     }
 }

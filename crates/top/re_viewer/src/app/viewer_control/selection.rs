@@ -10,7 +10,7 @@ use super::super::AppCore;
 impl AppCore {
     /// The `get_selection` response: what the user has selected, in selection order.
     pub fn collect_selection(&self, store_hub: &StoreHub) -> GetSelectionResponse {
-        let active_recording_id = self.state.active_recording_id();
+        let active_recording_id = self.active_recording_id();
 
         // With blueprint timeline inspection, entities can be selected in the blueprint store,
         // which `store_id` does not name.
@@ -25,7 +25,6 @@ impl AppCore {
         GetSelectionResponse {
             store_id: active_recording_id.map(|store_id| store_id.to_string()),
             items: self
-                .state
                 .selection_state
                 .selected_items()
                 .iter_items()

@@ -17,10 +17,20 @@ pub struct Modals {
     /// Shows [`debug_tools_ui`].
     #[cfg(debug_assertions)]
     pub debug_tools: re_ui::modal::ModalHandler,
+
+    /// Lets the user open a recording or server by url.
+    ///
+    /// Shown by the route UI rather than [`Self::ui`].
+    pub open_url: super::OpenUrlModal,
+
+    /// Lets the user share a link to what they are looking at.
+    ///
+    /// Shown by the route UI rather than [`Self::ui`], since it needs the active recording.
+    pub share: super::ShareModal,
 }
 
 impl Modals {
-    /// Show whichever modal is open.
+    /// Show the about and debug-tools modals, if open.
     #[cfg_attr(not(debug_assertions), expect(unused_variables))]
     pub fn ui(
         &mut self,

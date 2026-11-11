@@ -171,7 +171,11 @@ fn top_bar_ui(
 
                 show_memory_tab |=
                     fixed_width_diagnostic_ui(ui, "9999.9 GiB", &TextStyle::Monospace, |ui| {
-                        memory_use_label_ui(ui, gpu_resource_stats, &app.external_memory_users)
+                        memory_use_label_ui(
+                            ui,
+                            gpu_resource_stats,
+                            &app.memory.external_memory_users,
+                        )
                     });
                 fixed_width_diagnostic_ui(ui, "9999.9 ms", &TextStyle::Monospace, |ui| {
                     frame_time_label_ui(ui, app);
@@ -248,7 +252,7 @@ fn top_bar_ui(
                 connection_status_ui(
                     ui,
                     &mut app.connections.latency_trackers,
-                    app.state.navigation.current(),
+                    app.navigation.routes.current(),
                     store_hub,
                 );
             }
@@ -401,8 +405,8 @@ fn navigation_buttons_state(app: &AppCore) -> NavigationButtonsState {
     }
 
     NavigationButtonsState::Visible {
-        can_go_back: app.state.history.has_back(),
-        can_go_forward: app.state.history.has_forward(),
+        can_go_back: app.navigation.history.has_back(),
+        can_go_forward: app.navigation.history.has_forward(),
     }
 }
 
@@ -682,7 +686,7 @@ fn panel_buttons_r2l(
         }
     }
 
-    let route = app.state.navigation.current();
+    let route = app.navigation.routes.current();
 
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
@@ -759,19 +763,19 @@ fn panel_buttons_r2l(
 
     ui.spacing_mut().item_spacing.x = item_spacing;
 
-    let selection = app.state.selection_state.selected_items();
+    let selection = app.selection_state.selected_items();
     let time_ctrl = app
         .active_recording_id()
-        .and_then(|id| app.state.time_controls.get(id));
-    app.state.share_modal.button_ui(
+        .and_then(|id| app.stores.time_controls.get(id));
+    app.modals.share.button_ui(
         ui,
         store_hub,
-        app.state.navigation.current(),
+        app.navigation.routes.current(),
         time_ctrl,
         selection,
     );
 
-    if let Some(auth) = &app.state.auth_state
+    if let Some(auth) = &app.connections.auth
         && !app.is_screenshotting()
     {
         let user_icon_size = 16.0;

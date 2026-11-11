@@ -136,7 +136,7 @@ impl AppCore {
                         let usage = store_hub.usage(&store_id);
 
                         if usage.was_preview()
-                            && let Some(preview_state) = &mut self.state.view_states.preview_state
+                            && let Some(preview_state) = &mut self.view_states.preview_state
                             && let Some(preview) = preview_state.active_preview_mut(&store_id)
                             && let Some(db) = store_hub.entity_db(&store_id)
                         {
@@ -169,9 +169,10 @@ impl AppCore {
                             return;
                         };
 
-                        let blueprint_query = self
-                            .state
-                            .blueprint_query_for_viewer(Some(target_blueprint));
+                        let blueprint_query = self.stores.blueprint_query_for_viewer(
+                            &self.state.app_options,
+                            Some(target_blueprint),
+                        );
 
                         let blueprint_ctx = AppBlueprintCtx {
                             command_sender: &self.command_sender,
@@ -188,7 +189,7 @@ impl AppCore {
                             return;
                         };
 
-                        let time_ctrl = self.state.time_control_mut(recording, &blueprint_ctx);
+                        let time_ctrl = self.stores.time_control_mut(recording, &blueprint_ctx);
 
                         let response = time_ctrl.handle_time_commands(
                             Some(&blueprint_ctx),
@@ -209,7 +210,7 @@ impl AppCore {
                     StoreKind::Blueprint => {
                         if let Some(target_store) = store_hub.store_bundle().get(&store_id) {
                             let blueprint_ctx: Option<&AppBlueprintCtx<'_>> = None;
-                            let response = self.state.blueprint_time_control.handle_time_commands(
+                            let response = self.stores.blueprint_time_control.handle_time_commands(
                                 blueprint_ctx,
                                 target_store,
                                 &time_commands,
@@ -248,8 +249,8 @@ impl AppCore {
                 if let Some(recording_id) = store_hub.earliest_recording_for_app(&app_id) {
                     store_hub
                         .load_blueprint_and_caches(&recording_id, &self.registries.view_classes);
-                    self.state
-                        .navigation
+                    self.navigation
+                        .routes
                         .replace(Route::LocalRecording { recording_id });
                 } else {
                     // TODO(RR-3713): show a blueprint for it anyway
@@ -267,7 +268,7 @@ impl AppCore {
                 // it after closing.
                 let active_being_closed = match &entry {
                     RecordingOrLocalTable::Recording { store_id }
-                        if self.state.active_recording_id() == Some(store_id) =>
+                        if self.active_recording_id() == Some(store_id) =>
                     {
                         Some(store_id.clone())
                     }
@@ -277,7 +278,7 @@ impl AppCore {
                 let new_navigation = active_being_closed.as_ref().and_then(|closing| {
                     // Look back through history for the closest entry that's still an open destination.
                     let back_target = self
-                        .state
+                        .navigation
                         .history
                         .find_back(|url| {
                             self.is_back_destination_open(store_hub, url, Some(closing))
@@ -298,12 +299,12 @@ impl AppCore {
                 if let Some(new_navigation) = new_navigation {
                     self.navigate_to(egui_ctx, &new_navigation);
                 } else if active_being_closed.is_some() {
-                    self.state.navigation.reset();
+                    self.navigation.routes.reset();
                 }
             }
 
             SystemCommand::CloseAllEntries => {
-                self.state.navigation.reset();
+                self.navigation.routes.reset();
                 self.table_blueprints.close_all_tables(store_hub);
                 store_hub.clear_entries();
 
@@ -330,11 +331,11 @@ impl AppCore {
             }
 
             SystemCommand::SetRoute(new_route) => {
-                if &new_route == self.state.navigation.current() {
+                if &new_route == self.navigation.routes.current() {
                     return;
                 }
 
-                self.state.view_states.preview_state = None;
+                self.view_states.preview_state = None;
 
                 // Suppress loading screen if we're loading a recording that's already loaded, even if only partially.
                 if let Route::Loading(source) = &new_route
@@ -357,14 +358,14 @@ impl AppCore {
                     self.fetch_pending_blueprint(store_hub, recording_id);
                 }
 
-                self.state.navigation.replace(new_route);
+                self.navigation.routes.replace(new_route);
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
             SystemCommand::OpenSettings => {
-                let settings = Route::settings(self.state.navigation.current());
-                self.state.navigation.replace(settings);
+                let settings = Route::settings(self.navigation.routes.current());
+                self.navigation.routes.replace(settings);
 
                 #[cfg(feature = "analytics")]
                 re_analytics::record(|| re_analytics::event::SettingsOpened {});
@@ -375,21 +376,21 @@ impl AppCore {
                 selected_chunk,
             } => {
                 let browser = Route::chunk_store_browser(
-                    self.state.navigation.current(),
+                    self.navigation.routes.current(),
                     store_id,
                     selected_chunk,
                 );
-                self.state.navigation.replace(browser);
+                self.navigation.routes.replace(browser);
             }
 
             SystemCommand::ResetRoute => {
-                self.state.navigation.reset();
+                self.navigation.routes.reset();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
             SystemCommand::ReturnFromLoading => {
-                self.state.navigation.return_from_loading();
+                self.navigation.routes.return_from_loading();
 
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
@@ -404,8 +405,8 @@ impl AppCore {
 
                 self.state.redap_servers.add_server(origin.clone());
 
-                if self.state.navigation.current().recording_id().is_none() {
-                    self.state.navigation.replace(Route::RedapServer(origin));
+                if self.navigation.routes.current().recording_id().is_none() {
+                    self.navigation.routes.replace(Route::RedapServer(origin));
                 }
                 self.command_sender
                     .send_system(SystemCommand::ExpandFallbackBlueprintPanel);
@@ -415,7 +416,9 @@ impl AppCore {
                 // Without a blueprint store, `AppBlueprint` reads and writes the fallback panel states.
                 let app_blueprint = AppBlueprint::new(
                     None,
-                    &self.state.blueprint_query_for_viewer(None),
+                    &self
+                        .stores
+                        .blueprint_query_for_viewer(&self.state.app_options, None),
                     egui_ctx,
                     self.panel_state_overrides.active(),
                 );
@@ -457,7 +460,6 @@ impl AppCore {
                 // Were we viewing one of the recordings we're about to close? Then we need to move
                 // off it once the server is gone.
                 let viewing_closed_recording = self
-                    .state
                     .active_recording_id()
                     .is_some_and(|active| recordings_to_close.contains(active));
 
@@ -476,7 +478,7 @@ impl AppCore {
                     .redap_servers
                     .remove_server(&origin, &self.connections.registry);
 
-                let current_route = self.state.navigation.current();
+                let current_route = self.navigation.routes.current();
                 let on_removed_server = match current_route {
                     Route::RedapServer(route_origin)
                     | Route::RedapEntry {
@@ -488,14 +490,14 @@ impl AppCore {
 
                 if on_removed_server || viewing_closed_recording {
                     if let Some(url) = self
-                        .state
+                        .navigation
                         .history
                         .find_back(|url| self.is_back_destination_open(store_hub, url, None))
                         .cloned()
                     {
                         self.navigate_to(egui_ctx, &url);
                     } else {
-                        self.state.navigation.reset();
+                        self.navigation.routes.reset();
                     }
                 }
             }
@@ -568,7 +570,7 @@ impl AppCore {
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
             SystemCommand::ClearActiveBlueprintAndEnableHeuristics => {
                 re_log::debug!("Clear and generate new blueprint");
-                store_hub.clear_active_blueprint_and_generate(self.state.navigation.current());
+                store_hub.clear_active_blueprint_and_generate(self.navigation.routes.current());
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::ClearActiveBlueprint => {
@@ -576,12 +578,12 @@ impl AppCore {
                 // at the beginning of the next frame.
                 re_log::debug!("Reset blueprint to default");
 
-                if let Some(table_ref) = self.state.navigation.current().table_reference() {
+                if let Some(table_ref) = self.navigation.routes.current().table_reference() {
                     if let Err(err) = self.table_blueprints.reset(&table_ref, store_hub) {
                         re_log::warn!("Failed to reset table blueprint: {err}");
                     }
                 } else {
-                    store_hub.clear_active_blueprint(self.state.navigation.current());
+                    store_hub.clear_active_blueprint(self.navigation.routes.current());
                 }
 
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
@@ -603,7 +605,7 @@ impl AppCore {
                 // It would be nice to be able to undo edits to a recording, but
                 // we haven't implemented that yet.
                 if store_id.is_blueprint() && chunks.iter().any(|c| !c.is_static()) {
-                    self.state
+                    self.stores
                         .blueprint_undo_state
                         .entry(store_id.clone())
                         .or_default()
@@ -634,7 +636,7 @@ impl AppCore {
                 let inspect_blueprint_timeline = self.app_options().inspect_blueprint_timeline;
                 let blueprint_db = store_hub.entity_db_entry(&blueprint_id);
                 let undo_state = self
-                    .state
+                    .stores
                     .blueprint_undo_state
                     .entry(blueprint_id.clone())
                     .or_default();
@@ -666,7 +668,7 @@ impl AppCore {
             SystemCommand::RedoBlueprint { blueprint_id } => {
                 let inspect_blueprint_timeline = self.app_options().inspect_blueprint_timeline;
                 let undo_state = self
-                    .state
+                    .stores
                     .blueprint_undo_state
                     .entry(blueprint_id.clone())
                     .or_default();
@@ -716,16 +718,16 @@ impl AppCore {
                                 &self.registries.view_classes,
                             );
                         }
-                        self.state.navigation.replace(route);
+                        self.navigation.routes.replace(route);
                     }
                 }
 
-                self.state.selection_state.set_selection(set);
+                self.selection_state.set_selection(set);
                 egui_ctx.request_repaint(); // Make sure we actually see the new selection.
             }
 
             SystemCommand::SetFocus(item) => {
-                self.state.focused_item = Some(item);
+                self.focused_item = Some(item);
             }
 
             SystemCommand::ShowNotification(notification) => {
@@ -733,7 +735,7 @@ impl AppCore {
             }
 
             SystemCommand::ReadbackAndSaveTexture { texture, action } => {
-                self.texture_readback.push(texture, action);
+                self.capture.texture_readback.push(texture, action);
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -744,7 +746,7 @@ impl AppCore {
             }
 
             SystemCommand::OnAuthChanged(auth) => {
-                self.state.auth_state = auth;
+                self.connections.auth = auth;
             }
 
             SystemCommand::SetAuthCredentials {
@@ -837,7 +839,7 @@ impl AppCore {
                     return;
                 }
 
-                self.screenshots.request(
+                self.capture.screenshots.request(
                     &self.egui_ctx,
                     re_viewer_context::ScreenshotInfo {
                         ui_rect: Some(rect),
@@ -856,7 +858,7 @@ impl AppCore {
             }
         } else {
             // Screenshot the entire viewer
-            self.screenshots.request(
+            self.capture.screenshots.request(
                 &self.egui_ctx,
                 re_viewer_context::ScreenshotInfo {
                     ui_rect: None,
@@ -980,7 +982,7 @@ impl AppCore {
             }
 
             UICommand::OpenUrlDialog => {
-                self.state.open_url_modal.open();
+                self.modals.open_url.open();
             }
 
             UICommand::CloseAllRecordings => {
@@ -1006,10 +1008,10 @@ impl AppCore {
                             crate::web_history::go_back();
                             None
                         } else {
-                            self.state.history.go_back().cloned()
+                            self.navigation.history.go_back().cloned()
                         }
                     }
-                    _ => self.state.history.go_back().cloned(),
+                    _ => self.navigation.history.go_back().cloned(),
                 };
 
                 if let Some(url) = url {
@@ -1030,10 +1032,10 @@ impl AppCore {
                             crate::web_history::go_forward();
                             None
                         } else {
-                            self.state.history.go_forward().cloned()
+                            self.navigation.history.go_forward().cloned()
                         }
                     }
-                    _ => self.state.history.go_forward().cloned(),
+                    _ => self.navigation.history.go_forward().cloned(),
                 };
 
                 if let Some(url) = url {
@@ -1091,7 +1093,7 @@ impl AppCore {
             }
             UICommand::ToggleChunkStoreBrowser => match route {
                 Route::ChunkStoreBrowser { return_route, .. } => {
-                    self.state.navigation.replace((**return_route).clone());
+                    self.navigation.routes.replace((**return_route).clone());
                 }
                 current => {
                     let store_id = current.recording_id().cloned().or_else(|| {
@@ -1174,7 +1176,7 @@ impl AppCore {
 
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::CopyScreenshotToClipboard => {
-                self.screenshotter.request_screenshot(egui_ctx);
+                self.capture.screenshotter.request_screenshot(egui_ctx);
             }
             #[cfg(debug_assertions)]
             UICommand::ResetEguiMemory => {
@@ -1185,17 +1187,17 @@ impl AppCore {
             }
             #[cfg(debug_assertions)]
             UICommand::PlayTestSound => {
-                self.state.audio_output.play_test_sound();
+                self.audio_output.play_test_sound();
             }
 
             UICommand::OpenShareDialog => {
-                let selection = self.state.selection_state.selected_items();
+                let selection = self.selection_state.selected_items();
                 let rec_cfg = route
                     .recording_id()
-                    .and_then(|id| self.state.time_controls.get(id));
+                    .and_then(|id| self.stores.time_controls.get(id));
                 if let Err(err) =
-                    self.state
-                        .share_modal
+                    self.modals
+                        .share
                         .open(storage_context.hub, route, rec_cfg, selection)
                 {
                     re_log::error!("Cannot share link to current screen: {err}");
@@ -1214,7 +1216,7 @@ impl AppCore {
                         if let Some(fragment) = url.fragment_mut() {
                             let time_ctrl = route
                                 .recording_id()
-                                .and_then(|id| self.state.time_control(id));
+                                .and_then(|id| self.stores.time_control(id));
 
                             if let Some(time_ctrl) = &time_ctrl
                                 && let Some(time_selection) = time_ctrl.time_selection()
@@ -1315,7 +1317,7 @@ impl AppCore {
                 #[cfg(not(target_arch = "wasm32"))] // Native
                 {
                     let mut selected_stores = vec![];
-                    for item in self.state.selection_state.selected_items().iter_items() {
+                    for item in self.selection_state.selected_items().iter_items() {
                         use re_viewer_context::Item;
 
                         match item {
@@ -1394,8 +1396,9 @@ impl AppCore {
 
             RecordingCommandKind::OpenAddViewOrContainerDialog => {
                 if let Some(ctx) = store_context {
-                    let blueprint_query =
-                        self.state.blueprint_query_for_viewer(Some(ctx.blueprint));
+                    let blueprint_query = self
+                        .stores
+                        .blueprint_query_for_viewer(&self.state.app_options, Some(ctx.blueprint));
                     let viewport = re_viewport_blueprint::ViewportBlueprint::from_db(
                         ctx.blueprint,
                         &blueprint_query,
@@ -1405,7 +1408,7 @@ impl AppCore {
                     // Otherwise, we target the root container.
                     let target_container_id =
                         if let Some(re_viewer_context::Item::Container(container_id)) =
-                            self.state.selection_state.selected_items().single_item()
+                            self.selection_state.selected_items().single_item()
                         {
                             *container_id
                         } else {
@@ -1931,7 +1934,7 @@ fn save_blueprint(
 
     let snapshot = RrdSnapshot::blueprint(
         store_context.blueprint,
-        app.state
+        app.stores
             .blueprint_undo_state
             .get(store_context.blueprint.store_id()),
     )?;

@@ -35,7 +35,7 @@ impl AppCore {
             self.purge_memory_if_needed(store_hub); // Call BEFORE `begin_frame_caches`
 
             if self.app_options().blueprint_gc {
-                store_hub.gc_blueprints(&self.state.blueprint_undo_state);
+                store_hub.gc_blueprints(&self.stores.blueprint_undo_state);
             }
         }
 
@@ -56,14 +56,14 @@ impl AppCore {
         {
             // We also need to check for UI commands, especially `UICommand::Quit`.
 
-            let route = self.state.navigation.current().clone();
+            let route = self.navigation.routes.current().clone();
 
             // Cloned snapshot of the active recording's time control, so that
             // handing out references to it doesn't keep `self` borrowed. Defaults to an
             // empty time control on routes without a recording (where it's ignored anyway).
             let active_time_ctrl = route
                 .recording_id()
-                .and_then(|id| self.state.time_controls.get(id).cloned())
+                .and_then(|id| self.stores.time_controls.get(id).cloned())
                 .unwrap_or_default();
 
             let (storage_context, store_context) =
@@ -87,7 +87,9 @@ impl AppCore {
             }
 
             let blueprint = store_context.as_ref().map(|ctx| ctx.blueprint);
-            let blueprint_query = self.state.blueprint_query_for_viewer(blueprint);
+            let blueprint_query = self
+                .stores
+                .blueprint_query_for_viewer(&self.state.app_options, blueprint);
 
             let app_blueprint = AppBlueprint::new(
                 blueprint,
@@ -116,7 +118,10 @@ impl AppCore {
         // wait on them.
         self.run_pending_system_commands(store_hub, egui_ctx);
 
-        self.state.cleanup(store_hub);
+        self.stores.cleanup(store_hub);
+        if let Some(preview_state) = &mut self.view_states.preview_state {
+            preview_state.cleanup_recordings(|id| store_hub.store_bundle().contains(id));
+        }
 
         self.sync_native_window_decorations(egui_ctx);
     }
@@ -159,9 +164,7 @@ impl AppCore {
         while let Some((channel_source, msg)) = self.rx_log.try_recv() {
             re_log::trace!("Received a message from {channel_source:?}"); // Used by `test_ui_wakeup` test app!
 
-            self.state
-                .last_loading_error
-                .retain(|source, _| !source.is_same_ignoring_uri_fragments(&channel_source));
+            self.loading_errors.clear(&channel_source);
 
             let msg = match msg.payload {
                 re_log_channel::SmartMessagePayload::Msg(msg) => msg,
@@ -182,8 +185,7 @@ impl AppCore {
                             )
                         );
                         let error = err.to_string();
-                        self.state
-                            .last_loading_error
+                        self.loading_errors
                             .insert(channel_source.as_ref().clone(), error);
                     } else {
                         re_log::debug!("Data source {} has finished", msg.source);
@@ -457,7 +459,7 @@ impl AppCore {
 
                             // Switch to this app, e.g. on drag-and-drop of a blueprint file
 
-                            if self.state.navigation.current().app_id() != Some(&app_id) {
+                            if self.navigation.routes.current().app_id() != Some(&app_id) {
                                 // Switch to this app:
 
                                 store_hub.load_legacy_path_blueprint_for_app(&app_id);
@@ -468,11 +470,10 @@ impl AppCore {
                                         &recording_id,
                                         &self.registries.view_classes,
                                     );
-                                    self.state
-                                        .selection_state
+                                    self.selection_state
                                         .set_selection(Item::StoreId(recording_id.clone()));
-                                    self.state
-                                        .navigation
+                                    self.navigation
+                                        .routes
                                         .replace(Route::LocalRecording { recording_id });
                                 } else {
                                     // TODO(RR-3713): show a blueprint for it anyway
@@ -606,7 +607,7 @@ impl AppCore {
         if open_behavior == RecordingOpenBehavior::OpenAndSelect
             && matches!(channel_source, LogSource::Sdk | LogSource::MessageProxy(_))
             && !self.app_options().switch_to_streamed_recordings
-            && shown_recording_id(self.state.navigation.current())
+            && shown_recording_id(self.navigation.routes.current())
                 .is_some_and(|id| id != store_id && store_hub.entity_db(id).is_some())
         {
             open_behavior = RecordingOpenBehavior::Open;
@@ -837,10 +838,10 @@ impl AppCore {
         // stays up, and the viewer shows and selects the recording once every stream for its
         // segment has finished.
         if store_hub.entity_db(store_id).is_none() {
-            let is_loading = matches!(self.state.navigation.current(), Route::Loading(_));
+            let is_loading = matches!(self.navigation.routes.current(), Route::Loading(_));
             if !is_loading && let Some(source) = self.receiving_source_for(store_id) {
-                self.state
-                    .navigation
+                self.navigation
+                    .routes
                     .replace(Route::Loading(Box::new(source)));
             }
             return;
@@ -863,11 +864,11 @@ impl AppCore {
         {
             // The viewer shows and selects the recording once every stream for its segment has
             // finished.
-            self.state
-                .navigation
+            self.navigation
+                .routes
                 .replace(Route::Loading(Box::new(data_source)));
         } else {
-            self.state.navigation.replace(Route::LocalRecording {
+            self.navigation.routes.replace(Route::LocalRecording {
                 recording_id: store_id.clone(),
             });
 
@@ -947,7 +948,7 @@ impl AppCore {
         {
             0
         } else {
-            self.external_memory_users.total_external_memory()
+            self.memory.external_memory_users.total_external_memory()
         };
 
         // Memory use as the limit sees it. We measure again between the steps of a purge, so that
@@ -991,7 +992,7 @@ impl AppCore {
         // each step, so that we never drop more than we have to.
 
         // The app caches hold data the viewer derives locally, so they are the cheapest to rebuild.
-        self.state.app_caches.purge_memory();
+        self.app_caches.purge_memory();
 
         let mem_use_after_app_caches = memory_use();
         if let Some(minimum_fraction_to_purge) = limit.is_exceeded_by(&mem_use_after_app_caches) {
@@ -1008,7 +1009,7 @@ impl AppCore {
             store_hub.purge_fraction_of_ram(
                 fraction_to_purge,
                 self.active_recording_id(),
-                &|store_id| self.state.time_cursor_for(store_id).map(|t| t.time_cursor),
+                &|store_id| self.stores.time_cursor_for(store_id).map(|t| t.time_cursor),
             );
         }
 
@@ -1042,7 +1043,7 @@ impl AppCore {
                 .recordings()
                 .map(|r| r.byte_size_of_physical_chunks())
                 .sum();
-            self.cached_app_overhead_bytes =
+            self.memory.cached_app_overhead_bytes =
                 Some(current_mem_use.saturating_sub(total_chunk_bytes));
         }
 
@@ -1070,8 +1071,11 @@ impl AppCore {
         const FIXED_FRACTION_OVERHEAD: f32 = 0.10;
         const FALLBACK_FIXED_FRACTION_OVERHEAD: f32 = 0.20;
 
-        let overhead = self.cached_app_overhead_bytes.unwrap_or(APP_OVERHEAD_BYTES);
-        let fixed_fraction_overhead = if self.cached_app_overhead_bytes.is_some() {
+        let overhead = self
+            .memory
+            .cached_app_overhead_bytes
+            .unwrap_or(APP_OVERHEAD_BYTES);
+        let fixed_fraction_overhead = if self.memory.cached_app_overhead_bytes.is_some() {
             FIXED_FRACTION_OVERHEAD
         } else {
             FALLBACK_FIXED_FRACTION_OVERHEAD
@@ -1116,9 +1120,8 @@ impl AppCore {
             };
 
             let time_cursor = match open_kind {
-                RecordingOpenKind::Active => self.state.time_cursor_for(recording.store_id()),
+                RecordingOpenKind::Active => self.stores.time_cursor_for(recording.store_id()),
                 RecordingOpenKind::Preview => self
-                    .state
                     .view_states
                     .preview_state
                     .as_ref()
@@ -1188,13 +1191,13 @@ mod tests {
         let shown = StoreId::random(StoreKind::Recording, "test_app");
         store_hub.entity_db_entry(&shown);
         let before = route(&shown);
-        app.state.navigation.replace(before.clone());
+        app.navigation.routes.replace(before.clone());
 
         let streamed = StoreId::random(StoreKind::Recording, "test_app");
         store_hub.entity_db_entry(&streamed);
         app.on_new_store(&egui_ctx, &streamed, &LogSource::Sdk, store_hub);
 
-        let after = app.state.navigation.current().clone();
+        let after = app.navigation.routes.current().clone();
         (before, after, store_hub.is_opened(&streamed))
     }
 

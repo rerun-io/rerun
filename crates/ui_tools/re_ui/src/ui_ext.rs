@@ -980,8 +980,8 @@ pub trait UiExt {
     /// in a new tab regardless.
     ///
     /// NOTE: for most kinds of URL, the `always_new_tab` is indirectly overridden to `true` by
-    /// `re_viewer::app_state::check_for_clicked_hyperlinks()`, unless the URL is special-cased by
-    /// that function (e.g. `rerun://` URLs).
+    /// `re_viewer::app::route_ui::check_for_clicked_hyperlinks()`, unless the URL is
+    /// special-cased by that function (e.g. `rerun://` URLs).
     fn re_hyperlink(
         &mut self,
         text: impl Into<egui::WidgetText>,
