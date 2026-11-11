@@ -20,7 +20,6 @@ Try it in your browser with no install (the Space runs the fast path on ZeroGPU)
 EgoHand finds both hands in each frame of a head-worn camera and turns each hand into a metric 3D mesh.
 This example runs [NVIDIA's EgoHand](https://huggingface.co/nvidia/EgoHand-v1) on a head-camera video and logs every step to Rerun: the video with hand boxes and 2D joints, and a 3D view with the camera, the 3D joints and a SOMA hand mesh per hand.
 
-
 ## The result
 
 The video above is 30 s of a [Gen-HumanEgo](https://huggingface.co/datasets/genrobot2025/Gen-HumanEgo) head camera: a person hangs shirts on hangers.
@@ -31,7 +30,7 @@ The CLI takes a pinhole camera, so this run gives it the lens's focal length and
 
 The same 900 frames, one at a time, with detection on every frame and full meshes (decode not timed), on an NVIDIA DGX Spark (GB10):
 
-| Config | ms per frame | fps | Speed-up |
+| Config (this 900-frame clip) | ms per frame | fps | Speed-up |
 |---|---|---|---|
 | Reference (`egohand`) | 187.56 | 5.3 | 1.00x |
 | Fast path (`egohand-fast`: TensorRT, NVFP4/FP8 backbone, CUDA graphs) | 18.25 | 54.8 | 10.28x |
@@ -141,8 +140,6 @@ Boxes, 2D joints on the video, 3D joints and meshes, logged to Rerun for every f
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/egohand_walk_7_output/e5f16bf9ed5df680a185b16acb2d33925d0046e7/1024w.webp">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/egohand_walk_7_output/e5f16bf9ed5df680a185b16acb2d33925d0046e7/1200w.webp">
 </picture>
-
-
 
 ## How it works
 
