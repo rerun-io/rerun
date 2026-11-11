@@ -33,13 +33,11 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+          fetch-depth: 0 # `pb-breaking` needs the merge base with `main`
 
       - uses: prefix-dev/setup-pixi@a09b6247153796b190642a2b53fac4241043cf6f # v0.10.0
         with:
           pixi-version: v0.82.1
-
-      - name: Fetch latest main (so we can grab the current schema snapshot)
-        run: time git fetch origin main # yes, we need full --depth for `buf` to work
 
       # NOTE(cmc): I'm keeping all the snapshot machinery around if it turns out we need something more robust
       # than a pure git solution in the future. For now, convenience wins.
@@ -51,6 +49,8 @@ jobs:
       - name: Breaking changes
         run: pixi run -q pb-breaking
         if: success() || failure() # trigger this step even if the previous one failed
+        env:
+          BASE_BRANCH: ${{ github.base_ref }} # empty on pushes, which compares against `main`
 
       - name: Lints
         run: pixi run pb-lint
