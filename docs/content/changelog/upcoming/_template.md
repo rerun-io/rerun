@@ -31,6 +31,7 @@ type: feature # highlight | misc | breaking | feature
  Keep it short: one to three sentences on what the user can now do.
  Leave out implementation details and anything the user doesn't need to know.
  Stick to facts, not sales copy, and reserve `highlight` for flagship changes.
+ Features that only work against Rerun Hub, and not against the OSS server, don't get an entry.
  If the feature is partial (e.g. data types without viewer support yet), say what doesn't work yet.
  A `breaking` entry is the migration guide for its change; never edit the migration guides of past releases.
 
