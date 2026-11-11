@@ -6,6 +6,7 @@ import contextvars
 import multiprocessing
 import os
 import sys
+import time
 import warnings
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -29,7 +30,9 @@ from rerun._tracing import (
 from rerun.catalog import CatalogClient
 from rerun_bindings import CatalogClientInternal
 
+from .._query_metrics import query_metrics
 from ._config import TimeAlignedSampling
+from ._metrics import _worker_metrics_scope
 from ._sample_index import (
     IndexValue,
     _index_value_to_int,
@@ -47,7 +50,9 @@ if TYPE_CHECKING:
 
     from rerun.catalog._entry import DatasetEntry
 
+    from .._query_metrics import QueryMetrics
     from ._config import DataSource, Field, FixedRateSampling
+    from ._metrics import _WorkerMetricsPublisher
     from ._sample_index import SampleIndex, SegmentMetadata
     from .decoders._base import ColumnDecoder, DecodedResult, DecodedSample, DecodedValue
 
@@ -101,10 +106,38 @@ class Target:
 
 @dataclass(frozen=True, slots=True)
 class FetchedBlock:
-    """One fetch block's logical targets and materialized query results."""
+    """One fetch block's logical targets, materialized results, and query totals."""
 
     targets: list[Target]
     fetched_groups: list[FetchedGroup]
+    fetch_direct_original_ranges: int = 0
+    fetch_direct_merged_ranges: int = 0
+    fetch_grpc_requests: int = 0
+    delivered_bytes: int = 0
+
+
+@dataclass(slots=True)
+class FetchMetricsAccumulator:
+    """Mutable query totals assembled while one fetch block is materialized."""
+
+    direct_original_ranges: int = 0
+    direct_merged_ranges: int = 0
+    grpc_requests: int = 0
+    delivered_bytes: int = 0
+
+    def record_queries(self, queries: Sequence[QueryMetrics]) -> None:
+        self.direct_original_ranges += sum(query.fetch_direct_original_ranges for query in queries)
+        self.direct_merged_ranges += sum(query.fetch_direct_merged_ranges for query in queries)
+        self.grpc_requests += sum(query.fetch_grpc_requests for query in queries)
+        self.delivered_bytes += sum(query.delivered_bytes for query in queries)
+
+
+@contextmanager
+def _record_query_metrics(metrics: FetchMetricsAccumulator) -> Iterator[None]:
+    """Accumulate completed DataFusion query metrics for one dataloader fetch block."""
+    with query_metrics() as collector:
+        yield
+    metrics.record_queries(collector.queries)
 
 
 @dataclass(frozen=True, slots=True)
@@ -326,6 +359,7 @@ def _pipeline_blocks(
     *,
     fetch: Callable[[np.ndarray], Any],
     process: Callable[[Any], Iterator[DecodedSample]],
+    metrics: _WorkerMetricsPublisher | None = None,
 ) -> Generator[DecodedSample, None, None]:
     """Process blocks while fetching the next block on a background thread."""
     if not blocks:
@@ -337,6 +371,20 @@ def _pipeline_blocks(
         # Copy the caller's contextvars so the fetch's span nests under the current OTel
         # context instead of appearing as a root trace.
         ctx = contextvars.copy_context()
+        if metrics is not None:
+
+            def measured_fetch() -> Any:
+                value = fetch(block)
+                metrics.record_fetch_completion(
+                    samples_fetched=len(value.targets) if isinstance(value, FetchedBlock) else 0,
+                    direct_original_ranges=value.fetch_direct_original_ranges if isinstance(value, FetchedBlock) else 0,
+                    direct_merged_ranges=value.fetch_direct_merged_ranges if isinstance(value, FetchedBlock) else 0,
+                    grpc_requests=value.fetch_grpc_requests if isinstance(value, FetchedBlock) else 0,
+                    delivered_bytes=value.delivered_bytes if isinstance(value, FetchedBlock) else 0,
+                )
+                return value
+
+            return executor.submit(ctx.run, measured_fetch)
         return executor.submit(lambda: ctx.run(fetch, block))
 
     try:
@@ -345,7 +393,12 @@ def _pipeline_blocks(
             assert pending is not None
             with tracing_scope("RerunDataset._wait_for_fetch_block"):
                 set_current_span_attributes({"rerun.dataloader.iter.block.index": i})
-                fetched = pending.result()
+                if metrics is None:
+                    fetched = pending.result()
+                else:
+                    wait_started_ns = time.perf_counter_ns()
+                    fetched = pending.result()
+                    metrics.record_fetch_wait(time.perf_counter_ns() - wait_started_ns)
             pending = submit(blocks[i + 1]) if i + 1 < len(blocks) else None
             samples = process(fetched)
             # Only `samples` may keep the block's fetched tables alive while it is drained.
@@ -412,14 +465,15 @@ def _fetch_queries_parallel(
     """Execute every query plan, overlapping the independent server round-trips."""
 
     def fetch_group(plan: QueryPlan) -> FetchedGroup:
+        table = _fetch_query(
+            view=view,
+            index=index,
+            plan=plan,
+        )
         return FetchedGroup(
             fields=plan.fields,
             fetch_requests=plan.fetch_requests,
-            table=_fetch_query(
-                view=view,
-                index=index,
-                plan=plan,
-            ),
+            table=table,
             keyframe_columns=plan.keyframe_columns,
         )
 
@@ -832,6 +886,7 @@ def _decode_field_batch(
     num_samples: int,
     key: str,
     decoder: ColumnDecoder[_DecodedT],
+    metrics: _WorkerMetricsPublisher | None = None,
 ) -> list[_DecodedT | None]:
     """
     Decode one field for every target of a fetch block; `result[i]` aligns with `targets[i]`.
@@ -846,7 +901,8 @@ def _decode_field_batch(
         "rerun.dataloader.decode.num_segments": prepared_field.num_segments,
     })
 
-    results = decoder.decode(prepared_field.batch, prepared_field.requests)
+    with _worker_metrics_scope(metrics):
+        results = decoder.decode(prepared_field.batch, prepared_field.requests)
     if len(results) != len(prepared_field.requests):
         raise RuntimeError(
             f"{type(decoder).__name__}.decode returned {len(results)} results "
@@ -864,6 +920,8 @@ def _decode_iter(
     prepared: PreparedBlock,
     decoders: dict[str, ColumnDecoder[DecodedValue]],
     executor: ThreadPoolExecutor | None = None,
+    metrics: _WorkerMetricsPublisher | None = None,
+    preparation_elapsed_ns: int = 0,
 ) -> Iterator[DecodedSample]:
     """
     Decode every field of a block now, then yield its samples one at a time.
@@ -874,6 +932,8 @@ def _decode_iter(
     with tracing_scope("RerunDataset._decode_block"):
         set_current_span_attributes({"rerun.dataloader.decode.block_size": prepared.num_samples})
         if not prepared.num_samples:
+            if metrics is not None and preparation_elapsed_ns:
+                metrics.record_decode(elapsed_ns=preparation_elapsed_ns)
             return iter(())
 
         decode_field: dict[str, Callable[[], list[DecodedResult]]] = {}
@@ -884,17 +944,29 @@ def _decode_iter(
                 num_samples=prepared.num_samples,
                 key=key,
                 decoder=decoders[key],
+                metrics=metrics,
             )
 
-        if executor is None:
+        if metrics is None and executor is None:
             per_field = {key: decode() for key, decode in decode_field.items()}
-        else:
+        elif metrics is None:
+            assert executor is not None
             # Copy the caller's contextvars so each field's spans nest under this
             # block's span instead of appearing as roots.
             futures: dict[str, Future[list[DecodedResult]]] = {  # ty: ignore[invalid-assignment]
                 key: executor.submit(contextvars.copy_context().run, decode) for key, decode in decode_field.items()
             }
             per_field = {key: future.result() for key, future in futures.items()}
+        else:
+            decode_started_ns = time.perf_counter_ns()
+            if executor is None:
+                per_field = {key: decode() for key, decode in decode_field.items()}
+            else:
+                futures = {
+                    key: executor.submit(contextvars.copy_context().run, decode) for key, decode in decode_field.items()
+                }
+                per_field = {key: future.result() for key, future in futures.items()}
+            metrics.record_decode(elapsed_ns=preparation_elapsed_ns + time.perf_counter_ns() - decode_started_ns)
 
     return _iter_samples(per_field, prepared.num_samples)
 
@@ -1218,7 +1290,11 @@ def _discover_prior_keyframes(
             pending_paths = {path for path, _segment_id, _target in pending}
             active_paths = [path for path in paths if path in pending_paths]
             fetched = _fetch_keyframe_ranges(
-                view=view, index=index, paths=active_paths, ranges=ranges, sample_index=sample_index
+                view=view,
+                index=index,
+                paths=active_paths,
+                ranges=ranges,
+                sample_index=sample_index,
             )
             rounds += 1
             for path, by_segment in fetched.items():

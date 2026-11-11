@@ -217,6 +217,57 @@ For deterministic multi-rank training, generate a `Manifest` with the appropriat
 
 `RerunMapDataset` cannot skip a missing item without changing its stable index mapping, so its sample dictionary may contain `None` for an unresolved field.
 
+### Measure pipeline performance
+
+Each Rerun dataset automatically collects cumulative fetch and decode metrics across its `DataLoader` workers.
+Use the standard PyTorch `DataLoader` and read the report from the dataset when needed.
+
+```python
+from rerun.experimental.dataloader import RerunIterableDataset
+
+
+dataset = RerunIterableDataset(
+    source=source,
+    index="frame_index",
+    fields=fields,
+)
+loader = DataLoader(
+    dataset,
+    batch_size=8,
+    num_workers=4,
+    multiprocessing_context="spawn",
+)
+
+for batch in loader:
+    train_step(batch)
+
+if report_metrics:
+    print(dataset.metrics.summary())
+```
+
+`summary()` returns a flat dictionary containing the available cumulative metrics.
+It is an aggregate of completed worker measurements.
+The optional prefix makes the dictionary directly usable with experiment trackers:
+
+```python
+mlflow.log_metrics(dataset.metrics.summary(prefix="dataloader."), step=epoch)
+wandb_run.log(dataset.metrics.summary(prefix="dataloader/"), step=epoch)
+```
+
+The compact report answers:
+
+- `fetch_wait_fraction` and `decode_fraction`: whether the measured worker critical path is fetch- or decode-bound.
+- `fetch_requests_per_sample`: merged direct HTTP range requests plus gRPC chunk fetch requests per fetched sample target.
+- `fetch_request_merge_factor`: source chunk byte ranges represented by each merged direct HTTP range request.
+- `decoded_frames_per_output_frame`: video decode amplification caused by GOP traversal.
+- `skipped_samples`: live iterable samples dropped because at least one decoded field was unresolved.
+
+Fetch wait measures only latency that background lookahead did not hide.
+The merge factor describes only the direct HTTP path; requests per sample combines direct and gRPC chunk fetches and is omitted when neither path issued a request.
+Fetched sample targets are counted when their fetch block completes, so shuffle buffers, DataLoader prefetching, skipped outputs, and early iterator termination do not bias the denominator.
+Video decode amplification counts actual codec output; contiguous block fetching should approach `1.0`, while uniformly sampled positions in a GOP of length 10 average approximately `5.5`.
+Skipped samples are counted once even when multiple fields are unresolved, and manifest replay does not increment the metric because it raises for missing required fields instead of skipping them.
+
 ### Shuffling and fetch locality
 
 `RerunIterableDataset` takes a `shuffle_strategy` argument that controls the order samples are *fetched* in:
