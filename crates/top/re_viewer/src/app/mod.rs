@@ -474,7 +474,17 @@ impl App {
         if state.app_options.check_for_updates_on_startup
             && re_ui::discovery::Message::VersionCheck.is_unlocked(&creation_context.egui_ctx)
         {
-            crate::version_check::check_for_new_version(build_info.version, &app_env, ehttp::fetch);
+            let command_sender = command_channel.0.clone();
+            let egui_ctx = creation_context.egui_ctx.clone();
+            crate::version_check::check_for_new_version(
+                build_info.version,
+                &app_env,
+                ehttp::fetch,
+                move |notification| {
+                    command_sender.send_system(SystemCommand::ShowNotification(notification));
+                    egui_ctx.request_repaint();
+                },
+            );
         }
 
         let connection_registry = {

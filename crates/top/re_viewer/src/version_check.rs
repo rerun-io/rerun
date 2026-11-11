@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use ehttp::{Request, Response};
 use re_build_info::CrateVersion;
+use re_ui::notifications::{Notification, NotificationLevel};
 
 use crate::AppEnvironment;
 
@@ -20,7 +21,11 @@ type OnResponse = Box<dyn FnOnce(Result<Response, String>) + Send>;
 ///
 /// The supplied `fetch` function starts an asynchronous request to GitHub's latest-release API.
 /// Once the request completes, the response callback parses the release tag as a final [`CrateVersion`] and compares it with `current_version`.
-/// A newer release is announced with [`re_log::info!`], while request and parsing failures are only logged at debug level.
+/// A newer release is passed to `notify` as a [`Notification`] that is shown once per release:
+/// a user who stays on an old version is told about each new release once, not on every start.
+/// Request and parsing failures are only logged at debug level.
+///
+/// `fetch` may call its response callback on another thread, so `notify` must not assume it runs on the UI thread.
 ///
 /// No request is made when `app_env` is [`AppEnvironment::Test`], so tests never produce update notifications or depend on network access.
 /// Passing the fetch function in makes the complete request and response flow testable without contacting GitHub.
@@ -28,6 +33,7 @@ pub fn check_for_new_version(
     current_version: CrateVersion<'static>,
     app_env: &AppEnvironment,
     fetch: impl FnOnce(Request, OnResponse),
+    notify: impl FnOnce(Notification) + Send + 'static,
 ) {
     if app_env.is_test() {
         return;
@@ -46,7 +52,9 @@ pub fn check_for_new_version(
     fetch(
         request,
         Box::new(move |response| {
-            handle_response(current_version, download_url, response);
+            if let Some(notification) = handle_response(current_version, download_url, response) {
+                notify(notification);
+            }
         }),
     );
 }
@@ -55,7 +63,7 @@ fn handle_response(
     current_version: CrateVersion<'static>,
     download_url: &'static str,
     response: Result<Response, String>,
-) {
+) -> Option<Notification> {
     let response = match response {
         Ok(response) if response.ok => response,
         Ok(response) => {
@@ -64,11 +72,11 @@ fn handle_response(
                 response.status,
                 response.status_text
             );
-            return;
+            return None;
         }
         Err(err) => {
             re_log::debug!("Failed to check for a new Rerun version: {err}");
-            return;
+            return None;
         }
     };
 
@@ -76,7 +84,7 @@ fn handle_response(
         Ok(release) => release,
         Err(err) => {
             re_log::debug!("Failed to parse the latest Rerun release: {err}");
-            return;
+            return None;
         }
     };
 
@@ -87,21 +95,46 @@ fn handle_response(
                 "Failed to parse the latest Rerun version {:?}: {err}",
                 release.tag_name
             );
-            return;
+            return None;
         }
     };
 
-    if current_version < latest_version {
-        re_log::info!(
-            "A newer version of Rerun is available: {latest_version} (you are running {current_version}). Download it at {}",
-            download_url
+    (current_version < latest_version).then(|| {
+        let text = format!(
+            "Rerun {latest_version} is available (you are running {current_version}). [Download…]({download_url})"
         );
-    }
+        re_log::debug!("{text}");
+        Notification::new(NotificationLevel::Info, text)
+            .show_once(egui::Id::unique(("new_version_notice", latest_version)))
+    })
 }
 
 #[cfg(test)]
 mod tests {
+    use egui_kittest::kittest::Queryable as _;
+    use re_ui::notifications::NotificationUi;
+
     use super::*;
+
+    /// A successful response from the latest-release API.
+    fn release_response(url: String, tag: &str) -> Response {
+        Response {
+            url,
+            ok: true,
+            status: 200,
+            status_text: "OK".to_owned(),
+            headers: ehttp::Headers::default(),
+            bytes: serde_json::json!({ "tag_name": tag })
+                .to_string()
+                .into_bytes(),
+        }
+    }
+
+    fn new_version_notice(tag: &str) -> Notification {
+        let response = release_response(LATEST_RELEASE_URL.to_owned(), tag);
+        handle_response(CrateVersion::new(0, 35, 0), INSTALL_RERUN_URL, Ok(response))
+            .expect("a newer release should produce a notification")
+    }
 
     #[test]
     fn check_for_new_version_does_not_fetch_while_testing() {
@@ -110,14 +143,13 @@ mod tests {
             CrateVersion::new(0, 35, 0),
             &AppEnvironment::Test,
             |_, _| fetched = true,
+            |_| {},
         );
         assert!(!fetched);
     }
 
     #[test]
-    fn check_for_new_version_fetches_and_logs_an_update() {
-        re_log::setup_logging();
-
+    fn check_for_new_version_fetches_and_notifies_an_update() {
         for (app_env, expected_url) in [
             (AppEnvironment::Custom("test".to_owned()), INSTALL_RERUN_URL),
             (
@@ -130,36 +162,69 @@ mod tests {
                 PYTHON_SDK_URL,
             ),
         ] {
-            let log_rx = re_log::add_log_msg_receiver(re_log::LevelFilter::INFO);
-
-            // Mock http request so we don't actually depend on changing externalities.
-            let response_body = serde_json::json!({ "tag_name": "0.36.3" });
-
             let mut fetched = false;
+            let notified = std::sync::Arc::new(parking_lot::Mutex::new(None));
             check_for_new_version(
                 CrateVersion::new(0, 35, 0),
                 &app_env,
                 |request, on_response| {
                     fetched = true;
                     assert_eq!(request.url, LATEST_RELEASE_URL);
-                    on_response(Ok(Response {
-                        url: request.url,
-                        ok: true,
-                        status: 200,
-                        status_text: "OK".to_owned(),
-                        headers: ehttp::Headers::default(),
-                        bytes: response_body.to_string().into_bytes(),
-                    }));
+                    on_response(Ok(release_response(request.url, "0.36.3")));
+                },
+                {
+                    let notified = notified.clone();
+                    move |notification| *notified.lock() = Some(notification)
                 },
             );
 
             assert!(fetched);
-            assert!(log_rx.try_iter().any(|message| {
-                message.message
-                    == format!(
-                        "A newer version of Rerun is available: 0.36.3 (you are running 0.35.0). Download it at {expected_url}"
-                    )
-            }));
+            let notification = notified.lock().take().unwrap();
+            assert_eq!(
+                notification.text(),
+                format!(
+                    "Rerun 0.36.3 is available (you are running 0.35.0). [Download…]({expected_url})"
+                )
+            );
         }
+    }
+
+    /// Once the user has seen the notice for a release, it does not show again for that release,
+    /// but does for the next one: the show-once key must include the release version.
+    #[test]
+    fn new_version_notice_shows_once_per_release() {
+        let mut notifications = None;
+        let mut harness =
+            re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [400.0, 280.0]).build_ui(
+                |ui| {
+                    notifications
+                        .get_or_insert_with(|| {
+                            let mut notifications = NotificationUi::new(ui.ctx().clone());
+                            notifications.add(new_version_notice("0.36.3"));
+                            notifications
+                        })
+                        .notification_toggle_button(ui);
+                },
+            );
+
+        // Opening the notification panel counts as having seen the notice.
+        harness.run();
+        harness.get_by_label_contains("Notification toggle").click();
+        harness.run();
+
+        // A fresh `NotificationUi` on the same egui memory, like the next start of the viewer.
+        let shows_on_next_start = |tag| {
+            let mut notifications = NotificationUi::new(harness.ctx.clone());
+            notifications.add(new_version_notice(tag));
+            !notifications.notifications().is_empty()
+        };
+        assert!(
+            !shows_on_next_start("0.36.3"),
+            "the notice for an already seen release should not show again"
+        );
+        assert!(
+            shows_on_next_start("0.37.0"),
+            "the notice for a newer release should show"
+        );
     }
 }
