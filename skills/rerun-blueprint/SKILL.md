@@ -94,12 +94,41 @@ With the viewer MCP, change the table on screen directly:
 `{"table": {}}` reads the table blueprint, and `rerun_set_blueprint` with
 `{"table": {}, "mode": "partial"}` updates only supplied fields.
 Omitting `mode` or choosing `"full"` replaces the table blueprint.
-`rerun_set_blueprint` returns an error for a filter
+`rerun_set_blueprint` returns an error for a column name the table lacks, or a filter
 that fails. A column's entry sits at `/table/layouts/table/columns/<column name>`,
 with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
-as `\\:` and `\\ `. The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints)
-have a worked example of the JSON. For the whole Python API, including cards
-and segment previews, see
+as `\\:` and `\\ `.
+
+For a vague request such as "table with previews", don't ask first.
+Write cards with one 2D preview of the first camera entity, then offer to change it.
+Take the entity from `rerun_get_dataset_schema`.
+Call `rerun_set_blueprint` with `{"table": {}, "mode": "full"}` and this `json`, which shows a 2D preview of `/camera/ext1` on each card.
+The view id is any fresh UUID, used identically in the three `/view/…` paths:
+
+```json
+{
+  "/table": {"TableBlueprint": {"layout": "Cards"}},
+  "/table/layouts/cards": {
+    "CardLayout": {"link": "recording link", "field_order": ["recording link"]}
+  },
+  "/table/layouts/cards/fields/recording\\ link": {
+    "TableColumnPreview": {"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}
+  },
+  "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {
+    "ViewBlueprint": {"class_identifier": "2D", "space_origin": "/camera/ext1"}
+  },
+  "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents": {
+    "ViewContents": {"query": "+ /camera/ext1/**"}
+  }
+}
+```
+
+`"full"` replaces the whole table blueprint, which suits a table nobody has configured yet.
+Use `"partial"` when the user has already changed the table: it changes only the fields you send, and keeps their column order and filters.
+Every name in `field_order` must be a column from `rerun_get_table_schema`.
+Check the write with `rerun_get_blueprint`, not a full-window screenshot.
+The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints) have more examples.
+For the whole Python API, including cards and segment previews, see
 [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints).
 
 ## 1. Read the data

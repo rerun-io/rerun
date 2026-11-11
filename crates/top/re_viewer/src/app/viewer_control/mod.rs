@@ -1137,6 +1137,7 @@ impl AppCore {
         )?;
         if let BlueprintTarget::Table(table) = target {
             self.check_table_filters(table, &chunks)?;
+            self.check_table_columns(table, &chunks)?;
         }
         blueprint::check_references(
             blueprint_db,
@@ -1631,6 +1632,23 @@ impl AppCore {
             }
         }
         Ok(())
+    }
+
+    /// Check that the column names a table blueprint refers to exist in the columns the table
+    /// last showed.
+    ///
+    /// Nothing is checked if the table has not been shown yet.
+    fn check_table_columns(
+        &self,
+        table: &re_uri::TableReference,
+        chunks: &[re_chunk::Chunk],
+    ) -> Result<(), ViewerControlError> {
+        let Some(columns) =
+            re_dataframe_ui::DataFusionTableWidget::table_schema(&self.egui_ctx, table)
+        else {
+            return Ok(());
+        };
+        check_column_names(&columns, chunks)
     }
 
     /// Queue a write of `chunks` to `blueprint_db`.
@@ -2318,12 +2336,94 @@ fn is_loading(
     receiver_loading || file_registering
 }
 
+/// Check that every [`ColumnName`](re_sdk_types::blueprint::components::ColumnName) in
+/// `chunks` names one of `columns`.
+fn check_column_names(
+    columns: &[re_dataframe_ui::TableSchemaColumn],
+    chunks: &[re_chunk::Chunk],
+) -> Result<(), ViewerControlError> {
+    use re_sdk_types::blueprint::components::ColumnName;
+    use re_types_core::Component as _;
+
+    for chunk in chunks {
+        let column_name_fields = chunk
+            .component_descriptors()
+            .filter(|descriptor| descriptor.component_type == Some(ColumnName::name()));
+        for descriptor in column_name_fields {
+            let names = chunk
+                .component_batch::<ColumnName>(descriptor.component, 0)
+                .into_iter()
+                .flatten()
+                .flatten();
+            for name in names {
+                let name = name.as_str();
+                if columns
+                    .iter()
+                    .all(|column| column.physical_name.as_str() != name)
+                {
+                    return Err(ViewerControlError::invalid_argument(format!(
+                        "{} → {}: the table has no column {name:?}. \
+                         Use a `name` from `get_table_schema`",
+                        chunk.entity_path(),
+                        descriptor.display_name(),
+                    )));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use re_log_channel::ViewerControlErrorCode;
     use re_protos::viewer_control::v1alpha1::close_request::Target;
 
     use super::*;
+
+    #[test]
+    fn check_column_names_rejects_unknown_columns() {
+        use re_sdk_types::blueprint::archetypes::{CardLayout, TableLayout};
+
+        let columns =
+            ["episode", "recording link"].map(|name| re_dataframe_ui::TableSchemaColumn {
+                physical_name: name.into(),
+                display_name: name.to_owned(),
+                datatype: arrow::datatypes::DataType::Utf8,
+                visible: true,
+            });
+        let chunk = |entity_path: &str, archetype: &dyn re_sdk_types::AsComponents| {
+            re_chunk::Chunk::builder(entity_path)
+                .with_archetype(
+                    re_chunk::RowId::new(),
+                    re_log_types::TimePoint::STATIC,
+                    archetype,
+                )
+                .build()
+                .expect("valid chunk")
+        };
+
+        let known = [
+            chunk(
+                "/table/layouts/table",
+                &TableLayout::new().with_column_order(["recording link", "episode"]),
+            ),
+            chunk(
+                "/table/layouts/cards",
+                &CardLayout::new(["episode"]).with_link("recording link"),
+            ),
+        ];
+        assert!(check_column_names(&columns, &known).is_ok());
+
+        let unknown = [chunk(
+            "/table/layouts/cards",
+            &CardLayout::new(["episode"]).with_title("task"),
+        )];
+        let err = check_column_names(&columns, &unknown).expect_err("unknown column");
+        assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
+        assert!(err.message.contains("CardLayout:title"), "{}", err.message);
+        assert!(err.message.contains("\"task\""), "{}", err.message);
+    }
 
     #[cfg(feature = "testing")]
     mod close_recordings_waits {

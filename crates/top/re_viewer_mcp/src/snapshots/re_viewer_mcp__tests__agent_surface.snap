@@ -16,7 +16,7 @@ Getting oriented:
 - Use `rerun_get_transform_graph` when debugging 3D transforms (TF). Read its tool description for guidance on inspecting and interpreting transform trees.
 - To open a dataset or table on a Redap server, find it in the `servers` of `rerun_get_state` and pass its `url` to `rerun_open`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
 - Never guess an entity path or a component name: `rerun_get_recording_schema` lists entities and their archetypes by default. For blueprint planning, start with this compact summary; check `omitted_entities` and use `entity_path` with `with_components: true` for focused component details.
-  `rerun_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. Without a `dataset_url` it describes the dataset on screen. It names the dataset's assets by id. An asset is static data such as robot meshes that the viewer shows as part of every segment it applies to, see <https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>. `rerun_get_dataset_assets_schema` names the entities in each asset, so read it when an entity is missing from the segments. It names the entities in the segments and assets, not a table's columns: `rerun_get_table_schema` names those.
+  `rerun_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. It lists the reserved `/__properties/…` entities too. They hold recording properties: static, per-segment metadata such as task or language under `/__properties/episode`, which views hide by default. Pass such an `entity_path` for their component names, then read the values with `CatalogClient` (see the `rerun-catalog-queries` skill). Without a `dataset_url` it describes the dataset on screen. It names the dataset's assets by id. An asset is static data such as robot meshes that the viewer shows as part of every segment it applies to, see <https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>. `rerun_get_dataset_assets_schema` names the entities in each asset, so read it when an entity is missing from the segments. It names the entities in the segments and assets, not a table's columns: `rerun_get_table_schema` names those.
 - The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `rerun_get_logs` fetches older messages.
 - Whenever the user asks where something is, answer with `rerun_highlight_rect` (below), not with prose about the layout.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
@@ -1362,7 +1362,7 @@ Conventions:
 
 {
   "name": "rerun_save_screenshot",
-  "description": "Take a screenshot of the viewer, or of a single view within it, and write it to disk, or\nreturn it as a PNG.\n\nThe screenshot is saved by the viewer process, so the path is resolved on the machine\nrunning the viewer, not on the machine making the request. Without a `file_path`, the\nresponse carries the PNG instead. The web viewer cannot write files, so it needs that.\n\nFails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is\ncurrently visible, `FAILED_PRECONDITION` if the view is too small to capture, and\n`INTERNAL` if the capture itself, the PNG encoding, or the write to disk failed.\n\nRequires `rerun_connect`.",
+  "description": "Take a screenshot of the viewer, or of a single view within it, and write it to the required `file_path`.\n\nThe screenshot is saved by the viewer process, so the path is resolved on the machine running the viewer, not on the machine making the request.\n\nFails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is currently visible, `FAILED_PRECONDITION` if the view is too small to capture, and `INTERNAL` if the capture itself, the PNG encoding, or the write to disk failed.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
@@ -1372,7 +1372,7 @@ Conventions:
       },
       "file_path": {
         "type": "string",
-        "description": "Path at which the screenshot will be saved, which picks the image format by its extension.\nThis path is relative to the current working directory of the viewer process.\n\nIf omitted, nothing is saved, and the response carries the screenshot as a PNG."
+        "description": "Path at which the screenshot will be saved, which picks the image format by its extension. Required. This path is relative to the current working directory of the viewer process. Look at the saved image with a file-reading tool."
       },
       "max_size": {
         "type": "integer",

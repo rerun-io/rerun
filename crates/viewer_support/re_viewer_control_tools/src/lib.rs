@@ -166,6 +166,21 @@ const SCREENSHOT_MAX_SIZE_DESCRIPTION: &str = "Longest side of the saved image, 
     A larger screenshot is scaled down to fit, keeping its aspect ratio. \
     Defaults to 1024. Pass 0 for full resolution.";
 
+/// Replaces the proto's description of `file_path` when the tool requires it.
+const SCREENSHOT_FILE_PATH_DESCRIPTION: &str = "Path at which the screenshot will be saved, \
+    which picks the image format by its extension. Required. \
+    This path is relative to the current working directory of the viewer process. \
+    Look at the saved image with a file-reading tool.";
+
+/// Replaces the proto's description of the screenshot tool when it requires a `file_path`.
+const SCREENSHOT_FILE_DESCRIPTION: &str = "Take a screenshot of the viewer, or of a single view \
+    within it, and write it to the required `file_path`.\n\n\
+    The screenshot is saved by the viewer process, so the path is resolved on the machine \
+    running the viewer, not on the machine making the request.\n\n\
+    Fails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is \
+    currently visible, `FAILED_PRECONDITION` if the view is too small to capture, and \
+    `INTERNAL` if the capture itself, the PNG encoding, or the write to disk failed.";
+
 /// How deep to expand nested message fields before emitting an opaque object.
 ///
 /// Guards against a message that transitively contains itself, which would otherwise recurse
@@ -463,6 +478,13 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
                 schema.remove(keyword);
             }
 
+            let description =
+                if field.name() == SCREENSHOT_OPERATION && screenshot == ScreenshotDelivery::File {
+                    SCREENSHOT_FILE_DESCRIPTION.to_owned()
+                } else {
+                    description
+                };
+
             ToolDefinition {
                 name: field.name().to_owned(),
                 description,
@@ -512,8 +534,21 @@ fn screenshot_schema(schema: &mut Map<String, Value>, screenshot: ScreenshotDeli
                 json!(SCREENSHOT_MAX_SIZE_DESCRIPTION),
             );
         }
-        if screenshot == ScreenshotDelivery::Inline {
-            properties.remove(SCREENSHOT_FILE_PATH);
+        match screenshot {
+            ScreenshotDelivery::Inline => {
+                properties.remove(SCREENSHOT_FILE_PATH);
+            }
+            ScreenshotDelivery::File => {
+                if let Some(file_path) = properties
+                    .get_mut(SCREENSHOT_FILE_PATH)
+                    .and_then(Value::as_object_mut)
+                {
+                    file_path.insert(
+                        "description".to_owned(),
+                        json!(SCREENSHOT_FILE_PATH_DESCRIPTION),
+                    );
+                }
+            }
         }
     }
     if screenshot == ScreenshotDelivery::File {
