@@ -1,6 +1,6 @@
 ---
 title: Hub
-order: 4
+order: 6
 index: true
 ---
 

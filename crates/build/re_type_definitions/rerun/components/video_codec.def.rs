@@ -4,7 +4,7 @@
 /// The codec used to encode video stored in [`rerun::components::VideoSample`].
 ///
 /// Support of these codecs by the Rerun Viewer is platform dependent.
-/// For more details see check the [video reference](https://rerun.io/docs/concepts/logging-and-ingestion/video).
+/// For more details see check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 #[rerun::rerun_type]
 #[repr(u32)]
 #[rerun(state = "unstable")]

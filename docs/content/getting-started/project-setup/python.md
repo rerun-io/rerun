@@ -13,4 +13,4 @@ Open your editor of choice, create a new file, and import Rerun:
 import rerun as rr
 ```
 
-You're now ready to follow the [Log and Ingest](../data-in.md) tutorial.
+You're now ready to follow the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.

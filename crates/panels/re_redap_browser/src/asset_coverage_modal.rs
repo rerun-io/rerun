@@ -27,7 +27,7 @@ use crate::servers::{Command, PILL_MARGIN};
 pub const COVERAGE_MODAL_WIDTH: f32 = 556.0;
 
 pub const ASSETS_DOCS_URL: &str =
-    "https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets";
+    "https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets";
 
 pub const COVERAGE_NOT_STORED: &str =
     "This server does not support editing coverage. The asset loads in every segment.";

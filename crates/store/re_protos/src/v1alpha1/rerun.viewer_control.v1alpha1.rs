@@ -139,7 +139,7 @@ pub mod viewer_control_request {
         /// A recording's blueprint has the layout, views, their properties and overrides. A table's
         /// blueprint only has what it sets, such as row filters, the layout, and column settings.
         /// `GetTableSchema` names all columns of a table.
-        /// See <https://rerun.io/docs/concepts/visualization/blueprints.>
+        /// See <https://rerun.io/docs/viewer/blueprints-and-views/blueprints.>
         ///
         /// Set at most one of `recording` and `table`, such as `{"recording": {}}` or
         /// `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
@@ -274,7 +274,7 @@ pub mod viewer_control_request {
         /// a frame, and Transform3D connects child and parent frames independently of entity paths.
         /// Parents can change over time; pinholes connect 3D and 2D spaces. This graph excludes
         /// per-instance poses and view-specific blueprint overrides; it is not the rendering result.
-        /// See <https://rerun.io/docs/concepts/logging-and-ingestion/transforms.>
+        /// See <https://rerun.io/docs/logging-and-ingestion/data-model/transforms.>
         ///
         /// Choose the representation before diagnosing connectivity:
         /// 1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.
@@ -310,7 +310,7 @@ pub mod viewer_control_request {
         /// An asset holds static data shared by the dataset's segments, such as a robot's meshes. The
         /// viewer shows it as part of every segment it applies to, so an entity missing from
         /// `GetDatasetSchema` may be in an asset. See
-        /// <<https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>.>
+        /// <<https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets>.>
         ///
         /// Only assets the server is done registering are described.
         ///
@@ -1545,7 +1545,7 @@ impl ::prost::Name for GetStateRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetStateResponse {
     /// What the viewer is showing, as `get_location` reports it. Empty if that has no location.
-    /// See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
     /// The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
@@ -1738,7 +1738,7 @@ pub struct ViewerRecording {
     /// The recording's current time cursor.
     #[prost(message, optional, tag = "3")]
     pub current_time: ::core::option::Option<TimeCursor>,
-    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "4")]
     pub location: ::prost::alloc::string::String,
     /// Whether the time cursor is paused, playing, or following the latest data.
@@ -2124,7 +2124,7 @@ pub mod set_blueprint_request {
         ///
         /// The entity paths and archetypes of a table blueprint are described by
         /// `rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in
-        /// <<https://rerun.io/docs/howto/visualization/configure-table-blueprints>.>
+        /// <<https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints>.>
         ///
         /// `TableBlueprint` at `/table` has these fields:
         /// * `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a
@@ -2321,7 +2321,7 @@ impl ::prost::Name for GetLocationRequest {
 /// Response for `GetLocation`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetLocationResponse {
-    /// What the viewer is showing. See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// What the viewer is showing. See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
 }

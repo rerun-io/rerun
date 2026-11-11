@@ -344,7 +344,7 @@ with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
     pandas_df = df.to_pandas()
 ```
 
-For more details on the new API, see the [Query data out of Rerun](../../howto/query-and-transform/get-data-out.md) guide.
+For more details on the new API, see the [Query data out of Rerun](../../query-and-transform/catalog/get-data-out.md) guide.
 
 ### `Recording` moved to `rerun.recording`
 

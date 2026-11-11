@@ -304,7 +304,7 @@ pub type ImporterName = String;
 ///
 /// ## Registering custom importers
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview).
+/// Checkout our [guide](https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview).
 ///
 /// ## Execution
 ///

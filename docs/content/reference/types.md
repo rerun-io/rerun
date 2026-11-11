@@ -10,8 +10,8 @@ Rerun has 3 levels of types that can be used in all SDK languages:
 -   [Components](types/components.md) - The base unit of logging data
 -   [Encodings](types/encodings.md) - The primitive types that components are built from
 
-To get an overview of what the Rerun [Viewer](./viewer/overview.md) can show, start at [**Archetypes**](types/archetypes.md).
+To get an overview of what the Rerun [Viewer](../viewer/ui/overview.md) can show, start at [**Archetypes**](types/archetypes.md).
 
 For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](../concepts/logging-and-ingestion/entity-component.md).
+on [Entities and Components](../logging-and-ingestion/data-model/entity-component.md).
 

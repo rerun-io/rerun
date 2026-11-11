@@ -336,7 +336,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         `segment_table` has no effect when `set_default=False`.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
         for examples of saving and registering table blueprints with local or remote storage.
 
         The associated blueprint dataset is owned by this dataset for lifecycle purposes.
@@ -1349,7 +1349,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
-        See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
+        See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the full syntax.
 
         Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
         call's expressions select it. To combine includes and excludes, pass them in a single call.
@@ -1938,7 +1938,7 @@ class DatasetSelection:
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
-        See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
+        See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the full syntax.
 
         Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
         call's expressions select it. To combine includes and excludes, pass them in a single call.
@@ -2135,7 +2135,7 @@ class TableEntry(Entry[TableEntryInternal]):
         By default, also set this blueprint as default.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
         for examples of configuring columns, cards, and previews, then saving and registering the result.
 
         The associated blueprint dataset is owned by this table for lifecycle purposes.

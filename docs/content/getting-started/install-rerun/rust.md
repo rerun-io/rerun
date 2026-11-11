@@ -37,6 +37,6 @@ Your own code is still built without optimizations, and dependencies are only re
 
 ## Next steps
 
-[Set up a Rust project](../../getting-started/project-setup/rust.md), then walk through the [Log and Ingest](../../getting-started/data-in.md) tutorial.
+[Set up a Rust project](../../getting-started/project-setup/rust.md), then walk through the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.
 
 -   [Rust API docs](https://docs.rs/rerun/latest/rerun/)

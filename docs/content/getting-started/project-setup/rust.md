@@ -14,4 +14,4 @@ cd my_project
 cargo add rerun
 ```
 
-You're now ready to follow the [Log and Ingest](../data-in.md) tutorial.
+You're now ready to follow the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.

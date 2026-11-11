@@ -126,14 +126,14 @@ Old single-string invocations still work at runtime but emit a `DeprecationWarni
 
 ## URDF importer transform entity
 
-The [URDF importer](../../howto/logging-and-ingestion/urdf.md) now loads the static transforms of the model to the `/tf_static` entity by default.
+The [URDF importer](../../logging-and-ingestion/import/urdf.md) now loads the static transforms of the model to the `/tf_static` entity by default.
 This replaces the model-dependent entity path of previous versions, and improves consistency with ROS data.
 
 A custom entity path can be now also configured in the `UrdfTree` API in Python and Rust, if desired.
 
 ## MCAP metadata and statistics
 
-In MCAP to RRD conversion, metadata records, statistics, and recording info are now saved at dedicated [reserved entity paths](../../concepts/logging-and-ingestion/entity-path.md#reserved-paths) instead of RRD properties (`__properties`).
+In MCAP to RRD conversion, metadata records, statistics, and recording info are now saved at dedicated [reserved entity paths](../../logging-and-ingestion/data-model/entity-path.md#reserved-paths) instead of RRD properties (`__properties`).
 
 Metadata records are saved under `__mcap_metadata`, and MCAP statistics and recording info are saved under `__mcap_properties`.
 

@@ -15,7 +15,7 @@ The protocol is defined by the `.proto` files in [`crates/store/re_protos/proto`
 | Catalog server (`rerun server`)  | `127.0.0.1:51234` | `RerunCloudService`                                                |
 
 `MessageProxyService` carries logged data between SDKs and Viewers.
-`ViewerControlService` drives a running Viewer, and is what the [MCP server](viewer/mcp.md) uses.
+`ViewerControlService` drives a running Viewer, and is what the [MCP server](../viewer/extend/mcp.md) uses.
 `RerunCloudService` is the catalog and query API that `rerun.catalog.CatalogClient` speaks.
 It is served by two different catalogs:
 

@@ -9,7 +9,7 @@ Used to display individual video frames from an [`archetypes.AssetVideo`](https:
 To show an entire video, a video frame reference for each frame of the video should be logged.
 References to a [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream) use the active Viewer timeline.
 
-See <https://rerun.io/docs/concepts/logging-and-ingestion/video> for details of what is and isn't supported.
+See <https://rerun.io/docs/logging-and-ingestion/media/video> for details of what is and isn't supported.
 
 ## Fields
 ### Required

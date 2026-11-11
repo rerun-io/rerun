@@ -149,7 +149,7 @@ ParquetReader(path, index_columns=[IndexColumn.sequence("frame"), IndexColumn.ti
 Rerun no longer supports tailing `.rrd`.
 If you previously used this for live workflows, tee the data to multiple sinks instead, e.g. log to both the viewer and an `.rrd` file from the producing process.
 
-See [the sink documentation page](../concepts/logging-and-ingestion/sinks.md#multiple-sinks-tee-pattern) for more information on how to set up teeing.
+See [the sink documentation page](../logging-and-ingestion/sinks-and-modes/sinks.md#multiple-sinks-tee-pattern) for more information on how to set up teeing.
 
 ---
 

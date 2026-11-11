@@ -1,5 +1,5 @@
 ---
 title: Changelog
-order: 6
+order: 9
 redirect: changelog/changeset-0-42
 ---

@@ -495,7 +495,7 @@ impl PyChunkBatcherConfig {
     )]
     /// Initialize the chunk batcher configuration.
     ///
-    /// Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
+    /// Check out <https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching> for more information.
     ///
     /// Parameters
     /// ----------

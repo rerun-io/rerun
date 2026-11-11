@@ -5,7 +5,7 @@
 ///
 /// Any data from the store can be shown, using a flexible, user-configurable query.
 ///
-/// See [Dataframe queries](https://rerun.io/docs/concepts/query-and-transform/dataframe-queries) to learn more about the query model.
+/// See [Dataframe queries](https://rerun.io/docs/query-and-transform/dataframes/dataframe-queries) to learn more about the query model.
 ///
 /// \example views/dataframe title="Use a blueprint to customize a DataframeView." image="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1200w.png"
 #[rerun::rerun_type]

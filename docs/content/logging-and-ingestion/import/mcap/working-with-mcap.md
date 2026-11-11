@@ -1,0 +1,142 @@
+---
+title: Working with MCAP
+order: 100
+description: Open and inspect MCAP files in Rerun
+---
+
+The Rerun Viewer has built-in support for opening [MCAP](https://mcap.dev/) files, an open container format for storing timestamped messages.
+
+## Supported message formats
+
+Here's a quick summary of Rerun's MCAP importer:
+
+* Automatic conversion to Rerun archetypes is supported for common ROS 2 & Foxglove messages.
+* Other ROS 2 & Foxglove messages are decoded into queryable components via [reflection](message-formats.md#schema-reflection).
+
+For a detailed overview of Rerun's built-in MCAP support, please refer to our [Supported Message Formats](message-formats.md) page.
+We are continually expanding the supported MCAP message types and are [interested in your feedback](message-formats.md#adding-support-for-new-types).
+
+## Quick start
+
+### Loading MCAP files
+
+The simplest way to get started is to load an MCAP file directly:
+
+```bash
+# View an MCAP file in the Rerun Viewer
+rerun your_data.mcap
+```
+
+You can also drag and drop MCAP files into the Rerun Viewer or load them using the SDK:
+
+snippet: howto/load_mcap
+
+### Python `McapReader`
+
+For custom ingestion or processing pipelines, use the Python [`McapReader`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.McapReader) to read an MCAP file into a [`LazyChunkStream`](https://ref.rerun.io/docs/python/stable/chunk/#rerun.chunk.LazyChunkStream) that can be used to build custom data wrangling pipelines.
+For example, you can inspect file metadata with `reader.info()`, select decoders, filter topics or time ranges, transform chunks using [Lenses](../../../query-and-transform/lenses.md), and write the result to RRD:
+
+snippet: howto/process_mcap[example]
+
+See the [Chunk Processing API](../chunk-processing-api.md) for examples of filtering and transforming MCAP chunks.
+For a comprehensive example covering a full robotics pre-processing pipeline, see the [robot_data_preprocessing example](https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing).
+
+### Basic conversion
+
+Convert MCAP files to Rerun's native format for faster loading:
+
+```bash
+# Convert MCAP to RRD format for faster loading
+rerun mcap convert input.mcap -o output.rrd
+
+# View the converted file
+rerun output.rrd
+```
+
+## ROS bags that are not MCAP
+
+Rerun only reads ROS bags stored as MCAP.
+
+- **ROS 2 `.db3` (SQLite) bags** are not supported.
+  Convert them to MCAP with `ros2 bag convert` (part of [rosbag2](https://github.com/ros2/rosbag2), not Rerun), which takes an output-options YAML file:
+
+  ```yaml
+  # convert.yaml
+  output_bags:
+    - uri: my_bag_mcap
+      storage_id: mcap
+      all_topics: true # Use `all: true` on ROS 2 Humble.
+  ```
+
+  Without a topic selection, the output bag is empty.
+  See the [rosbag2 docs](https://github.com/ros2/rosbag2#convert) for all options.
+
+  ```bash
+  ros2 bag convert -i my_bag -o convert.yaml
+  ```
+
+  This needs the MCAP storage plugin for rosbag2 (`ros-$ROS_DISTRO-rosbag2-storage-mcap`).
+  Newer ROS 2 distributions record to MCAP by default.
+- **ROS 1 `.bag` files** are not supported.
+  Convert them to a ROS 2 MCAP with [`rosbags-convert`](https://ternaris.gitlab.io/rosbags/), see [ROS 1 message types](message-formats.md#ros1-message-types).
+
+## Recording ROS 2 bags as RRD
+
+If you use rosbag2, you can record straight to RRD with [`rosbag2_storage_rrd`](https://github.com/rerun-io/rosbag2_storage_rrd), an experimental rosbag2 storage plugin:
+
+```bash
+ros2 bag record -s rrd --all
+```
+
+`ros2 bag play` replays the bag, and Rerun opens and queries it like any other `.rrd`.
+It can also stream to a running Viewer while recording.
+See the plugin's [README](https://github.com/rerun-io/rosbag2_storage_rrd#readme) for its current status and build instructions.
+
+## Data model
+
+Rerun's data model is based on an [entity component system (ECS)](../../data-model/entity-component.md) that is a bit different to the message-based model of [MCAP](https://mcap.dev).
+To map MCAP messages to Rerun entities we make the following assumptions:
+
+* MCAP topics corresponds to Rerun entities.
+* Messages from the same topic within an MCAP chunk will be placed into a corresponding [Rerun chunk](../../chunks-and-rrd/chunks.md).
+* The contents of an MCAP message will be extracted to Rerun components and grouped under a corresponding Rerun archetype.
+* `message_log_time` and `message_publish_time` of an MCAP message will be carried over to Rerun as two distinct [timelines](../../data-model/timelines.md).
+
+### Decoder architecture
+
+Rerun uses _decoders_ to process MCAP files at different levels of abstraction. This design allows to choose up to which level the MCAP message payloads are converted to RRD, from keeping only raw bytes up to a full semantic conversion to Rerun archetypes.
+
+Each decoder extracts different types of information from the MCAP source:
+
+- **`raw`**: Logs the unprocessed message bytes as Rerun blobs without any interpretation
+- **`schema`**: Extracts metadata about channels, topics, and schemas
+- **`stats`**: Extracts file-level metrics like message counts, time ranges, and channel statistics into `__mcap_properties` in the RRD
+- **`metadata`** Extracts metadata records (if present) into `__mcap_metadata` in the RRD
+- **`attachments`**: Extracts MCAP attachment records (if present) as static data under `__mcap_attachments`
+- **`protobuf`**: Automatically decodes protobuf-encoded messages using reflection
+- **`ros2msg`**: Provides semantic conversion of common ROS2 message types into Rerun's visualization components
+- **`ros2_reflection`**: Automatically decodes ROS2 messages using reflection
+- **`recording_info`**: Extracts recording metadata such as message counts, start time, and session information into `__mcap_properties` in the RRD
+- **`urdf`**: Uses Rerun's built-in URDF loader when a ROS 2 `/robot_description` string topic is present
+
+By default, Rerun analyzes an MCAP file to determine which decoders are active to provide the most comprehensive view of your data, while avoiding duplication.
+You can also choose to activate only specific decoders that are relevant to your use case.
+
+The following shows how to select specific decoders:
+
+```sh
+# Use only specific decoders
+rerun mcap convert input.mcap -d protobuf -d stats -o output.rrd
+
+# Use multiple decoders for different perspectives
+rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
+
+# Add robot geometry from robot_description topics
+rerun mcap convert input.mcap -d ros2msg -d urdf -o output.rrd
+```
+
+For a detailed explanation of how each decoder works and when to use them, see [Decoders Explained](decoders-explained.md).
+
+## Advanced usage
+
+For advanced command-line options and automation workflows, see the [CLI Reference](cli-reference.md) for complete documentation of all available commands and flags.

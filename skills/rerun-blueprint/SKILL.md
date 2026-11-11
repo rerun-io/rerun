@@ -45,11 +45,11 @@ Then check a screenshot for framing and readability before reporting completion.
 
 ### Component defaults and overrides
 
-For view-wide styling, prefer [component defaults](https://rerun.io/docs/reference/viewer/mcp#component-defaults-for-a-whole-view).
+For view-wide styling, prefer [component defaults](https://rerun.io/docs/viewer/extend/mcp#component-defaults-for-a-whole-view).
 For example, send `{"/view/<view UUID>/defaults": {"Boxes3D": {"show_labels": false}}}` as the `json` string of a partial update to hide Boxes3D labels.
 Defaults apply across the view but do not supersede logged values or per-entity overrides.
 
-For selected entities or to supersede logged values, follow the [MCP component override example](https://rerun.io/docs/reference/viewer/mcp#component-overrides).
+For selected entities or to supersede logged values, follow the [MCP component override example](https://rerun.io/docs/viewer/extend/mcp#component-overrides).
 Verify the effective value in the entity's Visualizers section and the visual result, not just stored rows.
 
 ## Tables
@@ -127,9 +127,9 @@ The view id is any fresh UUID, used identically in the three `/view/…` paths:
 Use `"partial"` when the user has already changed the table: it changes only the fields you send, and keeps their column order and filters.
 Every name in `field_order` must be a column from `rerun_get_table_schema`.
 Check the write with `rerun_get_blueprint`, not a full-window screenshot.
-The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints) have more examples.
+The [MCP docs](https://rerun.io/docs/viewer/extend/mcp#table-blueprints) have more examples.
 For the whole Python API, including cards and segment previews, see
-[Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints).
+[Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints).
 
 ## 1. Read the data
 

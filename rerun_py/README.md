@@ -52,8 +52,8 @@ rr.log("points3d", rr.Points3D(positions, colors=colors))
 
 - [Examples](https://rerun.io/examples)
 - [Python API reference](https://ref.rerun.io/docs/python)
-- [Log and ingest data](https://rerun.io/docs/getting-started/data-in)
-- [Query and transform data](https://rerun.io/docs/getting-started/data-out)
+- [Log and ingest data](https://rerun.io/docs/logging-and-ingestion/tutorial)
+- [Query and transform data](https://rerun.io/docs/query-and-transform/tutorial)
 - [Troubleshooting](https://rerun.io/docs/getting-started/install-rerun/troubleshooting)
 - [Discord](https://discord.com/invite/Gcm8BbTaAj)
 
@@ -72,7 +72,7 @@ python3 examples/python/plots/plots.py --connect
 ```
 
 Note that SDK and Viewer can run on different machines!
-See [SDK operating modes](https://rerun.io/docs/reference/sdk/operating-modes) for connection options.
+See [SDK operating modes](https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/operating-modes) for connection options.
 
 # Building Rerun from source
 
@@ -136,4 +136,4 @@ RERUN_PUFFIN=1 pixi run uvpy your_script.py
 
 Save a recording from the viewer for offline analysis (use the `investigate-puffin` skill in `.claude/skills/`).
 
-For the Viewer side of things, and for tracking down streaming latency, see [Diagnose latency and performance](../docs/content/howto/visualization/diagnose-performance.md).
+For the Viewer side of things, and for tracking down streaming latency, see [Diagnose latency and performance](../docs/content/viewer/performance/diagnose-performance.md).

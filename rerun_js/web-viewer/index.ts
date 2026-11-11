@@ -723,7 +723,7 @@ export type BlueprintTarget =
 
 /**
  * A whole blueprint, keyed by blueprint entity path, then archetype, then field.
- * See [Blueprints](https://rerun.io/docs/concepts/visualization/blueprints).
+ * See [Blueprints](https://rerun.io/docs/viewer/blueprints-and-views/blueprints).
  *
  * An integer is a `number` if a `number` holds it exactly, and a `bigint` if not, such as most nanosecond times.
  * So the same field can be either, depending on its value: handle both, e.g. with `BigInt(value)`.
@@ -2434,7 +2434,7 @@ export class WebViewer {
 
   /**
    * A recording's transform graph at its time cursor: its frames, and the edges between them.
-   * See [Transforms & Coordinate Frames](https://rerun.io/docs/concepts/logging-and-ingestion/transforms).
+   * See [Transforms & Coordinate Frames](https://rerun.io/docs/logging-and-ingestion/data-model/transforms).
    *
    * This API is experimental, and may change between releases.
    */

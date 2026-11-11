@@ -66,7 +66,7 @@ class LazyChunkStream:
         content:
             Entity path filter. Accepts a single expression, a list of expressions,
             or a `ContentFilter` object.
-            See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the syntax.
+            See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the syntax.
         has_timeline:
             Only keep chunks that have a column for this timeline.
         is_static:
@@ -105,7 +105,7 @@ class LazyChunkStream:
         content:
             Entity path filter. Accepts a single expression, a list of expressions,
             or a `ContentFilter` object.
-            See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the syntax.
+            See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the syntax.
         has_timeline:
             Only drop chunks that have a column for this timeline.
         is_static:
@@ -181,7 +181,7 @@ class LazyChunkStream:
             Optional entity path filter. When set, lenses are applied only to chunks
             whose entity path matches; non-matching chunks pass through unchanged
             regardless of `output_mode`.
-            See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the syntax.
+            See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the syntax.
 
         """
         if isinstance(lenses, Lens):
@@ -221,7 +221,7 @@ class LazyChunkStream:
         content:
             Entity path filter. Accepts a single expression, a list of expressions,
             or a `ContentFilter` object.
-            See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the syntax.
+            See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the syntax.
         has_timeline:
             Only match chunks that have a column for this timeline.
         is_static:
