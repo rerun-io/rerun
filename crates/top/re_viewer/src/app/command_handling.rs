@@ -5,6 +5,7 @@ use re_log_channel::{RecordingOpenBehavior, SaveScreenshotError};
 use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
 use re_ui::UICommand;
+use re_uri::RedapUri;
 use re_viewer_context::RecordingCommand;
 use re_viewer_context::viewer_url::{ChunkStoreBrowserTarget, OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{
@@ -374,6 +375,26 @@ impl AppCore {
                 target,
                 selected_chunk,
             } => {
+                let target = match target {
+                    Some(ChunkStoreBrowserTarget::Local(store_id)) => Some(
+                        match store_hub
+                            .store_bundle()
+                            .get(&store_id)
+                            .and_then(|db| db.primary_data_source())
+                            .and_then(|d| d.redap_uri())
+                            .and_then(|uri| match uri {
+                                RedapUri::Dataset(uri) => {
+                                    Some(ChunkStoreBrowserTarget::Remote(uri))
+                                }
+                                _ => None,
+                            }) {
+                            Some(target) => target,
+                            None => ChunkStoreBrowserTarget::Local(store_id),
+                        },
+                    ),
+                    target => target,
+                };
+
                 let browser = Route::chunk_store_browser(
                     self.state.navigation.current(),
                     target,
@@ -1100,7 +1121,7 @@ impl AppCore {
                     });
                     self.command_sender
                         .send_system(SystemCommand::OpenChunkStoreBrowser {
-                            store_id,
+                            target: store_id.map(ChunkStoreBrowserTarget::Local),
                             selected_chunk: None,
                         });
                 }
@@ -1740,10 +1761,9 @@ impl AppCore {
             // Tied to a specific store: it must exist, still be opened, and not be the one we're
             // closing. Without an explicit store it falls back to the active recording, which is the
             // one we're closing, so there's nowhere to step back to.
-            ViewerUrl::ChunkStoreBrowser { recording_id, .. } => {
-                recording_id.as_ref().is_some_and(|id| {
-                    closing.is_none_or(|closing| id != closing) && store_hub.is_opened(id)
-                })
+            ViewerUrl::ChunkStoreBrowser { target, .. } => {
+                // FIXME: verify this?
+                true
             }
 
             ViewerUrl::LocalRecording(store_id) => {

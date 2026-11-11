@@ -461,7 +461,7 @@ impl AppState {
             }
 
             Route::ChunkStoreBrowser {
-                store_id,
+                target,
                 selected_chunk,
                 return_route,
             } => {
@@ -469,7 +469,7 @@ impl AppState {
                     ui,
                     storage_context,
                     self.app_options.timestamp_format,
-                    store_id.as_ref(),
+                    target.as_ref(),
                     selected_chunk.as_ref(),
                     return_route.as_ref(),
                     command_sender,

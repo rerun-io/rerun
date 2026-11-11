@@ -12,7 +12,9 @@ use re_log_types::{
 };
 use re_ui::{ContextExt as _, text_edit::autocomplete_text_edit};
 use re_ui::{UiExt as _, list_item};
+use re_uri::RedapUri;
 use re_viewer_context::external::re_entity_db::EntityDb;
+use re_viewer_context::viewer_url::ChunkStoreBrowserTarget;
 use re_viewer_context::{Route, StorageContext, SystemCommand, SystemCommandSender as _};
 
 use crate::chunk_list_mode::{ChunkListMode, ChunkListQueryMode};
@@ -193,39 +195,55 @@ impl DatastoreUi {
         ui: &mut egui::Ui,
         storage_context: &StorageContext<'_>,
         timestamp_format: TimestampFormat,
-        selected_store_id: Option<&StoreId>,
+        target: Option<&ChunkStoreBrowserTarget>,
         selected_chunk: Option<&ChunkId>,
         return_route: &Route,
         command_sender: &re_viewer_context::CommandSender,
     ) {
         let mut datastore_ui_active = true;
 
-        let storage_engine = if let Some(selected_store_id) = selected_store_id {
-            let store = storage_context.bundle.get(selected_store_id);
+        enum StorageState<'a> {
+            NotFound,
+            Loading,
+            Found(re_viewer_context::external::re_query::StorageEngineReadGuard<'a>),
+        }
+
+        let selected_store_id = target.and_then(|t| t.store_id());
+        let storage_engine = if let Some(store_id) = selected_store_id.as_ref() {
+            let store = storage_context.bundle.get(store_id);
             if let Some(store) = store {
                 match store.store_kind() {
                     StoreKind::Recording => {
                         self.store_kind = StoreKind::Recording;
-                        self.selected_recording_id = Some(selected_store_id.clone());
+                        self.selected_recording_id = Some(store_id.clone());
                     }
                     StoreKind::Blueprint => {
                         self.store_kind = StoreKind::Blueprint;
-                        self.selected_blueprint_id = Some(selected_store_id.clone());
+                        self.selected_blueprint_id = Some(store_id.clone());
                     }
                 }
 
                 self.sync_focused_chunk(store.storage_engine().store(), selected_chunk);
-                Some(store.storage_engine())
+                StorageState::Found(store.storage_engine())
+            } else if let Some(ChunkStoreBrowserTarget::Remote(uri)) = target {
+                re_log::debug!("loading remote target data source {uri:#?}");
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    re_data_source::LogDataSource::RedapDatasetSegment {
+                        uri: uri.clone(),
+                        open_behavior: re_data_source::RecordingOpenBehavior::Open,
+                    },
+                ));
+                StorageState::Loading
             } else {
                 re_log::debug_warn_once!(
-                    "Selected recording not found in storage context: {selected_store_id:?}. \
-                        This can happen if the recording was removed from the storage context, or if the chunk browser state got out of sync with the navigation route."
+                    "Selected recording not found in storage context: {store_id:?}. \
+                This can happen if the recording was removed from the storage context, or if the chunk browser state got out of sync with the navigation route."
                 );
                 self.focused_chunk = None;
-                None
+                StorageState::NotFound
             }
         } else {
-            None
+            StorageState::NotFound
         };
 
         egui::Frame {
@@ -233,7 +251,14 @@ impl DatastoreUi {
             ..Default::default()
         }
         .show(ui, |ui| {
-            let chunk_store = storage_engine.as_ref().map(|engine| engine.store());
+            let chunk_store = match &storage_engine {
+                StorageState::Loading => {
+                    ui.loading_screen("", "", None, None);
+                    return;
+                }
+                StorageState::NotFound => None,
+                StorageState::Found(s) => Some(s.store()),
+            };
 
             let should_close_datastore_ui = if let (Some(chunk_store), Some(focused_chunk)) =
                 (chunk_store, self.focused_chunk.as_mut())
@@ -282,11 +307,22 @@ impl DatastoreUi {
                 .map(|chunk_ui| chunk_ui.chunk_id());
 
             // New store/chunk selections are persisted as a new route.
-            if new_selected_store_id.as_ref() != selected_store_id
+            if new_selected_store_id.as_ref() != selected_store_id.as_ref()
                 || new_focused_chunk.as_ref() != selected_chunk
             {
+                let target = new_selected_store_id
+                    .as_ref()
+                    .and_then(|id| storage_context.bundle.get(id))
+                    .and_then(|db| db.primary_data_source())
+                    .and_then(|d| d.redap_uri())
+                    .and_then(|uri| match uri {
+                        RedapUri::Dataset(uri) => Some(ChunkStoreBrowserTarget::Remote(uri)),
+                        _ => None,
+                    })
+                    .or_else(|| new_selected_store_id.map(ChunkStoreBrowserTarget::Local));
+
                 command_sender.send_system(SystemCommand::SetRoute(Route::ChunkStoreBrowser {
-                    store_id: new_selected_store_id,
+                    target,
                     selected_chunk: new_focused_chunk,
                     // Preserve return route for when closing.
                     return_route: Box::new(return_route.clone()),

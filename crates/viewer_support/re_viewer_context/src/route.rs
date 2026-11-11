@@ -1,9 +1,8 @@
 use re_chunk::ChunkId;
 use re_log_types::TableId;
 use re_log_types::{ApplicationId, EntryId, StoreId};
-use re_uri::RedapUri;
 
-use crate::viewer_url::{ChunkStoreBrowserTarget, ViewerUrl};
+use crate::viewer_url::ChunkStoreBrowserTarget;
 use crate::{Item, RedapEntryKind, TableReference, viewer_url::EXAMPLES_ORIGIN};
 
 /// What a redap entry is, and for a dataset which of its resources we show.

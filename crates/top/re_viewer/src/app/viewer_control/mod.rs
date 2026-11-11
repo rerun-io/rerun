@@ -860,9 +860,11 @@ impl AppCore {
             // Nothing but this API names a local table, so it gets no sharable URL.
             Route::LocalTable(table_id) => ViewerUrl::LocalTable(table_id.clone()),
             Route::ChunkStoreBrowser {
-                store_id: Some(store_id),
+                target: Some(target),
                 ..
-            } if store_id.kind() != StoreKind::Recording => {
+            } if let Some(store_id) = target.store_id()
+                && store_id.kind() != StoreKind::Recording =>
+            {
                 // A chunk store browser URL can only name a recording.
                 return Err(ViewerControlError::failed_precondition(
                     "The chunk store browser shows a blueprint, which has no URL",
@@ -900,13 +902,17 @@ impl AppCore {
             return Ok(None);
         };
         match &mut route {
-            Route::LocalRecording { recording_id }
-            | Route::ChunkStoreBrowser {
-                store_id: Some(recording_id),
-                ..
-            } => {
+            Route::LocalRecording { recording_id } => {
                 if store_hub.entity_db(recording_id).is_none() {
                     return Err(not_loaded(recording_id));
+                }
+            }
+            Route::ChunkStoreBrowser {
+                target: Some(target),
+                ..
+            } if let Some(store_id) = target.store_id() => {
+                if store_hub.entity_db(&store_id).is_none() {
+                    return Err(not_loaded(&store_id));
                 }
             }
             Route::RedapServer(origin) | Route::RedapFolder { origin, .. } => {
@@ -940,7 +946,7 @@ impl AppCore {
                     )));
                 }
             }
-            Route::Settings { .. } | Route::ChunkStoreBrowser { store_id: None, .. } => {}
+            Route::Settings { .. } | Route::ChunkStoreBrowser { .. } => {}
             Route::Loading(_) => return Ok(None),
         }
 
