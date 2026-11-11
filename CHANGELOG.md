@@ -5,7 +5,7 @@
 ### 🔎 Details
 
 #### 🪳 Bug fixes
-- Accept snake_case web viewer options again [92896c4](https://github.com/rerun-io/rerun/commit/92896c45dd23f9670a722eda65b0e7488cf20f04)
+- Backwards compatibility fix: Accept `snake_case` web viewer options again [92896c4](https://github.com/rerun-io/rerun/commit/92896c45dd23f9670a722eda65b0e7488cf20f04)
 
 
 ## [0.43.0](https://github.com/rerun-io/rerun/compare/0.42.0...0.43.0) - 2026-11-11
