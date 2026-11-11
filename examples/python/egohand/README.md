@@ -26,7 +26,7 @@ The video above is 30 s of a [Gen-HumanEgo](https://huggingface.co/datasets/genr
 Left: the fisheye frame with boxes and 2D joints.
 Right: 3D joints and SOMA hand meshes in the camera frame.
 Both hands are found on all 900 frames.
-The CLI takes a pinhole camera, so this run gives it the lens's focal length and centre without the double-sphere distortion: the 3D placement is an approximation. Steps 1 and 3 below show the real double-sphere lens.
+The CLI takes a pinhole camera, so this run gives it the lens's focal length and center without the double-sphere distortion: the 3D placement is an approximation. Steps 1 and 3 below show the real double-sphere lens.
 
 The same 900 frames, one at a time, with detection on every frame and full meshes (decode not timed), on an NVIDIA DGX Spark (GB10):
 
