@@ -94,7 +94,7 @@ A virtual pinhole camera turns toward each hand and samples the frame through th
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/egohand_walk_3_crops/6669a2d2e6ee2d878fb9e41f3c64c6ea695276ad/1200w.webp">
 </picture>
 
-### 4. DINOv3 features
+### 4. Backbone features
 
 [DINOv3](https://arxiv.org/abs/2508.10104) ViT-H+/16 turns each crop into 256 tokens through 32 blocks.
 
