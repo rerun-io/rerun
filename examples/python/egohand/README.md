@@ -5,7 +5,7 @@ tags = ["2D", "3D", "Egocentric", "Human mesh", "Keypoint detection", "Hugging F
 source = "https://github.com/rerun-io/examples-monorepo/tree/main/packages/posekit"
 thumbnail = "https://static.rerun.io/egohand_thumbnail_768x576/a8e0f1124229fe08965ddd318366b47abae2fb56/full.png"
 thumbnail_dimensions = [768, 576]
-rrd_url = "https://huggingface.co/datasets/pablovela5620/egohand-rerun-example/resolve/main/egohand-gen-humanego-segment.rrd"
+preview_rrd_url = "https://huggingface.co/datasets/pablovela5620/egohand-rerun-example/resolve/main/egohand-gen-humanego-segment.rrd"
 -->
 
 [![Open in Hugging Face Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-md.svg)](https://pablovela5620-egohand-rerun.hf.space)
