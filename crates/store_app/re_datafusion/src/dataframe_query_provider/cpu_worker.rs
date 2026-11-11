@@ -300,7 +300,6 @@ impl Drop for CurrentStores {
     }
 }
 
-// TODO(#10781) - support for sending intermediate results/chunks
 #[instrument(level = "info", skip_all)]
 pub(super) async fn chunk_store_cpu_worker_thread(
     origin: re_uri::Origin,

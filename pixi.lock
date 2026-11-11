@@ -4,27 +4,27 @@ platforms:
   subdir: linux-64
   virtual-packages:
   - __glibc=2.28
-  - __unix=0=0
+  - __unix=0
   - __linux=4.18
   - __archspec=0=x86_64
 - name: linux-aarch64-glibc-2-28
   subdir: linux-aarch64
   virtual-packages:
   - __glibc=2.28
-  - __unix=0=0
+  - __unix=0
   - __linux=4.18
   - __archspec=0=aarch64
 - name: osx-64-macos-11
   subdir: osx-64
   virtual-packages:
   - __osx=11.0
-  - __unix=0=0
+  - __unix=0
   - __archspec=0=x86_64
 - name: osx-arm64-macos-11
   subdir: osx-arm64
   virtual-packages:
   - __osx=11.0
-  - __unix=0=0
+  - __unix=0
   - __archspec=0=m1
 - name: win-64
   virtual-packages:
@@ -181,7 +181,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-openmp-22.1.8-h4922eb0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19-19.1.7-h48f18f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19.1.7-h84d6215_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/lychee-0.23.0-he64ecbb_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/lychee-0.24.2-h39d0f39_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.10.0-h5888daf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.3-py311h3778330_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
@@ -489,7 +489,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxml2-2.13.9-he58860d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libzlib-1.3.2-hdc9db2a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/llvm-openmp-22.1.8-he40846f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lychee-0.23.0-hb434046_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lychee-0.24.2-h4cb7313_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lz4-c-1.10.0-h5ad3122_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.3-py311h2dad8b0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mpg123-1.32.9-h65af167_0.conda
@@ -812,7 +812,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-openmp-22.1.8-h0d3cbff_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-tools-19-19.1.7-h879f4bc_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-tools-19.1.7-hb0207f0_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/lychee-0.23.0-h651e3a3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/lychee-0.24.2-hee1dffb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.3-py311ha8ae342_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
@@ -1065,7 +1065,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-openmp-22.1.8-hc7d1edf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-tools-19-19.1.7-h91fd4e7_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-tools-19.1.7-h855ad52_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lychee-0.23.0-h17e24d4_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lychee-0.24.2-h9d00c72_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/markupsafe-3.0.3-py311hc290fe0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
@@ -1282,7 +1282,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/libxml2-2.15.3-h8ef44ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libzlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/llvm-tools-19.1.7-h752b59f_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/lychee-0.23.0-hb3eb754_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/lychee-0.24.2-h2852063_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libgfortran-5.3.0-6.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libs-5.3.0-7.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libs-core-5.3.0-7.tar.bz2
@@ -1558,7 +1558,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-openmp-22.1.8-h4922eb0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19-19.1.7-h48f18f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19.1.7-h84d6215_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/lychee-0.23.0-he64ecbb_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/lychee-0.24.2-h39d0f39_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.10.0-h5888daf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.3-py311h3778330_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
@@ -1880,7 +1880,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxml2-2.13.9-he58860d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libzlib-1.3.2-hdc9db2a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/llvm-openmp-22.1.8-he40846f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lychee-0.23.0-hb434046_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lychee-0.24.2-h4cb7313_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lz4-c-1.10.0-h5ad3122_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.3-py311h2dad8b0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mpg123-1.32.9-h65af167_0.conda
@@ -2216,7 +2216,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-openmp-22.1.8-h0d3cbff_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-tools-19-19.1.7-h879f4bc_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-tools-19.1.7-hb0207f0_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/lychee-0.23.0-h651e3a3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/lychee-0.24.2-hee1dffb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.3-py311ha8ae342_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
@@ -2481,7 +2481,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-openmp-22.1.8-hc7d1edf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-tools-19-19.1.7-h91fd4e7_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-tools-19.1.7-h855ad52_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lychee-0.23.0-h17e24d4_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lychee-0.24.2-h9d00c72_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/markupsafe-3.0.3-py311hc290fe0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
@@ -2701,7 +2701,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/libxml2-2.15.3-h8ef44ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libzlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/llvm-tools-19.1.7-h752b59f_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/lychee-0.23.0-hb3eb754_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/lychee-0.24.2-h2852063_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libgfortran-5.3.0-6.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libs-5.3.0-7.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libs-core-5.3.0-7.tar.bz2
@@ -2969,7 +2969,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-openmp-22.1.8-h4922eb0_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19-19.1.7-h48f18f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/llvm-tools-19.1.7-h84d6215_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/lychee-0.23.0-he64ecbb_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/lychee-0.24.2-h39d0f39_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.10.0-h5888daf_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.3-py311h3778330_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/meilisearch-1.5.1-he8a937b_0.conda
@@ -3276,7 +3276,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libxml2-2.13.9-he58860d_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/libzlib-1.3.2-hdc9db2a_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/llvm-openmp-22.1.8-he40846f_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lychee-0.23.0-hb434046_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lychee-0.24.2-h4cb7313_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lz4-c-1.10.0-h5ad3122_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/markupsafe-3.0.3-py311h2dad8b0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/mpg123-1.32.9-h65af167_0.conda
@@ -3598,7 +3598,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-openmp-22.1.8-h0d3cbff_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-tools-19-19.1.7-h879f4bc_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/llvm-tools-19.1.7-hb0207f0_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-64/lychee-0.23.0-h651e3a3_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-64/lychee-0.24.2-hee1dffb_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.3-py311ha8ae342_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/mypy-1.14.1-py311h4d7f069_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-64/nasm-2.16.03-hfdf4475_1.conda
@@ -3850,7 +3850,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-openmp-22.1.8-hc7d1edf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-tools-19-19.1.7-h91fd4e7_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/llvm-tools-19.1.7-h855ad52_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lychee-0.23.0-h17e24d4_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/lychee-0.24.2-h9d00c72_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/markupsafe-3.0.3-py311hc290fe0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/meilisearch-1.5.1-h5ef7bb8_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/mypy-1.14.1-py311h917b07b_0.conda
@@ -4066,7 +4066,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/libxml2-2.15.3-h8ef44ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/libzlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/llvm-tools-19.1.7-h752b59f_2.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/lychee-0.23.0-hb3eb754_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/lychee-0.24.2-h2852063_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libgfortran-5.3.0-6.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libs-5.3.0-7.tar.bz2
       - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libs-core-5.3.0-7.tar.bz2
@@ -6647,20 +6647,19 @@ packages:
   run_exports: {}
   size: 87437
   timestamp: 1737789700225
-- conda: https://conda.anaconda.org/conda-forge/linux-64/lychee-0.23.0-he64ecbb_0.conda
-  sha256: 0b1bc4b4a8fde5bf474f5b63c64fe356b3f47034f1d485fedd630b2d17de8fb5
-  md5: d89182800d61d9e4922f4f338cd28362
+- conda: https://conda.anaconda.org/conda-forge/linux-64/lychee-0.24.2-h39d0f39_1.conda
+  sha256: 59a5afe396a93269ddc4b67262412f0cb707d1294393944d461b2f29164ab5dc
+  md5: 81747139d7e9fba97af275d1c8f7fe0a
   depends:
+  - libgcc >=15
   - __glibc >=2.17,<3.0.a0
-  - libgcc >=14
-  - openssl >=3.5.5,<4.0a0
   constrains:
   - __glibc >=2.17
   license: Apache-2.0 OR MIT
   purls: []
   run_exports: {}
-  size: 5582609
-  timestamp: 1771270353931
+  size: 5760830
+  timestamp: 1791278254472
 - conda: https://conda.anaconda.org/conda-forge/linux-64/lz4-c-1.10.0-h5888daf_1.conda
   sha256: 47326f811392a5fd3055f0f773036c392d26fdb32e4d8e7a8197eed951489346
   md5: 9de5350a85c4a20c685259b889aa6393
@@ -9855,19 +9854,18 @@ packages:
     - _openmp_mutex * *_llvm
   size: 5888931
   timestamp: 1781736538044
-- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lychee-0.23.0-hb434046_0.conda
-  sha256: 82ac7b7b6d1e9e8c929ac21993a0e036bfd4ee2d3db54913d4635476067901eb
-  md5: 347b587a5e72646fefa74431216c1c4a
+- conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lychee-0.24.2-h4cb7313_1.conda
+  sha256: 3cf22df071c6f5e7e7353c7bacf4293913346d7cd56ef8acd3266bc3bbc739a0
+  md5: 62501bd137a9090dc18b893003c553b9
   depends:
-  - libgcc >=14
-  - openssl >=3.5.5,<4.0a0
+  - libgcc >=15
   constrains:
   - __glibc >=2.17
   license: Apache-2.0 OR MIT
   purls: []
   run_exports: {}
-  size: 5422618
-  timestamp: 1771270379661
+  size: 5665866
+  timestamp: 1791278246500
 - conda: https://conda.anaconda.org/conda-forge/linux-aarch64/lz4-c-1.10.0-h5ad3122_1.conda
   sha256: 67e55058d275beea76c1882399640c37b5be8be4eb39354c94b610928e9a0573
   md5: 6654e411da94011e8fbe004eacb8fe11
@@ -11335,7 +11333,7 @@ packages:
   license: MIT
   license_family: MIT
   purls:
-  - pkg:pypi/pip?source=compressed-mapping
+  - pkg:pypi/pip?source=hash-mapping
   run_exports: {}
   size: 1201888
   timestamp: 1792524308470
@@ -13388,19 +13386,18 @@ packages:
   run_exports: {}
   size: 87962
   timestamp: 1757355027273
-- conda: https://conda.anaconda.org/conda-forge/osx-64/lychee-0.23.0-h651e3a3_0.conda
-  sha256: 8037f7a2f536c5ded9353054377dd4f386a6cd52ee0fdfbd7e47911d63a8dc60
-  md5: beea0174c7b90d94f2b5a7813faa7b64
+- conda: https://conda.anaconda.org/conda-forge/osx-64/lychee-0.24.2-hee1dffb_1.conda
+  sha256: 8427cc83e0255c49f3cf2f9c12f0c563a38831b68d14bc83f8ab00fa54a761b9
+  md5: 2118262e49b71b73e6cac46451b285e9
   depends:
   - __osx >=11.0
-  - openssl >=3.5.5,<4.0a0
   constrains:
-  - __osx >=10.13
+  - __osx >=11.0
   license: Apache-2.0 OR MIT
   purls: []
   run_exports: {}
-  size: 5527018
-  timestamp: 1771270370972
+  size: 5706238
+  timestamp: 1791278314328
 - conda: https://conda.anaconda.org/conda-forge/osx-64/markupsafe-3.0.3-py311ha8ae342_1.conda
   sha256: 8702d79aa3f5622d8ede5d5cc94faf135deab77b5caf95401f25f25179b22607
   md5: e14b7beea23c9e28b6500c24f5093d62
@@ -15774,19 +15771,18 @@ packages:
   run_exports: {}
   size: 88390
   timestamp: 1757353535760
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/lychee-0.23.0-h17e24d4_0.conda
-  sha256: 412ccd60e68618a3ee449f6bd4152acdf249e62073e4dfa2e7c8d405fc62b1b0
-  md5: 7fa0025f406d5cf3f1100f3a90156547
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/lychee-0.24.2-h9d00c72_1.conda
+  sha256: 9c35bbfe243d26c07a21375cfb863f376991e4dd6de3d6bfb147569c60d65cf0
+  md5: 1ec074eabe183deb5a7e65fb9e776c3e
   depends:
   - __osx >=11.0
-  - openssl >=3.5.5,<4.0a0
   constrains:
   - __osx >=11.0
   license: Apache-2.0 OR MIT
   purls: []
   run_exports: {}
-  size: 5174311
-  timestamp: 1771270398758
+  size: 5351911
+  timestamp: 1791278249049
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/markupsafe-3.0.3-py311hc290fe0_1.conda
   sha256: d635f2b1d9e19e8e68c5d33150f7e4f62df08ef2ef0e85977f743e81939afc01
   md5: ff068874356bbc7f9bd2d793f809f44b
@@ -17628,19 +17624,18 @@ packages:
   run_exports: {}
   size: 397402701
   timestamp: 1757353585626
-- conda: https://conda.anaconda.org/conda-forge/win-64/lychee-0.23.0-hb3eb754_0.conda
-  sha256: 28ee5a30bea795d00df2151fa000f32c16a605e6e5743600f674cd2234864f67
-  md5: cbe8bd414d963d87749cfd47659d55c4
+- conda: https://conda.anaconda.org/conda-forge/win-64/lychee-0.24.2-h2852063_1.conda
+  sha256: 7cafeaed67f6e332de332df7fd66a0dd2a8934d93eaf57d8d3fefffce88386be
+  md5: c1d73ce0e10f096cd074afd28cac829d
   depends:
   - vc >=14.3,<15
   - vc14_runtime >=14.44.35208
   - ucrt >=10.0.20348.0
-  - openssl >=3.5.5,<4.0a0
   license: Apache-2.0 OR MIT
   purls: []
   run_exports: {}
-  size: 5763830
-  timestamp: 1771270396939
+  size: 5943559
+  timestamp: 1791278233574
 - conda: https://conda.anaconda.org/conda-forge/win-64/m2w64-gcc-libgfortran-5.3.0-6.tar.bz2
   sha256: 9de95a7996d5366ae0808eef2acbc63f9b11b874aa42375f55379e6715845dc6
   md5: 066552ac6b907ec6d72c0ddab29050dc

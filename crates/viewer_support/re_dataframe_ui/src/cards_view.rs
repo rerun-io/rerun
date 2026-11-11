@@ -262,7 +262,6 @@ fn card_content_ui(
             );
         });
 
-        // TODO(RR-4510): loading indication if we're not ready to draw
         for renderer in view_renderers {
             let (rect, _response) = ui.allocate_exact_size(
                 egui::vec2(ui.available_width(), PREVIEW_HEIGHT),

@@ -563,7 +563,6 @@ fn resolve_parent_frame(
 /// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.
 ///
 /// Gives precedence to the `Pinhole` archetype.
-// TODO(#2663): This is confusing and should be cleaned up.
 pub fn query_view_coordinates(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
