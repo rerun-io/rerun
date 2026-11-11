@@ -43,18 +43,20 @@ pub fn setup_ui(
     egui::ScrollArea::vertical()
         .auto_shrink(false)
         .show(ui, |ui| {
-            egui::Frame::new().inner_margin(12).show(ui, |ui| {
-                next_screen = cfg_select! {
-                    agent_harness_backend => setup_ui_inner(
-                        ui,
-                        settings,
-                        agents,
-                        available_model_apis,
-                        agent_harness::agent_choice_ui,
-                    ),
-                    _ => setup_ui_inner(ui, settings, agents, available_model_apis, web_choice_ui),
-                };
-            });
+            egui::Frame::new()
+                .inner_margin(ui.tokens().view_padding())
+                .show(ui, |ui| {
+                    next_screen = cfg_select! {
+                        agent_harness_backend => setup_ui_inner(
+                            ui,
+                            settings,
+                            agents,
+                            available_model_apis,
+                            agent_harness::agent_choice_ui,
+                        ),
+                        _ => setup_ui_inner(ui, settings, agents, available_model_apis, web_choice_ui),
+                    };
+                });
         });
 
     next_screen
@@ -360,13 +362,15 @@ mod tests {
         )
         .build_ui_state(
             |ui, (settings, key): &mut (AgentSettings, String)| {
-                egui::Frame::new().inner_margin(12).show(ui, |ui| {
-                    _ = setup_ui_inner(ui, settings, &mut [], &[], |ui, settings, _, _| {
-                        model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
-                            ApiKeySource::Typed(key)
+                egui::Frame::new()
+                    .inner_margin(ui.tokens().view_padding())
+                    .show(ui, |ui| {
+                        _ = setup_ui_inner(ui, settings, &mut [], &[], |ui, settings, _, _| {
+                            model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
+                                ApiKeySource::Typed(key)
+                            });
                         });
                     });
-                });
             },
             (AgentSettings::default(), String::new()),
         );

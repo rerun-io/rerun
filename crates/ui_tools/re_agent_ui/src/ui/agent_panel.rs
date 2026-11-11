@@ -730,7 +730,7 @@ impl AgentPanel {
             .frame(
                 egui::Frame::new()
                     .fill(tokens.tab_bar_color)
-                    .inner_margin(egui::Margin::symmetric(8, 0)),
+                    .inner_margin(egui::Margin::symmetric(tokens.view_padding(), 0)),
             )
             .show(ui, |ui| {
                 let (left, right) = egui::containers::Sides::new()
