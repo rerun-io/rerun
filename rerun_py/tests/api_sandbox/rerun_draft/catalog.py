@@ -204,9 +204,9 @@ class DatasetEntry(Entry):
         return self._inner.register(recording_uri, layer_name=layer_name)
 
     def register_prefix(
-        self, recordings_prefix: str, layer_name: str | None = None, *, object_store_config: str | None = None
+        self, recordings_prefix: str, layer_name: str | None = None, *, storage_location: str | None = None
     ) -> RegistrationHandle:
-        return self._inner.register_prefix(recordings_prefix, layer_name, object_store_config=object_store_config)
+        return self._inner.register_prefix(recordings_prefix, layer_name, storage_location=storage_location)
 
     def reader(
         self,

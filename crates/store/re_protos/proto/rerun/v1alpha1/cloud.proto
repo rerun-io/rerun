@@ -607,7 +607,7 @@ enum UrlSigning {
 
 // Selects a cloud location for an object.
 //
-// TODO(grtlr): Define provider, region, and network constraints.
+// TODO(RR-6055): Define provider, region, and network constraints.
 message Location {}
 
 // Authorization to create one object.
@@ -760,9 +760,11 @@ message DataSource {
   reserved 5;
   reserved "layer_class";
 
-  // Use a specific object store configuration for this registration.
-  // Inferred from the URL if not specified.
-  optional string object_store_config = 6;
+  // Deprecated name of storage_location. If both are set, their values must match.
+  optional string object_store_config = 6 [deprecated = true];
+
+  // Selects a configured storage location by its alias.
+  optional string storage_location = 7;
 }
 
 // What format the data behind a `DataSource` is stored in.

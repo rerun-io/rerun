@@ -343,7 +343,7 @@ impl ::prost::Name for GetWriteAccessGrantRequest {
 }
 /// Selects a cloud location for an object.
 ///
-/// TODO(grtlr): Define provider, region, and network constraints.
+/// TODO(RR-6055): Define provider, region, and network constraints.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct Location {}
 impl ::prost::Name for Location {
@@ -640,10 +640,13 @@ pub struct DataSource {
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
-    /// Use a specific object store configuration for this registration.
-    /// Inferred from the URL if not specified.
+    /// Deprecated name of storage_location. If both are set, their values must match.
+    #[deprecated]
     #[prost(string, optional, tag = "6")]
     pub object_store_config: ::core::option::Option<::prost::alloc::string::String>,
+    /// Selects a configured storage location by its alias.
+    #[prost(string, optional, tag = "7")]
+    pub storage_location: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";

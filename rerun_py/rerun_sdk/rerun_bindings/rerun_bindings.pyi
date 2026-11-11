@@ -1143,7 +1143,7 @@ class DatasetEntryInternal:
         recording_layers: list[str],
         on_duplicate: str,
         *,
-        object_store_config: str | None = None,
+        storage_location: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def register_prefix(
         self,
@@ -1151,7 +1151,7 @@ class DatasetEntryInternal:
         layer_name: str,
         on_duplicate: str,
         *,
-        object_store_config: str | None = None,
+        storage_location: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def unregister(
         self,
