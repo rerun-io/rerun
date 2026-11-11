@@ -24,6 +24,8 @@ pub use ::re_arrow_util::{FieldsTestExt, RecordBatchTestExt, SchemaTestExt};
 
 pub use self::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt, entry_name, register_and_wait,
+    retry_while_revision_behind, task_dataset_revisions, wait_for_dataset_revision,
+    wait_for_task_revisions,
 };
 pub use self::tests::*;
 pub use self::utils::path::TempPath;

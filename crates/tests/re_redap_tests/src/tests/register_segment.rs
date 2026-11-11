@@ -1456,6 +1456,8 @@ async fn register_and_wait_for_task_result(
         })
         .collect();
 
+    super::common::wait_for_task_revisions(service, &query_results).await;
+
     // Build TaskResult for each task
     let mut results = Vec::new();
     for batch in &query_results {
