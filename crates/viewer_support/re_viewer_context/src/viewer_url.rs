@@ -4,9 +4,8 @@ use re_chunk::ChunkId;
 use re_data_source::LogDataSource;
 use re_log_channel::{LogSource, RecordingOpenBehavior};
 use re_log_types::{ApplicationId, StoreId, TableId};
-use re_sdk_types::SegmentId;
 use re_uri::external::url::{self, Url};
-use re_uri::{DatasetResource, DatasetUri, RedapUri, Scheme};
+use re_uri::{DatasetUri, Scheme};
 use vec1::{Vec1, vec1};
 
 use crate::{
@@ -130,6 +129,13 @@ pub enum ChunkStoreBrowserTarget {
 }
 
 impl ChunkStoreBrowserTarget {
+    pub fn store_id(&self) -> Option<StoreId> {
+        match self {
+            ChunkStoreBrowserTarget::Local(store_id) => Some(store_id.clone()),
+            ChunkStoreBrowserTarget::Remote(dataset_uri) => dataset_uri.store_id(),
+        }
+    }
+
     pub fn application_id(&self) -> Option<ApplicationId> {
         Some(match self {
             ChunkStoreBrowserTarget::Local(store_id) => store_id.application_id().clone(),
@@ -1166,7 +1172,8 @@ mod tests {
     };
 
     use super::{
-        CHUNK_STORE_BROWSER_URL, LOCAL_RECORDING_URL, LOCAL_TABLE_URL, OpenUrlOptions, ViewerUrl,
+        CHUNK_STORE_BROWSER_URL, ChunkStoreBrowserTarget, LOCAL_RECORDING_URL, LOCAL_TABLE_URL,
+        OpenUrlOptions, ViewerUrl,
     };
     use crate::{Item, Route, StoreHub, SystemCommand, command_channel};
 
@@ -1272,13 +1279,12 @@ mod tests {
             );
             assert_eq!(
                 ViewerUrl::from_str(&format!(
-                    "{CHUNK_STORE_BROWSER_URL}?app_id={}&recording_id={}&chunk={chunk_id}",
-                    recording_id.application_id(),
-                    recording_id.recording_id(),
+                    "{CHUNK_STORE_BROWSER_URL}?store_id={}&chunk={chunk_id}",
+                    recording_id,
                 ))
                 .unwrap(),
                 ViewerUrl::ChunkStoreBrowser {
-                    target: Some(recording_id),
+                    target: Some(ChunkStoreBrowserTarget::Local(recording_id)),
                     selected_chunk: Some(chunk_id),
                 }
             );
@@ -1553,14 +1559,14 @@ mod tests {
             ViewerUrl::from_route(
                 &store_hub,
                 &Route::ChunkStoreBrowser {
-                    store_id: Some(StoreId::empty_recording()),
+                    target: Some(ChunkStoreBrowserTarget::Local(StoreId::empty_recording())),
                     selected_chunk: None,
                     return_route: Box::new(dummy_mode),
                 }
             )
             .unwrap(),
             ViewerUrl::ChunkStoreBrowser {
-                recording_id: Some(StoreId::empty_recording()),
+                target: Some(ChunkStoreBrowserTarget::Local(StoreId::empty_recording())),
                 selected_chunk: None,
             }
         );
@@ -1766,13 +1772,13 @@ mod tests {
         let chunk_id = ChunkId::new();
         assert_eq!(
             ViewerUrl::ChunkStoreBrowser {
-                recording_id: Some(recording_id),
+                target: Some(ChunkStoreBrowserTarget::Local(recording_id)),
                 selected_chunk: Some(chunk_id),
             }
             .sharable_url(None)
             .unwrap(),
             format!(
-                "{CHUNK_STORE_BROWSER_URL}?app_id=test_app&recording_id=test_recording&chunk={chunk_id}"
+                "{CHUNK_STORE_BROWSER_URL}?store_id=Recording%3Atest_app%3Atest_recording&chunk={chunk_id}"
             )
         );
 
