@@ -227,6 +227,10 @@ impl DatastoreUi {
                 StorageState::Found(store.storage_engine())
             } else if let Some(ChunkStoreBrowserTarget::Remote(uri)) = target {
                 re_log::debug!("loading remote target data source {uri:#?}");
+
+                self.store_kind = StoreKind::Recording;
+                self.selected_recording_id = Some(store_id.clone());
+
                 command_sender.send_system(SystemCommand::LoadDataSource(
                     re_data_source::LogDataSource::RedapDatasetSegment {
                         uri: uri.clone(),
