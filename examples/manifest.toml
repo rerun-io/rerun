@@ -15,6 +15,7 @@ Examples related to spatial computing, augmented reality, virtual reality, and m
 examples = [
   # display order, most interesting first
   "arkit_scenes",
+  "egohand",
   "limap",
   "objectron",
   "simplerecon",
