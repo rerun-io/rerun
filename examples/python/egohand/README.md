@@ -183,8 +183,12 @@ pixi run --frozen -e posekit-hands posekit-video-hands --video-path assets/examp
 ```
 
 The first run installs the environment and downloads the model weights.
-It opens the Rerun viewer on a 6 s Gen-HumanEgo clip.
-To run your own video, change `--video-path`.
+It opens the Rerun viewer on a 6 s Gen-HumanEgo clip, already remapped from the fisheye into a 65° pinhole view, so the default intrinsics are exact.
+To run your own video, change `--video-path`, and pass `--fx/--fy/--cx/--cy` (or `--hfov-deg`): the 3D placement depends on them.
+
+This runs the reference stack, which works on any supported GPU.
+For the fast path in the table above, replace `egohand onnx egohand` with `egohand-fast tensorrt egohand-fast` on a Blackwell GPU, or with `egohand-fast-bf16 tensorrt egohand-fast-bf16` on older GPUs.
+The first fast run builds its TensorRT engines, which takes a few minutes.
 
 ## Papers and credits
 
