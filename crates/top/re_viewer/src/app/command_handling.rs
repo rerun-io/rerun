@@ -6,7 +6,7 @@ use re_log_types::{ApplicationId, RecordingId, StoreId, StoreKind};
 use re_sdk_types::blueprint::components::PlayState;
 use re_ui::UICommand;
 use re_viewer_context::RecordingCommand;
-use re_viewer_context::viewer_url::{OpenUrlOptions, ViewerUrl};
+use re_viewer_context::viewer_url::{ChunkStoreBrowserTarget, OpenUrlOptions, ViewerUrl};
 use re_viewer_context::{
     ActiveStoreContext, AppBlueprintCtx, NeedsRepaint, RedapServerCommandKind, Route,
     StorageContext, StoreHub, SystemCommand, TableCommand, TableCommandKind,
@@ -371,12 +371,12 @@ impl AppCore {
             }
 
             SystemCommand::OpenChunkStoreBrowser {
-                store_id,
+                target,
                 selected_chunk,
             } => {
                 let browser = Route::chunk_store_browser(
                     self.state.navigation.current(),
-                    store_id,
+                    target,
                     selected_chunk,
                 );
                 self.state.navigation.replace(browser);

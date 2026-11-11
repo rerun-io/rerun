@@ -12185,6 +12185,7 @@ dependencies = [
  "re_string_interner",
  "re_tf",
  "re_tracing",
+ "re_tuid",
  "re_types_core",
  "re_ui",
  "re_uri",

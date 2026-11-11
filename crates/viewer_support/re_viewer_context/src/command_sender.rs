@@ -1,5 +1,6 @@
 use std::panic::Location;
 
+use crate::viewer_url::ChunkStoreBrowserTarget;
 use crate::{
     BoundCommand, RecordingCommand, RecordingCommandSender, RedapServerCommand, TableCommand,
 };
@@ -92,7 +93,7 @@ pub enum SystemCommand {
 
     /// Activates the chunk store route.
     OpenChunkStoreBrowser {
-        store_id: Option<StoreId>,
+        target: Option<ChunkStoreBrowserTarget>,
         selected_chunk: Option<ChunkId>,
     },
 

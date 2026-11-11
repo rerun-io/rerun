@@ -1,7 +1,9 @@
 use re_chunk::ChunkId;
 use re_log_types::TableId;
 use re_log_types::{ApplicationId, EntryId, StoreId};
+use re_uri::RedapUri;
 
+use crate::viewer_url::{ChunkStoreBrowserTarget, ViewerUrl};
 use crate::{Item, RedapEntryKind, TableReference, viewer_url::EXAMPLES_ORIGIN};
 
 /// What a redap entry is, and for a dataset which of its resources we show.
@@ -67,10 +69,7 @@ pub enum Route {
 
     /// A debug-view into the raw chunks of a store (recording or blueprint).
     ChunkStoreBrowser {
-        /// The store to browse. `None` when opened from a route that has
-        /// no active store — the chunk browser's internal picker will
-        /// let the user choose one.
-        store_id: Option<StoreId>,
+        target: Option<ChunkStoreBrowserTarget>,
         selected_chunk: Option<ChunkId>,
 
         /// What to return to when exiting this mode.
@@ -93,11 +92,11 @@ impl std::fmt::Debug for Route {
             Self::RedapFolder { origin, path } => write!(f, "RedapFolder({origin}, {path})"),
             Self::RedapServer(server) => write!(f, "RedapServer({server})"),
             Self::ChunkStoreBrowser {
-                store_id,
+                target,
                 selected_chunk,
                 ..
             } => {
-                write!(f, "ChunkStoreBrowser({store_id:?}, {selected_chunk:?})")
+                write!(f, "ChunkStoreBrowser({target:?}, {selected_chunk:?})")
             }
         }
     }
@@ -128,23 +127,23 @@ impl Route {
     /// goes, and keeps its store unless `store_id` names one.
     pub fn chunk_store_browser(
         return_route: &Self,
-        store_id: Option<StoreId>,
+        target: Option<ChunkStoreBrowserTarget>,
         selected_chunk: Option<ChunkId>,
     ) -> Self {
         match return_route {
             Self::ChunkStoreBrowser {
-                store_id: browsed_store_id,
                 selected_chunk: _,
                 return_route: browser_return_route,
+                target: _,
             } => Self::ChunkStoreBrowser {
-                store_id: store_id.or_else(|| browsed_store_id.clone()),
                 selected_chunk,
                 return_route: browser_return_route.clone(),
+                target,
             },
             _ => Self::ChunkStoreBrowser {
-                store_id,
                 selected_chunk,
                 return_route: Box::new(return_route.clone()),
+                target,
             },
         }
     }
@@ -169,9 +168,6 @@ impl Route {
     pub fn app_id(&self) -> Option<&ApplicationId> {
         match self {
             Self::LocalRecording { recording_id } => Some(recording_id.application_id()),
-            Self::ChunkStoreBrowser { store_id, .. } => {
-                store_id.as_ref().map(StoreId::application_id)
-            }
             Self::Settings { return_route } => return_route.app_id(),
             Self::RedapServer(server) => {
                 if server == &*EXAMPLES_ORIGIN {
@@ -180,7 +176,8 @@ impl Route {
                     None
                 }
             }
-            Self::Loading { .. }
+            Self::ChunkStoreBrowser { .. }
+            | Self::Loading { .. }
             | Self::LocalTable { .. }
             | Self::RedapEntry { .. }
             | Self::RedapFolder { .. } => None,
@@ -234,8 +231,13 @@ impl Route {
     pub fn item(&self) -> Option<Item> {
         match self {
             Self::LocalRecording { recording_id } => Some(Item::StoreId(recording_id.clone())),
-            Self::ChunkStoreBrowser { store_id, .. } => {
-                store_id.as_ref().map(|id| Item::StoreId(id.clone()))
+            Self::ChunkStoreBrowser { target, .. } => {
+                target.as_ref().and_then(|target| match target {
+                    ChunkStoreBrowserTarget::Local(store_id) => {
+                        Some(Item::StoreId(store_id.clone()))
+                    }
+                    ChunkStoreBrowserTarget::Remote(uri) => uri.store_id().map(Item::StoreId),
+                })
             }
             Self::LocalTable(table_id) => Some(Item::TableId(table_id.clone())),
             Self::RedapEntry {
@@ -328,16 +330,20 @@ impl Route {
         match self {
             Self::LocalRecording { recording_id }
             | Self::ChunkStoreBrowser {
-                store_id: Some(recording_id),
+                target: Some(ChunkStoreBrowserTarget::Local(recording_id)),
                 ..
             } => {
                 let db = store_hub.entity_db(recording_id)?;
                 Some(db.redap_uri()?.origin.clone())
             }
+            Self::ChunkStoreBrowser {
+                target: Some(ChunkStoreBrowserTarget::Remote(uri)),
+                ..
+            } => Some(uri.origin.clone()),
 
             Self::Settings { return_route }
             | Self::ChunkStoreBrowser {
-                store_id: None,
+                target: None,
                 return_route,
                 ..
             } => return_route.redap_origin(store_hub),
