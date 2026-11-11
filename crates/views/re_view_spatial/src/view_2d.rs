@@ -73,8 +73,12 @@ impl ViewClass for SpatialView2D {
                     .map(|pinhole| pinhole.resolution_rect())
                     .unwrap_or_else(|| {
                         // TODO(emilk): if there is a single image in this view, use that as the default bounds
-                        let scene_rect_smoothed =
-                            view_state.bounding_boxes.region_of_interest_smoothed;
+                        let scene_rect_smoothed = view_state
+                            .bounding_boxes
+                            .region_of_interest_smoothed
+                            .expanded(re_math::Vec3::splat(
+                                view_state.bounding_boxes.max_point_radius,
+                            ));
                         egui::Rect::from_min_max(
                             scene_rect_smoothed.min.truncate().to_array().into(),
                             scene_rect_smoothed.max.truncate().to_array().into(),
