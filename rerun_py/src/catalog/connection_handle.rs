@@ -63,7 +63,7 @@ impl PyConnectionHandle {
     }
 }
 
-// TODO(RR-6055): Pass object_store_config through both staging paths to StageOpt.
+// TODO(RR-6055): Negotiate server support before forwarding storage_location to StageOpt.
 impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn stage_file(
@@ -137,6 +137,13 @@ impl PyConnectionHandle {
                 .bandwidth_bytes_per_sec(num_bytes, rtt)
                 .await
                 .map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn get_storage_locations(&self, py: Python<'_>) -> PyResult<cloud_ext::StorageLocations> {
+        wait_for_future(py, async {
+            self.inner.get_storage_locations().await.map_err(to_py_err)
         })
     }
 

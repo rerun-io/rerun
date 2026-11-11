@@ -15,6 +15,7 @@ from rerun_bindings import (
 
 from ..error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
 from . import EntryId
+from ._location import StorageLocation, StorageLocations
 
 if TYPE_CHECKING:
     import datafusion
@@ -202,6 +203,15 @@ class CatalogClient:
     def url(self) -> str:
         """Returns the catalog URL."""
         return self._internal.url
+
+    @with_tracing("CatalogClient.get_storage_locations")
+    def _get_storage_locations(self) -> StorageLocations:
+        """List storage locations, sorted by alias."""
+        raw = self._internal.get_storage_locations()
+        return StorageLocations(
+            locations=[StorageLocation(**location) for location in raw["locations"]],
+            default_alias=raw["default_alias"],
+        )
 
     def version_info(self) -> VersionInfo:
         """
