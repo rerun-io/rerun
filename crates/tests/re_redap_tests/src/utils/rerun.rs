@@ -1141,6 +1141,71 @@ pub fn create_minimal_binary_recording_in(
     Ok(tmp_path)
 }
 
+/// Creates an RRD holding one store per application id, all with the recording id `segment_id`,
+/// and saves it to `in_dir`.
+///
+/// Each store logs a single point at the entity `/{application_id}`, so its data tells which store
+/// a manifest or chunk came from. The `SetStoreInfo`s appear in `application_ids` order, so
+/// registration reads the first store.
+///
+/// Returns the path and the store ids, in `application_ids` order.
+pub fn create_recording_with_shared_recording_id_in(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    application_ids: &[&str],
+    in_dir: &std::path::Path,
+) -> anyhow::Result<(PathBuf, Vec<re_log_types::StoreId>)> {
+    use re_chunk::Chunk;
+    use re_log_types::TimeInt;
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_sdk::external::{re_log_encoding, re_log_msg};
+
+    if !std::fs::metadata(in_dir)?.is_dir() {
+        return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
+    }
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    let mut store_ids = Vec::with_capacity(application_ids.len());
+    let mut messages = Vec::new();
+    for application_id in application_ids {
+        let store_id = re_log_types::StoreId::recording(
+            re_log_types::ApplicationId::try_new(*application_id)?,
+            segment_id,
+        );
+
+        messages.push(re_log_msg::LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
+            row_id: *next_row_id(),
+            info: re_log_msg::StoreInfo::new(store_id.clone(), re_log_msg::StoreSource::Unknown),
+        }));
+
+        let points = MyPoint::from_iter(0..1);
+        let chunk = Chunk::builder_with_id(next_chunk_id(), format!("/{application_id}"))
+            .with_sparse_component_batches(
+                next_row_id(),
+                [build_index_value(
+                    TimeInt::new_temporal(10),
+                    TimeType::Sequence,
+                )],
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()?;
+        messages.push(re_log_msg::LogMsg::ArrowMsg(
+            store_id.clone(),
+            chunk.to_arrow_msg()?,
+        ));
+
+        store_ids.push(store_id);
+    }
+
+    let bytes = re_log_encoding::Encoder::encode(messages.into_iter().map(Ok))?;
+    let path = in_dir.join(format!("{segment_id}.rrd"));
+    std::fs::write(&path, bytes)?;
+
+    Ok((path, store_ids))
+}
+
 /// Creates a recording that can be split into multiple chunks.
 ///
 /// Each entity gets three temporal chunks of three rows each, at frames `base + {10, 20, 30}`

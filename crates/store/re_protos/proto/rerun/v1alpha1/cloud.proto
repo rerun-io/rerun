@@ -793,6 +793,15 @@ message DataSource {
 
   // Selects a configured storage location by its alias.
   optional string storage_location = 7;
+
+  // The store to register out of this data source.
+  //
+  // When unset, the first store of the dataset's kind (recording or blueprint) in the source is
+  // registered.
+  // Must be unset when `prefix` is true.
+  //
+  // TODO(RR-6283): not yet implemented, returns UNIMPLEMENTED when set.
+  optional rerun.common.v1alpha1.StoreId store_id = 8;
 }
 
 // What format the data behind a `DataSource` is stored in.
@@ -1100,6 +1109,17 @@ message GetRrdManifestRequest {
   //
   // It is not guaranteed that the server will honor this.
   bool generate_direct_urls = 2;
+
+  // What this client implements, as capability names.
+  //
+  // Names follow the rules of `ServerCapabilities`. Servers ignore names they do not know.
+  // Known names:
+  //
+  // * `dataset:rrd_manifest_key:store_id` — the client picks the manifest out of a fetched
+  //   `RrdFooter` by `RrdManifestKey.store_id`, rather than by segment id.
+  //   Without it, the server sends no direct URL for a segment whose segment id is not its
+  //   store's recording id, and returns that segment's manifests in the response instead.
+  repeated string client_capabilities = 3;
 }
 
 // One part of an RRD manifest, yielded by `GetRrdManifest`.
@@ -2322,4 +2342,10 @@ message RrdManifestKey {
 
   // Presigned URL the client fetches the manifest's byte range from.
   optional string direct_url = 4;
+
+  // The store whose manifest to pick from the footer, which may hold manifests for several stores.
+  //
+  // Optional: legacy registrations leave this unset; pick the manifest whose recording id is the
+  // segment id instead.
+  optional rerun.common.v1alpha1.StoreId store_id = 5;
 }

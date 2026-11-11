@@ -3034,6 +3034,15 @@ pub struct DataSource {
     /// If `None`, the server infers the object store from `storage_url`.
     #[serde(rename = "object_store_config")]
     pub storage_location: Option<StorageLocationAlias>,
+
+    /// The store to register out of this source.
+    ///
+    /// `None` picks the first store of the dataset's kind (recording or blueprint) in the source.
+    /// Must be `None` when `is_prefix` is `true`.
+    ///
+    /// Deserializes as `None` when absent, so serialized sources that predate it still load.
+    #[serde(default)]
+    pub store_id: Option<re_log_types::StoreId>,
 }
 
 impl DataSource {
@@ -3049,6 +3058,7 @@ impl DataSource {
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
             storage_location,
+            store_id: None,
         })
     }
 
@@ -3062,6 +3072,7 @@ impl DataSource {
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
             storage_location,
+            store_id: None,
         })
     }
 
@@ -3076,6 +3087,7 @@ impl DataSource {
             layer: layer.into(),
             kind: DataSourceKind::Rrd,
             storage_location,
+            store_id: None,
         })
     }
 
@@ -3090,6 +3102,7 @@ impl DataSource {
             layer: layer.into(),
             kind: DataSourceKind::Rrd,
             storage_location,
+            store_id: None,
         })
     }
 
@@ -3103,6 +3116,7 @@ impl DataSource {
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
             storage_location,
+            store_id: None,
         }
     }
 
@@ -3116,6 +3130,7 @@ impl DataSource {
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
             storage_location,
+            store_id: None,
         }
     }
 }
@@ -3123,13 +3138,23 @@ impl DataSource {
 impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
     #[expect(deprecated, reason = "Older servers require the legacy selector field")]
     fn from(value: DataSource) -> Self {
+        let DataSource {
+            storage_url,
+            is_prefix,
+            layer,
+            kind,
+            storage_location,
+            store_id,
+        } = value;
+
         crate::cloud::v1alpha1::DataSource {
-            storage_url: Some(value.storage_url.to_string()),
-            prefix: value.is_prefix,
-            layer: Some(value.layer.into()),
-            typ: value.kind as i32,
-            storage_location: value.storage_location.clone().map(String::from),
-            object_store_config: value.storage_location.map(String::from),
+            storage_url: Some(storage_url.to_string()),
+            prefix: is_prefix,
+            layer: Some(layer.into()),
+            typ: kind as i32,
+            storage_location: storage_location.clone().map(String::from),
+            object_store_config: storage_location.map(String::from),
+            store_id: store_id.map(Into::into),
         }
     }
 }
@@ -3180,12 +3205,25 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
 
         let prefix = data_source.prefix;
 
+        let store_id = data_source
+            .store_id
+            .map(re_log_types::StoreId::try_from)
+            .transpose()?;
+        if prefix && store_id.is_some() {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "store_id",
+                "a prefix data source cannot select a store",
+            ));
+        }
+
         Ok(Self {
             storage_url,
             is_prefix: prefix,
             layer,
             kind,
             storage_location: storage_location.or(object_store_config),
+            store_id,
         })
     }
 }
@@ -3200,6 +3238,7 @@ fn datasource_layer_from_proto() {
         typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
         object_store_config: Some("custom".to_owned()),
         storage_location: None,
+        store_id: None,
     };
 
     let data_source = DataSource::try_from(proto(None)).unwrap();
@@ -3218,6 +3257,27 @@ fn datasource_layer_from_proto() {
             .as_ref()
             .map(StorageLocationAlias::as_str),
         Some("custom")
+    );
+}
+
+#[test]
+fn datasource_store_id_from_proto() {
+    let store_id = re_log_types::StoreId::recording("app", "rec");
+    let proto = |prefix: bool| crate::cloud::v1alpha1::DataSource {
+        storage_url: Some("s3://bucket/file.rrd".to_owned()),
+        prefix,
+        layer: None,
+        typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+        store_id: Some(store_id.clone().into()),
+        ..Default::default()
+    };
+
+    let data_source = DataSource::try_from(proto(false)).unwrap();
+    assert_eq!(data_source.store_id, Some(store_id.clone()));
+
+    assert!(
+        DataSource::try_from(proto(true)).is_err(),
+        "a prefix must not select a store"
     );
 }
 

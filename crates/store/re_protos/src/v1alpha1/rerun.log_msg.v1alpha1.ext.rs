@@ -332,6 +332,36 @@ impl crate::log_msg::v1alpha1::log_msg::Msg {
     }
 }
 
+impl crate::log_msg::v1alpha1::RrdFooter {
+    /// Takes the manifest that the segment layer `segment_id` reads.
+    ///
+    /// With a `store_id`, that is the manifest of `store_id`.
+    /// Without one, the layer was registered before store ids were recorded, and its segment id
+    /// is its store's recording id: takes a manifest with that recording id.
+    /// The footer lists its manifests in unspecified order, so which one is unspecified when
+    /// several stores share that recording id.
+    ///
+    /// Manifests with a missing or invalid store id never match.
+    pub fn into_segment_manifest(
+        self,
+        store_id: Option<&re_log_types::StoreId>,
+        segment_id: &re_types_core::SegmentId,
+    ) -> Option<crate::log_msg::v1alpha1::RrdManifest> {
+        self.manifests.into_iter().find(|manifest| {
+            manifest
+                .store_id
+                .clone()
+                .and_then(|manifest_store_id| {
+                    re_log_types::StoreId::try_from(manifest_store_id).ok()
+                })
+                .is_some_and(|manifest_store_id| match store_id {
+                    Some(store_id) => &manifest_store_id == store_id,
+                    None => manifest_store_id.recording_id().as_str() == segment_id.as_str(),
+                })
+        })
+    }
+}
+
 // IMPORTANT: TryFrom<crate::log_msg::v1alpha1::BlueprintActivationCommand> for
 // re_log_msg::BlueprintActivationCommand is not tricky because of the `ApplicationId` in
 // `StoreId`, so we don't implement it here.
@@ -430,5 +460,52 @@ mod tests {
             set_store_info.clone().into();
         let set_store_info2: re_log_msg::SetStoreInfo = proto_set_store_info.try_into().unwrap();
         assert_eq!(set_store_info, set_store_info2);
+    }
+
+    #[test]
+    fn rrd_footer_takes_the_segment_manifest() {
+        use re_log_types::StoreId;
+        use re_types_core::SegmentId;
+
+        let manifest = |store_id: Option<crate::common::v1alpha1::StoreId>| {
+            crate::log_msg::v1alpha1::RrdManifest {
+                store_id,
+                ..Default::default()
+            }
+        };
+        let first = StoreId::recording("first_app", "rec");
+        let second = StoreId::recording("second_app", "rec");
+        let invalid = crate::common::v1alpha1::StoreId {
+            application_id: None,
+            ..first.clone().into()
+        };
+        let footer = crate::log_msg::v1alpha1::RrdFooter {
+            manifests: vec![
+                manifest(None),
+                manifest(Some(invalid)),
+                manifest(Some(first.clone().into())),
+                manifest(Some(second.clone().into())),
+            ],
+        };
+        let selected = |store_id: Option<&StoreId>, segment_id: &str| {
+            footer
+                .clone()
+                .into_segment_manifest(store_id, &SegmentId::from(segment_id))
+                .map(|manifest| StoreId::try_from(manifest.store_id.unwrap()).unwrap())
+        };
+
+        assert_eq!(selected(Some(&first), "rec"), Some(first.clone()));
+        assert_eq!(selected(Some(&second), "rec"), Some(second.clone()));
+        assert_eq!(
+            selected(Some(&first.clone().with_application_id("third_app")), "rec"),
+            None,
+            "a store missing from the footer must not fall back to the recording id"
+        );
+        assert_eq!(
+            selected(None, "rec"),
+            Some(first.clone()),
+            "manifests without a valid store id must be skipped, then the first recording id match wins"
+        );
+        assert_eq!(selected(None, "other_rec"), None);
     }
 }

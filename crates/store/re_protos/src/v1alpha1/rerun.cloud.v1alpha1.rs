@@ -697,6 +697,15 @@ pub struct DataSource {
     /// Selects a configured storage location by its alias.
     #[prost(string, optional, tag = "7")]
     pub storage_location: ::core::option::Option<::prost::alloc::string::String>,
+    /// The store to register out of this data source.
+    ///
+    /// When unset, the first store of the dataset's kind (recording or blueprint) in the source is
+    /// registered.
+    /// Must be unset when `prefix` is true.
+    ///
+    /// TODO(RR-6283): not yet implemented, returns UNIMPLEMENTED when set.
+    #[prost(message, optional, tag = "8")]
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -1234,6 +1243,17 @@ pub struct GetRrdManifestRequest {
     /// It is not guaranteed that the server will honor this.
     #[prost(bool, tag = "2")]
     pub generate_direct_urls: bool,
+    /// What this client implements, as capability names.
+    ///
+    /// Names follow the rules of `ServerCapabilities`. Servers ignore names they do not know.
+    /// Known names:
+    ///
+    /// * `dataset:rrd_manifest_key:store_id` — the client picks the manifest out of a fetched
+    ///    `RrdFooter` by `RrdManifestKey.store_id`, rather than by segment id.
+    ///    Without it, the server sends no direct URL for a segment whose segment id is not its
+    ///    store's recording id, and returns that segment's manifests in the response instead.
+    #[prost(string, repeated, tag = "3")]
+    pub client_capabilities: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for GetRrdManifestRequest {
     const NAME: &'static str = "GetRrdManifestRequest";
@@ -3272,6 +3292,12 @@ pub struct RrdManifestKey {
     /// Presigned URL the client fetches the manifest's byte range from.
     #[prost(string, optional, tag = "4")]
     pub direct_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// The store whose manifest to pick from the footer, which may hold manifests for several stores.
+    ///
+    /// Optional: legacy registrations leave this unset; pick the manifest whose recording id is the
+    /// segment id instead.
+    #[prost(message, optional, tag = "5")]
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
 }
 impl ::prost::Name for RrdManifestKey {
     const NAME: &'static str = "RrdManifestKey";

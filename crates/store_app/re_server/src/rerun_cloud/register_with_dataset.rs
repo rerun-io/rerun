@@ -105,6 +105,7 @@ async fn validate_sources(
             layer,
             kind,
             storage_location: _,
+            store_id,
         } = source;
 
         // TODO(ab): Should some or all of these errors be returned as task error instead?
@@ -113,6 +114,13 @@ async fn validate_sources(
             return Err(tonic::Status::internal(
                 "register_with_dataset: prefix data sources should have been resolved already",
             ));
+        }
+
+        if store_id.is_some() {
+            return Err(tonic::Status::unimplemented(format!(
+                "registering a single recording from a multi-recording file is not supported yet: \
+                 leave `store_id` unset\nURL: {storage_url}"
+            )));
         }
 
         match kind {

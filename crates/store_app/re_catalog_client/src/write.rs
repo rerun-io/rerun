@@ -318,6 +318,7 @@ impl CatalogClient {
             layer,
             kind: DataSourceKind::Rrd,
             storage_location: None,
+            store_id: None,
         };
         let registration = self
             .register_with_dataset(dataset_id, vec![source], on_duplicate)
