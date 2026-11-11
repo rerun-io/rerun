@@ -15,11 +15,18 @@ It is reset to the whole slice when the dimensions shown as width or height chan
     <source src="https://static.rerun.io/ea60f9e014adbbbcbec191d62bd096cd9599a7a4_tensor_view_zoom_viewer.mp4" type="video/mp4" />
 </video>
 
+### Edit grid and volume placement and voxel size in the viewer
+
+You can now edit the translation of `GridMap`, `VoxelGridMap`, and `Volume3D` in the viewer, and adjust voxel size for `VoxelGridMap` and `Volume3D`.
+
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/81609249d07ae1aa5c7cd1cfc0f18b1c93fd959e_volume_translation_viewer.mp4" type="video/mp4" />
+</video>
+
 ## Other
 
 - **Blueprint edits are remembered per blueprint**: The native viewer now remembers your edits to a dataset's default blueprint separately from your edits to other blueprints, so switching between them keeps both sets of changes. A blueprint you haven't edited shows the version the server had when you first opened a segment of the dataset. All segments of a dataset share that blueprint. Blueprint edits saved by earlier versions of the viewer are kept.
 - **Stay on the current recording while new ones stream in**: With "Switch to newly streamed recordings" turned off in the settings, a recording that streams in from an SDK is added to the recordings panel instead of replacing the one you are looking at.
-- **Edit grid and volume placement and voxel size in the viewer**: You can now edit the translation of `GridMap`, `VoxelGridMap`, and `Volume3D` in the viewer, and adjust voxel size for `VoxelGridMap` and `Volume3D`.
 - **Experimental: read the selection over ViewerControl**: `ViewerClient.get_selection()` in Python, `WebViewer.getSelection()` in JavaScript, and the `rerun_get_selection` MCP tool report what the user has selected in the Viewer: entities and instances, components, views, containers, and recordings. `ViewerClient` is part of `rerun.experimental` and may change in future releases.
 - **`rerun.catalog.TimelineKind`**: `TimelineInfo.kind` is now a `rerun.catalog.TimelineKind` enum, which maps to and from the Arrow datatype of the timeline's index column with `kind.datatype` and `TimelineKind.from_datatype(…)`. It is a string enum, so comparisons such as `kind == "sequence"` keep working.
 - **Memory limits respect cgroup limits on Linux**: On Linux, the default memory limits and percentage limits such as `--memory-limit 50%` are now a fraction of the process's cgroup memory limit, rather than full machine memory. This is particularly useful when running inside of a container.

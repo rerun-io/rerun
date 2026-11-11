@@ -5,7 +5,7 @@
 ### ✨ Overview
 
 - [Pan and zoom](https://rerun.io/docs/changelog/changeset-0-43#pan-and-zoom-in-the-tensor-view) in the [tensor view](https://rerun.io/docs/reference/types/views/tensor_view) ([video](https://static.rerun.io/ea60f9e014adbbbcbec191d62bd096cd9599a7a4_tensor_view_zoom_viewer.mp4))
-- Edit the translation of [`GridMap`](https://rerun.io/docs/reference/types/archetypes/grid_map), [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map), and [`Volume3D`](https://rerun.io/docs/reference/types/archetypes/volume3d) in the viewer, and the voxel size of `VoxelGridMap` and `Volume3D`
+- [Edit the translation](https://rerun.io/docs/changelog/changeset-0-43#edit-grid-and-volume-placement-and-voxel-size-in-the-viewer) of [`GridMap`](https://rerun.io/docs/reference/types/archetypes/grid_map), [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map), and [`Volume3D`](https://rerun.io/docs/reference/types/archetypes/volume3d) in the viewer, and the voxel size of `VoxelGridMap` and `Volume3D` ([video](https://static.rerun.io/81609249d07ae1aa5c7cd1cfc0f18b1c93fd959e_volume_translation_viewer.mp4))
 - New "Switch to newly streamed recordings" setting to stay on the current recording while new ones stream in
 - [Memory limits](https://rerun.io/docs/howto/visualization/limit-ram) respect cgroup limits on Linux
 - `TimelineInfo.kind` is now a `rerun.catalog.TimelineKind` enum
