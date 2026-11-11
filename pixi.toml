@@ -333,7 +333,7 @@ pb-lint = "buf lint --config scripts/ci/buf.yaml --error-format=json"
 #   "pb-snapshot-main",
 # ]}
 
-pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --config scripts/ci/buf.yaml --against-config scripts/ci/buf.yaml --error-format=json --against '.git#branch=origin/main'"
+pb-breaking = "bash scripts/ci/pb_breaking.sh --config scripts/ci/buf.yaml --against-config scripts/ci/buf.yaml"
 
 pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 
