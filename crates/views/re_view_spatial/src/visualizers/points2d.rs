@@ -70,6 +70,7 @@ impl Points2DVisualizer {
                 data.radii,
                 Points2D::descriptor_radii().component,
             );
+
             let colors = process_color_slice(
                 ctx,
                 Points2D::descriptor_colors().component,
@@ -125,12 +126,15 @@ impl Points2DVisualizer {
                 }
             }
 
-            view_data.add_bounds(
+            let bounds = view_data.add_bounds(
                 entity_path.hash(),
                 robust_bounds,
                 world_from_obj,
                 SpaceKind::TwoD,
             );
+            bounds
+                .max_point_radii
+                .update_from_radii(data.radii.iter().copied());
 
             if let Some(annotations) = ent_context.annotations {
                 load_keypoint_connections(

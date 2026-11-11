@@ -2,6 +2,7 @@ use egui::NumExt as _;
 use nohash_hasher::IntMap;
 use re_log_types::EntityPathHash;
 use re_renderer::RobustBounds;
+use re_view::MaxRadii;
 use re_viewer_context::SystemExecutionOutput;
 
 use crate::SpaceKind;
@@ -14,6 +15,9 @@ pub struct SceneBoundingBoxes {
 
     /// Per-entity bounding boxes for the current query.
     pub per_entity: IntMap<EntityPathHash, re_math::BoundingBox>,
+
+    /// Largest point radius in the data for the current query
+    pub max_point_radius: MaxRadii,
 
     /// Overall region of interest of the scene for the current query.
     ///
@@ -35,6 +39,7 @@ impl Default for SceneBoundingBoxes {
         Self {
             current: re_math::BoundingBox::nothing(),
             per_entity: IntMap::default(),
+            max_point_radius: MaxRadii::default(),
             region_of_interest_current: re_math::BoundingBox::nothing(),
             region_of_interest_smoothed: re_math::BoundingBox::nothing(),
             region_of_interest_per_entity: IntMap::default(),
@@ -59,6 +64,8 @@ impl SceneBoundingBoxes {
 
         for data in iter_spatial_data(system_output) {
             for entity_bounds in data.iter_bounds() {
+                self.max_point_radius.merge(entity_bounds.max_point_radii);
+
                 // 2D objects under a pinhole are placed on its image plane. Since the image plane
                 // distance may depend on the scene bounds, including them could create a feedback loop.
                 if space_kind == SpaceKind::ThreeD && entity_bounds.subspace == SpaceKind::TwoD {
