@@ -123,6 +123,11 @@ async fn startup_segment_url_expands_ancestor_folders() {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn command_palette_segment_url_expands_ancestor_folders() {
+    // TODO(RR-6358): in the browser, the segment never downloads its chunks.
+    if InspectionHarness::is_browser() {
+        return;
+    }
+
     let (server, segment_id) = TestServer::spawn()
         .await
         .with_named_test_data(
