@@ -37,6 +37,16 @@ if TYPE_CHECKING:
 _DEFAULT_URL = "rerun+http://127.0.0.1:9876/proxy"
 
 
+@dataclass(frozen=True)
+class ViewerViewType:
+    """A registered view type and its discovery metadata."""
+
+    class_identifier: str
+    display_name: str
+    description: str
+    keywords: list[str]
+
+
 StoreId = str
 """
 Identifies one recording open in the viewer, as `{kind}:{application_id}:{recording_id}`.
@@ -1091,6 +1101,19 @@ class ViewerClient:
                 message=entry.get("message", ""),
             )
             for entry in raw.get("entries", [])
+        ]
+
+    def list_view_types(self) -> list[ViewerViewType]:
+        """List supported view types before choosing a class for a blueprint. No recording is required."""
+        raw = self._viewer_control("list_view_types", {})
+        return [
+            ViewerViewType(
+                class_identifier=view.get("class_identifier", ""),
+                display_name=view.get("display_name", ""),
+                description=view.get("description", ""),
+                keywords=view.get("keywords", []),
+            )
+            for view in raw.get("view_types", [])
         ]
 
     def get_state(self) -> ViewerState:

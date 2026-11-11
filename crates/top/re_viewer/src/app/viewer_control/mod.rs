@@ -48,6 +48,7 @@ mod blueprint;
 mod commands;
 mod selection;
 mod transform_graph;
+mod view_types;
 
 /// How many entities `get_recording_schema` describes when the request does not say.
 ///
@@ -462,6 +463,13 @@ impl AppCore {
             }
             Kind::GetState(GetStateRequest {}) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
+            }
+            Kind::ListViewTypes(_) => {
+                on_done.call(Ok(view_types::list_view_types(
+                    &self.registries.view_classes,
+                    &self.registries.reflection.read(),
+                )
+                .into()));
             }
             Kind::HighlightRect(request) => {
                 let result = self.apply_highlight_rect(request, egui_ctx);

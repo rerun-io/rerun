@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -174,6 +174,7 @@ pub mod viewer_control_request {
         /// (customize tables, enable card layouts, and add preview cells) with JSON, in the form
         /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
         /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
+        /// Consult `rerun_list_view_types` before selecting a new view type.
         ///
         /// `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
         /// partial updates write only supplied fields, preserving everything else. Prefer partial
@@ -329,6 +330,12 @@ pub mod viewer_control_request {
         /// Blueprint entities, servers, catalog entries, and similar are left out.
         #[prost(message, tag = "23")]
         GetSelection(super::GetSelectionRequest),
+        /// List the view types available in this viewer, with descriptions and discovery keywords.
+        /// Consult this before choosing a view for a new blueprint: use the
+        /// returned `class_identifier` in `ViewBlueprint`. This lists supported types, not the views
+        /// already on screen (`GetState`). No recording needs to be open.
+        #[prost(message, tag = "24")]
+        ListViewTypes(super::ListViewTypesRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -347,7 +354,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -422,6 +429,9 @@ pub mod viewer_control_response {
         /// Result of `get_selection`.
         #[prost(message, tag = "23")]
         GetSelection(super::GetSelectionResponse),
+        /// Result of `list_view_types`.
+        #[prost(message, tag = "24")]
+        ListViewTypes(super::ListViewTypesResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -432,6 +442,62 @@ impl ::prost::Name for ViewerControlResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.ViewerControlResponse".into()
+    }
+}
+/// Request for `ListViewTypes`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ListViewTypesRequest {}
+impl ::prost::Name for ListViewTypesRequest {
+    const NAME: &'static str = "ListViewTypesRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ListViewTypesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ListViewTypesRequest".into()
+    }
+}
+/// View types registered in this viewer, ordered by class identifier.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListViewTypesResponse {
+    /// Only classes registered in the connected viewer, including custom view classes.
+    #[prost(message, repeated, tag = "1")]
+    pub view_types: ::prost::alloc::vec::Vec<ViewerViewType>,
+}
+impl ::prost::Name for ListViewTypesResponse {
+    const NAME: &'static str = "ListViewTypesResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ListViewTypesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ListViewTypesResponse".into()
+    }
+}
+/// Discovery metadata for a registered view type.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerViewType {
+    /// Exact value to use for `ViewBlueprint.class_identifier`.
+    #[prost(string, tag = "1")]
+    pub class_identifier: ::prost::alloc::string::String,
+    /// Human-readable label; use `class_identifier` rather than this label in blueprints.
+    #[prost(string, tag = "2")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Short Markdown description. Empty for custom views without reflection metadata.
+    #[prost(string, tag = "3")]
+    pub description: ::prost::alloc::string::String,
+    /// Discovery terms for choosing a view; empty when reflection metadata is unavailable.
+    #[prost(string, repeated, tag = "4")]
+    pub keywords: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ViewerViewType {
+    const NAME: &'static str = "ViewerViewType";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ViewerViewType".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ViewerViewType".into()
     }
 }
 /// Request for `GetTransformGraph`.

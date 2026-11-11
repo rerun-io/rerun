@@ -98,6 +98,7 @@ const READ_ONLY_OPERATIONS: &[&str] = &[
     "get_table_schema",
     "get_transform_graph",
     "list_commands",
+    "list_view_types",
 ];
 
 /// Operations the user can easily undo. See [`ToolEffect::NonDestructive`].

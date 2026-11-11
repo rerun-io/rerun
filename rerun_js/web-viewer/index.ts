@@ -619,6 +619,15 @@ export interface ScreenRect {
   h: number;
 }
 
+/** A registered view type and its discovery metadata. */
+export interface ViewerViewType {
+  /** Exact identifier to use in a blueprint. */
+  classIdentifier: string;
+  displayName: string;
+  description: string;
+  keywords: string[];
+}
+
 /** The recording or server that a command acts on. */
 export interface CommandTarget {
   /** The recording for a `recording` command, as a store id. If omitted, the active recording. */
@@ -2494,6 +2503,21 @@ export class WebViewer {
       ).commands.map(({ id }) => id);
     const { commands } = await this.#viewerControl("describeCommands", { ids, ...target });
     return commands.map(viewerCommandOf);
+  }
+
+  /**
+   * List supported view types before choosing a class for a blueprint. No recording is required.
+   *
+   * This API is experimental, and may change between releases.
+   */
+  async listViewTypes(): Promise<ViewerViewType[]> {
+    const { viewTypes } = await this.#viewerControl("listViewTypes", {});
+    return viewTypes.map((view) => ({
+      classIdentifier: view.classIdentifier,
+      displayName: view.displayName,
+      description: view.description,
+      keywords: view.keywords,
+    }));
   }
 
   /**

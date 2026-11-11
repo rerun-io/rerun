@@ -230,6 +230,7 @@ message ViewerControlRequest {
     // (customize tables, enable card layouts, and add preview cells) with JSON, in the form
     // `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
     // Read the `table` input field's documentation for the table, card, and preview configuration interface.
+    // Consult `rerun_list_view_types` before selecting a new view type.
     //
     // `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
     // partial updates write only supplied fields, preserving everything else. Prefer partial
@@ -384,6 +385,11 @@ message ViewerControlRequest {
     // Entities and components belong to the active recording.
     // Blueprint entities, servers, catalog entries, and similar are left out.
     GetSelectionRequest get_selection = 23;
+    // List the view types available in this viewer, with descriptions and discovery keywords.
+    // Consult this before choosing a view for a new blueprint: use the
+    // returned `class_identifier` in `ViewBlueprint`. This lists supported types, not the views
+    // already on screen (`GetState`). No recording needs to be open.
+    ListViewTypesRequest list_view_types = 24;
 
     // When adding an operation, decide whether agents may run it without asking the user:
     // see `OPERATIONS_WITHOUT_APPROVAL` in `crates/viewer_support/re_viewer_control_tools/src/lib.rs`.
@@ -458,7 +464,30 @@ message ViewerControlResponse {
 
     // Result of `get_selection`.
     GetSelectionResponse get_selection = 23;
+    // Result of `list_view_types`.
+    ListViewTypesResponse list_view_types = 24;
   }
+}
+
+// Request for `ListViewTypes`.
+message ListViewTypesRequest {}
+
+// View types registered in this viewer, ordered by class identifier.
+message ListViewTypesResponse {
+  // Only classes registered in the connected viewer, including custom view classes.
+  repeated ViewerViewType view_types = 1;
+}
+
+// Discovery metadata for a registered view type.
+message ViewerViewType {
+  // Exact value to use for `ViewBlueprint.class_identifier`.
+  string class_identifier = 1;
+  // Human-readable label; use `class_identifier` rather than this label in blueprints.
+  string display_name = 2;
+  // Short Markdown description. Empty for custom views without reflection metadata.
+  string description = 3;
+  // Discovery terms for choosing a view; empty when reflection metadata is unavailable.
+  repeated string keywords = 4;
 }
 
 // ----------------------------------------------------------------------------

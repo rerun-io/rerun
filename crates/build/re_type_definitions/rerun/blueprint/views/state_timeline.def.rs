@@ -6,6 +6,7 @@
 ///
 /// \example views/state_timeline title="Use a blueprint to show a StateTimelineView." image="https://static.rerun.io/status_view/997ff1c16765374651ba662812a78e53803aba75/1200w.png"
 #[rerun::rerun_type]
+#[docs(keywords = "state, timeline, transitions, events")]
 #[rerun(view_identifier = "StateTimeline")]
 #[rerun(state = "unstable")]
 pub struct StateTimelineView {

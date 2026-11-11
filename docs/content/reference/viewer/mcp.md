@@ -106,6 +106,10 @@ Besides the accessibility tree and screenshots, the server gives the agent the s
 It works for any open recording, whatever it was loaded from.
 Without it an agent guesses entity paths and component names from an archetype's documentation, and a query built on a wrong guess comes back empty rather than complaining — so the agent ends up describing data it never read.
 A recording too large to describe in one answer comes back truncated, with a count of the entities left out; the request narrows to a subtree to read the rest.
+For blueprint planning, call `rerun_list_view_types` to discover the connected viewer's supported view classes, descriptions, and keywords.
+Use its `class_identifier` when creating a view rather than guessing a class name.
+The catalog comes from the viewer's registry and generated view type metadata; it is available even without an open recording.
+
 For blueprint planning, call `rerun_get_recording_schema` to get each entity's sorted, unique `archetypes` by default.
 It uses the same subtree filtering, limit (100 by default), and `omitted_entities` count; entities without archetype metadata still appear with no archetypes listed.
 To inspect component names and types, call again with `entity_path` and `with_components: true`.

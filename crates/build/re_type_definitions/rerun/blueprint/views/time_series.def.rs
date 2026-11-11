@@ -5,6 +5,7 @@
 ///
 /// \example views/timeseries title="Use a blueprint to customize a TimeSeriesView." image="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1200w.png"
 #[rerun::rerun_type]
+#[docs(keywords = "time series, plot, scalar, signal, curve")]
 #[rerun(view_identifier = "TimeSeries")]
 #[rerun(state = "unstable")]
 pub struct TimeSeriesView {

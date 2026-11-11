@@ -24,6 +24,7 @@ Getting oriented:
 
 Editing blueprints:
 - If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
+- Before selecting a new view type, call `rerun_list_view_types` for the connected viewer's supported classes, descriptions, and keywords. Use its exact `class_identifier`; do not guess from prior knowledge.
 - `rerun_set_blueprint` takes `mode: "full"` (default) or `mode: "partial"` for either recordings or tables. Prefer partial for focused edits: omitted fields and entities stay untouched. Full replaces the blueprint and clears omitted fields.
 - Both modes replace arrays and struct-valued fields as a whole, including `component_map`, `instruction_ids`, and container contents; preserve entries you intend to keep. Set a field to `null` to clear it. An empty object in partial mode changes nothing.
 - A write that would break a reference is rejected, and nothing is written: a missing or unreferenced view, container, or visualizer instruction, or a loop of containers. Add a new view and the reference to it in the same call. Delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.
@@ -1271,6 +1272,24 @@ Conventions:
   }
 }
 
+## rerun_list_view_types
+
+{
+  "name": "rerun_list_view_types",
+  "description": "List the view types available in this viewer, with descriptions and discovery keywords.\nConsult this before choosing a view for a new blueprint: use the\nreturned `class_identifier` in `ViewBlueprint`. This lists supported types, not the views\nalready on screen (`GetState`). No recording needs to be open.\n\nRequires `rerun_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "description": "Request for `ListViewTypes`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
 ## rerun_open
 
 {
@@ -1378,7 +1397,7 @@ Conventions:
 
 {
   "name": "rerun_set_blueprint",
-  "description": "Set regular blueprints (per-recording or per-segment views and layouts) or table blueprints\n(customize tables, enable card layouts, and add preview cells) with JSON, in the form\n`GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.\nRead the `table` input field's documentation for the table, card, and preview configuration interface.\n\n`mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;\npartial updates write only supplied fields, preserving everything else. Prefer partial\nupdates for small edits such as a colormap or view name. Arrays and struct-valued fields\nare replaced as a whole, not merged. Set a field to null to clear it.\nA full recording update with an explicit root defaults omitted `auto_layout` and\n`auto_views` to false. Partial updates preserve these options unless supplied.\nA field holding a\nsingle value may be written as that value or as an array of one. `recording` or `table`\npicks whose blueprint to write, as for `GetBlueprint`: without either, it writes the\nblueprint of what is on screen. The response names which one it wrote.\n\n## Tables\n\nTo change how a table looks, write its blueprint with this rather than clicking through the\nviewer's Columns menu. Read the column names with `GetTableSchema` and the blueprint with\n`GetBlueprint` first, and keep what it returned. `column_order` in `TableLayout` sets the\norder, and a column's `TableColumn` sets its `name` and `visible`. Row filters go in\n`filters` of `TableBlueprint` at `/table`.\n\nRows show either as a table or as cards with segment previews. A request about columns or\nrows only changes the table layout, so write it without asking. For any other request, such\nas to make a table look nice, ask the user before the first write which layout they want and\nwhat it shows, unless they already said.\nThe docs of `table` describe how to write a table blueprint, with examples of both layouts.\n\n## Errors\n\n`INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked\nagainst a table that has been shown.\n`INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a\nreference to a missing view, container, or visualizer instruction, a view, container, or\ninstruction that nothing refers to, a loop of containers, or a view or container in two\ncontainers. So add a view and the reference to it in the same call.\n`FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the\nrecording is not open or the viewer does not know the table.\n\nRequires `rerun_connect`.",
+  "description": "Set regular blueprints (per-recording or per-segment views and layouts) or table blueprints\n(customize tables, enable card layouts, and add preview cells) with JSON, in the form\n`GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.\nRead the `table` input field's documentation for the table, card, and preview configuration interface.\nConsult `rerun_list_view_types` before selecting a new view type.\n\n`mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;\npartial updates write only supplied fields, preserving everything else. Prefer partial\nupdates for small edits such as a colormap or view name. Arrays and struct-valued fields\nare replaced as a whole, not merged. Set a field to null to clear it.\nA full recording update with an explicit root defaults omitted `auto_layout` and\n`auto_views` to false. Partial updates preserve these options unless supplied.\nA field holding a\nsingle value may be written as that value or as an array of one. `recording` or `table`\npicks whose blueprint to write, as for `GetBlueprint`: without either, it writes the\nblueprint of what is on screen. The response names which one it wrote.\n\n## Tables\n\nTo change how a table looks, write its blueprint with this rather than clicking through the\nviewer's Columns menu. Read the column names with `GetTableSchema` and the blueprint with\n`GetBlueprint` first, and keep what it returned. `column_order` in `TableLayout` sets the\norder, and a column's `TableColumn` sets its `name` and `visible`. Row filters go in\n`filters` of `TableBlueprint` at `/table`.\n\nRows show either as a table or as cards with segment previews. A request about columns or\nrows only changes the table layout, so write it without asking. For any other request, such\nas to make a table look nice, ask the user before the first write which layout they want and\nwhat it shows, unless they already said.\nThe docs of `table` describe how to write a table blueprint, with examples of both layouts.\n\n## Errors\n\n`INVALID_ARGUMENT` says where the JSON or a table filter is wrong. Filters are only checked\nagainst a table that has been shown.\n`INVALID_ARGUMENT` too, with nothing written, if the write would break a reference: a\nreference to a missing view, container, or visualizer instruction, a view, container, or\ninstruction that nothing refers to, a loop of containers, or a view or container in two\ncontainers. So add a view and the reference to it in the same call.\n`FAILED_PRECONDITION` if the default recording or table is not there. `NOT_FOUND` if the\nrecording is not open or the viewer does not know the table.\n\nRequires `rerun_connect`.",
   "inputSchema": {
     "type": "object",
     "properties": {
