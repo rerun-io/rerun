@@ -370,6 +370,8 @@ fn chat_conversation() {
 
     let mut harness = harness(panel);
     harness.run_steps(4);
+    // No example prompts should be visible in this non-empty chat.
+    assert!(harness.query_by_label("Example prompt one").is_none());
     harness.snapshot("chat_conversation");
 
     // The plan is one line until clicked.
@@ -964,6 +966,8 @@ fn conversation_list() {
     harness.run_steps(4);
     harness.get_by_label("Back to conversations").click();
     harness.run_steps(4);
+    // The empty draft still offers prompts alongside conversations with history.
+    assert!(harness.query_by_label("Example prompt one").is_some());
     // Hovering shows the close button next to the status.
     harness
         .get_by_role_and_label(egui::accesskit::Role::Button, "Make the rectangle green")

@@ -204,6 +204,9 @@ pub fn chat_ui(
         .show(ui, |ui| {
             if let Some(home_ui) = home_ui {
                 home_ui(ui);
+                if session.transcript().items.is_empty() {
+                    empty_state_ui(ui, input, example_prompts);
+                }
                 return;
             }
             if session.transcript().items.is_empty()
