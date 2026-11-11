@@ -289,6 +289,9 @@
     "extreme_fg_color": {
       "color": "{Gray.1000}"
     },
+    "code_bg_color": {
+      "color": "{Gray.300}"
+    },
     "widget_hovered_color": {
       "color": "{Gray.250}"
     },
