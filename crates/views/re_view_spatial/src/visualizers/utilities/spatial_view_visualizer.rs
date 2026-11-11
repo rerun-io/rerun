@@ -1,5 +1,6 @@
 use re_log_types::EntityPathHash;
 use re_renderer::RobustBounds;
+use re_view::MaxRadii;
 use re_viewer_context::SystemExecutionOutput;
 
 use super::UiLabel;
@@ -19,6 +20,8 @@ pub struct SpatialViewBounds {
     /// Point cloud visualizers estimate it statistically, so it may be either
     /// smaller or larger than the bounding box.
     pub bounds: RobustBounds,
+
+    pub max_point_radii: MaxRadii,
 
     /// Whether these bounds are defined in a 2D or 3D subspace.
     ///
@@ -63,13 +66,13 @@ impl SpatialViewVisualizerData {
         entity: EntityPathHash,
         bbox: re_math::BoundingBox,
         world_from_obj: glam::Affine3A,
-    ) {
+    ) -> &mut SpatialViewBounds {
         self.add_bounds(
             entity,
             RobustBounds::from_bbox(bbox),
             world_from_obj,
             SpaceKind::ThreeD,
-        );
+        )
     }
 
     /// Adds a bounding box for an entity, with no outlier rejection.
@@ -81,13 +84,13 @@ impl SpatialViewVisualizerData {
         entity: EntityPathHash,
         bbox: re_math::BoundingBox,
         world_from_obj: glam::Affine3A,
-    ) {
+    ) -> &mut SpatialViewBounds {
         self.add_bounds(
             entity,
             RobustBounds::from_bbox(bbox),
             world_from_obj,
             SpaceKind::TwoD,
-        );
+        )
     }
 
     /// Adds the bounds of an entity, given in object space.
@@ -97,12 +100,13 @@ impl SpatialViewVisualizerData {
         bounds: RobustBounds,
         world_from_obj: glam::Affine3A,
         subspace: SpaceKind,
-    ) {
-        self.bounds.push(SpatialViewBounds {
+    ) -> &mut SpatialViewBounds {
+        self.bounds.push_mut(SpatialViewBounds {
             entity_path_hash: entity,
             bounds: bounds.transform_affine3(&world_from_obj),
+            max_point_radii: MaxRadii::new(),
             subspace,
-        });
+        })
     }
 
     pub fn add_pickable_rect_to_bounding_box(
@@ -113,6 +117,7 @@ impl SpatialViewVisualizerData {
         self.bounds.push(SpatialViewBounds {
             entity_path_hash: pickable_rect.ent_path.hash(),
             bounds: RobustBounds::from_bbox(pickable_rect.textured_rect.bounding_box()),
+            max_point_radii: MaxRadii::new(),
             subspace,
         });
     }
