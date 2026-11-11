@@ -42,8 +42,7 @@ pub struct ChunkMeta {
     pub byte_size_uncompressed: u64,
 
     /// Component columns with data in this chunk — a non-null range on some timeline, or the
-    /// static flag — with the type each carries when it has one. An all-null temporal column is
-    /// absent.
+    /// static flag — with the type each carries when it has one. An all-null column is absent.
     pub components: ComponentSet,
 }
 
