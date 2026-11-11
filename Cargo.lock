@@ -9059,7 +9059,6 @@ dependencies = [
  "re_analytics",
  "re_async",
  "re_build_tools",
- "re_entity_db",
  "re_log",
  "re_log_channel",
  "re_protos",

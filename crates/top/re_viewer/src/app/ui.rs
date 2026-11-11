@@ -1,8 +1,11 @@
+use re_agent_panel::ShownContent;
 use re_byte_size::NamedMemUsageTree;
 use re_log_channel::{LogSource, RecordingOpenBehavior};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{HasDesignTokens as _, UiExt as _, WindowFrameConfig};
-use re_viewer_context::{ActiveStoreContext, StorageContext, store_hub::StoreHubStats};
+use re_viewer_context::{
+    ActiveStoreContext, EntryKind, Route, StorageContext, store_hub::StoreHubStats,
+};
 
 use crate::{
     app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
@@ -250,9 +253,21 @@ impl AppCore {
             target_arch = "wasm32" => None::<std::path::PathBuf>,
             _ => self.app_options().cache_directory.clone(),
         };
-        let recording = active_store_context
-            .map(|context| context.recording)
-            .filter(|recording| !recording.store_id().is_empty_recording());
+        let is_recording_open = active_store_context
+            .is_some_and(|context| !context.recording.store_id().is_empty_recording());
+        let shown_content = match self.state.navigation.current() {
+            Route::RedapEntry {
+                kind: Some(EntryKind::Dataset(_)),
+                ..
+            } => ShownContent::Dataset,
+            Route::LocalTable(_)
+            | Route::RedapEntry {
+                kind: Some(EntryKind::Table),
+                ..
+            } => ShownContent::Table,
+            _ if is_recording_open => ShownContent::Recording,
+            _ => ShownContent::Other,
+        };
 
         let Self {
             agent_panel,
@@ -270,7 +285,7 @@ impl AppCore {
             viewer_endpoint.as_deref(),
             cache_dir.as_deref(),
             startup.build_info.is_in_rerun_workspace,
-            recording,
+            shown_content,
         );
         state.agent_panel_ever_opened |= state.agent_panel_open;
     }
