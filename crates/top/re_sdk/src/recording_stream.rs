@@ -3344,7 +3344,7 @@ mod tests {
     }
 
     fn example_rows(static_: bool) -> Vec<PendingRow> {
-        use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
+        use re_log_types::example_components::{MyColor, MyPoint};
         use re_sdk_types::ToArrow;
 
         let mut tick = 0i64;

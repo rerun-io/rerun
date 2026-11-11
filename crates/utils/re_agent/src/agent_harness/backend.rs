@@ -563,8 +563,7 @@ fn pick_model(
 mod tests {
     use agent_client_protocol::Channel;
     use agent_client_protocol_schema::v1::{
-        NewSessionResponse, SessionConfigSelectGroup, SessionConfigSelectOption, SessionMode,
-        SetSessionConfigOptionResponse,
+        NewSessionResponse, SessionConfigSelectGroup, SessionMode, SetSessionConfigOptionResponse,
     };
 
     use super::*;

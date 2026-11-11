@@ -4,8 +4,8 @@ use re_sdk::TimePoint;
 use re_sdk::log::RowId;
 use re_viewer::external::re_log_types::EntityPath;
 use re_viewer::external::re_sdk_types::Archetype as _;
+use re_viewer::external::re_view_spatial;
 use re_viewer::external::re_viewer_context::{BlueprintContext as _, Item, ViewClass as _};
-use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::{ViewBlueprint, entity_path_for_view_property};
 

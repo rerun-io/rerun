@@ -719,7 +719,6 @@ mod tests {
 
     use agent_client_protocol_schema::v1::{
         ConfigOptionUpdate, ContentChunk, Diff, SessionConfigSelectGroup,
-        SessionConfigSelectOption, ToolCall,
     };
 
     use super::*;

@@ -615,10 +615,9 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk_store::Chunk;
-    use re_entity_db::{EntityDb, EntityPath};
     use re_log_types::Timeline;
     use re_sdk_types::{
-        archetypes::{self, InstancePoses3D, Pinhole, Transform3D},
+        archetypes::{self, Pinhole, Transform3D},
         components::{PinholeProjection, RotationQuat, ViewCoordinates},
     };
 

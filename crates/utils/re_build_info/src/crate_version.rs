@@ -234,9 +234,6 @@ macro_rules! slice {
     ($s:expr, $start:expr, ..) => {
         const_u8_slice_util($s, Some($start), None)
     };
-    ($s:expr, $start:expr, $end:expr) => {
-        const_u8_slice_util($s, Some($start), Some($end))
-    };
 }
 
 const fn equals(a: &[u8], b: &[u8]) -> bool {

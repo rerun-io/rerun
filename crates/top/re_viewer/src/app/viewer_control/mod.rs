@@ -34,7 +34,6 @@ use re_protos::viewer_control::v1alpha1::{
 #[cfg(feature = "analytics")]
 use re_protos::viewer_control::v1alpha1::{SubmitFeedbackRequest, SubmitFeedbackResponse};
 use re_sdk_types::blueprint::components::PlayState;
-use re_sdk_types::external::uuid;
 use re_types_core::SegmentId;
 use re_viewer_context::{
     Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand,
@@ -2897,10 +2896,7 @@ mod tests {
 
     #[cfg(feature = "testing")]
     mod set_time_cursor {
-        use std::sync::Arc;
-
         use re_chunk::{Chunk, RowId, TimePoint, Timeline};
-        use re_log_types::StoreKind;
 
         use super::locations::{error_code, serve};
         use super::*;

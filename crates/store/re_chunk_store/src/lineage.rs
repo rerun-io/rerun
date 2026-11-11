@@ -608,7 +608,7 @@ impl ChunkStore {
 #[cfg(test)]
 #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
 mod tests {
-    use re_chunk::{Chunk, EntityPath, RowId, Timeline};
+    use re_chunk::{EntityPath, RowId, Timeline};
     use re_chunk_index::RrdManifest;
     use re_log_types::StoreId;
     use re_log_types::example_components::{MyPoint, MyPoints};

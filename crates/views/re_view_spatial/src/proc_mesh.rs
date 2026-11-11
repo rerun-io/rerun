@@ -9,7 +9,6 @@ use hexasphere::{BaseShape, Subdivided};
 use itertools::Itertools as _;
 use ordered_float::NotNan;
 use re_byte_size::SizeBytes as _;
-use re_chunk_store::external::re_chunk::external::re_byte_size;
 use re_math::MeshGen;
 use re_renderer::RenderContext;
 use re_renderer::mesh::{self, GpuMesh, MeshError};

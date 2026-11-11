@@ -74,9 +74,9 @@ pub fn create_simple_recording_in(
     time_type: TimeType,
     in_dir: &std::path::Path,
 ) -> anyhow::Result<PathBuf> {
-    use re_chunk::{Chunk, TimePoint};
+    use re_chunk::Chunk;
+    use re_log_types::TimeInt;
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt};
 
     if !std::fs::metadata(in_dir)?.is_dir() {
         return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
@@ -207,9 +207,9 @@ pub fn create_simple_recording_one_chunk_per_frame_in(
     time_type: TimeType,
     in_dir: &std::path::Path,
 ) -> anyhow::Result<PathBuf> {
-    use re_chunk::{Chunk, TimePoint};
+    use re_chunk::Chunk;
+    use re_log_types::TimeInt;
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt};
 
     if !std::fs::metadata(in_dir)?.is_dir() {
         return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
@@ -275,7 +275,7 @@ pub fn create_simple_blueprint(
     segment_id: &str,
 ) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+    use re_log_types::{TimeInt, build_frame_nr};
     use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 
     let tmp_path = {
@@ -319,9 +319,9 @@ pub fn create_nasty_recording(
     segment_id: &str,
     entity_paths: &[&str],
 ) -> anyhow::Result<TempPath> {
-    use re_chunk::{Chunk, TimePoint};
+    use re_chunk::Chunk;
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr, build_log_time};
+    use re_log_types::{TimeInt, build_frame_nr, build_log_time};
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
@@ -1217,9 +1217,9 @@ pub fn multi_chunked_entities_recording(
     segment_id: &str,
     entity_paths: &[&str],
 ) -> anyhow::Result<TempPath> {
-    use re_chunk::{Chunk, TimePoint};
+    use re_chunk::Chunk;
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+    use re_log_types::{TimeInt, build_frame_nr};
 
     let tmp_dir = tempfile::tempdir()?;
     let in_dir = tmp_dir.path();

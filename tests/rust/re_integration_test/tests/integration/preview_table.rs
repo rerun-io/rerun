@@ -21,7 +21,7 @@ use egui_kittest::kittest::Queryable as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_integration_test::{HarnessExt as _, TestServer};
 use re_sdk::RecordingStreamBuilder;
-use re_sdk::external::{re_log_types, re_tuid};
+use re_sdk::external::re_tuid;
 use re_sdk_types::blueprint::archetypes::{
     CardLayout, ContainerBlueprint, TableColumnPreview, TableLayout, ViewBlueprint, ViewContents,
     ViewportBlueprint,

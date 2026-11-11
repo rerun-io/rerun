@@ -1,7 +1,7 @@
 use std::assert_matches;
 use std::collections::HashSet;
 
-use re_protos::cloud::v1alpha1::ext::{LanceTable, ProviderDetails, SystemTable};
+use re_protos::cloud::v1alpha1::ext::{LanceTable, SystemTable};
 
 use super::*;
 

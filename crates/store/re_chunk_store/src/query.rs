@@ -13,11 +13,8 @@ use re_chunk::{
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt};
 use re_types_core::{ComponentSet, UnorderedComponentSet};
 
-use crate::{ChunkStore, ChunkTrackingMode};
-// Used all over in docstrings.
-#[expect(unused_imports)]
-use crate::RowId;
 use crate::store::ChunkIdSetPerTime;
+use crate::{ChunkStore, ChunkTrackingMode};
 
 // ---
 
@@ -1458,12 +1455,10 @@ impl ChunkStore {
 #[cfg(test)]
 #[expect(clippy::bool_assert_comparison)] // I like it that way, sue me
 mod tests {
-    use std::sync::Arc;
-
-    use re_chunk::{Chunk, RowId};
+    use re_chunk::RowId;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
-    use re_log_types::{EntityPath, TimePoint, Timeline};
+    use re_log_types::{TimePoint, Timeline};
 
     use super::*;
 

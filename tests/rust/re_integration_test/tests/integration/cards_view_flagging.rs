@@ -12,7 +12,6 @@ use re_integration_test::ViewerHarnessExt as _;
 use re_protos::cloud::v1alpha1::ScanTableRequest;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_sdk::RecordingStreamBuilder;
-use re_sdk::external::re_log_types;
 use re_sdk_types::Component as _;
 use re_sdk_types::blueprint::archetypes::{CardLayout, TableColumn, TableLayout};
 use re_sdk_types::components::Flag;

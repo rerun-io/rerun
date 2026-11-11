@@ -872,11 +872,8 @@ pub fn card_frame(tokens: &DesignTokens) -> egui::Frame {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use egui::accesskit::Role;
     use egui_kittest::kittest::Queryable as _;
-    use re_ui::ServerValue;
 
     use super::*;
     use crate::entry_meta::SegmentIds;

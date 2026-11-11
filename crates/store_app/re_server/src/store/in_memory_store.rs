@@ -281,8 +281,6 @@ impl InMemoryStore {
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<EntryId, Error> {
-        use std::sync::Arc;
-
         use re_protos::cloud::v1alpha1::ext::LanceTable;
 
         let directory = tokio::fs::canonicalize(&named_path.path).await?;
@@ -582,8 +580,6 @@ impl InMemoryStore {
     /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
     /// TODO(#11369)
     fn update_entries_table(&mut self) -> Result<(), Error> {
-        use std::sync::Arc;
-
         use re_protos::cloud::v1alpha1::SystemTableKind;
         use re_protos::cloud::v1alpha1::ext::SystemTable;
 

@@ -821,23 +821,32 @@ unknown_lints = "deny"
 unsafe_code = "deny"
 
 absolute_paths_not_starting_with_crate = "warn"
+ambiguous_negative_literals = "warn"
+deprecated_in_future = "warn"
 elided_lifetimes_in_paths = "warn"
 future_incompatible = { level = "warn", priority = -1 }
+impl_trait_redundant_captures = "warn"
+macro_use_extern_crate = "warn"
+meta_variable_misuse = "warn"
 non_ascii_idents = "warn"
 nonstandard_style = { level = "warn", priority = -1 }
 noop_method_call = "warn"
+redundant_imports = "warn"
+redundant_lifetimes = "warn"
 rust_2018_idioms = { level = "warn", priority = -1 }
 rust_2021_prelude_collisions = "warn"
 semicolon_in_expressions_from_macros = "warn"
 trivial_numeric_casts = "warn"
-unsafe_op_in_unsafe_fn = "warn" # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
 unexpected_cfgs = { level = "deny", check-cfg = [
   'cfg(TODO)', # NOLINT allow `#[cfg(TODO)]` to compile (it will still fail CI)
   'cfg(rerun_workspace_hack)', # Set by `.cargo/config.toml`, see `re_workspace_hack`
 ] }
+unit_bindings = "warn"
+unsafe_op_in_unsafe_fn = "warn" # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
 unused_extern_crates = "warn"
 unused_import_braces = "warn"
 unused_lifetimes = "warn"
+unused_macro_rules = "warn"
 
 trivial_casts = "allow"
 unused_qualifications = "allow"

@@ -356,7 +356,7 @@ impl<T> StableIndexDeque<T> {
     pub fn iter_index_range_clamped(
         &self,
         span: Span<usize>,
-    ) -> impl DoubleEndedIterator<Item = (usize, &T)> + ExactSizeIterator + use<'_, T> {
+    ) -> impl DoubleEndedIterator<Item = (usize, &T)> + ExactSizeIterator {
         let shifted = span.saturating_sub(self.index_offset);
         self.iter_indexed().skip(shifted.start).take(shifted.len)
     }
@@ -376,7 +376,7 @@ impl<T> StableIndexDeque<T> {
     pub fn iter_index_range_clamped_mut(
         &mut self,
         span: Span<usize>,
-    ) -> impl DoubleEndedIterator<Item = (usize, &mut T)> + ExactSizeIterator + use<'_, T> {
+    ) -> impl DoubleEndedIterator<Item = (usize, &mut T)> + ExactSizeIterator {
         let shifted = span.saturating_sub(self.index_offset);
         self.iter_indexed_mut()
             .skip(shifted.start)

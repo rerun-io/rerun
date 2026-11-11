@@ -1985,7 +1985,7 @@ fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> Bluepr
 #[cfg(not(target_arch = "wasm32"))]
 fn blueprint_loader(component_reflection: Arc<ComponentReflectionMap>) -> BlueprintPersistence {
     use anyhow::Context as _;
-    use re_entity_db::{EntityDb, StoreBundle};
+    use re_entity_db::StoreBundle;
     use re_viewer_context::store_hub::BlueprintPersistenceKey;
 
     use crate::saving::blueprint_path;

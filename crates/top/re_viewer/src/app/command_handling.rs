@@ -1490,7 +1490,6 @@ impl AppCore {
 
         use itertools::Itertools as _;
         use re_log::ResultExt as _;
-        use re_viewer_context::sanitize_file_name;
         use tap::Pipe as _;
 
         re_tracing::profile_function!();

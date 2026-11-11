@@ -632,13 +632,11 @@ mod tests {
     use std::{borrow::Cow, collections::BTreeMap, sync::Arc};
 
     use arrow::array::{Array as _, Float32Array};
-    use byteorder::LittleEndian;
     use mcap::{Channel, Message};
     use re_cdr::to_vec;
     use re_log_types::TimeType;
 
     use super::*;
-    use crate::parsers::decode::ParserContext;
     use crate::parsers::ros2msg::definitions::{builtin_interfaces, std_msgs};
     use re_chunk::EntityPath;
 

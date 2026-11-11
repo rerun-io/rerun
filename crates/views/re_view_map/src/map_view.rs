@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use egui::{Modifiers, NumExt as _, Rect, Response};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;

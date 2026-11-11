@@ -210,7 +210,6 @@ impl PoolChannel {
 
     /// Index of the connection with the fewest requests in flight.
     fn least_loaded(&self) -> usize {
-        use std::sync::atomic::Ordering;
         self.in_flight
             .iter()
             .enumerate()
@@ -283,8 +282,6 @@ impl tower::Service<tonic::codegen::http::Request<tonic::body::Body>> for PoolCh
     }
 
     fn call(&mut self, req: tonic::codegen::http::Request<tonic::body::Body>) -> Self::Future {
-        use std::sync::atomic::Ordering;
-
         let idx = self.least_loaded();
         self.in_flight[idx].fetch_add(1, Ordering::Relaxed);
         let guard = InFlightGuard {

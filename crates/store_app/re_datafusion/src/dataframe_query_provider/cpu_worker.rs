@@ -752,7 +752,6 @@ async fn maybe_emit_head(
 #[cfg(test)]
 mod tests {
     use re_dataframe::TimelineName;
-    use re_dataframe::external::re_chunk::Chunk;
 
     use super::*;
     use crate::dataframe_query_provider::test_utils::temporal_chunk;

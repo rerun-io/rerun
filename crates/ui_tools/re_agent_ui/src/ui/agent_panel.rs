@@ -926,7 +926,6 @@ fn experimental_tag_ui(ui: &mut egui::Ui) -> egui::Response {
 mod tests {
     use re_agent::AgentProfileId;
 
-    use super::super::conversation_list::ConversationStatus;
     use super::*;
 
     #[test]

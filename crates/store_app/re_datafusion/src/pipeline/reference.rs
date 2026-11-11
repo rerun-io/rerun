@@ -607,7 +607,7 @@ pub fn cell_value(
 }
 
 mod tests {
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
 
     use arrow::array::{Array, Int64Array, RecordBatch, RecordBatchOptions};
     use arrow::buffer::NullBuffer;

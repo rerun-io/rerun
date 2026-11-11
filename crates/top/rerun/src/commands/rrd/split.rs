@@ -8,12 +8,10 @@ use arrow::compute::kernels::cast_utils::Parser as _;
 use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;
-use re_chunk::external::crossbeam;
 use re_chunk::{Chunk, ChunkId, RowId, TimeInt, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkTrackingMode};
 use re_error::try_eprintln;
 use re_quota_channel::send_crossbeam;
-use re_sdk::external::arrow;
 use re_sdk::external::nohash_hasher::IntMap;
 use re_sdk::{Archetype as _, ComponentIdentifier, EntityPath, StoreId, StoreKind, Timeline};
 

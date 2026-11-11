@@ -443,7 +443,6 @@ pub fn channel<T: Clone>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use std::time::Duration;
 
     #[derive(Clone, Debug, PartialEq)]

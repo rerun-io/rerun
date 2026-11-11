@@ -405,7 +405,6 @@ impl CatalogClient {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use re_protos::cloud::v1alpha1::ext::DataSourceKind;
-    use re_types_core::LayerName;
 
     use super::*;
     use re_redap_client::ConnectionRegistry;

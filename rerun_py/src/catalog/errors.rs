@@ -295,7 +295,7 @@ pub fn to_py_err(err: impl Into<ExternalError>) -> PyErr {
 mod tests {
     use super::*;
     use datafusion::error::DataFusionError;
-    use re_redap_client::{ApiError, ApiErrorKind, TraceId};
+    use re_redap_client::{ApiError, TraceId};
 
     /// A `DataFusionError::External` wrapping an `ApiError` must be recovered
     /// as `ExternalError::ApiError`, with the trace-id and kind preserved.

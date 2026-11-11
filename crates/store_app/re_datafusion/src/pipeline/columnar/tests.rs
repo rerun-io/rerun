@@ -1,5 +1,3 @@
-use std::collections::{BTreeMap, BTreeSet};
-
 use arrow::compute::concat_batches;
 use re_dataframe::ViewContentsSelector;
 use re_dataframe::external::re_chunk_store::ChunkStoreConfig;
