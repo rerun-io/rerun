@@ -6,7 +6,7 @@
 //! ## Special cased text
 //! - If a notifications text has details (see [`re_error::StructuredError`]), those are shown
 //!   inside a collapsible details header, one per line. Structured log fields go in there too.
-//! - URLs in notification text are rendered as inline clickable links.
+//! - URLs and Markdown links (`[text](url)`) in notification text are rendered as inline clickable links.
 
 use std::collections::VecDeque;
 use std::time::Duration;
@@ -132,6 +132,47 @@ impl egui::Widget for Link {
     }
 }
 
+/// A button on a notification.
+///
+/// Clicking it runs `on_click`. On a toast, that closes the toast, and the notification stays in
+/// the notification panel. In the panel, it removes the notification.
+pub struct NotificationAction {
+    label: String,
+    on_click: Box<dyn Fn() + Send + Sync>,
+}
+
+impl NotificationAction {
+    pub fn new(label: impl Into<String>, on_click: impl Fn() + Send + Sync + 'static) -> Self {
+        Self {
+            label: label.into(),
+            on_click: Box::new(on_click),
+        }
+    }
+}
+
+/// When a notification with a permanent dismiss id counts as dismissed for good.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RememberDismissal {
+    /// When the user clicks "Don't show again", which replaces the "Dismiss" button.
+    ///
+    /// See [`Notification::permanent_dismiss_id`].
+    OnDismiss,
+
+    /// As soon as the user has had the chance to read it.
+    ///
+    /// See [`Notification::show_once`].
+    OnceShown,
+}
+
+/// Remembers across runs that the user dismissed a notification, so it is never shown again.
+#[derive(Clone, Copy, PartialEq, Eq)]
+struct PermanentDismiss {
+    /// Key in the persisted egui memory.
+    id: egui::Id,
+
+    when: RememberDismissal,
+}
+
 /// A notification to show the user
 pub struct Notification {
     level: NotificationLevel,
@@ -155,17 +196,28 @@ pub struct Notification {
     /// dropped from [`Self::earlier_details`].
     count: usize,
 
+    /// Clicking the toast opens it, unless the notification has actions.
     link: Option<Link>,
 
-    /// If set, the notification will NEVER be shown again
-    /// if the user has dismissed it.
-    permanent_dismiss_id: Option<egui::Id>,
+    /// Buttons shown at the bottom of the notification, in order.
+    actions: Vec<NotificationAction>,
+
+    /// If set, the notification will NEVER be shown again once it counts as dismissed.
+    ///
+    /// See [`RememberDismissal`] for when that is.
+    permanent_dismiss: Option<PermanentDismiss>,
 
     /// When this notification was last added to the list.
     created_at: Timestamp,
 
     /// Time to live for toasts, the notification itself lives until dismissed.
     toast_ttl: Duration,
+
+    /// Whether the toast has been laid out since its time to live was last reset.
+    ///
+    /// [`Self::toast_ttl`] only counts down from the frame after that, since the time step of the
+    /// toast's first frame may span a long idle period.
+    toast_was_shown: bool,
 
     /// Whether this notification has been read.
     is_unread: bool,
@@ -183,9 +235,11 @@ impl Notification {
             earlier_details: VecDeque::new(),
             count: 1,
             link: None,
-            permanent_dismiss_id: None,
+            actions: Vec::new(),
+            permanent_dismiss: None,
             created_at: Timestamp::now(),
             toast_ttl: base_ttl(),
+            toast_was_shown: false,
             is_unread: true,
             // Filled in later when added to the notification ui.
             unique_id: 0,
@@ -228,8 +282,13 @@ impl Notification {
     fn is_repeated_by(&self, other: &Self) -> bool {
         self.level == other.level
             && self.text == other.text
-            && self.permanent_dismiss_id == other.permanent_dismiss_id
+            && self.permanent_dismiss == other.permanent_dismiss
             && self.link.as_ref().map(|link| &link.url) == other.link.as_ref().map(|link| &link.url)
+            && self
+                .actions
+                .iter()
+                .map(|action| &action.label)
+                .eq(other.actions.iter().map(|action| &action.label))
     }
 
     /// Merge a repeat of this notification into it, which makes it unread and new again.
@@ -241,9 +300,11 @@ impl Notification {
             earlier_details,
             count,
             link: _,
-            permanent_dismiss_id: _,
+            actions: _,
+            permanent_dismiss: _,
             created_at,
             toast_ttl,
+            toast_was_shown: _,
             is_unread: _,
             unique_id: _,
         } = repeat;
@@ -256,6 +317,10 @@ impl Notification {
         }
         self.count += count;
         self.created_at = created_at;
+        if self.toast_ttl.is_zero() {
+            // The repeat brings the toast back, so its first frame must not count either.
+            self.toast_was_shown = false;
+        }
         self.toast_ttl = self.toast_ttl.max(toast_ttl);
         self.is_unread = true;
     }
@@ -283,30 +348,71 @@ impl Notification {
         self
     }
 
+    /// Add a button to the bottom of the notification.
+    pub fn with_action(mut self, action: NotificationAction) -> Self {
+        self.actions.push(action);
+        self
+    }
+
     // Show no toast - only show when clicking the notification panel!
     pub fn no_toast(mut self) -> Self {
         self.toast_ttl = Duration::ZERO;
         self
     }
 
-    /// If set, the notification will NEVER be shown again
-    /// if the user has dismissed it.
+    /// Offer a "Don't show again" button; once clicked, the notification will NEVER be shown again.
+    ///
+    /// `id` is the key under which the dismissal is persisted.
     pub fn permanent_dismiss_id(mut self, id: egui::Id) -> Self {
-        self.permanent_dismiss_id = Some(id);
+        self.permanent_dismiss = Some(PermanentDismiss {
+            id,
+            when: RememberDismissal::OnDismiss,
+        });
         self
     }
 
-    /// Called only when this notification was dismissed on its own.
+    /// Show the notification only until the user has had the chance to read it, then never again.
+    ///
+    /// That is when its toast has run its full time or been closed, or when the notification panel
+    /// has been opened.
+    /// For one-time notices that must not repeat on every start, so there is no
+    /// "Don't show again" button.
+    ///
+    /// `id` is the key under which the dismissal is persisted.
+    pub fn show_once(mut self, id: egui::Id) -> Self {
+        self.permanent_dismiss = Some(PermanentDismiss {
+            id,
+            when: RememberDismissal::OnceShown,
+        });
+        self
+    }
+
+    /// Remember the dismissal if this notification is shown only once.
+    ///
+    /// See [`Self::show_once`].
+    fn remember_if_shown(&self, ctx: &egui::Context) {
+        if self
+            .permanent_dismiss
+            .is_some_and(|dismiss| dismiss.when == RememberDismissal::OnceShown)
+            && !self.is_perma_dismissed(ctx)
+        {
+            self.remember_dismiss(ctx);
+        }
+    }
+
+    /// Persist that this notification counts as dismissed for good.
+    ///
+    /// The caller decides when; see [`RememberDismissal`].
     fn remember_dismiss(&self, ctx: &egui::Context) {
-        if let Some(permanent_dismiss_id) = self.permanent_dismiss_id {
-            ctx.data_mut(|data| data.insert_persisted(permanent_dismiss_id, PermaDismissiedMarker));
+        if let Some(PermanentDismiss { id, when: _ }) = self.permanent_dismiss {
+            ctx.data_mut(|data| data.insert_persisted(id, PermaDismissiedMarker));
         }
     }
 
     /// Did the user already dismiss this during an earlier run?
     fn is_perma_dismissed(&self, ctx: &egui::Context) -> bool {
-        self.permanent_dismiss_id.is_some_and(|id| {
-            ctx.data_mut(|data| data.get_persisted::<PermaDismissiedMarker>(id))
+        self.permanent_dismiss.is_some_and(|dismiss| {
+            ctx.data_mut(|data| data.get_persisted::<PermaDismissiedMarker>(dismiss.id))
                 .is_some()
         })
     }
@@ -316,9 +422,71 @@ impl Notification {
 enum TextSegment<'a> {
     Text(&'a str),
     Url(&'a str),
+    Link { text: &'a str, url: &'a str },
 }
 
+/// Splits `text` into plain text, Markdown links (`[text](url)`), and bare URLs.
+///
+/// Notification text often comes from log messages, so the rest of Markdown is not rendered: an
+/// `_` or `*` in an error must not turn into formatting.
 fn split_links(text: &str) -> Vec<TextSegment<'_>> {
+    let mut segments = Vec::new();
+    let mut rest = text;
+    while let Some((before, link, after)) = next_markdown_link(rest) {
+        segments.extend(split_bare_urls(before));
+        segments.push(link);
+        rest = after;
+    }
+    segments.extend(split_bare_urls(rest));
+    segments
+}
+
+/// Finds the first `[text](url)` with a valid URL, and returns the text before and after it.
+fn next_markdown_link(text: &str) -> Option<(&str, TextSegment<'_>, &str)> {
+    let mut search_from = 0;
+    while let Some(open) = text[search_from..].find('[').map(|i| search_from + i) {
+        if let Some(found) = markdown_link_at(text, open) {
+            return Some(found);
+        }
+        search_from = open + 1;
+    }
+    None
+}
+
+/// Parses `[text](url)` starting at the `[` at index `open`, and returns the text before and after it.
+fn markdown_link_at(text: &str, open: usize) -> Option<(&str, TextSegment<'_>, &str)> {
+    let label_end = open + 1 + text[open + 1..].find("](")?;
+    let url_start = label_end + 2;
+    let url_end = url_start + closing_paren(&text[url_start..])?;
+    let label = &text[open + 1..label_end];
+    let url = &text[url_start..url_end];
+    (!label.contains('[') && url::Url::parse(url).is_ok()).then(|| {
+        (
+            &text[..open],
+            TextSegment::Link { text: label, url },
+            &text[url_end + 1..],
+        )
+    })
+}
+
+/// The index of the `)` that closes the text before it, so a URL may contain parentheses.
+fn closing_paren(text: &str) -> Option<usize> {
+    let mut depth = 0_usize;
+    text.find(|c| match c {
+        '(' => {
+            depth += 1;
+            false
+        }
+        ')' if depth == 0 => true,
+        ')' => {
+            depth -= 1;
+            false
+        }
+        _ => false,
+    })
+}
+
+fn split_bare_urls(text: &str) -> Vec<TextSegment<'_>> {
     let mut segments = Vec::new();
     let mut plain_text_start = 0;
     let mut token_start = 0;
@@ -349,7 +517,7 @@ fn split_links(text: &str) -> Vec<TextSegment<'_>> {
     segments
 }
 
-/// Show `text`, rendering embedded URLs as inline hyperlinks.
+/// Show `text`, rendering embedded URLs and Markdown links as inline hyperlinks.
 fn label_with_inline_links(ui: &mut egui::Ui, text: &str) {
     ui.horizontal_wrapped(|ui| {
         ui.spacing_mut().item_spacing.x = 0.0;
@@ -362,6 +530,9 @@ fn label_with_inline_links(ui: &mut egui::Ui, text: &str) {
                     // Toasts render after the viewer's hyperlink interceptor, so navigating in the
                     // same tab would replace the running Web Viewer.
                     ui.add(egui::Hyperlink::from_label_and_url(url, url).open_in_new_tab(true));
+                }
+                TextSegment::Link { text, url } => {
+                    ui.re_inline_hyperlink(text, url);
                 }
             }
         }
@@ -537,6 +708,7 @@ impl NotificationUi {
             self.unread_notification_level = None;
             for notification in &mut self.notifications {
                 notification.toast_ttl = Duration::ZERO;
+                notification.remember_if_shown(&self.ctx);
             }
         }
 
@@ -558,7 +730,7 @@ impl NotificationUi {
             .at_least(0.0)
             .at_most(640.0);
 
-        let mut to_dismiss = None;
+        let mut to_dismiss: Option<(usize, NotificationReaction)> = None;
 
         let notification_list = |ui: &mut egui::Ui| {
             if notifications.is_empty() {
@@ -568,9 +740,8 @@ impl NotificationUi {
             }
 
             for (i, notification) in notifications.iter().enumerate().rev() {
-                let reaction = show_notification(ui, notification, DisplayMode::Panel).0;
-                if reaction.is_some() {
-                    to_dismiss = Some(i);
+                if let Some(reaction) = show_notification(ui, notification, DisplayMode::Panel).0 {
+                    to_dismiss = Some((i, reaction));
                 }
             }
         };
@@ -607,9 +778,12 @@ impl NotificationUi {
 
         if dismiss_all {
             notifications.clear();
-        } else if let Some(to_dismiss) = to_dismiss {
-            let removed = notifications.remove(to_dismiss);
-            removed.remember_dismiss(ui.ctx());
+        } else if let Some((index, reaction)) = to_dismiss {
+            let removed = notifications.remove(index);
+            match reaction {
+                NotificationReaction::Dismissed => {}
+                NotificationReaction::NeverShowAgain => removed.remember_dismiss(ui.ctx()),
+            }
         }
     }
 
@@ -676,24 +850,37 @@ impl Toasts {
                     details_openness(data, notification.unique_id, DisplayMode::Toast)
                 });
 
-            if !response.hovered()
+            if notification.toast_was_shown
+                && !response.hovered()
                 && !details_are_open
                 && !egui_ctx.rect_contains_pointer(response.layer_id, response.interact_rect)
             {
                 notification.toast_ttl = notification.toast_ttl.saturating_sub(dt);
             }
+            notification.toast_was_shown = true;
 
-            let response = response.on_hover_text("Click to close and copy contents");
+            // On a toast with action buttons, clicking the body does nothing, so a click that misses a
+            // button is not mistaken for an action.
+            let body_is_clickable = notification.actions.is_empty();
+            let response = if body_is_clickable {
+                response.on_hover_text("Click to close and copy contents")
+            } else {
+                response
+            };
 
             if closed {
                 notification.toast_ttl = Duration::ZERO;
-            } else if response.clicked() {
+            } else if body_is_clickable && response.clicked() {
                 if let Some(link) = &notification.link {
                     egui_ctx.open_url(egui::OpenUrl::new_tab(link.url.clone()));
                 } else {
                     egui_ctx.copy_text(notification.copy_text());
                 }
                 notification.toast_ttl = Duration::ZERO;
+            }
+
+            if notification.toast_ttl == Duration::ZERO {
+                notification.remember_if_shown(egui_ctx);
             }
 
             offset.y += response.rect.height() + 8.0;
@@ -769,9 +956,11 @@ fn show_notification(
         earlier_details: _,
         count,
         link,
-        permanent_dismiss_id,
+        actions,
+        permanent_dismiss,
         created_at,
         toast_ttl: _,
+        toast_was_shown: _,
         is_unread,
         unique_id,
     } = notification;
@@ -811,8 +1000,9 @@ fn show_notification(
             .shadow(egui::Shadow::NONE)
             .show(ui, |ui| {
                 ui.vertical_centered(|ui| {
-                    ui.horizontal_top(|ui| {
-                        ui.add(level.image(ui));
+                    let row = ui.horizontal_top(|ui| {
+                        let icon = ui.add(level.image(ui));
+                        let text_left = icon.rect.right() + ui.spacing().item_spacing.x;
 
                         ui.vertical(|ui| {
                             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
@@ -861,25 +1051,46 @@ fn show_notification(
                                 }
                             }
                         }
+                        text_left
                     });
+                    let text_left = row.inner;
 
                     let show_dismiss = match mode {
                         DisplayMode::Panel => true,
                         DisplayMode::Toast => false,
                     };
-                    let show_bottom_bar = show_dismiss || link.is_some();
+                    let show_bottom_bar = show_dismiss || link.is_some() || !actions.is_empty();
 
                     if show_bottom_bar {
-                        egui::Sides::new().show(
+                        let (action_clicked, ()) = egui::Sides::new().show(
                             ui,
                             |ui| {
+                                let mut action_clicked = false;
+                                if !actions.is_empty() {
+                                    // Line the buttons up with the text, not the level icon.
+                                    ui.add_space(text_left - ui.cursor().left());
+                                }
                                 if let Some(link) = link {
                                     link.ui(ui);
                                 }
+                                for action in actions {
+                                    if ui.button(&action.label).clicked() {
+                                        (action.on_click)();
+                                        action_clicked = true;
+                                    }
+                                }
+                                action_clicked
                             },
                             |ui| {
                                 if show_dismiss {
-                                    if permanent_dismiss_id.is_some() {
+                                    let offer_never_show_again = match permanent_dismiss {
+                                        Some(PermanentDismiss { id: _, when }) => match when {
+                                            RememberDismissal::OnDismiss => true,
+                                            RememberDismissal::OnceShown => false,
+                                        },
+                                        None => false,
+                                    };
+                                    if offer_never_show_again {
                                         if ui.button("Don't show again").clicked() {
                                             reaction = Some(NotificationReaction::NeverShowAgain);
                                         }
@@ -892,6 +1103,9 @@ fn show_notification(
                                 }
                             },
                         );
+                        if action_clicked {
+                            reaction = Some(NotificationReaction::Dismissed);
+                        }
                     }
                 })
             })
@@ -1048,7 +1262,7 @@ mod tests {
 
     #[test]
     fn test_split_links() {
-        use TextSegment::{Text, Url};
+        use TextSegment::{Link, Text, Url};
 
         assert_eq!(
             split_links("See https://rerun.invalid/docs and (http://example.invalid/help)."),
@@ -1058,6 +1272,30 @@ mod tests {
                 Text(" and ("),
                 Url("http://example.invalid/help"),
                 Text(")."),
+            ]
+        );
+        assert_eq!(
+            split_links(
+                "Read the [privacy policy](https://rerun.invalid/privacy). [Not a link](docs)"
+            ),
+            vec![
+                Text("Read the "),
+                Link {
+                    text: "privacy policy",
+                    url: "https://rerun.invalid/privacy",
+                },
+                Text(". [Not a link](docs)"),
+            ]
+        );
+        assert_eq!(
+            split_links("See [Foo](https://rerun.invalid/wiki/Foo_(bar)))"),
+            vec![
+                Text("See "),
+                Link {
+                    text: "Foo",
+                    url: "https://rerun.invalid/wiki/Foo_(bar)",
+                },
+                Text(")"),
             ]
         );
         assert_eq!(
@@ -1098,7 +1336,7 @@ mod tests {
     }
 
     /// Repeats merge into one notification that moves to the end, keeping every occurrence's
-    /// details; anything that differs in level or text stays separate.
+    /// details; anything that differs in level, text, or actions stays separate.
     #[test]
     fn test_repeats_are_merged() {
         let mut ui = NotificationUi::new(egui::Context::default());
@@ -1106,6 +1344,10 @@ mod tests {
         ui.add(notification(NotificationLevel::Error, "Other", "b"));
         ui.add(notification(NotificationLevel::Warning, "Timed out", "c"));
         ui.add(notification(NotificationLevel::Error, "Timed out", "d"));
+        ui.add(
+            notification(NotificationLevel::Error, "Timed out", "e")
+                .with_action(NotificationAction::new("Retry", || {})),
+        );
 
         let summary: Vec<_> = ui
             .notifications()
@@ -1118,6 +1360,7 @@ mod tests {
                 (NotificationLevel::Error, "Other", 1),
                 (NotificationLevel::Warning, "Timed out", 1),
                 (NotificationLevel::Error, "Timed out", 2),
+                (NotificationLevel::Error, "Timed out", 1),
             ]
         );
         let merged = &ui.notifications()[2];

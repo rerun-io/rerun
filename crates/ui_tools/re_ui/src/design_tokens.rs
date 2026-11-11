@@ -584,6 +584,12 @@ pub struct DesignTokens {
     /// Text of a link on a card.
     pub card_link_color: Color32,
 
+    /// Blue text and icon of a link inside running text, e.g. in a notification.
+    ///
+    /// Other links keep the text color (see `hyperlink_color`); inside running text, a link must
+    /// stand out from the words around it.
+    pub inline_link_color: Color32,
+
     /// The unfilled part of a bar on a card.
     pub card_bar_track_color: Color32,
 
@@ -870,6 +876,7 @@ impl DesignTokens {
             card_selected_stroke: get_stroke("card_selected_stroke"),
             card_text_edit_bg_color: get_color("card_text_edit_bg_color"),
             card_link_color: get_color("card_link_color"),
+            inline_link_color: get_color("inline_link_color"),
             card_bar_track_color: get_color("card_bar_track_color"),
 
             flag_untoggled_bg: get_color("flag_untoggled_bg"),

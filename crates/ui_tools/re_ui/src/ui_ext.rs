@@ -988,31 +988,25 @@ pub trait UiExt {
         url: impl Into<String>,
         always_new_tab: bool,
     ) -> egui::Response {
-        let ui = self.ui_mut();
+        hyperlink(
+            self.ui_mut(),
+            text,
+            url,
+            always_new_tab,
+            HyperlinkPlacement::OnItsOwn,
+        )
+    }
 
-        ui.scope(|ui| {
-            let tokens = ui.tokens();
-            let style = ui.style_mut();
-            style.visuals.button_frame = false;
-
-            // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
-            // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
-            let response = ui
-                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text))
-                .on_hover_cursor(egui::CursorIcon::PointingHand);
-
-            if response.clicked_with_open_in_background() {
-                ui.open_url(egui::OpenUrl::new_tab(url.into()));
-            } else if response.clicked() {
-                ui.open_url(egui::OpenUrl {
-                    url: url.into(),
-                    new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
-                });
-            }
-
-            response
-        })
-        .inner
+    /// Like [`Self::re_hyperlink`], for a link inside running text.
+    ///
+    /// The link is blue, with the icon after the text, and always opens in a new tab.
+    /// Use it only inside running text; every other link keeps the text color.
+    fn re_inline_hyperlink(
+        &mut self,
+        text: impl Into<egui::WidgetText>,
+        url: impl Into<String>,
+    ) -> egui::Response {
+        hyperlink(self.ui_mut(), text, url, true, HyperlinkPlacement::InText)
     }
 
     /// Show some close/maximize/minimize buttons for the native window.
@@ -1436,6 +1430,61 @@ pub trait UiExt {
 
         response
     }
+}
+
+#[derive(Clone, Copy)]
+enum HyperlinkPlacement {
+    /// The link stands on its own, in the text color.
+    OnItsOwn,
+
+    /// The link is inside running text, see [`UiExt::re_inline_hyperlink`].
+    InText,
+}
+
+fn hyperlink(
+    ui: &mut egui::Ui,
+    text: impl Into<egui::WidgetText>,
+    url: impl Into<String>,
+    always_new_tab: bool,
+    placement: HyperlinkPlacement,
+) -> egui::Response {
+    ui.scope(|ui| {
+        let tokens = ui.tokens();
+        let style = ui.style_mut();
+        style.visuals.button_frame = false;
+
+        // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
+        // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
+        let button = match placement {
+            HyperlinkPlacement::OnItsOwn => {
+                crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text)
+            }
+            HyperlinkPlacement::InText => {
+                let color = tokens.inline_link_color;
+                egui::Button::new((
+                    text.into().color(color),
+                    crate::icons::EXTERNAL_LINK.as_image().tint(color),
+                ))
+                // As tall as the text around it, so it stays on the line of text.
+                .size(Size::custom(0.0))
+            }
+        };
+        let response = ui
+            .add(button)
+            .on_hover_cursor(egui::CursorIcon::PointingHand);
+
+        if response.clicked_with_open_in_background() {
+            ui.open_url(egui::OpenUrl::new_tab(url.into()));
+        } else if response.clicked() {
+            ui.open_url(egui::OpenUrl {
+                url: url.into(),
+                new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
+            });
+        }
+
+        response
+    })
+    .inner
 }
 
 /// Paints a gradient rectangle that transitions from `color_from` to `color_to`

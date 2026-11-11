@@ -249,6 +249,10 @@
     "card_link_color": {
       "color": "{Blue.500}"
     },
+    // A link inside running text, e.g. in a notification.
+    "inline_link_color": {
+      "color": "{Blue.500}"
+    },
 
     "drag_pill_droppable_fill": {
       "color": "{Blue.725}"
