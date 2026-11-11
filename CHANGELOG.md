@@ -2,12 +2,12 @@
 
 ## [0.43.0](https://github.com/rerun-io/rerun/compare/0.42.0...0.43.0) - 2026-11-11
 
-### ✨ Overview & highlights
+### ✨ Overview
 
 - [Chunk indexing policy in the Python catalog API](https://rerun.io/docs/changelog/changeset-0-43#chunk-indexing-policy-in-the-python-catalog-api): a dataset can index only some of its entity paths and timelines
 - [Dataset scope for Python queries](https://rerun.io/docs/changelog/changeset-0-43#dataset-scope-for-python-queries) with the `scope=` argument of `DatasetEntry.reader` and `DatasetSelection.reader`
 - Pan and zoom in the [tensor view](https://rerun.io/docs/reference/types/views/tensor_view) ([video](https://static.rerun.io/ea60f9e014adbbbcbec191d62bd096cd9599a7a4_tensor_view_zoom_viewer.mp4))
-- Blueprint edits are remembered per blueprint in the native viewer
+- Edit the translation of [`GridMap`](https://rerun.io/docs/reference/types/archetypes/grid_map), [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map), and [`Volume3D`](https://rerun.io/docs/reference/types/archetypes/volume3d) in the viewer, and the voxel size of `VoxelGridMap` and `Volume3D`
 - New "Switch to newly streamed recordings" setting to stay on the current recording while new ones stream in
 - [Memory limits](https://rerun.io/docs/howto/visualization/limit-ram) respect cgroup limits on Linux
 - `TimelineInfo.kind` is now a `rerun.catalog.TimelineKind` enum
@@ -17,7 +17,6 @@
 These may change in future releases, and unstable types may not stay backwards compatible.
 
 - Read the selection over ViewerControl with [`ViewerClient.get_selection()`](https://rerun.io/docs/howto/visualization/control-the-viewer#drive-a-running-viewer-from-python) in Python, [`WebViewer.getSelection()`](https://rerun.io/docs/howto/integrations/embed-web) in JavaScript, and the [`rerun_get_selection` MCP tool](https://rerun.io/docs/reference/viewer/mcp#what-the-agent-sees)
-- Edit the translation of [`GridMap`](https://rerun.io/docs/reference/types/archetypes/grid_map), [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map), and [`Volume3D`](https://rerun.io/docs/reference/types/archetypes/volume3d) in the viewer, and the voxel size of `VoxelGridMap` and `Volume3D`
 
 📖 Release notes: https://rerun.io/docs/changelog/changeset-0-43#new-features
 
@@ -47,7 +46,7 @@ These may change in future releases, and unstable types may not stay backwards c
 - Fix collapsing selected servers with the chevron [6b4b08a](https://github.com/rerun-io/rerun/commit/6b4b08a21dc76d8941ffd2889b0a7e4e8f287fa2)
 - Fix initial [raw data view](https://rerun.io/docs/reference/types/views/raw_data_view) entity filter [bb934c2](https://github.com/rerun-io/rerun/commit/bb934c2c804983a6657506b0f3ab6c8c3d91efde)
 - Prevent source changes for read-only components [616fd7e](https://github.com/rerun-io/rerun/commit/616fd7ef1cd1101c072014a6716efdf13b39679e)
-- Clamp [MapView](https://rerun.io/docs/reference/types/views/map_view) default zoom level + fix colinear edgecase [#13007](https://github.com/rerun-io/rerun/pull/13007)
+- Clamp [MapView](https://rerun.io/docs/reference/types/views/map_view) default zoom level + fix collinear edgecase [#13007](https://github.com/rerun-io/rerun/pull/13007)
 - Support Wasm timers outside browser windows [e2ca642](https://github.com/rerun-io/rerun/commit/e2ca64231294991c3c6d7dcb8da67dbe5d8779fc)
 - Explain browser requirements when constructing [WebViewer](https://rerun.io/docs/howto/integrations/embed-web) in Node [a759c67](https://github.com/rerun-io/rerun/commit/a759c670eef6fb30b47a0635ce49b5eacbda13e0)
 - Fix agent panel: picking the local agent after a model API did nothing [7c63900](https://github.com/rerun-io/rerun/commit/7c6390074fb30e0a41ede87f58294d8fbc0bacd1)
