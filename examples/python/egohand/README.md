@@ -198,4 +198,5 @@ The first fast run builds its TensorRT engines, which takes a few minutes.
 * [MHR: Momentum Human Rig](https://arxiv.org/abs/2511.15586), Ferguson et al. (Meta).
 * [SOMA: Unifying Parametric Human Body Models](https://arxiv.org/abs/2603.16858), Saito et al. (NVIDIA), with [SOMA-X](https://github.com/NVlabs/SOMA-X).
 * [The Double Sphere Camera Model](https://arxiv.org/abs/1807.08957), Usenko, Demmel and Cremers.
-* Video: [Gen-HumanEgo](https://huggingface.co/datasets/genrobot2025/Gen-HumanEgo) (CC BY-SA 4.0).
+* Weights: [EgoHand-v1](https://huggingface.co/nvidia/EgoHand-v1) and [RT-DETR-Hand-Detector-v1](https://huggingface.co/nvidia/RT-DETR-Hand-Detector-v1) (NVIDIA, OpenMDW-1.1; the example loads EgoHand from a weights-only mirror, [pablovela5620/egohand](https://huggingface.co/pablovela5620/egohand)), and [SOMA-X](https://huggingface.co/nvidia/SOMA-X) (Apache-2.0).
+* Video: [Gen-HumanEgo](https://huggingface.co/datasets/genrobot2025/Gen-HumanEgo) ([CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)). The video, images and recording on this page overlay boxes, joints and hand meshes on it, and are shared under the same licence.
