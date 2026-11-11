@@ -315,10 +315,6 @@ pub struct GetWriteAccessGrantRequest {
     /// A grant does not reserve the key; another writer may publish first and make this write fail.
     #[prost(string, tag = "1")]
     pub key: ::prost::alloc::string::String,
-    /// The requested storage location.
-    /// The request fails if this is absent and the server has no default location.
-    #[prost(message, optional, tag = "2")]
-    pub location: ::core::option::Option<Location>,
     /// Exact object size, if known; absent means unknown.
     /// Servers use it to select the upload method and part size.
     #[prost(uint64, optional, tag = "3")]
@@ -330,6 +326,10 @@ pub struct GetWriteAccessGrantRequest {
     /// Required signing mode for the grant's HTTP requests. UNSPECIFIED means SIGNED.
     #[prost(enumeration = "UrlSigning", tag = "5")]
     pub signing: i32,
+    /// The requested alias, or the server's default if absent.
+    /// TODO(RR-6055): Explicit selection requires support negotiation before sending to older servers.
+    #[prost(string, optional, tag = "6")]
+    pub storage_location: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for GetWriteAccessGrantRequest {
     const NAME: &'static str = "GetWriteAccessGrantRequest";
@@ -341,19 +341,69 @@ impl ::prost::Name for GetWriteAccessGrantRequest {
         "/rerun.cloud.v1alpha1.GetWriteAccessGrantRequest".into()
     }
 }
-/// Selects a cloud location for an object.
-///
-/// TODO(RR-6055): Define provider, region, and network constraints.
+/// Requests a snapshot of the currently loaded keychain entries.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct Location {}
-impl ::prost::Name for Location {
-    const NAME: &'static str = "Location";
+pub struct GetStorageLocationsRequest {}
+impl ::prost::Name for GetStorageLocationsRequest {
+    const NAME: &'static str = "GetStorageLocationsRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.Location".into()
+        "rerun.cloud.v1alpha1.GetStorageLocationsRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.Location".into()
+        "/rerun.cloud.v1alpha1.GetStorageLocationsRequest".into()
+    }
+}
+/// Configuration descriptors only; no credentials or reachability guarantees.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetStorageLocationsResponse {
+    /// One descriptor per keychain entry, sorted by alias.
+    #[prost(message, repeated, tag = "1")]
+    pub storage_locations: ::prost::alloc::vec::Vec<StorageLocation>,
+    /// Alias used when no storage location is specified.
+    #[prost(string, tag = "2")]
+    pub default_alias: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetStorageLocationsResponse {
+    const NAME: &'static str = "GetStorageLocationsResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetStorageLocationsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetStorageLocationsResponse".into()
+    }
+}
+/// A storage location configured in this catalog deployment.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct StorageLocation {
+    /// Deployment-local alias accepted by storage_location request fields.
+    #[prost(string, tag = "1")]
+    pub alias: ::prost::alloc::string::String,
+    /// Optional human-readable label; use alias to identify the location in requests.
+    #[prost(string, optional, tag = "2")]
+    pub display_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Object-store region configured for this location.
+    #[prost(string, tag = "3")]
+    pub region: ::prost::alloc::string::String,
+    /// Bucket name, without a URI scheme or object path.
+    #[prost(string, tag = "4")]
+    pub bucket_name: ::prost::alloc::string::String,
+    /// Object keys are relative to this prefix.
+    #[prost(string, optional, tag = "5")]
+    pub prefix: ::core::option::Option<::prost::alloc::string::String>,
+    /// The location forbids writes even if its credentials permit them.
+    #[prost(bool, tag = "6")]
+    pub read_only: bool,
+}
+impl ::prost::Name for StorageLocation {
+    const NAME: &'static str = "StorageLocation";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.StorageLocation".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.StorageLocation".into()
     }
 }
 /// Authorization to create one object.
@@ -3780,6 +3830,26 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// List storage locations, sorted by alias.
+        pub async fn get_storage_locations(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetStorageLocationsRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetStorageLocationsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetStorageLocations",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetStorageLocations",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Subscribe to catalog events as they happen.
         ///
         /// The stream yields one response per event and stays open until the client drops it.
@@ -4844,6 +4914,11 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::DoBandwidthTestRequest>,
         ) -> std::result::Result<tonic::Response<Self::DoBandwidthTestStream>, tonic::Status>;
+        /// List storage locations, sorted by alias.
+        async fn get_storage_locations(
+            &self,
+            request: tonic::Request<super::GetStorageLocationsRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetStorageLocationsResponse>, tonic::Status>;
         /// Server streaming response type for the WatchEvents method.
         type WatchEventsStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::WatchEventsResponse, tonic::Status>,
@@ -5510,6 +5585,49 @@ pub mod rerun_cloud_service_server {
                                 max_encoding_message_size,
                             );
                         let res = grpc.server_streaming(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetStorageLocations" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetStorageLocationsSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetStorageLocationsRequest>
+                        for GetStorageLocationsSvc<T>
+                    {
+                        type Response = super::GetStorageLocationsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetStorageLocationsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_storage_locations(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetStorageLocationsSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
                         Ok(res)
                     };
                     Box::pin(fut)

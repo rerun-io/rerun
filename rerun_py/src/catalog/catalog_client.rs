@@ -77,7 +77,7 @@ pub fn _get_write_access_grant(
             .await?
             .get_write_access_grant(GetWriteAccessGrantRequest {
                 key,
-                location: None,
+                storage_location: None,
                 size_bytes,
                 supported_upload_methods: vec![UploadMethod::SingleRequest],
                 signing: UrlSigning::Signed,

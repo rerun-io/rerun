@@ -23,6 +23,9 @@ use crate::cloud::v1alpha1::{
 use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
+pub use crate::storage_location::{
+    InvalidStorageStringValue, StorageBucketName, StoragePrefix, StorageRegion,
+};
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 /// Helper to simplify writing `field_XXX() -> FieldRef` methods.
@@ -2267,7 +2270,9 @@ impl std::fmt::Display for ObjectKey {
 ///
 /// An alias has at most 253 characters: lowercase ASCII letters, digits, `-`, and `.`.
 /// Each dot-separated part must be non-empty and start and end with a letter or digit.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
 #[serde(try_from = "String", into = "String")]
 pub struct StorageLocationAlias(String);
 
@@ -2332,13 +2337,90 @@ impl std::fmt::Display for StorageLocationAlias {
     }
 }
 
+/// Storage locations and the alias selected when none is specified.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageLocations {
+    pub locations: Vec<StorageLocation>,
+    pub default_alias: StorageLocationAlias,
+}
+
+/// A storage location configured in this catalog deployment.
+// TODO(RR-6055): Define provider and network constraints for location selection.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageLocation {
+    pub alias: StorageLocationAlias,
+    pub display_name: Option<String>,
+    pub region: StorageRegion,
+    /// Bucket name, without a URI scheme or object path.
+    pub bucket_name: StorageBucketName,
+    pub prefix: Option<StoragePrefix>,
+    pub read_only: bool,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::StorageLocation> for StorageLocation {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::StorageLocation) -> Result<Self, Self::Error> {
+        Ok(Self {
+            alias: StorageLocationAlias::try_new(value.alias).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "alias",
+                    err.to_string()
+                )
+            })?,
+            display_name: value.display_name,
+            region: StorageRegion::try_new(value.region).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "region",
+                    err.to_string()
+                )
+            })?,
+            bucket_name: StorageBucketName::try_new(value.bucket_name).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "bucket_name",
+                    err.to_string()
+                )
+            })?,
+            prefix: value
+                .prefix
+                .map(StoragePrefix::try_new)
+                .transpose()
+                .map_err(|err| {
+                    invalid_field!(
+                        crate::cloud::v1alpha1::StorageLocation,
+                        "prefix",
+                        err.to_string()
+                    )
+                })?,
+            read_only: value.read_only,
+        })
+    }
+}
+
+impl From<StorageLocation> for crate::cloud::v1alpha1::StorageLocation {
+    fn from(value: StorageLocation) -> Self {
+        Self {
+            alias: value.alias.into(),
+            display_name: value.display_name,
+            region: value.region.into(),
+            bucket_name: value.bucket_name.into(),
+            prefix: value.prefix.map(Into::into),
+            read_only: value.read_only,
+        }
+    }
+}
+
 /// Requests authorization to write one object at `key`.
 #[derive(Debug, Clone)]
 pub struct GetWriteAccessGrantRequest {
     pub key: ObjectKey,
 
     /// The requested storage location, or the server's default.
-    pub location: Option<crate::cloud::v1alpha1::Location>,
+    /// TODO(RR-6055): Negotiate server support before sending an explicit alias.
+    pub storage_location: Option<StorageLocationAlias>,
 
     /// Exact object size, if known.
     pub size_bytes: Option<u64>,
@@ -2365,14 +2447,23 @@ impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAcc
     ) -> Result<Self, Self::Error> {
         let crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
             key,
-            location,
             size_bytes,
             supported_upload_methods,
             signing,
+            storage_location,
         } = value;
         Ok(Self {
             key: ObjectKey::try_new(key)?,
-            location,
+            storage_location: storage_location
+                .map(StorageLocationAlias::try_new)
+                .transpose()
+                .map_err(|err| {
+                    invalid_field!(
+                        crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
+                        "storage_location",
+                        err.to_string()
+                    )
+                })?,
             size_bytes,
             supported_upload_methods: if supported_upload_methods.is_empty() {
                 vec![UploadMethod::SingleRequest]
@@ -2398,14 +2489,14 @@ impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccess
     fn from(value: GetWriteAccessGrantRequest) -> Self {
         let GetWriteAccessGrantRequest {
             key,
-            location,
+            storage_location,
             size_bytes,
             supported_upload_methods,
             signing,
         } = value;
         Self {
             key: key.0,
-            location,
+            storage_location: storage_location.map(Into::into),
             size_bytes,
             supported_upload_methods: if supported_upload_methods.is_empty() {
                 // An empty wire list means single-request only, so encode no support explicitly.

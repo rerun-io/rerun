@@ -16,6 +16,7 @@ pub mod headers;
 pub mod json;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod reflection;
+mod storage_location;
 pub mod trace_id_layer;
 
 pub use re_log_types::{EntryName, InvalidEntryNameError};
