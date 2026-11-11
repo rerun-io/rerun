@@ -5,39 +5,19 @@ order: 940
 
 ## New features
 
-### Chunk indexing policy in the Python catalog API
+### Pan and zoom in the tensor view
 
-A dataset can now index only some of its entity paths and timelines, so registration and queries skip the data you do not need.
-Pass a `rerun.catalog.ChunkIndexingPolicy` to `CatalogClient.create_dataset(chunk_indexing_policy=…)`, read it back with `DatasetEntry.chunk_indexing_policy`, and change it with `DatasetEntry.set_chunk_indexing_policy`.
-Changing it re-indexes the registered data in the background; call `wait()` on the returned `rerun.catalog.DatasetPolicyHandle` to block until that finishes.
-Each dimension is a list of names, or `"all"` for every name, including names logged later.
-Resolve entity path rules such as `/world/**` against the dataset schema with `ChunkIndexingPolicy.match` before sending them.
-Without a policy, a dataset indexes everything, and `DatasetEntry.set_chunk_indexing_policy(None)` resets it to that.
-A query in the indexed scope returns only the indexed entity paths, and raises `rerun.catalog.ChunkNotIndexedError` if it names an entity path or timeline the policy excludes.
-A query in the full scope, the default, reads excluded data from the recordings themselves, which works only for specific segments; otherwise it raises `ChunkNotIndexedError` too.
+The [tensor view](../reference/types/views/tensor_view.md) now supports pan and zoom, with the same controls as the 2D view: drag or scroll to pan, zoom with the scroll modifier or a pinch, and double-click to reset.
+The visible region is stored in the new `visual_bounds` view property, so it can also be set from the SDK.
+It is reset to the whole slice when the dimensions shown as width or height change, or when the view fit changes.
 
-Only Rerun Hub applies the policy; the OSS server stores it and ignores it.
-
-### Dataset scope for Python queries
-
-`DatasetEntry.reader` and `DatasetSelection.reader` take a `scope=` argument of type `rerun.catalog.DatasetQueryScope`, which selects the data a query reads relative to the dataset's chunk indexing policy.
-On Rerun Hub, `scope="indexed"` reads only indexed data: selecting every entity path selects only the indexed ones, and naming an entity path or timeline the policy excludes raises `rerun.catalog.ChunkNotIndexedError`.
-`scope="full"`, the default, covers everything.
-On Rerun Hub, it reads data outside the policy from the recordings themselves.
-That works only for specific segments, so filter the dataset to them first.
-Without them, such a read raises `rerun.catalog.ChunkNotIndexedError`.
-
-`DatasetEntry.schema`, `DatasetSelection.schema` and `DatasetSelection.arrow_schema` also take `scope=`.
-The OSS server ignores the scope.
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/ea60f9e014adbbbcbec191d62bd096cd9599a7a4_tensor_view_zoom_viewer.mp4" type="video/mp4" />
+</video>
 
 ## Other
 
 - **Blueprint edits are remembered per blueprint**: The native viewer now remembers your edits to a dataset's default blueprint separately from your edits to other blueprints, so switching between them keeps both sets of changes. A blueprint you haven't edited shows the version the server had when you first opened a segment of the dataset. All segments of a dataset share that blueprint. Blueprint edits saved by earlier versions of the viewer are kept.
-- **Pan and zoom in the tensor view**: The [tensor view](../reference/types/views/tensor_view.md) now supports pan and zoom, with the same controls as the 2D view: drag or scroll to pan, zoom with the scroll modifier or a pinch, and double-click to reset. The visible region is stored in the new `visual_bounds` view property, so it can also be set from the SDK. It is reset to the whole slice when the dimensions shown as width or height change, or when the view fit changes.
-
-  <video width="100%" autoplay loop muted controls>
-      <source src="https://static.rerun.io/ea60f9e014adbbbcbec191d62bd096cd9599a7a4_tensor_view_zoom_viewer.mp4" type="video/mp4" />
-  </video>
 - **Stay on the current recording while new ones stream in**: With "Switch to newly streamed recordings" turned off in the settings, a recording that streams in from an SDK is added to the recordings panel instead of replacing the one you are looking at.
 - **Edit grid and volume placement and voxel size in the viewer**: You can now edit the translation of `GridMap`, `VoxelGridMap`, and `Volume3D` in the viewer, and adjust voxel size for `VoxelGridMap` and `Volume3D`.
 - **Experimental: read the selection over ViewerControl**: `ViewerClient.get_selection()` in Python, `WebViewer.getSelection()` in JavaScript, and the `rerun_get_selection` MCP tool report what the user has selected in the Viewer: entities and instances, components, views, containers, and recordings. `ViewerClient` is part of `rerun.experimental` and may change in future releases.

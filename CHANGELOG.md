@@ -4,9 +4,7 @@
 
 ### ✨ Overview
 
-- [Chunk indexing policy in the Python catalog API](https://rerun.io/docs/changelog/changeset-0-43#chunk-indexing-policy-in-the-python-catalog-api): a dataset can index only some of its entity paths and timelines
-- [Dataset scope for Python queries](https://rerun.io/docs/changelog/changeset-0-43#dataset-scope-for-python-queries) with the `scope=` argument of `DatasetEntry.reader` and `DatasetSelection.reader`
-- Pan and zoom in the [tensor view](https://rerun.io/docs/reference/types/views/tensor_view) ([video](https://static.rerun.io/ea60f9e014adbbbcbec191d62bd096cd9599a7a4_tensor_view_zoom_viewer.mp4))
+- [Pan and zoom](https://rerun.io/docs/changelog/changeset-0-43#pan-and-zoom-in-the-tensor-view) in the [tensor view](https://rerun.io/docs/reference/types/views/tensor_view) ([video](https://static.rerun.io/ea60f9e014adbbbcbec191d62bd096cd9599a7a4_tensor_view_zoom_viewer.mp4))
 - Edit the translation of [`GridMap`](https://rerun.io/docs/reference/types/archetypes/grid_map), [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map), and [`Volume3D`](https://rerun.io/docs/reference/types/archetypes/volume3d) in the viewer, and the voxel size of `VoxelGridMap` and `Volume3D`
 - New "Switch to newly streamed recordings" setting to stay on the current recording while new ones stream in
 - [Memory limits](https://rerun.io/docs/howto/visualization/limit-ram) respect cgroup limits on Linux
@@ -30,7 +28,7 @@ These may change in future releases, and unstable types may not stay backwards c
 ### 🔎 Details
 
 #### 🐍 Python API
-- [Chunk indexing policy](https://rerun.io/docs/changelog/changeset-0-43#chunk-indexing-policy-in-the-python-catalog-api) and [dataset scope](https://rerun.io/docs/changelog/changeset-0-43#dataset-scope-for-python-queries) in the catalog API [b15b0a3](https://github.com/rerun-io/rerun/commit/b15b0a3e4d6205f297ed353c3f4160030588b250)
+- Chunk indexing policy and dataset scope in the catalog API (Rerun Hub only) [b15b0a3](https://github.com/rerun-io/rerun/commit/b15b0a3e4d6205f297ed353c3f4160030588b250)
 - Rename `object_store_config` to [`StorageLocationAlias`](https://rerun.io/docs/changelog/changeset-0-43#object_store_config-renamed-to-storage_location) [e19b954](https://github.com/rerun-io/rerun/commit/e19b954fb25362cc6779ba6244655ca0395dd120)
 - Make `TimelineKind` a proper enum with `pa.DataType` conversion [e8aa7b9](https://github.com/rerun-io/rerun/commit/e8aa7b96ed3230f49fc55b7d95476d9a41d112f1)
 - Add [`get_selection`](https://rerun.io/docs/howto/visualization/control-the-viewer#drive-a-running-viewer-from-python) to ViewerControl [b51f120](https://github.com/rerun-io/rerun/commit/b51f120eae15ecbc063381062905bca25a7342dd)
@@ -67,7 +65,7 @@ These may change in future releases, and unstable types may not stay backwards c
 
 #### 🤷‍ Other
 - Add a setting to stay on the current recording while new ones stream in [#12978](https://github.com/rerun-io/rerun/pull/12978) (thanks [@frederiksemmel](https://github.com/frederiksemmel)!)
-- Add `DatasetQueryScope` to `FindChunks` and route it in the clients [a8d5ea2](https://github.com/rerun-io/rerun/commit/a8d5ea286f8d4547d2ba47a1e5605ee16ab0a60a)
+- Add `DatasetQueryScope` to `FindChunks` and route it in the clients (Rerun Hub only) [a8d5ea2](https://github.com/rerun-io/rerun/commit/a8d5ea286f8d4547d2ba47a1e5605ee16ab0a60a)
 
 ## [0.42.0](https://github.com/rerun-io/rerun/compare/0.41.0...0.42.0) - 2026-11-04
 
