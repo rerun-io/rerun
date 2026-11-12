@@ -18,6 +18,12 @@ if TYPE_CHECKING:
     from .recording_stream import RecordingStream
 
 
+def _seconds_to_nanos(seconds: np.ndarray) -> np.ndarray:
+    if np.issubdtype(seconds.dtype, np.integer):
+        return seconds.astype(np.int64) * 1_000_000_000
+    return np.round(seconds.astype(np.float64) * 1e9).astype(np.int64)
+
+
 class TimeColumnLike(Protocol):
     """Describes interface for objects that can be converted to a column of rerun time values."""
 
@@ -105,7 +111,7 @@ class TimeColumn(TimeColumnLike):
                     self.times = pa.array(duration.astype("timedelta64[ns]"), pa.duration("ns"))
                 elif np.issubdtype(duration.dtype, np.number):
                     # Numeric array that needs conversion to nanoseconds
-                    self.times = pa.array((duration * 1e9).astype("timedelta64[ns]"), pa.duration("ns"))
+                    self.times = pa.array(_seconds_to_nanos(duration).astype("timedelta64[ns]"), pa.duration("ns"))
                 else:
                     raise TypeError(f"Unsupported numpy array dtype: {duration.dtype}")
             else:
@@ -120,7 +126,7 @@ class TimeColumn(TimeColumnLike):
                     self.times = pa.array(timestamp.astype("datetime64[ns]"), pa.timestamp("ns"))
                 elif np.issubdtype(timestamp.dtype, np.number):
                     # Numeric array that needs conversion to nanoseconds
-                    self.times = pa.array((timestamp * 1e9).astype("datetime64[ns]"), pa.timestamp("ns"))
+                    self.times = pa.array(_seconds_to_nanos(timestamp).astype("datetime64[ns]"), pa.timestamp("ns"))
                 else:
                     raise TypeError(f"Unsupported numpy array dtype: {timestamp.dtype}")
             else:
