@@ -13,8 +13,6 @@ preview_rrd_url = "https://pablo-dl-server.ilish-ruler.ts.net:8477/metrictrail-p
 ```agent-prompt
 ```
 
-> **WIP update.** The first version of this page is complete. In progress: more pictures of what each model does in steps 4 to 6 of "How one frame goes through it", and a check of every step by a fresh reader. The steps change one by one.
-
 Try it in your browser with no install (the Space runs MetricTrail on ZeroGPU), or copy a prompt for your coding agent to install and run it on your own Linux machine with an NVIDIA GPU.
 
 <!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
