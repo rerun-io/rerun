@@ -306,12 +306,15 @@ impl Points3DVisualizer {
                     }
                 }
 
-                view_data.add_bounds(
+                let bounds = view_data.add_bounds(
                     entity_path.hash(),
                     cpu.robust_bounds,
                     world_from_obj,
                     SpaceKind::ThreeD,
                 );
+                bounds
+                    .max_point_radii
+                    .update_from_radii(data.radii.iter().copied());
 
                 if let Some(annotations) = ent_context.annotations {
                     load_keypoint_connections(
