@@ -35,6 +35,7 @@ pub struct GeoPointBatch {
 #[derive(Default, Clone)]
 pub struct GeoPointsOutput {
     pub batches: Vec<(EntityPath, GeoPointBatch)>,
+
     /// The largest scene/screen radii across the points from all batches
     pub max_radii: MaxRadii,
 }
