@@ -235,25 +235,37 @@ pub fn test_list_items_should_match_snapshot() {
 /// A hovered button must stand out from the hovered row it sits on.
 #[test]
 pub fn test_list_item_button_hover_stands_out() {
-    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [300.0, 60.0])
-        .build_ui(|ui| {
-            egui::Panel::right("right_panel").show(ui, |ui| {
-                ui.set_width(250.0);
-                list_item::list_item_scope(ui, "list_item_scope", |ui| {
-                    ui.list_item().show_hierarchical(
-                        ui,
-                        list_item::LabelContent::new("Item with buttons")
-                            .with_buttons(|ui| {
-                                ui.small_icon_button(&icons::ADD, "Add");
-                                ui.small_icon_button(&icons::REMOVE, "Remove");
-                            })
-                            .with_always_show_buttons(true),
-                    );
-                });
-            });
-        });
+    let mut snapshot_results = egui_kittest::SnapshotResults::new();
 
-    harness.get_by_label("Remove").hover();
-    harness.run();
-    harness.snapshot("list_item_button_hovered");
+    for (theme, theme_name) in [(egui::Theme::Dark, "dark"), (egui::Theme::Light, "light")] {
+        let mut harness =
+            re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, [220.0, 100.0])
+                .with_theme(theme)
+                .build_ui(|ui| {
+                    egui::Panel::right("right_panel").show(ui, |ui| {
+                        ui.set_width(200.0);
+                        list_item::list_item_scope(ui, "list_item_scope", |ui| {
+                            ui.list_item()
+                                .show_hierarchical(ui, list_item::LabelContent::new("Bar Chart"));
+                            ui.list_item().show_hierarchical(
+                                ui,
+                                list_item::LabelContent::new("Curves")
+                                    .with_buttons(|ui| {
+                                        ui.small_icon_button(&icons::VISIBLE, "Hide");
+                                    })
+                                    .with_always_show_buttons(true),
+                            );
+                            ui.list_item().show_hierarchical(
+                                ui,
+                                list_item::LabelContent::new("Classification"),
+                            );
+                        });
+                    });
+                });
+
+        harness.get_by_label("Hide").hover();
+        harness.run();
+        snapshot_results
+            .add(harness.try_snapshot(format!("list_item_button_hovered_{theme_name}")));
+    }
 }

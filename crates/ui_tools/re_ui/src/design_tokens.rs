@@ -1748,6 +1748,40 @@ mod tests {
         output.textures_delta.clear();
     }
 
+    /// Menu items, icon buttons, and list items must have a visible hover highlight.
+    #[test]
+    fn test_hovered_widget_contrast() {
+        let ctx = egui::Context::default();
+        crate::apply_style_and_install_loaders(&ctx);
+
+        for theme in [Theme::Dark, Theme::Light] {
+            let tokens = crate::design_tokens_of(theme);
+            let visuals = &ctx.style_of(theme).visuals;
+            for (name, color) in [
+                (
+                    "widgets.hovered.weak_bg_fill",
+                    visuals.widgets.hovered.weak_bg_fill,
+                ),
+                ("list_item_hovered_bg", tokens.list_item_hovered_bg),
+            ] {
+                let contrast = contrast_ratio(color, visuals.window_fill);
+                assert!(
+                    MIN_HOVER_CONTRAST_RATIO <= contrast,
+                    "{theme:?}: {name} has contrast {contrast:.2} against window_fill; should be at least {MIN_HOVER_CONTRAST_RATIO}"
+                );
+            }
+
+            let contrast = contrast_ratio(
+                tokens.list_item_button_hovered_bg,
+                tokens.list_item_hovered_bg,
+            );
+            assert!(
+                MIN_HOVER_CONTRAST_RATIO <= contrast,
+                "{theme:?}: list_item_button_hovered_bg has contrast {contrast:.2} against list_item_hovered_bg; should be at least {MIN_HOVER_CONTRAST_RATIO}"
+            );
+        }
+    }
+
     #[test]
     fn test_design_tokens() {
         let ctx = egui::Context::default();

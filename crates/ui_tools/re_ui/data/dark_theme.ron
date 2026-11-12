@@ -376,16 +376,16 @@
       "color": "{Gray.500}"
     },
     "list_item_hovered_bg": {
-      "color": "{Gray.150}"
+      "color": "{Gray.250}"
     },
     "list_item_active_bg": {
       "color": "{Gray.150}"
     },
     "list_item_button_hovered_bg": {
-      "color": "{Gray.200}"
+      "color": "{Gray.350}"
     },
     "list_item_button_pressed_bg": {
-      "color": "{Gray.250}"
+      "color": "{Gray.375}"
     },
     "list_item_collapse_default": {
       "color": "{Gray.500}"
@@ -545,14 +545,14 @@
   },
   "button_ghost": {
     "fill": { "color": "{Gray.300}", "alpha": 0 },
-    "fill_hovered": { "color": "{Gray.150}" },
-    "fill_pressed": { "color": "{Gray.200}" },
+    "fill_hovered": { "color": "{Gray.250}" },
+    "fill_pressed": { "color": "{Gray.350}" },
     "text": { "color": "{Gray.725}" },
   },
   "button_outlined": {
     "fill": { "color": "{Gray.300}", "alpha": 0 },
-    "fill_hovered": { "color": "{Gray.150}" },
-    "fill_pressed": { "color": "{Gray.200}" },
+    "fill_hovered": { "color": "{Gray.250}" },
+    "fill_pressed": { "color": "{Gray.350}" },
     "text": { "color": "{Gray.725}" },
   },
   "button_blue": {
