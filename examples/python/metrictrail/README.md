@@ -33,9 +33,6 @@ This example runs [NVIDIA's MetricTrail](https://research.nvidia.com/labs/sil/pr
 
 <p style="margin:10px 0 0;font-size:13px;line-height:20px;color:var(--color-muted, oklch(0.708 0 0))">MetricTrail needs an NVIDIA GPU with more than 12 GB of memory and a driver for CUDA 13; on a 12 GB RTX 3060 the run fails in calibration at about 11.8 GB.</p>
 
-<!-- PREVIEW ONLY: TODO(pablo) after #579, #582 to #585 and #587 merge: delete the next line (the pre-merge paragraph). -->
-<p style="margin:4px 0 0;font-size:13px;line-height:20px;color:var(--color-muted, oklch(0.708 0 0))">Until the open pull requests #579, #582 to #585 and <a href="https://github.com/rerun-io/examples-monorepo/pull/587">#587</a> merge, the commands below do not work on <code>main</code>.</p>
-
 ### With a coding agent
 
 Paste this prompt into any coding agent, or into the agent panel of the Rerun viewer.
@@ -76,7 +73,7 @@ Left, top: the video. The amber boxes are the 64 patches of the newest keyframe:
 Left, bottom: the predicted metric depth, 0.5 m (blue) to 20 m (red).
 Right: the final camera path and a mesh of the terrace, with the camera moving along the path.
 MetricTrail tracks all 690 frames, finds the focal length from the clip itself, and fuses the depth of every frame into one mesh of 1.18 million triangles.
-This run uses the open pull requests #579 and #582 to [#585](https://github.com/rerun-io/examples-monorepo/pull/585) of the examples-monorepo.
+This run uses the code of pull requests #579 and #582 to [#585](https://github.com/rerun-io/examples-monorepo/pull/585), which are merged into `main`.
 
 The same 690 frames on an NVIDIA RTX 5090, from the video file to the mesh (timed on a quiet machine at commit 8148306a5; the pictures come from commit 8a77f49cf, which changes only how patches are drawn):
 
