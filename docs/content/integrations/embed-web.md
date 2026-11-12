@@ -199,7 +199,7 @@ This is for gRPC servers. For `.rrd` files that you load over `http`, the file h
 ## Authentication
 
 The Viewer authenticates to Rerun servers with a bearer token (a JWT).
-In the JavaScript package, pass it as the `fallback_token` option of `start`, or set it later with `viewer.set_credentials(access_token, email)`.
+In the JavaScript package, pass it as the `fallbackToken` option of `start`, or set it later with `viewer.setCredentials(accessToken, email)`.
 The `login` option enables the OAuth login UI for Rerun Hub.
 
 You cannot add arbitrary HTTP headers, such as cookies or custom auth headers, to the Viewer's requests (see [missing features](../development/roadmap.md#missing-features)).
@@ -209,7 +209,7 @@ To show files that need other credentials, give the Viewer presigned URLs instea
 
 The web Viewer is the same Viewer as the native one, compiled to WebAssembly.
 It runs in the browser tab, so it is slower than the native Viewer, and has less memory: a WebAssembly process can use at most 4 GiB, and the Viewer limits itself to 2.5 GB by default.
-Use the `memory_limit` option of `start` to lower that limit.
+Use the `memoryLimit` option of `start` to lower that limit.
 When the limit is reached, the Viewer drops the oldest data.
 
 ## Gradio

@@ -15,7 +15,7 @@ Note that this doesn't affect `re_dataframe`, where this type was already re-exp
 
 ### Python `colors` change in behavior for single-dimensional lists
 
-Single-dimensional lists that don't otherwise provide type information are now be assumed to be packed
+Single-dimensional lists that don't otherwise provide type information are now assumed to be packed
 integers color representations (e.g. `0xRRGGBBAA`), unless the length is exactly 3 or 4.
 
 In the case of single lists of 3 or 4 elements, we continue to allow the common pattern of writing: `colors=[r, g, b]`.
@@ -53,8 +53,8 @@ In the next release, we will fully drop support and switch to Python 3.9 as the 
 ### `connect` -> `connect_tcp` & `serve` -> `serve_web`
 
 In all SDKs:
-* `connect()` is now deprecated in favor `connect_tcp()`
-* `serve()` is now deprecated in favor `serve_web()`
+* `connect()` is now deprecated in favor of `connect_tcp()`
+* `serve()` is now deprecated in favor of `serve_web()`
 
 The old methods will be removed in a future release.
 

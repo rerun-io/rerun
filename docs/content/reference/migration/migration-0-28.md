@@ -74,7 +74,7 @@ If you always logged the same transform components on every log/send call or use
 
 snippet: migration/transactional_transforms
 
-`Pinhole`'s transform properties, `resolution` & `image_from_plane` as well its new `parent_frame` & `child_frame`,
+`Pinhole`'s transform properties, `resolution` & `image_from_plane` as well as its new `parent_frame` & `child_frame`,
 fields are also affected by this change.
 Again, this means that any change to any of `Pinhole`'s `resolution`/`image_from_plane`/`parent_frame`/`child_frame`,
 will reset all of these fields.
@@ -118,7 +118,7 @@ E.g. when you wanted to update a joint deeper in your model hierarchy.
 In 0.28, this is now dropped in favor of transforms with _named_ frame IDs (`parent_frame`, `child_frame`).
 This is more in line with the TF2 system in ROS and allows you to send all transform updates on one single entity (e.g. a `transforms` entity).
 
-In particular, this results in two changes compared after you load an `URDF` model into Rerun compared to previous releases:
+In particular, this results in two changes after you load an `URDF` model into Rerun compared to previous releases:
 
 1. To update a joint with a `Transform3D`, the `parent_frame` and `child_frame` fields need to be set (analogous to how the joint is specified in the `URDF` file).
 2. The transformation must have both rotation and translation (again, analogous to the `URDF`). Updating only the rotation is no longer supported.
@@ -372,7 +372,7 @@ The `send_dataframe()` and `send_record_batch()` functions have been moved to th
 includes flushing and closing the associated sinks.
 
 This may lead to subtle changes in behavior if you are depending on side-effects of a
-a non-global recording stream staying open. The most notable example is the `serve_grpc()`
+non-global recording stream staying open. The most notable example is the `serve_grpc()`
 sink. [See #12301](https://github.com/rerun-io/rerun/issues/12301) for an example and
 context.
 

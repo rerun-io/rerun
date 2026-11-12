@@ -4,7 +4,7 @@ order: 500
 ---
 
 
-The Rerun datastore continuously compacts data as it comes in, in order find a sweet spot between ingestion speed, query performance and memory overhead.
+The Rerun datastore continuously compacts data as it comes in, in order to find a sweet spot between ingestion speed, query performance and memory overhead.
 
 The compaction is triggered by both number of rows and number of bytes thresholds, whichever happens to trigger first.
 

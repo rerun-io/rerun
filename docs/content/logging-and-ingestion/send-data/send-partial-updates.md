@@ -29,7 +29,7 @@ if not np.array_equal(colors, last_colors):
 rr.log("points", rr.Points3D.from_fields(positions=positions))
 ```
 
-All three languages for which we provide logging SDKs (Python, Rust, C++) expose APIs that allow fine-grained control over which components of an archetypes, when, and how.
+All three languages for which we provide logging SDKs (Python, Rust, C++) expose APIs that allow fine-grained control over which components of an archetype are logged, when, and how.
 
 The best way to learn about these APIs is to see them in action: check out the examples below.
 

@@ -20,21 +20,21 @@ Once static data has been logged, it can only be overwritten by other static dat
 Static data is most often used for `AnnotationContext` and `ViewCoordinates`.
 
 
-#### C++
+### C++
 
 ```diff
 - rec.log_timeless("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
 + rec.log_static("world", rerun::ViewCoordinates::RIGHT_HAND_Z_UP);
 ```
 
-#### Python
+### Python
 
 ```diff
 - rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, timeless=True)
 + rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 ```
 
-#### Rust
+### Rust
 
 ```diff
 - rec.log_timeless("world", &rerun::ViewCoordinates::RIGHT_HAND_Z_UP)?;
@@ -46,7 +46,7 @@ Static data is most often used for `AnnotationContext` and `ViewCoordinates`.
 
 In PR [#6169](https://github.com/rerun-io/rerun/pull/6169) we replaced `MeshProperties` with `TriangleIndices`. We could do this thanks to simplifications in our data model.
 
-#### C++
+### C++
 
 ```diff
   rerun::Mesh3D(positions)
@@ -54,7 +54,7 @@ In PR [#6169](https://github.com/rerun-io/rerun/pull/6169) we replaced `MeshProp
 +     .with_triangle_indices({{2, 1, 0}})
 ```
 
-#### Python
+### Python
 
 ```diff
   rr.Mesh3D(
@@ -64,7 +64,7 @@ In PR [#6169](https://github.com/rerun-io/rerun/pull/6169) we replaced `MeshProp
   ),
 ```
 
-#### Rust
+### Rust
 
 ```diff
   rerun::Mesh3D::new(positions)

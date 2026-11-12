@@ -125,4 +125,4 @@ See the [`rerun-lerobot` repository](https://github.com/rerun-io/rerun-lerobot) 
 
 ## Related
 
-To go the other way — ingesting of a LeRobot dataset — see [Loading a LeRobot dataset](../logging-and-ingestion/import/lerobot.md).
+To go the other way — ingesting a LeRobot dataset — see [Loading a LeRobot dataset](../logging-and-ingestion/import/lerobot.md).

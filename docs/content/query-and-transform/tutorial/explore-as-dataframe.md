@@ -45,7 +45,7 @@ Let's create a dataframe view to further inspect the data:
 
 Here is how this view is configured:
 
--   Its content is set to `/blendshapes/0/jawOpen`. As a result, the table only contains columns pertaining to that entity (along with any timeline(s)). For this entity, a single column exists in the table, corresponding to entity's single component (a `Scalar`).
+-   Its content is set to `/blendshapes/0/jawOpen`. As a result, the table only contains columns pertaining to that entity (along with any timeline(s)). For this entity, a single column exists in the table, corresponding to the entity's single component (a `Scalar`).
 -   The `frame_nr` timeline is used as index for the table. This means that the table will contain one row for each distinct value of `frame_nr` for which data is available.
 -   The rows can further be filtered by time range. In this case, we keep the default "infinite" boundaries, so no filtering is applied.
 -   The dataframe view has other advanced features which we are not using here, including filtering rows based on the existence of data for a given column, or filling empty cells with latest-at data.

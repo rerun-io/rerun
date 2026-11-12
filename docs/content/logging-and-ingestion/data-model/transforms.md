@@ -54,7 +54,7 @@ Note that unlike in ROS, you can log your transform relationship on _any_ entity
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
-* association of entities with coordinate frames is explicit and may changed over time (it can also be [overridden via blueprint](../../viewer/blueprints-and-views/customize-views.md))
+* association of entities with coordinate frames is explicit and may change over time (it can also be [overridden via blueprint](../../viewer/blueprints-and-views/customize-views.md))
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
@@ -227,7 +227,7 @@ The default is `RDF`: +X is right, +Y is down, and +Z is forward.
 Changing `camera_xyz` reorients the camera frustum, projected depth data, and the projection of 3D content into the camera view.
 See the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example for a non-default camera orientation.
 
-For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
+For 2D spaces and other entities, view coordinates currently have no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 
 ### Pose transforms
 

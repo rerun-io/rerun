@@ -87,7 +87,7 @@ Setting `card_layout` enables cards and makes them the initial layout.
 These settings are shared by all preview columns, whether they're in a table or on cards.
 Without a `timeline`, the Viewer picks one automatically.
 Pass `play_state="playing"` to start all previews playing, and `playback_speed` to change their speed, e.g. `playback_speed=0.5` for half speed.
-It defaults to `0.5`, the middle of the recording.
+`start_point` defaults to `0.5`, the middle of the recording.
 The play and speed buttons in the table toolbar change the same settings, and a single preview can still be played or paused on its own.
 
 ### Saving and registering the blueprint

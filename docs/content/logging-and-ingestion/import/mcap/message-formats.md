@@ -52,9 +52,9 @@ In addition to the `message_log_time` and `message_publish_time` timestamps that
 
 #### ROS
 
-Most ROS message payloads have an additional [`Header`]( https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) that may also contain timestamp information. These timestamps are put onto specific `ros2_*` timelines.
+Most ROS message payloads have an additional [`Header`]( https://docs.ros.org/en/noetic/api/std_msgs/html/msg/Header.html) that may also contain timestamp information. These timestamps are put onto the `ros2_timestamp` timeline.
 
-Timestamps within Unix time range (1990-2100) create a `ros2_timestamp` timeline. Values outside this range create a `ros2_duration` timeline representing relative time from custom epochs.
+By default, this timeline holds nanoseconds since the Unix epoch. For timestamps that are relative to a custom epoch, see the `--timeline-type` and `--timestamp-offset-ns` options of [`rerun mcap convert`](../../../reference/cli.md#rerun-mcap-convert).
 
 #### Foxglove
 

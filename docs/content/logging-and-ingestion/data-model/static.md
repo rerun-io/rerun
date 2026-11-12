@@ -96,7 +96,7 @@ How these semantics actually translate to physical storage depends on the contex
 
 Rerun recordings (`.rrd` files) are just streams of binary messages: they have no semantics whatsoever, therefore they don't know what static means and can't do anything about it.
 
-If you were to log the snippet above to a file (using e.g. `rr.save()`), you'd find that the recording does in fact contains your 10 images.
+If you were to log the snippet above to a file (using e.g. `rr.save()`), you'd find that the recording does in fact contain your 10 images.
 
 If you wanted the recording file itself to only contain a single static value, you would need to either:
 * Stream the data to the viewer, and then save the recording directly out of the viewer using `Menu > Save recording` (or the equivalent palette command).

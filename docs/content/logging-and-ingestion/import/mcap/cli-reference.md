@@ -65,7 +65,7 @@ Decoding:
 - **`stats`**: Compute file and channel statistics into RRD `__mcap_properties`
 - **`metadata`**: Extract metadata records into RRD `__mcap_metadata`, if present
 - **`attachments`**: Extract MCAP attachment records into static data under `__mcap_attachments`
-- **`protobuf`**: Decode protobuf messages using into generic Arrow data without Rerun visualization components
+- **`protobuf`**: Decode protobuf messages using reflection into generic Arrow data without Rerun visualization components
 - **`recording_info`**: Extract recording session metadata into RRD `__mcap_properties`
 - **`urdf`**: Use Rerun's built-in URDF loader when a ROS 2 `/robot_description` topic is present
 

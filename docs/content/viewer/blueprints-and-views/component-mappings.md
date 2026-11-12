@@ -78,7 +78,7 @@ snippet: howto/dual_color_point_cloud[blueprint]
 
 In this example, each view overrides only the color source for the `Points3D` visualizer - positions, radii, and everything else are still read from their default sources automatically.
 
-In the viewer you can access and this in the visualizer settings, presented when selecting an entity in a view:
+In the viewer you can access this in the visualizer settings, presented when selecting an entity in a view:
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/component-mappings-source-mapping/5718b252fca23f80f794bdd51a4eb391e0466fe6/full.png" alt="">

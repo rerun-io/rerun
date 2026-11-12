@@ -18,7 +18,7 @@ data associated with those entities.
 Entities are like folders, and components are like files.
 
 Additionally, the Rerun SDKs expose two additional concepts:
- * *Archetypes* are coherent set of components corresponding to primitive such as 2D points or 3D boxes. In the Rerun SDKs, archetypes take the form of builder objects that assist with the creation of such component sets. They are meant as high-level, convenience helpers that can be bypassed entirely if/when required by advanced use-cases.
+ * *Archetypes* are coherent sets of components corresponding to primitives such as 2D points or 3D boxes. In the Rerun SDKs, archetypes take the form of builder objects that assist with the creation of such component sets. They are meant as high-level, convenience helpers that can be bypassed entirely if/when required by advanced use-cases.
  * *Encodings* are regular data structures that components occasionally rely on when fundamental data types (`float`, `uint32`, etc.) are not sufficient.
 
 ### Logging and viewing data
@@ -34,7 +34,7 @@ This statement uses the [`rr.Points2D`](https://ref.rerun.io/docs/python/stable/
 Internally, this archetype builds a set of, in this case, two components:
 * `Points2D:positions` of type [`Position2D`](../../reference/types/components/position2d.md)
 * `Points2D:colors` of type [`Color`](../../reference/types/components/color.md).
-Then, the `rr.log()` function records these two components and associate them with the `"my_point"` entity.
+Then, the `rr.log()` function records these two components and associates them with the `"my_point"` entity.
 
 Later, the View for spatial types queries the data store for all the entities that have a `Points2D:positions` component.
 In this case it would find the "my_point" entity. This query additionally returns the `Points2D:colors` component because that
@@ -45,8 +45,8 @@ See the [Types](../../reference/types.md) reference for a list of [archetypes](.
 
 ### Adding custom data
 
-Although both the SDKs' archetype objects and the view are based on the same archetype definition (and are actually implemented using code that is automatically generated based on that definition), they both operate on arbitrary collection
-of components. Neither the SDKs nor the Viewer enforce or require that an entity should contain a *specific* set of component.
+Although both the SDKs' archetype objects and the view are based on the same archetype definition (and are actually implemented using code that is automatically generated based on that definition), they both operate on arbitrary collections
+of components. Neither the SDKs nor the Viewer enforce or require that an entity should contain a *specific* set of components.
 The Rerun Viewer will display any data in a generic form, but its views will only work on sets of components it can
 make sense of.
 

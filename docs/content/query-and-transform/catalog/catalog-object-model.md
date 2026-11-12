@@ -170,8 +170,8 @@ dataset.unregister_asset(asset_id)
 ```
 
 Asset datasets have some restrictions to keep them light, and the server rejects registrations that:
-- contains temporal data, since an asset may only contain static data
-- is larger than 300 MiB
+- contain temporal data, since an asset may only contain static data
+- are larger than 300 MiB
 - would bring the dataset above 12 assets
 
 When the Rerun Viewer opens a segment, it loads the dataset's assets along with the segment's own data.

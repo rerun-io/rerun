@@ -27,9 +27,9 @@ Previously this could only be configured for gRPC sinks, and it was configured o
 
 In the C++ and Python APIs, negative timeouts used to have special meaning. Now they are no longer permitted.
 
-The Python flush calls now raises an error if the flushing did not complete successfully.
+The Python flush calls now raise an error if the flushing did not complete successfully.
 
-The timeout behavior is also improved: it will only block as long as there is _hope of progress_. If the gRPC connection is severed, the flush will aborted with an error. This means it should be very rare that you need to configure a flush timeout, as it will only block for a long time if there is a very slow connection.
+The timeout behavior is also improved: it will only block as long as there is _hope of progress_. If the gRPC connection is severed, the flush will abort with an error. This means it should be very rare that you need to configure a flush timeout, as it will only block for a long time if there is a very slow connection.
 
 Removed:
  * Python: `flush_timeout_sec` argument of `connect_grpc`
@@ -73,7 +73,7 @@ To address that, we split this functionality into two utilities:
 -   `AnyValues`, which has no archetype name
 -   `DynamicArchetype`, which requires an archetype name
 
-When using `DynamicArchetype`, the dataframe API will include the archetype the column names (similar to how built-in components are handled), which reduces the possibility for ambiguity.
+When using `DynamicArchetype`, the dataframe API will include the archetype in the column names (similar to how built-in components are handled), which reduces the possibility for ambiguity.
 In the next release we will remove the ability to specify an `archetype` when creating `AnyValues` to finalize the transition.
 
 ```python

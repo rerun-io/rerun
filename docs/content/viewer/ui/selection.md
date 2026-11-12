@@ -21,7 +21,7 @@ Parts of the Selection view
 ### Selection history
 Rerun keeps a log of all your selections, allowing you to undo/redo previous selections with the ←/→ buttons at the top of the view.
 
-Right clicking on the buttons expands the full history
+Right clicking on the buttons expands the full history.
 
 ### What is selected
 Here you find what is selected and for some objects in which context.

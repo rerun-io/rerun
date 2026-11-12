@@ -4,12 +4,12 @@ order: 989
 hidden: true
 ---
 
-### File compatibility
+## File compatibility
 We've changed how tensors are encoded in .rrd files, so tensors will no longer load from older .rrd files ([#8376](https://github.com/rerun-io/rerun/pull/8376)).
 
-### Near clip plane for `Spatial2D` views now defaults to `0.1` in 3D scene units.
+## Near clip plane for `Spatial2D` views now defaults to `0.1` in 3D scene units.
 
-Previously, the clip plane was set an arbitrary value that worked reasonably for
+Previously, the clip plane was set to an arbitrary value that worked reasonably for
 cameras with large focal lengths, but become problematic for cameras with smaller
 focal length values. This value is now normalized based on the focal length of
 the camera.
@@ -30,28 +30,28 @@ rr.send_blueprint(
 ```
 
 
-### Blueprint types and fields got renamed from `.*space_view.*`/`.*SpaceView.*` to `.*view.*`/`.*View.*`
+## Blueprint types and fields got renamed from `.*space_view.*`/`.*SpaceView.*` to `.*view.*`/`.*View.*`
 
 Various types and fields got changed to refer to "views" rather than "space views".
 This exclusively affects the Python blueprint sdk.
 
-#### Field/argument changes
+### Field/argument changes
 
 * `ViewportBlueprint(...auto_space_views=...)` -> `ViewportBlueprint(...auto_views=...)`
 * `Blueprint(...auto_space_views=...)` -> `Blueprint(...auto_views=...)`
 
-#### Type changes
+### Type changes
 
-##### Utilities
+#### Utilities
 
 * `SpaceView` -> `View`
 
-##### Archetypes
+#### Archetypes
 
 * `SpaceViewBlueprint` -> `ViewBlueprint`
 * `SpaceViewContents` -> `ViewContents`
 
-##### Components
+#### Components
 
 * `AutoSpaceViews` -> `AutoViews`
 * `SpaceViewClass` -> `ViewClass`
@@ -59,7 +59,7 @@ This exclusively affects the Python blueprint sdk.
 * `SpaceViewMaximized` -> `ViewMaximized`
 
 
-### 3D transform arrow visualization show up less often by default
+## 3D transform arrow visualization show up less often by default
 
 Previously, the viewer would show 3 arrows for every logged transform if any of the following was true:
 * enabled visualizer via `VisualizerOverrides` or ui
@@ -71,7 +71,7 @@ For many usecases this led to too many arrows being shown by default.
 We therefore removed the last condition - arrows will no longer show by default if they're the only visualizer.
 The easiest way to opt-in to transform arrows is to set `AxisLength` (`axis_length` field on the `Transform3D` archetype) on your transforms.
 
-### `DisconnectedSpace` archetype/component deprecated
+## `DisconnectedSpace` archetype/component deprecated
 
 The `DisconnectedSpace` archetype and `DisconnectedSpace` component have been deprecated.
 To achieve the same effect, you can log any of the following "invalid" transforms:
@@ -87,7 +87,7 @@ By now, explicit blueprints offer a better way to express which views should be 
 
 `DisconnectedSpace` will be removed in a future release.
 
-### `RotationAxisAngle` with zero rotation axis is no longer treated as identity
+## `RotationAxisAngle` with zero rotation axis is no longer treated as identity
 
 Previously, `RotationAxisAngle` with a zero rotation axis was treated as identity.
 This is no longer the case, instead it makes the transform invalid in the same way a zeroed transformation matrix does.

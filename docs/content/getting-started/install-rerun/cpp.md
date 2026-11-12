@@ -16,7 +16,7 @@ FetchContent_MakeAvailable(rerun_sdk)
 For more details see [Build & distribution](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/README.md#build--distribution).
 The SDK is also available as the `librerun-sdk` conda package and the `rerun-sdk` vcpkg port.
 
-### Bazel
+## Bazel
 
 There is no official Bazel support.
 A community-maintained example is available at [kyle-figure/bazel-minimal-rerun](https://github.com/kyle-figure/bazel-minimal-rerun).

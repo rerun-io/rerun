@@ -50,7 +50,7 @@ snippet: tutorials/data_out[to_pandas]
 Let's have a first look at this dataframe:
 
 ```python
-print(df)
+print(pd_df)
 ```
 
 Here is the result:

@@ -11,7 +11,7 @@ By using an Annotation Context, you can associate labels and colors with a given
 that class across entities.
 
 <!-- Example link should point to `latest` but at the time of writing the samples just got renamed -->
-This is particularly useful for visualizing the output of classifications algorithms
+This is particularly useful for visualizing the output of classification algorithms
 (as demonstrated by the [Detect and Track Objects](https://github.com/rerun-io/rerun/tree/main/examples/python/detect_and_track_objects) example),
 but can be used more generally for any kind of reoccurring categorization within a Rerun recording.
 
@@ -35,7 +35,7 @@ In that case, the entire detected pose/skeleton is assigned a Class ID and each 
 To help you more with this (and similar) use-case(s), you can also define connections between keypoints
 as part of your annotation class description.
 The Viewer will draw the connecting lines for all connected keypoints whenever that class is used.
-Just as with labels and colors this allows you to use the same connection information on any instance that class in your scene.
+Just as with labels and colors this allows you to use the same connection information on any instance of that class in your scene.
 
 Keypoints are currently only applicable to 2D and 3D points.
 

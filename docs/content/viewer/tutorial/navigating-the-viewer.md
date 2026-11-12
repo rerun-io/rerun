@@ -188,7 +188,7 @@ Blueprint files are small, portable, and can be version-controlled alongside you
 
 ### Loading a blueprint
 
-Load a blueprint file using "Open…" from the file menu, or simply drag and drop the `.rbl` file into the Viewer.
+Load a blueprint file using "Open file…" from the file menu, or simply drag and drop the `.rbl` file into the Viewer.
 
 > [!IMPORTANT]
 > The blueprint's Application ID must match the Application ID of your recording. Blueprints are bound to specific Application IDs to ensure they work with compatible data structures. See [Application IDs](../blueprints-and-views/blueprints.md#application-ids-binding-blueprints-to-data) for more details.
@@ -234,6 +234,6 @@ The Viewer remembers your choice.
 
 ## Next steps
 
-- **Explore view types**: Check the [View Type Reference](../../reference/types/views/) to see all available views and their configuration options
+- **Explore view types**: Check the [View Type Reference](../../reference/types/views.md) to see all available views and their configuration options
 - **Learn about overrides**: See [Visualizers and Overrides](../blueprints-and-views/customize-views.md) for per-entity customization
 - **API Reference**: Browse the complete [Blueprint API](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for programmatic control

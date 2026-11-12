@@ -28,6 +28,6 @@ Rerun includes multiple view classes, each dedicated to a specific type of visua
 See the [views reference page](../../reference/types/views.md) for a list of available view classes.
 
 The view class, which is specified upon creation, determines which entities it can display, how it displays them, and the way they can be interacted with.
-Views can be created both from viewer and from code (see [Configure the Viewer](../tutorial.md)).
+Views can be created both from viewer and from code (see [Configure the Viewer](../tutorial/navigating-the-viewer.md)).
 
 To learn more about the _internals_ of how view classes work, check the [guide on implementing custom views](../extend/extend-ui.md).

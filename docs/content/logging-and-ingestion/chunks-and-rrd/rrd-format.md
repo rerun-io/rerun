@@ -123,7 +123,7 @@ Like all data in Rerun, the manifest is internally stored as an Arrow `RecordBat
 With the footer, a reader can enumerate stores in a handful of seeks and pull only the chunks it actually needs — for example, by entity path or by time range — without reading any chunk it does not care about.
 This is what enables [`RrdReader`](../import/chunk-processing-api.md) to be cheap to use on large files, and the OSS catalog server to "load" large datasets quickly and with little memory overhead.
 
-All tooling included in recent versions of the Rerun SDK emit footers by default.
+All tooling included in recent versions of the Rerun SDK emits footers by default.
 An RRD may still miss a footer for a variety of reasons — for example, when a stream is not shut down cleanly, or legacy RRDs written before footers existed.
 In those cases, readers fall back to a linear scan, which is semantically equivalent — just slower for partial reads.
 
@@ -134,7 +134,7 @@ This can be done with the following command:
 rerun rrd print --footers --footers-lod 2 my.rrd
 ```
 
-Here we use `--footers-lod 2` to see the entire table, which happen to be very wide. Here is the result for the recording produced by the snippet above:
+Here we use `--footers-lod 2` to see the entire table, which happens to be very wide. Here is the result for the recording produced by the snippet above:
 
 ```text
 Showing data after migration to latest Rerun version
@@ -209,7 +209,7 @@ Chunk(chunk_18B0AA9FA7B7B1A61d23c55ca87b18b4) with 2 rows (1.2 KiB) - /points - 
 
 The first lines decode the `SetStoreInfo` messages and the `ArrowMsg` payloads found in the stream.
 The wide table that follows is the manifest itself, with one row per chunk.
-The chunk-level columns (entity path, id, sortedness, row count, byte span, uncompressed size) are followed by per-component and per-timeline statistics — global timeline ranges (`frame:start`/`end`, `log_tick:*`, `log_time:*`) and per-component-per-timeline statistics (`frame:Points3D:positions:start`/`end`/`num_rows`, …) — that let an indexed reader skip components within a timeline range without reading their payloads.
+The chunk-level columns (entity path, id, static flag, row count, byte span, uncompressed size) are followed by per-component and per-timeline statistics — global timeline ranges (`frame:start`/`end`, `log_tick:*`, `log_time:*`) and per-component-per-timeline statistics (`frame:Points3D:positions:start`/`end`/`num_rows`, …) — that let an indexed reader skip components within a timeline range without reading their payloads.
 
 ## File layout
 
@@ -260,7 +260,7 @@ Every RRD opens with the same fixed 12 bytes:
 
 > [!NOTE]
 > The header format exposes legacy details that are no longer supported and may require an older Rerun SDK version to migrate.
-> However, RRDs created by Rerun SDK 0.23 and later are guaranteed to be migrated, and this guarantee holds for future releases — see the next section.
+> However, RRDs created by Rerun SDK 0.23 and later are guaranteed to be migrated, and this guarantee holds for future releases — see [Stability](#stability).
 
 ### Message framing
 

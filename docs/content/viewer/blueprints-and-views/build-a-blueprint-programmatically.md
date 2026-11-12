@@ -20,11 +20,11 @@ For Rust, see [Rust Blueprint API](#rust-blueprint-api) below.
 C++ has no Blueprint API yet, but can [load blueprint files](#loading-blueprints-from-any-language).
 If your blueprint has no effect, see [Why is my blueprint ignored?](blueprints.md#why-is-my-blueprint-ignored).
 
-### Getting started example
+## Getting started example
 
 This walkthrough demonstrates the Blueprint API using stock market data. We'll start simple and progressively build more complex layouts.
 
-#### Setup
+### Setup
 
 First, create a virtual environment and install dependencies:
 
@@ -44,7 +44,7 @@ python -m venv venv
 pip install rerun-sdk humanize yfinance
 ```
 
-#### Basic script
+### Basic script
 
 Create `stocks.py` with the necessary imports:
 
@@ -171,7 +171,7 @@ Without a blueprint, the heuristic layout may not be ideal:
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_no_blueprint/b7341f41683825f4186d661af509f8da03dc4ed1/1200w.png">
 </picture>
 
-### Creating a simple view
+## Creating a simple view
 
 Replace the blueprint section with:
 
@@ -193,7 +193,7 @@ The `origin` parameter scopes the view to a specific subtree. Now you'll see jus
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock/bda8f536306f9d9eb1b2aafe8bd8aceb746c2e0c/1200w.png">
 </picture>
 
-### Controlling panel state
+## Controlling panel state
 
 You can control which panels are visible:
 
@@ -216,7 +216,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock_hide_panels/41d3f42d2e33bcaec33b27e98752eddb17352c0f/1200w.png">
 </picture>
 
-### Combining multiple views
+## Combining multiple views
 
 Use containers to combine multiple views. The `Vertical` container stacks views, and `row_shares` controls relative sizing:
 
@@ -243,7 +243,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_one_stock_and_info/9fbf481aaf9da399718d8afb9f64b9364bb34268/1200w.png">
 </picture>
 
-### Specifying view contents
+## Specifying view contents
 
 The `contents` parameter provides fine-grained control over what appears in a view. You can include data from multiple sources:
 
@@ -272,7 +272,7 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_comare_two/0ac7d7d02bebb433828aec16a085716951740dff/1200w.png">
 </picture>
 
-### Filtering with expressions
+## Filtering with expressions
 
 Content expressions can include or exclude subtrees using wildcards. They can reference `$origin` and use `/**` to match entire subtrees:
 
@@ -304,7 +304,7 @@ rr.send_blueprint(blueprint)
 
 See [Entity Queries](entity-queries.md) for complete expression syntax.
 
-### Programmatic layout generation
+## Programmatic layout generation
 
 Since blueprints are Python code, you can generate them dynamically. This example creates a grid with one row per stock symbol:
 
@@ -347,13 +347,13 @@ rr.send_blueprint(blueprint)
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_grid/b9c41481818f9028d75df6076c62653989a02c66/1200w.png">
 </picture>
 
-### Saving blueprints from code
+## Saving blueprints from code
 
 You can save programmatically-created blueprints to `.rbl` files:
 
 snippet: howto/visualization/save_blueprint
 
-#### Loading blueprints from any language
+### Loading blueprints from any language
 
 Existing blueprint files (e.g. created with the Python SDK or saved from the viewer) can be programmatically loaded into Rerun.
 This is particularly useful when using the C++ SDK, since the Blueprint API is not available for C++:
@@ -371,7 +371,7 @@ API reference:
 
 See the [Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) for complete details.
 
-### Advanced customization
+## Advanced customization
 
 Blueprints support deep customization of view properties. For example:
 
@@ -405,7 +405,7 @@ rrb.TimeSeriesView(
 
 See [Visualizers and Overrides](customize-views.md) for information on overriding component values and controlling visualizers from code.
 
-### Rust blueprint API
+## Rust blueprint API
 
 Rust has a builder API in the [`rerun::blueprint`](https://docs.rs/rerun/latest/rerun/blueprint/index.html) module.
 It supports containers (`Horizontal`, `Vertical`, `Grid`, `Tabs`), all view classes, view origin and contents, component defaults and overrides, and the state of the panels.

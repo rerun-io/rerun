@@ -126,7 +126,7 @@ Check out the API to learn more about SDK initialization:
 ## Recording IDs
 
 By default, a random recording ID is generated each time you start logging.
-This means that, by default, separate logging sessions will produce separate (logical) recording when loaded in the Viewer, and separate segments when registered to a dataset.
+This means that, by default, separate logging sessions will produce separate (logical) recordings when loaded in the Viewer, and separate segments when registered to a dataset.
 
 You can override the default recording ID when initializing the SDK (or the recording stream):
 

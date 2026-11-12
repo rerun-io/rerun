@@ -144,7 +144,7 @@ The configuration we use for wgpu can be influenced in the following ways:
     Naturally, support depends on your OS: `metal` only works on macOS, and `gl` does not work on macOS.
     -   For instance, you can try `rerun --renderer=gl` or for the web viewer respectively `rerun --web-viewer --renderer=webgl`.
     -   Alternatively, for the native viewer you can also use the `WGPU_BACKEND` environment variable with the above values.
-    -   The web viewer is configured by the `renderer=<backend>` url argument, e.g. [https://rerun.io/viewer?renderer=webgl]
+    -   The web viewer is configured by the `renderer=<backend>` url argument, e.g. [https://rerun.io/viewer?renderer=webgl](https://rerun.io/viewer?renderer=webgl)
 -   `WGPU_POWER_PREF`: Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
 
 We recommend setting these only if you're asked to try them or know what you're doing,

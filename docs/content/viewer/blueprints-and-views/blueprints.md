@@ -13,7 +13,7 @@ When you work with the Rerun Viewer, understanding blueprints is important if yo
 <iframe width="560" height="315" src="https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 
-A way to think about the Rerun View is that
+A way to think about the Rerun Viewer is that
 
 -   The **recording** provides the actual data you are visualizing
 -   The **blueprint** determines how that data is displayed
@@ -82,7 +82,7 @@ Modify blueprints directly in the Viewer UI:
 -   Rename views and containers
 -   Show, hide, or remove elements
 
-This is the fastest way to experiment with layouts. See [Configure the Viewer](../tutorial.md) for a complete guide.
+This is the fastest way to experiment with layouts. See [Configure the Viewer](../tutorial/navigating-the-viewer.md) for a complete guide.
 
 ### 2. Save and load files
 Save your blueprint configuration to `.rbl` files:
@@ -100,7 +100,7 @@ Write blueprint code that configures the Viewer automatically:
 -   Generate layouts dynamically based on your data
 -   Perfect for creating consistent views for specific debugging scenarios
 
-For example, you might send different blueprints automatically based on detected issues in your application (e.g., a robot enters an error state and surfaces the correct blueprint to help you debug that)
+For example, you might send different blueprints automatically based on detected issues in your application (e.g., a robot enters an error state and surfaces the correct blueprint to help you debug that).
 
 ```python
 import rerun as rr
@@ -214,7 +214,7 @@ This means the Viewer output is a deterministic function of the blueprint and th
 
 ## Next steps
 
--   **Learn to use blueprints**: See [Configure the Viewer](../tutorial.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
+-   **Learn to use blueprints**: See [Configure the Viewer](../tutorial/navigating-the-viewer.md) for hands-on tutorials covering interactive, file-based, and programmatic workflows
 -   **Understand the UI**: Check the [Blueprint Panel Reference](../ui/blueprint-panel.md) for details on UI controls
 -   **Customize visualizations**: Learn about [Visualizers and Overrides](customize-views.md) for advanced per-entity customization
 -   **Explore the API**: Browse the [Python Blueprint API Reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/) or the [Rust `rerun::blueprint` module](https://docs.rs/rerun/latest/rerun/blueprint/index.html)

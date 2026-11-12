@@ -44,7 +44,7 @@ Sometimes it makes sense to explicitly set the visualizers, to change the way en
 
 Here is how to force a `SeriesPoints` visualizer for `/trig/sin`, in addition to the default `SeriesLines` visualizer:
 
-snippet: tutorials/visualizer-overrides.py
+snippet: tutorials/visualizer-overrides
 
 The view now displays a series of points in addition to connecting the values with lines.
 Here is how the visualizers are displayed in the user interface:

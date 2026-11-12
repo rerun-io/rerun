@@ -482,7 +482,7 @@ For historical reasons, the `rr.log_components()` function of the Python SDK acc
 It was no longer used for several releases, so we removed it.
 
 Although `rr.log_components()` was technically a public API, it was undocumented and we now deprecated its use.
-For logging custom components, use [`rr.AnyValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) and [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyBatchValue).
+For logging custom components, use [`rr.AnyValues`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues) and [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyBatchValue).
 
 
 ## Other

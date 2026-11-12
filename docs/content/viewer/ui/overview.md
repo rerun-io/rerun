@@ -15,7 +15,7 @@ Overview
 The Blueprint view is where you see and edit the Blueprint for the whole viewer, i.e. what is shown in the Viewer (and how it is shown).
 
 ### [Selection](selection.md)
-The Selection view let's you see details and edit configurations of the current selection(s).
+The Selection view lets you see details and edit configurations of the current selection(s).
 
 ### [Timeline](timeline.md)
 The timeline panel gives you controls over what point in time you're looking at on which [timeline](../../logging-and-ingestion/data-model/timelines.md) for the rest of the viewer.

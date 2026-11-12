@@ -116,7 +116,7 @@ Optimization check based on a 2.0 MiB chunk size target (`--profile object-store
 The `theoretical lower bound` is the fewest temporal chunks that merging could possibly produce under the target chunk size, and `effective` is how many the recording actually has.
 The multiplier and the `excess` count are how far apart the two are.
 When both cross a threshold, a warning is printed, as is the case above.
-Note that this check currently ignores other optimization such as GoP batching, etc.)
+Note that this check currently ignores other optimizations such as GoP batching, etc.
 
 As suggested by the warning, if a file contains many small chunks, run [`rerun rrd optimize`](../../reference/cli.md#rerun-rrd-optimize) to rewrite it with fewer, larger chunks.
 For example:
@@ -193,7 +193,7 @@ snippet: howto/optimize_chunks[optimize]
 
 ## Conclusion
 
-* Compaction isn’t a minor optimization — it can and frequently yields massive performance gains depending on your workload.
+* Compaction isn’t a minor optimization — it can and frequently does yield massive performance gains depending on your workload.
 * Rerun applies micro-batching and compaction by default, but optimal settings vary per use case.
 * Compaction can (and should) happen at multiple stages, each with different tradeoffs, operating under very different constraints.
 * Once data has been recorded, two complementary tools let you preemptively optimize it for downstream use:

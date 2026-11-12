@@ -16,6 +16,7 @@ The dependencies in this example are contained in `rerun-sdk[all]`.
 
 Perform initial import and spawn local server for demonstration.
 In practice you'll connect to your cloud instance.
+
 snippet: howto/dataframe_operations[setup]
 
 ## Group-by / aggregation

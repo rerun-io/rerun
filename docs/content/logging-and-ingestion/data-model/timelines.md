@@ -74,7 +74,7 @@ With `send_columns`, pass one `rr.TimeColumn` per timeline in `indexes`.
 
 ## Events
 
-An _event_ refer to an instance of logging one or more component batches to one or more timelines. In the viewer, the Time panel provide a graphical representation of these events across time and entities.
+An _event_ refers to an instance of logging one or more component batches to one or more timelines. In the viewer, the Time panel provides a graphical representation of these events across time and entities.
 
 <picture>
   <img src="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/full.png" alt="">

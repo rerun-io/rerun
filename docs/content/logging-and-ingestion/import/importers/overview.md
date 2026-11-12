@@ -82,7 +82,7 @@ When the Viewer and/or SDK executes an external importer, it will pass to it a s
 
     The timestamps are expected to be in nanoseconds since Unix epoch: use `rr.set_time(timeline, timestamp=np.datetime64(nanos, "ns"))` (Python) / `RecordingStream::set_time_timestamp_nanos_since_epoch` (C++) / `RecordingStream::set_timestamp_nanos_since_epoch` (Rust) appropriately.
 
-Check out our examples for [C++](https://github.com/rerun-io/rerun/tree/main/examples/cpp/external_importer), [Python](https://github.com/rerun-io/rerun/tree/main/examples/python/external_importer) and [Rust](https://github.com/rerun-io/rerun/tree/main/examples/rust/external_importer) that cover every steps in details.
+Check out our examples for [C++](https://github.com/rerun-io/rerun/tree/main/examples/cpp/external_importer), [Python](https://github.com/rerun-io/rerun/tree/main/examples/python/external_importer) and [Rust](https://github.com/rerun-io/rerun/tree/main/examples/rust/external_importer) that cover every step in detail.
 
 ### Custom Rust importers
 
@@ -90,4 +90,4 @@ Another Rust-specific approach is to implement the `Importer` trait yourself and
 
 To do so, you'll need to import `rerun` as a library, register your `Importer` and then start the Viewer/SDK from code.
 
-Check out our [example](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_importer) that covers all these steps in details.
+Check out our [example](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_importer) that covers all these steps in detail.

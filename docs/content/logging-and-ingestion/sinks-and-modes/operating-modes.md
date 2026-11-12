@@ -135,7 +135,7 @@ Use [`RecordingStream::set_sinks`](https://docs.rs/rerun/latest/rerun/struct.Rec
 
 #### C++
 
-Use [`RecordingStream::set_sinks`](https://ref.rerun.io/docs/cpp/classrerun_1_1RecordingStream.html#a92c9d3ecd3007d87b9c801fa33b140dc)
+Use [`RecordingStream::set_sinks`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a92c9d3ecd3007d87b9c801fa33b140dc)
 
 
 ## Adding the standard flags to your programs

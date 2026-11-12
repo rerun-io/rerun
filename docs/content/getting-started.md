@@ -30,7 +30,7 @@ The workflow: log (or convert) data to an `.rrd`, start a catalog server (or con
 
 ### Log
 
-Save data to an `.rrd` see the [logging tutorial](./logging-and-ingestion/tutorial.md) for more details.
+Save data to an `.rrd`, see the [logging tutorial](./logging-and-ingestion/tutorial.md) for more details.
 If you already have data in another format see [Import existing data](./logging-and-ingestion/import.md) for various examples converting to `.rrd`.
 
 snippet: tutorials/getting_started_log

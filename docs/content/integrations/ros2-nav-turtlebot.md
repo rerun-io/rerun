@@ -72,7 +72,7 @@ def some_msg_callback(self, msg: Msg):
     rr.set_time("ros_time", timestamp=np.datetime64(time.nanoseconds, "ns"))
 ```
 
-This timestamp will apply to all subsequent log calls on in this callback (on this thread) until the time is updated
+This timestamp will apply to all subsequent log calls in this callback (on this thread) until the time is updated
 again.
 
 ### TF to rr.Transform3D
@@ -148,7 +148,7 @@ the origin and then interlace the two sets of points using Numpy hstack and resh
 This results in a set of alternating points defining rays from the origin to each
 laser scan result, which is the format expected by `rr.LineStrips3D`.
 
-By logging also scan's `frame_id` as a [`CoordinateFrame`](../reference/types/archetypes/coordinate_frame.md), we make sure that Rerun visualizes the lines at the right location in the transform hierarchy.
+By also logging the scan's `frame_id` as a [`CoordinateFrame`](../reference/types/archetypes/coordinate_frame.md), we make sure that Rerun visualizes the lines at the right location in the transform hierarchy.
 
 ```python
 def __init__(self) -> None:
@@ -250,4 +250,4 @@ While this guide has only covered a small fraction of the possible ROS messages 
 be sent to Rerun, hopefully, it has given you some tools to apply to your project.
 
 If you find that specific functionality is lacking for your use case, please provide more
-context in the existing issues or [open an new one](https://github.com/rerun-io/rerun/issues/new/choose) on GitHub.
+context in the existing issues or [open a new one](https://github.com/rerun-io/rerun/issues/new/choose) on GitHub.

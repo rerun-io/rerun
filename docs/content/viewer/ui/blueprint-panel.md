@@ -5,7 +5,7 @@ order: 300
 
 The Blueprint Panel shows the hierarchical structure of your current blueprint and provides controls for modifying the Viewer layout.
 
-For a complete understanding of blueprints, see [Blueprints](../blueprints-and-views/blueprints.md). For hands-on tutorials on configuring the Viewer, see [Configure the Viewer](../tutorial.md).
+For a complete understanding of blueprints, see [Blueprints](../blueprints-and-views/blueprints.md). For hands-on tutorials on configuring the Viewer, see [Configure the Viewer](../tutorial/navigating-the-viewer.md).
 
 <picture>
   <img src="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/full.png" alt="Blueprint panel showing view hierarchy">
@@ -59,4 +59,4 @@ To add or re-add an entity to a view:
 
 See [Entity Queries](../blueprints-and-views/entity-queries.md) for information on how view content is determined.
 
-For more information about configuring the viewer, see [Configure the Viewer](../tutorial.md).
+For more information about configuring the viewer, see [Configure the Viewer](../tutorial/navigating-the-viewer.md).

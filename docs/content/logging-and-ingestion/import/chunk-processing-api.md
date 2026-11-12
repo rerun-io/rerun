@@ -71,7 +71,7 @@ One common reason to materialize a `ChunkStore` is to run chunk optimization; se
 A materialized `ChunkStore` can also be queried directly as a dataframe with [`ChunkStore.reader`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.ChunkStore.reader), without spinning up a catalog server.
 The returned [DataFusion](https://datafusion.apache.org/) dataframe is data-equivalent to loading the same chunks into a dataset and calling its `reader()`, so the full [dataframe query API](../../query-and-transform/dataframes/dataframe-queries.md) applies — modulo the `rerun_segment_id` column (see the [catalog object model](../../query-and-transform/catalog/catalog-object-model.md) for more information about datasets and segments).
 
-For example, first materialize a store (here built a single chunk, for illustration):
+For example, first materialize a store (here built from a single chunk, for illustration):
 
 snippet: concepts/chunk_processing_query[build_store]
 
@@ -192,7 +192,7 @@ The two are interoperable:
   > This roundtrip-via-file will be smoothed out in the future for better ergonomics and performance.
 - **Chunk processing → logging:** `rerun.send_chunks(chunks, recording=...)` feeds chunks into an active `RecordingStream` (useful for streaming to a viewer, for example).
 - **Building chunks by hand:** `Chunk.from_columns` mirrors `rr.send_columns` and accepts the same `rr.<Archetype>.columns(...)` helpers, so any data that can be logged with `rr.send_columns` can also be packaged as a `Chunk` and injected into a processing pipeline.
-  Likewise, `Chunk.from_record_batch` (for a single `RecordBatch`) and `Chunk.from_dataframe` (a multi-batch `Table`, `RecordBatchReader`, or `datafusion.DataFrame`) mirrors `rr.send_record_batch` and `rr.send_dataframe`.
+  Likewise, `Chunk.from_record_batch` (for a single `RecordBatch`) and `Chunk.from_dataframe` (a multi-batch `Table`, `RecordBatchReader`, or `datafusion.DataFrame`) mirror `rr.send_record_batch` and `rr.send_dataframe`.
   See [Chunks](../chunks-and-rrd/chunks.md) for details.
 
 

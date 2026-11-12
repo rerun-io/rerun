@@ -7,7 +7,7 @@ description: Control which entities appear in a given view
 Many views are made up of visualizations that include more than one
 entity.
 
-Rather that requiring you to specify each entity individually, Rerun supports
+Rather than requiring you to specify each entity individually, Rerun supports
 this through "entity queries" that allow you to use "query expressions" to
 include or exclude entire subtrees.
 

@@ -69,7 +69,7 @@ This will bring you the Rerun viewer's Welcome screen:
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/1200w.png">
 </picture>
 
-From there you can chose the "Structure from Motion" example. A window that looks like this will appear:
+From there you can choose the "Structure from Motion" example. A window that looks like this will appear:
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/full.png" alt="">
@@ -79,7 +79,7 @@ From there you can chose the "Structure from Motion" example. A window that look
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/1200w.png">
 </picture>
 
-Depending on your display size, the panels may have a different arrangements. Further in this guide you will learn how you can change that.
+Depending on your display size, the panels may have a different arrangement. Further in this guide you will learn how you can change that.
 
 ## The Viewer panels
 
@@ -113,13 +113,13 @@ Let's explore an example of this hierarchy in our scene:
 -   `/camera/image/keypoints` is an entity stream that contains 2 component streams (`Color`, `Position2D`)
     of the [Points2D archetype](../reference/types/archetypes/points2d.md),
     representing point clouds that were detected and tracked in images.
--   The images themselves are represented by the parent entity `/camera/image`. This entity consist of 6 components: 4 form an [Image archetype](../reference/types/archetypes/image.md),
-    while the remaining 2 correspond to a [pinhole projection](../reference/types/archetypes/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
+-   The images themselves are represented by the parent entity `/camera/image`. This entity consists of 6 components: 4 form an [Image archetype](../reference/types/archetypes/image.md),
+    while the remaining 2 correspond to a [pinhole projection](../reference/types/archetypes/pinhole.md). The images are captured by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
 -   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../reference/types/archetypes/transform3d.md).
 
 The hierarchy of logged entity streams and their component streams is found under `Streams` in the Timeline panel. A similar list appears in the `Blueprint` panel, but the key difference is that the Blueprint panel focuses on how data is arranged and visualized in the Viewport, while the Streams panel shows when and what events were logged. In other words, an entity may be logged once but displayed in multiple views.
 
-Visualizations can also be customized per each view using [Overrides](blueprints-and-views/customize-views.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
+Visualizations can also be customized per each view using [Overrides](blueprints-and-views/customize-views.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and blue. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/full.png" alt="">
@@ -224,6 +224,6 @@ Again, if you ran into any issues following this guide, please don't hesitate to
 
 ### Up next
 
--   [Get started](../logging-and-ingestion/tutorial) by writing a program to log data with the Rerun SDK.
+-   [Get started](../logging-and-ingestion/tutorial.md) by writing a program to log data with the Rerun SDK.
 -   Explore other [examples of using Rerun](https://rerun.io/examples).
 -   Consult [How Rerun works](../getting-started/how-does-rerun-work.md) for more context on the ideas covered here.

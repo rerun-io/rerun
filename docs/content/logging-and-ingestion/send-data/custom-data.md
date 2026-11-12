@@ -15,7 +15,7 @@ You find the documentation for these helpers here:
 
 snippet: tutorials/any_values
 
-If your values should be grouped together and that grouping isn't referred to from many places that need to stay aligned we have a helpers for this called, `DynamicArchetype` which adds some structural grouping to multiple values.
+If your values should be grouped together and that grouping isn't referred to from many places that need to stay aligned we have a helper for this called `DynamicArchetype`, which adds some structural grouping to multiple values.
 
 You find the documentation for these helpers here:
 
@@ -62,7 +62,7 @@ You can also define and log your own custom archetypes and components completely
 
 In this example we extend the Rerun Points3D archetype with a custom confidence component and user-defined archetype.
 
-This is what it looks like in the in the dataframe view:
+This is what it looks like in the dataframe view:
 
 snippet: tutorials/custom_data
 
@@ -78,9 +78,9 @@ snippet: tutorials/custom_data
 ## Creating/augmenting visualizations from custom data
 
 All components can be mapped to arbitrary slots of visualizers.
-For a general information on component mapping see [component mappings](../../viewer/blueprints-and-views/component-mappings.md),
+For general information on component mapping see [component mappings](../../viewer/blueprints-and-views/component-mappings.md),
 for the common case of plotting see [plot any scalar](../../viewer/plots-and-maps/plot-any-scalar.md)
 
-> [!INFO]
+> [!NOTE]
 > Complex mappings e.g. from scalars to colors are not yet possible, but will be supported in future versions
 > by exposing more functionality from [Lenses](../../query-and-transform/lenses.md) directly in the Viewer.
