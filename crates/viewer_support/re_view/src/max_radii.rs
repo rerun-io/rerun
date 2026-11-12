@@ -35,12 +35,10 @@ impl MaxRadii {
 
     pub fn update(&mut self, radius: Radius) {
         if let Some(screen) = radius.ui_points() {
-            self.ui_points
-                .replace(self.ui_points.map(|s| s.max(screen)).unwrap_or(screen));
+            self.ui_points = Some(self.ui_points.map(|s| s.max(screen)).unwrap_or(screen));
         }
         if let Some(scene) = radius.scene_units() {
-            self.scene_units
-                .replace(self.scene_units.map(|s| s.max(scene)).unwrap_or(scene));
+            self.scene_units = Some(self.scene_units.map(|s| s.max(scene)).unwrap_or(scene));
         }
     }
 
