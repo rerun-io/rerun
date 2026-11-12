@@ -323,7 +323,7 @@ impl WebHandle {
             .store_hub
             .active_blueprint_for_app(recording_id.application_id())
             .ok_or_else(|| JsValue::from_str("No active blueprint to save"))?;
-        let undo_state = app.state.blueprint_undo_state.get(blueprint.store_id());
+        let undo_state = app.stores.blueprint_undo_state.get(blueprint.store_id());
 
         RrdSnapshot::blueprint(blueprint, undo_state)
             .and_then(RrdSnapshot::encode)
@@ -570,38 +570,59 @@ impl From<PanelState> for re_sdk_types::blueprint::components::PanelState {
 
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
+// `WebViewer.start` passes its camelCase options through without converting the keys,
+// and `web_viewer/index.html` uses the same keys.
+// JavaScript built against older `@rerun-io/web-viewer` releases passes snake_case keys,
+// so every renamed field needs a snake_case alias.
+// Callers must pass one spelling per key: passing both is a deserialization error.
+#[serde(rename_all = "camelCase")]
 pub struct AppOptions {
+    #[serde(alias = "manifest_url")]
     manifest_url: Option<String>,
+    #[serde(alias = "render_backend")]
     render_backend: Option<String>,
+    #[serde(alias = "video_decoder")]
     video_decoder: Option<String>,
+    #[serde(alias = "memory_limit")]
     memory_limit: Option<String>,
+    #[serde(alias = "hide_welcome_screen")]
     hide_welcome_screen: Option<bool>,
+    #[serde(alias = "check_for_updates_on_startup")]
     check_for_updates_on_startup: Option<bool>,
     // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
+    #[serde(alias = "enable_history")]
     enable_history: Option<bool>,
     // width: Option<String>, // Width & height aren't serialized and only used to configure the canvas.
     // height: Option<String>,
+    #[serde(alias = "fallback_token")]
     fallback_token: Option<String>,
     theme: Option<String>,
     login: Option<crate::LoginOptions>,
 
     // Hidden `WebViewerOptions`
     // ------------
+    #[serde(alias = "viewer_base_url")]
     viewer_base_url: Option<String>,
     notebook: Option<bool>,
     url: Option<StringOrStringArray>,
+    #[serde(alias = "panel_state_overrides")]
     panel_state_overrides: Option<PanelStateOverrides>,
+    #[serde(alias = "on_viewer_event")]
     on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
 #[derive(Clone, Deserialize)]
+// JavaScript callers pass camelCase or snake_case keys, like for `AppOptions`.
+#[serde(rename_all = "camelCase")]
 pub struct FullscreenOptions {
     /// This returns the current fullscreen state, which is a boolean representing on/off.
+    #[serde(alias = "get_state")]
     pub get_state: Callback,
 
     /// This calls the JS version of "toggle fullscreen".
+    #[serde(alias = "on_toggle")]
     pub on_toggle: Callback,
 }
 

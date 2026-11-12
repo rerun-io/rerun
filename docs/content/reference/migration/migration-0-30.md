@@ -2,6 +2,7 @@
 title: Migrating from 0.29 to 0.30
 order: 980
 hidden: true
+description: Breaking changes in Rerun 0.30 and how to update code written for 0.29
 ---
 
 ## 🐍 Python API
@@ -39,7 +40,7 @@ df.with_column("url", segment_url(dataset, timestamp="ts", timeline_name="my_tim
 ```
 
 Also, the previously deprecated `partition_url()`, `partition_url_udf()`, and `partition_url_with_timeref_udf()`
-function have been removed.
+functions have been removed.
 
 ### `segment_url` parameter names have been updated
 

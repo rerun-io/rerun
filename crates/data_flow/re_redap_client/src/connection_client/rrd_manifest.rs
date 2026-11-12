@@ -47,6 +47,7 @@ async fn fetch_rrd_manifest_via_key(
         layer,
         etag,
         direct_url,
+        store_id,
     } = manifest_key.try_into().map_err(|err| {
         ApiError::deserialization_with_source(
             origin,
@@ -191,23 +192,18 @@ async fn fetch_rrd_manifest_via_key(
             )
         })?;
 
-    // A footer may in theory contain manifests for several stores.
-    // So we pick out the one that matches the requested segment_id!
     let rrd_manifest = rrd_footer
-        .manifests
-        .into_iter()
-        .find(|manifest| {
-            manifest
-                .store_id
-                .as_ref()
-                .is_some_and(|store_id| store_id.recording_id == segment_id.as_str())
-        })
+        .into_segment_manifest(store_id.as_ref(), segment_id)
         .ok_or_else(|| {
+            let what = match &store_id {
+                Some(store_id) => format!("store {store_id}"),
+                None => format!("segment {segment_id}"),
+            };
             ApiError::deserialization(
                 origin,
                 trace_id,
                 with_url(&format!(
-                    "direct RRD footer did not contain a manifest for segment {segment_id}"
+                    "direct RRD footer did not contain a manifest for {what}"
                 )),
             )
         })?;
@@ -270,7 +266,7 @@ where
     /// The server may answer with manifest keys instead of inline manifests, in which case each
     /// part is fetched directly from the object store. In a browser that direct fetch only works
     /// when the bucket has a CORS configuration that allows it (see
-    /// <https://rerun.io/docs/hub/bucket-cors>), so wasm clients fall back to
+    /// <https://rerun.io/docs/hub/bucket-configuration#cors>), so wasm clients fall back to
     /// server-provided manifests when the first part fails.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_rrd_manifest_stream(
@@ -308,7 +304,7 @@ where
                          falling back to slower server-provided manifests. \
                          This usually means the bucket is missing a CORS configuration that \
                          allows the Web Viewer to read it — see \
-                         https://rerun.io/docs/hub/bucket-cors for how to set it up.",
+                         https://rerun.io/docs/hub/bucket-configuration#cors for how to set it up.",
                         err.to_string(),
                     )
                 );
@@ -339,6 +335,10 @@ where
                                 re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                                     segment_id: Some(request_segment_id.clone().into()),
                                     generate_direct_urls,
+                                    client_capabilities: vec![
+                                        re_protos::capabilities::DATASET_RRD_MANIFEST_KEY_STORE_ID
+                                            .to_owned(),
+                                    ],
                                 },
                             )
                             .with_entry_id(dataset_id),
@@ -542,6 +542,7 @@ mod tests {
             direct_url: Some(format!(
                 "http://{address}/recording.rrd?X-Amz-Signature=secret"
             )),
+            store_id: None,
         };
 
         let segment_id = SegmentId::new("recording".to_owned());
@@ -591,6 +592,99 @@ mod tests {
     }
 
     #[tokio::test]
+    async fn direct_rrd_manifest_fetch_selects_the_keyed_store() {
+        use re_log_encoding::{Encodable as _, ToTransport as _};
+
+        // Both stores share the segment's recording id, so only the full store id tells them
+        // apart.
+        let first = re_log_types::StoreId::recording("first_app", "recording");
+        let second = re_log_types::StoreId::recording("second_app", "recording");
+        let manifest = |store_id: &re_log_types::StoreId| {
+            RawRrdManifest::build_in_memory_from_chunks(
+                store_id.clone(),
+                std::iter::empty::<&re_chunk::Chunk>(),
+            )
+            .unwrap()
+        };
+        let rrd_footer = re_log_encoding::RrdFooter {
+            manifests: std::collections::HashMap::from([
+                (first.clone(), manifest(&first)),
+                (second.clone(), manifest(&second)),
+            ]),
+        };
+        let mut manifest_bytes = Vec::new();
+        rrd_footer
+            .to_transport(())
+            .unwrap()
+            .to_rrd_bytes(&mut manifest_bytes)
+            .unwrap();
+
+        let store_ids = [Some(first.clone()), Some(second.clone()), None];
+        let num_requests = store_ids.len();
+
+        let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
+        let address = server.server_addr().to_ip().unwrap();
+        let range_end = manifest_bytes.len() as u64 - 1;
+        let response_bytes = manifest_bytes.clone();
+        let server_thread = std::thread::Builder::new()
+            .name("direct-manifest-test-server".to_owned())
+            .spawn(move || {
+                for _ in 0..num_requests {
+                    let request = server.recv().unwrap();
+                    request
+                        .respond(
+                            tiny_http::Response::from_data(response_bytes.clone())
+                                .with_status_code(tiny_http::StatusCode(
+                                    http::StatusCode::PARTIAL_CONTENT.as_u16(),
+                                ))
+                                .with_header(
+                                    tiny_http::Header::from_bytes(
+                                        http::header::CONTENT_RANGE.as_str(),
+                                        format!("bytes 0-{range_end}/{}", range_end + 1),
+                                    )
+                                    .unwrap(),
+                                ),
+                        )
+                        .unwrap();
+                }
+            })
+            .unwrap();
+
+        let segment_id = SegmentId::new("recording".to_owned());
+        for store_id in store_ids {
+            let manifest_key = RrdManifestKey {
+                location: Some(re_protos::cloud::v1alpha1::RrdChunkLocation {
+                    url: Some("s3://bucket/recording.rrd".to_owned()),
+                    offset: Some(0),
+                    length: Some(manifest_bytes.len() as u64),
+                    object_store_config: None,
+                }),
+                layer: Some("base".to_owned()),
+                etag: None,
+                direct_url: Some(format!("http://{address}/recording.rrd")),
+                store_id: store_id.clone().map(Into::into),
+            };
+
+            let fetched = fetch_rrd_manifest_via_key(
+                &re_uri::Origin::test(),
+                manifest_key,
+                &segment_id,
+                None,
+            )
+            .await
+            .expect("direct manifest fetch succeeds");
+
+            match store_id {
+                Some(store_id) => assert_eq!(fetched.store_id, store_id),
+                // A legacy key picks either store: both match the segment id.
+                None => assert_eq!(fetched.store_id.recording_id().as_str(), "recording"),
+            }
+        }
+
+        server_thread.join().unwrap();
+    }
+
+    #[tokio::test]
     async fn direct_rrd_manifest_fetch_maps_precondition_failure_without_leaking_query() {
         let server = tiny_http::Server::http("127.0.0.1:0").unwrap();
         let address = server.server_addr().to_ip().unwrap();
@@ -616,6 +710,7 @@ mod tests {
             layer: None,
             etag: Some("\"old-etag\"".to_owned()),
             direct_url: Some(format!("http://{address}/manifest?secret=credential")),
+            store_id: None,
         };
 
         let err = fetch_rrd_manifest_via_key(

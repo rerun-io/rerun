@@ -149,7 +149,7 @@ The generated section is a starting point; edit it by hand so readers can find t
   A file showing up in the first command does not mean the type is new: cross-reference the hits with the actual entries.
   For each matching feature, say so where readers will see it: prefix the changeset heading with "Experimental" (as `### Experimental 3D gaussian splat support` did in 0.36), and add a sentence saying it may change in future releases (for unstable types: that the data may not stay backwards compatible).
   If the feature is behind a flag, say how to enable it.
-  In the `CHANGELOG.md` overview, move all of these entries into a final `#### 🧪 Experimental and unstable` subsection at the end of "Overview & highlights", with a one-line note that they may change and that unstable types may not stay backwards compatible.
+  In the `CHANGELOG.md` overview, move all of these entries into a final `#### 🧪 Experimental and unstable` subsection at the end of "Overview & highlights", or "Overview" when there are no highlights, with a one-line note that they may change and that unstable types may not stay backwards compatible.
   Order that subsection by impact too, and don't repeat "Experimental" in its entries.
   Blueprint types (`rerun.blueprint.*`, under `re_type_definitions/rerun/blueprint/`) are an exception: they are all marked unstable, which only means the blueprint data isn't backwards compatible.
   That alone does not make a feature experimental, so a new view or blueprint setting is only experimental if one of the other markers applies to it (or to the data archetype it shows).

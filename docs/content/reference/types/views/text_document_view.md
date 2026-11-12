@@ -28,7 +28,7 @@ snippet: views/text_document
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1200w.png">
-  <img src="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/full.png">
+  <img src="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/full.png" alt="Text document view rendering a Markdown example with headings, a formatting table, checkbox lists, links and an image">
 </picture>
 
 

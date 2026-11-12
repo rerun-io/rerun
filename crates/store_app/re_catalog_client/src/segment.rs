@@ -26,10 +26,12 @@ impl CatalogClient {
         dataset_id: EntryId,
         segment_id: SegmentId,
     ) -> ApiResult<Option<(RecordBatch, u64)>> {
-        self.client()
+        Ok(self
+            .client()
             .await?
-            .get_segment_properties(dataset_id, segment_id)
-            .await
+            .get_segment_properties(dataset_id, vec![segment_id.clone()])
+            .await?
+            .remove(&segment_id))
     }
 
     /// Replace one segment's mutable properties, returning the new revision.

@@ -33,7 +33,7 @@ snippet: views/bar_chart
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1200w.png">
-  <img src="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/full.png">
+  <img src="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/full.png" alt="Bar chart view showing purple bars of varying heights for a 1D tensor, with a /tensor entry in the legend">
 </picture>
 
 

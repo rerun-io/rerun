@@ -543,14 +543,11 @@ impl CatalogClient {
             return Ok(Vec::new());
         };
 
-        // TODO(RR-5928): Fetch the asset schema without the full chunk manifest.
         let schemas = assets.into_iter().map(|asset| async move {
-            let manifest = self
-                .client()
-                .await?
-                .get_rrd_manifest(asset_dataset, asset.id.clone())
+            let schema = self
+                .get_segment_schema(asset_dataset, asset.id.clone(), false)
                 .await?;
-            Ok((asset.id, manifest.sorbet_schema))
+            Ok((asset.id, schema))
         });
         futures::future::try_join_all(schemas).await
     }

@@ -41,7 +41,7 @@ snippet: archetypes/line_strips3d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1200w.png">
-  <img src="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/full.png">
+  <img src="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/full.png" alt="3D view showing one continuous green line strip zigzagging through space">
 </picture>
 
 ### Many individual segments
@@ -53,7 +53,7 @@ snippet: archetypes/line_strips3d_segments_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1200w.png">
-  <img src="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/full.png">
+  <img src="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/full.png" alt="3D view showing four separate green line segments, each drawn between its own pair of points">
 </picture>
 
 ### Many strips
@@ -65,7 +65,7 @@ snippet: archetypes/line_strips3d_batch
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/1200w.png">
-  <img src="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/full.png">
+  <img src="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/full.png" alt="3D view with a thick red line strip labeled one strip here and a thin green zigzag strip labeled and one strip there">
 </picture>
 
 ### Lines with scene & UI radius each
@@ -77,7 +77,7 @@ snippet: archetypes/line_strips3d_ui_radius
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1200w.png">
-  <img src="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/full.png">
+  <img src="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/full.png" alt="3D view with a blue and a thicker red zigzag line strip, comparing radii given in scene units and in UI points">
 </picture>
 
 ### Time-windowed trails (e.g. Trajectories)
@@ -89,6 +89,6 @@ snippet: archetypes/line_strips3d_time_window
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png">
-  <img src="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/full.png">
+  <img src="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/full.png" alt="3D view with a ground grid showing a thick blue curved trail and a thinner orange one, trajectories limited to a time window">
 </picture>
 

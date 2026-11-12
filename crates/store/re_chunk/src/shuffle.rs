@@ -336,7 +336,7 @@ mod tests {
     use re_types_core::ComponentBatch as _;
 
     use super::*;
-    use crate::{ChunkId, RowId};
+    use crate::RowId;
 
     #[test]
     fn sort() -> anyhow::Result<()> {

@@ -153,8 +153,6 @@ mod tests {
     #![expect(clippy::cast_possible_wrap)] // ok in tests
     use std::assert_matches;
 
-    use re_log_types::TimeType;
-
     use super::*;
 
     #[test]

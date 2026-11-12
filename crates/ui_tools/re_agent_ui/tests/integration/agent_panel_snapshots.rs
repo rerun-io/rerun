@@ -9,9 +9,8 @@ use re_agent::acp::schema::v1::{
     AuthMethod, AuthMethodTerminal, ConfigOptionUpdate, ContentBlock, ContentChunk, Diff,
     Implementation, PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority,
     PlanEntryStatus, RequestPermissionRequest, SessionConfigOption, SessionConfigOptionCategory,
-    SessionConfigSelectOption, SessionId, SessionMode, SessionModeState, SessionUpdate,
-    TextContent, ToolCall, ToolCallContent, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
-    ToolCallUpdateFields, ToolKind, UsageUpdate,
+    SessionConfigSelectOption, SessionId, SessionUpdate, TextContent, ToolCall, ToolCallContent,
+    ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 use re_agent::{
     AgentEntry, AgentEvent, AgentProfile, AgentProfileId, AgentSession, AgentSettings,
@@ -82,16 +81,23 @@ fn open_session(session: &mut AgentSession) {
     });
     session.handle_event(AgentEvent::SessionStarted {
         session_id: SessionId::new("test-session"),
-        modes: Some(SessionModeState::new(
-            "default",
-            vec![
-                SessionMode::new("default", "Manual"),
-                SessionMode::new("acceptEdits", "Accept edits"),
-                SessionMode::new("bypassPermissions", "Bypass permissions"),
-            ],
-        )),
-        config_options: Vec::new(),
+        origin: re_agent::SessionOrigin::New,
+        config_options: vec![mode_config_option()],
     });
+}
+
+fn mode_config_option() -> SessionConfigOption {
+    SessionConfigOption::select(
+        "mode",
+        "Mode",
+        "default",
+        vec![
+            SessionConfigSelectOption::new("default", "Manual"),
+            SessionConfigSelectOption::new("acceptEdits", "Accept edits"),
+            SessionConfigSelectOption::new("bypassPermissions", "Bypass permissions"),
+        ],
+    )
+    .category(SessionConfigOptionCategory::Mode)
 }
 
 /// Clicking into the custom command selects "Custom command", so what is typed there is used.
@@ -337,7 +343,7 @@ fn chat_conversation() {
             "Found it. The left camera was logged under `world/camera_left`, but the blueprint expects `world/camera/left`.\n\n",
         ))),
         SessionUpdate::AgentMessageChunk(ContentChunk::new(text(
-            "I changed the entity path:\n\n```python\nrr.log(\"world/camera/left\", rr.Image(left))\n```\n\nNext steps:\n\n1. Re-run the script\n2. Check the viewer\n\nSee https://rerun.io/docs/concepts/entity-path for the entity path rules.\n",
+            "I changed the entity path:\n\n```python\nrr.log(\"world/camera/left\", rr.Image(left))\n```\n\nNext steps:\n\n1. Re-run the script\n2. Check the viewer\n\nSee https://rerun.io/docs/concepts/entity-path for the entity path rules.\n", // NOLINT: test input; changing it changes the snapshot
         ))),
         SessionUpdate::Plan(Plan::new(vec![
             PlanEntry::new(
@@ -369,6 +375,8 @@ fn chat_conversation() {
 
     let mut harness = harness(panel);
     harness.run_steps(4);
+    // No example prompts should be visible in this non-empty chat.
+    assert!(harness.query_by_label("Example prompt one").is_none());
     harness.snapshot("chat_conversation");
 
     // The plan is one line until clicked.
@@ -684,6 +692,48 @@ fn chat_permission_request() {
     snapshot("chat_permission_request", panel);
 }
 
+#[test]
+fn chat_permission_request_long_paths() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+
+    let directory = "/Users/example/Library/Caches/io.rerun.Rerun/agent/agent_context/skills";
+    session.push_test_permission_request(RequestPermissionRequest::new(
+        SessionId::new("test-session"),
+        ToolCallUpdate::new(
+            "read-1",
+            ToolCallUpdateFields::new()
+                .title(directory)
+                .raw_input(serde_json::json!({
+                    "filepath": format!("{directory}/query-catalog/SKILL.md"),
+                    "parentDir": directory,
+                })),
+        ),
+        vec![
+            PermissionOption::new("allow", "Yes", PermissionOptionKind::AllowOnce),
+            PermissionOption::new(
+                "allow-always",
+                "Always allow",
+                PermissionOptionKind::AllowAlways,
+            ),
+            PermissionOption::new("reject", "No", PermissionOptionKind::RejectOnce),
+        ],
+    ));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    assert_answer_buttons_visible(&harness);
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, SIZE);
+    let button = harness.get_by_label("Always allow").rect();
+    assert!(
+        screen.contains_rect(button),
+        "Always allow button at {button:?} is outside the panel {screen:?}"
+    );
+    harness.snapshot("chat_permission_request_long_paths");
+}
+
 fn long_command_panel(extra_fields: serde_json::Map<String, serde_json::Value>) -> AgentPanel {
     let mut panel = panel();
     panel.show_chat();
@@ -794,9 +844,35 @@ fn chat_agent_log() {
             panel,
         );
     harness.run_steps(4);
-    harness.get_by_label_contains("Agent log (").click();
+    harness.get_by_label("Manual").click();
+    harness.run_steps(2);
+    harness.snapshot("chat_agent_log_menu");
+    harness.get_by_label("Show agent log").click();
+    harness.remove_cursor();
     harness.run_steps(4);
     harness.snapshot("chat_agent_log");
+
+    // Dragging the top edge of the log panel to the bottom closes it.
+    let log_top = harness.get_by_label_contains("initialize").rect().top() - 8.0;
+    let edge = egui::pos2(SIZE.x / 2.0, log_top);
+    harness.hover_at(edge);
+    harness.run_steps(2);
+    harness.drag_at(edge);
+    harness.run_steps(1);
+    harness.hover_at(egui::pos2(edge.x, SIZE.y));
+    harness.run_steps(1);
+    harness.drop_at(egui::pos2(edge.x, SIZE.y));
+    harness.run_steps(8);
+    harness.get_by_label("Manual").click();
+    harness.run_steps(2);
+    assert_eq!(
+        harness
+            .get_by_label("Show agent log")
+            .accesskit_node()
+            .toggled(),
+        Some(egui::accesskit::Toggled::False),
+        "dragging the log panel closed should uncheck it"
+    );
 }
 
 /// A table wider than the panel must scroll on its own, not widen the messages after it.
@@ -963,6 +1039,8 @@ fn conversation_list() {
     harness.run_steps(4);
     harness.get_by_label("Back to conversations").click();
     harness.run_steps(4);
+    // The empty draft still offers prompts alongside conversations with history.
+    assert!(harness.query_by_label("Example prompt one").is_some());
     // Hovering shows the close button next to the status.
     harness
         .get_by_role_and_label(egui::accesskit::Role::Button, "Make the rectangle green")
@@ -1010,7 +1088,7 @@ fn chat_waiting_for_the_first_reply() {
     snapshot("chat_waiting_for_the_first_reply", panel);
 }
 
-/// The footer names the concrete model behind the agent's default, and opens a list of the others.
+/// The model menu resolves the selected alias and distinguishes Rerun's recommendation.
 #[test]
 fn chat_model_picker() {
     let mut panel = panel();
@@ -1031,14 +1109,100 @@ fn chat_model_picker() {
         ConfigOptionUpdate::new(vec![
             SessionConfigOption::select("model", "Model", "default", models)
                 .category(SessionConfigOptionCategory::Model),
+            SessionConfigOption::select(
+                "fast",
+                "Fast mode",
+                "on",
+                vec![
+                    SessionConfigSelectOption::new("off", "Off"),
+                    SessionConfigSelectOption::new("on", "On"),
+                ],
+            ),
+            mode_config_option(),
         ]),
     )));
 
     let mut harness = harness(panel);
     harness.run_steps(4);
-    harness.get_by_value("Opus 5.5").click();
-    harness.run_steps(4);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Model");
+    harness.run_steps(2);
     harness.snapshot("chat_model_picker");
+}
+
+#[test]
+fn chat_effort_picker() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+    let levels = vec![
+        SessionConfigSelectOption::new("low", "Low"),
+        SessionConfigSelectOption::new("medium", "Medium"),
+        SessionConfigSelectOption::new("high", "High"),
+        SessionConfigSelectOption::new("max", "Max"),
+    ];
+    session.handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+        ConfigOptionUpdate::new(vec![
+            SessionConfigOption::select(
+                "model",
+                "Model",
+                "opus",
+                vec![SessionConfigSelectOption::new("opus", "Opus 5.5")],
+            )
+            .category(SessionConfigOptionCategory::Model),
+            SessionConfigOption::select("effort", "Effort", "high", levels)
+                .category(SessionConfigOptionCategory::ThoughtLevel),
+            mode_config_option(),
+        ]),
+    )));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Effort");
+    harness.run_steps(2);
+    harness.snapshot("chat_effort_picker");
+}
+
+/// The settings button's padding reaches into the composer margin, so its hover background must
+/// still stay inside the composer.
+#[test]
+fn chat_settings_button_hovered() {
+    let mut panel = panel();
+    panel.show_chat();
+    open_session(panel.session_mut());
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    harness.get_by_label("Manual").hover();
+    harness.run_steps(4);
+    harness.snapshot("chat_settings_button_hovered");
+}
+
+/// An agent offering dozens of models gets a scrolling model submenu.
+#[test]
+fn chat_model_picker_long() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+    let models: Vec<_> = (1..=40)
+        .map(|index| {
+            SessionConfigSelectOption::new(format!("model-{index}"), format!("Gizmo {index}"))
+        })
+        .collect();
+    session.handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+        ConfigOptionUpdate::new(vec![
+            SessionConfigOption::select("model", "Model", "model-1", models)
+                .category(SessionConfigOptionCategory::Model),
+            mode_config_option(),
+        ]),
+    )));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    super::open_settings_submenu(&mut harness, "Gizmo 1", "Model");
+    harness.run_steps(2);
+    harness.snapshot("chat_model_picker_long");
 }
 
 /// In a narrow panel, the composer footer truncates instead of running under the stop button.
@@ -1060,6 +1224,7 @@ fn chat_narrow_composer() {
                 )],
             )
             .category(SessionConfigOptionCategory::Model),
+            mode_config_option(),
         ]),
     )));
     session.handle_event(AgentEvent::Update(SessionUpdate::UsageUpdate(

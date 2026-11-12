@@ -36,7 +36,7 @@ snippet: archetypes/graph_undirected
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1200w.png">
-  <img src="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/full.png">
+  <img src="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/full.png" alt="Graph view with three nodes labeled A, B, and C connected in a triangle by plain undirected edges">
 </picture>
 
 ### Simple directed graph
@@ -48,6 +48,6 @@ snippet: archetypes/graph_directed
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png">
-  <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png">
+  <img src="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/full.png" alt="Graph view with three nodes labeled A, B, and C connected in a cycle by arrows showing edge direction">
 </picture>
 

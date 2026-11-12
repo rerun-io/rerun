@@ -39,7 +39,6 @@ use rmcp::{
         Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig,
         Tool, ToolAnnotations,
     },
-    schemars,
     service::{RequestContext, RoleServer},
     tool, tool_router, transport,
 };
@@ -148,7 +147,15 @@ async fn connect_grpc(
         .connect_timeout(REQUEST_TIMEOUT)
         .connect()
         .await
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| {
+            re_error::StructuredError::from_summary(
+                "Nothing serves ViewerControl at this endpoint. \
+                 Is a viewer started with the `rerun` command running there?",
+            )
+            .with_detail(re_error::format_ref(&err))
+            .with_detail(format!("Endpoint: {endpoint}"))
+            .to_string()
+        })?;
     let client = ViewerControlServiceClient::new(channel);
     let inspector = GrpcInspector {
         client: client.clone(),
@@ -343,6 +350,15 @@ impl ViewerMcpServer {
         // The egui tools keep their upstream names, so they are added after the prefixing.
         tools.extend(self.ui_router.list_all());
         tools
+    }
+
+    /// `name` must be the tool name from the request, before [`RERUN_PREFIX`] is stripped.
+    fn tool_name_for_analytics(&self, name: &str) -> String {
+        if self.all_tools().iter().any(|tool| tool.name == name) {
+            name.to_owned()
+        } else {
+            "unknown".to_owned()
+        }
     }
 
     /// Run one operation generated from `viewer_control.proto`.
@@ -583,6 +599,10 @@ impl ServerHandler for ViewerMcpServer {
         } else {
             let conn = self.conn.lock().clone();
             let Some(conn) = conn else {
+                re_analytics::record(|| re_analytics::event::McpToolCalled {
+                    tool: self.tool_name_for_analytics(&name),
+                    is_error: true,
+                });
                 return Ok(text_error("no app connected — call `rerun_connect` first").into());
             };
             conn.ui.dispatch(&self.ui_router, request, context).await?
@@ -591,6 +611,11 @@ impl ServerHandler for ViewerMcpServer {
         if !TOOLS_WITHOUT_LOG.contains(&name.as_ref()) {
             self.append_new_logs(&mut result).await;
         }
+        let is_error = result.is_error == Some(true);
+        re_analytics::record(|| re_analytics::event::McpToolCalled {
+            tool: self.tool_name_for_analytics(&name),
+            is_error,
+        });
         Ok(result.into())
     }
 }
@@ -613,7 +638,7 @@ pub async fn serve(viewer_endpoint: Option<Url>) -> anyhow::Result<()> {
     if let Some(endpoint) = viewer_endpoint {
         match server.connect_to(&endpoint).await {
             Ok(_) => re_log::info!("Connected to viewer at {endpoint}"),
-            Err(err) => re_log::warn!("Failed to connect to viewer at {endpoint}: {err}"),
+            Err(err) => re_log::warn!("Failed to connect to the viewer: {err}"),
         }
     }
     let running = server.serve(transport::stdio()).await?;
@@ -636,6 +661,51 @@ mod tests {
         ));
         assert!(instructions.ends_with(INSTRUCTIONS));
         assert_eq!(ViewerMcpServer::new(None).instructions(), INSTRUCTIONS);
+    }
+
+    #[tokio::test]
+    async fn a_viewer_without_viewer_control_gets_an_actionable_error() {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .and_then(|listener| listener.local_addr())
+            .map(|addr| addr.port())
+            .expect("a free port");
+        let endpoint = Url::parse(&format!("http://127.0.0.1:{port}")).expect("a valid URL");
+
+        let err = ViewerMcpServer::new(None)
+            .connect_to(&endpoint)
+            .await
+            .expect_err("nothing listens on the port");
+        assert!(
+            err.contains("refused"),
+            "The error keeps its root cause, not just \"transport error\": {err}"
+        );
+        assert!(
+            err.contains("Is a viewer started with the `rerun` command running there?"),
+            "The error says how to fix it: {err}"
+        );
+        assert!(
+            err.ends_with(&format!("\n- Endpoint: {endpoint}")),
+            "The endpoint is the last detail: {err}"
+        );
+    }
+
+    #[test]
+    fn analytics_names_only_listed_tools() {
+        let server = ViewerMcpServer::new(None);
+        assert_eq!(
+            server.tool_name_for_analytics("rerun_connect"),
+            "rerun_connect"
+        );
+        assert_eq!(
+            server.tool_name_for_analytics("rerun_get_state"),
+            "rerun_get_state"
+        );
+        assert_eq!(server.tool_name_for_analytics("click"), "click");
+        assert_eq!(server.tool_name_for_analytics("connect"), "unknown");
+        assert_eq!(
+            server.tool_name_for_analytics("/home/me/data.rrd"),
+            "unknown"
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
+use agent_client_protocol_schema::v1::SessionId;
 
 /// An MCP server the agent spawns itself over stdio.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -47,7 +47,8 @@ pub struct AgentHarnessConfig {
     /// Markdown sent together with the first prompt of the session.
     pub preamble: Option<String>,
 
-    /// Models to prefer for this session, best first.
+    /// Ranked model-name fallbacks used when no saved model selection is available
+    /// or the agent no longer offers it.
     ///
     /// Each entry is matched, case-insensitively, as a substring of the id and the name of every
     /// model the agent offers over ACP; the first hit is selected before the session takes its
@@ -55,11 +56,14 @@ pub struct AgentHarnessConfig {
     /// whatever model it would use on its own.
     pub model_preferences: Vec<String>,
 
-    /// Exact saved model ID, restored only if the agent still offers it.
-    pub preferred_model: Option<SessionConfigValueId>,
+    /// Saved selections, restored only when offered by the agent.
+    /// A saved model takes precedence over `model_preferences`.
+    /// Other settings keep the agent's defaults when their saved value is unavailable.
+    pub preferences: crate::AgentPreferences,
 
-    /// Session modes to prefer, best first.
+    /// An earlier session to continue, if the agent can load it.
     ///
-    /// The first one the agent offers is selected before the session takes its first prompt.
-    pub mode_preferences: Vec<SessionModeId>,
+    /// The agent replays its history before the session opens. When the agent cannot load
+    /// sessions, or no longer has this one, a new session starts instead.
+    pub session_to_load: Option<SessionId>,
 }

@@ -7,7 +7,6 @@ mod plural;
 pub mod time;
 mod timestamp_format;
 
-use std::cmp::PartialOrd;
 use std::fmt::Display;
 
 use re_int::UnsignedAbs;
@@ -23,10 +22,15 @@ pub use self::timestamp_format::{DateVisibility, TimestampFormat, TimestampForma
 /// Looks slightly different from the normal hyphen `-`.
 pub const MINUS: char = '−';
 
-/// A thin space, used for thousands separators, like `1 234`:
+/// A narrow no-break space, used for thousands separators, like `1 234`.
 ///
-/// <https://en.wikipedia.org/wiki/Thin_space>
-pub const THIN_SPACE: char = '\u{2009}';
+/// As narrow as a thin space, but text layout should not break a line at it.
+///
+/// <https://www.compart.com/en/unicode/U+202F>
+pub const NARROW_NO_BREAK_SPACE: char = '\u{202F}';
+
+/// A thin space, accepted as a thousands separator when removing number formatting.
+const THIN_SPACE: char = '\u{2009}';
 
 /// Prepare a string containing a number for parsing
 pub fn strip_whitespace_and_normalize(text: &str) -> String {
@@ -75,7 +79,7 @@ fn add_thousands_separators(number: &str) -> String {
     while chars.peek().is_some() {
         if !result.is_empty() {
             // thousands-deliminator:
-            result.push(THIN_SPACE);
+            result.push(NARROW_NO_BREAK_SPACE);
         }
         for _ in 0..3 {
             if let Some(c) = chars.next() {
@@ -92,9 +96,9 @@ fn add_thousands_separators(number: &str) -> String {
 fn test_format_uint() {
     assert_eq!(format_uint(42_u32), "42");
     assert_eq!(format_uint(999_u32), "999");
-    assert_eq!(format_uint(1_000_u32), "1 000");
-    assert_eq!(format_uint(123_456_u32), "123 456");
-    assert_eq!(format_uint(1_234_567_u32), "1 234 567");
+    assert_eq!(format_uint(1_000_u32), "1 000");
+    assert_eq!(format_uint(123_456_u32), "123 456");
+    assert_eq!(format_uint(1_234_567_u32), "1 234 567");
 }
 
 /// Options for how to format a floating point number, e.g. an [`f64`].
@@ -318,16 +322,16 @@ fn test_format_f32() {
         (f32::NEG_INFINITY, "−∞"),
         (0.0, "0"),
         (42.0, "42"),
-        (10_000.0, "10 000"),
-        (1_000_000.0, "1 000 000"),
-        (10_000_000.0, "10 000 000"),
+        (10_000.0, "10 000"),
+        (1_000_000.0, "1 000 000"),
+        (10_000_000.0, "10 000 000"),
         (11_000_000.0, "1.100000e7"),
         (-42.0, "−42"),
         (-4.20, "−4.2"),
-        (123_456.78, "123 456.8"),
+        (123_456.78, "123 456.8"),
         (78.4321, "78.4321"), // min_decimals_for_thousands_separators
-        (-std::f32::consts::PI, "−3.141 593"),
-        (-std::f32::consts::PI * 1e6, "−3 141 593"),
+        (-std::f32::consts::PI, "−3.141 593"),
+        (-std::f32::consts::PI * 1e6, "−3 141 593"),
         (-std::f32::consts::PI * 1e20, "−3.141593e20"), // We switch to scientific notation to not show false precision
     ];
     for (value, expected) in cases {
@@ -349,18 +353,18 @@ fn test_format_f64() {
         (42.0, "42"),
         (-42.0, "−42"),
         (-4.20, "−4.2"),
-        (123_456_789.0, "123 456 789"),
-        (123_456_789.123_45, "123 456 789.12345"), // min_decimals_for_thousands_separators
-        (0.000_012_345_678_9, "0.000 012 345 678 9"),
-        (0.123_456_789, "0.123 456 789"),
-        (1.234_567_89, "1.234 567 89"),
-        (12.345_678_9, "12.345 678 9"),
-        (123.456_789, "123.456 789"),
-        (1_234.567_89, "1 234.56789"), // min_decimals_for_thousands_separators
-        (12_345.678_9, "12 345.6789"), // min_decimals_for_thousands_separators
+        (123_456_789.0, "123 456 789"),
+        (123_456_789.123_45, "123 456 789.12345"), // min_decimals_for_thousands_separators
+        (0.000_012_345_678_9, "0.000 012 345 678 9"),
+        (0.123_456_789, "0.123 456 789"),
+        (1.234_567_89, "1.234 567 89"),
+        (12.345_678_9, "12.345 678 9"),
+        (123.456_789, "123.456 789"),
+        (1_234.567_89, "1 234.56789"), // min_decimals_for_thousands_separators
+        (12_345.678_9, "12 345.6789"), // min_decimals_for_thousands_separators
         (78.4321, "78.4321"),          // min_decimals_for_thousands_separators
-        (-std::f64::consts::PI, "−3.141 592 653 589 79"),
-        (-std::f64::consts::PI * 1e6, "−3 141 592.653 589 79"),
+        (-std::f64::consts::PI, "−3.141 592 653 589 79"),
+        (-std::f64::consts::PI * 1e6, "−3 141 592.653 589 79"),
         (-std::f64::consts::PI * 1e20, "−3.14159265358979e20"), // We switch to scientific notation to not show false precision
     ];
     for (value, expected) in cases {
@@ -384,7 +388,7 @@ fn test_format_f16() {
         (f16::from_f32(42.0), "42"),
         (f16::from_f32(-42.0), "−42"),
         (f16::from_f32(-4.20), "−4.1992"), // f16 precision limitation
-        (f16::from_f32(12_345.0), "12 344"), // f16 precision limitation
+        (f16::from_f32(12_345.0), "12 344"), // f16 precision limitation
         (f16::PI, "3.1406"),               // f16 precision limitation
     ];
     for (value, expected) in cases {
@@ -770,19 +774,33 @@ fn test_parse_duration() {
 
 /// Remove the custom formatting
 ///
-/// Removes the thin spaces and the special minus character. Useful when copying text.
+/// Replaces the special minus character with a hyphen, and removes the
+/// thousands separators (narrow no-break spaces and thin spaces) between digits.
+/// Separators elsewhere are kept, since they are common in other text (e.g. `10:30\u{202F}PM`).
+/// Useful when copying text.
 pub fn remove_number_formatting(s: &str) -> String {
-    s.chars()
-        .filter_map(|c| {
-            if c == MINUS {
-                Some('-')
-            } else if c == THIN_SPACE {
-                None
-            } else {
-                Some(c)
+    if !s.contains([MINUS, NARROW_NO_BREAK_SPACE, THIN_SPACE]) {
+        return s.to_owned();
+    }
+
+    let chars: Vec<char> = s.chars().collect();
+    let mut result = String::with_capacity(s.len());
+    for (i, &c) in chars.iter().enumerate() {
+        if c == MINUS {
+            result.push('-');
+        } else if c == NARROW_NO_BREAK_SPACE || c == THIN_SPACE {
+            let is_digit_at = |j: Option<usize>| {
+                j.and_then(|j| chars.get(j))
+                    .is_some_and(|c| c.is_ascii_digit())
+            };
+            if !is_digit_at(i.checked_sub(1)) || !is_digit_at(Some(i + 1)) {
+                result.push(c);
             }
-        })
-        .collect()
+        } else {
+            result.push(c);
+        }
+    }
+    result
 }
 
 #[test]
@@ -802,5 +820,10 @@ fn test_remove_number_formatting() {
     assert_eq!(
         remove_number_formatting(&format_uint(123_456_789_u32)),
         "123456789"
+    );
+    assert_eq!(remove_number_formatting("1\u{2009}234"), "1234");
+    assert_eq!(
+        remove_number_formatting("10:30\u{202F}PM \u{202F}1 \u{2009}"),
+        "10:30\u{202F}PM \u{202F}1 \u{2009}"
     );
 }

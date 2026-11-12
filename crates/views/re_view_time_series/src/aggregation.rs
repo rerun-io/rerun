@@ -41,8 +41,7 @@ impl AverageAggregator {
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
         let max_time = points.last().map_or(i64::MAX, |p| p.time);
 
-        let mut aggregated =
-            Vec::with_capacity((points.len() as u64 / bucket_width.get()) as usize);
+        let mut aggregated = Vec::with_capacity((points.len() as u64 / bucket_width) as usize);
 
         let mut i = 0;
         while i < points.len() {
@@ -123,7 +122,7 @@ impl MinMaxAggregator {
         let min_time = points.first().map_or(i64::MIN, |p| p.time);
         let max_time = points.last().map_or(i64::MAX, |p| p.time);
 
-        let capacity = (points.len() as u64 / bucket_width.get()) as usize;
+        let capacity = (points.len() as u64 / bucket_width) as usize;
         let mut aggregated = match self {
             Self::MinMax => Vec::with_capacity(capacity * 2),
             _ => Vec::with_capacity(capacity),

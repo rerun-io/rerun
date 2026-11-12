@@ -36,7 +36,7 @@ class VideoFrameReference(VideoFrameReferenceExt, Archetype, VisualizableArchety
     To show an entire video, a video frame reference for each frame of the video should be logged.
     References to a [`archetypes.VideoStream`][rerun.archetypes.VideoStream] use the active Viewer timeline.
 
-    See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+    See <https://rerun.io/docs/logging-and-ingestion/media/video> for details of what is and isn't supported.
 
     Examples
     --------

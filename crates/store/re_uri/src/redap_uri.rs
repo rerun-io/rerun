@@ -181,7 +181,7 @@ mod tests {
     use re_types_core::SegmentId;
 
     use super::*;
-    use crate::{DatasetResource, DatasetUri, Fragment, Scheme};
+    use crate::{DatasetResource, Scheme};
 
     #[test]
     fn scheme_conversion() {

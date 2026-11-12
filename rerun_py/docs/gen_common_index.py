@@ -548,16 +548,16 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
-* [Quick start](https://www.rerun.io/docs/getting-started/data-in/python)
-* [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
+* [Quick start](https://www.rerun.io/docs/logging-and-ingestion/tutorial)
+* [Tutorial](https://www.rerun.io/docs/logging-and-ingestion/tutorial)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
-* [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
+* [Troubleshooting](https://www.rerun.io/docs/getting-started/install-rerun/troubleshooting)
 
 There are many different ways of sending data to the Rerun Viewer depending on what you're trying
 to achieve and whether the viewer is running in the same process as your code, in another process,
 or even as a separate web application.
 
-Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating-modes) for an
+Checkout [SDK Operating Modes](https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/operating-modes) for an
 overview of what's possible and how.
 
 ## Supported Python Versions
@@ -567,6 +567,7 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
+| 0.43              | Nov. 11, 2026    | 3.11+                        |
 | 0.42              | Nov.  4, 2026    | 3.11+                        |
 | 0.41              | Oct. 28, 2026    | 3.11+                        |
 | 0.40              | Oct. 21, 2026    | 3.11+                        |

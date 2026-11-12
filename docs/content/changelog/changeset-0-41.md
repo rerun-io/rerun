@@ -7,7 +7,7 @@ order: 960
 
 ### Automatic visualization of raw ROS messages
 
-Previously, you could already visualize ROS messages without converting them to Rerun's semantic types at ingest time by configuring [component mappings](../howto/visualization/component-mappings.md) in a blueprint.
+Previously, you could already visualize ROS messages without converting them to Rerun's semantic types at ingest time by configuring [component mappings](../viewer/blueprints-and-views/component-mappings.md) in a blueprint.
 However, this can be a tedious process!
 
 The Viewer's heuristic blueprint is now aware of various ROS types and configures these runtime mappings automatically where supported.
@@ -16,10 +16,10 @@ For example, `std_msgs/msg/String` appears as text, while `sensor_msgs/msg/Tempe
 
 Currently supported: `std_msgs/msg/String`, `sensor_msgs/msg/Temperature`, `sensor_msgs/msg/FluidPressure`, `sensor_msgs/msg/RelativeHumidity`, `sensor_msgs/msg/Illuminance`, and `sensor_msgs/msg/MagneticField`.
 Other ROS 2 messages still need import-time conversion to be visualized automatically.
-See [Supported Message Formats](../concepts/logging-and-ingestion/mcap/message-formats.md#visualizing-ros-2-messages-without-conversion) for details.
+See [Supported Message Formats](../logging-and-ingestion/import/mcap/message-formats.md#visualizing-ros-2-messages-without-conversion) for details.
 
 <picture>
-  <img src="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/full.png" alt="">
+  <img src="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/full.png" alt="Rerun Viewer plotting a ROS Temperature message as a line with a variance band, with a MeasurementsSeries visualizer in the selection panel">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/1024w.png">
@@ -38,7 +38,7 @@ Editing is no longer limited to flags: any editable column whose component type 
     <source src="https://static.rerun.io/5f7a1167b2174451397129941509c166b25ef807_table_column_types_v2.mp4" type="video/mp4" />
 </video>
 
-See [Configure table layouts and segment previews](../howto/visualization/configure-table-blueprints.md#editing-columns).
+See [Configure table layouts and segment previews](../viewer/blueprints-and-views/configure-table-blueprints.md#editing-columns).
 The `rerun.blueprint.table` API is experimental and may change in future releases.
 The new `Bool`, `Flag`, `Url`, `Thumbnail` and `EntryKind` components are unstable, and their data may not stay backwards compatible.
 This changes the table blueprint API: see [the migration guide](#table-blueprints-columncell-is-now-columncolumn_type).
@@ -94,7 +94,7 @@ The API is experimental.
 The older methods for the active recording, timeline, time, time range, and play state (`get_active_recording_id`, `set_current_time`, `get_time_range`, `set_playing`, …) still work, but are deprecated in favor of it.
 `open` and `close` now return promises: `open` waits for the load and reports the recordings it opened, and `close` also takes store ids.
 
-See the [`viewer_control` example](https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control) and [Embed a Rerun Viewer](../howto/integrations/embed-web.md).
+See the [`viewer_control` example](https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control) and [Embed a Rerun Viewer](../integrations/embed-web.md).
 
 ## Other
 
@@ -107,7 +107,7 @@ See the [`viewer_control` example](https://github.com/rerun-io/rerun/tree/main/e
       <source src="https://static.rerun.io/0da2574c1cf47ede4ed35a2c5310fef516865dd1_truncated_value_tooltip.mp4" type="video/mp4" />
   </video>
 - **More scalable text log view**: The text log view now scales to much larger logs. When connected to a store, it loads log data lazily as you navigate instead of loading the entire log up front.
-- **Segment preview time controls in blueprint**: `rrb.table.PreviewsConfig` now has `play_state`, `playback_speed`, and `start_point`, so a table blueprint can start all segment previews playing at a given point and speed. The `rerun.blueprint.table` API is experimental. See [Configure table layouts and segment previews](../howto/visualization/configure-table-blueprints.md#configuring-card-and-table-layouts).
+- **Segment preview time controls in blueprint**: `rrb.table.PreviewsConfig` now has `play_state`, `playback_speed`, and `start_point`, so a table blueprint can start all segment previews playing at a given point and speed. The `rerun.blueprint.table` API is experimental. See [Configure table layouts and segment previews](../viewer/blueprints-and-views/configure-table-blueprints.md#configuring-card-and-table-layouts).
 - **Dataset schema is fetched once per revision**: `DatasetEntry` and `DatasetSelection` now cache the dataset schema per dataset revision, so repeated `reader()` calls no longer each cost a round trip to the server. A registration or unregistration made from the same process shows up in the next read. A change made by another client shows up once this process sees a newer revision of the dataset.
 - **`Segment.schema()` can include assets**: `Segment.schema(include_assets=True)` adds the columns of the assets that apply to the segment, matching the schema of `DatasetEntry.segment_store(…, include_assets=True)`. The default, `include_assets=False`, returns the segment's own layers only, as before.
 - **C++: configurable gRPC flush timeout**: `RecordingStream::connect_grpc` and `GrpcSink` take a `flush_timeout` (a `std::chrono` duration), which bounds how long a flush waits for the connection to be established. It defaults to 5 seconds, as before. In the C API, `rr_recording_stream_connect_grpc` and `rr_grpc_sink` take the same parameter as `flush_timeout_sec`.

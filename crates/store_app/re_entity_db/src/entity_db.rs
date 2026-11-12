@@ -1445,11 +1445,7 @@ impl MemUsageTreeCapture for EntityDb {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use re_chunk::{Chunk, RowId};
     use re_log_types::example_components::{MyPoint, MyPoints};
-    use re_log_types::{StoreId, TimePoint, Timeline};
 
     use super::*;
 

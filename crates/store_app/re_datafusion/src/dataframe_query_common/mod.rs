@@ -43,7 +43,8 @@ use re_log_types::EntryId;
 use re_protos::capabilities::DATASET_FIND_CHUNKS;
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_protos::cloud::v1alpha1::{
-    FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetResponse,
+    DatasetQueryScope, FetchChunksRequest, GetDatasetSchemaRequest, GetDatasetSchemaResponse,
+    QueryDatasetResponse,
 };
 use re_protos::common::v1alpha1::ext::ScanParameters;
 use re_protos::headers::RerunHeadersInjectorExt as _;
@@ -137,6 +138,9 @@ pub struct DataframeQueryTableProvider<T: DataframeClientAPI> {
     /// Whether the connected server advertised [`DATASET_FIND_CHUNKS`]: `scan` dispatches to
     /// `find_chunks` when true, and to the legacy `query_dataset` otherwise.
     supports_find_chunks: bool,
+
+    /// Which data `find_chunks` reads. The legacy `query_dataset` always reads the full scope.
+    scope: DatasetQueryScope,
 
     /// passing trace headers between phases of execution pipeline helps keep
     /// the entire operation under a single trace.
@@ -479,6 +483,7 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
             // `/WhoAmI` capability to read; default to the new RPC and let
             // `with_find_chunks_support` opt into the legacy path where a test needs it.
             supports_find_chunks: true,
+            scope: DatasetQueryScope::Full,
             #[cfg(not(target_arch = "wasm32"))]
             trace_headers,
             analytics: None,
@@ -496,6 +501,14 @@ impl<T: DataframeClientAPI> DataframeQueryTableProvider<T> {
     #[must_use]
     pub fn with_find_chunks_support(mut self, enabled: bool) -> Self {
         self.supports_find_chunks = enabled;
+        self
+    }
+
+    /// Reads `scope` instead of the full scope. The schema passed to the constructor must be the
+    /// one for `scope`.
+    #[must_use]
+    pub fn with_scope(mut self, scope: DatasetQueryScope) -> Self {
+        self.scope = scope;
         self
     }
 
@@ -894,7 +907,15 @@ impl<T: DataframeClientAPI> TableProvider for DataframeQueryTableProvider<T> {
                     .collect::<Result<Vec<_>, _>>()?
                     .into_iter()
                     .filter(|request| !request.is_empty())
-                    .map(|request| ChunkRequest::FindChunks(request.into()))
+                    .map(|request| {
+                        ChunkRequest::FindChunks(
+                            re_protos::cloud::v1alpha1::ext::FindChunksRequest {
+                                scope: self.scope,
+                                ..request
+                            }
+                            .into(),
+                        )
+                    })
                     .collect()
             } else {
                 dataset_queries

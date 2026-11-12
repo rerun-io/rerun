@@ -2,6 +2,7 @@
 title: Migrating from 0.25 to 0.26
 order: 984
 hidden: true
+description: Breaking changes in Rerun 0.26 and how to update code written for 0.25
 ---
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
@@ -18,7 +19,7 @@ To install it on macOS, run `brew install protobuf`. It is also available at htt
 Use the new `timeout_sec` argument instead.
 For non-blocking, use `timeout_sec=0`.
 Mostly you can just call `.flush()` with no arguments.
-That will block until all writes either finishes or an error occurs (e.g. the gRPC connection is severed).
+That will block until all writes either finish or an error occurs (e.g. the gRPC connection is severed).
 
 ## Python SDK: more use of kw-args
 We have started using named arguments (kw-args) for more of our functions.
@@ -54,9 +55,9 @@ This caused unnecessary noise and some tooling problems due to the complex Arrow
 
 To address that, the partition table has been simplified with multiple columns removed and a few others renamed.
 In parallel, a new dataset manifest table is now available (`dataset_entry.manifest()`).
-This table contains one row per layer (i.e. possibly multiple rows per partition) and provide a rich low-level view on the contents of a dataset.
+This table contains one row per layer (i.e. possibly multiple rows per partition) and provides a rich low-level view on the contents of a dataset.
 
-#### Partition table
+### Partition table
 
 - `rerun_partition_id`: partition id (string)
 - `rerun_layer_names`: layer names (list of strings, one value per layer)
@@ -67,7 +68,7 @@ This table contains one row per layer (i.e. possibly multiple rows per partition
 - `property:*`: properties columns derived from the partition data
 
 
-#### Dataset manifest columns
+### Dataset manifest columns
 
 - `rerun_layer_name`: layer name (string)
 - `rerun_partition_id`: partition id (string)

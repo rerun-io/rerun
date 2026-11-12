@@ -140,14 +140,13 @@ impl ViewportBlueprint {
             .collect();
 
         // Auto layouting and auto view are only enabled if no blueprint has been provided by the user.
-        // Only enable auto-views if this is the app-default blueprint
-        let is_app_default_blueprint = blueprint_db
+        // Only enable auto-views if this is the heuristic blueprint
+        let is_heuristic_blueprint = blueprint_db
             .store_info()
-            .is_some_and(|ri| ri.is_app_default_blueprint());
+            .is_some_and(|ri| ri.is_heuristic_blueprint());
         let auto_layout =
-            AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| *auto.0));
-        let auto_views =
-            AtomicBool::new(auto_views.map_or(is_app_default_blueprint, |auto| *auto.0));
+            AtomicBool::new(auto_layout.map_or(is_heuristic_blueprint, |auto| *auto.0));
+        let auto_views = AtomicBool::new(auto_views.map_or(is_heuristic_blueprint, |auto| *auto.0));
 
         let root_container = root_container.unwrap_or_else(|| {
             let new_root_id = ContainerId::hashed_from_str("placeholder_root_container");

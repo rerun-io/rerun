@@ -15,11 +15,13 @@ import re
 import sys
 from concurrent.futures import ProcessPoolExecutor
 from contextlib import redirect_stdout
+from functools import cache
 from io import StringIO
 from pathlib import Path
 from typing import Any
 
 import git
+import yaml
 from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
 
@@ -49,7 +51,8 @@ wasm_caps = re.compile(r"\bWASM\b")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
 # Looks for: \"{foo}\" (manual quotes), including \"{foo:?}\" (excess quotes).
 explicit_quotes = re.compile(r'[^(]\\"\{[^}]*\}\\"')
-ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
+# Three dots between two words or `{placeholders}` are a range (e.g. `main...HEAD`, `{sha}...{tag}`), not an ellipsis.
+ellipsis = re.compile(r"[^.](?<![\w}])\.\.\.([^\-.0-9a-zA-Z]|$)|[^.]\.\.\.([^\-.0-9a-zA-Z{]|$)")
 ellipsis_expression = re.compile(r"[\[\]\(\)<>\{\}]?.*\.\.\..*[\[\]\(\)<>\{\}]")
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 tonic_result = re.compile(r"Result<.*?,\s*tonic::Status\s*,?\s*>", re.DOTALL)
@@ -189,6 +192,31 @@ def lint_url(url: str) -> str | None:
                 return f"Do not link directly to a file on '{branch}' - it may disappear! Use a commit hash or tag instead. Url: {url}"
 
     return None
+
+
+docs_url = re.compile(r"rerun\.io/docs/([\w\-/]+)")
+
+
+@cache
+def redirected_doc_paths() -> dict[str, str]:
+    """Old docs paths from `_redirects.yaml`, mapped to where they redirect."""
+    with open(f"{rerun_prefix}docs/content/_redirects.yaml", encoding="utf-8") as f:
+        redirects: dict[str, str] = yaml.safe_load(f) or {}
+    return redirects
+
+
+def lint_docs_redirect_links(filepath: str, content: str, redirects: dict[str, str]) -> list[tuple[int, str]]:
+    """Links to an old docs path that only works through a redirect, as `(index, error)`."""
+    is_changelog = "CHANGELOG.md" in filepath or "docs/content/changelog/" in filepath
+    if is_changelog:
+        return []  # History links to the paths of its time.
+
+    errors = []
+    for match in docs_url.finditer(content):
+        path = match.group(1).strip("/")
+        if new_path := redirects.get(path):
+            errors.append((match.start(), f"`docs/{path}` is a redirect: link to `docs/{new_path}` instead"))
+    return errors
 
 
 def lint_line(
@@ -498,6 +526,7 @@ def test_lint_line() -> None:
         "anyhow::Result<()>",
         "The theme is great",
         "template <typename... Args>",
+        'f"repos/{OWNER}/rerun/compare/{sha}...{tag}"',
         '_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])',
         'rr.init("rerun_example_app")',
         'rr.script_setup(args, "rerun_example_app")',
@@ -649,6 +678,7 @@ def test_lint_line() -> None:
         "let options = SnapshotOptions::default();",
         "The the problem with double words",
         "More than meets the eye...",
+        'print(f"Loading {name}...")',
         're_log::trace!("Performing migrations...");',
         'rr.log("/", rr.TextLog("Logging things..."))',
         'logging.info("Detection finished...")',
@@ -1382,6 +1412,21 @@ def is_emoji(s: str) -> bool:
     )
 
 
+def test_lint_docs_redirect_links() -> None:
+    redirects = {"old/page": "new/page"}
+
+    def errors(filepath: str, content: str) -> list[str]:
+        return [error for _, error in lint_docs_redirect_links(filepath, content, redirects)]
+
+    expected = ["`docs/old/page` is a redirect: link to `docs/new/page` instead"]
+    assert errors("README.md", "https://rerun.io/docs/old/page") == expected
+    assert errors("README.md", "https://rerun.io/docs/old/page/#section") == expected
+    assert errors("README.md", "https://rerun.io/docs/new/page") == []
+    assert errors("README.md", "https://rerun.io/docs/old/page-two") == []
+    assert errors("CHANGELOG.md", "https://rerun.io/docs/old/page") == []
+    assert errors("docs/content/changelog/changeset-0-42.md", "https://rerun.io/docs/old/page") == []
+
+
 def test_is_emoji() -> None:
     assert not is_emoji("A")
     assert not is_emoji("Ö")
@@ -1537,6 +1582,17 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
             in_metadata = True
         if in_metadata and line.startswith("-->"):
             in_metadata = False
+
+        if (
+            not in_code_block
+            and not source.should_ignore(line_nr)
+            and "docs/content/" in filepath
+            and "<img" in line
+            and not re.search(r'alt="[^"]+"', line)
+        ):
+            errors.append(
+                f'{line_nr}: Images in the docs need alt text: add `alt="…"` saying what the image shows.',
+            )
 
         if not in_code_block and not source.should_ignore(line_nr) and filepath.startswith(rerun_prefix):
             if not in_metadata:
@@ -1835,6 +1891,11 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error(error))
             num_errors += 1
 
+    for index, error in lint_docs_redirect_links(filepath, source.content, redirected_doc_paths()):
+        if not source.should_ignore_index(index):
+            print(source.error(error, line_nr=_index_to_line_nr(source.content, index)))
+            num_errors += 1
+
     # Markdown-specific lints
     if filepath.endswith(".md"):
         errors = lint_frontmatter(filepath, source.content)
@@ -1890,6 +1951,37 @@ def lint_files(filepaths: list[str], args: argparse.Namespace) -> int:
     return num_errors
 
 
+pixi_version_pin = re.compile(r"(pixi-version:\s*[\"']?v?|PIXI_VERSION = \"|requires-pixi = \">=)([\d.]+)")
+
+
+def lint_pixi_version_pins(repo: git.Repo) -> int:
+    """
+    Check that every pixi version pin matches `requires-pixi` in `rerun/pixi.toml`.
+
+    Pins live in CI workflows, `pixi.toml` files, and `check_env.py`.
+    This checks all tracked files, ignoring `exclude_paths`, so excluded workflows are checked too.
+    """
+    pixi_toml = Path(f"{rerun_prefix}pixi.toml").read_text("utf-8")
+    required_match = re.search(r'^requires-pixi = ">=([\d.]+)"', pixi_toml, re.MULTILINE)
+    assert required_match is not None, "rerun/pixi.toml has no `requires-pixi`"
+    required = required_match.group(1)
+
+    num_errors = 0
+    for item in repo.index.iter_blobs():
+        filepath = "./" + str(item[1].path).replace("\\", "/")
+        if not (filepath.endswith(("/pixi.toml", "/check_env.py")) or "/.github/workflows/" in filepath):
+            continue
+        content = Path(filepath).read_text("utf-8")
+        for pin in pixi_version_pin.finditer(content):
+            if pin.group(2) != required:
+                line_nr = content.count("\n", 0, pin.start()) + 1
+                print(
+                    f"{filepath}:{line_nr}: pixi version {pin.group(2)} differs from `requires-pixi` in rerun/pixi.toml ({required})"
+                )
+                num_errors += 1
+    return num_errors
+
+
 def lint_crate_docs() -> int:
     """Make sure ARCHITECTURE.md talks about every single crate we have."""
 
@@ -1932,6 +2024,7 @@ def main() -> None:
     test_lint_pyclass_requirements()
     test_lint_pymethods_requirements()
     test_is_emoji()
+    test_lint_docs_redirect_links()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
@@ -2088,6 +2181,7 @@ def main() -> None:
                 files_to_lint.append(filepath)
 
     num_errors += lint_files(files_to_lint, args)
+    num_errors += lint_pixi_version_pins(repo)
 
     if not args.files:
         num_errors += lint_crate_docs()

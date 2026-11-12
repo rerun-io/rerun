@@ -15,9 +15,72 @@ use super::chat_input::ready_panel;
 /// The model that `panel`'s agent harness would be started with.
 fn launched_model(panel: &AgentPanel) -> Option<SessionConfigValueId> {
     match panel.agent_launch(&SessionContext::default()) {
-        Ok(AgentLaunch::AgentHarness(config)) => config.preferred_model,
+        Ok(AgentLaunch::AgentHarness(config)) => config.preferences.model().cloned(),
         other => panic!("expected an agent harness, got {other:?}"),
     }
+}
+
+/// Checks that model-category presentation works across groups and preserves the agent's option id.
+#[test]
+fn grouped_models_resolve_aliases_and_recommend_reruns_default() {
+    let mut panel = ready_panel();
+    panel
+        .session_mut()
+        .handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+            ConfigOptionUpdate::new(vec![
+                SessionConfigOption::select(
+                    "engine",
+                    "Model",
+                    "default",
+                    vec![
+                        SessionConfigSelectGroup::new(
+                            "aliases",
+                            "Aliases",
+                            vec![
+                                SessionConfigSelectOption::new("default", "Default (recommended)")
+                                    .description("Opus 5.5"),
+                                SessionConfigSelectOption::new("automatic", "Automatic")
+                                    .description("Agent chooses a model"),
+                            ],
+                        ),
+                        SessionConfigSelectGroup::new(
+                            "models",
+                            "Models",
+                            vec![
+                                SessionConfigSelectOption::new("opus", "Opus 5.5"),
+                                SessionConfigSelectOption::new("sonnet", "Sonnet 5.5"),
+                            ],
+                        ),
+                    ],
+                )
+                .category(SessionConfigOptionCategory::Model),
+            ]),
+        )));
+    let mut harness = re_ui::testing::new_harness(
+        re_ui::testing::TestOptions::Gui,
+        Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0),
+    )
+    .build_ui_state(|ui, panel| panel.ui(ui), panel);
+    harness.run_steps(3);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Model");
+    assert!(
+        harness
+            .query_by_label_contains("Default (recommended)")
+            .is_none()
+    );
+    harness.get_by_label("Automatic");
+    harness.get_by_label("recommended");
+    harness.get_by_label("Sonnet 5.5").click();
+    harness.run_steps(2);
+    assert_eq!(
+        harness
+            .state()
+            .settings()
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.get("engine"))
+            .and_then(|value| value.as_value_id()),
+        Some(&SessionConfigValueId::new("sonnet"))
+    );
 }
 
 #[test]
@@ -28,10 +91,10 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         .session_mut()
         .transcript_mut()
         .push_user("Hello".into());
-    panel.settings_mut().preferred_models.insert(
-        AgentProfileId::new("codex"),
-        SessionConfigValueId::new("gpt-5.6-high"),
-    );
+    panel
+        .settings_mut()
+        .preferences_mut(AgentProfileId::new("codex"))
+        .set("model", "gpt-5.6-high");
     panel
         .session_mut()
         .handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
@@ -64,16 +127,15 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         panel,
     );
     harness.run_steps(3);
-    harness.get_by_value("Opus 5.5").click();
-    harness.run_steps(2);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Model");
     harness.get_by_label("Opus 5.5 Fast").click();
     harness.run_steps(2);
     assert_eq!(
         harness
             .state()
             .settings()
-            .preferred_models
-            .get(&AgentProfileId::new("claude")),
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.model()),
         Some(&SessionConfigValueId::new("opus-fast"))
     );
     assert_eq!(
@@ -82,24 +144,23 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
     );
 
     harness.state_mut().settings_mut().profile_id = AgentProfileId::new("codex");
-    harness.get_by_value("Opus 5.5").click();
-    harness.run_steps(2);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Model");
     harness.get_by_label("Opus 5.5 Thinking").click();
     harness.run_steps(2);
     assert_eq!(
         harness
             .state()
             .settings()
-            .preferred_models
-            .get(&AgentProfileId::new("claude")),
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.model()),
         Some(&SessionConfigValueId::new("opus-thinking"))
     );
     assert_eq!(
         harness
             .state()
             .settings()
-            .preferred_models
-            .get(&AgentProfileId::new("codex")),
+            .preferences(&AgentProfileId::new("codex"))
+            .and_then(|preferences| preferences.model()),
         Some(&SessionConfigValueId::new("gpt-5.6-high"))
     );
 
@@ -127,4 +188,85 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         launched_model(&reopened),
         Some(SessionConfigValueId::new("opus-thinking"))
     );
+}
+
+fn model_and_effort(model: &str, effort: Option<&str>) -> SessionUpdate {
+    let mut options = vec![
+        SessionConfigOption::select(
+            "model",
+            "Model",
+            model.to_owned(),
+            vec![
+                SessionConfigSelectOption::new("opus", "Opus 5.5"),
+                SessionConfigSelectOption::new("haiku", "Haiku 4.5"),
+            ],
+        )
+        .category(SessionConfigOptionCategory::Model),
+    ];
+    if let Some(effort) = effort {
+        options.push(
+            SessionConfigOption::select(
+                "effort",
+                "Effort",
+                effort.to_owned(),
+                vec![
+                    SessionConfigSelectOption::new("default", "Default"),
+                    SessionConfigSelectOption::new("low", "Low"),
+                    SessionConfigSelectOption::new("high", "High"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::ThoughtLevel),
+        );
+    }
+    SessionUpdate::ConfigOptionUpdate(ConfigOptionUpdate::new(options))
+}
+
+#[test]
+fn effort_picker_follows_the_agents_config_options() {
+    let mut panel = ready_panel();
+    panel
+        .session_mut()
+        .handle_event(AgentEvent::Update(model_and_effort("opus", Some("high"))));
+    let mut harness = re_ui::testing::new_harness(
+        re_ui::testing::TestOptions::Gui,
+        Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0),
+    )
+    .build_ui_state(
+        |ui, panel: &mut AgentPanel| {
+            panel.ui(ui);
+        },
+        panel,
+    );
+    harness.run_steps(3);
+    harness.get_by_label("Opus 5.5");
+    assert!(harness.query_by_label_contains("High").is_none());
+
+    harness
+        .state_mut()
+        .session_mut()
+        .handle_event(AgentEvent::Update(model_and_effort("haiku", None)));
+    harness.run_steps(3);
+    assert!(harness.query_by_label_contains("Haiku 4.5").is_some());
+    assert!(harness.query_by_label_contains("High").is_none());
+
+    harness
+        .state_mut()
+        .session_mut()
+        .handle_event(AgentEvent::Update(model_and_effort("opus", Some("low"))));
+    harness.run_steps(3);
+    harness.get_by_label("Opus 5.5");
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Effort");
+    harness.get_by_label("Low");
+    harness.key_press(egui::Key::Escape);
+    harness.key_press(egui::Key::Escape);
+    harness.run_steps(2);
+    harness
+        .state_mut()
+        .session_mut()
+        .handle_event(AgentEvent::Update(model_and_effort(
+            "opus",
+            Some("default"),
+        )));
+    harness.run_steps(3);
+    harness.get_by_label("Opus 5.5");
 }

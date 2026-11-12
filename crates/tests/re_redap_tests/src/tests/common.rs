@@ -1,16 +1,17 @@
 use std::collections::BTreeMap;
+use std::time::Duration;
 
 use arrow::array::RecordBatch;
 use arrow::datatypes::{DataType, Field, Schema};
 use futures::StreamExt as _;
 use itertools::Itertools as _;
-use re_log_types::{EntityPath, TimeType};
+use re_log_types::{EntityPath, EntryId, TimeType};
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::DatasetEntry;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    CreateDatasetEntryRequest, DataSource, QueryTasksOnCompletionRequest,
-    RegisterWithDatasetRequest,
+    CreateDatasetEntryRequest, DataSource, GetDatasetManifestSchemaRequest,
+    QueryTasksOnCompletionRequest, RegisterWithDatasetRequest,
 };
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
@@ -226,6 +227,8 @@ impl<T: RerunCloudService> RerunCloudServiceExt for T {
             }
         }
 
+        wait_for_task_revisions(self, &task_results).await;
+
         Ok(arrow::compute::concat_batches(
             batches
                 .first()
@@ -283,7 +286,7 @@ pub async fn register_and_wait(
         return vec![];
     }
 
-    service
+    let task_results = service
         .query_tasks_on_completion(tonic::Request::new(QueryTasksOnCompletionRequest {
             ids: task_ids,
             timeout: Some(prost_types::Duration {
@@ -304,7 +307,87 @@ pub async fn register_and_wait(
                 .try_into()
                 .expect("Failed to decode response data")
         })
-        .collect()
+        .collect::<Vec<_>>();
+
+    wait_for_task_revisions(service, &task_results).await;
+
+    task_results
+}
+
+/// The latest revision per dataset that task outputs report in `dataset_revision` metadata.
+pub fn task_dataset_revisions(task_results: &[RecordBatch]) -> BTreeMap<EntryId, u64> {
+    let mut revisions = BTreeMap::new();
+    for batch in task_results {
+        let blobs = cloud_ext::QueryTasksDataframe::COLUMN_BLOB
+            .extract(batch)
+            .expect("task results must have a blob column");
+        for blob in blobs.iter().flatten().filter(|blob| !blob.is_empty()) {
+            let (entry_id, revision) = reported_revision(blob)
+                .expect("a non-empty task output must report `entry_id` and `dataset_revision`");
+            let latest = revisions.entry(entry_id).or_insert(revision);
+            *latest = (*latest).max(revision);
+        }
+    }
+    revisions
+}
+
+fn reported_revision(task_output: &[u8]) -> Option<(EntryId, u64)> {
+    let reader = arrow::ipc::reader::StreamReader::try_new(task_output, None).ok()?;
+    let schema = reader.schema();
+    let metadata = schema.metadata();
+    Some((
+        metadata.get("entry_id")?.parse().ok()?,
+        metadata.get("dataset_revision")?.parse().ok()?,
+    ))
+}
+
+pub async fn retry_while_revision_behind<T, Fut>(mut read: impl FnMut() -> Fut) -> tonic::Result<T>
+where
+    Fut: Future<Output = tonic::Result<T>>,
+{
+    use re_protos::external::tonic_types::StatusExt as _;
+
+    let caught_up = async {
+        loop {
+            match read().await {
+                Err(err)
+                    if err.get_details_error_info().is_some_and(|info| {
+                        info.reason == re_protos::error::DATASET_REVISION_BEHIND
+                    }) =>
+                {
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+                result => return result,
+            }
+        }
+    };
+    tokio::time::timeout(Duration::from_secs(20), caught_up)
+        .await
+        .expect("the server did not serve the dataset revision within 20 s")
+}
+
+pub async fn wait_for_dataset_revision(
+    service: &impl RerunCloudService,
+    entry_id: EntryId,
+    revision: u64,
+) {
+    _ = retry_while_revision_behind(move || {
+        service.get_dataset_manifest_schema(
+            tonic::Request::new(GetDatasetManifestSchemaRequest::default())
+                .with_entry_id(entry_id)
+                .with_dataset_revision(revision),
+        )
+    })
+    .await;
+}
+
+pub async fn wait_for_task_revisions(
+    service: &impl RerunCloudService,
+    task_results: &[RecordBatch],
+) {
+    for (entry_id, revision) in task_dataset_revisions(task_results) {
+        wait_for_dataset_revision(service, entry_id, revision).await;
+    }
 }
 
 async fn register_with_dataset_blocking(

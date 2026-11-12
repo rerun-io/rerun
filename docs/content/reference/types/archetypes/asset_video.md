@@ -7,7 +7,7 @@ A video binary.
 
 Only MP4 containers are currently supported.
 
-See <https://rerun.io/docs/reference/video> for codec support and more general information.
+See <https://rerun.io/docs/logging-and-ingestion/media/video> for codec support and more general information.
 
 In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) for each frame.
 
@@ -41,7 +41,7 @@ snippet: archetypes/video_auto_frames
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png">
-  <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png">
+  <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png" alt="Rerun Viewer playing a video in a 2D view, an animated forest scene with a large tree above a burrow in a grassy mound">
 </picture>
 
 ### Demonstrates manual use of video frame references
@@ -53,6 +53,6 @@ snippet: archetypes/video_manual_frames
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png">
-  <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png">
+  <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" alt="Two side-by-side 2D views named frame_at_one_second and frame_at_two_second, each showing a different frame of the same video">
 </picture>
 

@@ -9,9 +9,9 @@
 /// as it is the case with other visualizations: for any entity with an [`rerun::archetypes::Pinhole`] the viewer will always visualize it
 /// directly without needing a [`rerun::archetypes::CoordinateFrame`] to refer to the pinhole's child/parent frame.
 ///
-/// \example archetypes/pinhole_simple title="Simple pinhole camera" image="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png"
-/// \example archetypes/pinhole_perspective title="Perspective pinhole camera" image="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png"
-/// \example archetypes/pinhole_projections title="Projection setup with blueprints" !api image="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1200w.png"
+/// \example archetypes/pinhole_simple title="Simple pinhole camera" image="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png" alt="3D view of a pinhole camera frustum with a 3 by 3 grid of colored squares shown on its image plane"
+/// \example archetypes/pinhole_perspective title="Perspective pinhole camera" image="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png" alt="3D view showing a wireframe pinhole camera frustum above three magenta points rendered as spheres"
+/// \example archetypes/pinhole_projections title="Projection setup with blueprints" !api image="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1200w.png" alt="3D view of colored spheres, a red wireframe box and a checkerboard pinhole camera, beside the 2D camera view of their projection"
 #[rerun::rerun_type]
 #[docs(category = "Transforms")]
 #[docs(view_types = "Spatial2DView, Spatial3DView")]

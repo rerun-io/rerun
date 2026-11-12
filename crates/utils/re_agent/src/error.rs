@@ -55,14 +55,23 @@ impl McpStartupFailure {
             })
     }
 
+    /// Decodes an agent's report that an MCP server we asked for never started.
+    ///
+    /// ACP says nothing about MCP startup failures, so each adapter has its own convention.
+    /// We support only Claude and Codex here for this reason, other agents always yield `None`.
+    pub fn from_update(
+        update: &SessionUpdate,
+        requested_servers: &[McpStdioServer],
+    ) -> Option<Self> {
+        Self::from_codex_update(update, requested_servers)
+            .or_else(|| Self::from_claude_code_update(update, requested_servers))
+    }
+
     /// Decodes codex-acp's synthetic failed tool call for an MCP server that never started:
     /// tool call id `mcp_startup.<name>`, title `mcp__<name>__startup`.
     ///
-    /// ACP says nothing about MCP startup failures, and this convention is codex-acp's own,
-    /// so every other agent yields `None` here and its updates reach the transcript unchanged.
-    /// Recognizing it keeps the failure out of the turn report's tool-call counts and gives it a
-    /// dedicated transcript item that can name the server definition we asked for.
-    pub fn from_codex_update(
+    /// Recognizing it also keeps the failure out of the turn report's tool-call counts.
+    fn from_codex_update(
         update: &SessionUpdate,
         requested_servers: &[McpStdioServer],
     ) -> Option<Self> {
@@ -96,9 +105,6 @@ impl McpStartupFailure {
                     .map(str::to_owned)
             })
             .unwrap_or_else(|| "The agent did not provide an error message.".to_owned());
-        let requested = requested_servers
-            .iter()
-            .find(|server| server.name == server_name);
         let hint = error
             .contains("codex-acp forwarded startup error")
             .then(|| {
@@ -109,7 +115,53 @@ impl McpStartupFailure {
                 )
             });
 
-        Some(Self {
+        Some(Self::new(server_name, error, requested_servers, hint))
+    }
+
+    /// Decodes claude-agent-acp's message about a host-provided MCP server that failed to start.
+    ///
+    /// We do not advertise ACP session notices, so the adapter sends an agent message chunk
+    /// tagged with `_meta.claudeCode = { kind: "mcpServerStatus", server, status }`.
+    /// Claude Code does not pass on the server's error, so the message's description stands in
+    /// for it.
+    ///
+    /// Claude Code only reports this once the session's first prompt has started it.
+    fn from_claude_code_update(
+        update: &SessionUpdate,
+        requested_servers: &[McpStdioServer],
+    ) -> Option<Self> {
+        let SessionUpdate::AgentMessageChunk(chunk) = update else {
+            return None;
+        };
+        let status = chunk.meta.as_ref()?.get("claudeCode")?;
+        if status.get("kind")?.as_str()? != "mcpServerStatus"
+            || status.get("status")?.as_str()? != "failed"
+        {
+            return None;
+        }
+        let server_name = status.get("server")?.as_str()?.to_owned();
+        let ContentBlock::Text(text) = &chunk.content else {
+            return None;
+        };
+        // The text is `**<title>:** <description>`, and the title only repeats the server name.
+        let error = text
+            .text
+            .split_once(":** ")
+            .map_or(text.text.as_str(), |(_title, description)| description)
+            .to_owned();
+        Some(Self::new(server_name, error, requested_servers, None))
+    }
+
+    fn new(
+        server_name: String,
+        error: String,
+        requested_servers: &[McpStdioServer],
+        hint: Option<String>,
+    ) -> Self {
+        let requested = requested_servers
+            .iter()
+            .find(|server| server.name == server_name);
+        Self {
             server_name,
             error,
             requested_command: requested.map(|server| server.command.clone()),
@@ -117,7 +169,7 @@ impl McpStartupFailure {
                 .map(|server| server.args.clone())
                 .unwrap_or_default(),
             hint,
-        })
+        }
     }
 }
 

@@ -16,10 +16,10 @@
 /// To show only some of them, set `visible_series` of [`rerun::archetypes::SeriesLines`] or [`rerun::archetypes::SeriesPoints`],
 /// or click series in the plot legend.
 ///
-/// \example archetypes/scalars_simple !api title="Simple line plot" image="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png"
-/// \example archetypes/scalars_multiple_plots !api title="Multiple time series plots" image="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1200w.png"
-/// \example archetypes/scalars_row_updates title="Update a scalar over time" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png"
-/// \example archetypes/scalars_column_updates title="Update a scalar over time, in a single operation" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png"
+/// \example archetypes/scalars_simple !api title="Simple line plot" image="https://static.rerun.io/scalar_simple/8bcc92f56268739f8cd24d60d1fe72a655f62a46/1200w.png" alt="Time series view plotting one full period of a sine wave as a green line between 1 and -1"
+/// \example archetypes/scalars_multiple_plots !api title="Multiple time series plots" image="https://static.rerun.io/scalar_multiple/15845c2a348f875248fbd694e03eabd922741c4c/1200w.png" alt="Two time series views side by side: a scatter plot of blue points and a trig plot with red sine and green cosine curves"
+/// \example archetypes/scalars_row_updates title="Update a scalar over time" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png" alt="Time series view showing one full period of a sine wave of scalars plotted along the step timeline"
+/// \example archetypes/scalars_column_updates title="Update a scalar over time, in a single operation" image="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png" alt="Time series view showing one full period of a sine wave of scalars plotted along the step timeline"
 #[rerun::rerun_type]
 #[docs(category = "Plotting")]
 #[docs(view_types = "TimeSeriesView")]

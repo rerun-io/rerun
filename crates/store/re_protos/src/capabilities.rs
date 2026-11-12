@@ -1,10 +1,13 @@
-//! Capability names, describing what a server implements and supports.
+//! Capability names, describing what a server or a client implements and supports.
 //!
-//! A capability does not depend on the caller. Whether the caller is allowed to
+//! A server capability does not depend on the caller. Whether the caller is allowed to
 //! use one is a separate question. The user wants to know both, to tell apart
 //! "this server does not support that" and "you do not have permission for that".
 //!
-//! Naming rules:
+//! A client capability is sent in the requests whose response it changes. Servers ignore names
+//! they do not know.
+//!
+//! Naming rules, for both:
 //!
 //! * Lowercase segments separated by `:`, most general segment first, so that
 //!   related capabilities share a prefix that [`ServerCapabilities::has_any_under`]
@@ -29,6 +32,12 @@ pub const CATALOG_WRITE_STAGING: &str = "catalog:write:staging";
 
 /// The server implements `FindChunks` with Static, Range, and Samples selection.
 pub const DATASET_FIND_CHUNKS: &str = "dataset:find_chunks";
+
+/// Client capability: the client picks the manifest out of a fetched `RrdFooter` by
+/// `RrdManifestKey.store_id`, rather than by segment id.
+///
+/// Sent in `GetRrdManifestRequest.client_capabilities`.
+pub const DATASET_RRD_MANIFEST_KEY_STORE_ID: &str = "dataset:rrd_manifest_key:store_id";
 
 /// The capability a server advertises to register data sources with this URL scheme.
 ///

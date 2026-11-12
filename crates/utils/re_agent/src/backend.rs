@@ -3,8 +3,8 @@ use std::sync::mpsc;
 use agent_client_protocol_schema::v1::{
     AgentCapabilities, AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest,
     CreateElicitationResponse, Implementation, RequestPermissionRequest, RequestPermissionResponse,
-    SessionConfigId, SessionConfigOption, SessionConfigValueId, SessionId, SessionModeId,
-    SessionModeState, SessionUpdate, StopReason,
+    SessionConfigId, SessionConfigOption, SessionConfigOptionValue, SessionId, SessionUpdate,
+    StopReason,
 };
 
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -59,10 +59,9 @@ impl Drop for AgentConnection {
 pub enum AgentCommand {
     Prompt(Vec<ContentBlock>),
     Cancel,
-    SetMode(SessionModeId),
     SetConfigOption {
         config_id: SessionConfigId,
-        value: SessionConfigValueId,
+        value: SessionConfigOptionValue,
     },
     Authenticate(AuthMethodId),
     Shutdown,
@@ -80,12 +79,18 @@ pub enum AgentEvent {
         auth_methods: Vec<AuthMethod>,
     },
 
+    /// An earlier session is being loaded. Its history follows as [`Self::Update`]s, and
+    /// replaces whatever the transcript held.
+    LoadingSession,
+
     SessionStarted {
         session_id: SessionId,
-        modes: Option<SessionModeState>,
 
         /// The agent's initial configuration, e.g. which model it is about to use.
         config_options: Vec<SessionConfigOption>,
+
+        /// Whether this is a new session or an earlier one.
+        origin: SessionOrigin,
     },
 
     /// The agent requires authentication to start a session or continue a prompt.
@@ -122,6 +127,16 @@ pub enum AgentEvent {
 
     /// The agent is gone. No more events will follow.
     Disconnected,
+}
+
+/// Whether [`AgentEvent::SessionStarted`] started a new session or loaded an earlier one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SessionOrigin {
+    /// A new session, with an empty history.
+    New,
+
+    /// An earlier session, whose history was replayed as [`AgentEvent::Update`]s.
+    Loaded,
 }
 
 /// Which way a line between the host and the agent went.

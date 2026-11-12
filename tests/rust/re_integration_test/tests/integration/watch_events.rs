@@ -8,7 +8,6 @@ use re_integration_test::TestServer;
 use re_integration_test::ViewerHarnessExt as _;
 use re_protos::cloud::v1alpha1::EntryFilter;
 use re_protos::cloud::v1alpha1::ext::{self, TableInsertMode};
-use re_sdk::external::re_log_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 /// The viewer should auto-refresh its catalog when entries are added/removed server-side,

@@ -16,9 +16,14 @@ test("controls playback and logs viewer events", async ({ page }) => {
       console.log(`[browser ${msg.type()}] ${msg.text()}`);
     }
   });
-  page.on("requestfailed", (req) => console.log(`[request failed] ${req.failure()?.errorText} ${req.url()}`));
+  page.on("requestfailed", (req) =>
+    console.log(`[request failed] ${req.failure()?.errorText} ${req.url()}`),
+  );
 
-  await page.route((url) => url.pathname === "/example.rrd", (route) => route.fulfill({ path: RRD_PATH }));
+  await page.route(
+    (url) => url.pathname === "/example.rrd",
+    (route) => route.fulfill({ path: RRD_PATH }),
+  );
   await page.goto("/?url=/example.rrd");
 
   const play = page.locator("#play");
@@ -51,7 +56,9 @@ test("controls playback and logs viewer events", async ({ page }) => {
   await page.locator("#screenshot").click();
   await expect(log).toContainText("screenshot: ");
   await expect
-    .poll(() => page.locator("#screenshot-image").evaluate((el: HTMLImageElement) => el.naturalWidth))
+    .poll(() =>
+      page.locator("#screenshot-image").evaluate((el: HTMLImageElement) => el.naturalWidth),
+    )
     .toBeGreaterThan(0);
 
   expect(errors).toEqual([]);

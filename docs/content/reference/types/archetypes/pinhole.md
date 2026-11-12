@@ -49,7 +49,7 @@ snippet: archetypes/pinhole_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/1200w.png">
-  <img src="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png">
+  <img src="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png" alt="3D view of a pinhole camera frustum with a 3 by 3 grid of colored squares shown on its image plane">
 </picture>
 
 ### Perspective pinhole camera
@@ -61,7 +61,7 @@ snippet: archetypes/pinhole_perspective
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/1200w.png">
-  <img src="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png">
+  <img src="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png" alt="3D view showing a wireframe pinhole camera frustum above three magenta points rendered as spheres">
 </picture>
 
 ### Projection setup with blueprints
@@ -73,6 +73,6 @@ snippet: archetypes/pinhole_projections
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1200w.png">
-  <img src="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/full.png">
+  <img src="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/full.png" alt="3D view of colored spheres, a red wireframe box and a checkerboard pinhole camera, beside the 2D camera view of their projection">
 </picture>
 

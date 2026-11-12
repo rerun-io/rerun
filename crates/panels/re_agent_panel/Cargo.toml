@@ -38,7 +38,6 @@ crypto-aws-lc-rs = [
   "re_agent/crypto-aws-lc-rs",
   "re_agent_ui/crypto-aws-lc-rs",
   "re_analytics/crypto-aws-lc-rs",
-  "re_entity_db/crypto-aws-lc-rs",
   "re_ui/crypto-aws-lc-rs",
   "re_viewer_context/crypto-aws-lc-rs",
 ]
@@ -48,7 +47,6 @@ crypto-ring = [
   "re_agent/crypto-ring",
   "re_agent_ui/crypto-ring",
   "re_analytics/crypto-ring",
-  "re_entity_db/crypto-ring",
   "re_ui/crypto-ring",
   "re_viewer_context/crypto-ring",
 ]
@@ -65,7 +63,6 @@ re_agent.workspace = true
 re_agent_ui.workspace = true
 re_analytics.workspace = true
 re_async.workspace = true
-re_entity_db.workspace = true
 re_log.workspace = true
 re_log_channel.workspace = true
 re_protos.workspace = true

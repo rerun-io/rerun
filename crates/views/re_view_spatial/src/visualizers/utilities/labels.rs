@@ -56,7 +56,7 @@ pub struct UiLabel {
 /// * `P` is the type of the _positions_ of the labels, which might be 3D or 2D.
 /// * `I` is the type of the iterator over positions.
 ///
-/// [batch]: https://rerun.io/docs/concepts/batches
+/// [batch]: https://rerun.io/docs/logging-and-ingestion/data-model/batches
 pub struct LabeledBatch<'a, P: 'a, I: Iterator<Item = P> + 'a> {
     pub entity_path: &'a EntityPath,
 

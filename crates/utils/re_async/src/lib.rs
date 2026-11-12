@@ -1,7 +1,6 @@
 //! Async runtime abstractions for native and `WebAssembly` targets.
 
 use std::fmt::Debug;
-use std::future::Future;
 use std::time::Duration;
 
 mod read_at;

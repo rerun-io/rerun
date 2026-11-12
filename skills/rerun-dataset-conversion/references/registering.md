@@ -52,7 +52,7 @@ dataset.register(
 ).wait()
 
 # Optional: install a default blueprint for the dataset.
-dataset.register_blueprint("file:///path/to/file.rbl", set_default=True)
+dataset.register_blueprint("file:///path/to/file.rbl", set_default=True, name="default")
 ```
 
 Three details:

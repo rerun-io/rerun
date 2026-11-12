@@ -14,7 +14,6 @@ use re_sdk::{
 };
 use re_viewer::external::re_chunk::{ChunkBuilder, LatestAtQuery};
 use re_viewer::external::re_entity_db::EntityDb;
-use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{self, AppContext, ViewerContext, blueprint_timeline};
 use re_viewer::viewer_test_utils::AppTestingExt as _;
 use re_viewer::{SystemCommand, SystemCommandSender as _};

@@ -32,7 +32,7 @@ snippet: views/text_log
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1200w.png">
-  <img src="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/full.png">
+  <img src="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/full.png" alt="Text log view listing INFO and WARN messages with log_tick, log_time, time, entity path, level and body columns">
 </picture>
 
 

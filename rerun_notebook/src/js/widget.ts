@@ -2,7 +2,7 @@ import {
   type LogChannel,
   type Panel,
   type PanelState,
-  parse_store_id,
+  parseStoreId,
   WebViewer,
   type AppOptions,
 } from "@rerun-io/web-viewer";
@@ -16,19 +16,19 @@ const PANELS = ["top", "blueprint", "selection", "time"] as const;
 
 /* Specifies attributes defined with traitlets in ../rerun_notebook/__init__.py */
 interface WidgetModel {
-  _width: number | string;
-  _height: number | string;
+  "_width": number | string;
+  "_height": number | string;
 
-  _url?: string;
-  _panel_states?: PanelStates;
+  "_url"?: string;
+  "_panel_states"?: PanelStates;
 
-  _fallback_token?: string;
-  _theme?: AppOptions["theme"] | null;
+  "_fallback_token"?: string;
+  "_theme"?: AppOptions["theme"] | null;
 }
 
 type Opt<T> = T | null | undefined;
 
-function _resize(el: HTMLElement, width: number | string, height: number | string) {
+function resize(el: HTMLElement, width: number | string, height: number | string) {
   const style = el.style;
 
   if (typeof width === "string" && width === "auto") {
@@ -61,10 +61,10 @@ class ViewerWidget {
    */
   operations: Promise<void> = Promise.resolve();
   url: Opt<string> = null;
-  panel_states: Opt<PanelStates> = null;
+  panelStates: Opt<PanelStates> = null;
   options: AppOptions = {
     notebook: true,
-    hide_welcome_screen: true,
+    hideWelcomeScreen: true,
     width: "100%",
     height: "100%",
   };
@@ -74,15 +74,21 @@ class ViewerWidget {
   constructor(model: AnyModel<WidgetModel>, el: HTMLElement) {
     this.url = model.get("_url");
 
-    this.panel_states = model.get("_panel_states");
-    model.on("change:_panel_states", this.on_change_panel_states);
+    this.panelStates = model.get("_panel_states");
+    model.on("change:_panel_states", this.onChangePanelStates);
 
-    model.on("change:_width", (_, width) => this.on_resize(el, width, model.get("_height")));
-    model.on("change:_height", (_, height) => this.on_resize(el, model.get("_width"), height));
+    const onWidthChange = (...[, width]: [unknown, number | string]) => {
+      this.onResize(el, width, model.get("_height"));
+    };
+    const onHeightChange = (...[, height]: [unknown, number | string]) => {
+      this.onResize(el, model.get("_width"), height);
+    };
+    model.on("change:_width", onWidthChange);
+    model.on("change:_height", onHeightChange);
 
-    model.on("msg:custom", this.on_custom_message);
+    model.on("msg:custom", this.onCustomMessage);
 
-    this.options.fallback_token = model.get("_fallback_token");
+    this.options.fallbackToken = model.get("_fallback_token");
     const theme = model.get("_theme");
     if (theme) {
       this.options.theme = theme;
@@ -91,59 +97,54 @@ class ViewerWidget {
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));
 
     this.viewer.on("ready", () => {
-      this.channel = this.viewer.open_channel("temp");
-      this.on_change_panel_states(null, this.panel_states);
+      this.channel = this.viewer.openChannel("temp");
+      this.onChangePanelStates(null, this.panelStates);
 
       model.send("ready");
     });
 
     void this.viewer.start(this.url ?? null, el, this.options);
-    this.on_resize(el, model.get("_width"), model.get("_height"));
+    this.onResize(el, model.get("_width"), model.get("_height"));
   }
 
   stop() {
     this.viewer.stop();
   }
 
-  on_resize(parent: HTMLElement, width: number | string, height: number | string) {
-    _resize(parent, width, height)
-  };
+  onResize(parent: HTMLElement, width: number | string, height: number | string) {
+    resize(parent, width, height);
+  }
 
-  on_change_panel_states = (
-    _: unknown,
-    new_panel_states?: Opt<PanelStates>,
-  ) => {
+  onChangePanelStates = (...[, newPanelStates]: [unknown, Opt<PanelStates>?]) => {
     for (const panel of PANELS) {
-      // TODO(jprochazk): update `override_panel_state` to accept `PanelState | undefined | null` as value
-      this.viewer.override_panel_state(panel, new_panel_states?.[panel]);
+      // TODO(jprochazk): update `overridePanelState` to accept `PanelState | undefined | null` as value
+      this.viewer.overridePanelState(panel, newPanelStates?.[panel]);
     }
-    this.panel_states = new_panel_states;
+    this.panelStates = newPanelStates;
   };
 
-  on_custom_message = (msg: any, buffers: DataView[]) => {
+  onCustomMessage = (msg: any, buffers: DataView[]) => {
     switch (msg?.type) {
       case "rrd": {
-        if (!this.channel)
-          throw new Error("on_custom_message called before channel init");
-        this.channel.send_rrd(new Uint8Array(buffers[0].buffer));
+        if (!this.channel) throw new Error("on_custom_message called before channel init");
+        this.channel.sendRrd(new Uint8Array(buffers[0].buffer));
         break;
       }
       case "table": {
-        if (!this.channel)
-          throw new Error("on_custom_message called before channel init")
-        this.channel.send_table(new Uint8Array(buffers[0].buffer));
+        if (!this.channel) throw new Error("on_custom_message called before channel init");
+        this.channel.sendTable(new Uint8Array(buffers[0].buffer));
         break;
       }
       case "time_ctrl": {
-        this.set_time_ctrl(msg);
+        this.setTimeCtrl(msg);
         break;
       }
       case "recording_id": {
-        this.set_recording_id(msg.recording_id ?? null)
+        this.setRecordingId(msg.recording_id ?? null);
         break;
       }
       case "open_url": {
-        this.queue_operation("Failed to open URL:", async () => {
+        this.queueOperation("Failed to open URL:", async () => {
           // `open` sends its request right away, but only answers once the URL has loaded.
           // Waiting for that would hold back a `close_url` meant to cancel the load.
           this.viewer.open(msg.url).catch((err) => console.warn("Failed to open URL:", err));
@@ -151,13 +152,13 @@ class ViewerWidget {
         break;
       }
       case "close_url": {
-        this.queue_operation("Failed to close URL:", async () => {
+        this.queueOperation("Failed to close URL:", async () => {
           await this.viewer.close(msg.url);
         });
         break;
       }
       case "set_credentials": {
-        this.viewer.set_credentials(msg.access_token, msg.email)
+        this.viewer.setCredentials(msg.access_token, msg.email);
         break;
       }
       default: {
@@ -172,56 +173,52 @@ class ViewerWidget {
    *
    * Python sends integer times as strings, since a JSON number loses nanosecond precision.
    */
-  set_time_ctrl(msg: {
+  setTimeCtrl(msg: {
     timeline?: string | null;
     sequence?: string | null;
-    duration_nanos?: string | null;
-    timestamp_nanos?: string | null;
+    "duration_nanos"?: string | null;
+    "timestamp_nanos"?: string | null;
     play?: boolean;
   }) {
     const time =
       msg.sequence != null
         ? { sequence: BigInt(msg.sequence) }
         : msg.duration_nanos != null
-          ? { duration_nanos: BigInt(msg.duration_nanos) }
+          ? { durationNanos: BigInt(msg.duration_nanos) }
           : msg.timestamp_nanos != null
-            ? { timestamp_nanos: BigInt(msg.timestamp_nanos) }
+            ? { timestampNanos: BigInt(msg.timestamp_nanos) }
             : {};
-    this.queue_operation("Failed to set the time:", () =>
-      this.viewer.set_time({
+    this.queueOperation("Failed to set the time:", () =>
+      this.viewer.setTime({
         timeline: msg.timeline ?? undefined,
         ...time,
-        play_state: msg.play ? "playing" : "paused",
+        playState: msg.play ? "playing" : "paused",
       }),
     );
-  };
+  }
 
   /** Show the open recording with this recording id. */
-  set_recording_id(recording_id: string | null) {
-    if (recording_id === null) {
+  setRecordingId(recordingId: string | null) {
+    if (recordingId === null) {
       return;
     }
 
-    this.queue_operation("Failed to switch recording:", async () => {
-      const state = await this.viewer.get_state();
+    this.queueOperation("Failed to switch recording:", async () => {
+      const state = await this.viewer.getState();
       const recording = state.recordings.find(
-        (recording) => parse_store_id(recording.store_id).recording_id === recording_id,
+        (recording) => parseStoreId(recording.storeId).recordingId === recordingId,
       );
       if (recording) {
-        await this.viewer.set_location(recording.location);
+        await this.viewer.setLocation(recording.location);
       }
     });
-  };
+  }
 
   /** Run `operation` once the earlier operations are done, and log if it fails. */
-  queue_operation(failure: string, operation: () => Promise<void>) {
-    this.operations = this.operations
-      .then(operation)
-      .catch((err) => console.warn(failure, err));
+  queueOperation(failure: string, operation: () => Promise<void>) {
+    this.operations = this.operations.then(operation).catch((err) => console.warn(failure, err));
   }
 }
-
-
 
 const render: Render<WidgetModel> = ({ model, el }) => {
   el.classList.add("rerun_notebook");
@@ -233,7 +230,7 @@ const render: Render<WidgetModel> = ({ model, el }) => {
   return () => widget.stop();
 };
 
-function error_boundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
+function errorBoundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
   const wrapper = (...args: any[]) => {
     try {
       return f(...args);
@@ -248,5 +245,4 @@ function error_boundary<Fn extends (...args: any[]) => any>(f: Fn): Fn {
   return wrapper as any;
 }
 
-
-export default { render: error_boundary(render) };
+export default { render: errorBoundary(render) };

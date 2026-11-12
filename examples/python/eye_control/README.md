@@ -36,8 +36,8 @@ Finally, we demonstrate how to control the camera at runtime, enabling the creat
 
 Below you will find a collection of useful Rerun resources for this example:
 
-* [Blueprints](https://rerun.io/docs/concepts/visualization/blueprints)
-* [Building blueprints programmatically](https://rerun.io/docs/howto/build-a-blueprint-programmatically)
+* [Blueprints](https://rerun.io/docs/viewer/blueprints-and-views/blueprints)
+* [Building blueprints programmatically](https://rerun.io/docs/viewer/blueprints-and-views/build-a-blueprint-programmatically)
 
 ## Run the code
 

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use re_log_types::external::arrow;
 use re_types_core::ComponentIdentifier;
 
 /// Error that can occur when mapping components.

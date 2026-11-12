@@ -29,7 +29,6 @@ jobs:
         with:
           tool: cargo-shear@1.13.4
 
-      # TODO(Boshen/cargo-shear#468): enable warnings as errors once we can ignore no (doc) test warnings.
       - name: Run Cargo Shear
         run: |
-          cargo shear
+          cargo shear --deny-warnings

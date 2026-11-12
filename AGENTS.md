@@ -60,7 +60,7 @@ Start the build, do something else, and read its output once the notification ar
 
 Two MCP servers let an agent see and click a running UI instead of guessing from code:
 
-- `rerun viewer-mcp` drives a running Rerun Viewer over gRPC. See `docs/content/reference/viewer/mcp.md`.
+- `rerun viewer-mcp` drives a running Rerun Viewer over gRPC. See `docs/content/viewer/extend/mcp.md`.
 - `egui-mcp` drives *any* egui app started with `EGUI_INSPECTION=1`, including our example apps and headless `egui_kittest` harnesses.
   It exposes `attach`, `widget_tree`, `click`, `type_text`, `screenshot`, `wait_for`, and friends.
   Both are configured in the repo-root `.mcp.json`; install with `cargo install egui_mcp`.

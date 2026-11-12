@@ -19,6 +19,10 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
+[package.metadata.cargo-shear]
+# Enables dynamic loading for transitive Wayland dependencies without linking system libraries.
+ignored = ["wayland-sys"]
+
 [features]
 default = []
 

@@ -346,7 +346,7 @@ Without a catalog, the same split still pays: write the model RRD once and open 
 
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing` (FK two-lens pattern, two robots + scene URDFs, prefixes, recoloring, calibration offsets)
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf` (classic logging API: `log_urdf_to_recording`, per-joint `compute_transform`)
-- [Catalog object model: assets](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets) (`register_asset`, the limits, and how assets are read back)
+- [Catalog object model: assets](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets) (`register_asset`, the limits, and how assets are read back)
 - `rerun-data-model` (the mapping table this skill consumes)
 - the importer skill for your joint-state source format (making the source readable)
 - `rerun-chunk-processing` (lens/stream, write/optimize mechanics)

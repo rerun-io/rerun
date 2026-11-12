@@ -28,7 +28,11 @@ third-party = [
   # Preserve the selected crypto provider instead of unifying both into every development build.
   { name = "aws-lc-rs" },
   { name = "aws-lc-sys" },
+  { name = "hyper-rustls" },
+  { name = "reqwest" },
   { name = "ring" },
   { name = "rustls" },
   { name = "rustls-webpki" },
+  { name = "tokio-rustls" },
+  { name = "ureq" },
 ]

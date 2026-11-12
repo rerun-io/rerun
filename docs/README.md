@@ -35,20 +35,21 @@ Markdown files with YAML frontmatter, organized hierarchically:
 
 ```
 docs/content/
-  index.md                        # Entry point
-  overview/                       # What is Rerun, docs guide
-  getting-started/                # Quick start, install, project setup, data-in/out, configure viewer, train
-  concepts/                       # Logging, visualization, querying
-  howto/                          # Integration guides, tutorials
+  index.md                        # Entry point, redirects to getting-started
+  getting-started/                # Quick start, install, project setup, how Rerun works
+  logging-and-ingestion/          # Product area: tutorial, data model, sending data, sinks, chunks and RRD files, importing
+  viewer/                         # Product area: tutorial, Viewer UI, blueprints and views, plots, performance, extending
+  query-and-transform/            # Product area: tutorial, catalog, dataframe queries, lenses
+  train/                          # Product area: tutorial, dataloader, dataset export
+  integrations/                   # Notebooks, web embedding, ROS, native loggers
+  hub/                            # Rerun Hub
   reference/
     cli.md                        # Auto-generated (pixi run man)
-    sdk/                          # SDK operating modes, micro-batching
     types/                        # Auto-generated type docs (pixi run codegen)
       archetypes/                 #   e.g. points3d.md
       components/                 #   e.g. position3d.md
       encodings/                  #   e.g. vec3d.md
       views/                      #   e.g. spatial3d_view.md
-    viewer/                       # Viewer reference
   development/                    # Contributor docs
   _redirects.yaml                 # URL redirect mappings (old path → new path)
 ```
@@ -94,7 +95,7 @@ re_type_definitions                  →  pixi run codegen  →  docs/content/re
 
 Documentation comes from the doc comments and attributes in `re_type_definitions`:
 - `///` comments become the page description
-- `\example archetypes/points3d_simple title="…" image="…"` embeds snippet examples
+- `\example archetypes/points3d_simple title="…" image="…" alt="…"` embeds snippet examples; `alt` describes the screenshot and falls back to the title
 - `"attr.docs.category": "Spatial 3D"` groups types in index pages
 - `"attr.docs.view_types": "Spatial3DView, Spatial2DView"` lists compatible views
 
@@ -123,7 +124,7 @@ Reference in any doc page with a line containing only:
 snippet: archetypes/points3d_simple
 ```
 
-This renders a tabbed code block with all available languages. Snippets can also be referenced from `re_type_definitions` via `\example archetypes/points3d_simple title="…" image="…"`. Use `[section]` syntax to include only part of a snippet: `snippet: tutorials/data_out[imports]`.
+This renders a tabbed code block with all available languages. Snippets can also be referenced from `re_type_definitions` via `\example archetypes/points3d_simple title="…" image="…" alt="…"`. Use `[section]` syntax to include only part of a snippet: `snippet: tutorials/data_out[imports]`.
 
 Snippets are validated in CI via `docs/snippets/compare_snippet_output.py`, which builds and runs each snippet in all languages and compares their `.rrd` outputs.
 

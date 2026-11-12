@@ -1,15 +1,14 @@
 mod blueprint_persistence;
 mod blueprints;
+mod store_hub_blueprints;
 
 use std::collections::BTreeMap;
 use std::sync::{Arc, LazyLock};
 
-use ahash::{HashMap, HashMapExt as _, HashSet};
+use ahash::{HashMap, HashSet};
 use anyhow::Context as _;
 use re_byte_size::{MemUsageNode, MemUsageTree, MemUsageTreeCapture, SizeBytes as _};
-use re_chunk_store::{
-    ChunkStoreConfig, ChunkStoreGeneration, ChunkStoreStats, GarbageCollectionTarget,
-};
+use re_chunk_store::{ChunkStoreConfig, ChunkStoreStats, GarbageCollectionTarget};
 use re_entity_db::{EntityDb, StoreBundle};
 use re_log::debug_assert;
 use re_log_channel::LogSource;
@@ -19,10 +18,13 @@ use re_query::QueryCachesStats;
 use re_sdk_types::archetypes;
 use re_sdk_types::components::Timestamp;
 
+use self::blueprint_persistence::DatasetBlueprintCopy;
 pub use self::blueprint_persistence::{
-    BlueprintDeleter, BlueprintLoader, BlueprintPersistence, BlueprintPersistenceKey,
-    BlueprintSaver, BlueprintValidator, TableBlueprintClearer,
+    AppBlueprintClearer, BlueprintDeleter, BlueprintLoader, BlueprintPersistence,
+    BlueprintPersistenceKey, BlueprintSaver, BlueprintValidator, CachedBlueprintSource,
+    LegacyPathBlueprintDeleter, LegacyPathBlueprintLoader, TableBlueprintClearer,
 };
+use self::store_hub_blueprints::StoreHubBlueprints;
 use crate::{
     ActiveStoreContext, RecordingOrLocalTable, Route, StorageContext, StoreCache, TableStore,
     TableStores, TimeControl, ViewClassRegistry,
@@ -122,27 +124,15 @@ impl EntityDbUsages {
 /// The default blueprint is usually the blueprint set by the SDK.
 /// This lets users reset the active blueprint to the one sent by the SDK.
 pub struct StoreHub {
-    /// How we load and save blueprints.
-    persistence: BlueprintPersistence,
-
-    default_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
-    active_blueprint_by_app_id: HashMap<ApplicationId, StoreId>,
+    /// The default and active blueprint of each app, and how we load and save blueprints.
+    blueprints: StoreHubBlueprints,
 
     data_source_order: DataSourceOrder,
     store_bundle: StoreBundle,
     table_stores: HashMap<TableId, TableStore>,
 
-    /// These applications should enable the heuristics early next frame.
-    should_enable_heuristics_by_app_id: HashSet<ApplicationId>,
-
     /// Viewer-specific state (caches, subscribers, etc.) per store.
     store_caches: HashMap<StoreId, StoreCache>,
-
-    /// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last saved
-    blueprint_last_save: HashMap<StoreId, ChunkStoreGeneration>,
-
-    /// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last garbage collected
-    blueprint_last_gc: HashMap<StoreId, ChunkStoreGeneration>,
 
     /// Per-frame usage tracking for each store, and whether the user opened it.
     store_usages: HashMap<StoreId, EntityDbUsages>,
@@ -200,11 +190,7 @@ impl StoreHub {
 
     /// Blueprint ID used for the default welcome screen blueprint
     fn welcome_screen_blueprint_id() -> StoreId {
-        StoreId::new(
-            StoreKind::Blueprint,
-            Self::welcome_screen_app_id().clone(),
-            Self::welcome_screen_app_id().to_string(),
-        )
+        StoreId::heuristic_blueprint(Self::welcome_screen_app_id().clone())
     }
 
     /// Used only for tests
@@ -222,10 +208,10 @@ impl StoreHub {
         setup_welcome_screen_blueprint: &dyn Fn(&mut EntityDb),
     ) -> Self {
         re_tracing::profile_function!();
-        let mut default_blueprint_by_app_id = HashMap::new();
+        let mut blueprints = StoreHubBlueprints::new(persistence);
         let mut store_bundle = StoreBundle::default();
 
-        default_blueprint_by_app_id.insert(
+        blueprints.set_default_blueprint(
             Self::welcome_screen_app_id().clone(),
             Self::welcome_screen_blueprint_id(),
         );
@@ -235,18 +221,11 @@ impl StoreHub {
         (setup_welcome_screen_blueprint)(welcome_screen_blueprint);
 
         Self {
-            persistence,
-
-            default_blueprint_by_app_id,
-            active_blueprint_by_app_id: Default::default(),
+            blueprints,
             store_bundle,
-
-            should_enable_heuristics_by_app_id: Default::default(),
 
             data_source_order: Default::default(),
             store_caches: Default::default(),
-            blueprint_last_save: Default::default(),
-            blueprint_last_gc: Default::default(),
 
             store_usages: Default::default(),
 
@@ -369,7 +348,7 @@ impl StoreHub {
             }
 
             self.ensure_active_blueprint_for_app(app_id);
-            let should_enable_heuristics = self.should_enable_heuristics_by_app_id.remove(app_id);
+            let should_enable_heuristics = self.blueprints.take_should_enable_heuristics(app_id);
 
             let active_blueprint = {
                 let Some(active_blueprint) = self.active_blueprint_for_app(app_id) else {
@@ -379,8 +358,8 @@ impl StoreHub {
             };
 
             let default_blueprint = self
-                .default_blueprint_by_app_id
-                .get(app_id)
+                .blueprints
+                .default_blueprint_id(app_id)
                 .and_then(|id| self.store_bundle.get(id));
 
             let recording = route
@@ -516,12 +495,15 @@ impl StoreHub {
     ///
     /// The caller must first remove references owned outside `StoreHub`, such as table-blueprint associations.
     pub fn remove_store(&mut self, store_id: &StoreId) {
-        _ = self.store_caches.remove(store_id);
-        let removed_store = self.store_bundle.remove(store_id);
+        if let Some(removed_store) = self.take_store(store_id) {
+            drop_store_off_thread(removed_store);
+        }
+    }
 
-        let Some(removed_store) = removed_store else {
-            return;
-        };
+    /// Removes a store and its `StoreHub`-owned references, and returns the store.
+    fn take_store(&mut self, store_id: &StoreId) -> Option<EntityDb> {
+        _ = self.store_caches.remove(store_id);
+        let removed_store = self.store_bundle.remove(store_id)?;
 
         match removed_store.store_kind() {
             StoreKind::Recording => {
@@ -538,21 +520,18 @@ impl StoreHub {
                 }
             }
             StoreKind::Blueprint => {
-                self.active_blueprint_by_app_id
-                    .retain(|_, id| id != store_id);
-                self.default_blueprint_by_app_id
-                    .retain(|_, id| id != store_id);
+                self.blueprints.remove_store(store_id);
             }
         }
 
-        drop_store_off_thread(removed_store);
+        Some(removed_store)
     }
 
-    /// Drops a recording's data, keeping the recording in the hub under the same store id.
+    /// Drops a store's data, keeping the store in the hub under the same store id.
     ///
-    /// The recording keeps its data source and its app keeps its blueprints, so it can be streamed
+    /// The store keeps its data source and its app keeps its blueprints, so it can be streamed
     /// again. See [`Self::remove`] to take a recording out of the hub for good.
-    pub fn clear_recording_data(&mut self, store_id: &StoreId) {
+    pub fn clear_store_data(&mut self, store_id: &StoreId) {
         let Some(slot) = self.store_bundle.get_mut(store_id) else {
             return;
         };
@@ -634,6 +613,8 @@ impl StoreHub {
         });
         self.store_caches
             .retain(|store_id, _| store_ids_retained.contains(store_id));
+        self.blueprints
+            .retain_stores(|store_id| store_ids_retained.contains(store_id));
 
         self.table_stores.clear();
     }
@@ -672,8 +653,7 @@ impl StoreHub {
         self.store_caches
             .retain(|store_id, _| !store_ids_removed.contains(store_id));
 
-        self.default_blueprint_by_app_id.remove(app_id);
-        self.active_blueprint_by_app_id.remove(app_id);
+        self.blueprints.remove_app(app_id);
     }
 
     // ---------------------
@@ -712,13 +692,13 @@ impl StoreHub {
     ) {
         debug_assert!(recording_id.is_recording());
 
-        // Ensure persisted blueprints are loaded for this recording's app.
+        // Load the blueprint at the legacy path of this recording's app, if there is one.
         if let Some(app_id) = self
             .store_bundle
             .get(recording_id)
             .map(|recording| recording.application_id().clone())
         {
-            self.load_persisted_blueprints_for_app(&app_id);
+            self.load_legacy_path_blueprint_for_app(&app_id);
         }
 
         let store_bundle = &self.store_bundle;
@@ -937,17 +917,12 @@ impl StoreHub {
         re_tracing::profile_function!();
 
         let Self {
-            persistence: _,
-            default_blueprint_by_app_id: _,
-            active_blueprint_by_app_id: _,
+            blueprints: _,
             store_bundle,
             table_stores,
             data_source_order: _,
-            should_enable_heuristics_by_app_id: _,
 
             store_caches,
-            blueprint_last_save: _,
-            blueprint_last_gc: _,
             store_usages: _,
         } = self;
 
@@ -1015,14 +990,9 @@ impl MemUsageTreeCapture for StoreHub {
             store_caches,
 
             // Small stuff:
-            persistence: _,
-            default_blueprint_by_app_id: _,
-            active_blueprint_by_app_id: _,
+            blueprints: _,
             data_source_order: _,
-            should_enable_heuristics_by_app_id: _,
 
-            blueprint_last_save: _,
-            blueprint_last_gc: _,
             store_usages: _,
         } = self;
 
@@ -1067,4 +1037,54 @@ impl MemUsageTreeCapture for StoreHub {
 
         node.into_tree()
     }
+}
+
+#[cfg(test)]
+fn dummy_chunk() -> Arc<re_chunk::Chunk> {
+    Arc::new(
+        re_chunk::Chunk::builder("foo")
+            .with_archetype(
+                re_chunk::RowId::new(),
+                re_log_types::TimePoint::STATIC,
+                &re_sdk_types::archetypes::Points2D::new([(0.0_f32, 0.0_f32)]),
+            )
+            .build()
+            .expect("chunk should build"),
+    )
+}
+
+#[cfg(test)]
+fn catalog_origin() -> re_uri::Origin {
+    re_uri::Origin::http_local_host(re_uri::DEFAULT_PROXY_PORT)
+}
+
+/// A data source that streams a segment of a dataset from [`catalog_origin`].
+#[cfg(test)]
+fn catalog_source() -> Arc<LogSource> {
+    Arc::new(LogSource::RedapGrpcStream {
+        uri: re_uri::DatasetUri {
+            origin: catalog_origin(),
+            dataset_id: re_log_types::EntryId::new().id,
+            resource: re_uri::DatasetResource::Segments,
+            segment_id: Some(re_types_core::SegmentId::from("recording")),
+            fragment: Default::default(),
+        },
+        open_behavior: re_log_channel::RecordingOpenBehavior::Background,
+    })
+}
+
+/// Adds the blueprint in `segment` of a dataset's blueprint dataset with one chunk, the way
+/// the viewer gets it from a catalog server, and makes it the default of `app_id`.
+#[cfg(test)]
+fn add_dataset_blueprint(hub: &mut StoreHub, app_id: &ApplicationId, segment: &str) -> StoreId {
+    let segment = re_types_core::SegmentId::from(segment);
+    let blueprint_id = re_redap_client::blueprint_store_id_for_segment(app_id.clone(), &segment);
+
+    hub.store_bundle
+        .blueprint_entry(&blueprint_id)
+        .add_data_source(&catalog_source());
+    hub.add_chunk_for_tests(&blueprint_id, &dummy_chunk())
+        .unwrap();
+    hub.set_default_blueprint_for_app(&blueprint_id).unwrap();
+    blueprint_id
 }

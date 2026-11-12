@@ -39,6 +39,7 @@ crypto-ring = [
   "re_server?/crypto-ring",
   "re_ui?/crypto-ring",
   "re_viewer?/crypto-ring",
+  "re_viewer_mcp?/crypto-ring",
   "re_web_viewer_server?/crypto-ring",
 ]
 
@@ -59,6 +60,7 @@ crypto-aws-lc-rs = [
   "re_server?/crypto-aws-lc-rs",
   "re_ui?/crypto-aws-lc-rs",
   "re_viewer?/crypto-aws-lc-rs",
+  "re_viewer_mcp?/crypto-aws-lc-rs",
   "re_web_viewer_server?/crypto-aws-lc-rs",
 ]
 
@@ -90,7 +92,7 @@ clap = ["dep:clap"]
 
 ## Support for using Rerun's importers directly from the SDK.
 ##
-## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview>
+## See our `log_file` example and <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview>
 ## for more information.
 importers = ["dep:comfy-table", "dep:mcap", "dep:memmap2", "dep:re_mcap", "re_sdk?/importers"]
 

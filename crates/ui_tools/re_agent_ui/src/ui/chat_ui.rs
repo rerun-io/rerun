@@ -8,8 +8,9 @@ use egui::text_edit::TextEditState;
 use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
 use re_agent::LineDirection;
 use re_agent::acp::schema::v1::{
-    AuthMethod, PermissionOptionKind, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionConfigValueId, SessionMode, SessionModeId,
+    AuthMethod, PermissionOptionKind, SessionConfigKind, SessionConfigOption,
+    SessionConfigOptionCategory, SessionConfigOptionValue, SessionConfigSelect,
+    SessionConfigSelectOption, SessionConfigSelectOptions, SessionConfigValueId,
 };
 use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
@@ -20,17 +21,44 @@ use super::elicitation_ui::ElicitationUi;
 use super::pasted_image;
 use super::tool_call_ui::{code_ui, tool_fields_ui, tool_input_ui};
 use super::transcript_ui::{plan_ui, transcript_ui};
-use re_agent::{AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
+use re_agent::{AgentPreferences, AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
+
+/// How far the contents of the composer sit from its edges: the prompt text, the settings
+/// button's text, and the send button.
+const COMPOSER_MARGIN: f32 = 6.0;
+
+/// Size of the settings button below the prompt.
+const SETTINGS_BUTTON_SIZE: re_ui::Size = re_ui::Size::Tiny;
+
+/// Size of the send and stop buttons, which also sets the height of the row below the prompt.
+const SEND_BUTTON_SIZE: re_ui::Size = re_ui::Size::Small;
 
 /// Height a pasted image is previewed at in the composer, in points.
 const PREVIEW_HEIGHT: f32 = 48.0;
 
 const EMPTY_STATE_WIDTH: f32 = 240.0;
 
+/// Starting height of the agent log panel, which the user can resize.
+const LOG_DEFAULT_HEIGHT: f32 = 200.0;
+
+/// Agents can offer dozens of models, so longer submenus scroll.
+///
+/// The half row cuts the last visible item off, which shows that there is more to scroll to.
+const SUBMENU_VISIBLE_ROWS: f32 = 15.5;
+
+/// Space between the parts of the settings button, a bit more than usual to tell them apart.
+const SETTINGS_BUTTON_GAP: f32 = 6.0;
+
+/// Leaves room between a setting's name and its value in the settings menu.
+const SETTINGS_MENU_MIN_WIDTH: f32 = 180.0;
+
 /// What the user is typing, plus whether the text field should grab focus this frame.
 #[derive(Default)]
 pub struct ChatInput {
     pub restart_after_login_requested: bool,
+
+    /// The user clicked the agent setup button in the settings menu.
+    pub open_setup_requested: bool,
 
     /// An example prompt the user clicked, to be sent the way a host prompt is.
     pub example_prompt_clicked: Option<String>,
@@ -177,8 +205,8 @@ pub fn chat_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
     show_thoughts: bool,
     login_hint: Option<&str>,
     example_prompts: &[String],
@@ -189,17 +217,19 @@ pub fn chat_ui(
     }
     input.was_ready = session.is_ready();
 
+    // Declared first, so it ends up below the composer.
+    // Dragging it below its minimum height closes it.
+    egui::Panel::bottom("agent_log")
+        .resizable(true)
+        .drag_to_open(false)
+        .default_size(LOG_DEFAULT_HEIGHT)
+        .frame(egui::Frame::new().inner_margin(8))
+        .show_collapsible(ui, &mut input.log_open, |ui| log_ui(ui, session));
+
     egui::Panel::bottom("agent_composer")
         .frame(egui::Frame::new().inner_margin(8))
         .show(ui, |ui| {
-            composer_ui(
-                ui,
-                session,
-                input,
-                preferred_mode,
-                preferred_model,
-                login_hint,
-            );
+            composer_ui(ui, session, input, preferences, agent_name, login_hint);
         });
 
     egui::CentralPanel::default()
@@ -212,6 +242,9 @@ pub fn chat_ui(
         .show(ui, |ui| {
             if let Some(home_ui) = home_ui {
                 home_ui(ui);
+                if session.transcript().items.is_empty() {
+                    empty_state_ui(ui, input, example_prompts);
+                }
                 return;
             }
             if session.transcript().items.is_empty()
@@ -288,79 +321,249 @@ fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput, example_prom
     }
 }
 
-fn mode_picker_ui(
-    ui: &mut egui::Ui,
-    session: &mut AgentSession,
-    preferred_mode: &mut Option<SessionModeId>,
-) {
-    let Some(modes) = session.modes() else {
-        return;
-    };
-    let Some(current_id) = session.current_mode_id() else {
-        return;
-    };
-    if modes.available_modes.is_empty() {
-        return;
-    }
-
-    let current_mode = modes
-        .available_modes
-        .iter()
-        .find(|mode| &mode.id == current_id);
-    let mut current_text = RichText::new(
-        current_mode.map_or_else(|| current_id.0.to_string(), |mode| mode.name.clone()),
-    );
-    if let Some(color) = current_mode.and_then(|mode| mode_warning_color(ui, mode)) {
-        current_text = current_text.color(color);
-    }
-
-    let mut selected = None;
-    ui.drop_down_menu("agent_mode", current_text, |ui| {
-        for mode in &modes.available_modes {
-            let mut text = RichText::new(&mode.name);
-            if let Some(color) = mode_warning_color(ui, mode) {
-                text = text.color(color);
-            }
-            let response = ui
-                .list_item()
-                .selected(&mode.id == current_id)
-                .show_flat(ui, re_ui::list_item::LabelContent::new(text));
-            let response = match &mode.description {
-                Some(description) => response.on_hover_text(description),
-                None => response,
-            };
-            if response.clicked() {
-                selected = Some(mode.id.clone());
-            }
-        }
-    })
-    .on_hover_text("Session mode: how much the agent may do without asking");
-
-    if let Some(mode_id) = selected {
-        *preferred_mode = Some(mode_id.clone());
-        session.set_mode(mode_id);
-    }
-}
-
-/// The model the agent is using, as a drop-down to switch to another one it offers.
-fn model_picker_ui(
+/// Model and mode summarize the session's settings.
+///
+/// Clicking it opens a menu with checkboxes for toggles and submenus for other settings.
+fn settings_menu_ui(
     ui: &mut egui::Ui,
     session: &AgentSession,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    input: &mut ChatInput,
+    preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
 ) {
-    let transcript = session.transcript();
-    let (Some((config_id, select)), Some(current_name)) =
-        (transcript.model_selector(), transcript.current_model())
-    else {
+    let has_log = !session.log().is_empty();
+
+    let mut summary: Vec<egui::Atom<'static>> = Vec::new();
+    let options: Vec<_> = session
+        .transcript()
+        .config_options
+        .iter()
+        .filter_map(|option| match &option.kind {
+            SessionConfigKind::Select(select) => Some((option, select)),
+            _ => None,
+        })
+        .collect();
+    let has_boolean = session
+        .transcript()
+        .config_options
+        .iter()
+        .any(|option| matches!(option.kind, SessionConfigKind::Boolean(_)));
+    // Keep the composer compact: summarize model and mode, with all settings available in the menu.
+    for category in [
+        SessionConfigOptionCategory::Model,
+        SessionConfigOptionCategory::Mode,
+    ] {
+        if let Some((option, select)) = options
+            .iter()
+            .find(|(option, _)| option.category.as_ref() == Some(&category))
+        {
+            summary.push(config_value_text(ui, option, select).into());
+            if category == SessionConfigOptionCategory::Model && is_fast_mode_on(session) {
+                summary.push(icons::FAST_MODE.as_image().alt_text("Fast mode").into());
+            }
+        }
+    }
+    if summary.is_empty() {
+        if options.is_empty() && !has_boolean && !has_log {
+            return;
+        }
+        summary.push("Settings".into());
+    }
+
+    egui::containers::menu::MenuButton::from_button(
+        egui::Button::dropdown(egui::Atoms::from_iter(summary))
+            .size(SETTINGS_BUTTON_SIZE)
+            .gap(SETTINGS_BUTTON_GAP),
+    )
+    .config(egui::containers::menu::MenuConfig::new().style(re_ui::menu::menu_style()))
+    .ui(ui, |ui| {
+        ui.set_min_width(SETTINGS_MENU_MIN_WIDTH);
+        if let Some(agent_name) = agent_name {
+            agent_header_ui(ui, input, agent_name);
+        }
+        if has_log {
+            ui.checkbox_menu_item(&mut input.log_open, "Show agent log")
+                .on_hover_text("Show what Rerun and the agent sent each other, and what the agent wrote to stderr");
+        }
+        let config_options = &session.transcript().config_options;
+        if (agent_name.is_some() || has_log) && !config_options.is_empty() {
+            ui.separator();
+        }
+        for option in config_options {
+            ui.push_id(&option.id, |ui| {
+                config_menu_ui(ui, session, option, preferences);
+            });
+        }
+    });
+}
+
+/// The agent's name at the top of the settings menu, with a button to its setup screen.
+fn agent_header_ui(ui: &mut egui::Ui, input: &mut ChatInput, agent_name: &str) {
+    let padding = ui.spacing().button_padding;
+    let icon_width = ui.spacing().icon_width;
+    egui::containers::Sides::new().show(
+        ui,
+        |ui| {
+            // As tall as the menu rows below.
+            egui::Frame::new()
+                .inner_margin(padding)
+                .show(ui, |ui| ui.strong(agent_name));
+        },
+        |ui| {
+            // Centered over the checkboxes of the rows below.
+            let row = ui.max_rect();
+            let center = egui::pos2(row.right() - padding.x - 0.5 * icon_width, row.center().y);
+            ui.allocate_exact_size(
+                egui::vec2(2.0 * padding.x + icon_width, 0.0),
+                egui::Sense::hover(),
+            );
+            let icon = icons::SETTINGS
+                .as_image()
+                .fit_to_exact_size(ui.tokens().small_icon_size)
+                .alt_text("Agent setup");
+            // The grow atoms center the icon in the square.
+            let button =
+                egui::Button::new((egui::Atom::grow(), icon, egui::Atom::grow())).icon_button();
+            let button_rect = egui::Rect::from_center_size(center, egui::Vec2::splat(row.height()));
+            if ui
+                .put(button_rect, button)
+                .on_hover_text("Agent setup")
+                .clicked()
+            {
+                input.open_setup_requested = true;
+                ui.close();
+            }
+        },
+    );
+}
+
+/// A menu entry showing `name` and the current value, opening a submenu to change it.
+fn setting_submenu_ui(
+    ui: &mut egui::Ui,
+    name: &str,
+    current: impl Into<egui::WidgetText>,
+    content: impl FnOnce(&mut egui::Ui),
+) -> egui::Response {
+    let button = egui::Button::new(name.to_owned()).right_text((
+        current.into(),
+        egui::containers::menu::SubMenuButton::arrow_atom(None),
+    ));
+    egui::containers::menu::SubMenuButton::from_button(button)
+        .ui(ui, |ui| {
+            egui::ScrollArea::vertical()
+                .max_height(SUBMENU_VISIBLE_ROWS * ui.spacing().interact_size.y)
+                .show(ui, content);
+        })
+        .0
+}
+
+fn config_value_text(
+    ui: &egui::Ui,
+    option: &SessionConfigOption,
+    select: &SessionConfigSelect,
+) -> RichText {
+    let choices = re_agent::select_options(select);
+    let current = choices
+        .iter()
+        .find(|choice| choice.value == select.current_value);
+    let name = current.map_or_else(
+        || select.current_value.0.as_ref(),
+        |choice| {
+            if option.category == Some(SessionConfigOptionCategory::Model) {
+                re_agent::model_name(choice)
+            } else {
+                choice.name.as_str()
+            }
+        },
+    );
+    config_choice_text(ui, option, &select.current_value, name)
+}
+
+fn config_choice_text(
+    ui: &egui::Ui,
+    option: &SessionConfigOption,
+    value: &SessionConfigValueId,
+    name: &str,
+) -> RichText {
+    let mut text = RichText::new(name);
+    if option.category == Some(SessionConfigOptionCategory::Mode)
+        && let Some(color) = mode_warning_color(ui, value.0.as_ref(), name)
+    {
+        text = text.color(color);
+    }
+    text
+}
+
+fn config_menu_ui(
+    ui: &mut egui::Ui,
+    session: &AgentSession,
+    option: &SessionConfigOption,
+    preferences: &mut AgentPreferences,
+) {
+    let toggle = match &option.kind {
+        SessionConfigKind::Boolean(boolean) => Some(boolean.current_value),
+        SessionConfigKind::Select(select) => on_off_value(select),
+        _ => None,
+    };
+    if let Some(mut enabled) = toggle {
+        let mut label = egui::Atoms::new(option.name.as_str());
+        if is_fast_mode(option) {
+            label.push_right(
+                icons::FAST_MODE
+                    .as_image()
+                    .tint(ui.tokens().label_button_icon_color),
+            );
+        }
+        let response = ui.checkbox_menu_item(&mut enabled, label);
+        let changed = response.changed();
+        if let Some(description) = &option.description {
+            response.on_hover_text(description);
+        }
+        if changed {
+            let value = match &option.kind {
+                SessionConfigKind::Boolean(_) => SessionConfigOptionValue::boolean(enabled),
+                _ => SessionConfigOptionValue::value_id(if enabled { "on" } else { "off" }),
+            };
+            preferences.set(option.id.clone(), value.clone());
+            session.set_config_option(option.id.clone(), value);
+        }
+        return;
+    }
+    let SessionConfigKind::Select(select) = &option.kind else {
         return;
     };
-
-    let model_item = |ui: &mut egui::Ui, model: &SessionConfigSelectOption| {
-        let response = ui
-            .list_item()
-            .selected(model.value == select.current_value)
-            .show_flat(ui, re_ui::list_item::LabelContent::new(&model.name));
-        let response = match &model.description {
+    let is_model = option.category == Some(SessionConfigOptionCategory::Model);
+    let choices = re_agent::select_options(select);
+    // An agent may offer e.g. both "Default (recommended)" and "Opus 5.5", with Default being
+    // an alias for Opus 5.5. Show only Opus 5.5 and check it when Default is selected.
+    // This affects only the display: the selected value stays Default until the user picks a model.
+    let selected_alias = choices
+        .iter()
+        .find(|choice| choice.value == select.current_value)
+        .filter(|choice| is_model && is_model_alias(choice, &choices));
+    // Our "recommended" label marks Rerun's preferred model, which may differ from
+    // the model the provider calls "Default (recommended)".
+    let recommended = if is_model {
+        re_agent::preferred_model(&choices, re_agent::DEFAULT_MODEL_PREFERENCES)
+    } else {
+        None
+    };
+    let choice_item = |ui: &mut egui::Ui, choice: &SessionConfigSelectOption| {
+        if is_model && is_model_alias(choice, &choices) {
+            return false;
+        }
+        let selected = selected_alias.map_or_else(
+            || choice.value == select.current_value,
+            |alias| re_agent::model_name(choice) == re_agent::model_name(alias),
+        );
+        let mut item =
+            re_ui::ComboItem::new(config_choice_text(ui, option, &choice.value, &choice.name))
+                .selected(selected);
+        if recommended.is_some_and(|model| model.value == choice.value) {
+            item = item.value("recommended");
+        }
+        let response = ui.add(item);
+        let response = match &choice.description {
             Some(description) => response.on_hover_text(description),
             None => response,
         };
@@ -368,43 +571,96 @@ fn model_picker_ui(
     };
 
     let mut selected = None;
-    ui.drop_down_menu("agent_model", current_name.to_owned(), |ui| {
-        match &select.options {
+    let response = setting_submenu_ui(
+        ui,
+        &option.name,
+        config_value_text(ui, option, select),
+        |ui| match &select.options {
             SessionConfigSelectOptions::Ungrouped(models) => {
                 for model in models {
-                    if model_item(ui, model) {
+                    if choice_item(ui, model) {
                         selected = Some(model.value.clone());
                     }
                 }
             }
             SessionConfigSelectOptions::Grouped(groups) => {
                 for group in groups {
-                    ui.weak(&group.name);
+                    ui.add(re_ui::ComboItemHeader::new(&group.name));
                     for model in &group.options {
-                        if model_item(ui, model) {
+                        if choice_item(ui, model) {
                             selected = Some(model.value.clone());
                         }
                     }
                 }
             }
             _ => {}
-        }
-    })
-    .on_hover_text("The model the agent is using");
+        },
+    );
+    if let Some(description) = &option.description {
+        response.on_hover_text(description);
+    }
 
     if let Some(value) = selected {
-        *preferred_model = Some(value.clone());
+        preferences.set(option.id.clone(), value.clone());
         if value != select.current_value {
-            session.set_config_option(config_id.clone(), value);
+            session.set_config_option(option.id.clone(), value);
         }
+    }
+}
+
+/// Whether this option names another model that also has its own entry in the list.
+///
+/// For example, "Default (recommended)" is an alias when its description identifies
+/// "Opus 5.5" and there is a separate "Opus 5.5" choice.
+/// Returns false if that separate choice is missing, so the menu can keep the option available.
+fn is_model_alias(
+    model: &SessionConfigSelectOption,
+    models: &[&SessionConfigSelectOption],
+) -> bool {
+    let concrete = re_agent::model_name(model);
+    concrete != model.name && models.iter().any(|other| other.name == concrete)
+}
+
+/// Claude and Codex expose fast mode with the config ids `fast` and `fast-mode`, respectively.
+fn is_fast_mode(option: &SessionConfigOption) -> bool {
+    matches!(option.id.0.as_ref(), "fast" | "fast-mode")
+}
+
+fn is_fast_mode_on(session: &AgentSession) -> bool {
+    session
+        .transcript()
+        .config_options
+        .iter()
+        .filter(|option| is_fast_mode(option))
+        .any(|option| match &option.kind {
+            SessionConfigKind::Boolean(boolean) => boolean.current_value,
+            SessionConfigKind::Select(select) => on_off_value(select) == Some(true),
+            _ => false,
+        })
+}
+
+fn on_off_value(select: &SessionConfigSelect) -> Option<bool> {
+    let choices = re_agent::select_options(select);
+    if choices.len() != 2
+        || !choices.iter().any(|choice| choice.value.0.as_ref() == "on")
+        || !choices
+            .iter()
+            .any(|choice| choice.value.0.as_ref() == "off")
+    {
+        return None;
+    }
+    match select.current_value.0.as_ref() {
+        "on" => Some(true),
+        "off" => Some(false),
+        _ => None,
     }
 }
 
 /// Modes that let the agent act without asking are shown in warning colors.
 ///
 /// ACP has no flag for this, so we go by the mode's id and name.
-fn mode_warning_color(ui: &egui::Ui, mode: &SessionMode) -> Option<egui::Color32> {
-    let haystack = format!("{} {}", mode.id.0, mode.name).to_lowercase();
+fn mode_warning_color(ui: &egui::Ui, id: &str, name: &str) -> Option<egui::Color32> {
+    let haystack = format!("{id} {name}").to_lowercase();
     let tokens = ui.tokens();
     if ["bypass", "yolo", "danger", "full", "never"]
         .iter()
@@ -424,8 +680,8 @@ fn composer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
     login_hint: Option<&str>,
 ) {
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -451,11 +707,7 @@ fn composer_ui(
     }
 
     queue_ui(ui, session, input);
-    input_ui(ui, session, input, preferred_mode, preferred_model);
-
-    if input.log_open {
-        log_ui(ui, session);
-    }
+    input_ui(ui, session, input, preferences, agent_name);
 }
 
 /// Prompts waiting for the running turn to finish. Each can be taken back into the input.
@@ -537,14 +789,14 @@ fn stop_agent(session: &mut AgentSession, input: &mut ChatInput) {
     session.cancel();
 }
 
-/// The row at the bottom of the input: mode picker, model, connection status, and the agent
-/// log toggle on the left; context usage and the send or stop button on the right.
+/// The row at the bottom of the input: the settings menu and connection status on the left;
+/// context usage and the send or stop button on the right.
 fn footer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
 ) {
     let usage = session
         .transcript()
@@ -557,6 +809,7 @@ fn footer_ui(
         && (!input.prompt.text.trim().is_empty() || !input.prompt.images.is_empty());
 
     let ((), clicked) = egui::containers::Sides::new()
+        .height(SEND_BUTTON_SIZE.height())
         .shrink_left()
         .truncate()
         .show(
@@ -567,38 +820,35 @@ fn footer_ui(
                 let mut clip_rect = ui.clip_rect();
                 clip_rect.max.x = clip_rect.max.x.min(ui.max_rect().max.x);
                 ui.set_clip_rect(clip_rect);
-                mode_picker_ui(ui, session, preferred_mode);
 
-                model_picker_ui(ui, session, preferred_model);
-
+                // A child that takes no space in the row, so the part of it that reaches into the
+                // composer margin does not grow the composer.
+                let mut child = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(settings_rect(ui))
+                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
+                );
+                settings_menu_ui(&mut child, session, input, preferences, agent_name);
                 match session.phase() {
                     Phase::Connecting { status } => {
-                        ui.weak(status);
+                        child.weak(status);
                     }
                     Phase::Disconnected { reason } => {
-                        ui.error_label(reason.clone());
+                        child.error_label(reason.clone());
                     }
                     Phase::Idle | Phase::Ready => {}
                 }
-
-                let log_lines = session.log().len();
-                if log_lines != 0 {
-                    let text = RichText::new(format!("Agent log ({log_lines} lines)")).small();
-                    if ui
-                        .selectable_label(input.log_open, text)
-                        .on_hover_text("Show what the agent wrote to stderr")
-                        .clicked()
-                    {
-                        input.log_open = !input.log_open;
-                    }
-                }
+                ui.allocate_rect(
+                    child.min_rect().intersect(ui.max_rect()),
+                    egui::Sense::hover(),
+                );
             },
             |ui| {
                 let clicked = if turn_in_progress {
                     ui.add(
                         egui::Button::icon(icons::STOP, "Stop")
                             .primary()
-                            .size_small(),
+                            .size(SEND_BUTTON_SIZE),
                     )
                     .on_hover_text("Cancel the current turn (Esc)")
                     .clicked()
@@ -607,7 +857,7 @@ fn footer_ui(
                         can_send,
                         egui::Button::icon(icons::ARROW_UP, "Send")
                             .primary()
-                            .size_small(),
+                            .size(SEND_BUTTON_SIZE),
                     )
                     .on_hover_text("Send (⏎)")
                     .clicked()
@@ -627,6 +877,25 @@ fn footer_ui(
             input.focus = true;
         }
     }
+}
+
+/// Where the settings button goes in the row below the prompt.
+///
+/// Its own padding hangs out into the composer margin, so that its text lines up with the prompt
+/// text, and sits as far from the bottom edge as from the left.
+fn settings_rect(ui: &egui::Ui) -> egui::Rect {
+    let row = ui.max_rect();
+    let padding = SETTINGS_BUTTON_SIZE.padding().x;
+    // The font size, not the row height: the row also holds room for descenders below the text.
+    let font_size = egui::TextStyle::Body.resolve(ui.style()).size;
+    let text_gap = 0.5 * (SETTINGS_BUTTON_SIZE.height() - font_size);
+    egui::Rect::from_min_max(
+        egui::pos2(
+            row.left() - padding,
+            row.bottom() + text_gap - SETTINGS_BUTTON_SIZE.height(),
+        ),
+        egui::pos2(row.right(), row.bottom() + text_gap),
+    )
 }
 
 /// Returns the auth method the user picked, if any.
@@ -720,7 +989,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
                 .raw_input
                 .as_ref()
                 .or_else(|| known_call?.raw_input.as_ref());
-            let scroll_area = egui::ScrollArea::vertical()
+            let scroll_area = egui::ScrollArea::both()
                 .max_height(MAX_REQUEST_CONTENT_HEIGHT)
                 .id_salt(&request.tool_call.tool_call_id.0);
             let command_input = raw_input.and_then(CommandInput::parse);
@@ -728,11 +997,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
             if let Some(description) = command_input.as_ref().and_then(|input| input.description) {
                 ui.strong(description);
             } else {
-                ui.add(
-                    egui::Label::new(RichText::new(title).monospace())
-                        .truncate()
-                        .show_tooltip_when_elided(false),
-                );
+                ui.add(egui::Label::new(RichText::new(title).monospace()).wrap());
             }
 
             if let Some(command_input) = &command_input {
@@ -744,28 +1009,41 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
                 scroll_area.show(ui, |ui| tool_input_ui(ui, raw_input));
             }
 
-            ui.horizontal_wrapped(|ui| {
-                for option in &request.options {
-                    let button = match option.kind {
-                        PermissionOptionKind::AllowOnce => {
-                            egui::Button::new(&option.name).primary().size_small()
+            // Bound the row so right alignment does not stretch the UI vertically.
+            ui.allocate_ui_with_layout(
+                egui::vec2(ui.available_width(), re_ui::Size::Small.height()),
+                egui::Layout::right_to_left(egui::Align::Center),
+                |ui| {
+                    ui.horizontal_wrapped(|ui| {
+                        for option in &request.options {
+                            let button = match option.kind {
+                                PermissionOptionKind::AllowOnce => {
+                                    egui::Button::new(&option.name).primary().size_small()
+                                }
+                                _ => egui::Button::new(&option.name).outlined().size_small(),
+                            };
+                            let clicked = ui.add(button).clicked();
+                            let shortcut = is_first
+                                && match option.kind {
+                                    PermissionOptionKind::AllowOnce => enter,
+                                    PermissionOptionKind::RejectOnce => escape,
+                                    _ => false,
+                                };
+                            if (clicked || shortcut) && answered.is_none() {
+                                answered = Some((index, option.option_id.clone()));
+                            }
                         }
-                        _ => egui::Button::new(&option.name).outlined().size_small(),
-                    };
-                    let clicked = ui.add(button).clicked();
-                    let shortcut = is_first
-                        && match option.kind {
-                            PermissionOptionKind::AllowOnce => enter,
-                            PermissionOptionKind::RejectOnce => escape,
-                            _ => false,
-                        };
-                    if (clicked || shortcut) && answered.is_none() {
-                        answered = Some((index, option.option_id.clone()));
-                    }
-                }
-            });
+                    });
+                },
+            );
             if is_first {
-                ui.weak("⏎ allow once · Esc reject once");
+                ui.allocate_ui_with_layout(
+                    egui::vec2(ui.available_width(), re_ui::Size::Small.height()),
+                    egui::Layout::right_to_left(egui::Align::Center),
+                    |ui| {
+                        ui.weak("Esc reject once · ⏎ allow once");
+                    },
+                );
             }
         });
     }
@@ -780,8 +1058,8 @@ fn input_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
-    preferred_mode: &mut Option<SessionModeId>,
-    preferred_model: &mut Option<SessionConfigValueId>,
+    preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
 ) {
     let hint = if session.turn_in_progress() {
         "The agent is working… (⏎ to queue a message, Esc to stop)"
@@ -799,7 +1077,7 @@ fn input_ui(
         .fill(tokens.text_edit_bg_color)
         .stroke(tokens.control_stroke)
         .corner_radius(6)
-        .inner_margin(6)
+        .inner_margin(COMPOSER_MARGIN)
         .show(ui, |ui| {
             pending_images_ui(ui, input);
 
@@ -826,7 +1104,7 @@ fn input_ui(
             input.completion_open = output.is_open;
             let response = output.text_edit.response.response;
 
-            footer_ui(ui, session, input, preferred_mode, preferred_model);
+            footer_ui(ui, session, input, preferences, agent_name);
 
             response
         })
@@ -1035,7 +1313,7 @@ fn slash_command_suggestions(
 fn log_ui(ui: &mut egui::Ui, session: &AgentSession) {
     let tokens = ui.tokens();
     egui::ScrollArea::vertical()
-        .max_height(200.0)
+        .auto_shrink(false)
         .stick_to_bottom(true)
         .show(ui, |ui| {
             for (index, line) in session.log().iter().enumerate() {

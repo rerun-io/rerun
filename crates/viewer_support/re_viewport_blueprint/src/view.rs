@@ -484,7 +484,6 @@ mod tests {
     use std::sync::Arc;
 
     use ahash::HashSet;
-    use re_chunk::RowId;
     use re_log_types::TimePoint;
     use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
     use re_sdk_types::blueprint::archetypes::EntityBehavior;

@@ -346,7 +346,7 @@ impl ExecutionPlan for LocalChunkStoreExec {
 mod tests {
     use super::*;
 
-    use arrow::array::{Array as _, Int64Array, RecordBatch};
+    use arrow::array::{Array as _, Int64Array};
     use datafusion::prelude::SessionContext;
     use futures::StreamExt as _;
     use re_arrow_util::ArrowArrayDowncastRef as _;

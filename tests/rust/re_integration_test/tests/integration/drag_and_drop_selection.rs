@@ -9,7 +9,6 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::external::re_log_types::EntityPathFilter;
 use re_sdk::log::RowId;
-use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{
     Item, ItemCollection, RecommendedView, SystemCommand, SystemCommandSender as _, ViewClass as _,
     ViewId,

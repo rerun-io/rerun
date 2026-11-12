@@ -2,18 +2,14 @@
 //! activation or registration for it, but the recording or table stream still completes.
 
 use std::str::FromStr as _;
-use std::time::Duration;
 
-use re_catalog_client::CatalogClient;
-use re_integration_test::{TestServer, file_url};
+use re_integration_test::{TestServer, register_blueprint_segment, spatial_3d_blueprint_rbl};
 use re_log_channel::{
     BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, LogReceiver, LogSource,
     RecordingOpenBehavior, SmartMessagePayload,
 };
-use re_protos::cloud::v1alpha1::ext::{DataSource, DatasetDetails};
-use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
+use re_protos::cloud::v1alpha1::ext::DatasetDetails;
 use re_redap_client::{ApiErrorKind, ApiResult, StreamingOptions};
-use re_sdk::RecordingStreamBuilder;
 use re_sdk::external::re_log_msg::{BlueprintActivationCommand, LogMsg};
 use re_sdk::external::re_log_types::{EntryId, StoreId, StoreKind};
 use re_sdk::external::re_tuid::Tuid;
@@ -68,52 +64,6 @@ async fn spawn_server() -> (TestServer, SegmentId) {
         .await
 }
 
-/// Writes a one-view `.rbl`, so the registered blueprint has chunks to download.
-fn blueprint_rbl() -> tempfile::NamedTempFile {
-    let file = tempfile::Builder::new()
-        .suffix(".rbl")
-        .tempfile()
-        .expect("Failed to create the blueprint file");
-    let stream = RecordingStreamBuilder::new("rerun_example_integration_test")
-        .blueprint()
-        .save(file.path())
-        .expect("Failed to create the blueprint stream");
-    re_sdk::blueprint::Blueprint::new(re_sdk::blueprint::Spatial3DView::new("3D"))
-        .send(&stream, re_sdk::blueprint::BlueprintActivation::default())
-        .expect("Failed to log the blueprint");
-    stream
-        .flush_with_timeout(Duration::from_mins(1))
-        .expect("Failed to flush the blueprint");
-    file
-}
-
-/// Registers a blueprint with `blueprint_dataset` and returns its segment id.
-async fn register_blueprint(
-    catalog_client: &CatalogClient,
-    blueprint_dataset: EntryId,
-) -> SegmentId {
-    let rbl = blueprint_rbl();
-    let data_source = DataSource::new_rrd(
-        file_url(rbl.path()).expect("Failed to build the blueprint url"),
-        None,
-    )
-    .expect("Failed to build the blueprint data source");
-    catalog_client
-        .register_with_dataset(
-            blueprint_dataset,
-            vec![data_source],
-            IfDuplicateBehavior::Error,
-        )
-        .await
-        .expect("Failed to register the blueprint")
-        .wait(Duration::from_secs(10))
-        .await
-        .expect("Failed to finish the blueprint registration")
-        .into_iter()
-        .next()
-        .expect("the registration returns the blueprint segment")
-}
-
 /// Makes a blueprint segment the dataset's default, set up to behave as `default_blueprint` says.
 ///
 /// Returns the blueprint dataset and segment.
@@ -137,7 +87,11 @@ async fn set_up_default_blueprint(
 
     let blueprint_segment = match default_blueprint {
         DefaultBlueprint::Loads | DefaultBlueprint::FailsToDownload => {
-            register_blueprint(&catalog_client, blueprint_dataset).await
+            // A one-view blueprint, so the registered blueprint has chunks to download.
+            let rbl = spatial_3d_blueprint_rbl("3D").expect("Failed to write the blueprint");
+            register_blueprint_segment(&catalog_client, blueprint_dataset, rbl.path())
+                .await
+                .expect("Failed to register the blueprint")
         }
         DefaultBlueprint::Missing => SegmentId::from("missing_blueprint"),
     };

@@ -805,7 +805,7 @@ mod tests {
 
     use arrow::datatypes::DataType;
     use re_sdk_types::archetypes::{GaussianSplats3D, Points3D};
-    use re_viewer_context::{ComponentMatch, SingleRequiredComponentMatch};
+    use re_viewer_context::SingleRequiredComponentMatch;
 
     fn positions() -> ComponentIdentifier {
         Points3D::descriptor_positions().component

@@ -1102,7 +1102,6 @@ async fn fetch_merged_range_bytes(
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
-    use std::sync::atomic::{AtomicU64, Ordering};
 
     use re_protos::cloud::v1alpha1::{
         FetchChunksResponse, FindChunksRequest, FindChunksResponse, GetDatasetSchemaRequest,

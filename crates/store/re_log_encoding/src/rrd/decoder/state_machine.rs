@@ -530,7 +530,6 @@ mod tests {
 
     use super::*;
     use crate::Encoder;
-    use crate::rrd::{EncodingOptions, StreamHeader};
 
     fn fake_log_msg() -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {

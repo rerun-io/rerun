@@ -1210,8 +1210,9 @@ impl<'a> DataFusionTableWidget<'a> {
                     .iter()
                     .map(|renderer| PreviewColumn {
                         data_column_index: renderer.data_column_index(),
-                        num_views: renderer.num_views(),
-                        preview_height: SEGMENT_PREVIEW_SIZE,
+                        content_width: renderer
+                            .preferred_layout(ctx, view_states)
+                            .width_for_height(SEGMENT_PREVIEW_SIZE),
                     })
                     .collect::<Vec<_>>();
                 if !preview_columns.is_empty() {

@@ -21,7 +21,7 @@ This page gives a high-level overview of ongoing and planned work.
 ## Roadmap of major feature areas
 
 ### Near term
-- The agent panel: chat with a coding agent that can inspect and drive the Viewer through the [Rerun MCP server](../reference/viewer/mcp.md)
+- The agent panel: chat with a coding agent that can inspect and drive the Viewer through the [Rerun MCP server](../viewer/extend/mcp.md)
     - You can try it today in the native Viewer: enable **Settings → Experimental → Agent panel**
     - We are working on making it a stable, non-experimental feature
 - A refreshed look and feel for the Viewer
@@ -31,21 +31,21 @@ This page gives a high-level overview of ongoing and planned work.
 - Better blueprint management, such as several blueprints per dataset
 - A composable Viewer toolkit, for building your own viewer from Rerun's UI building blocks
 - More mature data loaders, and more ready-made conversions of open robotics datasets
-- Richer filtering in the dataframe view (table views already have [filters](../howto/visualization/configure-table-blueprints.md#filtering-rows))
+- Richer filtering in the dataframe view (table views already have [filters](../viewer/blueprints-and-views/configure-table-blueprints.md#filtering-rows))
 - Dataset views that give zero-copy modified views into large datasets
 
 ### Longer term
 - Interactive applications built with Rerun, such as UI for tweaking configs or custom data annotation tools
-    - Today you can [react to Viewer events](../howto/visualization/callbacks.md) in the web Viewer, in notebooks, and from Rust, but the native Viewer has no user widgets or callbacks for Python
+    - Today you can [react to Viewer events](../viewer/extend/callbacks.md) in the web Viewer, in notebooks, and from Rust, but the native Viewer has no user widgets or callbacks for Python
 - Official ROS 2 bridge
-    - Today you can [import ROS 2 bags in MCAP format](../howto/logging-and-ingestion/mcap.md) and re-log live topics yourself, as shown in the [ROS 2 example](../howto/integrations/ros2-nav-turtlebot.md)
+    - Today you can [import ROS 2 bags in MCAP format](../logging-and-ingestion/import/mcap/working-with-mcap.md) and re-log live topics yourself, as shown in the [ROS 2 example](../integrations/ros2-nav-turtlebot.md)
 - Extensibility of all parts of the stack
 
 ### Recently shipped
-- Configurable data interpretation, for example MCAP files with custom messages: see [Lenses](../concepts/query-and-transform/lenses.md) and [component mappings](../howto/visualization/component-mappings.md)
-- Callbacks for Viewer events: see [React to events in the Viewer](../howto/visualization/callbacks.md)
+- Configurable data interpretation, for example MCAP files with custom messages: see [Lenses](../query-and-transform/lenses.md) and [component mappings](../viewer/blueprints-and-views/component-mappings.md)
+- Callbacks for Viewer events: see [React to events in the Viewer](../viewer/extend/callbacks.md)
 - Driving the Viewer from code: `rerun.experimental.ViewerClient` in Python and the `WebViewer` API in JavaScript
-- Data format stability: the `.rrd` framing is stable, and recordings from Rerun 0.23 and later are migrated automatically on load (see [RRD format stability](../concepts/logging-and-ingestion/rrd-format.md#stability))
+- Data format stability: the `.rrd` framing is stable, and recordings from Rerun 0.23 and later are migrated automatically on load (see [RRD format stability](../logging-and-ingestion/chunks-and-rrd/rrd-format.md#stability))
 
 ## Missing features
 
@@ -56,7 +56,7 @@ This section lists features that users often ask for, with the best workaround w
 - If your missing feature is not listed, or has no issue, [open one](https://github.com/rerun-io/rerun/issues/new/choose).
 
 ### Viewer
-- User widgets (buttons, sliders) and callbacks into Python from the native Viewer. Workaround: use [callbacks](../howto/visualization/callbacks.md) in the web Viewer, in notebooks, or from Rust, or [extend the Viewer in Rust](../howto/visualization/extend-ui.md).
+- User widgets (buttons, sliders) and callbacks into Python from the native Viewer. Workaround: use [callbacks](../viewer/extend/callbacks.md) in the web Viewer, in notebooks, or from Rust, or [extend the Viewer in Rust](../viewer/extend/extend-ui.md).
     - We are working on adding web views to the Viewer.
     - [#2691](https://github.com/rerun-io/rerun/issues/2691), [#3087](https://github.com/rerun-io/rerun/issues/3087)
 - Reading the current selection from Python: `rerun.experimental.ViewerClient.get_state()` has no selection. Workaround: selection events in the web Viewer and notebooks.
@@ -65,7 +65,7 @@ This section lists features that users often ask for, with the best workaround w
     - [#2497](https://github.com/rerun-io/rerun/issues/2497)
 - Linking or highlighting different entities across views. Only the same entity path and instance link today.
     - [#8866](https://github.com/rerun-io/rerun/issues/8866), [#4379](https://github.com/rerun-io/rerun/issues/4379)
-- Setting the initial time cursor in a blueprint (`TimePanel` sets timeline, play state, and time selection, but not the cursor). Workaround: the `#when=` fragment of a [Viewer URL](../reference/viewer/urls.md), or `set_time` on `rerun.experimental.ViewerClient`.
+- Setting the initial time cursor in a blueprint (`TimePanel` sets timeline, play state, and time selection, but not the cursor). Workaround: the `#when=` fragment of a [Viewer URL](../viewer/extend/urls.md), or `set_time` on `rerun.experimental.ViewerClient`.
 - A scrollable container for many views. Container kinds are only tabs, horizontal, vertical, and grid. Workaround: put views in tabs.
     - [#6627](https://github.com/rerun-io/rerun/issues/6627)
 - Hiding entities by default at log time: `EntityBehavior` only has an effect in the blueprint. Workaround: set `EntityBehavior(visible=False)` as an override in your blueprint.
@@ -92,7 +92,7 @@ This section lists features that users often ask for, with the best workaround w
     - [#4845](https://github.com/rerun-io/rerun/issues/4845), [#1800](https://github.com/rerun-io/rerun/issues/1800)
 - Alpha from vertex colors and textures is ignored. Workaround: set the alpha of `albedo_factor` to make a whole mesh transparent.
     - [#1611](https://github.com/rerun-io/rerun/issues/1611), [#12223](https://github.com/rerun-io/rerun/issues/12223)
-- Custom shaders without writing Rust. Workaround: build your own Viewer with a [custom visualizer](../howto/visualization/extend-ui.md#custom-visualizers-for-built-in-views).
+- Custom shaders without writing Rust. Workaround: build your own Viewer with a [custom visualizer](../viewer/extend/extend-ui.md#custom-visualizers-for-built-in-views).
     - [#3087](https://github.com/rerun-io/rerun/issues/3087)
 
 ### Data types
@@ -116,7 +116,7 @@ This section lists features that users often ask for, with the best workaround w
 ### Logging and SDK
 - Resolving world poses from the transform tree in the SDK. Workaround: compose the transforms in your own code.
 - Reusing one asset across many entities. Workaround: log the asset once and draw copies with `InstancePoses3D` on the same entity.
-    - Related: [assets](../concepts/query-and-transform/catalog-object-model.md#assets) let all segments of a dataset share static data, such as a mesh.
+    - Related: [assets](../query-and-transform/catalog/catalog-object-model.md#assets) let all segments of a dataset share static data, such as a mesh.
 - Automatic deduplication of unchanged values. Workaround: only log a value when it changes; views that show the latest value, such as 3D and 2D views, show it until a new one arrives. Time series plots interpolate linearly between samples, so log the last unchanged sample too if you need a flat line.
     - [#3745](https://github.com/rerun-io/rerun/issues/3745)
 - An SDK for `no_std` targets and microcontrollers. Workaround: send data to a host computer and log it from there.
@@ -130,15 +130,15 @@ This section lists features that users often ask for, with the best workaround w
     - [#5520](https://github.com/rerun-io/rerun/issues/5520)
 
 ### Files and formats
-- Importing rosbag2 `.db3` (SQLite) files. Workaround: convert them to MCAP with `ros2 bag convert`, then [import the MCAP](../howto/logging-and-ingestion/mcap.md).
-- Exporting a `VideoStream` or point clouds from the Viewer. (`AssetVideo` and other blobs have a **Save blob…** button in the selection panel.) Workaround: read the data with the [dataframe API](../concepts/query-and-transform/dataframe-queries.md) and export it yourself.
+- Importing rosbag2 `.db3` (SQLite) files. Workaround: convert them to MCAP with `ros2 bag convert`, then [import the MCAP](../logging-and-ingestion/import/mcap/working-with-mcap.md).
+- Exporting a `VideoStream` or point clouds from the Viewer. (`AssetVideo` and other blobs have a **Save blob…** button in the selection panel.) Workaround: read the data with the [dataframe API](../query-and-transform/dataframes/dataframe-queries.md) and export it yourself.
     - [#12747](https://github.com/rerun-io/rerun/issues/12747) (video)
 
 ### Web and server
-- Custom request headers (for example auth) when the web Viewer fetches an `.rrd` over HTTP. Workaround: fetch the file yourself and pass the bytes to `open_channel(…).send_rrd(…)` in the JS package. For Rerun servers, set `fallback_token`.
+- Custom request headers (for example auth) when the web Viewer fetches an `.rrd` over HTTP. Workaround: fetch the file yourself and pass the bytes to `openChannel(…).sendRrd(…)` in the JS package. For Rerun servers, set `fallbackToken`.
 - Per-client sessions in the `serve_grpc` proxy: every connected Viewer gets the same stream. Workaround: one recording and port per client.
 - Watching a folder for new files, and registering data from object stores (S3, GCS) in the open-source `rerun server`. It only registers local files, either at startup with `--dataset` or later with `register`.
-- Live streams larger than RAM. Data streamed from the SDK to the Viewer is kept in memory, and the oldest data is dropped at the memory limit. Workaround: save to an `.rrd` file and open the file, which is read on demand (see [Limit memory usage](../howto/visualization/limit-ram.md)).
+- Live streams larger than RAM. Data streamed from the SDK to the Viewer is kept in memory, and the oldest data is dropped at the memory limit. Workaround: save to an `.rrd` file and open the file, which is read on demand (see [Limit memory usage](../viewer/performance/limit-ram.md)).
 - More memory in the web Viewer. It runs as 32-bit Wasm and is limited to about 2 GiB in practice. Workaround: use the native Viewer. Large local `.rrd` files are read on demand through the Viewer catalog (**Load files via Viewer catalog**, on by default), but `.rrd` files opened over HTTP are streamed into memory.
 
 ### Integrations

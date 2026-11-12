@@ -7,6 +7,7 @@ use opentelemetry_sdk::metrics::{
     Aggregation, Instrument, InstrumentKind, SdkMeterProvider, Stream,
 };
 use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, SdkTracerProvider};
+use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::layer::SubscriberExt as _;
 use tracing_subscriber::util::SubscriberInitExt as _;
 use tracing_subscriber::{EnvFilter, Layer as _};
@@ -960,6 +961,18 @@ impl Telemetry {
                 (Some(provider), Some(reader_for_telemetry))
             };
 
+            // Only spans enabled by the log or trace filters can carry `SpanMetadata`,
+            // so it is wasteful to run this layer for anything above it like TRACE.
+            let layer_span_metadata_cleanup = {
+                let log_level = create_filter(&log_filter, "warn")?.max_level_hint();
+                let trace_level = create_filter(&trace_filter, "info")?.max_level_hint();
+                let level = match (log_level, trace_level) {
+                    (Some(log_level), Some(trace_level)) => log_level.max(trace_level),
+                    _ => LevelFilter::TRACE,
+                };
+                SpanMetadataCleanupLayer::default().with_filter(level)
+            };
+
             // Without the `tracy` feature the `if` branch always bails, but the `else` is not
             // redundant in a build that has it:
             #[cfg_attr(not(feature = "tracy"), expect(clippy::redundant_else))]
@@ -970,7 +983,7 @@ impl Telemetry {
                             .with(layer_logs_otlp)
                             .with(layer_logs_and_traces_stdio)
                             .with(layer_traces_otlp)
-                            .with(SpanMetadataCleanupLayer::default())
+                            .with(layer_span_metadata_cleanup)
                             .with(self::tracy::tracy_layer())
                             .try_init()?;
                     }
@@ -985,7 +998,7 @@ impl Telemetry {
                     .with(layer_logs_otlp)
                     .with(layer_logs_and_traces_stdio)
                     .with(layer_traces_otlp)
-                    .with(SpanMetadataCleanupLayer::default())
+                    .with(layer_span_metadata_cleanup)
                     .try_init()?;
             }
 

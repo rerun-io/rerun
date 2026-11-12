@@ -6,7 +6,7 @@ thumbnail = "https://static.rerun.io/log_file_thumbnail/d07f535d46853186a740dba3
 thumbnail_dimensions = [768, 576]
 -->
 
-Demonstrates how to log any file from the SDK using the [`Importer`](https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview) machinery.
+Demonstrates how to log any file from the SDK using the [`Importer`](https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview) machinery.
 
 Usage:
 ```bash

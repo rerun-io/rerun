@@ -216,6 +216,23 @@ async fn command_palette_agent_mode() {
     assert!(harness.state().agent_panel_open());
 }
 
+/// Checks that the attention dot on the agent panel button stays hidden once the panel has been shown.
+#[tokio::test]
+async fn agent_panel_ever_opened_persists() {
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
+        app_options_editor: Some(Box::new(|options| options.experimental.agent_panel = true)),
+        ..Default::default()
+    });
+    assert!(!harness.state().agent_panel_ever_opened());
+    harness.get_by_label("Agent panel toggle").click();
+    harness.run_ok();
+    assert!(harness.state().agent_panel_open());
+    harness.get_by_label("Agent panel toggle").click();
+    harness.run_ok();
+    assert!(!harness.state().agent_panel_open());
+    assert!(harness.state().agent_panel_ever_opened());
+}
+
 /// Tests the colormap selector UI with snapshot testing.
 /// This is defined here instead of in `re_viewer/tests` because it depends on `re_test_context`,
 /// which depends on `re_viewer_context`.

@@ -4,7 +4,9 @@ use std::path::PathBuf;
 
 use egui::Vec2;
 use egui_kittest::kittest::Queryable as _;
-use re_agent::acp::schema::v1::{SessionId, SessionMode, SessionModeState};
+use re_agent::acp::schema::v1::{
+    SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption, SessionId,
+};
 use re_agent::{AgentEntry, AgentEvent, AgentProfile, AgentProfileId, AgentSettings};
 use re_agent_ui::AgentPanel;
 
@@ -43,11 +45,16 @@ fn panel(self_improve_available: bool) -> AgentPanel {
     });
     session.handle_event(AgentEvent::SessionStarted {
         session_id: SessionId::new("test-session"),
-        modes: Some(SessionModeState::new(
-            "default",
-            vec![SessionMode::new("default", "Manual")],
-        )),
-        config_options: Vec::new(),
+        origin: re_agent::SessionOrigin::New,
+        config_options: vec![
+            SessionConfigOption::select(
+                "mode",
+                "Mode",
+                "default",
+                vec![SessionConfigSelectOption::new("default", "Manual")],
+            )
+            .category(SessionConfigOptionCategory::Mode),
+        ],
     });
     panel
 }

@@ -13,8 +13,8 @@ use agent_client_protocol_schema::v1::{
     ElicitationAction, ElicitationMode, ElicitationScope, ImageContent, PermissionOption,
     PermissionOptionId, PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, SelectedPermissionOutcome,
-    SessionConfigId, SessionConfigValueId, SessionModeId, SessionModeState, SessionUpdate,
-    StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
+    SessionConfigId, SessionConfigOptionValue, SessionId, SessionUpdate, StopReason, TextContent,
+    ToolCallId, ToolCallStatus, ToolKind,
 };
 
 use re_async::{AsyncRuntimeHandle, UiWaker};
@@ -22,17 +22,23 @@ use web_time::Instant;
 
 use crate::AgentToolbox;
 use crate::agent_harness::McpStdioServer;
-use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection};
+use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection, SessionOrigin};
 use crate::elicitation::response_note;
 use crate::error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
-use crate::reports::SessionReports;
+use crate::reports::{McpStartupReport, SessionReports};
 use crate::responder::{AgentStoppedWaiting, Responder};
 use crate::settings::AgentLaunch;
 use crate::startup::{AgentBackendKind, StartupOutcome, StartupStart};
-use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
+use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text, truncate_bytes};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
+
+/// How many of the last stderr lines may explain why the agent exited.
+const EXIT_REASON_STDERR_LINES: usize = 10;
+
+/// A stderr line can be huge (e.g. minified JSON), but the exit reason is shown in a narrow panel.
+const MAX_EXIT_REASON_DETAIL_BYTES: usize = 300;
 
 /// Why [`AgentSession::start`] could not start an agent.
 #[derive(Debug, thiserror::Error)]
@@ -231,14 +237,13 @@ struct AgentInfo {
     /// How the agent runs, once it has been started.
     backend: Option<AgentBackendKind>,
 
+    /// The session the agent opened, once it has.
+    session_id: Option<SessionId>,
+
     name: Option<String>,
 
     /// The version the agent reported, which is ours for a model-API agent.
     version: Option<String>,
-    modes: Option<SessionModeState>,
-
-    /// Set by [`AgentSession::set_mode`] until the agent confirms a mode.
-    requested_mode: Option<SessionModeId>,
 
     auth: Option<AuthPrompt>,
 
@@ -281,6 +286,16 @@ struct ImageFiles {
     written: usize,
 }
 
+/// What a loaded session replayed of its history.
+#[derive(Default)]
+struct History {
+    /// The agent is replaying it, so its prompts must be added to the transcript.
+    replaying: bool,
+
+    /// How many transcript items it filled, at the start of the transcript.
+    len: usize,
+}
+
 /// Everything the UI needs to know about the running agent, updated by [`Self::poll_events`].
 #[derive(Default)]
 pub struct AgentSession {
@@ -296,6 +311,9 @@ pub struct AgentSession {
 
     /// The start of the agent, until the session opens or the agent goes away.
     startup: Option<StartupStart>,
+
+    /// The history of an earlier session that is being loaded.
+    history: History,
 
     /// Since the host last called [`Self::take_reports`].
     reports: SessionReports,
@@ -340,7 +358,7 @@ impl AgentSession {
                 session.launch.off_limits_directories = config.off_limits_directories.clone();
                 session.launch.cwd = config.cwd.clone();
                 cfg_select! {
-                    agent_harness_backend => Ok(crate::agent_harness::spawn(config, waker)),
+                    agent_harness_backend => Ok(crate::agent_harness::spawn(*config, waker)),
                     _ => {{
                         drop((config, waker));
                         Err(StartError::HarnessUnsupported)
@@ -428,6 +446,25 @@ impl AgentSession {
                 .any(|entry| matches!(entry.item, TranscriptItem::User(_)))
     }
 
+    /// Whether a replayed prompt block is the preamble we sent ahead of the first prompt.
+    ///
+    /// Compared by its first line only, since the rest can differ between viewer runs, e.g. the
+    /// viewer's address.
+    ///
+    /// Whitespace is collapsed first, since some agents (e.g. Codex) do that to the prompt they
+    /// derive a session title from.
+    fn is_preamble(&self, text: &str) -> bool {
+        let collapse = |text: &str| text.split_whitespace().collect::<Vec<_>>().join(" ");
+        self.launch
+            .preamble
+            .as_deref()
+            .and_then(|preamble| preamble.lines().next())
+            .map(collapse)
+            .is_some_and(|first_line| {
+                !first_line.is_empty() && collapse(text).starts_with(&first_line)
+            })
+    }
+
     fn push_agent_error(&mut self, request: FailedRequest, message: String) {
         let AgentInfo {
             backend,
@@ -480,21 +517,27 @@ impl AgentSession {
         self.agent.name.as_deref()
     }
 
-    pub fn modes(&self) -> Option<&SessionModeState> {
-        self.agent.modes.as_ref()
-    }
-
-    pub fn current_mode_id(&self) -> Option<&SessionModeId> {
-        self.transcript.current_mode.as_ref().or_else(|| {
-            self.agent
-                .modes
-                .as_ref()
-                .map(|modes| &modes.current_mode_id)
-        })
-    }
-
     pub fn transcript(&self) -> &Transcript {
         &self.transcript
+    }
+
+    /// The id the agent gave the session, once it is open.
+    ///
+    /// Pass it as [`crate::AgentHarnessConfig::session_to_load`] to continue the session later.
+    pub fn session_id(&self) -> Option<&SessionId> {
+        self.agent.session_id.as_ref()
+    }
+
+    /// The working directory of an agent harness. Agents find a session to load by it.
+    pub fn cwd(&self) -> &Path {
+        &self.launch.cwd
+    }
+
+    /// How many items at the start of the transcript were replayed from a loaded session.
+    ///
+    /// They carry the time of the replay, not of the original messages.
+    pub fn history_len(&self) -> usize {
+        self.history.len
     }
 
     pub fn auth(&self) -> Option<&AuthPrompt> {
@@ -537,6 +580,33 @@ impl AgentSession {
 
     pub fn log(&self) -> &VecDeque<LogLine> {
         &self.log
+    }
+
+    /// Why the agent exited.
+    ///
+    /// The agent usually explains it on stderr, so that is quoted as a detail.
+    fn exit_reason(&self) -> re_error::StructuredError {
+        let last_lines: Vec<String> = self
+            .log
+            .iter()
+            .rev()
+            .filter(|log_line| log_line.direction == LineDirection::Stderr)
+            .map(|log_line| strip_ansi_escapes(&log_line.line).trim().to_owned())
+            .filter(|line| !line.is_empty())
+            .take(EXIT_REASON_STDERR_LINES)
+            .collect();
+        // Agents often print warnings after the error, e.g. Node's deprecation warnings.
+        // Errors from long before the exit are not why it exited, hence only the last few lines.
+        let explanation = last_lines
+            .iter()
+            .find(|line| reports_failure(line))
+            .or_else(|| last_lines.first());
+
+        let mut reason = re_error::StructuredError::from_summary("The agent exited");
+        if let Some(explanation) = explanation {
+            reason.add_detail(truncate_bytes(explanation, MAX_EXIT_REASON_DETAIL_BYTES));
+        }
+        reason
     }
 
     /// Shows an error inline in the transcript.
@@ -852,25 +922,18 @@ impl AgentSession {
         self.requests.elicitations.clear();
     }
 
-    pub fn set_mode(&mut self, mode_id: SessionModeId) {
-        self.agent.requested_mode = Some(mode_id.clone());
+    /// Asks the agent to change a session setting; its confirmed value arrives in a config update.
+    pub fn set_config_option(
+        &self,
+        config_id: SessionConfigId,
+        value: impl Into<SessionConfigOptionValue>,
+    ) {
         if let Some(connection) = &self.connection {
-            connection.send(AgentCommand::SetMode(mode_id));
+            connection.send(AgentCommand::SetConfigOption {
+                config_id,
+                value: value.into(),
+            });
         }
-    }
-
-    /// Asks the agent to switch the session to another model, e.g. from [`Transcript::model_selector`].
-    pub fn set_config_option(&self, config_id: SessionConfigId, value: SessionConfigValueId) {
-        if let Some(connection) = &self.connection {
-            connection.send(AgentCommand::SetConfigOption { config_id, value });
-        }
-    }
-
-    /// The mode last asked for with [`Self::set_mode`], for tests: nothing confirms it
-    /// without a connected agent.
-    #[cfg(feature = "testing")]
-    pub fn requested_mode(&self) -> Option<&SessionModeId> {
-        self.agent.requested_mode.as_ref()
     }
 
     pub fn authenticate(&mut self, method_id: AuthMethodId) {
@@ -1018,18 +1081,43 @@ impl AgentSession {
                 self.agent.name = agent_info.map(|info| info.title.unwrap_or(info.name));
                 self.agent.prompt_capabilities = capabilities.prompt_capabilities;
             }
+            AgentEvent::LoadingSession => {
+                self.phase = Phase::Connecting {
+                    status: "Loading session…".to_owned(),
+                };
+                self.transcript = Transcript::default();
+                self.history = History {
+                    replaying: true,
+                    len: 0,
+                };
+            }
             AgentEvent::SessionStarted {
-                modes,
+                session_id,
                 config_options,
-                ..
+                origin,
             } => {
-                self.agent.modes = modes;
+                let was_replaying = std::mem::take(&mut self.history.replaying);
+                if origin == SessionOrigin::Loaded {
+                    // A turn the earlier run quit in the middle of never finishes.
+                    self.transcript
+                        .fail_unfinished_tool_calls("Interrupted when the conversation was closed");
+                    self.history.len = self.transcript.items.len();
+                } else if was_replaying {
+                    // The agent knows nothing of what it replayed before failing.
+                    self.transcript = Transcript::default();
+                    self.transcript.push_note(
+                        "The agent could not continue the earlier conversation, so this is a new one",
+                        false,
+                    );
+                }
+                self.agent.session_id = Some(session_id);
                 self.transcript.config_options = config_options;
                 self.agent.auth = None;
                 self.phase = Phase::Ready;
                 self.finish_startup(StartupOutcome::Ready);
             }
             AgentEvent::AuthRequired { methods, message } => {
+                self.history.replaying = false;
                 self.phase = Phase::Connecting {
                     status: "Waiting for login".to_owned(),
                 };
@@ -1039,17 +1127,32 @@ impl AgentSession {
                 }
             }
             AgentEvent::Update(update) => {
-                if let SessionUpdate::CurrentModeUpdate(_) = &update {
-                    self.agent.requested_mode = None;
-                }
                 if let Some(failure) =
-                    McpStartupFailure::from_codex_update(&update, &self.launch.mcp_servers)
+                    McpStartupFailure::from_update(&update, &self.launch.mcp_servers)
                 {
-                    self.reports.mcp_startup_failures.push(failure.clone());
+                    self.reports.mcp_startup_failures.push(McpStartupReport {
+                        agent: self.agent.name.clone(),
+                        failure: failure.clone(),
+                    });
                     if let Some(note) = failure.replaced_by_agent_config_note() {
                         self.transcript.push_note(note, false);
                     } else {
                         self.transcript.push_mcp_startup_failure(failure);
+                    }
+                } else if let SessionUpdate::SessionInfoUpdate(info) = &update
+                    && let agent_client_protocol_schema::MaybeUndefined::Value(title) = &info.title
+                    && self.is_preamble(title)
+                {
+                    // Agents that name a session after its first prompt would name it after our
+                    // preamble, so we derive the title ourselves instead.
+                } else if let SessionUpdate::UserMessageChunk(chunk) = &update {
+                    // Live prompts are added as they are sent, so only a replayed history needs
+                    // the agent's copy.
+                    if self.history.replaying
+                        && let ContentBlock::Text(TextContent { text, .. }) = &chunk.content
+                        && !self.is_preamble(text)
+                    {
+                        self.transcript.push_replayed_user_text(text);
                     }
                 } else {
                     self.transcript.apply(update);
@@ -1144,7 +1247,7 @@ impl AgentSession {
                 self.finish_turn(TurnOutcome::Aborted, "The agent exited before finishing");
                 self.finish_startup(StartupOutcome::Exited);
                 self.phase = Phase::Disconnected {
-                    reason: "The agent exited".to_owned(),
+                    reason: self.exit_reason().to_string(),
                 };
                 self.connection = None;
                 self.requests.permissions.clear();
@@ -1365,17 +1468,274 @@ fn elicitation_tool_call(request: &CreateElicitationRequest) -> Option<&ToolCall
     }
 }
 
+/// Whether a stderr line reports a failure, e.g. `error: …`, `TypeError: …`, or a Rust panic.
+///
+/// Matches whole words, so that `0 errors` or `errorHandler.js` do not count.
+fn reports_failure(line: &str) -> bool {
+    line.split(|c: char| !c.is_alphanumeric())
+        .map(str::to_lowercase)
+        .any(|word| {
+            word.ends_with("error")
+                || word.ends_with("exception")
+                || matches!(word.as_str(), "fatal" | "panic" | "panicked")
+        })
+}
+
+/// Removes terminal escape sequences, e.g. the colors of a CLI's error message.
+fn strip_ansi_escapes(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\u{1b}' {
+            out.push(c);
+            continue;
+        }
+        match chars.next() {
+            // CSI, e.g. colors: ends at its first char in `@`..=`~`.
+            Some('[') => {
+                for c in chars.by_ref() {
+                    if ('@'..='~').contains(&c) {
+                        break;
+                    }
+                }
+            }
+            // OSC, e.g. hyperlinks and window titles: ends at BEL or `ESC \`.
+            Some(']') => {
+                while let Some(c) = chars.next() {
+                    if c == '\u{7}' || (c == '\u{1b}' && chars.next_if_eq(&'\\').is_some()) {
+                        break;
+                    }
+                }
+            }
+            // Character set selection, e.g. `ESC ( B` from `tput sgr0`.
+            Some('(' | ')' | '*' | '+') => {
+                chars.next();
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
 
     use agent_client_protocol_schema::v1::{
         ContentChunk, SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption,
-        SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
-        ToolCallUpdate, ToolCallUpdateFields,
+        ToolCall, ToolCallContent, ToolCallLocation, ToolCallUpdate, ToolCallUpdateFields,
     };
 
     use super::*;
+
+    fn user_chunk(text: &str) -> AgentEvent {
+        AgentEvent::Update(SessionUpdate::UserMessageChunk(ContentChunk::new(
+            ContentBlock::Text(TextContent::new(text.to_owned())),
+        )))
+    }
+
+    fn session_started(origin: SessionOrigin) -> AgentEvent {
+        AgentEvent::SessionStarted {
+            session_id: SessionId::new("earlier"),
+            config_options: Vec::new(),
+            origin,
+        }
+    }
+
+    fn user_prompts(session: &AgentSession) -> Vec<&str> {
+        session
+            .transcript
+            .items
+            .iter()
+            .filter_map(|entry| entry.item.user_prompt())
+            .map(|prompt| prompt.text.as_str())
+            .collect()
+    }
+
+    #[test]
+    fn a_loaded_session_replays_prompts_without_the_preamble() {
+        let mut session = AgentSession::default();
+        session.launch.preamble = Some("You run in the viewer.\nIt is at :9876.".to_owned());
+        session
+            .transcript
+            .push_note("Left over from before the load", false);
+        session.handle_event(AgentEvent::LoadingSession);
+
+        // The preamble of an earlier run, which named another port.
+        session.handle_event(user_chunk("You run in the viewer.\nIt is at :1234."));
+        session.handle_event(user_chunk("First question"));
+        session.handle_event(user_chunk("with a second block"));
+        session.handle_event(AgentEvent::Update(SessionUpdate::AgentMessageChunk(
+            ContentChunk::new(ContentBlock::Text(TextContent::new("An answer"))),
+        )));
+        session.handle_event(user_chunk("Second question"));
+        session.handle_event(session_started(SessionOrigin::Loaded));
+
+        assert_eq!(
+            user_prompts(&session),
+            ["First question\n\nwith a second block", "Second question"]
+        );
+        assert_eq!(session.session_id(), Some(&SessionId::new("earlier")));
+        assert_eq!(session.history_len(), 3);
+
+        // Once the session is open, prompts are added as they are sent, not as echoed.
+        session.handle_event(user_chunk("An echo"));
+        assert_eq!(user_prompts(&session).len(), 2);
+    }
+
+    #[test]
+    fn a_session_that_could_not_be_loaded_drops_what_it_replayed() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::LoadingSession);
+        session.handle_event(user_chunk("A question the new session never saw"));
+        session.handle_event(session_started(SessionOrigin::New));
+
+        assert!(user_prompts(&session).is_empty());
+        assert_eq!(session.history_len(), 0);
+        assert!(session.transcript.items.iter().any(|entry| matches!(
+            &entry.item,
+            TranscriptItem::Note { text, is_error: false } if text.contains("earlier conversation")
+        )));
+    }
+
+    /// A session title that an agent derived from our preamble is ignored.
+    #[test]
+    fn a_title_made_from_the_preamble_is_ignored() {
+        let mut session = AgentSession::default();
+        session.launch.preamble = Some("You run in\tthe viewer.\nIt is at :9876.".to_owned());
+        let title = |title: &str| {
+            AgentEvent::Update(SessionUpdate::SessionInfoUpdate(
+                agent_client_protocol_schema::v1::SessionInfoUpdate::new().title(title.to_owned()),
+            ))
+        };
+
+        session.handle_event(title(
+            "You run in the viewer. It is at :1234. What is on screen?",
+        ));
+        assert_eq!(session.transcript.title, None);
+
+        session.handle_event(title("What is on screen?"));
+        assert_eq!(
+            session.transcript.title.as_deref(),
+            Some("What is on screen?")
+        );
+    }
+
+    /// An agent that cannot load sessions replays nothing, but the user is still told.
+    #[test]
+    fn a_session_that_was_not_loaded_says_so() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::LoadingSession);
+        session.handle_event(session_started(SessionOrigin::New));
+
+        assert!(session.transcript.items.iter().any(|entry| matches!(
+            &entry.item,
+            TranscriptItem::Note { text, is_error: false } if text.contains("earlier conversation")
+        )));
+    }
+
+    #[test]
+    fn strips_terminal_escapes() {
+        for (input, expected) in [
+            ("plain", "plain"),
+            ("\u{1b}[1;31merror\u{1b}(B\u{1b}[m: x", "error: x"),
+            (
+                "\u{1b}]8;;https://x.y\u{1b}\\link\u{1b}]8;;\u{1b}\\ text",
+                "link text",
+            ),
+            ("\u{1b}]0;title\u{7}after", "after"),
+            ("cut off \u{1b}[31", "cut off "),
+        ] {
+            assert_eq!(strip_ansi_escapes(input), expected, "input: {input:?}");
+        }
+    }
+
+    #[test]
+    fn the_disconnect_reason_quotes_the_stderr_line_that_explains_it() {
+        use LineDirection::{Stderr, Stdout};
+
+        let disconnect_reason = |lines: &[(LineDirection, &str)]| {
+            let mut session = AgentSession::default();
+            for &(direction, line) in lines {
+                session.handle_event(AgentEvent::Log {
+                    direction,
+                    line: line.to_owned(),
+                });
+            }
+            session.handle_event(AgentEvent::Disconnected);
+            match session.phase() {
+                Phase::Disconnected { reason } => reason.clone(),
+                phase => panic!("Expected a disconnect, got {phase:?}"),
+            }
+        };
+
+        assert_eq!(disconnect_reason(&[]), "The agent exited");
+        assert_eq!(disconnect_reason(&[(Stdout, "{}")]), "The agent exited");
+        assert_eq!(
+            disconnect_reason(&[(Stderr, "starting"), (Stderr, "stopped"), (Stderr, "  ")]),
+            "The agent exited\n- stopped",
+            "Without an error, the last non-empty line explains the exit"
+        );
+        assert_eq!(
+            disconnect_reason(&[
+                (Stderr, "\u{1b}[31merror\u{1b}[0m: unknown option '--acp'"),
+                (Stderr, "(node:42) DeprecationWarning: punycode"),
+                (Stdout, "{}"),
+            ]),
+            "The agent exited\n- error: unknown option '--acp'",
+            "A warning after the error must not hide it"
+        );
+
+        let mut stale_error = vec![(Stderr, "error: retrying the MCP server")];
+        stale_error.extend([(Stderr, "0 errors"); EXIT_REASON_STDERR_LINES]);
+        assert_eq!(
+            disconnect_reason(&stale_error),
+            "The agent exited\n- 0 errors",
+            "An error long before the exit does not explain it"
+        );
+
+        let long_line = format!("Error: {}", "ü".repeat(MAX_EXIT_REASON_DETAIL_BYTES));
+        assert_eq!(
+            disconnect_reason(&[(Stderr, &long_line)]),
+            format!(
+                "The agent exited\n- {}",
+                truncate_bytes(&long_line, MAX_EXIT_REASON_DETAIL_BYTES)
+            ),
+            "Long lines are cut"
+        );
+    }
+
+    #[test]
+    fn a_login_during_a_load_replays_the_history_only_once() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::LoadingSession);
+        session.handle_event(user_chunk("First question"));
+        session.handle_event(AgentEvent::AuthRequired {
+            methods: Vec::new(),
+            message: "Log in".to_owned(),
+        });
+        session.handle_event(user_chunk("Not part of any replay"));
+
+        session.handle_event(AgentEvent::LoadingSession);
+        session.handle_event(user_chunk("First question"));
+        session.handle_event(session_started(SessionOrigin::Loaded));
+        assert_eq!(user_prompts(&session), ["First question"]);
+    }
+
+    #[test]
+    fn a_turn_the_earlier_run_quit_during_does_not_spin_forever() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::LoadingSession);
+        session.handle_event(AgentEvent::Update(SessionUpdate::ToolCall(
+            ToolCall::new("call-1", "Read a file").status(ToolCallStatus::InProgress),
+        )));
+        session.handle_event(session_started(SessionOrigin::Loaded));
+        let status = session
+            .transcript
+            .tool_call(&ToolCallId::new("call-1"))
+            .map(|call| call.status);
+        assert_eq!(status, Some(ToolCallStatus::Failed));
+    }
 
     #[test]
     fn startup_report() {
@@ -1387,7 +1747,6 @@ mod tests {
         };
         let session_started = || AgentEvent::SessionStarted {
             session_id: "session".into(),
-            modes: None,
             config_options: vec![
                 SessionConfigOption::select(
                     "model",
@@ -1397,6 +1756,7 @@ mod tests {
                 )
                 .category(SessionConfigOptionCategory::Model),
             ],
+            origin: SessionOrigin::New,
         };
 
         let mut session = starting();
@@ -1540,8 +1900,8 @@ mod tests {
         let mut session = AgentSession::default();
         session.handle_event(AgentEvent::SessionStarted {
             session_id: agent_client_protocol_schema::v1::SessionId::new("test-session"),
-            modes: None,
             config_options: Vec::new(),
+            origin: SessionOrigin::New,
         });
         let image = PromptImage {
             bytes: Arc::from([0_u8].as_slice()),
@@ -1786,7 +2146,7 @@ mod tests {
 
         let failures = session.take_reports().mcp_startup_failures;
         assert_eq!(failures.len(), 1);
-        assert_eq!(failures[0].server_name, "rerun");
+        assert_eq!(failures[0].failure.server_name, "rerun");
         assert!(session.take_reports().mcp_startup_failures.is_empty());
 
         session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
@@ -1824,7 +2184,12 @@ mod tests {
 
         let failures = session.take_reports().mcp_startup_failures;
         assert_eq!(failures.len(), 1);
-        assert!(failures[0].replaced_by_agent_config_note().is_some());
+        assert!(
+            failures[0]
+                .failure
+                .replaced_by_agent_config_note()
+                .is_some()
+        );
     }
 
     #[test]
@@ -1838,6 +2203,67 @@ mod tests {
             session.transcript.items[0].item,
             TranscriptItem::ToolCall(_)
         );
+    }
+
+    /// What claude-agent-acp sends for a host-provided MCP server, verbatim.
+    fn claude_code_mcp_status(status: &str, text: &str) -> SessionUpdate {
+        let meta = serde_json::json!({
+            "claudeCode": { "kind": "mcpServerStatus", "server": "rerun", "status": status },
+        });
+        SessionUpdate::AgentMessageChunk(
+            ContentChunk::new(ContentBlock::Text(TextContent::new(text)))
+                .meta(meta.as_object().cloned()),
+        )
+    }
+
+    #[test]
+    fn claude_code_mcp_startup_failures_are_reported() {
+        let requested = McpStdioServer {
+            name: "rerun".to_owned(),
+            command: PathBuf::from("/Applications/Rerun.app/Contents/MacOS/rerun"),
+            args: vec!["viewer-mcp".to_owned()],
+        };
+        let mut session = AgentSession::default();
+        session.launch.mcp_servers = vec![requested.clone()];
+        session.begin_turn("show the recording".into());
+        session.handle_event(AgentEvent::Update(claude_code_mcp_status(
+            "failed",
+            "**MCP server \"rerun\" failed to start:** Its tools are unavailable in this \
+             session. Run /mcp for the error.",
+        )));
+
+        let TranscriptItem::McpStartupFailure(failure) = &session.transcript.items[1].item else {
+            panic!("expected a dedicated MCP startup failure");
+        };
+        assert_eq!(failure.requested_command.as_ref(), Some(&requested.command));
+        assert_eq!(
+            failure.error,
+            "Its tools are unavailable in this session. Run /mcp for the error."
+        );
+
+        let failures = session.take_reports().mcp_startup_failures;
+        assert_eq!(failures.len(), 1);
+        assert_eq!(failures[0].failure.server_name, "rerun");
+
+        session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
+        let report = session.take_reports().turns.pop().unwrap();
+        assert_eq!(report.response, "");
+    }
+
+    #[test]
+    fn claude_code_mcp_needs_auth_is_not_a_startup_failure() {
+        let mut session = AgentSession::default();
+        session.handle_event(AgentEvent::Update(claude_code_mcp_status(
+            "needs-auth",
+            "**MCP server \"rerun\" needs authentication:** Its tools are unavailable until \
+             the server is authenticated.",
+        )));
+
+        assert!(session.take_reports().mcp_startup_failures.is_empty());
+        assert!(!matches!(
+            session.transcript.items[0].item,
+            TranscriptItem::McpStartupFailure(_)
+        ));
     }
 
     fn call(

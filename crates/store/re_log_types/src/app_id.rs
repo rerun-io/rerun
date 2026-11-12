@@ -1,5 +1,5 @@
 use crate::entry_name::MAX_ENTRY_NAME_BYTES;
-use crate::{EntryId, EntryName, RecordingId};
+use crate::{EntryId, EntryName};
 
 // These hash parameters are part of persisted application IDs and must remain stable for
 // compatibility.
@@ -144,10 +144,6 @@ impl ApplicationId {
     pub fn random() -> Self {
         Self::try_new(format!("app_{}", uuid::Uuid::new_v4().simple()))
             .expect("generated application IDs are valid entry names")
-    }
-
-    pub(crate) fn as_recording_id(&self) -> RecordingId {
-        RecordingId::from(self.as_str())
     }
 }
 

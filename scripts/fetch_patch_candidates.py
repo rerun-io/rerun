@@ -241,20 +241,35 @@ def fetch_rerun_releases() -> list[Release]:
         return []
 
 
-def find_release_after(merged_at: str, releases: list[Release]) -> Release | None:
-    """Find the earliest rerun release published after the given merge date."""
+def is_commit_in_tag(sha: str, tag: str) -> bool:
+    """Whether `sha` is an ancestor of (or equal to) `tag` in rerun-io/rerun."""
+    try:
+        result = subprocess.run(
+            ["gh", "api", f"repos/{OWNER}/rerun/compare/{sha}...{tag}", "--jq", ".status"],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except subprocess.CalledProcessError as e:
+        eprint(f"Warning: could not compare {sha[:8]} with {tag}: {e.stderr.strip()}")
+        return False
+    return result.stdout.strip() in ("ahead", "identical")
+
+
+def maybe_warn(rerun_sha: str | None, merged_at: str, releases: list[Release]) -> str | None:
+    """
+    Creates a warning if a release already contains the commit, which means the label is outdated.
+
+    Only checks ancestry, so commits that shipped as a cherry-pick in a patch release are not detected.
+    """
+    if rerun_sha is None or not merged_at:
+        return None
     for release in releases:
-        if "prerelease" in release.tag:
+        if "prerelease" in release.tag or release.published_at <= merged_at:
             continue
-        if release.published_at > merged_at:
-            return release
+        if is_commit_in_tag(rerun_sha, release.tag):
+            return f"Shipped in {release.tag}! Outdated label?"
     return None
-
-
-def maybe_warn(merged_at: str, releases: list[Release]) -> str | None:
-    """Creates a warning if a release was published after merge, which may indicate an outdated label."""
-    release = find_release_after(merged_at, releases) if merged_at else None
-    return f"{release.tag} released after merge! Outdated label?" if release else None
 
 
 def remove_label_from_pr(repo: str, pr_number: int, label: str) -> bool:
@@ -380,7 +395,7 @@ def main() -> None:
     parser.add_argument(
         "--remove-outdated-labels",
         action="store_true",
-        help="Remove patch labels from PRs where a release was published after merge.",
+        help="Remove patch labels from PRs whose commit already shipped in a release.",
     )
     parser.add_argument(
         "--dry-run",
@@ -436,7 +451,7 @@ def main() -> None:
                 merged=True,
                 rerun_sha=rerun_sha,
                 reality_sha=reality_sha,
-                warning=maybe_warn(pr.merged_at, releases),
+                warning=maybe_warn(rerun_sha, pr.merged_at, releases),
             )
         )
 

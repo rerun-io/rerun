@@ -1,8 +1,22 @@
-/// Amount of available RAM on this machine.
+/// Amount of RAM available to this process.
+///
+/// On Linux this is capped by the memory limit of the process's cgroup and its ancestors,
+/// so inside a container it is the container's limit rather than the host's RAM.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn total_ram_in_bytes() -> Option<u64> {
     re_tracing::profile_function!();
 
+    let sys = system_info();
+
+    let bytes = cfg_select! {
+        target_os = "linux" => cgroup_memory_limit().unwrap_or_else(|| sys.total_memory()),
+        _ => sys.total_memory(),
+    };
+    if bytes == 0 { None } else { Some(bytes) }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn system_info() -> sysinfo::System {
     let mut sys = sysinfo::System::new_with_specifics(
         sysinfo::RefreshKind::nothing()
             .with_memory(sysinfo::MemoryRefreshKind::nothing().with_ram()),
@@ -13,8 +27,22 @@ pub fn total_ram_in_bytes() -> Option<u64> {
         sys.refresh_memory();
     }
 
-    let bytes = sys.total_memory();
-    if bytes == 0 { None } else { Some(bytes) }
+    sys
+}
+
+#[cfg(target_os = "linux")]
+fn cgroup_memory_limit() -> Option<u64> {
+    re_tracing::profile_function!();
+
+    let mut sys = sysinfo::System::new();
+    let pid = sysinfo::get_current_pid().ok()?;
+    sys.refresh_processes_specifics(
+        sysinfo::ProcessesToUpdate::Some(&[pid]),
+        false,
+        sysinfo::ProcessRefreshKind::nothing(),
+    );
+    let limits = sys.process(pid)?.cgroup_limits()?;
+    Some(limits.total_memory)
 }
 
 /// Amount of available RAM on this machine.

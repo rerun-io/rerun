@@ -315,10 +315,6 @@ pub struct GetWriteAccessGrantRequest {
     /// A grant does not reserve the key; another writer may publish first and make this write fail.
     #[prost(string, tag = "1")]
     pub key: ::prost::alloc::string::String,
-    /// The requested storage location.
-    /// The request fails if this is absent and the server has no default location.
-    #[prost(message, optional, tag = "2")]
-    pub location: ::core::option::Option<Location>,
     /// Exact object size, if known; absent means unknown.
     /// Servers use it to select the upload method and part size.
     #[prost(uint64, optional, tag = "3")]
@@ -330,6 +326,10 @@ pub struct GetWriteAccessGrantRequest {
     /// Required signing mode for the grant's HTTP requests. UNSPECIFIED means SIGNED.
     #[prost(enumeration = "UrlSigning", tag = "5")]
     pub signing: i32,
+    /// The requested alias, or the server's default if absent.
+    /// TODO(RR-6055): Explicit selection requires support negotiation before sending to older servers.
+    #[prost(string, optional, tag = "6")]
+    pub storage_location: ::core::option::Option<::prost::alloc::string::String>,
 }
 impl ::prost::Name for GetWriteAccessGrantRequest {
     const NAME: &'static str = "GetWriteAccessGrantRequest";
@@ -341,19 +341,69 @@ impl ::prost::Name for GetWriteAccessGrantRequest {
         "/rerun.cloud.v1alpha1.GetWriteAccessGrantRequest".into()
     }
 }
-/// Selects a cloud location for an object.
-///
-/// TODO(grtlr): Define provider, region, and network constraints.
+/// Requests a snapshot of the currently loaded keychain entries.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct Location {}
-impl ::prost::Name for Location {
-    const NAME: &'static str = "Location";
+pub struct GetStorageLocationsRequest {}
+impl ::prost::Name for GetStorageLocationsRequest {
+    const NAME: &'static str = "GetStorageLocationsRequest";
     const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
     fn full_name() -> ::prost::alloc::string::String {
-        "rerun.cloud.v1alpha1.Location".into()
+        "rerun.cloud.v1alpha1.GetStorageLocationsRequest".into()
     }
     fn type_url() -> ::prost::alloc::string::String {
-        "/rerun.cloud.v1alpha1.Location".into()
+        "/rerun.cloud.v1alpha1.GetStorageLocationsRequest".into()
+    }
+}
+/// Configuration descriptors only; no credentials or reachability guarantees.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetStorageLocationsResponse {
+    /// One descriptor per keychain entry, sorted by alias.
+    #[prost(message, repeated, tag = "1")]
+    pub storage_locations: ::prost::alloc::vec::Vec<StorageLocation>,
+    /// Alias used when no storage location is specified.
+    #[prost(string, tag = "2")]
+    pub default_alias: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetStorageLocationsResponse {
+    const NAME: &'static str = "GetStorageLocationsResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.GetStorageLocationsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.GetStorageLocationsResponse".into()
+    }
+}
+/// A storage location configured in this catalog deployment.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct StorageLocation {
+    /// Deployment-local alias accepted by storage_location request fields.
+    #[prost(string, tag = "1")]
+    pub alias: ::prost::alloc::string::String,
+    /// Optional human-readable label; use alias to identify the location in requests.
+    #[prost(string, optional, tag = "2")]
+    pub display_name: ::core::option::Option<::prost::alloc::string::String>,
+    /// Object-store region configured for this location.
+    #[prost(string, tag = "3")]
+    pub region: ::prost::alloc::string::String,
+    /// Bucket name, without a URI scheme or object path.
+    #[prost(string, tag = "4")]
+    pub bucket_name: ::prost::alloc::string::String,
+    /// Object keys are relative to this prefix.
+    #[prost(string, optional, tag = "5")]
+    pub prefix: ::core::option::Option<::prost::alloc::string::String>,
+    /// The location forbids writes even if its credentials permit them.
+    #[prost(bool, tag = "6")]
+    pub read_only: bool,
+}
+impl ::prost::Name for StorageLocation {
+    const NAME: &'static str = "StorageLocation";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.StorageLocation".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.StorageLocation".into()
     }
 }
 /// Authorization to create one object.
@@ -640,10 +690,22 @@ pub struct DataSource {
     /// What kind of data is it (e.g. rrd, mcap, Lance, etc)?
     #[prost(enumeration = "DataSourceKind", tag = "2")]
     pub typ: i32,
-    /// Use a specific object store configuration for this registration.
-    /// Inferred from the URL if not specified.
+    /// Deprecated name of storage_location. If both are set, their values must match.
+    #[deprecated]
     #[prost(string, optional, tag = "6")]
     pub object_store_config: ::core::option::Option<::prost::alloc::string::String>,
+    /// Selects a configured storage location by its alias.
+    #[prost(string, optional, tag = "7")]
+    pub storage_location: ::core::option::Option<::prost::alloc::string::String>,
+    /// The store to register out of this data source.
+    ///
+    /// When unset, the first store of the dataset's kind (recording or blueprint) in the source is
+    /// registered.
+    /// Must be unset when `prefix` is true.
+    ///
+    /// TODO(RR-6283): not yet implemented, returns UNIMPLEMENTED when set.
+    #[prost(message, optional, tag = "8")]
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -1181,6 +1243,17 @@ pub struct GetRrdManifestRequest {
     /// It is not guaranteed that the server will honor this.
     #[prost(bool, tag = "2")]
     pub generate_direct_urls: bool,
+    /// What this client implements, as capability names.
+    ///
+    /// Names follow the rules of `ServerCapabilities`. Servers ignore names they do not know.
+    /// Known names:
+    ///
+    /// * `dataset:rrd_manifest_key:store_id` — the client picks the manifest out of a fetched
+    ///    `RrdFooter` by `RrdManifestKey.store_id`, rather than by segment id.
+    ///    Without it, the server sends no direct URL for a segment whose segment id is not its
+    ///    store's recording id, and returns that segment's manifests in the response instead.
+    #[prost(string, repeated, tag = "3")]
+    pub client_capabilities: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
 impl ::prost::Name for GetRrdManifestRequest {
     const NAME: &'static str = "GetRrdManifestRequest";
@@ -1708,6 +1781,17 @@ pub struct FindChunksRequest {
     /// Which direct chunk URLs to return. Defaults to `DIRECT_URL_MODE_SIGNED`.
     #[prost(enumeration = "DirectUrlMode", tag = "5")]
     pub direct_url_mode: i32,
+    /// Which data the request reads in regards to the current indexing policy.
+    /// Defaults to `DATASET_QUERY_SCOPE_FULL`.
+    ///
+    /// - `DATASET_QUERY_SCOPE_INDEXED`: read only indexed data.
+    ///    Selecting every entity selects only the indexed ones.
+    ///    Naming unindexed data fails with `FailedPrecondition`.
+    /// - `DATASET_QUERY_SCOPE_FULL`: all data, indexed or not.
+    ///    Unindexed data is read from the recordings themselves, so it needs explicit segments.
+    ///    Without them, a request that touches unindexed data fails with `FailedPrecondition`.
+    #[prost(enumeration = "DatasetQueryScope", tag = "6")]
+    pub scope: i32,
     /// The selection mode. Required.
     ///
     /// A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset
@@ -2617,6 +2701,45 @@ impl ::prost::Name for UpdateDatasetEntryResponse {
         "/rerun.cloud.v1alpha1.UpdateDatasetEntryResponse".into()
     }
 }
+/// Request for `ApplyDatasetPolicy`.
+///
+/// This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ApplyDatasetPolicyRequest {
+    /// The new policies. An omitted chunk indexing policy indexes everything.
+    #[prost(message, optional, tag = "1")]
+    pub policy: ::core::option::Option<DatasetPolicy>,
+}
+impl ::prost::Name for ApplyDatasetPolicyRequest {
+    const NAME: &'static str = "ApplyDatasetPolicyRequest";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ApplyDatasetPolicyRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ApplyDatasetPolicyRequest".into()
+    }
+}
+/// Response for `ApplyDatasetPolicy`.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ApplyDatasetPolicyResponse {
+    /// The updated dataset entry.
+    #[prost(message, optional, tag = "1")]
+    pub dataset: ::core::option::Option<DatasetEntry>,
+    /// The tasks that apply the policies. Empty if nothing was applied.
+    #[prost(message, repeated, tag = "2")]
+    pub task_ids: ::prost::alloc::vec::Vec<super::super::common::v1alpha1::TaskId>,
+}
+impl ::prost::Name for ApplyDatasetPolicyResponse {
+    const NAME: &'static str = "ApplyDatasetPolicyResponse";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ApplyDatasetPolicyResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ApplyDatasetPolicyResponse".into()
+    }
+}
 /// Request for `RegisterTable`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct RegisterTableRequest {
@@ -2853,7 +2976,8 @@ pub struct DatasetDetails {
     #[prost(message, optional, tag = "7")]
     pub asset_dataset: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// Dataset policies, such as the chunk indexing policy.
-    /// If omitted (e.g. by older clients), the server will make a choice on its own.
+    ///
+    /// `UpdateDatasetEntry` ignores this field: use `ApplyDatasetPolicy` to change it.
     #[prost(message, optional, tag = "100")]
     pub policy: ::core::option::Option<DatasetPolicy>,
 }
@@ -3168,6 +3292,12 @@ pub struct RrdManifestKey {
     /// Presigned URL the client fetches the manifest's byte range from.
     #[prost(string, optional, tag = "4")]
     pub direct_url: ::core::option::Option<::prost::alloc::string::String>,
+    /// The store whose manifest to pick from the footer, which may hold manifests for several stores.
+    ///
+    /// Optional: legacy registrations leave this unset; pick the manifest whose recording id is the
+    /// segment id instead.
+    #[prost(message, optional, tag = "5")]
+    pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
 }
 impl ::prost::Name for RrdManifestKey {
     const NAME: &'static str = "RrdManifestKey";
@@ -3726,6 +3856,26 @@ pub mod rerun_cloud_service_client {
             ));
             self.inner.server_streaming(req, path, codec).await
         }
+        /// List storage locations, sorted by alias.
+        pub async fn get_storage_locations(
+            &mut self,
+            request: impl tonic::IntoRequest<super::GetStorageLocationsRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetStorageLocationsResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetStorageLocations",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "GetStorageLocations",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
         /// Subscribe to catalog events as they happen.
         ///
         /// The stream yields one response per event and stays open until the client drops it.
@@ -3933,6 +4083,32 @@ pub mod rerun_cloud_service_client {
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.cloud.v1alpha1.RerunCloudService",
                 "UpdateDatasetEntry",
+            ));
+            self.inner.unary(req, path, codec).await
+        }
+        /// Set the policies of a dataset and apply them to the data already registered.
+        ///
+        /// Applying runs asynchronously: wait for the tasks in the response with
+        /// `QueryTasksOnCompletion` before relying on the new policies.
+        ///
+        /// The dataset is identified by the `x-rerun-entry-id` header (see the `Headers` section at the
+        /// top of this file).
+        pub async fn apply_dataset_policy(
+            &mut self,
+            request: impl tonic::IntoRequest<super::ApplyDatasetPolicyRequest>,
+        ) -> std::result::Result<tonic::Response<super::ApplyDatasetPolicyResponse>, tonic::Status>
+        {
+            self.inner.ready().await.map_err(|e| {
+                tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
+            })?;
+            let codec = tonic_prost::ProstCodec::default();
+            let path = http::uri::PathAndQuery::from_static(
+                "/rerun.cloud.v1alpha1.RerunCloudService/ApplyDatasetPolicy",
+            );
+            let mut req = request.into_request();
+            req.extensions_mut().insert(GrpcMethod::new(
+                "rerun.cloud.v1alpha1.RerunCloudService",
+                "ApplyDatasetPolicy",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -4764,6 +4940,11 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::DoBandwidthTestRequest>,
         ) -> std::result::Result<tonic::Response<Self::DoBandwidthTestStream>, tonic::Status>;
+        /// List storage locations, sorted by alias.
+        async fn get_storage_locations(
+            &self,
+            request: tonic::Request<super::GetStorageLocationsRequest>,
+        ) -> std::result::Result<tonic::Response<super::GetStorageLocationsResponse>, tonic::Status>;
         /// Server streaming response type for the WatchEvents method.
         type WatchEventsStream: tonic::codegen::tokio_stream::Stream<
                 Item = std::result::Result<super::WatchEventsResponse, tonic::Status>,
@@ -4857,6 +5038,17 @@ pub mod rerun_cloud_service_server {
             &self,
             request: tonic::Request<super::UpdateDatasetEntryRequest>,
         ) -> std::result::Result<tonic::Response<super::UpdateDatasetEntryResponse>, tonic::Status>;
+        /// Set the policies of a dataset and apply them to the data already registered.
+        ///
+        /// Applying runs asynchronously: wait for the tasks in the response with
+        /// `QueryTasksOnCompletion` before relying on the new policies.
+        ///
+        /// The dataset is identified by the `x-rerun-entry-id` header (see the `Headers` section at the
+        /// top of this file).
+        async fn apply_dataset_policy(
+            &self,
+            request: tonic::Request<super::ApplyDatasetPolicyRequest>,
+        ) -> std::result::Result<tonic::Response<super::ApplyDatasetPolicyResponse>, tonic::Status>;
         /// Fetch metadata about a specific table.
         ///
         /// The table is identified by the `x-rerun-entry-id` header, falling back to the deprecated
@@ -5423,6 +5615,49 @@ pub mod rerun_cloud_service_server {
                     };
                     Box::pin(fut)
                 }
+                "/rerun.cloud.v1alpha1.RerunCloudService/GetStorageLocations" => {
+                    #[allow(non_camel_case_types)]
+                    struct GetStorageLocationsSvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::GetStorageLocationsRequest>
+                        for GetStorageLocationsSvc<T>
+                    {
+                        type Response = super::GetStorageLocationsResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::GetStorageLocationsRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::get_storage_locations(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = GetStorageLocationsSvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
                 "/rerun.cloud.v1alpha1.RerunCloudService/WatchEvents" => {
                     #[allow(non_camel_case_types)]
                     struct WatchEventsSvc<T: RerunCloudService>(pub Arc<T>);
@@ -5748,6 +5983,49 @@ pub mod rerun_cloud_service_server {
                     let inner = self.inner.clone();
                     let fut = async move {
                         let method = UpdateDatasetEntrySvc(inner);
+                        let codec = tonic_prost::ProstCodec::default();
+                        let mut grpc = tonic::server::Grpc::new(codec)
+                            .apply_compression_config(
+                                accept_compression_encodings,
+                                send_compression_encodings,
+                            )
+                            .apply_max_message_size_config(
+                                max_decoding_message_size,
+                                max_encoding_message_size,
+                            );
+                        let res = grpc.unary(method, req).await;
+                        Ok(res)
+                    };
+                    Box::pin(fut)
+                }
+                "/rerun.cloud.v1alpha1.RerunCloudService/ApplyDatasetPolicy" => {
+                    #[allow(non_camel_case_types)]
+                    struct ApplyDatasetPolicySvc<T: RerunCloudService>(pub Arc<T>);
+                    impl<T: RerunCloudService>
+                        tonic::server::UnaryService<super::ApplyDatasetPolicyRequest>
+                        for ApplyDatasetPolicySvc<T>
+                    {
+                        type Response = super::ApplyDatasetPolicyResponse;
+                        type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
+                        fn call(
+                            &mut self,
+                            request: tonic::Request<super::ApplyDatasetPolicyRequest>,
+                        ) -> Self::Future {
+                            let inner = Arc::clone(&self.0);
+                            let fut = async move {
+                                <T as RerunCloudService>::apply_dataset_policy(&inner, request)
+                                    .await
+                            };
+                            Box::pin(fut)
+                        }
+                    }
+                    let accept_compression_encodings = self.accept_compression_encodings;
+                    let send_compression_encodings = self.send_compression_encodings;
+                    let max_decoding_message_size = self.max_decoding_message_size;
+                    let max_encoding_message_size = self.max_encoding_message_size;
+                    let inner = self.inner.clone();
+                    let fut = async move {
+                        let method = ApplyDatasetPolicySvc(inner);
                         let codec = tonic_prost::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

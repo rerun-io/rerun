@@ -1,10 +1,5 @@
 var cacheName = "rerun-viewer-pwa";
-var filesToCache = [
-  "./",
-  "./index.html",
-  "./re_viewer.js",
-  "./re_viewer_bg.wasm",
-];
+var filesToCache = ["./", "./index.html", "./re_viewer.js", "./re_viewer_bg.wasm"];
 
 /* Start the service worker and cache all of the app's content */
 self.addEventListener("install", function (e) {

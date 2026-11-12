@@ -14,7 +14,7 @@
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
 /// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
 ///
-/// \example archetypes/segmentation_image_simple title="Simple segmentation image" image="https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/1200w.png"
+/// \example archetypes/segmentation_image_simple title="Simple segmentation image" image="https://static.rerun.io/segmentation_image_simple/f8aac62abcf4c59c5d62f9ebc2d86fd0285c1736/1200w.png" alt="2D view showing a segmentation image split into four quadrants colored bright red, muted red, and green"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Image & tensor")]

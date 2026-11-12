@@ -1,0 +1,98 @@
+---
+title: Events and Timelines
+order: 400
+description: How events are placed on one or more timelines, and how Rerun tracks time
+---
+
+## Timelines
+
+Each piece of logged data is associated with one or more timelines.
+
+The logging SDK can automatically create two timelines for you:
+* `log_time` - a temporal timeline with the time of the log call. Enabled by default; opt-out via the `RERUN_LOG_TIME` environment variable or `set_log_time_enabled`.
+* `log_tick` - a sequence timeline with the sequence number of the log call. Disabled by default; opt-in via the `RERUN_LOG_TICK` environment variable or `set_log_tick_enabled`.
+
+You can use the `set_time` function (Python reference: [set_time](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time)) to associate logs with other timestamps on other timelines. For example:
+
+snippet: tutorials/timelines_example
+
+This will add the logged points to the timelines `frame_idx` and `sensor_time`, as well as the automatic `log_time` timeline (and `log_tick`, if you opted in).
+You can then choose which timeline you want to organize your data along in the expanded timeline view in the bottom of the Rerun Viewer.
+
+### How to log precise times
+Rerun supports three types of indices, all encoded as `i64`:
+* Sequential
+* Timestamp (nanoseconds since Unix epoch)
+* Timedelta/duration (nanoseconds)
+
+Here's how you use them:
+
+snippet: concepts/indices
+
+### Reset active timeline & differing data per timeline
+
+You can clear the active timeline(s) at any point using `reset_time`.
+This can be particularly useful when you want to log different data for individual timelines as illustrated here:
+
+snippet: concepts/different_data_per_timeline
+
+On one timeline the points will appear blue, on the other they appear red.
+
+### Sending many time points at once
+To get full control over the logged timelines you can use [`send_columns`](../send-data/send-columns.md).
+This is often a lot more efficient when you already have a chunk of temporal data, e.g. some sensor value over time.
+
+### Can I use floats or custom units on a timeline?
+
+No.
+All timelines store `i64` values, and the only types are sequence, timestamp, and duration.
+There are no float timelines, and no custom units.
+
+To index data by something that is not time, such as distance traveled or a rotation angle, scale it to an integer and use a sequence timeline.
+For example, log distance in millimeters:
+
+```python
+rr.set_time("distance_mm", sequence=round(distance_m * 1000))
+```
+
+Durations and timestamps given as floats (in seconds) are converted to integer nanoseconds.
+
+### Several timestamps per sample
+
+If one sample has several times (for example a capture time, a receive time, and a frame number), set each of them on its own timeline before the `log` call.
+The logged data appears on all of these timelines:
+
+```python
+rr.set_time("frame", sequence=frame_idx)
+rr.set_time("capture_time", timestamp=np.datetime64(capture_ns, "ns"))
+rr.set_time("receive_time", timestamp=np.datetime64(receive_ns, "ns"))
+rr.log("camera/image", rr.Image(image))
+```
+
+With `send_columns`, pass one `rr.TimeColumn` per timeline in `indexes`.
+
+
+## Events
+
+An _event_ refers to an instance of logging one or more component batches to one or more timelines. In the viewer, the Time panel provides a graphical representation of these events across time and entities.
+
+<picture>
+  <img src="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/full.png" alt="Time panel streams for a scalar entity, with a tooltip on the Scalar component row reporting 5 events and a value">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/1200w.png">
+</picture>
+
+
+## Static data
+
+The [`rr.log()`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function has a `static=False` default argument.
+If `static=True` is used instead, the data logged becomes *static*. Static data belongs to all timelines (existing ones, and ones not yet created) and shadows any temporal data of the same type on the same entity.
+
+This is useful for data that isn't part of normal data capture, but sets the scene for how it should be shown.
+For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be static.
+
+Similarly, [coordinate systems](transforms.md) or [annotation context](../../viewer/blueprints-and-views/annotation-context.md) are typically static.
+
+You can read more about static data in the [dedicated section](static.md).
