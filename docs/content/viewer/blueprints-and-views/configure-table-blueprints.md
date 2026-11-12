@@ -97,6 +97,8 @@ Save the blueprint to an `.rbl` file, then register it on the table (`catalog_ur
 snippet: howto/visualization/configure_table_blueprints[register_table]
 
 `register_blueprint` sets the default unless you pass `set_default=False`.
+A blueprint can be registered under a `name`, which is unique among the blueprints of the table.
+Registering under a name another blueprint already has raises `AlreadyExistsError`.
 
 > [!NOTE]
 > Registration does not upload the file: the server must be able to read the URI.
@@ -171,7 +173,7 @@ Upload the `.rbl` file to storage the server has permission to read, then regist
 
 snippet: howto/visualization/configure_table_blueprints[register_remote]
 
-For dataset segment tables, use `get_dataset(…).register_blueprint(uri, segment_table=True)` instead.
+For dataset segment tables, use `get_dataset(…).register_blueprint(uri, name=…, segment_table=True)` instead.
 
 ## What the blueprint stores
 

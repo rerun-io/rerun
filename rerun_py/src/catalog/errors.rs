@@ -120,6 +120,9 @@ enum ExternalError {
 
     #[error(transparent)]
     InvalidLayerNameError(#[from] re_types_core::InvalidLayerNameError),
+
+    #[error(transparent)]
+    InvalidBlueprintNameError(#[from] re_catalog_client::InvalidBlueprintNameError),
 }
 
 const _: () = assert!(
@@ -279,6 +282,8 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::InvalidLayerNameError(err) => PyValueError::new_err(err.to_string()),
+
+            ExternalError::InvalidBlueprintNameError(err) => PyValueError::new_err(err.to_string()),
         }
     }
 }

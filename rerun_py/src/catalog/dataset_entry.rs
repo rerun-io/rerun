@@ -9,7 +9,7 @@ use parking_lot::Mutex;
 use pyo3::exceptions::{PyOverflowError, PyRuntimeError, PyValueError};
 use pyo3::types::{PyAnyMethods as _, PyTuple};
 use pyo3::{Bound, Py, PyAny, PyRef, PyRefMut, PyResult, Python, pyclass, pymethods};
-use re_catalog_client::DatasetSelection;
+use re_catalog_client::{BlueprintName, DatasetSelection};
 use re_chunk_store::LazyStore;
 use re_datafusion::{DatasetManifestProvider, SegmentTableProvider};
 use re_log_types::EntryId;
@@ -22,11 +22,11 @@ use re_redap_client::{DatasetSchema, SegmentChunkProvider};
 use re_types_core::LayerName;
 
 use super::chunk_indexing_policy::{PyNameSelection, to_policy, to_py_tuple};
-use super::registration_handle::PyRegistrationHandleInternal;
+use super::registration_handle::{DEFAULT_TIMEOUT_SECS, PyRegistrationHandleInternal};
 use super::write_operation::PyWriteOperationInternal;
 use super::{
     PyCatalogClientInternal, PyDatasetInfoInternal, PyEntryDetails, PyTableProviderAdapterInternal,
-    to_py_err,
+    blueprint_id_and_name, to_py_err,
 };
 use crate::catalog::PySchemaInternal;
 use crate::catalog::entry::set_entry_name;
@@ -325,13 +325,13 @@ impl PyDatasetEntryInternal {
     /// One segment's mutable properties as a single-row `RecordBatch`, plus its revision.
     ///
     /// `None` means the segment has no properties.
-    fn _get_segment_properties(
+    fn get_segment_properties(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
         segment_id: String,
     ) -> PyResult<Option<(PyArrowType<RecordBatch>, u64)>> {
         let _span =
-            read_trace_context_from_python(py, "DatasetEntry._get_segment_properties").entered();
+            read_trace_context_from_python(py, "DatasetEntry.get_segment_properties").entered();
         let connection = self_.client.borrow(py).connection().clone();
 
         Ok(connection
@@ -344,7 +344,7 @@ impl PyDatasetEntryInternal {
     /// With `expected_revision` set the write only lands if the stored revision matches, and raises
     /// otherwise. `0` means "only if the segment has no properties yet".
     #[pyo3(signature = (segment_id, properties, expected_revision = None))]
-    fn _set_segment_properties(
+    fn set_segment_properties(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
         segment_id: String,
@@ -352,7 +352,7 @@ impl PyDatasetEntryInternal {
         expected_revision: Option<u64>,
     ) -> PyResult<u64> {
         let _span =
-            read_trace_context_from_python(py, "DatasetEntry._set_segment_properties").entered();
+            read_trace_context_from_python(py, "DatasetEntry.set_segment_properties").entered();
         let connection = self_.client.borrow(py).connection().clone();
 
         connection.set_segment_properties(
@@ -377,70 +377,167 @@ impl PyDatasetEntryInternal {
         connection.delete_segment_properties(py, self_.entry_details.id, segment_ids)
     }
 
-    /// The default blueprint segment ID for this dataset, if any.
-    fn default_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
-        self_
-            .dataset_details
-            .default_blueprint_segment
-            .as_ref()
-            .map(ToString::to_string)
+    /// The ID and name of each blueprint, with this dataset as the blueprint dataset.
+    ///
+    /// The name is `None` for a blueprint without a name.
+    fn blueprints(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+    ) -> PyResult<Vec<(String, Option<String>)>> {
+        let _span = read_trace_context_from_python(py, "DatasetEntry.blueprints").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+        let blueprint_dataset = self_.entry_details.id;
+
+        let blueprints = wait_for_future(py, async {
+            connection
+                .inner()
+                .get_blueprints(blueprint_dataset)
+                .await
+                .map_err(to_py_err)
+        })?;
+        Ok(blueprints.into_iter().map(blueprint_id_and_name).collect())
     }
 
-    /// Set the default blueprint segment ID for this dataset.
+    /// The ID and name of the blueprint with this name, if any, with this dataset as the
+    /// blueprint dataset.
     ///
-    /// Pass `None` to clear the bluprint. This fails if the change cannot be made to the remote server.
-    #[pyo3(signature = (segment_id))]
-    fn set_default_blueprint_segment_id(
+    /// Raises `ValueError` if `name` is empty.
+    fn blueprint_by_name(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        name: String,
+    ) -> PyResult<Option<(String, Option<String>)>> {
+        let _span = read_trace_context_from_python(py, "DatasetEntry.blueprint_by_name").entered();
+        let name = BlueprintName::try_new(name).map_err(to_py_err)?;
+        let connection = self_.client.borrow(py).connection().clone();
+        let blueprint_dataset = self_.entry_details.id;
+
+        let blueprint = wait_for_future(py, async {
+            connection
+                .inner()
+                .get_blueprint_by_name(blueprint_dataset, &name)
+                .await
+                .map_err(to_py_err)
+        })?;
+        Ok(blueprint.map(blueprint_id_and_name))
+    }
+
+    /// Name a blueprint, with this dataset as the blueprint dataset, and return the ID and name
+    /// of the renamed blueprint.
+    ///
+    /// Raises `ValueError` if `name` is empty, and `AlreadyExistsError` if another blueprint has
+    /// this name.
+    fn set_blueprint_name(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        segment_id: String,
+        name: String,
+    ) -> PyResult<(String, Option<String>)> {
+        let _span = read_trace_context_from_python(py, "DatasetEntry.set_blueprint_name").entered();
+        let name = BlueprintName::try_new(name).map_err(to_py_err)?;
+        let connection = self_.client.borrow(py).connection().clone();
+        let blueprint_dataset = self_.entry_details.id;
+
+        let blueprint = wait_for_future(py, async {
+            connection
+                .inner()
+                .set_blueprint_name(blueprint_dataset, SegmentId::from(segment_id), &name)
+                .await
+                .map_err(to_py_err)
+        })?;
+        Ok(blueprint_id_and_name(blueprint))
+    }
+
+    /// Register a blueprint, with this dataset as the blueprint dataset, and return the ID and
+    /// name of the registered blueprint.
+    ///
+    /// With a `name`, the blueprint is registered under that name. With `None`, a new blueprint
+    /// has no name, and a blueprint that is already registered keeps its name.
+    ///
+    /// Raises `ValueError` if `name` is empty, and `AlreadyExistsError` if a blueprint with
+    /// another segment ID has this name.
+    #[pyo3(signature = (uri, name, storage_location))]
+    fn register_blueprint(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        uri: String,
+        name: Option<String>,
+        storage_location: Option<String>,
+    ) -> PyResult<(String, Option<String>)> {
+        let _span = read_trace_context_from_python(py, "DatasetEntry.register_blueprint").entered();
+        let name = name
+            .map(BlueprintName::try_new)
+            .transpose()
+            .map_err(to_py_err)?;
+        let storage_location = parse_storage_location(storage_location)?;
+        let connection = self_.client.borrow(py).connection().clone();
+        let blueprint_dataset = self_.entry_details.id;
+
+        let blueprint = wait_for_future(py, async {
+            connection
+                .inner()
+                .register_blueprint(
+                    blueprint_dataset,
+                    uri,
+                    name.as_ref(),
+                    storage_location,
+                    std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS),
+                )
+                .await
+                .map_err(to_py_err)
+        })?;
+        Ok(blueprint_id_and_name(blueprint))
+    }
+
+    /// The ID and name of the default blueprint of this dataset, or of its segment table with
+    /// `segment_table`, if any.
+    ///
+    /// The name is `None` for a blueprint without a name.
+    fn default_blueprint(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+        segment_table: bool,
+    ) -> PyResult<Option<(String, Option<String>)>> {
+        let _span = read_trace_context_from_python(py, "DatasetEntry.default_blueprint").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_details.id;
+
+        let blueprint = wait_for_future(py, async {
+            connection
+                .inner()
+                .get_dataset_default_blueprint(dataset_id, segment_table)
+                .await
+                .map_err(to_py_err)
+        })?;
+        Ok(blueprint.map(blueprint_id_and_name))
+    }
+
+    /// Set the default blueprint of this dataset, or of its segment table with `segment_table`,
+    /// to the blueprint with this segment ID, or clear it with `None`.
+    #[pyo3(signature = (segment_id, segment_table))]
+    fn set_default_blueprint(
         mut self_: PyRefMut<'_, Self>,
         py: Python<'_>,
         segment_id: Option<String>,
+        segment_table: bool,
     ) -> PyResult<()> {
         let _span =
-            read_trace_context_from_python(py, "DatasetEntry.set_default_blueprint_segment_id")
-                .entered();
+            read_trace_context_from_python(py, "DatasetEntry.set_default_blueprint").entered();
         let connection = self_.client.borrow(py).connection().clone();
+        let dataset_id = self_.entry_details.id;
 
-        let mut dataset_details = self_.dataset_details.clone();
-        dataset_details.default_blueprint_segment = segment_id.map(Into::into);
-
-        let result = connection.update_dataset(py, self_.entry_details.id, dataset_details)?;
-
-        self_.dataset_details = result.dataset_details;
-
-        Ok(())
-    }
-
-    /// The default segment table blueprint segment ID for this dataset, if any.
-    fn default_segment_table_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
-        self_
-            .dataset_details
-            .default_segment_table_blueprint_segment
-            .as_ref()
-            .map(ToString::to_string)
-    }
-
-    /// Set the default segment table blueprint segment ID for this dataset.
-    ///
-    /// Pass `None` to clear the blueprint. This fails if the change cannot be made to the remote server.
-    #[pyo3(signature = (segment_id))]
-    fn set_default_segment_table_blueprint_segment_id(
-        mut self_: PyRefMut<'_, Self>,
-        py: Python<'_>,
-        segment_id: Option<String>,
-    ) -> PyResult<()> {
-        let _span = read_trace_context_from_python(
-            py,
-            "DatasetEntry.set_default_segment_table_blueprint_segment_id",
-        )
-        .entered();
-        let connection = self_.client.borrow(py).connection().clone();
-
-        let mut dataset_details = self_.dataset_details.clone();
-        dataset_details.default_segment_table_blueprint_segment = segment_id.map(Into::into);
-
-        let result = connection.update_dataset(py, self_.entry_details.id, dataset_details)?;
-
-        self_.dataset_details = result.dataset_details;
+        let dataset_entry = wait_for_future(py, async {
+            connection
+                .inner()
+                .set_dataset_default_blueprint(
+                    dataset_id,
+                    segment_table,
+                    segment_id.map(SegmentId::from),
+                )
+                .await
+                .map_err(to_py_err)
+        })?;
+        self_.dataset_details = dataset_entry.dataset_details;
 
         Ok(())
     }

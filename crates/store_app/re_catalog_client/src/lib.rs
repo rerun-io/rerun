@@ -9,6 +9,7 @@
 //! Give this crate the same API design and review scrutiny as the crates in `crates/top`, since it may move there in the future.
 
 mod asset;
+mod blueprint;
 mod dataset;
 mod dataset_info;
 mod dataset_selection;
@@ -32,6 +33,7 @@ pub use self::asset::{
     Asset, AssetCoverage, AssetLayer, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT,
     RegisteredAssets, asset_data_source,
 };
+pub use self::blueprint::{BlueprintName, InvalidBlueprintNameError, RegisteredBlueprint};
 pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
 pub use self::dataset_selection::{DatasetSelection, SegmentSelection};
 pub use self::registration::{RegistrationError, RegistrationHandle, SegmentRegistrationResult};

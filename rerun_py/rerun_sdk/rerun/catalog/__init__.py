@@ -37,6 +37,7 @@ from ._entry import (
 )
 from ._layer import Layer as Layer
 from ._location import StorageLocation as StorageLocation, StorageLocations as StorageLocations
+from ._registered_blueprint import RegisteredBlueprint as RegisteredBlueprint
 from ._registration_handle import (
     RegistrationOperation as RegistrationOperation,
     RegistrationResult as RegistrationResult,

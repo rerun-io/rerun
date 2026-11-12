@@ -26,6 +26,11 @@ from rerun_bindings import (
 
 from . import ContentFilter, EntryId
 from ._location import _resolve_storage_location
+from ._registered_blueprint import (
+    RegisteredBlueprint,
+    _optional_registered_blueprint,
+    _registered_blueprint_from_internal,
+)
 
 #: Type alias for supported batch input types for TableEntry write methods.
 _BatchesType: TypeAlias = (
@@ -123,6 +128,27 @@ def _str_list(cell: Any) -> list[str]:
     if isinstance(cell, (list, tuple)):
         return [str(x) for x in cell if x is not None]
     return [str(cell)]
+
+
+# TODO(RR-6367): Remove once `set_default` can no longer be passed by position.
+def _name_and_set_default(name: str | None, set_default: bool) -> tuple[str | None, bool]:
+    """
+    The `name` and `set_default` arguments of `register_blueprint`.
+
+    A `bool` in place of `name` is `set_default` passed by position, which is deprecated.
+    """
+    if not isinstance(name, bool):
+        return name, set_default
+
+    from rerun.error_utils import _send_warning_or_raise
+
+    _send_warning_or_raise(
+        "`register_blueprint` was called with `set_default` as its second positional argument. "
+        "This is deprecated, pass `set_default` as a keyword argument instead.",
+        depth_to_user_code=3,
+        warning_type=DeprecationWarning,
+    )
+    return None, name
 
 
 InternalEntryT = TypeVar("InternalEntryT", DatasetEntryInternal, TableEntryInternal)
@@ -294,15 +320,17 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Return the Arrow schema of the data contained in the dataset."""
         return self.schema().to_arrow()
 
+    # TODO(RR-5888): Upload and register a local blueprint in one call through a public `write_blueprint`.
     @overload
     def register_blueprint(
         self,
         uri: str,
-        set_default: bool = True,
+        name: str | None = None,
         *,
+        set_default: bool = True,
         segment_table: bool = False,
         storage_location: str | None = None,
-    ) -> None: ...
+    ) -> RegisteredBlueprint: ...
 
     # TODO(RR-6315): Remove the deprecated overload and object_store_config keyword.
     @overload
@@ -310,25 +338,33 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     def register_blueprint(
         self,
         uri: str,
-        set_default: bool = True,
+        name: str | None = None,
         *,
+        set_default: bool = True,
         segment_table: bool = False,
         object_store_config: str | None,
-    ) -> None: ...
+    ) -> RegisteredBlueprint: ...
 
     def register_blueprint(
         self,
         uri: str,
-        set_default: bool = True,
+        name: str | None = None,
         *,
+        set_default: bool = True,
         segment_table: bool = False,
         storage_location: str | None = None,
         object_store_config: str | None = None,
-    ) -> None:
+    ) -> RegisteredBlueprint:
         """
-        Register an existing .rbl visible to the server.
+        Register an existing .rbl visible to the server, and return the registered blueprint.
 
         By default, also set this blueprint as default.
+
+        With `name`, the blueprint is registered under that name.
+        If another blueprint has `name`, this raises `AlreadyExistsError` and leaves the registered blueprints and the default blueprint unchanged.
+        Without `name`, a new blueprint has no name, and a warning is logged once per process.
+        Registering the same .rbl again replaces it, and renames it to `name` if `name` is given and differs.
+        See [`RegisteredBlueprint.name`][rerun.catalog.RegisteredBlueprint.name] for how names work.
 
         Without `segment_table`, `uri` is a viewport blueprint for the dataset's individual recordings.
         With `segment_table=True`, `uri` is a table blueprint for the dataset's segment table,
@@ -348,52 +384,79 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """
         storage_location = _resolve_storage_location(storage_location, object_store_config)
 
-        blueprint_dataset = self.blueprint_dataset()
+        name, set_default = _name_and_set_default(name, set_default)
 
-        if blueprint_dataset is None:
-            raise LookupError("a blueprint dataset is not configured for this dataset")
-
-        segment_id = (
-            blueprint_dataset
-            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, storage_location=storage_location)
-            .wait()
-            .segment_ids[0]
+        blueprint = _registered_blueprint_from_internal(
+            self._internal,
+            self._require_blueprint_dataset()._internal.register_blueprint(uri, name, storage_location),
         )
 
         if set_default:
             if segment_table:
-                self.set_default_segment_table_blueprint(segment_id)
+                self.set_default_segment_table_blueprint(blueprint)
             else:
-                self.set_default_blueprint(segment_id)
+                self.set_default_blueprint(blueprint)
 
-    def blueprints(self) -> list[str]:
+        return blueprint
+
+    def blueprints(self) -> list[RegisteredBlueprint]:
         """Lists all blueprints currently registered with this dataset."""
 
-        blueprint_dataset = self.blueprint_dataset()
+        blueprint_dataset = self._internal.blueprint_dataset()
         if blueprint_dataset is None:
             return []
         else:
-            return blueprint_dataset.segment_ids()
+            return [
+                _registered_blueprint_from_internal(self._internal, blueprint)
+                for blueprint in blueprint_dataset.blueprints()
+            ]
 
-    def set_default_blueprint(self, blueprint_name: str | None) -> None:
-        """Set an already-registered blueprint as default for this dataset."""
+    def get_blueprint_by_name(self, name: str) -> RegisteredBlueprint | None:
+        """
+        Return the blueprint of this dataset with this name, or `None` if no blueprint has it.
 
-        return self._internal.set_default_blueprint_segment_id(blueprint_name)
+        Rename the returned blueprint with [`RegisteredBlueprint.rename`][rerun.catalog.RegisteredBlueprint.rename].
+        """
 
-    def default_blueprint(self) -> str | None:
-        """Return the name of the default blueprint, as listed by `blueprints()`, or `None` if none is set."""
+        blueprint_dataset = self._internal.blueprint_dataset()
+        if blueprint_dataset is None:
+            return None
+        else:
+            return _optional_registered_blueprint(self._internal, blueprint_dataset.blueprint_by_name(name))
 
-        return self._internal.default_blueprint_segment_id()
+    def set_default_blueprint(self, blueprint: RegisteredBlueprint | None) -> None:
+        """Set an already-registered blueprint as default for this dataset, or clear the default with `None`."""
 
-    def set_default_segment_table_blueprint(self, blueprint_name: str | None) -> None:
-        """Set an already-registered blueprint as the default segment table blueprint for this dataset."""
+        self._internal.set_default_blueprint(None if blueprint is None else blueprint.id, False)
 
-        return self._internal.set_default_segment_table_blueprint_segment_id(blueprint_name)
+    def default_blueprint(self) -> RegisteredBlueprint | None:
+        """
+        Return the default blueprint, or `None` if none is set.
 
-    def default_segment_table_blueprint(self) -> str | None:
-        """Return the name of the currently set segment table blueprint."""
+        This doesn't check that the blueprint is registered, and an unregistered one comes back without a name.
+        """
 
-        return self._internal.default_segment_table_blueprint_segment_id()
+        return _optional_registered_blueprint(self._internal, self._internal.default_blueprint(False))
+
+    def set_default_segment_table_blueprint(self, blueprint: RegisteredBlueprint | None) -> None:
+        """Set an already-registered blueprint as the default segment table blueprint for this dataset, or clear it with `None`."""
+
+        self._internal.set_default_blueprint(None if blueprint is None else blueprint.id, True)
+
+    def default_segment_table_blueprint(self) -> RegisteredBlueprint | None:
+        """
+        Return the default segment table blueprint, or `None` if none is set.
+
+        This doesn't check that the blueprint is registered, and an unregistered one comes back without a name.
+        """
+
+        return _optional_registered_blueprint(self._internal, self._internal.default_blueprint(True))
+
+    def _require_blueprint_dataset(self) -> DatasetEntry:
+        blueprint_dataset = self.blueprint_dataset()
+        if blueprint_dataset is None:
+            raise LookupError("a blueprint dataset is not configured for this dataset")
+        return blueprint_dataset
 
     def blueprint_dataset(self) -> DatasetEntry | None:
         """
@@ -655,7 +718,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         so an asset registered without one resolves to applying to every segment.
         """
 
-        stored = self._internal._get_segment_properties(asset_segment_id)
+        stored = self._internal.get_segment_properties(asset_segment_id)
         if stored is None:
             return ASSET_MODE_OPT_OUT, [], 0
 
@@ -697,7 +760,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             ],
         )
 
-        self._internal._set_segment_properties(asset_segment_id, properties, expected_revision)
+        self._internal.set_segment_properties(asset_segment_id, properties, expected_revision)
 
     def asset_dataset(self) -> DatasetEntry | None:
         """
@@ -2101,14 +2164,16 @@ class TableEntry(Entry[TableEntryInternal]):
 
         return self.reader().schema()
 
+    # TODO(RR-5888): Upload and register a local blueprint in one call through a public `write_blueprint`.
     @overload
     def register_blueprint(
         self,
         uri: str,
-        set_default: bool = True,
+        name: str | None = None,
         *,
+        set_default: bool = True,
         storage_location: str | None = None,
-    ) -> None: ...
+    ) -> RegisteredBlueprint: ...
 
     # TODO(RR-6315): Remove the deprecated overload and object_store_config keyword.
     @overload
@@ -2116,23 +2181,31 @@ class TableEntry(Entry[TableEntryInternal]):
     def register_blueprint(
         self,
         uri: str,
-        set_default: bool = True,
+        name: str | None = None,
         *,
+        set_default: bool = True,
         object_store_config: str | None,
-    ) -> None: ...
+    ) -> RegisteredBlueprint: ...
 
     def register_blueprint(
         self,
         uri: str,
-        set_default: bool = True,
+        name: str | None = None,
         *,
+        set_default: bool = True,
         storage_location: str | None = None,
         object_store_config: str | None = None,
-    ) -> None:
+    ) -> RegisteredBlueprint:
         """
-        Register an existing .rbl visible to the server as this table's blueprint.
+        Register an existing .rbl visible to the server as a blueprint of this table, and return the registered blueprint.
 
         By default, also set this blueprint as default.
+
+        With `name`, the blueprint is registered under that name.
+        If another blueprint has `name`, this raises `AlreadyExistsError` and leaves the registered blueprints and the default blueprint unchanged.
+        Without `name`, a new blueprint has no name, and a warning is logged once per process.
+        Registering the same .rbl again replaces it, and renames it to `name` if `name` is given and differs.
+        See [`RegisteredBlueprint.name`][rerun.catalog.RegisteredBlueprint.name] for how names work.
 
         The URI is read by the server; this method does not upload a local file.
         See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
@@ -2147,32 +2220,50 @@ class TableEntry(Entry[TableEntryInternal]):
         """
         storage_location = _resolve_storage_location(storage_location, object_store_config)
 
-        blueprint_dataset = self.blueprint_dataset()
+        name, set_default = _name_and_set_default(name, set_default)
 
-        segment_id = (
-            blueprint_dataset
-            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, storage_location=storage_location)
-            .wait()
-            .segment_ids[0]
+        blueprint = _registered_blueprint_from_internal(
+            self._internal,
+            self._internal.blueprint_dataset().register_blueprint(uri, name, storage_location),
         )
 
         if set_default:
-            self.set_default_blueprint(segment_id)
+            self.set_default_blueprint(blueprint)
 
-    def blueprints(self) -> list[str]:
+        return blueprint
+
+    def blueprints(self) -> list[RegisteredBlueprint]:
         """Lists all blueprints currently registered with this table."""
 
-        return self.blueprint_dataset().segment_ids()
+        return [
+            _registered_blueprint_from_internal(self._internal, blueprint)
+            for blueprint in self._internal.blueprint_dataset().blueprints()
+        ]
 
-    def set_default_blueprint(self, blueprint_name: str | None) -> None:
-        """Set an already-registered blueprint as default for this table."""
+    def get_blueprint_by_name(self, name: str) -> RegisteredBlueprint | None:
+        """
+        Return the blueprint of this table with this name, or `None` if no blueprint has it.
 
-        return self._internal.set_default_blueprint_segment_id(blueprint_name)
+        Rename the returned blueprint with [`RegisteredBlueprint.rename`][rerun.catalog.RegisteredBlueprint.rename].
+        """
 
-    def default_blueprint(self) -> str | None:
-        """Return the name of the default blueprint, as listed by `blueprints()`, or `None` if none is set."""
+        return _optional_registered_blueprint(
+            self._internal, self._internal.blueprint_dataset().blueprint_by_name(name)
+        )
 
-        return self._internal.default_blueprint_segment_id()
+    def set_default_blueprint(self, blueprint: RegisteredBlueprint | None) -> None:
+        """Set an already-registered blueprint as default for this table, or clear the default with `None`."""
+
+        self._internal.set_default_blueprint(None if blueprint is None else blueprint.id)
+
+    def default_blueprint(self) -> RegisteredBlueprint | None:
+        """
+        Return the default blueprint, or `None` if none is set.
+
+        This doesn't check that the blueprint is registered, and an unregistered one comes back without a name.
+        """
+
+        return _optional_registered_blueprint(self._internal, self._internal.default_blueprint())
 
     def blueprint_dataset(self) -> DatasetEntry:
         """

@@ -1,12 +1,15 @@
+use std::collections::BTreeMap;
+
 use arrow::array::RecordBatch;
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::{
-    DeleteSegmentPropertiesRequest, GetSegmentPropertiesRequest, SegmentPropertiesDeletion,
-    SetSegmentPropertiesRequest,
+    DeleteSegmentPropertiesRequest, GetSegmentPropertiesRequest, SegmentProperties,
+    SegmentPropertiesDeletion, SetSegmentPropertiesRequest,
 };
 use re_protos::common::v1alpha1::ext::SegmentId;
 use re_protos::external::prost::bytes::Bytes;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_protos::missing_field;
 use tokio_stream::StreamExt as _;
 use tonic::codegen::{Body, StdError};
 
@@ -21,21 +24,26 @@ where
     T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
-    /// Read one segment's mutable properties, and the revision that gates writes to them.
+    /// Read the mutable properties of several segments, and the revision of each that gates
+    /// writes to them.
     ///
-    /// `None` means the segment has no properties. See
-    /// [`Self::set_segment_properties`].
+    /// Segments without properties are left out. See [`Self::set_segment_properties`].
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_segment_properties(
         &mut self,
         entry_id: EntryId,
-        segment_id: SegmentId,
-    ) -> ApiResult<Option<(RecordBatch, u64)>> {
+        segment_ids: Vec<SegmentId>,
+    ) -> ApiResult<BTreeMap<SegmentId, (RecordBatch, u64)>> {
+        let mut segments = BTreeMap::new();
+        if segment_ids.is_empty() {
+            return Ok(segments);
+        }
+
         let (mut stream, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .get_segment_properties(
                     tonic::Request::new(GetSegmentPropertiesRequest {
-                        segment_ids: vec![segment_id.clone().into()],
+                        segment_ids: segment_ids.into_iter().map(Into::into).collect(),
                     })
                     .with_entry_id(entry_id),
                 )
@@ -52,19 +60,26 @@ where
                 let Some(properties) = segment.properties else {
                     continue;
                 };
-                let batch = RecordBatch::try_from(&properties).map_err(|err| {
-                    ApiError::deserialization_with_source(
-                        &self.origin,
-                        trace_id,
-                        err,
-                        "failed parsing /GetSegmentProperties response",
-                    )
-                })?;
-                return Ok(Some((batch, segment.revision)));
+                let (segment_id, batch) = segment
+                    .segment_id
+                    .ok_or_else(|| missing_field!(SegmentProperties, "segment_id"))
+                    .and_then(SegmentId::try_from)
+                    .and_then(|segment_id| {
+                        RecordBatch::try_from(&properties).map(|batch| (segment_id, batch))
+                    })
+                    .map_err(|err| {
+                        ApiError::deserialization_with_source(
+                            &self.origin,
+                            trace_id,
+                            err,
+                            "failed parsing /GetSegmentProperties response",
+                        )
+                    })?;
+                segments.insert(segment_id, (batch, segment.revision));
             }
         }
 
-        Ok(None)
+        Ok(segments)
     }
 
     /// Replace one segment's mutable properties, returning the new revision.

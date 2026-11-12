@@ -36,6 +36,7 @@ mod write_operation;
 
 use errors::{AlreadyExistsError, ChunkNotIndexedError, NotFoundError};
 use pyo3::prelude::*;
+use re_catalog_client::{BlueprintName, RegisteredBlueprint};
 use re_protos::cloud::v1alpha1::ext::{
     ASSET_MODE_COMPONENT, ASSET_PROPERTY, ASSET_SEGMENTS_COMPONENT, AssetMode,
 };
@@ -61,6 +62,16 @@ pub use self::table_entry::{PyTableEntryInternal, PyTableInsertModeInternal};
 pub use self::table_provider_adapter::PyTableProviderAdapterInternal;
 pub use self::type_aliases::{AnyComponentColumn, IndexValuesLike, PyIndexValuesLikeInternal};
 pub use self::unregistration_handle::PyUnregistrationHandleInternal;
+
+/// The ID of a blueprint, which is its segment ID in the blueprint dataset, and its name.
+///
+/// The name is `None` for a blueprint without a name.
+fn blueprint_id_and_name(blueprint: RegisteredBlueprint) -> (String, Option<String>) {
+    (
+        blueprint.segment_id.to_string(),
+        blueprint.name.map(BlueprintName::into_string),
+    )
+}
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {

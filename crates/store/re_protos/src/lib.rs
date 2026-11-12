@@ -67,8 +67,14 @@ mod v1alpha1 {
     #[path = "./rerun.cloud.v1alpha1.ext.chunk_key.rs"]
     pub mod rerun_cloud_v1alpha1_ext_chunk_key;
 
+    #[path = "./rerun.cloud.v1alpha1.ext.properties.rs"]
+    mod rerun_cloud_v1alpha1_ext_properties;
+
     #[path = "./rerun.cloud.v1alpha1.ext.asset_properties.rs"]
     pub mod rerun_cloud_v1alpha1_ext_asset_properties;
+
+    #[path = "./rerun.cloud.v1alpha1.ext.blueprint_properties.rs"]
+    pub mod rerun_cloud_v1alpha1_ext_blueprint_properties;
 
     #[path = "./rerun.cloud.v1alpha1.ext.legacy_adapter.rs"]
     pub mod rerun_cloud_v1alpha1_ext_legacy_adapter;
@@ -101,6 +107,7 @@ pub mod cloud {
         pub mod ext {
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext::*;
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_asset_properties::*;
+            pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_blueprint_properties::*;
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_chunk_key::*;
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_legacy_adapter::*;
             pub use crate::v1alpha1::rerun_cloud_v1alpha1_ext_queries::*;

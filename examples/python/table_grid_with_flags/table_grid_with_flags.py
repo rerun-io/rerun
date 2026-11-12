@@ -70,7 +70,7 @@ def main() -> None:
                     fields=[rrb.table.Column("flagged", editable=True, column_type=rr.components.Flag)],
                 ),
             ).save("embedded", blueprint_path)
-            table.register_blueprint(blueprint_path.absolute().as_uri())
+            table.register_blueprint(blueprint_path.absolute().as_uri(), name="flags")
 
         url = f"{srv.url()}/entry/{table.id}"
         print(f"Open the viewer with:\n  rerun {url}")
