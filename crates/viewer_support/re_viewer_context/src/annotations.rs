@@ -1,11 +1,12 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, OnceLock};
 
 use ahash::HashMap;
-use nohash_hasher::IntSet;
-use re_chunk::RowId;
+use nohash_hasher::IntMap;
+use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreEvent, ChunkStoreSubscriberHandle, LatestAtQuery, PerStoreChunkSubscriber,
+    ChunkDirectLineageReport, ChunkStore, ChunkStoreDiff, ChunkStoreEvent,
+    ChunkStoreSubscriberHandle, LatestAtQuery, PerStoreChunkSubscriber,
 };
 use re_entity_db::EntityPath;
 use re_log_types::StoreId;
@@ -251,14 +252,8 @@ impl AnnotationMap {
     pub fn load(&mut self, db: &re_entity_db::EntityDb, time_query: &LatestAtQuery) {
         re_tracing::profile_function!();
 
-        let entities_with_annotation_context =
-            AnnotationContextStoreSubscriber::access(db.store_id(), |entities| entities.clone())
-                .unwrap_or_default();
-
         // Load current annotations.
-        // (order doesn't matter, we're feeding into another hashmap)
-        #[expect(clippy::iter_over_hash_type)]
-        for entity in entities_with_annotation_context {
+        for entity in AnnotationContextStoreSubscriber::entities(db.store_id()) {
             if let Some(((_time, row_id), ann_ctx)) = db.latest_at_component::<AnnotationContext>(
                 &entity,
                 time_query,
@@ -300,17 +295,21 @@ impl AnnotationMap {
 /// Keeps track of all entities that have an annotation context.
 #[derive(Default)]
 pub struct AnnotationContextStoreSubscriber {
-    pub entities_with_annotation_context: IntSet<EntityPath>,
+    /// An entity can have several chunks holding an annotation context at once, e.g. temporal ones
+    /// logged at different times, or a static one alongside the newer one overwriting it.
+    /// It keeps its annotation context until the last of them is removed.
+    chunks_per_entity: IntMap<EntityPath, BTreeSet<ChunkId>>,
 }
 
 impl AnnotationContextStoreSubscriber {
-    /// Accesses the list of entities that have an annotation context at some point in time.
-    pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&IntSet<EntityPath>) -> T) -> Option<T> {
+    /// The entities that have an annotation context at some point in time.
+    pub fn entities(store_id: &StoreId) -> Vec<EntityPath> {
         ChunkStore::with_per_store_subscriber_once(
             Self::subscription_handle(),
             store_id,
-            move |subscriber: &Self| f(&subscriber.entities_with_annotation_context),
+            |subscriber: &Self| subscriber.chunks_per_entity.keys().cloned().collect(),
         )
+        .unwrap_or_default()
     }
 
     /// Accesses the global store subscriber.
@@ -320,12 +319,33 @@ impl AnnotationContextStoreSubscriber {
         static SUBSCRIPTION: OnceLock<ChunkStoreSubscriberHandle> = OnceLock::new();
         *SUBSCRIPTION.get_or_init(ChunkStore::register_per_store_subscriber::<Self>)
     }
+
+    fn add_chunk(&mut self, chunk: &Chunk) {
+        if chunk
+            .components()
+            .contains_key(&archetypes::AnnotationContext::descriptor_context().component)
+        {
+            self.chunks_per_entity
+                .entry(chunk.entity_path().clone())
+                .or_default()
+                .insert(chunk.id());
+        }
+    }
+
+    fn remove_chunk(&mut self, chunk: &Chunk) {
+        if let Some(chunk_ids) = self.chunks_per_entity.get_mut(chunk.entity_path()) {
+            chunk_ids.remove(&chunk.id());
+            if chunk_ids.is_empty() {
+                self.chunks_per_entity.remove(chunk.entity_path());
+            }
+        }
+    }
 }
 
 impl re_byte_size::MemUsageTreeCapture for AnnotationContextStoreSubscriber {
     fn capture_mem_usage_tree(&self) -> re_byte_size::MemUsageTree {
         use re_byte_size::SizeBytes as _;
-        re_byte_size::MemUsageTree::Bytes(self.entities_with_annotation_context.total_size_bytes())
+        re_byte_size::MemUsageTree::Bytes(self.chunks_per_entity.total_size_bytes())
     }
 }
 
@@ -337,23 +357,62 @@ impl PerStoreChunkSubscriber for AnnotationContextStoreSubscriber {
 
     fn on_events<'a>(&mut self, events: impl Iterator<Item = &'a ChunkStoreEvent>) {
         for event in events {
-            let Some(delta_chunk) = event.delta_chunk() else {
-                continue;
-            };
-
-            if delta_chunk
-                .components()
-                .contains_key(&archetypes::AnnotationContext::descriptor_context().component)
-            {
-                let path = delta_chunk.entity_path();
-                if event.is_addition() {
-                    self.entities_with_annotation_context.insert(path.clone());
-                } else if event.is_deletion() {
-                    // Deletions do *not* account for chunks that were compacted away, and therefore this
-                    // will correctly mirror the number of additions above (including splits).
-                    self.entities_with_annotation_context.remove(path);
+            match &event.diff {
+                ChunkStoreDiff::Addition(addition) => {
+                    // Compaction removes the chunks it merges without firing deletions for them.
+                    if let ChunkDirectLineageReport::CompactedFrom(sources) =
+                        &addition.direct_lineage
+                    {
+                        for source in sources.values() {
+                            self.remove_chunk(source);
+                        }
+                    }
+                    self.add_chunk(&addition.chunk_after_processing);
                 }
+                ChunkStoreDiff::Deletion(deletion) => self.remove_chunk(&deletion.chunk),
+                ChunkStoreDiff::VirtualAddition(_) | ChunkStoreDiff::SchemaAddition(_) => {}
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_entity_db::EntityDb;
+    use re_log_types::{StoreKind, TimePoint, TimelineName};
+    use re_sdk_types::encodings::Rgba32;
+
+    use super::*;
+
+    #[test]
+    fn overwritten_static_annotation_context_resolves_to_the_newest() {
+        // Per-store subscribers only see the chunks added after their registration.
+        AnnotationContextStoreSubscriber::subscription_handle();
+
+        let mut db = EntityDb::new(StoreId::random(StoreKind::Recording, "test_app"));
+        let entity_path = EntityPath::from("segmentation");
+        let newest_color = Rgba32::from_rgb(0, 0, 255);
+        for color in [Rgba32::from_rgb(255, 0, 0), newest_color] {
+            let chunk = Chunk::builder(entity_path.clone())
+                .with_archetype(
+                    RowId::new(),
+                    TimePoint::STATIC,
+                    &archetypes::AnnotationContext::new([(1, "class", color)]),
+                )
+                .build()
+                .unwrap();
+            db.add_chunk(&Arc::new(chunk)).unwrap();
+        }
+
+        let mut annotation_map = AnnotationMap::default();
+        annotation_map.load(&db, &LatestAtQuery::latest(TimelineName::log_tick()));
+
+        let color = annotation_map.find(&entity_path).map(|annotations| {
+            annotations
+                .resolved_class_description(Some(1.into()))
+                .annotation_info()
+                .color()
+        });
+        assert_eq!(color, Some(Some(newest_color.into())));
     }
 }
