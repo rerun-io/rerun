@@ -121,8 +121,9 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 );
                 let radii = radii.unwrap_or(&[]);
 
-                if let Some(radius) = radii.iter().max_by(|a, b| a.total_cmp(b)).copied() {
-                    max_radii.update(Radius::from(radius));
+                max_radii.update_from_radii(radii.iter().copied().map(Radius::from));
+                if radii.is_empty() {
+                    max_radii.update(fallback_radius);
                 }
 
                 // iterate over all instances
