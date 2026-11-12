@@ -2180,9 +2180,13 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         Some(Command::Manual) => ("man", None),
 
         #[cfg(feature = "importers")]
-        Some(Command::Mcap(_cmd)) => {
-            // TODO(RR-4073): Re-enable analytics for MCAP commands.
-            return;
+        Some(Command::Mcap(cmd)) => {
+            let subcommand = match cmd {
+                McapCommands::Convert(_) => "convert",
+                McapCommands::Info(_) => "info",
+                McapCommands::Check(_) => "check",
+            };
+            ("mcap", Some(subcommand))
         }
 
         #[cfg(feature = "native_viewer")]
@@ -2195,9 +2199,21 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         #[cfg(feature = "native_viewer")]
         Some(Command::Reset) => ("reset", None),
 
-        Some(Command::Rrd(_cmd)) => {
-            // TODO(RR-4073): Re-enable analytics for RRD commands.
-            return;
+        Some(Command::Rrd(cmd)) => {
+            let subcommand = match cmd {
+                RrdCommands::Compare(_) => "compare",
+                RrdCommands::Filter(_) => "filter",
+                RrdCommands::Merge(_) => "merge",
+                RrdCommands::Migrate(_) => "migrate",
+                RrdCommands::Optimize(_) => "optimize",
+                RrdCommands::Compact(_) => "compact",
+                RrdCommands::Print(_) => "print",
+                RrdCommands::Route(_) => "route",
+                RrdCommands::Split(_) => "split",
+                RrdCommands::Stats(_) => "stats",
+                RrdCommands::Verify(_) => "verify",
+            };
+            ("rrd", Some(subcommand))
         }
 
         #[cfg(feature = "oss_server")]
