@@ -73,7 +73,7 @@ pub use session::{
     Prompt, PromptImage,
 };
 pub use settings::{
-    AgentLaunch, AgentLaunchError, AgentPreferences, AgentSettings, McpServerConfig,
+    AgentLaunch, AgentLaunchError, AgentPreferences, AgentSettings, Effort, McpServerConfig,
     SavedConversation, SessionContext,
 };
 pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};

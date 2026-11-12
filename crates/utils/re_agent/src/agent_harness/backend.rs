@@ -386,6 +386,16 @@ async fn start_session(
                     Err(err) => re_log::debug!("Failed to select speed: {}", describe_error(&err)),
                 }
             }
+            if let Some(config_options) = select_effort(
+                cx,
+                &opened.session_id,
+                opened.config_options.as_deref().unwrap_or_default(),
+                config.preferred_effort.as_ref(),
+            )
+            .await
+            {
+                opened.config_options = Some(config_options);
+            }
             if let Some(selected_mode) = select_mode(
                 cx,
                 &opened.session_id,
@@ -559,6 +569,55 @@ fn pick_model(
     (model.value != select.current_value).then(|| (selector.id.clone(), model.value.clone()))
 }
 
+/// Restores a saved effort if the agent offers it.
+///
+/// Runs after [`select_model`], because the levels an agent offers depend on the model.
+/// A failure is not fatal: the session then runs on the agent's own default level.
+async fn select_effort(
+    cx: &ConnectionTo<Agent>,
+    session_id: &SessionId,
+    config_options: &[SessionConfigOption],
+    preferred_effort: Option<&crate::Effort>,
+) -> Option<Vec<SessionConfigOption>> {
+    let (config_id, level) = pick_effort(config_options, preferred_effort?)?;
+    let request = SetSessionConfigOptionRequest::new(session_id.clone(), config_id, level);
+    match cx.send_request(request).block_task().await {
+        Ok(response) => Some(response.config_options),
+        Err(err) => {
+            re_log::debug!("Failed to select an effort: {}", describe_error(&err));
+            None
+        }
+    }
+}
+
+/// The effort selector and the level to set it to, or `None` when the agent does not
+/// offer `preferred_effort` or already uses it.
+fn pick_effort(
+    config_options: &[SessionConfigOption],
+    preferred_effort: &crate::Effort,
+) -> Option<(SessionConfigId, SessionConfigValueId)> {
+    let preferred_level = &SessionConfigValueId::from(preferred_effort);
+    let selector = config_options
+        .iter()
+        .find(|option| option.category == Some(SessionConfigOptionCategory::ThoughtLevel))?;
+    let SessionConfigKind::Select(select) = &selector.kind else {
+        return None;
+    };
+    let offered = match &select.options {
+        SessionConfigSelectOptions::Ungrouped(levels) => {
+            levels.iter().any(|level| &level.value == preferred_level)
+        }
+        SessionConfigSelectOptions::Grouped(groups) => groups
+            .iter()
+            .flat_map(|group| &group.options)
+            .any(|level| &level.value == preferred_level),
+        _ => false,
+    };
+
+    (offered && &select.current_value != preferred_level)
+        .then(|| (selector.id.clone(), preferred_level.clone()))
+}
+
 #[cfg(test)]
 mod tests {
     use agent_client_protocol::Channel;
@@ -641,6 +700,44 @@ mod tests {
         assert_eq!(pick(&[]), None);
         assert_eq!(pick(&["yolo"]), None);
         assert_eq!(pick_mode(None, &[SessionModeId::new("plan")]), None);
+    }
+
+    fn claude_effort(current: &str) -> Vec<SessionConfigOption> {
+        let levels = vec![
+            SessionConfigSelectOption::new("default", "Default"),
+            SessionConfigSelectOption::new("low", "Low"),
+            SessionConfigSelectOption::new("high", "High"),
+        ];
+        vec![
+            SessionConfigOption::select("effort", "Effort", current.to_owned(), levels)
+                .category(SessionConfigOptionCategory::ThoughtLevel),
+        ]
+    }
+
+    #[test]
+    fn restores_an_offered_effort() {
+        let (config_id, level) =
+            pick_effort(&claude_effort("default"), &crate::Effort("high".to_owned()))
+                .expect("the effort selector");
+        assert_eq!(config_id.0.as_ref(), "effort");
+        assert_eq!(level.0.as_ref(), "high");
+    }
+
+    #[test]
+    fn leaves_the_effort_when_the_saved_one_does_not_apply() {
+        let options = claude_effort("high");
+        assert_eq!(
+            pick_effort(&options, &crate::Effort("high".to_owned())),
+            None
+        );
+        assert_eq!(
+            pick_effort(&options, &crate::Effort("max".to_owned())),
+            None
+        );
+        assert_eq!(
+            pick_effort(&claude_models("opus"), &crate::Effort("high".to_owned())),
+            None
+        );
     }
 
     #[test]
@@ -846,6 +943,7 @@ mod tests {
             model_preferences: Vec::new(),
             preferred_model: Some(SessionConfigValueId::new("chosen")),
             preferred_speed: Some(SessionConfigValueId::new("on")),
+            preferred_effort: None,
             mode_preferences: Vec::new(),
             session_to_load: None,
         };

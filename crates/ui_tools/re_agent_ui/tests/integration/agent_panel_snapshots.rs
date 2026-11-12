@@ -1046,6 +1046,39 @@ fn chat_model_picker() {
     harness.snapshot("chat_model_picker");
 }
 
+#[test]
+fn chat_effort_picker() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+    let levels = vec![
+        SessionConfigSelectOption::new("low", "Low"),
+        SessionConfigSelectOption::new("medium", "Medium"),
+        SessionConfigSelectOption::new("high", "High"),
+        SessionConfigSelectOption::new("max", "Max"),
+    ];
+    session.handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+        ConfigOptionUpdate::new(vec![
+            SessionConfigOption::select(
+                "model",
+                "Model",
+                "opus",
+                vec![SessionConfigSelectOption::new("opus", "Opus 5.5")],
+            )
+            .category(SessionConfigOptionCategory::Model),
+            SessionConfigOption::select("effort", "Effort", "high", levels)
+                .category(SessionConfigOptionCategory::ThoughtLevel),
+        ]),
+    )));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    harness.get_by_value("High").click();
+    harness.run_steps(4);
+    harness.snapshot("chat_effort_picker");
+}
+
 /// In a narrow panel, the composer footer truncates instead of running under the stop button.
 #[test]
 fn chat_narrow_composer() {

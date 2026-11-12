@@ -8,8 +8,8 @@ use egui::text_edit::TextEditState;
 use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
 use re_agent::LineDirection;
 use re_agent::acp::schema::v1::{
-    AuthMethod, PermissionOptionKind, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionConfigValueId, SessionMode, SessionModeId,
+    AuthMethod, PermissionOptionKind, SessionConfigSelect, SessionConfigSelectOption,
+    SessionConfigSelectOptions, SessionConfigValueId, SessionMode, SessionModeId,
 };
 use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
@@ -350,12 +350,62 @@ fn model_picker_ui(
         return;
     };
 
-    let model_item = |ui: &mut egui::Ui, model: &SessionConfigSelectOption| {
+    if let Some(value) = config_select_ui(
+        ui,
+        "agent_model",
+        current_name,
+        select,
+        "The model the agent is using",
+    ) {
+        *preferred_model = Some(value.clone());
+        if value != select.current_value {
+            session.set_config_option(config_id.clone(), value);
+        }
+    }
+}
+
+/// The effort the agent is using, as a drop-down to switch to another one it offers.
+fn effort_picker_ui(
+    ui: &mut egui::Ui,
+    session: &AgentSession,
+    preferred_effort: &mut Option<re_agent::Effort>,
+) {
+    let transcript = session.transcript();
+    let (Some((config_id, select)), Some(current_name)) = (
+        transcript.effort_selector(),
+        transcript.current_effort_name(),
+    ) else {
+        return;
+    };
+
+    if let Some(value) = config_select_ui(
+        ui,
+        "agent_effort",
+        current_name,
+        select,
+        "How much the model thinks before it answers",
+    ) {
+        *preferred_effort = Some(re_agent::Effort::from(&value));
+        if value != select.current_value {
+            session.set_config_option(config_id.clone(), value);
+        }
+    }
+}
+
+/// A drop-down of the options in `select`, returning the one the user clicked.
+fn config_select_ui(
+    ui: &mut egui::Ui,
+    id_salt: &'static str,
+    current_name: &str,
+    select: &SessionConfigSelect,
+    hover_text: &str,
+) -> Option<SessionConfigValueId> {
+    let option_item = |ui: &mut egui::Ui, option: &SessionConfigSelectOption| {
         let response = ui
             .list_item()
-            .selected(model.value == select.current_value)
-            .show_flat(ui, re_ui::list_item::LabelContent::new(&model.name));
-        let response = match &model.description {
+            .selected(option.value == select.current_value)
+            .show_flat(ui, re_ui::list_item::LabelContent::new(&option.name));
+        let response = match &option.description {
             Some(description) => response.on_hover_text(description),
             None => response,
         };
@@ -363,21 +413,21 @@ fn model_picker_ui(
     };
 
     let mut selected = None;
-    ui.drop_down_menu("agent_model", current_name.to_owned(), |ui| {
+    ui.drop_down_menu(id_salt, current_name.to_owned(), |ui| {
         match &select.options {
-            SessionConfigSelectOptions::Ungrouped(models) => {
-                for model in models {
-                    if model_item(ui, model) {
-                        selected = Some(model.value.clone());
+            SessionConfigSelectOptions::Ungrouped(options) => {
+                for option in options {
+                    if option_item(ui, option) {
+                        selected = Some(option.value.clone());
                     }
                 }
             }
             SessionConfigSelectOptions::Grouped(groups) => {
                 for group in groups {
                     ui.weak(&group.name);
-                    for model in &group.options {
-                        if model_item(ui, model) {
-                            selected = Some(model.value.clone());
+                    for option in &group.options {
+                        if option_item(ui, option) {
+                            selected = Some(option.value.clone());
                         }
                     }
                 }
@@ -385,14 +435,8 @@ fn model_picker_ui(
             _ => {}
         }
     })
-    .on_hover_text("The model the agent is using");
-
-    if let Some(value) = selected {
-        *preferred_model = Some(value.clone());
-        if value != select.current_value {
-            session.set_config_option(config_id.clone(), value);
-        }
-    }
+    .on_hover_text(hover_text);
+    selected
 }
 
 fn speed_picker_ui(
@@ -591,7 +635,12 @@ fn footer_ui(
     input: &mut ChatInput,
     preferences: &mut AgentPreferences,
 ) {
-    let AgentPreferences { mode, model, speed } = preferences;
+    let AgentPreferences {
+        mode,
+        model,
+        speed,
+        effort,
+    } = preferences;
     let usage = session
         .transcript()
         .usage
@@ -617,6 +666,7 @@ fn footer_ui(
 
                 model_picker_ui(ui, session, model);
                 speed_picker_ui(ui, session, speed);
+                effort_picker_ui(ui, session, effort);
 
                 match session.phase() {
                     Phase::Connecting { status } => {

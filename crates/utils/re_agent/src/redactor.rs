@@ -339,6 +339,7 @@ impl Redactor {
             AgentLaunch::ModelApi(mut config) => {
                 config.hosted_tools = HostedTools::NONE;
                 config.model = config.provider.default_model().to_owned();
+                config.effort = None;
                 config.system_prompt = None;
                 config.toolbox = None;
                 AgentLaunch::ModelApi(config)
@@ -370,6 +371,7 @@ impl Redactor {
         config.cwd = self.scratch.as_ref()?.path().to_owned();
         config.preferred_model = None;
         config.preferred_speed = None;
+        config.preferred_effort = None;
         config.model_preferences = REDACTION_MODELS
             .iter()
             .map(|&model| model.to_owned())
@@ -557,6 +559,7 @@ mod tests {
             model_preferences: Vec::new(),
             preferred_model: Some(crate::acp::schema::v1::SessionConfigValueId::new("opus")),
             preferred_speed: None,
+            preferred_effort: Some(crate::Effort("max".to_owned())),
             mode_preferences: Vec::new(),
             session_to_load: None,
         };
@@ -566,6 +569,7 @@ mod tests {
             .expect("a scratch directory");
         assert!(config.mcp_servers.is_empty());
         assert!(config.preferred_model.is_none());
+        assert!(config.preferred_effort.is_none());
         assert_eq!(
             config.model_preferences.first().map(String::as_str),
             Some("sonnet")
@@ -582,6 +586,7 @@ mod tests {
             provider,
             api_key: crate::ApiKey::new("key").expect("a key"),
             model: "opus".to_owned(),
+            effort: Some(crate::Effort("max".to_owned())),
             system_prompt: Some("Drive the viewer".to_owned()),
             hosted_tools: HostedTools::default(),
             toolbox: None,
@@ -599,6 +604,7 @@ mod tests {
         };
         assert_eq!(config.hosted_tools, HostedTools::NONE);
         assert_eq!(config.model, provider.default_model());
+        assert!(config.effort.is_none());
         assert!(config.system_prompt.is_none());
     }
 }
