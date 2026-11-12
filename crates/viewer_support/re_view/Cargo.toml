@@ -39,6 +39,7 @@ re_sdk_types.workspace = true
 re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
+re_byte_size.workspace = true
 
 ahash.workspace = true
 arrow.workspace = true

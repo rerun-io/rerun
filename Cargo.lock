@@ -11618,6 +11618,7 @@ dependencies = [
  "nohash-hasher",
  "rayon",
  "re_arrow_util",
+ "re_byte_size",
  "re_chunk",
  "re_chunk_store",
  "re_entity_db",
