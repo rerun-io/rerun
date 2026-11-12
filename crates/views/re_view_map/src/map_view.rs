@@ -10,9 +10,8 @@ use re_ui::{Help, IconText, icons, list_item};
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, StoreViewContext, SystemCommand,
     SystemCommandSender as _, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, gpu_bridge,
+    ViewClassRegistryError, ViewHighlights, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
@@ -163,10 +162,6 @@ impl ViewClass for MapView {
     fn preferred_tile_aspect_ratio(&self, _state: &dyn ViewState) -> Option<f32> {
         // Prefer a square tile if possible.
         Some(1.0)
-    }
-
-    fn layout_priority(&self) -> ViewClassLayoutPriority {
-        ViewClassLayoutPriority::default()
     }
 
     fn supports_visible_time_range(&self) -> bool {

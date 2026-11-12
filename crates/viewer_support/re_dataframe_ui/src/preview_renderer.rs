@@ -5,6 +5,7 @@
 //! This gives the view the impression of running against a regular recording.
 
 use ahash::HashMap as AHashMap;
+use egui::NumExt as _;
 use nohash_hasher::IntMap;
 use std::cell::RefCell;
 
@@ -30,6 +31,68 @@ use crate::display_record_batch::DisplayColumn;
 
 /// Result of running all once-per-frame context systems for a given recording.
 type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult>;
+
+const VIEW_SPACING: f32 = 2.0;
+
+/// View widths follow their preferred aspect ratios at a shared height.
+/// Missing, non-finite, and non-positive ratios fall back to the golden ratio.
+pub struct PreviewLayout {
+    preferred_aspect_ratios: Vec<f32>,
+}
+
+impl PreviewLayout {
+    fn new(ratios: impl IntoIterator<Item = Option<f32>>) -> Self {
+        Self {
+            preferred_aspect_ratios: ratios.into_iter().map(valid_aspect_ratio).collect(),
+        }
+    }
+
+    fn aspect_ratio_sum(&self) -> f32 {
+        self.preferred_aspect_ratios.iter().sum()
+    }
+
+    fn spacing(&self) -> f32 {
+        VIEW_SPACING * self.preferred_aspect_ratios.len().saturating_sub(1) as f32
+    }
+
+    pub fn width_for_height(&self, height: f32) -> f32 {
+        height * self.aspect_ratio_sum() + self.spacing()
+    }
+
+    pub fn height_for_width(&self, width: f32) -> f32 {
+        (width - self.spacing()).at_least(0.0) / self.aspect_ratio_sum()
+    }
+
+    fn view_rects(&self, rect: egui::Rect) -> impl Iterator<Item = egui::Rect> + '_ {
+        let height = self.height_for_width(rect.width()).at_most(rect.height());
+        let left = rect.center().x - self.width_for_height(height) * 0.5;
+        let top = rect.center().y - height * 0.5;
+        self.preferred_aspect_ratios
+            .iter()
+            .scan(left, move |left, ratio| {
+                let view_rect = egui::Rect::from_min_size(
+                    egui::pos2(*left, top),
+                    egui::vec2(height * ratio, height),
+                );
+                *left = view_rect.right() + VIEW_SPACING;
+                Some(view_rect)
+            })
+    }
+}
+
+fn valid_aspect_ratio(ratio: Option<f32>) -> f32 {
+    ratio
+        .filter(|ratio| ratio.is_finite() && *ratio > 0.0)
+        .unwrap_or_else(|| 1.0_f32.midpoint(5.0_f32.sqrt()))
+}
+
+fn placeholder_store_id() -> StoreId {
+    StoreId::new(
+        StoreKind::Recording,
+        "___preview_renderer___",
+        "empty_placeholder",
+    )
+}
 
 /// Height of the scrub bar at the bottom of a preview, at rest.
 const TIMELINE_HEIGHT: f32 = 4.0;
@@ -144,9 +207,49 @@ impl<'a> SegmentPreviewRenderer<'a> {
         self.data_column_index
     }
 
-    /// Number of views this renderer will draw side-by-side.
-    pub fn num_views(&self) -> usize {
-        self.view_ids.len()
+    /// Size the grid for the widest known recording in this preview column.
+    ///
+    /// Ratios come from view state, so loading or changing recording data can reflow the grid.
+    /// This happens for example when an initially empty preview column loads its first recording.
+    pub fn preferred_layout(
+        &self,
+        ctx: &re_viewer_context::AppContext<'_>,
+        view_states: &ViewStates,
+    ) -> PreviewLayout {
+        let classes = self
+            .view_ids
+            .iter()
+            .map(|view_id| {
+                let view =
+                    ViewBlueprint::try_from_db(*view_id, self.blueprint, &self.blueprint_query)?;
+                Some(view.class(ctx.view_class_registry))
+            })
+            .collect::<Vec<_>>();
+        let layout_for_recording = |store_id: &StoreId| {
+            PreviewLayout::new(
+                std::iter::zip(&self.view_ids, &classes).map(|(view_id, class)| {
+                    let class = class.as_ref()?;
+                    if let Some(state) = view_states.get(store_id, *view_id) {
+                        class.preferred_tile_aspect_ratio(state)
+                    } else {
+                        class.preferred_tile_aspect_ratio(class.new_state().as_ref())
+                    }
+                }),
+            )
+        };
+
+        view_states
+            .preview_state
+            .iter()
+            .flat_map(|state| state.iter_active_previews())
+            .filter(|(store_id, _)| {
+                self.view_ids
+                    .iter()
+                    .any(|id| view_states.get(store_id, *id).is_some())
+            })
+            .map(|(store_id, _)| layout_for_recording(store_id))
+            .max_by(|a, b| a.aspect_ratio_sum().total_cmp(&b.aspect_ratio_sum()))
+            .unwrap_or_else(|| layout_for_recording(&placeholder_store_id()))
     }
 
     pub fn show_preview_for_row(
@@ -277,25 +380,13 @@ impl<'a> SegmentPreviewRenderer<'a> {
                     return;
                 }
 
-                // We don't have a recording yet
-                let recording_store_id = StoreId::new(
-                    StoreKind::Recording,
-                    "___preview_renderer___",
-                    "empty_placeholder",
-                );
-                owned_recording = EntityDb::new(recording_store_id);
+                owned_recording = EntityDb::new(placeholder_store_id());
                 owned_caches = StoreCache::new(view_class_registry, &owned_recording);
 
                 (&owned_recording, &owned_caches)
             }
             None => {
-                // We don't have a recording yet
-                let recording_store_id = StoreId::new(
-                    StoreKind::Recording,
-                    "___preview_renderer___",
-                    "empty_placeholder",
-                );
-                owned_recording = EntityDb::new(recording_store_id);
+                owned_recording = EntityDb::new(placeholder_store_id());
                 owned_caches = StoreCache::new(view_class_registry, &owned_recording);
 
                 (&owned_recording, &owned_caches)
@@ -340,8 +431,7 @@ impl<'a> SegmentPreviewRenderer<'a> {
             .map(|view_id| {
                 let view_blueprint =
                     ViewBlueprint::try_from_db(*view_id, self.blueprint, &self.blueprint_query)?;
-                let view_class =
-                    view_class_registry.get_class_or_log_error(view_blueprint.class_identifier());
+                let view_class = view_blueprint.class(view_class_registry);
                 Some(Resolved {
                     view_id: *view_id,
                     view_blueprint,
@@ -403,80 +493,99 @@ impl<'a> SegmentPreviewRenderer<'a> {
 
         let mut views_rect = egui::Rect::NOTHING;
 
-        // Split the available width equally across the views, left-to-right, with a narrow gap.
-        ui.spacing_mut().item_spacing.x = 2.0;
-        ui.columns(resolved.len(), |cols| {
-            for (col_ui, resolved) in std::iter::zip(cols, resolved) {
-                let Some(Resolved {
-                    view_id,
-                    view_blueprint,
-                    view_class,
-                }) = resolved
-                else {
-                    let rect = col_ui.available_rect_before_wrap();
-                    col_ui
-                        .painter()
-                        .rect_filled(rect, 2.0, col_ui.visuals().extreme_bg_color);
-                    col_ui.allocate_rect(rect, egui::Sense::hover());
-                    continue;
-                };
+        let layout = PreviewLayout::new(resolved.iter().map(|resolved| {
+            let resolved = resolved.as_ref()?;
+            let state = view_states.get(store_id, resolved.view_id)?;
+            resolved.view_class.preferred_tile_aspect_ratio(state)
+        }));
+        let available_rect = ui.available_rect_before_wrap();
+        for ((index, resolved), rect) in std::iter::zip(
+            resolved.into_iter().enumerate(),
+            layout.view_rects(available_rect),
+        ) {
+            let mut col_ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .id_salt(index)
+                    .max_rect(rect)
+                    .layout(egui::Layout::top_down(egui::Align::Min)),
+            );
+            let Some(Resolved {
+                view_id,
+                view_blueprint,
+                view_class,
+            }) = resolved
+            else {
+                let rect = col_ui.available_rect_before_wrap();
+                col_ui
+                    .painter()
+                    .rect_filled(rect, 2.0, col_ui.visuals().extreme_bg_color);
+                col_ui.allocate_rect(rect, egui::Sense::hover());
+                continue;
+            };
 
-                let view_state = view_states.get_mut_or_create(store_id, view_id, view_class);
-                let (view_query, system_execution_output) = execute_systems_for_view(
+            let view_state = view_states.get_mut_or_create(store_id, view_id, view_class);
+            let (view_query, system_execution_output) = execute_systems_for_view(
+                &ctx,
+                &view_blueprint,
+                view_state,
+                context_system_once_per_frame_results,
+            );
+
+            let missing_chunk_reporter =
+                MissingChunkReporter::new(system_execution_output.any_missing_chunks());
+
+            let view_state = view_states.get_mut_or_create(store_id, view_id, view_class);
+
+            let view_rect = col_ui.available_rect_before_wrap();
+
+            views_rect = views_rect.union(view_rect);
+
+            // Suppress all inputs while rendering previews: they are meant to be passive.
+            let input_before = col_ui.input_mut(|input| {
+                let input_before = input.clone();
+
+                // Suppress most input.
+                input.modifiers = egui::Modifiers::default();
+                input.raw.events.clear();
+                input.smooth_scroll_delta = egui::Vec2::ZERO;
+                input.focused = false;
+                input.keys_down.clear();
+                input.pointer = egui::PointerState::default();
+
+                input_before
+            });
+            let preview_id = (&self.column_name, row_nr, view_id);
+            let _result = col_ui.push_id(preview_id, |ui| {
+                ui.disable();
+                view_class.ui(
                     &ctx,
-                    &view_blueprint,
+                    &missing_chunk_reporter,
+                    ui,
                     view_state,
-                    context_system_once_per_frame_results,
-                );
+                    &view_query,
+                    system_execution_output,
+                )
+            });
+            col_ui.input_mut(|input| {
+                *input = input_before;
+            });
 
-                let missing_chunk_reporter =
-                    MissingChunkReporter::new(system_execution_output.any_missing_chunks());
-
-                let view_state = view_states.get_mut_or_create(store_id, view_id, view_class);
-
-                let view_rect = col_ui.available_rect_before_wrap();
-
-                views_rect = views_rect.union(view_rect);
-
-                // Suppress all inputs while rendering previews: they are meant to be passive.
-                let input_before = col_ui.input_mut(|input| {
-                    let input_before = input.clone();
-
-                    // Suppress most input.
-                    input.modifiers = egui::Modifiers::default();
-                    input.raw.events.clear();
-                    input.smooth_scroll_delta = egui::Vec2::ZERO;
-                    input.focused = false;
-                    input.keys_down.clear();
-                    input.pointer = egui::PointerState::default();
-
-                    input_before
-                });
-                let preview_id = (&self.column_name, row_nr, view_id);
-                let _result = col_ui.push_id(preview_id, |ui| {
-                    ui.disable();
-                    view_class.ui(
-                        &ctx,
-                        &missing_chunk_reporter,
-                        ui,
-                        view_state,
-                        &view_query,
-                        system_execution_output,
-                    )
-                });
-                col_ui.input_mut(|input| {
-                    *input = input_before;
-                });
-
-                re_view::paint_view_loading_indicator(
-                    col_ui,
-                    preview_id,
-                    view_rect,
-                    missing_chunk_reporter.any_missing(),
-                    recording,
-                );
+            // Rendering can learn a ratio from newly loaded data. Reflow on the next frame.
+            if valid_aspect_ratio(view_class.preferred_tile_aspect_ratio(view_state))
+                != layout.preferred_aspect_ratios[index]
+            {
+                col_ui.request_repaint();
             }
-        });
+
+            re_view::paint_view_loading_indicator(
+                &mut col_ui,
+                preview_id,
+                view_rect,
+                missing_chunk_reporter.any_missing(),
+                recording,
+            );
+        }
+        ui.allocate_rect(available_rect, egui::Sense::hover());
 
         let timeline_id = ui.make_persistent_id(("timeline", &self.column_name, row_nr));
 
@@ -878,6 +987,55 @@ mod tests {
 
     use super::*;
 
+    #[test]
+    fn preview_layout_uses_golden_ratio_for_missing_or_invalid_ratios() {
+        for ratio in [
+            None,
+            Some(0.0),
+            Some(-1.0),
+            Some(f32::NAN),
+            Some(f32::INFINITY),
+            Some(f32::NEG_INFINITY),
+        ] {
+            let layout = PreviewLayout::new([ratio]);
+            let width = layout.width_for_height(100.0);
+            assert!((width - 161.8034).abs() < 0.0001, "{ratio:?}: {width}");
+        }
+    }
+
+    #[test]
+    fn preview_rects_preserve_ratios_at_size_limits() {
+        for (ratios, size, expected) in [
+            (vec![1.0], [350.0, 350.0], vec![[350.0, 350.0]]),
+            (vec![1.0], [350.0, 200.0], vec![[200.0, 200.0]]),
+            (vec![0.5], [350.0, 400.0], vec![[200.0, 400.0]]),
+            (vec![0.5, 0.5], [350.0, 348.0], vec![[174.0, 348.0]; 2]),
+            (
+                vec![1.0, 0.5],
+                [302.0, 400.0],
+                vec![[200.0, 200.0], [100.0, 200.0]],
+            ),
+            (vec![2.0], [100.0, 400.0], vec![[100.0, 50.0]]),
+        ] {
+            let layout = PreviewLayout::new(ratios.into_iter().map(Some));
+            let bounds = egui::Rect::from_min_size(egui::pos2(10.0, 20.0), size.into());
+            let rects = layout.view_rects(bounds).collect::<Vec<_>>();
+            assert_eq!(
+                rects
+                    .iter()
+                    .map(|rect| [rect.width(), rect.height()])
+                    .collect::<Vec<_>>(),
+                expected,
+            );
+            let combined = rects
+                .iter()
+                .copied()
+                .fold(egui::Rect::NOTHING, egui::Rect::union);
+            assert_eq!(combined.center(), bounds.center());
+            assert!(bounds.contains_rect(combined));
+        }
+    }
+
     /// What the playback tests drive from the outside.
     struct PlaybackTestState {
         view_states: ViewStates,
@@ -1109,9 +1267,9 @@ mod tests {
         .unwrap();
 
         assert_eq!(first.data_column_index(), 3);
-        assert_eq!(first.num_views(), 1);
+        assert_eq!(first.view_ids.len(), 1);
         assert_eq!(second.data_column_index(), 5);
-        assert_eq!(second.num_views(), 2);
+        assert_eq!(second.view_ids.len(), 2);
     }
 
     #[test]

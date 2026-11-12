@@ -165,9 +165,9 @@ pub async fn preview_table_with_multiple_preview_columns() {
         harness.query_by_label("Table view").is_some()
     });
 
-    // Two preview fields are stacked vertically in each card. The second field contains two views,
-    // which are laid out side by side. The taller cards leave only the first two rows on screen.
-    wait_for_preview_recordings(&mut harness, &segment_uris[..2]);
+    // Two preview fields are stacked vertically in each card, with two views in the second field.
+    // All four cards are at least partly visible, so every recording must load before snapshotting.
+    wait_for_preview_recordings(&mut harness, &segment_uris);
     harness.run_ok();
     harness.snapshot("preview_cards_multiple_preview_columns");
 
