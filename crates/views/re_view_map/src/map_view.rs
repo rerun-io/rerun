@@ -258,13 +258,17 @@ impl ViewClass for MapView {
 
             re_log::debug!(?geo_points_visualizer.max_radii);
 
-            let screen = (ui.available_size() - egui::vec2(15.0, 15.0)).at_least(egui::Vec2::ZERO);
+            let screen = ui.available_size() - egui::vec2(15.0, 15.0);
 
             let ui_zoom = ui_point_radius.and_then(|radius| {
-                span.zoom_for_screen_size(screen - egui::Vec2::splat(2.0 * radius))
+                span.zoom_for_screen_size(
+                    (screen - egui::Vec2::splat(2.0 * radius)).at_least(egui::Vec2::ZERO),
+                )
             });
-            let scene_zoom = point_radius_meters
-                .and_then(|radius| span.extend_meters(radius).zoom_for_screen_size(screen));
+            let scene_zoom = point_radius_meters.and_then(|radius| {
+                span.extend_meters(radius)
+                    .zoom_for_screen_size(screen.at_least(egui::Vec2::ZERO))
+            });
 
             [ui_zoom, scene_zoom]
                 .into_iter()
