@@ -7,6 +7,7 @@ use re_sdk_types::archetypes::{Pinhole, Transform3D, VideoStream};
 use re_sdk_types::components::VideoCodec;
 use re_types_core::{Archetype as _, ComponentIdentifier};
 
+use crate::rebatch_videos::extract_codec;
 use crate::{ChunkStore, ChunkTrackingMode, IsStartOfGop, LatestAtQuery, RangeQuery};
 
 impl ChunkStore {
@@ -237,23 +238,7 @@ impl ChunkStore {
         timeline: TimelineName,
         is_start_of_gop: &dyn Fn(&[u8], VideoCodec) -> anyhow::Result<bool>,
     ) -> Vec<TimeInt> {
-        let codec = {
-            let codec_identifier = VideoStream::descriptor_codec().component;
-            let results = self.latest_at_relevant_chunks(
-                tracking,
-                &LatestAtQuery::new(timeline, TimeInt::MAX),
-                entity_path,
-                codec_identifier,
-            );
-
-            results
-                .chunks
-                .iter()
-                .flat_map(|chunk| chunk.iter_component::<VideoCodec>(codec_identifier))
-                .find_map(|data| data.as_slice().first().copied())
-        };
-
-        let Some(codec) = codec else {
+        let Some(codec) = extract_codec(self, tracking, entity_path, timeline) else {
             return vec![];
         };
 
