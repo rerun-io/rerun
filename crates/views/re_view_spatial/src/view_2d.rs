@@ -73,16 +73,34 @@ impl ViewClass for SpatialView2D {
                     .map(|pinhole| pinhole.resolution_rect())
                     .unwrap_or_else(|| {
                         // TODO(emilk): if there is a single image in this view, use that as the default bounds
-                        let scene_rect_smoothed = view_state
-                            .bounding_boxes
-                            .region_of_interest_smoothed
-                            .expanded(re_math::Vec3::splat(
-                                view_state.bounding_boxes.max_point_radius,
-                            ));
-                        egui::Rect::from_min_max(
-                            scene_rect_smoothed.min.truncate().to_array().into(),
-                            scene_rect_smoothed.max.truncate().to_array().into(),
-                        )
+                        let max_radii = view_state.bounding_boxes.max_point_radius;
+                        let scene_radius = max_radii.scene_units().unwrap_or_default();
+                        let ui_radius = max_radii.ui_points().unwrap_or_default();
+
+                        let roi = view_state.bounding_boxes.region_of_interest_smoothed;
+                        let mut roi = egui::Rect::from_min_max(
+                            roi.min.truncate().to_array().into(),
+                            roi.max.truncate().to_array().into(),
+                        );
+
+                        let ui_radius_in_scene = view_state
+                            .screen_space_2d
+                            .map(|screen_space| screen_space.viewport_size)
+                            .filter(|size| size.x > 0.0 && size.y > 0.0)
+                            .map(|viewport_size| {
+                                let roi = roi.size();
+                                let scale = (viewport_size.x / roi.x).min(viewport_size.y / roi.y);
+                                if scale.is_finite() && scale > 0.0 {
+                                    ui_radius / scale
+                                } else {
+                                    // half the default VisualBounds2D size
+                                    50.0
+                                }
+                            })
+                            .unwrap_or(0.0);
+
+                        roi = roi.expand(scene_radius.max(ui_radius_in_scene));
+                        roi
                     });
 
                 if valid_bound(&default_scene_rect) {
