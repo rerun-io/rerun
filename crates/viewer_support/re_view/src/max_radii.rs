@@ -15,6 +15,7 @@ impl MaxRadii {
     pub fn ui_points(&self) -> Option<f32> {
         self.ui_points
     }
+
     pub fn scene_units(&self) -> Option<f32> {
         self.scene_units
     }
