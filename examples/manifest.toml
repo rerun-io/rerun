@@ -109,6 +109,7 @@ examples = [
   "kiss-icp",
   "differentiable_blocks_world",
   "mast3r_slam",
+  "metrictrail",
   "stereo_vision_slam",
   "glomap",
   "hloc_glomap",
