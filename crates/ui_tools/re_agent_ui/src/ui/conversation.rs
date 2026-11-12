@@ -336,13 +336,15 @@ impl Conversation {
             .preferences(&self.profile_id)
             .cloned()
             .unwrap_or_default();
-        let agent_name = agent_name(&self.profile_id, agents);
+        let agent_name = agent_name(&self.profile_id, agents)
+            .or_else(|| self.session.agent_name().map(ToOwned::to_owned))
+            .unwrap_or_else(|| "Custom agent".to_owned());
         chat_ui(
             ui,
             &mut self.session,
             &mut self.input,
             &mut preferences,
-            agent_name.as_deref(),
+            Some(&agent_name),
             settings.show_thoughts,
             login_hint,
             example_prompts,

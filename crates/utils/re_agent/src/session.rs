@@ -13,8 +13,8 @@ use agent_client_protocol_schema::v1::{
     ElicitationAction, ElicitationMode, ElicitationScope, ImageContent, PermissionOption,
     PermissionOptionId, PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, SelectedPermissionOutcome,
-    SessionConfigId, SessionConfigValueId, SessionId, SessionModeId, SessionModeState,
-    SessionUpdate, StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
+    SessionConfigId, SessionConfigOptionValue, SessionId, SessionUpdate, StopReason, TextContent,
+    ToolCallId, ToolCallStatus, ToolKind,
 };
 
 use re_async::{AsyncRuntimeHandle, UiWaker};
@@ -244,10 +244,6 @@ struct AgentInfo {
 
     /// The version the agent reported, which is ours for a model-API agent.
     version: Option<String>,
-    modes: Option<SessionModeState>,
-
-    /// Set by [`AgentSession::set_mode`] until the agent confirms a mode.
-    requested_mode: Option<SessionModeId>,
 
     auth: Option<AuthPrompt>,
 
@@ -519,19 +515,6 @@ impl AgentSession {
     /// What the agent calls itself, once it has told us.
     pub fn agent_name(&self) -> Option<&str> {
         self.agent.name.as_deref()
-    }
-
-    pub fn modes(&self) -> Option<&SessionModeState> {
-        self.agent.modes.as_ref()
-    }
-
-    pub fn current_mode_id(&self) -> Option<&SessionModeId> {
-        self.transcript.current_mode.as_ref().or_else(|| {
-            self.agent
-                .modes
-                .as_ref()
-                .map(|modes| &modes.current_mode_id)
-        })
     }
 
     pub fn transcript(&self) -> &Transcript {
@@ -939,25 +922,18 @@ impl AgentSession {
         self.requests.elicitations.clear();
     }
 
-    pub fn set_mode(&mut self, mode_id: SessionModeId) {
-        self.agent.requested_mode = Some(mode_id.clone());
-        if let Some(connection) = &self.connection {
-            connection.send(AgentCommand::SetMode(mode_id));
-        }
-    }
-
     /// Asks the agent to change a session setting; its confirmed value arrives in a config update.
-    pub fn set_config_option(&self, config_id: SessionConfigId, value: SessionConfigValueId) {
+    pub fn set_config_option(
+        &self,
+        config_id: SessionConfigId,
+        value: impl Into<SessionConfigOptionValue>,
+    ) {
         if let Some(connection) = &self.connection {
-            connection.send(AgentCommand::SetConfigOption { config_id, value });
+            connection.send(AgentCommand::SetConfigOption {
+                config_id,
+                value: value.into(),
+            });
         }
-    }
-
-    /// The mode last asked for with [`Self::set_mode`], for tests: nothing confirms it
-    /// without a connected agent.
-    #[cfg(feature = "testing")]
-    pub fn requested_mode(&self) -> Option<&SessionModeId> {
-        self.agent.requested_mode.as_ref()
     }
 
     pub fn authenticate(&mut self, method_id: AuthMethodId) {
@@ -1117,7 +1093,6 @@ impl AgentSession {
             }
             AgentEvent::SessionStarted {
                 session_id,
-                modes,
                 config_options,
                 origin,
             } => {
@@ -1136,7 +1111,6 @@ impl AgentSession {
                     );
                 }
                 self.agent.session_id = Some(session_id);
-                self.agent.modes = modes;
                 self.transcript.config_options = config_options;
                 self.agent.auth = None;
                 self.phase = Phase::Ready;
@@ -1153,9 +1127,6 @@ impl AgentSession {
                 }
             }
             AgentEvent::Update(update) => {
-                if let SessionUpdate::CurrentModeUpdate(_) = &update {
-                    self.agent.requested_mode = None;
-                }
                 if let Some(failure) =
                     McpStartupFailure::from_update(&update, &self.launch.mcp_servers)
                 {
@@ -1566,7 +1537,6 @@ mod tests {
     fn session_started(origin: SessionOrigin) -> AgentEvent {
         AgentEvent::SessionStarted {
             session_id: SessionId::new("earlier"),
-            modes: None,
             config_options: Vec::new(),
             origin,
         }
@@ -1777,7 +1747,6 @@ mod tests {
         };
         let session_started = || AgentEvent::SessionStarted {
             session_id: "session".into(),
-            modes: None,
             config_options: vec![
                 SessionConfigOption::select(
                     "model",
@@ -1931,7 +1900,6 @@ mod tests {
         let mut session = AgentSession::default();
         session.handle_event(AgentEvent::SessionStarted {
             session_id: agent_client_protocol_schema::v1::SessionId::new("test-session"),
-            modes: None,
             config_options: Vec::new(),
             origin: SessionOrigin::New,
         });

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
+use re_agent::acp::schema::v1::{SessionConfigId, SessionConfigOption, SessionConfigOptionValue};
 use re_agent::{AgentToolbox, ModelApiProvider};
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_error::StructuredError;
@@ -413,17 +413,23 @@ impl AgentPanel {
         self.session().is_ready()
     }
 
-    /// The permission modes the shown conversation's agent offers, if it offers any.
-    pub fn modes(&self) -> Option<&SessionModeState> {
-        self.session().modes()
+    /// The settings currently offered by the shown conversation's agent.
+    pub fn config_options(&self) -> &[SessionConfigOption] {
+        &self.session().transcript().config_options
     }
 
-    /// Switches the shown conversation's permission mode, and makes it the default for new
-    /// conversations with the same agent.
-    pub fn set_mode(&mut self, mode_id: SessionModeId) {
+    /// Changes a setting and remembers the selection for conversations with the same profile.
+    pub fn set_config_option(
+        &mut self,
+        config_id: SessionConfigId,
+        value: impl Into<SessionConfigOptionValue>,
+    ) {
+        let value = value.into();
         let profile_id = self.active_conversation().profile_id.clone();
-        self.settings.preferences_mut(profile_id).mode = Some(mode_id.clone());
-        self.session_mut().set_mode(mode_id);
+        self.settings
+            .preferences_mut(profile_id)
+            .set(config_id.clone(), value.clone());
+        self.session().set_config_option(config_id, value);
     }
 
     /// Sends a prompt in the shown conversation as if the user had typed it.
@@ -983,7 +989,6 @@ mod tests {
         ));
         session.handle_event(re_agent::AgentEvent::SessionStarted {
             session_id: saved.session_id.clone(),
-            modes: None,
             config_options: Vec::new(),
             origin: re_agent::SessionOrigin::Loaded,
         });
@@ -1019,7 +1024,6 @@ mod tests {
             .session
             .handle_event(re_agent::AgentEvent::SessionStarted {
                 session_id: re_agent::acp::schema::v1::SessionId::new("api"),
-                modes: None,
                 config_options: Vec::new(),
                 origin: re_agent::SessionOrigin::New,
             });
@@ -1061,7 +1065,6 @@ mod tests {
         let session = panel.session_mut();
         session.handle_event(re_agent::AgentEvent::SessionStarted {
             session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
-            modes: None,
             config_options: Vec::new(),
             origin: re_agent::SessionOrigin::New,
         });
@@ -1137,7 +1140,6 @@ mod tests {
             .session
             .handle_event(re_agent::AgentEvent::SessionStarted {
                 session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
-                modes: None,
                 config_options: Vec::new(),
                 origin: re_agent::SessionOrigin::New,
             });

@@ -6,9 +6,9 @@ use egui::Role;
 use egui::Vec2;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_agent::acp::schema::v1::{
-    AvailableCommand, AvailableCommandsUpdate, CurrentModeUpdate, PermissionOption,
-    PermissionOptionKind, RequestPermissionRequest, SessionId, SessionMode, SessionModeState,
-    SessionUpdate, ToolCallUpdate, ToolCallUpdateFields,
+    AvailableCommand, AvailableCommandsUpdate, PermissionOption, PermissionOptionKind,
+    RequestPermissionRequest, SessionConfigOption, SessionConfigOptionCategory,
+    SessionConfigSelectOption, SessionId, SessionUpdate, ToolCallUpdate, ToolCallUpdateFields,
 };
 use re_agent::{AgentEntry, AgentEvent, AgentProfile, AgentProfileId, AgentSettings};
 use re_agent_ui::AgentPanel;
@@ -62,6 +62,10 @@ fn permission_shortcuts_require_chat_input_focus() {
 }
 
 pub fn ready_panel() -> AgentPanel {
+    ready_panel_for_profile(AgentProfileId::new("claude"))
+}
+
+pub fn ready_panel_for_profile(profile_id: AgentProfileId) -> AgentPanel {
     let agents = AgentProfile::builtin()
         .into_iter()
         .map(|profile| AgentEntry {
@@ -70,7 +74,7 @@ pub fn ready_panel() -> AgentPanel {
         })
         .collect();
     let settings = AgentSettings {
-        profile_id: AgentProfileId::new("claude"),
+        profile_id,
         ..Default::default()
     };
     let mut panel = AgentPanel::with_agents(settings, None, agents, Vec::new());
@@ -86,14 +90,18 @@ pub fn ready_panel() -> AgentPanel {
     session.handle_event(AgentEvent::SessionStarted {
         session_id: SessionId::new("test-session"),
         origin: re_agent::SessionOrigin::New,
-        modes: Some(SessionModeState::new(
-            "default",
-            vec![
-                SessionMode::new("default", "Manual"),
-                SessionMode::new("acceptEdits", "Accept edits"),
-            ],
-        )),
-        config_options: Vec::new(),
+        config_options: vec![
+            SessionConfigOption::select(
+                "mode",
+                "Mode",
+                "default",
+                vec![
+                    SessionConfigSelectOption::new("default", "Manual"),
+                    SessionConfigSelectOption::new("acceptEdits", "Accept edits"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::Mode),
+        ],
     });
     session.handle_event(AgentEvent::Update(SessionUpdate::AvailableCommandsUpdate(
         AvailableCommandsUpdate::new(vec![AvailableCommand::new("help", "Show help")]),
@@ -196,12 +204,7 @@ fn settings_menu_opens_agent_setup() {
 /// Picking a mode in the settings menu asks the agent to switch.
 #[test]
 fn mode_picker_requests_the_clicked_mode() {
-    let mut panel = ready_panel();
-    panel
-        .session_mut()
-        .handle_event(AgentEvent::Update(SessionUpdate::CurrentModeUpdate(
-            CurrentModeUpdate::new("default"),
-        )));
+    let panel = ready_panel();
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
@@ -215,17 +218,13 @@ fn mode_picker_requests_the_clicked_mode() {
     harness.get_by_label("Accept edits").click();
     harness.run_steps(2);
 
-    let session = harness.state().session();
-    assert_eq!(
-        session.requested_mode().map(|id| id.0.as_ref()),
-        Some("acceptEdits")
-    );
     assert_eq!(
         harness
             .state()
             .settings()
             .preferences(&AgentProfileId::new("claude"))
-            .and_then(|preferences| preferences.mode.as_ref())
+            .and_then(|preferences| preferences.get("mode"))
+            .and_then(|value| value.as_value_id())
             .map(|mode| mode.0.as_ref()),
         Some("acceptEdits")
     );

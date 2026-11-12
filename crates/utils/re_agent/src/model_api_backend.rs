@@ -7,9 +7,10 @@ use agent_client_protocol_schema::v1::{
     AgentCapabilities, ConfigOptionUpdate, ContentBlock, ContentChunk, ImageContent,
     Implementation, PermissionOption, PermissionOptionKind, PromptCapabilities,
     RequestPermissionOutcome, RequestPermissionRequest, SessionConfigId, SessionConfigOption,
-    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigValueId, SessionId,
-    SessionUpdate, StopReason, TextContent, ToolCall as AcpToolCall, ToolCallId, ToolCallStatus,
-    ToolCallUpdate, ToolCallUpdateFields, ToolKind,
+    SessionConfigOptionCategory, SessionConfigOptionValue, SessionConfigSelectOption,
+    SessionConfigValueId, SessionId, SessionUpdate, StopReason, TextContent,
+    ToolCall as AcpToolCall, ToolCallId, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields,
+    ToolKind,
 };
 use base64::Engine as _;
 use futures::StreamExt as _;
@@ -573,9 +574,15 @@ impl<F: Fn(&str) -> DynModel<Completion>> ModelSelection<F> {
     fn set_config_option(
         &mut self,
         config_id: &SessionConfigId,
-        value: &SessionConfigValueId,
+        value: &SessionConfigOptionValue,
         events: &EventSender,
     ) {
+        let Some(value) = value.as_value_id() else {
+            events.send(AgentEvent::Error(format!(
+                "Expected a select value for session option: {config_id:?}"
+            )));
+            return;
+        };
         match config_id.0.as_ref() {
             MODEL_CONFIG_ID => {
                 self.id = value.0.to_string();
@@ -650,7 +657,6 @@ async fn run(
     });
     events.send(AgentEvent::SessionStarted {
         session_id: SessionId::new(SESSION_ID),
-        modes: None,
         config_options: selection.config_options(),
         origin: SessionOrigin::New,
     });
@@ -693,13 +699,7 @@ async fn run(
                                         .to_owned(),
                                 ));
                             }
-                            Either::Right((
-                                Some(
-                                    command @ (AgentCommand::SetMode(_)
-                                    | AgentCommand::Authenticate(_)),
-                                ),
-                                _,
-                            )) => {
+                            Either::Right((Some(command @ AgentCommand::Authenticate(_)), _)) => {
                                 re_log::debug!(
                                     "Ignoring {command:?}: not supported by this backend"
                                 );
@@ -723,7 +723,7 @@ async fn run(
             // A running turn handles its own cancellation; between turns, nothing runs.
             AgentCommand::Cancel => {}
 
-            AgentCommand::SetMode(_) | AgentCommand::Authenticate(_) => {
+            AgentCommand::Authenticate(_) => {
                 re_log::debug!("Ignoring {command:?}: not supported by this backend");
             }
 
@@ -1262,7 +1262,7 @@ mod tests {
 
         selection.set_config_option(
             &SessionConfigId::new(MODEL_CONFIG_ID),
-            &SessionConfigValueId::new(anthropic::CLAUDE_HAIKU_4_5),
+            &SessionConfigOptionValue::value_id(anthropic::CLAUDE_HAIKU_4_5),
             &events,
         );
         assert_eq!(selection.effort, None);
@@ -1270,18 +1270,18 @@ mod tests {
 
         selection.set_config_option(
             &SessionConfigId::new(MODEL_CONFIG_ID),
-            &SessionConfigValueId::new(anthropic::CLAUDE_SONNET_5_5),
+            &SessionConfigOptionValue::value_id(anthropic::CLAUDE_SONNET_5_5),
             &events,
         );
         selection.set_config_option(
             &SessionConfigId::new(EFFORT_CONFIG_ID),
-            &SessionConfigValueId::new("low"),
+            &SessionConfigOptionValue::value_id("low"),
             &events,
         );
         assert_eq!(selection.effort, Some(rig_core::completion::Effort::Low));
         selection.set_config_option(
             &SessionConfigId::new(EFFORT_CONFIG_ID),
-            &SessionConfigValueId::new(DEFAULT_EFFORT),
+            &SessionConfigOptionValue::value_id(DEFAULT_EFFORT),
             &events,
         );
         assert_eq!(selection.effort, None);

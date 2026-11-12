@@ -15,9 +15,72 @@ use super::chat_input::ready_panel;
 /// The model that `panel`'s agent harness would be started with.
 fn launched_model(panel: &AgentPanel) -> Option<SessionConfigValueId> {
     match panel.agent_launch(&SessionContext::default()) {
-        Ok(AgentLaunch::AgentHarness(config)) => config.preferred_model,
+        Ok(AgentLaunch::AgentHarness(config)) => config.preferences.model().cloned(),
         other => panic!("expected an agent harness, got {other:?}"),
     }
+}
+
+/// Checks that model-category presentation works across groups and preserves the agent's option id.
+#[test]
+fn grouped_models_resolve_aliases_and_recommend_reruns_default() {
+    let mut panel = ready_panel();
+    panel
+        .session_mut()
+        .handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+            ConfigOptionUpdate::new(vec![
+                SessionConfigOption::select(
+                    "engine",
+                    "Model",
+                    "default",
+                    vec![
+                        SessionConfigSelectGroup::new(
+                            "aliases",
+                            "Aliases",
+                            vec![
+                                SessionConfigSelectOption::new("default", "Default (recommended)")
+                                    .description("Opus 5.5"),
+                                SessionConfigSelectOption::new("automatic", "Automatic")
+                                    .description("Agent chooses a model"),
+                            ],
+                        ),
+                        SessionConfigSelectGroup::new(
+                            "models",
+                            "Models",
+                            vec![
+                                SessionConfigSelectOption::new("opus", "Opus 5.5"),
+                                SessionConfigSelectOption::new("sonnet", "Sonnet 5.5"),
+                            ],
+                        ),
+                    ],
+                )
+                .category(SessionConfigOptionCategory::Model),
+            ]),
+        )));
+    let mut harness = re_ui::testing::new_harness(
+        re_ui::testing::TestOptions::Gui,
+        Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0),
+    )
+    .build_ui_state(|ui, panel| panel.ui(ui), panel);
+    harness.run_steps(3);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Model");
+    assert!(
+        harness
+            .query_by_label_contains("Default (recommended)")
+            .is_none()
+    );
+    harness.get_by_label("Automatic");
+    harness.get_by_label("recommended");
+    harness.get_by_label("Sonnet 5.5").click();
+    harness.run_steps(2);
+    assert_eq!(
+        harness
+            .state()
+            .settings()
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.get("engine"))
+            .and_then(|value| value.as_value_id()),
+        Some(&SessionConfigValueId::new("sonnet"))
+    );
 }
 
 #[test]
@@ -31,7 +94,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
     panel
         .settings_mut()
         .preferences_mut(AgentProfileId::new("codex"))
-        .model = Some(SessionConfigValueId::new("gpt-5.6-high"));
+        .set("model", "gpt-5.6-high");
     panel
         .session_mut()
         .handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
@@ -72,7 +135,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
             .state()
             .settings()
             .preferences(&AgentProfileId::new("claude"))
-            .and_then(|preferences| preferences.model.as_ref()),
+            .and_then(|preferences| preferences.model()),
         Some(&SessionConfigValueId::new("opus-fast"))
     );
     assert_eq!(
@@ -89,7 +152,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
             .state()
             .settings()
             .preferences(&AgentProfileId::new("claude"))
-            .and_then(|preferences| preferences.model.as_ref()),
+            .and_then(|preferences| preferences.model()),
         Some(&SessionConfigValueId::new("opus-thinking"))
     );
     assert_eq!(
@@ -97,7 +160,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
             .state()
             .settings()
             .preferences(&AgentProfileId::new("codex"))
-            .and_then(|preferences| preferences.model.as_ref()),
+            .and_then(|preferences| preferences.model()),
         Some(&SessionConfigValueId::new("gpt-5.6-high"))
     );
 
@@ -175,26 +238,28 @@ fn effort_picker_follows_the_agents_config_options() {
         panel,
     );
     harness.run_steps(3);
-    assert!(harness.query_by_label("Opus 5.5 High Manual").is_some());
+    harness.get_by_label("Opus 5.5");
+    assert!(harness.query_by_label_contains("High").is_none());
 
     harness
         .state_mut()
         .session_mut()
         .handle_event(AgentEvent::Update(model_and_effort("haiku", None)));
     harness.run_steps(3);
-    assert!(harness.query_by_label("Haiku 4.5 Manual").is_some());
-    assert!(
-        harness.query_by_label_contains("High").is_none(),
-        "Haiku offers no effort, so none is shown"
-    );
+    assert!(harness.query_by_label_contains("Haiku 4.5").is_some());
+    assert!(harness.query_by_label_contains("High").is_none());
 
     harness
         .state_mut()
         .session_mut()
         .handle_event(AgentEvent::Update(model_and_effort("opus", Some("low"))));
     harness.run_steps(3);
-    assert!(harness.query_by_label("Opus 5.5 Low Manual").is_some());
-
+    harness.get_by_label("Opus 5.5");
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Effort");
+    harness.get_by_label("Low");
+    harness.key_press(egui::Key::Escape);
+    harness.key_press(egui::Key::Escape);
+    harness.run_steps(2);
     harness
         .state_mut()
         .session_mut()
@@ -203,8 +268,5 @@ fn effort_picker_follows_the_agents_config_options() {
             Some("default"),
         )));
     harness.run_steps(3);
-    assert!(
-        harness.query_by_label("Opus 5.5 Manual").is_some(),
-        "the default effort is left out of the button"
-    );
+    harness.get_by_label("Opus 5.5");
 }

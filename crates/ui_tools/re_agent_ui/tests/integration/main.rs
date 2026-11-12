@@ -1,5 +1,6 @@
 mod agent_panel_snapshots;
 mod chat_input;
+mod config_options;
 mod conversation_list;
 mod copy_response;
 mod elicitation;
@@ -24,8 +25,11 @@ fn open_settings_submenu(
     harness.run_steps(2);
     harness
         .get_by(|node| {
-            node.label()
-                .is_some_and(|label| label.split_whitespace().next() == Some(setting))
+            node.label().is_some_and(|label| {
+                label
+                    .strip_prefix(setting)
+                    .is_some_and(|rest| rest.starts_with(' '))
+            })
         })
         .hover();
     harness.run_steps(2);

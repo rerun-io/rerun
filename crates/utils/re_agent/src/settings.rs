@@ -1,9 +1,11 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 #[cfg(agent_harness_backend)]
 use std::path::Path;
 use std::path::PathBuf;
 
-use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionId, SessionModeId};
+use agent_client_protocol_schema::v1::{
+    SessionConfigId, SessionConfigOptionValue, SessionConfigValueId, SessionId,
+};
 
 use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
 use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProvider};
@@ -167,17 +169,30 @@ pub struct AgentSettings {
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct AgentPreferences {
-    /// Session mode, e.g. `acceptEdits` for Claude or `read-only` for Codex.
-    pub mode: Option<SessionModeId>,
+    /// Only selections are persisted: the agent supplies the available options on connection.
+    pub config_options: HashMap<SessionConfigId, SessionConfigOptionValue>,
+}
 
-    /// Model, e.g. `sonnet` for Claude or `gpt-5-codex` for Codex.
-    pub model: Option<SessionConfigValueId>,
+impl AgentPreferences {
+    /// Returns the saved value for an option id, which is scoped to this profile.
+    pub fn get(&self, id: impl Into<SessionConfigId>) -> Option<&SessionConfigOptionValue> {
+        self.config_options.get(&id.into())
+    }
 
-    /// Speed, e.g. `on` for the fast mode of both Claude and Codex.
-    pub speed: Option<SessionConfigValueId>,
+    /// Remembers a selection; the agent validates whether it is offered when restored.
+    pub fn set(
+        &mut self,
+        id: impl Into<SessionConfigId>,
+        value: impl Into<SessionConfigOptionValue>,
+    ) {
+        self.config_options.insert(id.into(), value.into());
+    }
 
-    /// Effort, e.g. `high` or `xhigh`, restored only if the selected model offers it.
-    pub effort: Option<Effort>,
+    /// The saved selection for backends that use `model` as their model option id.
+    pub fn model(&self) -> Option<&SessionConfigValueId> {
+        self.get("model")
+            .and_then(SessionConfigOptionValue::as_value_id)
+    }
 }
 
 /// How much the model thinks before it answers, as the id of one of the levels the agent offers.
@@ -313,7 +328,7 @@ impl AgentSettings {
             .ok_or_else(|| AgentLaunchError::missing_api_key(provider))?;
         let model = self
             .preferences(&self.profile_id)
-            .and_then(|preferences| preferences.model.as_ref())
+            .and_then(|preferences| preferences.model())
             .map_or_else(
                 || provider.default_model().to_owned(),
                 |model| model.0.to_string(),
@@ -324,7 +339,9 @@ impl AgentSettings {
             model,
             effort: self
                 .preferences(&self.profile_id)
-                .and_then(|preferences| preferences.effort.clone()),
+                .and_then(|preferences| preferences.get("effort"))
+                .and_then(SessionConfigOptionValue::as_value_id)
+                .map(Effort::from),
             system_prompt: context.model_api_preamble.clone(),
             hosted_tools: self.model_api_hosted_tools,
             toolbox: None,
@@ -403,15 +420,18 @@ mod tests {
         settings.preferences.insert(
             AgentProfileId::new("claude"),
             AgentPreferences {
-                model: Some(SessionConfigValueId::new("sonnet")),
-                ..Default::default()
+                config_options: [("model".into(), SessionConfigValueId::new("sonnet").into())]
+                    .into(),
             },
         );
         let Ok(json) = serde_json::to_value(&settings) else {
             panic!("settings should serialize");
         };
         assert_eq!(json["profile_id"], "codex");
-        assert_eq!(json["preferences"]["claude"]["model"], "sonnet");
+        assert_eq!(
+            json["preferences"]["claude"]["config_options"]["model"]["value"],
+            "sonnet"
+        );
         assert_eq!(
             serde_json::from_value::<AgentSettings>(json).ok(),
             Some(settings)

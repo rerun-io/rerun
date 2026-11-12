@@ -369,9 +369,7 @@ impl Redactor {
 
         config.mcp_servers.clear();
         config.cwd = self.scratch.as_ref()?.path().to_owned();
-        config.preferred_model = None;
-        config.preferred_speed = None;
-        config.preferred_effort = None;
+        config.preferences = Default::default();
         config.model_preferences = REDACTION_MODELS
             .iter()
             .map(|&model| model.to_owned())
@@ -557,10 +555,13 @@ mod tests {
             log_protocol: false,
             preamble: None,
             model_preferences: Vec::new(),
-            preferred_model: Some(crate::acp::schema::v1::SessionConfigValueId::new("opus")),
-            preferred_speed: None,
-            preferred_effort: Some(crate::Effort("max".to_owned())),
-            mode_preferences: Vec::new(),
+            preferences: crate::AgentPreferences {
+                config_options: [
+                    ("model".into(), "opus".into()),
+                    ("effort".into(), "max".into()),
+                ]
+                .into(),
+            },
             session_to_load: None,
         };
         let mut redactor = Redactor::default();
@@ -568,8 +569,7 @@ mod tests {
             .harness_config(config)
             .expect("a scratch directory");
         assert!(config.mcp_servers.is_empty());
-        assert!(config.preferred_model.is_none());
-        assert!(config.preferred_effort.is_none());
+        assert!(config.preferences.config_options.is_empty());
         assert_eq!(
             config.model_preferences.first().map(String::as_str),
             Some("sonnet")

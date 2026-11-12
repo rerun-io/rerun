@@ -9,9 +9,8 @@ use re_agent::acp::schema::v1::{
     AuthMethod, AuthMethodTerminal, ConfigOptionUpdate, ContentBlock, ContentChunk, Diff,
     Implementation, PermissionOption, PermissionOptionKind, Plan, PlanEntry, PlanEntryPriority,
     PlanEntryStatus, RequestPermissionRequest, SessionConfigOption, SessionConfigOptionCategory,
-    SessionConfigSelectOption, SessionId, SessionMode, SessionModeState, SessionUpdate,
-    TextContent, ToolCall, ToolCallContent, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
-    ToolCallUpdateFields, ToolKind, UsageUpdate,
+    SessionConfigSelectOption, SessionId, SessionUpdate, TextContent, ToolCall, ToolCallContent,
+    ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 use re_agent::{
     AgentEntry, AgentEvent, AgentProfile, AgentProfileId, AgentSession, AgentSettings,
@@ -83,16 +82,22 @@ fn open_session(session: &mut AgentSession) {
     session.handle_event(AgentEvent::SessionStarted {
         session_id: SessionId::new("test-session"),
         origin: re_agent::SessionOrigin::New,
-        modes: Some(SessionModeState::new(
-            "default",
-            vec![
-                SessionMode::new("default", "Manual"),
-                SessionMode::new("acceptEdits", "Accept edits"),
-                SessionMode::new("bypassPermissions", "Bypass permissions"),
-            ],
-        )),
-        config_options: Vec::new(),
+        config_options: vec![mode_config_option()],
     });
+}
+
+fn mode_config_option() -> SessionConfigOption {
+    SessionConfigOption::select(
+        "mode",
+        "Mode",
+        "default",
+        vec![
+            SessionConfigSelectOption::new("default", "Manual"),
+            SessionConfigSelectOption::new("acceptEdits", "Accept edits"),
+            SessionConfigSelectOption::new("bypassPermissions", "Bypass permissions"),
+        ],
+    )
+    .category(SessionConfigOptionCategory::Mode)
 }
 
 /// Clicking into the custom command selects "Custom command", so what is typed there is used.
@@ -801,6 +806,7 @@ fn chat_agent_log() {
     harness.run_steps(2);
     harness.snapshot("chat_agent_log_menu");
     harness.get_by_label("Show agent log").click();
+    harness.remove_cursor();
     harness.run_steps(4);
     harness.snapshot("chat_agent_log");
 
@@ -1040,8 +1046,7 @@ fn chat_waiting_for_the_first_reply() {
     snapshot("chat_waiting_for_the_first_reply", panel);
 }
 
-/// The settings button names the concrete model behind the agent's default and shows fast mode as a
-/// bolt; its menu lists the other models.
+/// The model menu resolves the selected alias and distinguishes Rerun's recommendation.
 #[test]
 fn chat_model_picker() {
     let mut panel = panel();
@@ -1071,6 +1076,7 @@ fn chat_model_picker() {
                     SessionConfigSelectOption::new("on", "On"),
                 ],
             ),
+            mode_config_option(),
         ]),
     )));
 
@@ -1104,6 +1110,7 @@ fn chat_effort_picker() {
             .category(SessionConfigOptionCategory::Model),
             SessionConfigOption::select("effort", "Effort", "high", levels)
                 .category(SessionConfigOptionCategory::ThoughtLevel),
+            mode_config_option(),
         ]),
     )));
 
@@ -1145,6 +1152,7 @@ fn chat_model_picker_long() {
         ConfigOptionUpdate::new(vec![
             SessionConfigOption::select("model", "Model", "model-1", models)
                 .category(SessionConfigOptionCategory::Model),
+            mode_config_option(),
         ]),
     )));
 
@@ -1174,6 +1182,7 @@ fn chat_narrow_composer() {
                 )],
             )
             .category(SessionConfigOptionCategory::Model),
+            mode_config_option(),
         ]),
     )));
     session.handle_event(AgentEvent::Update(SessionUpdate::UsageUpdate(

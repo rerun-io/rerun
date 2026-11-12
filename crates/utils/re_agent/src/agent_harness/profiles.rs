@@ -3,8 +3,6 @@ use std::borrow::Cow;
 use std::path::Path;
 use std::path::PathBuf;
 
-use agent_client_protocol_schema::v1::SessionModeId;
-
 use crate::ModelApiProvider;
 
 /// The two ways the agent panel reaches a model.
@@ -126,10 +124,8 @@ pub struct AgentProfile {
     /// Environment variables the agent needs to work well with the panel.
     pub env: Vec<(String, String)>,
 
-    /// Session mode selected when the user has not picked one the agent offers.
-    ///
-    /// We prefer a mode that runs safe tool calls without asking, and asks about the rest.
-    pub default_mode: Option<SessionModeId>,
+    /// Initial selections for this profile, overridden by the user's saved preferences.
+    pub default_config: crate::AgentPreferences,
 
     /// URL to the agent's ACP documentation or install page.
     pub url: String,
@@ -211,7 +207,9 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             login_hint: "claude  # then type /login".to_owned(),
             // Newer Claude models drop the todo tools, which is what feeds the plan view.
             env: vec![("CLAUDE_CODE_ENABLE_TODO_TOOLS".to_owned(), "1".to_owned())],
-            default_mode: Some(SessionModeId::new("auto")),
+            default_config: crate::AgentPreferences {
+                config_options: [("mode".into(), "auto".into())].into(),
+            },
         },
         AgentProfile {
             id: AgentProfileId::new("codex"),
@@ -236,7 +234,9 @@ fn builtin_profiles() -> Vec<AgentProfile> {
                 ),
             ],
             // "Auto review"
-            default_mode: Some(SessionModeId::new("agent")),
+            default_config: crate::AgentPreferences {
+                config_options: [("mode".into(), "agent".into())].into(),
+            },
         },
         AgentProfile {
             id: AgentProfileId::new("gemini"),
@@ -248,7 +248,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             url: "https://geminicli.com/docs/cli/acp-mode/".to_owned(),
             login_hint: "gemini  # pick a login method when asked".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
         AgentProfile {
             id: AgentProfileId::new("copilot"),
@@ -261,7 +261,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
                 .to_owned(),
             login_hint: "copilot  # then type /login".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
         AgentProfile {
             id: AgentProfileId::new("opencode"),
@@ -273,7 +273,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             url: "https://opencode.ai/docs/acp/".to_owned(),
             login_hint: "opencode auth login".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
         AgentProfile {
             id: AgentProfileId::new("goose"),
@@ -285,7 +285,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             url: "https://github.com/block/goose".to_owned(),
             login_hint: "goose configure".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
         AgentProfile {
             id: AgentProfileId::new("cursor"),
@@ -297,7 +297,7 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             url: "https://cursor.com/docs/cli/acp".to_owned(),
             login_hint: "cursor-agent login".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
     ];
     profiles.sort_by_key(|profile| profile.name.to_lowercase());

@@ -3,9 +3,8 @@ use std::collections::HashMap;
 use agent_client_protocol_schema::v1::{
     AvailableCommand, ContentBlock, Plan, SessionConfigId, SessionConfigKind, SessionConfigOption,
     SessionConfigOptionCategory, SessionConfigSelect, SessionConfigSelectOption,
-    SessionConfigSelectOptions, SessionModeId, SessionUpdate, TextContent, ToolCall,
-    ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
-    ToolCallUpdateFields, ToolKind, UsageUpdate,
+    SessionConfigSelectOptions, SessionUpdate, TextContent, ToolCall, ToolCallContent, ToolCallId,
+    ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 
 use crate::{AgentError, McpStartupFailure, Prompt, PromptImage};
@@ -192,9 +191,6 @@ pub struct Transcript {
     /// Slash commands the agent accepts, as of its latest update.
     pub available_commands: Vec<AvailableCommand>,
 
-    /// The permission mode the agent reports being in.
-    pub current_mode: Option<SessionModeId>,
-
     /// The agent's configuration, e.g. its model selector, as of its latest update.
     pub config_options: Vec<SessionConfigOption>,
 
@@ -273,11 +269,6 @@ impl Transcript {
         }
     }
 
-    /// The agent's speed selector and its config id, if it offers one.
-    pub fn speed_selector(&self) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
-        speed_selector(&self.config_options)
-    }
-
     /// The name of the model the agent says it is using, if it offers a model selector.
     pub fn current_model(&self) -> Option<&str> {
         let (_, select) = self.model_selector()?;
@@ -335,9 +326,6 @@ impl Transcript {
             }
             SessionUpdate::AvailableCommandsUpdate(update) => {
                 self.available_commands = update.available_commands;
-            }
-            SessionUpdate::CurrentModeUpdate(update) => {
-                self.current_mode = Some(update.current_mode_id);
             }
             SessionUpdate::ConfigOptionUpdate(update) => {
                 self.config_options = update.config_options;
@@ -736,21 +724,6 @@ pub fn preferred_model<'a>(
 /// Whether a model's id or name matches a preference such as "sonnet", ignoring case.
 pub fn matches_model_preference(model: &str, preference: &str) -> bool {
     model.to_lowercase().contains(&preference.to_lowercase())
-}
-
-/// Claude and Codex expose speed with the config ids `fast` and `fast-mode`, respectively.
-pub fn speed_selector(
-    options: &[SessionConfigOption],
-) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
-    options.iter().find_map(|option| {
-        if !matches!(option.id.0.as_ref(), "fast" | "fast-mode") {
-            return None;
-        }
-        match &option.kind {
-            SessionConfigKind::Select(select) => Some((&option.id, select)),
-            _ => None,
-        }
-    })
 }
 
 /// All options of a select, flattening groups.
