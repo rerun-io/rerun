@@ -29,10 +29,16 @@ use crate::reports::{McpStartupReport, SessionReports};
 use crate::responder::{AgentStoppedWaiting, Responder};
 use crate::settings::AgentLaunch;
 use crate::startup::{AgentBackendKind, StartupOutcome, StartupStart};
-use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
+use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text, truncate_bytes};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
+
+/// How many of the last stderr lines may explain why the agent exited.
+const EXIT_REASON_STDERR_LINES: usize = 10;
+
+/// A stderr line can be huge (e.g. minified JSON), but the exit reason is shown in a narrow panel.
+const MAX_EXIT_REASON_DETAIL_BYTES: usize = 300;
 
 /// Why [`AgentSession::start`] could not start an agent.
 #[derive(Debug, thiserror::Error)]
@@ -591,6 +597,33 @@ impl AgentSession {
 
     pub fn log(&self) -> &VecDeque<LogLine> {
         &self.log
+    }
+
+    /// Why the agent exited.
+    ///
+    /// The agent usually explains it on stderr, so that is quoted as a detail.
+    fn exit_reason(&self) -> re_error::StructuredError {
+        let last_lines: Vec<String> = self
+            .log
+            .iter()
+            .rev()
+            .filter(|log_line| log_line.direction == LineDirection::Stderr)
+            .map(|log_line| strip_ansi_escapes(&log_line.line).trim().to_owned())
+            .filter(|line| !line.is_empty())
+            .take(EXIT_REASON_STDERR_LINES)
+            .collect();
+        // Agents often print warnings after the error, e.g. Node's deprecation warnings.
+        // Errors from long before the exit are not why it exited, hence only the last few lines.
+        let explanation = last_lines
+            .iter()
+            .find(|line| reports_failure(line))
+            .or_else(|| last_lines.first());
+
+        let mut reason = re_error::StructuredError::from_summary("The agent exited");
+        if let Some(explanation) = explanation {
+            reason.add_detail(truncate_bytes(explanation, MAX_EXIT_REASON_DETAIL_BYTES));
+        }
+        reason
     }
 
     /// Shows an error inline in the transcript.
@@ -1243,7 +1276,7 @@ impl AgentSession {
                 self.finish_turn(TurnOutcome::Aborted, "The agent exited before finishing");
                 self.finish_startup(StartupOutcome::Exited);
                 self.phase = Phase::Disconnected {
-                    reason: "The agent exited".to_owned(),
+                    reason: self.exit_reason().to_string(),
                 };
                 self.connection = None;
                 self.requests.permissions.clear();
@@ -1464,6 +1497,55 @@ fn elicitation_tool_call(request: &CreateElicitationRequest) -> Option<&ToolCall
     }
 }
 
+/// Whether a stderr line reports a failure, e.g. `error: …`, `TypeError: …`, or a Rust panic.
+///
+/// Matches whole words, so that `0 errors` or `errorHandler.js` do not count.
+fn reports_failure(line: &str) -> bool {
+    line.split(|c: char| !c.is_alphanumeric())
+        .map(str::to_lowercase)
+        .any(|word| {
+            word.ends_with("error")
+                || word.ends_with("exception")
+                || matches!(word.as_str(), "fatal" | "panic" | "panicked")
+        })
+}
+
+/// Removes terminal escape sequences, e.g. the colors of a CLI's error message.
+fn strip_ansi_escapes(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\u{1b}' {
+            out.push(c);
+            continue;
+        }
+        match chars.next() {
+            // CSI, e.g. colors: ends at its first char in `@`..=`~`.
+            Some('[') => {
+                for c in chars.by_ref() {
+                    if ('@'..='~').contains(&c) {
+                        break;
+                    }
+                }
+            }
+            // OSC, e.g. hyperlinks and window titles: ends at BEL or `ESC \`.
+            Some(']') => {
+                while let Some(c) = chars.next() {
+                    if c == '\u{7}' || (c == '\u{1b}' && chars.next_if_eq(&'\\').is_some()) {
+                        break;
+                    }
+                }
+            }
+            // Character set selection, e.g. `ESC ( B` from `tput sgr0`.
+            Some('(' | ')' | '*' | '+') => {
+                chars.next();
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
@@ -1580,6 +1662,77 @@ mod tests {
             &entry.item,
             TranscriptItem::Note { text, is_error: false } if text.contains("earlier conversation")
         )));
+    }
+
+    #[test]
+    fn strips_terminal_escapes() {
+        for (input, expected) in [
+            ("plain", "plain"),
+            ("\u{1b}[1;31merror\u{1b}(B\u{1b}[m: x", "error: x"),
+            (
+                "\u{1b}]8;;https://x.y\u{1b}\\link\u{1b}]8;;\u{1b}\\ text",
+                "link text",
+            ),
+            ("\u{1b}]0;title\u{7}after", "after"),
+            ("cut off \u{1b}[31", "cut off "),
+        ] {
+            assert_eq!(strip_ansi_escapes(input), expected, "input: {input:?}");
+        }
+    }
+
+    #[test]
+    fn the_disconnect_reason_quotes_the_stderr_line_that_explains_it() {
+        use LineDirection::{Stderr, Stdout};
+
+        let disconnect_reason = |lines: &[(LineDirection, &str)]| {
+            let mut session = AgentSession::default();
+            for &(direction, line) in lines {
+                session.handle_event(AgentEvent::Log {
+                    direction,
+                    line: line.to_owned(),
+                });
+            }
+            session.handle_event(AgentEvent::Disconnected);
+            match session.phase() {
+                Phase::Disconnected { reason } => reason.clone(),
+                phase => panic!("Expected a disconnect, got {phase:?}"),
+            }
+        };
+
+        assert_eq!(disconnect_reason(&[]), "The agent exited");
+        assert_eq!(disconnect_reason(&[(Stdout, "{}")]), "The agent exited");
+        assert_eq!(
+            disconnect_reason(&[(Stderr, "starting"), (Stderr, "stopped"), (Stderr, "  ")]),
+            "The agent exited\n- stopped",
+            "Without an error, the last non-empty line explains the exit"
+        );
+        assert_eq!(
+            disconnect_reason(&[
+                (Stderr, "\u{1b}[31merror\u{1b}[0m: unknown option '--acp'"),
+                (Stderr, "(node:42) DeprecationWarning: punycode"),
+                (Stdout, "{}"),
+            ]),
+            "The agent exited\n- error: unknown option '--acp'",
+            "A warning after the error must not hide it"
+        );
+
+        let mut stale_error = vec![(Stderr, "error: retrying the MCP server")];
+        stale_error.extend([(Stderr, "0 errors"); EXIT_REASON_STDERR_LINES]);
+        assert_eq!(
+            disconnect_reason(&stale_error),
+            "The agent exited\n- 0 errors",
+            "An error long before the exit does not explain it"
+        );
+
+        let long_line = format!("Error: {}", "ü".repeat(MAX_EXIT_REASON_DETAIL_BYTES));
+        assert_eq!(
+            disconnect_reason(&[(Stderr, &long_line)]),
+            format!(
+                "The agent exited\n- {}",
+                truncate_bytes(&long_line, MAX_EXIT_REASON_DETAIL_BYTES)
+            ),
+            "Long lines are cut"
+        );
     }
 
     #[test]
