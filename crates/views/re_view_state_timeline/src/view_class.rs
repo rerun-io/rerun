@@ -100,10 +100,11 @@ impl ViewClass for StateTimelineView {
 
         Help::new("State timeline view")
             .markdown("Shows state transitions as horizontal colored lanes over time.")
-            .control("Move time cursor", icons::RIGHT_MOUSE_CLICK)
+            .control("Move time cursor", icons::LEFT_MOUSE_CLICK)
+            .control("Scrub time cursor", (icons::LEFT_MOUSE_CLICK, "+", "drag"))
             .control(
                 "Pan",
-                (MouseButtonText(egui::PointerButton::Primary), "+", "drag"),
+                (MouseButtonText(egui::PointerButton::Middle), "+", "drag"),
             )
             .control(
                 "Pan",
@@ -307,6 +308,7 @@ impl ViewClass for StateTimelineView {
         // Allocate the full available rect.
         let (rect, response) =
             ui.allocate_exact_size(ui.available_size(), egui::Sense::click_and_drag());
+        let response = response.on_hover_cursor(re_viewer_context::MOVE_TIME_CURSOR_ICON);
 
         if !ui.is_rect_visible(rect) {
             return Ok(Default::default());
@@ -353,7 +355,9 @@ impl ViewClass for StateTimelineView {
             ui.interact(
                 interact_rect,
                 ui.make_persistent_id("state_timeline_cursor"),
-                egui::Sense::click_and_drag(),
+                // Hover only, for the cursor's highlight: pressing anywhere in the view moves it,
+                // and the cursor shouldn't swallow clicks meant to select a lane.
+                egui::Sense::hover(),
             )
             .on_hover_cursor(re_viewer_context::MOVE_TIME_CURSOR_ICON)
         });
@@ -468,14 +472,10 @@ impl ViewClass for StateTimelineView {
                 });
         });
 
-        // Dragging the time cursor.
-        let dragged_time = if let Some(cursor_response) = &cursor_response
-            && ui.input(|i| {
-                i.pointer.primary_pressed()
-                    || i.pointer.primary_down()
-                    || i.pointer.primary_released()
-            })
-            && let Some(pos) = cursor_response.interact_pointer_pos()
+        // Pressing or dragging anywhere in the view moves the time cursor, like in the time panel.
+        let dragged_time = if ui.input(|i| {
+            i.pointer.primary_pressed() || i.pointer.primary_down() || i.pointer.primary_released()
+        }) && let Some(pos) = response.interact_pointer_pos()
         {
             time_ranges_ui.time_from_x_f32(pos.x)
         } else {
@@ -501,12 +501,10 @@ impl ViewClass for StateTimelineView {
             )
         });
 
-        // Pan: primary- or middle-click drag, plus two-finger touchpad horizontal scroll.
+        // Pan: middle-click drag, plus two-finger touchpad horizontal scroll, like in the time panel.
         // Cmd+scroll is routed to `zoom_delta` by egui, so it won't double-fire here.
         let mut pan_dx = 0.0;
-        if response.dragged_by(egui::PointerButton::Primary)
-            || response.dragged_by(egui::PointerButton::Middle)
-        {
+        if response.dragged_by(egui::PointerButton::Middle) {
             pan_dx += response.drag_delta().x;
             ui.ctx().set_cursor_icon(egui::CursorIcon::AllScroll);
         }
@@ -577,6 +575,18 @@ impl ViewClass for StateTimelineView {
                     color: Some(band_color),
                 },
             )]);
+        }
+
+        // Preview where pressing would move the time cursor to, like in the time panel.
+        if response.hovered()
+            && !response.dragged()
+            && let Some(pointer_pos) = response.hover_pos()
+        {
+            painter.vline(
+                pointer_pos.x,
+                rect.y_range(),
+                ui.visuals().widgets.noninteractive.fg_stroke,
+            );
         }
 
         // Time cursor — uses the same triangle-headed style as the time panel.

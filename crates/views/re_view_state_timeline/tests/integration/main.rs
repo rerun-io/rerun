@@ -6,5 +6,6 @@ mod entity_drop;
 mod selection;
 mod state_casting;
 mod state_queries;
+mod time_cursor;
 mod tooltip;
 mod visible_time_range;
