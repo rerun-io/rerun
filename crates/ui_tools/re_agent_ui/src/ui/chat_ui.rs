@@ -989,7 +989,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
                 .raw_input
                 .as_ref()
                 .or_else(|| known_call?.raw_input.as_ref());
-            let scroll_area = egui::ScrollArea::vertical()
+            let scroll_area = egui::ScrollArea::both()
                 .max_height(MAX_REQUEST_CONTENT_HEIGHT)
                 .id_salt(&request.tool_call.tool_call_id.0);
             let command_input = raw_input.and_then(CommandInput::parse);
@@ -997,11 +997,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
             if let Some(description) = command_input.as_ref().and_then(|input| input.description) {
                 ui.strong(description);
             } else {
-                ui.add(
-                    egui::Label::new(RichText::new(title).monospace())
-                        .truncate()
-                        .show_tooltip_when_elided(false),
-                );
+                ui.add(egui::Label::new(RichText::new(title).monospace()).wrap());
             }
 
             if let Some(command_input) = &command_input {

@@ -692,6 +692,48 @@ fn chat_permission_request() {
     snapshot("chat_permission_request", panel);
 }
 
+#[test]
+fn chat_permission_request_long_paths() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+
+    let directory = "/Users/example/Library/Caches/io.rerun.Rerun/agent/agent_context/skills";
+    session.push_test_permission_request(RequestPermissionRequest::new(
+        SessionId::new("test-session"),
+        ToolCallUpdate::new(
+            "read-1",
+            ToolCallUpdateFields::new()
+                .title(directory)
+                .raw_input(serde_json::json!({
+                    "filepath": format!("{directory}/query-catalog/SKILL.md"),
+                    "parentDir": directory,
+                })),
+        ),
+        vec![
+            PermissionOption::new("allow", "Yes", PermissionOptionKind::AllowOnce),
+            PermissionOption::new(
+                "allow-always",
+                "Always allow",
+                PermissionOptionKind::AllowAlways,
+            ),
+            PermissionOption::new("reject", "No", PermissionOptionKind::RejectOnce),
+        ],
+    ));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    assert_answer_buttons_visible(&harness);
+    let screen = egui::Rect::from_min_size(egui::Pos2::ZERO, SIZE);
+    let button = harness.get_by_label("Always allow").rect();
+    assert!(
+        screen.contains_rect(button),
+        "Always allow button at {button:?} is outside the panel {screen:?}"
+    );
+    harness.snapshot("chat_permission_request_long_paths");
+}
+
 fn long_command_panel(extra_fields: serde_json::Map<String, serde_json::Value>) -> AgentPanel {
     let mut panel = panel();
     panel.show_chat();
