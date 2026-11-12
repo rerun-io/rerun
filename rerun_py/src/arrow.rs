@@ -3,7 +3,8 @@
 use std::borrow::Cow;
 
 use arrow::array::{
-    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray, make_array,
+    ArrayData as ArrowArrayData, ArrayRef as ArrowArrayRef, ListArray as ArrowListArray,
+    MutableArrayData as ArrowMutableArrayData, make_array,
 };
 use arrow::buffer::OffsetBuffer as ArrowOffsetBuffer;
 use arrow::datatypes::Field as ArrowField;
@@ -58,6 +59,28 @@ pub fn array_to_rust(arrow_array: &Bound<'_, PyAny>) -> PyResult<ArrowArrayRef> 
     Ok(make_array(py_array.0))
 }
 
+/// Arrays up to this size are copied into Rust-owned memory when logged, see [`own_if_small`].
+const MAX_COPIED_ARRAY_BYTES: usize = 4096;
+
+/// Copy small arrays out of Python-owned memory.
+///
+/// An array imported from pyarrow keeps its buffers alive through a `release` callback that needs the GIL.
+/// The imported array is dropped on the batcher thread, so for every logged row that thread would have to
+/// wait for the GIL, which the logging thread is busy holding.
+/// It also keeps pointing at the caller's memory (e.g. a numpy array) until then, so changing the array
+/// right after logging it would change what gets logged.
+/// Copying small arrays avoids both, and drops the imported array here, while we hold the GIL.
+/// Large arrays stay zero-copy, where the copy would cost more than it saves.
+fn own_if_small(array: ArrowArrayRef) -> ArrowArrayRef {
+    if MAX_COPIED_ARRAY_BYTES < array.get_buffer_memory_size() {
+        return array;
+    }
+    let data = array.to_data();
+    let mut copy = ArrowMutableArrayData::new(vec![&data], false, data.len());
+    copy.extend(0, 0, data.len());
+    make_array(copy.freeze())
+}
+
 /// Build a [`PendingRow`] given a '**kwargs'-style dictionary of component arrays.
 pub fn build_row_from_components(
     components_per_descr: &Bound<'_, PyDict>,
@@ -70,7 +93,7 @@ pub fn build_row_from_components(
     let mut components = IntMap::default();
     for (component_descr, array) in components_per_descr {
         let component_descr = descriptor_to_rust(&component_descr)?;
-        let list_array = array_to_rust(&array)?;
+        let list_array = own_if_small(array_to_rust(&array)?);
         let batch = re_sdk::SerializedComponentBatch::new(list_array, component_descr);
         components.insert(batch.descriptor.component, batch);
     }
