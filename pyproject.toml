@@ -472,12 +472,6 @@ module = [
 ]
 ignore_missing_imports = true
 
-[[tool.mypy.overrides]]
-# rerun_draft is a sandbox for testing new APIs - we don't care about strict type checking
-module = ["api_sandbox.rerun_draft.*", "rerun_draft.*"]
-ignore_errors = true
-ignore_missing_imports = true
-
 [tool.ty.environment]
 extra-paths = [
   "rerun_py",
@@ -574,7 +568,7 @@ unresolved-reference = "ignore"
 
 [[tool.ty.overrides]]
 # `rerun/tests/__init__.py` makes `tests` a regular package, which hides `rerun_py/tests` from
-# ty, so the relative imports in there do not resolve. `rerun_draft` is a sandbox with no stubs.
+# ty, so the relative imports in there do not resolve.
 include = ["rerun_py/tests/**"]
 
 [tool.ty.overrides.rules]
@@ -594,11 +588,3 @@ include = ["rerun_py/rerun_sdk/rerun/encodings/class_description.py"]
 [tool.ty.overrides.rules]
 # The generated keypoint fields are typed as lists, but hold `None` when not given.
 invalid-assignment = "ignore"
-
-[[tool.ty.overrides]]
-# A sandbox for drafting new APIs.
-include = ["rerun_py/tests/api_sandbox/rerun_draft/**"]
-
-[tool.ty.overrides.rules]
-invalid-assignment = "ignore"
-no-matching-overload = "ignore"

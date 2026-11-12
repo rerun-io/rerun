@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -139,7 +139,7 @@ pub mod viewer_control_request {
         /// A recording's blueprint has the layout, views, their properties and overrides. A table's
         /// blueprint only has what it sets, such as row filters, the layout, and column settings.
         /// `GetTableSchema` names all columns of a table.
-        /// See <https://rerun.io/docs/concepts/visualization/blueprints.>
+        /// See <https://rerun.io/docs/viewer/blueprints-and-views/blueprints.>
         ///
         /// Set at most one of `recording` and `table`, such as `{"recording": {}}` or
         /// `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
@@ -174,6 +174,7 @@ pub mod viewer_control_request {
         /// (customize tables, enable card layouts, and add preview cells) with JSON, in the form
         /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
         /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
+        /// Consult `rerun_list_view_types` before selecting a new view type.
         ///
         /// `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
         /// partial updates write only supplied fields, preserving everything else. Prefer partial
@@ -273,7 +274,7 @@ pub mod viewer_control_request {
         /// a frame, and Transform3D connects child and parent frames independently of entity paths.
         /// Parents can change over time; pinholes connect 3D and 2D spaces. This graph excludes
         /// per-instance poses and view-specific blueprint overrides; it is not the rendering result.
-        /// See <https://rerun.io/docs/concepts/logging-and-ingestion/transforms.>
+        /// See <https://rerun.io/docs/logging-and-ingestion/data-model/transforms.>
         ///
         /// Choose the representation before diagnosing connectivity:
         /// 1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.
@@ -309,7 +310,7 @@ pub mod viewer_control_request {
         /// An asset holds static data shared by the dataset's segments, such as a robot's meshes. The
         /// viewer shows it as part of every segment it applies to, so an entity missing from
         /// `GetDatasetSchema` may be in an asset. See
-        /// <<https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>.>
+        /// <<https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets>.>
         ///
         /// Only assets the server is done registering are described.
         ///
@@ -329,6 +330,12 @@ pub mod viewer_control_request {
         /// Blueprint entities, servers, catalog entries, and similar are left out.
         #[prost(message, tag = "23")]
         GetSelection(super::GetSelectionRequest),
+        /// List the view types available in this viewer, with descriptions and discovery keywords.
+        /// Consult this before choosing a view for a new blueprint: use the
+        /// returned `class_identifier` in `ViewBlueprint`. This lists supported types, not the views
+        /// already on screen (`GetState`). No recording needs to be open.
+        #[prost(message, tag = "24")]
+        ListViewTypes(super::ListViewTypesRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -347,7 +354,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -422,6 +429,9 @@ pub mod viewer_control_response {
         /// Result of `get_selection`.
         #[prost(message, tag = "23")]
         GetSelection(super::GetSelectionResponse),
+        /// Result of `list_view_types`.
+        #[prost(message, tag = "24")]
+        ListViewTypes(super::ListViewTypesResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -432,6 +442,62 @@ impl ::prost::Name for ViewerControlResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.ViewerControlResponse".into()
+    }
+}
+/// Request for `ListViewTypes`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ListViewTypesRequest {}
+impl ::prost::Name for ListViewTypesRequest {
+    const NAME: &'static str = "ListViewTypesRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ListViewTypesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ListViewTypesRequest".into()
+    }
+}
+/// View types registered in this viewer, ordered by class identifier.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListViewTypesResponse {
+    /// Only classes registered in the connected viewer, including custom view classes.
+    #[prost(message, repeated, tag = "1")]
+    pub view_types: ::prost::alloc::vec::Vec<ViewerViewType>,
+}
+impl ::prost::Name for ListViewTypesResponse {
+    const NAME: &'static str = "ListViewTypesResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ListViewTypesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ListViewTypesResponse".into()
+    }
+}
+/// Discovery metadata for a registered view type.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerViewType {
+    /// Exact value to use for `ViewBlueprint.class_identifier`.
+    #[prost(string, tag = "1")]
+    pub class_identifier: ::prost::alloc::string::String,
+    /// Human-readable label; use `class_identifier` rather than this label in blueprints.
+    #[prost(string, tag = "2")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Short Markdown description. Empty for custom views without reflection metadata.
+    #[prost(string, tag = "3")]
+    pub description: ::prost::alloc::string::String,
+    /// Discovery terms for choosing a view; empty when reflection metadata is unavailable.
+    #[prost(string, repeated, tag = "4")]
+    pub keywords: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ViewerViewType {
+    const NAME: &'static str = "ViewerViewType";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ViewerViewType".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ViewerViewType".into()
     }
 }
 /// Request for `GetTransformGraph`.
@@ -1479,7 +1545,7 @@ impl ::prost::Name for GetStateRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetStateResponse {
     /// What the viewer is showing, as `get_location` reports it. Empty if that has no location.
-    /// See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
     /// The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
@@ -1672,7 +1738,7 @@ pub struct ViewerRecording {
     /// The recording's current time cursor.
     #[prost(message, optional, tag = "3")]
     pub current_time: ::core::option::Option<TimeCursor>,
-    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "4")]
     pub location: ::prost::alloc::string::String,
     /// Whether the time cursor is paused, playing, or following the latest data.
@@ -2058,7 +2124,7 @@ pub mod set_blueprint_request {
         ///
         /// The entity paths and archetypes of a table blueprint are described by
         /// `rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in
-        /// <<https://rerun.io/docs/howto/visualization/configure-table-blueprints>.>
+        /// <<https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints>.>
         ///
         /// `TableBlueprint` at `/table` has these fields:
         /// * `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a
@@ -2255,7 +2321,7 @@ impl ::prost::Name for GetLocationRequest {
 /// Response for `GetLocation`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetLocationResponse {
-    /// What the viewer is showing. See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// What the viewer is showing. See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
 }

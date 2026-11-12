@@ -132,8 +132,6 @@ fn create_ranges(
 
 #[cfg(test)]
 mod tests {
-    use re_chunk_store::AbsoluteTimeRange;
-
     use super::*;
 
     fn ranges(times: &[i64]) -> vec1::Vec1<AbsoluteTimeRange> {

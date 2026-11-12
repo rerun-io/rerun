@@ -437,6 +437,11 @@ pub struct DesignTokens {
     pub plot_grid_fade: f32,
     pub extreme_bg_color: Color32,
     pub extreme_fg_color: Color32,
+
+    /// Background of inline `code` in text and markdown.
+    ///
+    /// Must differ from [`Self::widget_hovered_color`], or code loses its background in hovered rows.
+    pub code_bg_color: Color32,
     pub widget_hovered_color: Color32,
 
     /// Text in a field the user cannot edit.
@@ -578,6 +583,12 @@ pub struct DesignTokens {
 
     /// Text of a link on a card.
     pub card_link_color: Color32,
+
+    /// Blue text and icon of a link inside running text, e.g. in a notification.
+    ///
+    /// Other links keep the text color (see `hyperlink_color`); inside running text, a link must
+    /// stand out from the words around it.
+    pub inline_link_color: Color32,
 
     /// The unfilled part of a bar on a card.
     pub card_bar_track_color: Color32,
@@ -766,6 +777,7 @@ impl DesignTokens {
             plot_grid_fade: get_scalar("plot_grid_fade")?,
             extreme_bg_color: get_color("extreme_bg_color"),
             extreme_fg_color: get_color("extreme_fg_color"),
+            code_bg_color: get_color("code_bg_color"),
             widget_hovered_color: get_color("widget_hovered_color"),
             text_readonly: get_color("text_readonly"),
             text_subdued: get_color("text_subdued"),
@@ -864,6 +876,7 @@ impl DesignTokens {
             card_selected_stroke: get_stroke("card_selected_stroke"),
             card_text_edit_bg_color: get_color("card_text_edit_bg_color"),
             card_link_color: get_color("card_link_color"),
+            inline_link_color: get_color("inline_link_color"),
             card_bar_track_color: get_color("card_bar_track_color"),
 
             flag_untoggled_bg: get_color("flag_untoggled_bg"),
@@ -947,9 +960,11 @@ impl DesignTokens {
             egui::TextStyle::Button,
             egui::FontId::proportional(typography.body.font_size),
         );
+        // JetBrains Mono has a larger x-height than Inter,
+        // so at the same size monospace text looks larger than the text around it.
         egui_style.text_styles.insert(
             egui::TextStyle::Monospace,
-            egui::FontId::monospace(typography.body.font_size),
+            egui::FontId::monospace(typography.body.font_size - 1.0),
         );
 
         // Font size and rendered text height differ, so matching the font size here would make
@@ -1062,6 +1077,8 @@ impl DesignTokens {
         // Used as the background of scroll bars and others things
         // that needs to look different from other interactive stuff..
         egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
+
+        egui_style.visuals.code_bg_color = self.code_bg_color;
 
         egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.panel_bg_color;
         egui_style.visuals.widgets.noninteractive.bg_fill = self.panel_bg_color;

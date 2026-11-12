@@ -72,4 +72,4 @@ Demonstrates how to log:
 
 `cargo run -p dna`
 
-This is what you'll build when following our [Getting Started guide](https://www.rerun.io/docs/getting-started/data-in).
+This is what you'll build when following our [Getting Started guide](https://www.rerun.io/docs/logging-and-ingestion/tutorial).

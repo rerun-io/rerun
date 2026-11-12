@@ -19,19 +19,19 @@ Pass a file to open it directly:
 rerun path/to/recording.rrd
 ```
 
-Supports `.rrd`, `.mcap`, and [more](./getting-started/data-in/open-any-file.md).
+Supports `.rrd`, `.mcap`, and [more](./logging-and-ingestion/import/open-any-file.md).
 Also available in-browser at [rerun.io/viewer](https://rerun.io/viewer).
 
 
 ## Scale across many recordings
 
-Rerun's catalog organizes recordings as queryable [**segments**](./concepts/query-and-transform/catalog-object-model.md).
+Rerun's catalog organizes recordings as queryable [**segments**](./query-and-transform/catalog/catalog-object-model.md).
 The workflow: log (or convert) data to an `.rrd`, start a catalog server (or connect to an existing one if using the commercial Rerun Hub), register the `.rrd` as a segment, then visualize and query across recordings.
 
 ### Log
 
-Save data to an `.rrd` see [Log and Ingest](./getting-started/data-in.md) for more details.
-If you already have data in another format see our [how-to](https://rerun.io/docs/howto/logging-and-ingestion) for various examples converting to `.rrd`.
+Save data to an `.rrd`, see the [logging tutorial](./logging-and-ingestion/tutorial.md) for more details.
+If you already have data in another format see [Import existing data](./logging-and-ingestion/import.md) for various examples converting to `.rrd`.
 
 snippet: tutorials/getting_started_log
 ### Start a catalog server
@@ -53,7 +53,7 @@ snippet: tutorials/getting_started[ingest]
 ### Visualize
 
 Point the Viewer at your server to browse every recording in the catalog.
-See [Configure the Viewer](./getting-started/configure-the-viewer.md).
+See the [Viewer tutorial](./viewer/tutorial.md).
 
 ```bash
 rerun rerun+http://127.0.0.1:51234
@@ -61,13 +61,15 @@ rerun rerun+http://127.0.0.1:51234
 
 ### Query
 
-Query the catalog into a [DataFusion](https://datafusion.apache.org/) DataFrame. See [Query and Transform](./getting-started/data-out.md).
+Query the catalog into a [DataFusion](https://datafusion.apache.org/) DataFrame.
+See the [query tutorial](./query-and-transform/tutorial.md).
 
 snippet: tutorials/getting_started[query]
 
 ### Train
 
-Connect a Dataloader to the server to generate training batches. See [Train](./getting-started/train.md).
+Connect a Dataloader to the server to generate training batches.
+See the [training tutorial](./train/tutorial.md).
 
 snippet: tutorials/getting_started[train]
 

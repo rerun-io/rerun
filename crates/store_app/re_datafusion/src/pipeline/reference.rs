@@ -73,7 +73,7 @@
 //!
 //! 1. A static value wins over every temporal one for its column, and among
 //!    static values the highest `RowId` wins. This is the documented meaning
-//!    of static data: <https://rerun.io/docs/concepts/logging-and-ingestion/static>.
+//!    of static data: <https://rerun.io/docs/logging-and-ingestion/data-model/static>.
 //!    On a timeline, a static value never creates a row, and the temporal
 //!    rows it shadows create none either, even once a static `Clear` has
 //!    emptied it: a column with a static value only fills rows that other
@@ -607,7 +607,7 @@ pub fn cell_value(
 }
 
 mod tests {
-    use std::collections::{BTreeMap, BTreeSet};
+    use std::collections::BTreeSet;
 
     use arrow::array::{Array, Int64Array, RecordBatch, RecordBatchOptions};
     use arrow::buffer::NullBuffer;

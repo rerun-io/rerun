@@ -7,7 +7,9 @@ use re_ui::{ButtonExt as _, UiExt as _, icons};
 use web_time::SystemTime;
 
 use super::conversation_list::status_dot_ui;
-use super::tool_call_ui::{content_block_ui, tool_call_ui};
+use super::tool_call_ui::{
+    content_block_ui, subdued_collapsing_ui, subdued_triangle, tool_call_ui,
+};
 use re_agent::{
     AgentError, AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptEntry,
     TranscriptItem, message_text,
@@ -227,43 +229,41 @@ fn tool_call_group_ui(
     let tokens = ui.tokens();
     // Keyed by its first call, not its position, so it never inherits another group's open state.
     let first_call_id = calls.first().map(|(_, call)| &call.id.0);
-    let mut label_clicked = false;
-    let mut header = egui::collapsing_header::CollapsingState::load_with_default_open(
+    let state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         transcript_id.with(("tool_call_group", first_call_id)),
         false,
-    )
-    .show_header(ui, |ui| {
-        if last_failed {
-            status_dot_ui(ui, tokens.error_fg_color);
-        }
-        label_clicked = ui
-            .add(
+    );
+    subdued_collapsing_ui(
+        ui,
+        state,
+        |ui| {
+            if last_failed {
+                status_dot_ui(ui, tokens.error_fg_color);
+            }
+            ui.add(
                 egui::Label::new(
                     RichText::new(format!("Used {} tools", calls.len())).color(tokens.text_subdued),
                 )
                 .selectable(false)
                 .sense(egui::Sense::click()),
             )
-            .clicked();
-    });
-    if label_clicked {
-        header.toggle();
-    }
-    let (_, header_response, _) = header.body(|ui| {
-        for (entry, call) in &calls {
-            let rect = ui
-                .scope(|ui| {
-                    tool_call_ui(ui, session, call, transcript_id.with(&call.id.0));
-                })
-                .response
-                .rect;
-            if ui.rect_contains_pointer(rect) {
-                timestamp_overlay(ui, rect, entry);
+        },
+        |ui| {
+            for (entry, call) in &calls {
+                let rect = ui
+                    .scope(|ui| {
+                        tool_call_ui(ui, session, call, transcript_id.with(&call.id.0));
+                    })
+                    .response
+                    .rect;
+                if ui.rect_contains_pointer(rect) {
+                    timestamp_overlay(ui, rect, entry);
+                }
             }
-        }
-    });
-    header_response.response.rect
+        },
+    )
+    .rect
 }
 
 /// The copy button and the answer time show only while the pointer is over the turn, from `turn_top` down to the footer itself.
@@ -275,12 +275,18 @@ fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str, answered_at: S
     let turn_rect = egui::Rect::from_x_y_ranges(ui.max_rect().x_range(), turn_top..=turn_bottom);
     let hovered = ui.rect_contains_pointer(turn_rect);
     ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
         if ui
             .add_visible(
                 hovered,
-                egui::Button::icon(icons::COPY, "Copy response")
-                    .ghost()
-                    .size_small(),
+                ui.image_button_widget(
+                    icons::COPY.as_image().tint(ui.visuals().weak_text_color()),
+                    "Copy response",
+                )
+                .ghost()
+                .size_small()
+                .icon_button()
+                .image_tint_follows_text_color(false),
             )
             .on_hover_text("Copy response")
             .clicked()
@@ -492,6 +498,7 @@ fn thoughts_ui(ui: &mut egui::Ui, thoughts: &str) {
     )
     .id_salt("thoughts")
     .default_open(false)
+    .icon(subdued_triangle)
     .show(ui, |ui| {
         ui.label(RichText::new(thoughts).italics().color(tokens.text_subdued));
     });

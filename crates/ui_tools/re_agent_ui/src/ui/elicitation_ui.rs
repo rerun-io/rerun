@@ -3,12 +3,20 @@ use std::collections::BTreeMap;
 use re_agent::acp::schema::v1::{
     CreateElicitationResponse, ElicitationAcceptAction, ElicitationAction, ElicitationContentValue,
     ElicitationMode, ElicitationPropertySchema, ElicitationSchema, EnumOption, MultiSelectItems,
+    StringPropertySchema,
 };
 use re_agent::{AgentSession, ElicitationId};
 use re_ui::text_edit::ReTextEdit;
 use re_ui::{ButtonExt as _, UiExt as _};
 
 use super::MAX_REQUEST_CONTENT_HEIGHT;
+
+/// Workaround for Claude, whose ACP adapter sends no schema `default` for a question.
+///
+/// Claude Code's `AskUserQuestion` prompt asks the model to end the label of its recommended option with this suffix.
+/// It is a prompt convention, not a protocol field, so a question may lack it.
+/// A schema `default` always takes precedence.
+const CLAUDE_RECOMMENDED_SUFFIX: &str = "(Recommended)";
 
 /// Draft answers retained across frames until their session-local question IDs leave the queue.
 #[derive(Default)]
@@ -27,7 +35,19 @@ impl FieldInput {
     fn new(schema: &ElicitationPropertySchema) -> Self {
         match schema {
             ElicitationPropertySchema::String(schema) => {
-                Self::Text(schema.default.clone().unwrap_or_default())
+                let recommended = || {
+                    string_options(schema)?
+                        .into_iter()
+                        .find(|choice| choice.title.ends_with(CLAUDE_RECOMMENDED_SUFFIX))
+                        .map(|choice| choice.value.to_owned())
+                };
+                Self::Text(
+                    schema
+                        .default
+                        .clone()
+                        .or_else(recommended)
+                        .unwrap_or_default(),
+                )
             }
             ElicitationPropertySchema::Number(schema) => Self::Text(
                 schema
@@ -168,6 +188,21 @@ impl<'a> From<&'a EnumOption> for Choice<'a> {
     }
 }
 
+fn string_options(schema: &StringPropertySchema) -> Option<Vec<Choice<'_>>> {
+    schema
+        .one_of
+        .as_ref()
+        .map(|options| options.iter().map(Choice::from).collect())
+        .or_else(|| {
+            schema.enum_values.as_ref().map(|options| {
+                options
+                    .iter()
+                    .map(|value| Choice::untitled(value))
+                    .collect()
+            })
+        })
+}
+
 fn array_options(items: &MultiSelectItems) -> Option<Vec<Choice<'_>>> {
     match items {
         MultiSelectItems::String(items) => Some(
@@ -216,19 +251,7 @@ fn field_ui(
     let mut text_field = None;
     match (input, schema) {
         (FieldInput::Text(text), ElicitationPropertySchema::String(schema)) => {
-            let options = schema
-                .one_of
-                .as_ref()
-                .map(|options| options.iter().map(Choice::from).collect::<Vec<_>>())
-                .or_else(|| {
-                    schema.enum_values.as_ref().map(|options| {
-                        options
-                            .iter()
-                            .map(|value| Choice::untitled(value))
-                            .collect()
-                    })
-                });
-            if let Some(options) = options {
+            if let Some(options) = string_options(schema) {
                 for Choice {
                     value,
                     title,

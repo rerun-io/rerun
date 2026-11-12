@@ -4,7 +4,7 @@ use arrow::datatypes::Schema;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyLookupError, PyRuntimeError, PyValueError};
 use pyo3::types::{PyAnyMethods as _, PyBytes, PyDict};
-use pyo3::{Py, PyAny, PyErr, PyResult, Python, pyclass, pyfunction, pymethods};
+use pyo3::{IntoPyObject, Py, PyAny, PyErr, PyResult, Python, pyclass, pyfunction, pymethods};
 use re_log_types::EntryName;
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 
@@ -21,6 +21,22 @@ use crate::utils::wait_for_future;
 
 /// (version, cloud_provider, cloud_region, features), as returned by `version_info`.
 type VersionInfoTuple = (String, Option<String>, Option<String>, Vec<String>);
+
+#[derive(IntoPyObject)]
+struct StorageLocationDict {
+    alias: String,
+    display_name: Option<String>,
+    region: String,
+    bucket_name: String,
+    prefix: Option<String>,
+    read_only: bool,
+}
+
+#[derive(IntoPyObject)]
+struct StorageLocationsDict {
+    locations: Vec<StorageLocationDict>,
+    default_alias: String,
+}
 
 /// (storage URL, expiry, method, request URL, headers).
 type WriteAccessGrantTuple = (String, String, String, String, Vec<(String, Py<PyBytes>)>);
@@ -77,7 +93,7 @@ pub fn _get_write_access_grant(
             .await?
             .get_write_access_grant(GetWriteAccessGrantRequest {
                 key,
-                location: None,
+                storage_location: None,
                 size_bytes,
                 supported_upload_methods: vec![UploadMethod::SingleRequest],
                 signing: UrlSigning::Signed,
@@ -237,6 +253,42 @@ impl PyCatalogClientInternal {
         self.token.clone()
     }
 
+    fn get_storage_locations(self_: Py<Self>, py: Python<'_>) -> PyResult<StorageLocationsDict> {
+        use re_protos::cloud::v1alpha1::ext::{StorageLocation, StorageLocations};
+
+        let _span =
+            read_trace_context_from_python(py, "CatalogClient.get_storage_locations").entered();
+        let connection = self_.borrow(py).connection.clone();
+        let StorageLocations {
+            locations,
+            default_alias,
+        } = connection.get_storage_locations(py)?;
+        Ok(StorageLocationsDict {
+            locations: locations
+                .into_iter()
+                .map(|location| {
+                    let StorageLocation {
+                        alias,
+                        display_name,
+                        region,
+                        bucket_name,
+                        prefix,
+                        read_only,
+                    } = location;
+                    StorageLocationDict {
+                        alias: alias.into(),
+                        display_name,
+                        region: region.into(),
+                        bucket_name: bucket_name.into(),
+                        prefix: prefix.map(Into::into),
+                        read_only,
+                    }
+                })
+                .collect(),
+            default_alias: default_alias.into(),
+        })
+    }
+
     /// Returns version and deployment information as (version, cloud_provider, cloud_region, features).
     fn version_info(self_: Py<Self>, py: Python<'_>) -> PyResult<VersionInfoTuple> {
         let _span = read_trace_context_from_python(py, "CatalogClient.version_info").entered();
@@ -270,7 +322,7 @@ impl PyCatalogClientInternal {
         connection.bandwidth_bytes_per_sec(py, num_bytes, rtt)
     }
 
-    // TODO(RR-6055): Expose object_store_config and forward it to file staging.
+    // TODO(RR-6055): Negotiate server support before exposing storage_location for staging.
     #[pyo3(signature = (path, *, key, upload_method))]
     fn stage_file(
         self_: Py<Self>,
@@ -284,7 +336,7 @@ impl PyCatalogClientInternal {
         connection.stage_file(py, path.into(), key, upload_method)
     }
 
-    // TODO(RR-6055): Expose object_store_config and forward it to bytes staging.
+    // TODO(RR-6055): Negotiate server support before exposing storage_location for staging.
     #[pyo3(signature = (data, *, key, upload_method))]
     fn stage_bytes(
         self_: Py<Self>,

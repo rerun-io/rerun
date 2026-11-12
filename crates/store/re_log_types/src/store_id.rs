@@ -242,6 +242,9 @@ fn store_id_str_roundtrip() {
 }
 
 impl StoreId {
+    /// The recording id of [`Self::heuristic_blueprint`].
+    const HEURISTIC_BLUEPRINT_RECORDING_ID: &str = "@heuristic";
+
     #[inline]
     pub fn new(
         kind: StoreKind,
@@ -263,11 +266,15 @@ impl StoreId {
         Self::new(StoreKind::Recording, application_id, recording_id)
     }
 
-    /// Create a [`Self`] for the default blueprint of a given application id
+    /// Create a [`Self`] for the blueprint that the viewer heuristics generate for a given
+    /// application id.
     #[inline]
-    pub fn default_blueprint(application_id: ApplicationId) -> Self {
-        let recording_id = application_id.as_recording_id();
-        Self::new(StoreKind::Blueprint, application_id, recording_id)
+    pub fn heuristic_blueprint(application_id: ApplicationId) -> Self {
+        Self::new(
+            StoreKind::Blueprint,
+            application_id,
+            Self::HEURISTIC_BLUEPRINT_RECORDING_ID,
+        )
     }
 
     /// Generate a random [`StoreId`] with the provided application id.
@@ -321,8 +328,17 @@ impl StoreId {
         self.kind == StoreKind::Recording && self.recording_id.as_str() == "<EMPTY>"
     }
 
+    /// Whether this is the id from [`Self::heuristic_blueprint`].
     #[inline]
-    pub fn is_default_blueprint(&self) -> bool {
+    pub fn is_heuristic_blueprint(&self) -> bool {
+        self.kind == StoreKind::Blueprint
+            && self.recording_id.as_str() == Self::HEURISTIC_BLUEPRINT_RECORDING_ID
+    }
+
+    /// Whether this is the id that earlier versions of the viewer gave the heuristic blueprint,
+    /// with the application id as recording id.
+    #[inline]
+    pub fn is_legacy_heuristic_blueprint(&self) -> bool {
         self.kind == StoreKind::Blueprint
             && self.application_id.as_str() == self.recording_id.as_str()
     }

@@ -28,7 +28,7 @@ const viewer = new WebViewer();
 await viewer.start(rrdUrl, $("viewer"), {
   width: "100%",
   height: "100%",
-  hide_welcome_screen: true,
+  hideWelcomeScreen: true,
 });
 
 function logEvent(text: string) {
@@ -44,14 +44,12 @@ function logError(err: unknown) {
 async function getActive(): Promise<
   { recording: ViewerRecording; timeline?: ViewerTimeline } | undefined
 > {
-  const state = await viewer.get_state();
-  const recording = state.recordings.find(
-    (recording) => recording.store_id === state.active_store_id,
-  );
+  const state = await viewer.getState();
+  const recording = state.recordings.find((recording) => recording.storeId === state.activeStoreId);
   if (recording === undefined) {
     return undefined;
   }
-  const timeline = recording.timelines.find((t) => t.name === recording.current_time?.timeline);
+  const timeline = recording.timelines.find((t) => t.name === recording.currentTime?.timeline);
   return { recording, timeline };
 }
 
@@ -73,12 +71,12 @@ async function showState() {
   const { recording, timeline } = active;
 
   playButton.disabled = false;
-  playButton.textContent = recording.play_state === "paused" ? "Play" : "Pause";
+  playButton.textContent = recording.playState === "paused" ? "Play" : "Pause";
 
-  const cursor = recording.current_time;
+  const cursor = recording.currentTime;
   timelineLabel.textContent = cursor?.timeline ?? "No timeline";
 
-  const range = timeline?.time_range;
+  const range = timeline?.timeRange;
   timeSlider.disabled = range === undefined;
   if (range !== undefined) {
     const time = String(cursor?.time ?? range.start);
@@ -91,7 +89,7 @@ async function showState() {
 
 // Viewer → page
 viewer.on("recording_open", (event) => {
-  logEvent(`recording_open: ${event.application_id} (${event.source})`);
+  logEvent(`recording_open: ${event.applicationId} (${event.source})`);
   refresh();
 });
 viewer.on("play", () => {
@@ -119,8 +117,8 @@ viewer.on("selection_change", (event) => {
 async function togglePlaying() {
   const active = await getActive();
   if (active !== undefined) {
-    const play_state = active.recording.play_state === "paused" ? "playing" : "paused";
-    await viewer.set_time({ recording: active.recording.store_id, play_state });
+    const playState = active.recording.playState === "paused" ? "playing" : "paused";
+    await viewer.setTime({ recording: active.recording.storeId, playState });
   }
 }
 
@@ -132,12 +130,12 @@ async function seek(time: bigint) {
 
   // The slider works in the timeline's own unit: sequence indices, or nanoseconds.
   const at: SetTimeOptions =
-    active.timeline?.time_type === "sequence"
+    active.timeline?.timeType === "sequence"
       ? { sequence: time }
-      : active.timeline?.time_type === "timestamp"
-        ? { timestamp_nanos: time }
-        : { duration_nanos: time };
-  await viewer.set_time({ ...at, recording: active.recording.store_id });
+      : active.timeline?.timeType === "timestamp"
+        ? { timestampNanos: time }
+        : { durationNanos: time };
+  await viewer.setTime({ ...at, recording: active.recording.storeId });
 }
 
 playButton.addEventListener("click", () => {
@@ -149,7 +147,7 @@ timeSlider.addEventListener("input", () => {
 
 /** Take a screenshot of the viewer, and show it as a thumbnail that downloads it when clicked. */
 async function takeScreenshot() {
-  const png = await viewer.take_screenshot({ max_size: 1024 });
+  const png = await viewer.takeScreenshot({ maxSize: 1024 });
   if (screenshotLink.href) {
     URL.revokeObjectURL(screenshotLink.href);
   }

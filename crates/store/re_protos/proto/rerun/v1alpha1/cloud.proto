@@ -64,6 +64,9 @@ service RerunCloudService {
 
   // --- Catalog ---
 
+  // List storage locations, sorted by alias.
+  rpc GetStorageLocations(GetStorageLocationsRequest) returns (GetStorageLocationsResponse) {}
+
   // Subscribe to catalog events as they happen.
   //
   // The stream yields one response per event and stays open until the client drops it.
@@ -565,9 +568,8 @@ message GetWriteAccessGrantRequest {
   // A grant does not reserve the key; another writer may publish first and make this write fail.
   string key = 1;
 
-  // The requested storage location.
-  // The request fails if this is absent and the server has no default location.
-  optional Location location = 2;
+  reserved 2;
+  reserved "location";
 
   // Exact object size, if known; absent means unknown.
   // Servers use it to select the upload method and part size.
@@ -579,6 +581,10 @@ message GetWriteAccessGrantRequest {
 
   // Required signing mode for the grant's HTTP requests. UNSPECIFIED means SIGNED.
   UrlSigning signing = 5;
+
+  // The requested alias, or the server's default if absent.
+  // TODO(RR-6055): Explicit selection requires support negotiation before sending to older servers.
+  optional string storage_location = 6;
 }
 
 // How the object is uploaded, independently of URL signing.
@@ -605,10 +611,32 @@ enum UrlSigning {
   URL_SIGNING_UNSIGNED = 2;
 }
 
-// Selects a cloud location for an object.
-//
-// TODO(grtlr): Define provider, region, and network constraints.
-message Location {}
+// Requests a snapshot of the currently loaded keychain entries.
+message GetStorageLocationsRequest {}
+
+// Configuration descriptors only; no credentials or reachability guarantees.
+message GetStorageLocationsResponse {
+  // One descriptor per keychain entry, sorted by alias.
+  repeated StorageLocation storage_locations = 1;
+  // Alias used when no storage location is specified.
+  string default_alias = 2;
+}
+
+// A storage location configured in this catalog deployment.
+message StorageLocation {
+  // Deployment-local alias accepted by storage_location request fields.
+  string alias = 1;
+  // Optional human-readable label; use alias to identify the location in requests.
+  optional string display_name = 2;
+  // Object-store region configured for this location.
+  string region = 3;
+  // Bucket name, without a URI scheme or object path.
+  string bucket_name = 4;
+  // Object keys are relative to this prefix.
+  optional string prefix = 5;
+  // The location forbids writes even if its credentials permit them.
+  bool read_only = 6;
+}
 
 // Authorization to create one object.
 message GetWriteAccessGrantResponse {
@@ -760,9 +788,20 @@ message DataSource {
   reserved 5;
   reserved "layer_class";
 
-  // Use a specific object store configuration for this registration.
-  // Inferred from the URL if not specified.
-  optional string object_store_config = 6;
+  // Deprecated name of storage_location. If both are set, their values must match.
+  optional string object_store_config = 6 [deprecated = true];
+
+  // Selects a configured storage location by its alias.
+  optional string storage_location = 7;
+
+  // The store to register out of this data source.
+  //
+  // When unset, the first store of the dataset's kind (recording or blueprint) in the source is
+  // registered.
+  // Must be unset when `prefix` is true.
+  //
+  // TODO(RR-6283): not yet implemented, returns UNIMPLEMENTED when set.
+  optional rerun.common.v1alpha1.StoreId store_id = 8;
 }
 
 // What format the data behind a `DataSource` is stored in.
@@ -1070,6 +1109,17 @@ message GetRrdManifestRequest {
   //
   // It is not guaranteed that the server will honor this.
   bool generate_direct_urls = 2;
+
+  // What this client implements, as capability names.
+  //
+  // Names follow the rules of `ServerCapabilities`. Servers ignore names they do not know.
+  // Known names:
+  //
+  // * `dataset:rrd_manifest_key:store_id` — the client picks the manifest out of a fetched
+  //   `RrdFooter` by `RrdManifestKey.store_id`, rather than by segment id.
+  //   Without it, the server sends no direct URL for a segment whose segment id is not its
+  //   store's recording id, and returns that segment's manifests in the response instead.
+  repeated string client_capabilities = 3;
 }
 
 // One part of an RRD manifest, yielded by `GetRrdManifest`.
@@ -1452,8 +1502,8 @@ message FindChunksRequest {
   //   Selecting every entity selects only the indexed ones.
   //   Naming unindexed data fails with `FailedPrecondition`.
   // - `DATASET_QUERY_SCOPE_FULL`: all data, indexed or not.
-  //   A request that touches unindexed data fails with `FailedPrecondition` when it selects
-  //   every segment, and with `Unimplemented` when it filters by segments (TODO(ilya)).
+  //   Unindexed data is read from the recordings themselves, so it needs explicit segments.
+  //   Without them, a request that touches unindexed data fails with `FailedPrecondition`.
   DatasetQueryScope scope = 6;
 }
 
@@ -2292,4 +2342,10 @@ message RrdManifestKey {
 
   // Presigned URL the client fetches the manifest's byte range from.
   optional string direct_url = 4;
+
+  // The store whose manifest to pick from the footer, which may hold manifests for several stores.
+  //
+  // Optional: legacy registrations leave this unset; pick the manifest whose recording id is the
+  // segment id instead.
+  optional rerun.common.v1alpha1.StoreId store_id = 5;
 }

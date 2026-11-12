@@ -98,7 +98,8 @@ impl RrdManifestBuilder {
         self.column_entity_paths.push(chunk.entity_path().clone());
 
         if chunk.is_static() {
-            for desc in chunk.components().component_descriptors() {
+            for component_col in chunk.components().values() {
+                let desc = &component_col.descriptor;
                 let column = self.columns_static.entry(desc.clone()).or_insert_with(|| {
                     RrdManifestIndexColumn::new_padded(
                         self.column_chunk_ids.len().saturating_sub(1),
@@ -115,9 +116,11 @@ impl RrdManifestBuilder {
                 starts_inclusive.push(TimeInt::STATIC);
                 ends_inclusive.push(TimeInt::STATIC);
 
-                // If we're here, it's necessarily `true`. Falsy values can only be
-                // introduced by padding and/or temporal columns (see below).
-                has_static_data.push(true);
+                // A null cell means "nothing logged here", so a column with only null cells
+                // provides no static data. Flagging it would let it shadow the static data of
+                // other chunks, and the temporal data of the component.
+                let list_array = &component_col.list_array;
+                has_static_data.push(list_array.null_count() < list_array.len());
             }
 
             // Not all chunks belong to all timelines -- make sure to realign all columns before
@@ -499,5 +502,89 @@ impl RrdManifestIndexColumn {
         ends.extend(std::iter::repeat_n(TimeInt::STATIC, n));
         has_static_data.extend(std::iter::repeat_n(false, n));
         num_rows.extend(std::iter::repeat_n(0, n));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use arrow::array::Array as _;
+    use re_chunk::{Chunk, RowId};
+    use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
+    use re_log_types::{EntityPath, StoreId, StoreKind, TimePoint};
+    use re_types_core::ArrowDataType as _;
+
+    use crate::RawRrdManifest;
+
+    #[test]
+    fn all_null_static_column_has_no_static_data() {
+        let points_path = EntityPath::from("points");
+        let cleared_path = EntityPath::from("cleared");
+        let colors = MyPoints::descriptor_colors().component;
+        let points = MyPoints::descriptor_points().component;
+
+        let static_colors = Chunk::builder(points_path.clone())
+            .with_component_batches(
+                RowId::new(),
+                TimePoint::STATIC,
+                [(MyPoints::descriptor_colors(), &[MyColor(1)] as _)],
+            )
+            .build()
+            .unwrap();
+
+        // `build_with_datatypes` keeps the all-null `colors` column, which `build` would strip.
+        let datatypes =
+            std::iter::once((MyPoints::descriptor_colors(), MyColor::arrow_data_type())).collect();
+        let static_null_colors = Chunk::builder(points_path.clone())
+            .with_sparse_component_batches(
+                RowId::new(),
+                TimePoint::STATIC,
+                [
+                    (
+                        MyPoints::descriptor_points(),
+                        Some(&[MyPoint::new(1.0, 1.0)] as _),
+                    ),
+                    (MyPoints::descriptor_colors(), None),
+                ],
+            )
+            .build_with_datatypes(&datatypes)
+            .unwrap();
+
+        // Without the all-null column, this test would pass with or without the fix.
+        let null_colors = static_null_colors
+            .components()
+            .get(colors)
+            .expect("the all-null column must be kept");
+        assert_eq!(
+            null_colors.list_array.null_count(),
+            null_colors.list_array.len()
+        );
+
+        let static_cleared_colors = Chunk::builder(cleared_path.clone())
+            .with_component_batches(
+                RowId::new(),
+                TimePoint::STATIC,
+                [(MyPoints::descriptor_colors(), &Vec::<MyColor>::new() as _)],
+            )
+            .build()
+            .unwrap();
+
+        let manifest = RawRrdManifest::build_in_memory_from_chunks(
+            StoreId::random(StoreKind::Recording, "test"),
+            [&static_colors, &static_null_colors, &static_cleared_colors].into_iter(),
+        )
+        .unwrap();
+        let static_map = manifest.calc_static_map().unwrap();
+
+        // The later all-null column must not shadow the earlier static colors, while the
+        // non-null columns of its chunk still count as static data.
+        let per_component = &static_map[&points_path];
+        assert_eq!(per_component.get(&colors), Some(&static_colors.id()));
+        assert_eq!(per_component.get(&points), Some(&static_null_colors.id()));
+
+        // An empty list is a clear, which is data: it must stay the static source.
+        assert_eq!(
+            static_map[&cleared_path].get(&colors),
+            Some(&static_cleared_colors.id())
+        );
     }
 }

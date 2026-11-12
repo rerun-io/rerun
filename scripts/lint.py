@@ -51,7 +51,8 @@ wasm_caps = re.compile(r"\bWASM\b")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
 # Looks for: \"{foo}\" (manual quotes), including \"{foo:?}\" (excess quotes).
 explicit_quotes = re.compile(r'[^(]\\"\{[^}]*\}\\"')
-ellipsis = re.compile(r"[^.]\.\.\.([^\-.0-9a-zA-Z]|$)")
+# Three dots between two words or `{placeholders}` are a range (e.g. `main...HEAD`, `{sha}...{tag}`), not an ellipsis.
+ellipsis = re.compile(r"[^.](?<![\w}])\.\.\.([^\-.0-9a-zA-Z]|$)|[^.]\.\.\.([^\-.0-9a-zA-Z{]|$)")
 ellipsis_expression = re.compile(r"[\[\]\(\)<>\{\}]?.*\.\.\..*[\[\]\(\)<>\{\}]")
 anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
 tonic_result = re.compile(r"Result<.*?,\s*tonic::Status\s*,?\s*>", re.DOTALL)
@@ -525,6 +526,7 @@ def test_lint_line() -> None:
         "anyhow::Result<()>",
         "The theme is great",
         "template <typename... Args>",
+        'f"repos/{OWNER}/rerun/compare/{sha}...{tag}"',
         '_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])',
         'rr.init("rerun_example_app")',
         'rr.script_setup(args, "rerun_example_app")',
@@ -676,6 +678,7 @@ def test_lint_line() -> None:
         "let options = SnapshotOptions::default();",
         "The the problem with double words",
         "More than meets the eye...",
+        'print(f"Loading {name}...")',
         're_log::trace!("Performing migrations...");',
         'rr.log("/", rr.TextLog("Logging things..."))',
         'logging.info("Detection finished...")',

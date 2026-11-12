@@ -64,8 +64,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         panel,
     );
     harness.run_steps(3);
-    harness.get_by_value("Opus 5.5").click();
-    harness.run_steps(2);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Model");
     harness.get_by_label("Opus 5.5 Fast").click();
     harness.run_steps(2);
     assert_eq!(
@@ -82,8 +81,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
     );
 
     harness.state_mut().settings_mut().profile_id = AgentProfileId::new("codex");
-    harness.get_by_value("Opus 5.5").click();
-    harness.run_steps(2);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Model");
     harness.get_by_label("Opus 5.5 Thinking").click();
     harness.run_steps(2);
     assert_eq!(
@@ -126,5 +124,87 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
     assert_eq!(
         launched_model(&reopened),
         Some(SessionConfigValueId::new("opus-thinking"))
+    );
+}
+
+fn model_and_effort(model: &str, effort: Option<&str>) -> SessionUpdate {
+    let mut options = vec![
+        SessionConfigOption::select(
+            "model",
+            "Model",
+            model.to_owned(),
+            vec![
+                SessionConfigSelectOption::new("opus", "Opus 5.5"),
+                SessionConfigSelectOption::new("haiku", "Haiku 4.5"),
+            ],
+        )
+        .category(SessionConfigOptionCategory::Model),
+    ];
+    if let Some(effort) = effort {
+        options.push(
+            SessionConfigOption::select(
+                "effort",
+                "Effort",
+                effort.to_owned(),
+                vec![
+                    SessionConfigSelectOption::new("default", "Default"),
+                    SessionConfigSelectOption::new("low", "Low"),
+                    SessionConfigSelectOption::new("high", "High"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::ThoughtLevel),
+        );
+    }
+    SessionUpdate::ConfigOptionUpdate(ConfigOptionUpdate::new(options))
+}
+
+#[test]
+fn effort_picker_follows_the_agents_config_options() {
+    let mut panel = ready_panel();
+    panel
+        .session_mut()
+        .handle_event(AgentEvent::Update(model_and_effort("opus", Some("high"))));
+    let mut harness = re_ui::testing::new_harness(
+        re_ui::testing::TestOptions::Gui,
+        Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0),
+    )
+    .build_ui_state(
+        |ui, panel: &mut AgentPanel| {
+            panel.ui(ui);
+        },
+        panel,
+    );
+    harness.run_steps(3);
+    assert!(harness.query_by_label("Opus 5.5 High Manual").is_some());
+
+    harness
+        .state_mut()
+        .session_mut()
+        .handle_event(AgentEvent::Update(model_and_effort("haiku", None)));
+    harness.run_steps(3);
+    assert!(harness.query_by_label("Haiku 4.5 Manual").is_some());
+    assert!(
+        harness.query_by_label_contains("High").is_none(),
+        "Haiku offers no effort, so none is shown"
+    );
+
+    harness
+        .state_mut()
+        .session_mut()
+        .handle_event(AgentEvent::Update(model_and_effort("opus", Some("low"))));
+    harness.run_steps(3);
+    assert!(harness.query_by_label("Opus 5.5 Low Manual").is_some());
+
+    harness
+        .state_mut()
+        .session_mut()
+        .handle_event(AgentEvent::Update(model_and_effort(
+            "opus",
+            Some("default"),
+        )));
+    harness.run_steps(3);
+    assert!(
+        harness.query_by_label("Opus 5.5 Manual").is_some(),
+        "the default effort is left out of the button"
     );
 }

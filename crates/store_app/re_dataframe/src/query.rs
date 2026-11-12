@@ -1739,7 +1739,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         &mut self,
         max_rows: usize,
         max_bytes: usize,
-    ) -> impl std::future::Future<Output = NextNRowsOutput> + use<'_, E>
+    ) -> impl std::future::Future<Output = NextNRowsOutput>
     where
         E: 'static + Send + Clone,
     {
@@ -2533,12 +2533,10 @@ mod tests {
     use arrow::compute::concat_batches;
     use insta::assert_snapshot;
     use re_arrow_util::format_record_batch;
-    use re_chunk::{Chunk, ChunkId, ComponentIdentifier, RowId, TimePoint};
-    use re_chunk_store::{
-        AbsoluteTimeRange, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, QueryExpression, TimeInt,
-    };
+    use re_chunk::{ChunkId, TimePoint};
+    use re_chunk_store::{ChunkStoreConfig, ChunkStoreHandle, QueryExpression};
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, Timeline, build_frame_nr, build_log_time};
+    use re_log_types::{Timeline, build_frame_nr, build_log_time};
     use re_query::StorageEngine;
     use re_sdk_types::{AnyValues, AsComponents as _, ComponentDescriptor};
     use re_sorbet::ComponentColumnSelector;

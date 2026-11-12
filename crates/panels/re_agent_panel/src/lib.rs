@@ -18,6 +18,7 @@ use re_async::AsyncRuntimeHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
 mod agent_analytics;
+mod example_prompts;
 mod feedback;
 #[cfg(agent_harness_backend)]
 mod harness;
@@ -49,12 +50,44 @@ const RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [
     "Summarize what is in this recording",
 ];
 
-/// Offered in an empty conversation while no recording is open.
-const NO_RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [
+/// Offered in an empty conversation while a dataset is open.
+const DATASET_EXAMPLE_PROMPTS: [&str; 5] = [
+    "Set up a table blueprint with previews",
+    "Find interesting analyses we could do with the query SDK",
+    "Summarize what is in this dataset",
+    "Help me query this dataset from Python",
+    "Find the most interesting segments in this dataset",
+];
+
+/// Offered in an empty conversation while a table is open.
+const TABLE_EXAMPLE_PROMPTS: [&str; 3] = [
+    "Summarize what is in this table",
+    "Explain the columns of this table",
+    "Help me query this table from Python",
+];
+
+/// Offered in an empty conversation while no recording, dataset, or table is open.
+const OTHER_EXAMPLE_PROMPTS: [&str; 3] = [
     "Help me open a dataset in Rerun",
     "Help me log my own data to Rerun",
     "Show me an example recording",
 ];
+
+/// What the viewer is showing, which decides the example prompts in an empty conversation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShownContent {
+    /// A dataset entry on a Redap server, on any of its tabs.
+    Dataset,
+
+    /// A loaded, non-empty recording.
+    Recording,
+
+    /// A table entry on a Redap server, or a local table.
+    Table,
+
+    /// Anything else, e.g. the welcome screen or the settings.
+    Other,
+}
 
 /// The contents of an image file, encoded as PNG or JPEG.
 pub struct EncodedImage(pub Vec<u8>);
@@ -94,7 +127,7 @@ pub struct ViewerAgentPanel {
     /// Set when the panel is opened, so the prompt input takes focus once there is one.
     focus_input: bool,
 
-    /// The example prompts last handed to [`Self::panel`].
+    /// The list the example prompts last handed to [`Self::panel`] were picked from.
     example_prompts: &'static [&'static str],
 
     /// Prompts waiting for the agent panel to be created — for example, prompts from
@@ -187,7 +220,7 @@ impl ViewerAgentPanel {
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
-        recording: Option<&re_entity_db::EntityDb>,
+        shown_content: ShownContent,
     ) {
         re_tracing::profile_function!();
         let was_open = *open;
@@ -211,13 +244,19 @@ impl ViewerAgentPanel {
             ..
         } = self;
         if let Some(panel) = panel.as_mut() {
-            let prompts: &'static [&'static str] = if recording.is_some() {
-                &RECORDING_EXAMPLE_PROMPTS
-            } else {
-                &NO_RECORDING_EXAMPLE_PROMPTS
+            let prompts: &'static [&'static str] = match shown_content {
+                ShownContent::Dataset => &DATASET_EXAMPLE_PROMPTS,
+                ShownContent::Recording => &RECORDING_EXAMPLE_PROMPTS,
+                ShownContent::Table => &TABLE_EXAMPLE_PROMPTS,
+                ShownContent::Other => &OTHER_EXAMPLE_PROMPTS,
             };
             if *example_prompts != prompts {
-                panel.set_example_prompts(prompts.iter().copied().map(str::to_owned).collect());
+                panel.set_example_prompts(
+                    crate::example_prompts::sample(prompts)
+                        .into_iter()
+                        .map(str::to_owned)
+                        .collect(),
+                );
                 *example_prompts = prompts;
             }
             for prompt in pending_prompts.drain(..) {

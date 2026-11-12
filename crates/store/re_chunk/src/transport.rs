@@ -283,7 +283,6 @@ mod tests {
 
     use arrow::array::{Float32Array, Int64Array, TimestampMicrosecondArray};
     use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
-    use nohash_hasher::IntMap;
     use similar_asserts::assert_eq;
 
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};

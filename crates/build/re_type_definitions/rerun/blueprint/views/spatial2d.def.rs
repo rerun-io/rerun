@@ -5,6 +5,7 @@
 ///
 /// \example views/spatial2d title="Use a blueprint to customize a Spatial2DView." image="https://static.rerun.io/Spatial2DVIew/824a075e0c50ea4110eb6ddd60257f087cb2264d/1200w.png"
 #[rerun::rerun_type]
+#[docs(keywords = "2D, spatial, image, video, points, bounding boxes")]
 #[rerun(view_identifier = "2D")]
 #[rerun(state = "unstable")]
 pub struct Spatial2DView {

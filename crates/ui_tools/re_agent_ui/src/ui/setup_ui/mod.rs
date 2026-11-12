@@ -43,18 +43,20 @@ pub fn setup_ui(
     egui::ScrollArea::vertical()
         .auto_shrink(false)
         .show(ui, |ui| {
-            egui::Frame::new().inner_margin(12).show(ui, |ui| {
-                next_screen = cfg_select! {
-                    agent_harness_backend => setup_ui_inner(
-                        ui,
-                        settings,
-                        agents,
-                        available_model_apis,
-                        agent_harness::agent_choice_ui,
-                    ),
-                    _ => setup_ui_inner(ui, settings, agents, available_model_apis, web_choice_ui),
-                };
-            });
+            egui::Frame::new()
+                .inner_margin(ui.tokens().view_padding())
+                .show(ui, |ui| {
+                    next_screen = cfg_select! {
+                        agent_harness_backend => setup_ui_inner(
+                            ui,
+                            settings,
+                            agents,
+                            available_model_apis,
+                            agent_harness::agent_choice_ui,
+                        ),
+                        _ => setup_ui_inner(ui, settings, agents, available_model_apis, web_choice_ui),
+                    };
+                });
         });
 
     next_screen
@@ -300,12 +302,17 @@ fn tag_ui(ui: &mut egui::Ui, text: &str) -> egui::Response {
 
 /// The name of the selected agent, e.g. "Claude Code" or "Anthropic API".
 pub fn selected_agent_name(settings: &AgentSettings, agents: &[AgentEntry]) -> Option<String> {
-    if let Some(provider) = settings.profile_id.model_api_provider() {
+    agent_name(&settings.profile_id, agents)
+}
+
+/// The name of the agent with `profile_id`, e.g. "Claude Code" or "Anthropic API".
+pub fn agent_name(profile_id: &AgentProfileId, agents: &[AgentEntry]) -> Option<String> {
+    if let Some(provider) = profile_id.model_api_provider() {
         return Some(format!("{} API", provider.name()));
     }
     agents
         .iter()
-        .find(|agent| agent.profile.id == settings.profile_id)
+        .find(|agent| &agent.profile.id == profile_id)
         .map(|agent| agent.profile.name.clone())
 }
 
@@ -360,13 +367,15 @@ mod tests {
         )
         .build_ui_state(
             |ui, (settings, key): &mut (AgentSettings, String)| {
-                egui::Frame::new().inner_margin(12).show(ui, |ui| {
-                    _ = setup_ui_inner(ui, settings, &mut [], &[], |ui, settings, _, _| {
-                        model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
-                            ApiKeySource::Typed(key)
+                egui::Frame::new()
+                    .inner_margin(ui.tokens().view_padding())
+                    .show(ui, |ui| {
+                        _ = setup_ui_inner(ui, settings, &mut [], &[], |ui, settings, _, _| {
+                            model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
+                                ApiKeySource::Typed(key)
+                            });
                         });
                     });
-                });
             },
             (AgentSettings::default(), String::new()),
         );

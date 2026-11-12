@@ -61,6 +61,9 @@ pub struct AgentHarnessConfig {
     /// Exact saved speed, restored only if the selected model offers it.
     pub preferred_speed: Option<SessionConfigValueId>,
 
+    /// Exact saved effort ID, restored only if the agent offers it for the selected model.
+    pub preferred_effort: Option<crate::Effort>,
+
     /// Session modes to prefer, best first.
     ///
     /// The first one the agent offers is selected before the session takes its first prompt.

@@ -22,7 +22,7 @@ all-features = true
 
 [package.metadata.cargo-shear]
 # Needed for Datafusion on wasm, see note below.
-ignored = ["chrono", "getrandom"]
+ignored = ["chrono"]
 
 
 [features]

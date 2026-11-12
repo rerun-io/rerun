@@ -8,8 +8,8 @@ use egui::text_edit::TextEditState;
 use egui::{EventFilter, Key, KeyboardShortcut, Modifiers, RichText};
 use re_agent::LineDirection;
 use re_agent::acp::schema::v1::{
-    AuthMethod, PermissionOptionKind, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionConfigValueId, SessionMode, SessionModeId,
+    AuthMethod, PermissionOptionKind, SessionConfigSelect, SessionConfigSelectOption,
+    SessionConfigSelectOptions, SessionConfigValueId, SessionMode, SessionModeId,
 };
 use re_ui::alert::Alert;
 use re_ui::egui_ext::{CompletionPopup, CompletionQuery, Suggestion};
@@ -27,10 +27,34 @@ const PREVIEW_HEIGHT: f32 = 48.0;
 
 const EMPTY_STATE_WIDTH: f32 = 240.0;
 
+/// The speed label left out of the settings button.
+const STANDARD_SPEED: &str = "Standard";
+
+/// The speed values of the fast-mode toggle that Claude and Codex offer.
+const SPEED_OFF: &str = "off";
+const SPEED_ON: &str = "on";
+
+/// Starting height of the agent log panel, which the user can resize.
+const LOG_DEFAULT_HEIGHT: f32 = 200.0;
+
+/// Agents can offer dozens of models, so longer submenus scroll.
+///
+/// The half row cuts the last visible item off, which shows that there is more to scroll to.
+const SUBMENU_VISIBLE_ROWS: f32 = 15.5;
+
+/// Space between the parts of the settings button, a bit more than usual to tell them apart.
+const SETTINGS_BUTTON_GAP: f32 = 6.0;
+
+/// Leaves room between a setting's name and its value in the settings menu.
+const SETTINGS_MENU_MIN_WIDTH: f32 = 180.0;
+
 /// What the user is typing, plus whether the text field should grab focus this frame.
 #[derive(Default)]
 pub struct ChatInput {
     pub restart_after_login_requested: bool,
+
+    /// The user clicked the agent setup button in the settings menu.
+    pub open_setup_requested: bool,
 
     /// An example prompt the user clicked, to be sent the way a host prompt is.
     pub example_prompt_clicked: Option<String>,
@@ -178,6 +202,7 @@ pub fn chat_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
     show_thoughts: bool,
     login_hint: Option<&str>,
     example_prompts: &[String],
@@ -188,10 +213,19 @@ pub fn chat_ui(
     }
     input.was_ready = session.is_ready();
 
+    // Declared first, so it ends up below the composer.
+    // Dragging it below its minimum height closes it.
+    egui::Panel::bottom("agent_log")
+        .resizable(true)
+        .drag_to_open(false)
+        .default_size(LOG_DEFAULT_HEIGHT)
+        .frame(egui::Frame::new().inner_margin(8))
+        .show_collapsible(ui, &mut input.log_open, |ui| log_ui(ui, session));
+
     egui::Panel::bottom("agent_composer")
         .frame(egui::Frame::new().inner_margin(8))
         .show(ui, |ui| {
-            composer_ui(ui, session, input, preferences, login_hint);
+            composer_ui(ui, session, input, preferences, agent_name, login_hint);
         });
 
     egui::CentralPanel::default()
@@ -204,6 +238,9 @@ pub fn chat_ui(
         .show(ui, |ui| {
             if let Some(home_ui) = home_ui {
                 home_ui(ui);
+                if session.transcript().items.is_empty() {
+                    empty_state_ui(ui, input, example_prompts);
+                }
                 return;
             }
             if session.transcript().items.is_empty()
@@ -280,43 +317,163 @@ fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput, example_prom
     }
 }
 
-fn mode_picker_ui(
+/// The session settings (model, speed, effort, mode, and agent log) as one button summarizing
+/// them, in the same order as in its menu.
+///
+/// Clicking it opens a menu with a submenu per setting.
+fn settings_menu_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
-    preferred_mode: &mut Option<SessionModeId>,
+    input: &mut ChatInput,
+    preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
 ) {
-    let Some(modes) = session.modes() else {
-        return;
-    };
-    let Some(current_id) = session.current_mode_id() else {
-        return;
-    };
-    if modes.available_modes.is_empty() {
-        return;
+    let AgentPreferences {
+        mode,
+        model,
+        speed,
+        effort,
+    } = preferences;
+    let has_log = !session.log().is_empty();
+
+    let mut summary: Vec<egui::Atom<'static>> = Vec::new();
+    if let Some(model_name) = session.transcript().current_model() {
+        summary.push(model_name.to_owned().into());
+    }
+    if let Some((_, select)) = session.transcript().speed_selector() {
+        if is_on_off_toggle(&re_agent::select_options(select)) {
+            if select.current_value.0.as_ref() == SPEED_ON {
+                summary.push(icons::FAST_MODE.as_image().alt_text("Fast").into());
+            }
+        } else {
+            let label = current_speed_label(select);
+            if label != STANDARD_SPEED {
+                summary.push(label.into());
+            }
+        }
+    }
+    if let (Some(effort), Some(effort_name)) = (
+        session.transcript().current_effort(),
+        session.transcript().current_effort_name(),
+    ) && !effort.is_default()
+    {
+        summary.push(effort_name.to_owned().into());
+    }
+    if let Some(mode_text) = current_mode_text(ui, session) {
+        summary.push(mode_text.into());
+    }
+    if summary.is_empty() {
+        if !has_log {
+            return;
+        }
+        summary.push("Settings".into());
     }
 
+    egui::containers::menu::MenuButton::from_button(
+        egui::Button::dropdown(egui::Atoms::from_iter(summary)).gap(SETTINGS_BUTTON_GAP),
+    )
+    .config(egui::containers::menu::MenuConfig::new().style(re_ui::menu::menu_style()))
+    .ui(ui, |ui| {
+        ui.set_min_width(SETTINGS_MENU_MIN_WIDTH);
+        if let Some(agent_name) = agent_name {
+            agent_header_ui(ui, input, agent_name);
+        }
+        model_menu_ui(ui, session, model);
+        speed_menu_ui(ui, session, speed);
+        effort_menu_ui(ui, session, effort);
+        mode_menu_ui(ui, session, mode);
+
+        if has_log {
+            ui.checkbox_menu_item(&mut input.log_open, "Show agent log")
+                .on_hover_text("Show what Rerun and the agent sent each other, and what the agent wrote to stderr");
+        }
+    })
+    .0
+    .on_hover_text("Agent settings");
+}
+
+/// The agent's name at the top of the settings menu, with a button to its setup screen.
+fn agent_header_ui(ui: &mut egui::Ui, input: &mut ChatInput, agent_name: &str) {
+    egui::containers::Sides::new().show(
+        ui,
+        |ui| {
+            re_ui::menu::align_non_button_menu_items(ui, |ui| ui.strong(agent_name));
+        },
+        |ui| {
+            if ui
+                .small_icon_button(&icons::SETTINGS, "Agent setup")
+                .on_hover_text("Agent setup")
+                .clicked()
+            {
+                input.open_setup_requested = true;
+                ui.close();
+            }
+        },
+    );
+    ui.separator();
+}
+
+/// A menu entry showing `name` and the current value, opening a submenu to change it.
+fn setting_submenu_ui(
+    ui: &mut egui::Ui,
+    name: &str,
+    current: impl Into<egui::WidgetText>,
+    content: impl FnOnce(&mut egui::Ui),
+) -> egui::Response {
+    let button = egui::Button::new(name.to_owned()).right_text((
+        current.into(),
+        egui::containers::menu::SubMenuButton::arrow_atom(None),
+    ));
+    egui::containers::menu::SubMenuButton::from_button(button)
+        .ui(ui, |ui| {
+            egui::ScrollArea::vertical()
+                .max_height(SUBMENU_VISIBLE_ROWS * ui.spacing().interact_size.y)
+                .show(ui, content);
+        })
+        .0
+}
+
+/// The name of the current session mode, in its warning color if it has one.
+fn current_mode_text(ui: &egui::Ui, session: &AgentSession) -> Option<RichText> {
+    let modes = session.modes()?;
+    let current_id = session.current_mode_id()?;
+    if modes.available_modes.is_empty() {
+        return None;
+    }
     let current_mode = modes
         .available_modes
         .iter()
         .find(|mode| &mode.id == current_id);
-    let mut current_text = RichText::new(
+    let mut text = RichText::new(
         current_mode.map_or_else(|| current_id.0.to_string(), |mode| mode.name.clone()),
     );
     if let Some(color) = current_mode.and_then(|mode| mode_warning_color(ui, mode)) {
-        current_text = current_text.color(color);
+        text = text.color(color);
     }
+    Some(text)
+}
+
+fn mode_menu_ui(
+    ui: &mut egui::Ui,
+    session: &mut AgentSession,
+    preferred_mode: &mut Option<SessionModeId>,
+) {
+    let (Some(current_text), Some(modes), Some(current_id)) = (
+        current_mode_text(ui, session),
+        session.modes(),
+        session.current_mode_id(),
+    ) else {
+        return;
+    };
 
     let mut selected = None;
-    ui.drop_down_menu("agent_mode", current_text, |ui| {
+    setting_submenu_ui(ui, "Mode", current_text, |ui| {
         for mode in &modes.available_modes {
             let mut text = RichText::new(&mode.name);
             if let Some(color) = mode_warning_color(ui, mode) {
                 text = text.color(color);
             }
-            let response = ui
-                .list_item()
-                .selected(&mode.id == current_id)
-                .show_flat(ui, re_ui::list_item::LabelContent::new(text));
+            let response = ui.add(re_ui::ComboItem::new(text).selected(&mode.id == current_id));
             let response = match &mode.description {
                 Some(description) => response.on_hover_text(description),
                 None => response,
@@ -334,8 +491,20 @@ fn mode_picker_ui(
     }
 }
 
-/// The model the agent is using, as a drop-down to switch to another one it offers.
-fn model_picker_ui(
+/// Whether `model` is an agent's alias for another of `models`, like Claude Code's
+/// "Default (recommended)" for "Opus 5.5".
+///
+/// The agent recommends it, not us, and it repeats a model already in the list.
+fn is_model_alias(
+    model: &SessionConfigSelectOption,
+    models: &[&SessionConfigSelectOption],
+) -> bool {
+    let concrete = re_agent::model_name(model);
+    concrete != model.name && models.iter().any(|other| other.name == concrete)
+}
+
+/// The model the agent is using, as a submenu to switch to another one it offers.
+fn model_menu_ui(
     ui: &mut egui::Ui,
     session: &AgentSession,
     preferred_model: &mut Option<SessionConfigValueId>,
@@ -347,11 +516,32 @@ fn model_picker_ui(
         return;
     };
 
+    let models = re_agent::select_options(select);
+    let recommended = re_agent::preferred_model(&models, re_agent::DEFAULT_MODEL_PREFERENCES)
+        .map(|model| &model.value);
+
+    // When the current model is a hidden alias, the model it stands for is checked instead.
+    let current_is_hidden_alias = models
+        .iter()
+        .find(|model| model.value == select.current_value)
+        .is_some_and(|model| is_model_alias(model, &models));
+    let is_current = |model: &SessionConfigSelectOption| {
+        if current_is_hidden_alias {
+            re_agent::model_name(model) == current_name
+        } else {
+            model.value == select.current_value
+        }
+    };
+
     let model_item = |ui: &mut egui::Ui, model: &SessionConfigSelectOption| {
-        let response = ui
-            .list_item()
-            .selected(model.value == select.current_value)
-            .show_flat(ui, re_ui::list_item::LabelContent::new(&model.name));
+        if is_model_alias(model, &models) {
+            return false;
+        }
+        let mut item = re_ui::ComboItem::new(&model.name).selected(is_current(model));
+        if Some(&model.value) == recommended {
+            item = item.value("recommended");
+        }
+        let response = ui.add(item);
         let response = match &model.description {
             Some(description) => response.on_hover_text(description),
             None => response,
@@ -360,7 +550,7 @@ fn model_picker_ui(
     };
 
     let mut selected = None;
-    ui.drop_down_menu("agent_model", current_name.to_owned(), |ui| {
+    setting_submenu_ui(ui, "Model", current_name.to_owned(), |ui| {
         match &select.options {
             SessionConfigSelectOptions::Ungrouped(models) => {
                 for model in models {
@@ -371,7 +561,7 @@ fn model_picker_ui(
             }
             SessionConfigSelectOptions::Grouped(groups) => {
                 for group in groups {
-                    ui.weak(&group.name);
+                    ui.add(re_ui::ComboItemHeader::new(&group.name));
                     for model in &group.options {
                         if model_item(ui, model) {
                             selected = Some(model.value.clone());
@@ -392,7 +582,46 @@ fn model_picker_ui(
     }
 }
 
-fn speed_picker_ui(
+/// The effort the agent is using, as a submenu to switch to another one it offers.
+fn effort_menu_ui(
+    ui: &mut egui::Ui,
+    session: &AgentSession,
+    preferred_effort: &mut Option<re_agent::Effort>,
+) {
+    let transcript = session.transcript();
+    let (Some((config_id, select)), Some(current_name)) = (
+        transcript.effort_selector(),
+        transcript.current_effort_name(),
+    ) else {
+        return;
+    };
+
+    let mut selected = None;
+    setting_submenu_ui(ui, "Effort", current_name.to_owned(), |ui| {
+        for option in re_agent::select_options(select) {
+            let response = ui.add(
+                re_ui::ComboItem::new(&option.name).selected(option.value == select.current_value),
+            );
+            let response = match &option.description {
+                Some(description) => response.on_hover_text(description),
+                None => response,
+            };
+            if response.clicked() {
+                selected = Some(option.value.clone());
+            }
+        }
+    })
+    .on_hover_text("How much the model thinks before it answers");
+
+    if let Some(value) = selected {
+        *preferred_effort = Some(re_agent::Effort::from(&value));
+        if value != select.current_value {
+            session.set_config_option(config_id.clone(), value);
+        }
+    }
+}
+
+fn speed_menu_ui(
     ui: &mut egui::Ui,
     session: &AgentSession,
     preferred_speed: &mut Option<SessionConfigValueId>,
@@ -401,27 +630,38 @@ fn speed_picker_ui(
         return;
     };
     let options = re_agent::select_options(select);
-    let current_name = options
-        .iter()
-        .find(|option| option.value == select.current_value)
-        .map_or_else(
-            || select.current_value.0.to_string(),
-            |option| speed_label(option),
-        );
     let mut selected = None;
-    ui.drop_down_menu("agent_speed", current_name, |ui| {
-        for option in &options {
-            if ui
-                .list_item()
-                .selected(option.value == select.current_value)
-                .show_flat(ui, re_ui::list_item::LabelContent::new(speed_label(option)))
-                .clicked()
-            {
-                selected = Some(option.value.clone());
-            }
+    if is_on_off_toggle(&options) {
+        let mut fast = select.current_value.0.as_ref() == SPEED_ON;
+        let icon = icons::FAST_MODE
+            .as_image()
+            .tint(ui.tokens().label_button_icon_color);
+        if ui
+            .checkbox_menu_item(&mut fast, ("Fast mode", icon))
+            .changed()
+        {
+            selected = Some(SessionConfigValueId::new(if fast {
+                SPEED_ON
+            } else {
+                SPEED_OFF
+            }));
         }
-    })
-    .on_hover_text("Speed");
+    } else {
+        setting_submenu_ui(ui, "Speed", current_speed_label(select), |ui| {
+            for option in &options {
+                if ui
+                    .add(
+                        re_ui::ComboItem::new(speed_label(option))
+                            .selected(option.value == select.current_value),
+                    )
+                    .clicked()
+                {
+                    selected = Some(option.value.clone());
+                }
+            }
+        })
+        .on_hover_text("How fast the model answers");
+    }
     if let Some(value) = selected {
         *preferred_speed = Some(value.clone());
         if value != select.current_value {
@@ -430,16 +670,35 @@ fn speed_picker_ui(
     }
 }
 
-/// The label of a speed option in the speed picker.
+/// Whether the speed options are exactly `off` and `on`, as Claude and Codex offer them.
+fn is_on_off_toggle(options: &[&SessionConfigSelectOption]) -> bool {
+    let mut values: Vec<&str> = options
+        .iter()
+        .map(|option| option.value.0.as_ref())
+        .collect();
+    values.sort_unstable();
+    values == [SPEED_OFF, SPEED_ON]
+}
+
+/// The label of the currently selected speed.
+fn current_speed_label(select: &SessionConfigSelect) -> String {
+    re_agent::select_options(select)
+        .iter()
+        .find(|option| option.value == select.current_value)
+        .map_or_else(
+            || select.current_value.0.to_string(),
+            |option| speed_label(option),
+        )
+}
+
+/// The label of a speed option in the speed menu.
 ///
-/// Claude and Codex both expose their fast mode as a toggle with the values `on` and `off`,
-/// which would show up as a lone "On" or "Off" in the footer.
-/// We show them as "Fast" and "Standard" instead.
+/// `on` and `off` show as "Fast" and "Standard", since a lone "On" or "Off" says nothing.
 /// Other values are shown with the name the agent gives them.
 fn speed_label(option: &SessionConfigSelectOption) -> String {
     match option.value.0.as_ref() {
-        "off" => "Standard".to_owned(),
-        "on" => "Fast".to_owned(),
+        SPEED_OFF => STANDARD_SPEED.to_owned(),
+        SPEED_ON => "Fast".to_owned(),
         _ => option.name.clone(),
     }
 }
@@ -469,6 +728,7 @@ fn composer_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
     login_hint: Option<&str>,
 ) {
     ui.spacing_mut().item_spacing.y = 8.0;
@@ -494,11 +754,7 @@ fn composer_ui(
     }
 
     queue_ui(ui, session, input);
-    input_ui(ui, session, input, preferences);
-
-    if input.log_open {
-        log_ui(ui, session);
-    }
+    input_ui(ui, session, input, preferences, agent_name);
 }
 
 /// Prompts waiting for the running turn to finish. Each can be taken back into the input.
@@ -580,15 +836,15 @@ fn stop_agent(session: &mut AgentSession, input: &mut ChatInput) {
     session.cancel();
 }
 
-/// The row at the bottom of the input: mode, model, speed, connection status, and the agent
-/// log toggle on the left; context usage and the send or stop button on the right.
+/// The row at the bottom of the input: the settings menu and connection status on the left;
+/// context usage and the send or stop button on the right.
 fn footer_ui(
     ui: &mut egui::Ui,
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
 ) {
-    let AgentPreferences { mode, model, speed } = preferences;
     let usage = session
         .transcript()
         .usage
@@ -610,10 +866,7 @@ fn footer_ui(
                 let mut clip_rect = ui.clip_rect();
                 clip_rect.max.x = clip_rect.max.x.min(ui.max_rect().max.x);
                 ui.set_clip_rect(clip_rect);
-                mode_picker_ui(ui, session, mode);
-
-                model_picker_ui(ui, session, model);
-                speed_picker_ui(ui, session, speed);
+                settings_menu_ui(ui, session, input, preferences, agent_name);
 
                 match session.phase() {
                     Phase::Connecting { status } => {
@@ -623,18 +876,6 @@ fn footer_ui(
                         ui.error_label(reason.clone());
                     }
                     Phase::Idle | Phase::Ready => {}
-                }
-
-                let log_lines = session.log().len();
-                if log_lines != 0 {
-                    let text = RichText::new(format!("Agent log ({log_lines} lines)")).small();
-                    if ui
-                        .selectable_label(input.log_open, text)
-                        .on_hover_text("Show what the agent wrote to stderr")
-                        .clicked()
-                    {
-                        input.log_open = !input.log_open;
-                    }
                 }
             },
             |ui| {
@@ -838,6 +1079,7 @@ fn input_ui(
     session: &mut AgentSession,
     input: &mut ChatInput,
     preferences: &mut AgentPreferences,
+    agent_name: Option<&str>,
 ) {
     let hint = if session.turn_in_progress() {
         "The agent is working… (⏎ to queue a message, Esc to stop)"
@@ -882,7 +1124,7 @@ fn input_ui(
             input.completion_open = output.is_open;
             let response = output.text_edit.response.response;
 
-            footer_ui(ui, session, input, preferences);
+            footer_ui(ui, session, input, preferences, agent_name);
 
             response
         })
@@ -1091,7 +1333,7 @@ fn slash_command_suggestions(
 fn log_ui(ui: &mut egui::Ui, session: &AgentSession) {
     let tokens = ui.tokens();
     egui::ScrollArea::vertical()
-        .max_height(200.0)
+        .auto_shrink(false)
         .stick_to_bottom(true)
         .show(ui, |ui| {
             for (index, line) in session.log().iter().enumerate() {
@@ -1184,7 +1426,21 @@ impl<'a> CommandInput<'a> {
 
 #[cfg(test)]
 mod tests {
-    use super::PromptHistory;
+    use re_agent::acp::schema::v1::SessionConfigSelectOption;
+
+    use super::{PromptHistory, is_model_alias};
+
+    #[test]
+    fn model_alias_is_hidden_only_when_its_model_is_listed() {
+        let alias = SessionConfigSelectOption::new("default", "Default (recommended)")
+            .description("Opus 5.5 · Most capable".to_owned());
+        let opus = SessionConfigSelectOption::new("opus", "Opus 5.5");
+        let sonnet = SessionConfigSelectOption::new("sonnet", "Sonnet 5.5");
+
+        assert!(is_model_alias(&alias, &[&alias, &opus, &sonnet]));
+        assert!(!is_model_alias(&alias, &[&alias, &sonnet]));
+        assert!(!is_model_alias(&opus, &[&alias, &opus, &sonnet]));
+    }
 
     #[test]
     fn history_browsing() {

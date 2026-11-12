@@ -28,7 +28,6 @@ oauth = ["dep:directories", "dep:ehttp", "dep:getrandom", "dep:ring", "dep:tiny_
 
 [package.metadata.cargo-shear]
 ignored = [
-  "getrandom", # used by `oauth/api.rs`, only when the `oauth` feature is enabled
   "getrandom02", # transitive dependency
 ]
 

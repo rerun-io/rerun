@@ -39,6 +39,6 @@ If you did that to work around an older version of the wheel, remove it.
 
 ## Next steps
 
-[Set up a Python project](../../getting-started/project-setup/python.md), then walk through the [Log and Ingest](../../getting-started/data-in.md) tutorial.
+[Set up a Python project](../../getting-started/project-setup/python.md), then walk through the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.
 
 -   [Python API docs](https://ref.rerun.io/docs/python)

@@ -48,7 +48,7 @@ cmake --build build -j
 ./build/example_project
 ```
 
-You're now ready to follow the [Log and Ingest](../data-in.md) tutorial.
+You're now ready to follow the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.
 
 ## Build options and troubleshooting
 

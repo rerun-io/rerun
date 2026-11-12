@@ -15,7 +15,7 @@ Note that this doesn't affect `re_dataframe`, where this type was already re-exp
 
 ### Python `colors` change in behavior for single-dimensional lists
 
-Single-dimensional lists that don't otherwise provide type information are now be assumed to be packed
+Single-dimensional lists that don't otherwise provide type information are now assumed to be packed
 integers color representations (e.g. `0xRRGGBBAA`), unless the length is exactly 3 or 4.
 
 In the case of single lists of 3 or 4 elements, we continue to allow the common pattern of writing: `colors=[r, g, b]`.
@@ -53,8 +53,8 @@ In the next release, we will fully drop support and switch to Python 3.9 as the 
 ### `connect` -> `connect_tcp` & `serve` -> `serve_web`
 
 In all SDKs:
-* `connect()` is now deprecated in favor `connect_tcp()`
-* `serve()` is now deprecated in favor `serve_web()`
+* `connect()` is now deprecated in favor of `connect_tcp()`
+* `serve()` is now deprecated in favor of `serve_web()`
 
 The old methods will be removed in a future release.
 
@@ -62,4 +62,4 @@ The rationale behind this change is that it was easy to confuse what these funct
 
 We frequently had reports from users that were understandably expecting a serving process (`rr.serve()`) to be ready to accept connections from other processes (`rr.connect()`), when in reality the two things are completely unrelated: one is hosting a websocket server to be polled by the web-viewer, while the other is trying to connect to the TCP SDK comms pipeline.
 
-You can learn more about Rerun's application model and the different servers and ports by reading our [new documentation page on the matter](../../concepts/how-does-rerun-work.md).
+You can learn more about Rerun's application model and the different servers and ports by reading our [new documentation page on the matter](../../getting-started/how-does-rerun-work.md).

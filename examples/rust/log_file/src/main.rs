@@ -1,6 +1,6 @@
 //! Demonstrates how to log any file from the SDK using the `Importer` machinery.
 //!
-//! See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
+//! See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
 //!
 //! Usage:
 //! ```

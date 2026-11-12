@@ -14,7 +14,9 @@ use re_chunk_store::LazyStore;
 use re_datafusion::{DatasetManifestProvider, SegmentTableProvider};
 use re_log_types::EntryId;
 use re_protos::cloud::v1alpha1::DatasetQueryScope;
-use re_protos::cloud::v1alpha1::ext::{DatasetDetails, DatasetEntry, EntryDetails, ObjectKey};
+use re_protos::cloud::v1alpha1::ext::{
+    DatasetDetails, DatasetEntry, EntryDetails, ObjectKey, StorageLocationAlias,
+};
 use re_protos::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use re_redap_client::{DatasetSchema, SegmentChunkProvider};
 use re_types_core::LayerName;
@@ -634,19 +636,19 @@ impl PyDatasetEntryInternal {
     /// on_duplicate: str
     ///     How to handle duplicate segment layers. One of "error", "ignore", or "replace".
     ///
-    /// object_store_config: str
-    ///     Use a custom object store configuration for the registration.
-    ///     If not specified, the store is inferred from the URL.
-    #[pyo3(signature = (recording_uris, recording_layers, on_duplicate, *, object_store_config = None))]
+    /// storage_location: str | None
+    ///     The alias of the storage location that holds the data, as configured in the catalog.
+    ///     If `None`, the server infers the object store from the URL.
+    #[pyo3(signature = (recording_uris, recording_layers, on_duplicate, *, storage_location = None))]
     #[pyo3(
-        text_signature = "(self, /, recording_uris, recording_layers, on_duplicate, *, object_store_config=None)"
+        text_signature = "(self, /, recording_uris, recording_layers, on_duplicate, *, storage_location=None)"
     )]
     fn register(
         self_: PyRef<'_, Self>,
         recording_uris: Vec<String>,
         recording_layers: Vec<String>,
         on_duplicate: &str,
-        object_store_config: Option<String>,
+        storage_location: Option<String>,
     ) -> PyResult<PyRegistrationHandleInternal> {
         let py = self_.py();
         let connection = self_.client.borrow(py).connection().clone();
@@ -664,7 +666,7 @@ impl PyDatasetEntryInternal {
             recording_uris,
             recording_layers,
             on_duplicate,
-            object_store_config,
+            parse_storage_location(storage_location)?,
         )?;
 
         Ok(PyRegistrationHandleInternal::new(registration))
@@ -837,19 +839,19 @@ impl PyDatasetEntryInternal {
     /// on_duplicate: str
     ///     How to handle duplicate segment layers. One of "error", "ignore", or "replace".
     ///
-    /// object_store_config: str
-    ///     Use a custom object store configuration for the registration.
-    ///     If not specified, the store is inferred from the URL.
-    #[pyo3(signature = (recordings_prefix, layer_name, on_duplicate, *, object_store_config = None))]
+    /// storage_location: str | None
+    ///     The alias of the storage location that holds the data, as configured in the catalog.
+    ///     If `None`, the server infers the object store from the URL.
+    #[pyo3(signature = (recordings_prefix, layer_name, on_duplicate, *, storage_location = None))]
     #[pyo3(
-        text_signature = "(self, /, recordings_prefix, layer_name, on_duplicate, *, object_store_config=None)"
+        text_signature = "(self, /, recordings_prefix, layer_name, on_duplicate, *, storage_location=None)"
     )]
     fn register_prefix(
         self_: PyRef<'_, Self>,
         recordings_prefix: String,
         layer_name: String,
         on_duplicate: &str,
-        object_store_config: Option<String>,
+        storage_location: Option<String>,
     ) -> PyResult<PyRegistrationHandleInternal> {
         let py = self_.py();
         let _span = read_trace_context_from_python(py, "DatasetEntry.register_prefix").entered();
@@ -863,7 +865,7 @@ impl PyDatasetEntryInternal {
             recordings_prefix,
             LayerName::try_new(layer_name).map_err(to_py_err)?,
             on_duplicate,
-            object_store_config,
+            parse_storage_location(storage_location)?,
         )?;
 
         Ok(PyRegistrationHandleInternal::new(registration))
@@ -1153,4 +1155,13 @@ fn py_object_to_time_cell(py: Python<'_>, obj: &Bound<'_, PyAny>) -> PyResult<re
 
     let nanos = py_object_to_i64(py, obj)?;
     Ok(re_sdk::TimeCell::new(TimeType::TimestampNs, nanos))
+}
+
+fn parse_storage_location(
+    storage_location: Option<String>,
+) -> PyResult<Option<StorageLocationAlias>> {
+    storage_location
+        .map(StorageLocationAlias::try_new)
+        .transpose()
+        .map_err(|err| PyValueError::new_err(err.to_string()))
 }

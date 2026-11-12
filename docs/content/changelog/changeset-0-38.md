@@ -81,7 +81,7 @@ Passing `--asset` without any local `.rrd` recording produces an error.
 
 `--asset` can be passed several times and needs **Load files via Viewer catalog** under **Settings** → **Viewer catalog** to be enabled, so it automatically enables the setting if it is off.
 
-See [assets](../concepts/query-and-transform/catalog-object-model.md#assets) for what an asset is, and the [CLI manual](../reference/cli.md) for the full list of arguments.
+See [assets](../query-and-transform/catalog/catalog-object-model.md#assets) for what an asset is, and the [CLI manual](../reference/cli.md) for the full list of arguments.
 
 ### Drive a running Viewer from Python
 
@@ -107,7 +107,7 @@ client.close_recordings(state.recordings[0].store_id)  # or "current", or "all"
 `viewer_state` reports what the Viewer is showing: the open recordings with their timelines and time ranges, the current time cursor, and the views of the current blueprint together with the warnings and errors each one reports.
 It also reports the Viewer's own catalog address, which you can hand to `CatalogClient` to read the data behind those recordings.
 
-See the [Viewer control reference](../reference/viewer/mcp.md) for the same operations driven by an agent over MCP.
+See the [Viewer control reference](../viewer/extend/mcp.md) for the same operations driven by an agent over MCP.
 
 ### Control the Viewer time cursor from Python
 
@@ -246,8 +246,8 @@ view = rrb.Spatial2DView(
     }
 )
 ```
-For a general overview of component mappings see [component mappings](../howto/visualization/component-mappings.md).
-For a guide about annotation context see [annotation context](../concepts/visualization/annotation-context.md).
+For a general overview of component mappings see [component mappings](../viewer/blueprints-and-views/component-mappings.md).
+For a guide about annotation context see [annotation context](../viewer/blueprints-and-views/annotation-context.md).
 
 Under the hood we now resolve annotation context more rigoriously & consistently,
 which led to some subtle changes in behavior, see [Recorded labels no longer mix with annotation labels](#recorded-labels-no-longer-mix-with-annotation-labels).
@@ -375,7 +375,7 @@ rr.log(
 Previously, the third point was labeled `car`; now it is unlabeled.
 Log `labels=["first", "second", "car"]` to preserve the previous result, or omit recorded labels to use annotations for all points.
 
-See the [annotation context documentation](../concepts/visualization/annotation-context.md).
+See the [annotation context documentation](../viewer/blueprints-and-views/annotation-context.md).
 
 ### Custom views must now provide reflection metadata
 

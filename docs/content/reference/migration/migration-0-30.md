@@ -39,7 +39,7 @@ df.with_column("url", segment_url(dataset, timestamp="ts", timeline_name="my_tim
 ```
 
 Also, the previously deprecated `partition_url()`, `partition_url_udf()`, and `partition_url_with_timeref_udf()`
-function have been removed.
+functions have been removed.
 
 ### `segment_url` parameter names have been updated
 

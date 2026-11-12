@@ -294,8 +294,8 @@ mod tests {
     use arrow::array::{
         ArrayRef, Int32Array, ListArray, MapArray, StructArray, UInt8Array, UnionArray,
     };
-    use arrow::buffer::{OffsetBuffer, ScalarBuffer};
-    use arrow::datatypes::{DataType, Field, Fields, UnionFields, UnionMode};
+    use arrow::buffer::ScalarBuffer;
+    use arrow::datatypes::{Field, Fields, UnionFields};
     use re_chunk::RowId;
     use re_log_types::Timeline;
     use re_types_core::ComponentDescriptor;

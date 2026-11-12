@@ -32,7 +32,7 @@ class VideoStream(Archetype, VisualizableArchetype):
     **Archetype**: Video stream consisting of raw video chunks.
 
     For logging video containers like mp4, refer to [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo] and [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
-    To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/concepts/logging-and-ingestion/video).
+    To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 
     All components except `sample` are typically logged statically once per entity.
     `sample` is then logged repeatedly for each frame on the timeline.

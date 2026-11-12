@@ -1,7 +1,6 @@
 //! Implement [`SizeBytes`] for things in the standard library.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet, VecDeque};
-use std::mem::size_of;
 use std::ops::Range;
 use std::sync::{Arc, Weak};
 

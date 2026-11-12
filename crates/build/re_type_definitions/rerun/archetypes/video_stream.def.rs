@@ -4,7 +4,7 @@
 /// Video stream consisting of raw video chunks.
 ///
 /// For logging video containers like mp4, refer to [`rerun::archetypes::AssetVideo`] and [`rerun::archetypes::VideoFrameReference`].
-/// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/concepts/logging-and-ingestion/video).
+/// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 ///
 /// All components except `sample` are typically logged statically once per entity.
 /// `sample` is then logged repeatedly for each frame on the timeline.

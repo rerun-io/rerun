@@ -11,7 +11,6 @@ use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProv
 /// Fast models to select, best first, unless the user has picked a model for the profile.
 ///
 /// The agent panel should feel fast, and flagship models are often too slow for that.
-#[cfg(agent_harness_backend)]
 pub const DEFAULT_MODEL_PREFERENCES: &[&str] = &[
     "sonnet", // Anthropic: Claude
     "flash",  // Google: Gemini
@@ -176,6 +175,44 @@ pub struct AgentPreferences {
 
     /// Speed, e.g. `on` for the fast mode of both Claude and Codex.
     pub speed: Option<SessionConfigValueId>,
+
+    /// Effort, e.g. `high` or `xhigh`, restored only if the selected model offers it.
+    pub effort: Option<Effort>,
+}
+
+/// How much the model thinks before it answers, as the id of one of the levels the agent offers.
+///
+/// The id belongs to the agent, e.g. `high` or `xhigh`, and the levels differ per agent and per
+/// model. Compare ids exactly, never rank them.
+///
+/// The same setting has many names: ACP calls its category `thought_level`, Claude Code shows it
+/// as "Effort", Codex and Copilot as "Reasoning effort", the Anthropic API takes
+/// `output_config.effort`, and the `OpenAI` API takes `reasoning.effort`. We call it effort because
+/// most of them do, including `rig_core`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct Effort(pub String);
+
+impl Effort {
+    /// The effort that leaves the level to the model, offered by the model APIs as "Default".
+    pub const DEFAULT: &'static str = "default";
+
+    /// Whether this leaves the level to the model.
+    pub fn is_default(&self) -> bool {
+        self.0 == Self::DEFAULT
+    }
+}
+
+impl From<&SessionConfigValueId> for Effort {
+    fn from(value: &SessionConfigValueId) -> Self {
+        Self(value.0.to_string())
+    }
+}
+
+impl From<&Effort> for SessionConfigValueId {
+    fn from(effort: &Effort) -> Self {
+        Self::new(effort.0.clone())
+    }
 }
 
 /// Why [`AgentSettings`] could not be resolved into an agent to start.
@@ -285,6 +322,9 @@ impl AgentSettings {
             provider,
             api_key,
             model,
+            effort: self
+                .preferences(&self.profile_id)
+                .and_then(|preferences| preferences.effort.clone()),
             system_prompt: context.model_api_preamble.clone(),
             hosted_tools: self.model_api_hosted_tools,
             toolbox: None,

@@ -244,7 +244,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         Forwards the robot description message to Rerun's built-in URDF loader.
 
         Documentation about URDF support in Rerun can be found here:
-        https://rerun.io/docs/howto/logging-and-ingestion/urdf
+        https://rerun.io/docs/logging-and-ingestion/import/urdf
         """
         # NOTE: file_path is not known here, robot.urdf is just a placeholder to let
         # Rerun know the file type. Since we run this example in a ROS environment,
@@ -262,7 +262,7 @@ class TurtleSubscriber(Node):  # type: ignore[misc]
         with `parent_frame` and `child_frame` fields set.
 
         Documentation about transforms in Rerun can be found here:
-        https://rerun.io/docs/concepts/logging-and-ingestion/transforms
+        https://rerun.io/docs/logging-and-ingestion/data-model/transforms
         """
         for transform in tf_msg.transforms:
             time = Time.from_msg(transform.header.stamp)

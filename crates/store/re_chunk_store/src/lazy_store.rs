@@ -293,7 +293,7 @@ mod tests {
     use re_log_encoding::EncodingOptions;
     use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
     use re_log_types::{
-        EntityPath, StoreId, StoreKind,
+        StoreKind,
         example_components::{MyPoint, MyPoints},
     };
 

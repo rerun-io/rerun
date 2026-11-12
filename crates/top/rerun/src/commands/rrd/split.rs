@@ -8,13 +8,11 @@ use arrow::compute::kernels::cast_utils::Parser as _;
 use itertools::Itertools as _;
 
 use re_build_info::CrateVersion;
-use re_chunk::external::crossbeam;
 use re_chunk::{Chunk, TimeInt, TimelineName};
 use re_chunk_store::{ChunkStore, ChunkTrackingMode};
 use re_error::try_eprintln;
 use re_log_types::AbsoluteTimeRange;
 use re_quota_channel::send_crossbeam;
-use re_sdk::external::arrow;
 use re_sdk::{StoreId, StoreKind, Timeline};
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;

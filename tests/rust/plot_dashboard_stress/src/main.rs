@@ -16,8 +16,6 @@
 #![expect(clippy::print_stdout)] // This is only a test
 #![expect(clippy::disallowed_methods)]
 
-use rerun::external::re_log;
-
 #[derive(Debug, clap::ValueEnum, Clone)]
 enum Order {
     Forwards,

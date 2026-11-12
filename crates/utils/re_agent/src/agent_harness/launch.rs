@@ -91,6 +91,7 @@ impl AgentSettings {
                 .collect(),
             preferred_model: preferences.and_then(|preferences| preferences.model.clone()),
             preferred_speed: preferences.and_then(|preferences| preferences.speed.clone()),
+            preferred_effort: preferences.and_then(|preferences| preferences.effort.clone()),
             mode_preferences: std::iter::chain(
                 preferences.and_then(|preferences| preferences.mode.clone()),
                 default_mode,

@@ -49,7 +49,7 @@ clap = ["dep:clap"]
 
 ## Support for using Rerun's importers directly from the SDK.
 ##
-## See our `log_file` example and <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview>
+## See our `log_file` example and <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview>
 ## for more information.
 importers = ["dep:comfy-table", "dep:mcap", "dep:memmap2", "dep:re_mcap", "re_sdk?/importers"]
 

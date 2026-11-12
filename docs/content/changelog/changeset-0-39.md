@@ -59,7 +59,7 @@ See [`PixelFormat`](../reference/types/encodings/pixel_format.md).
 Rerun can now load PLY files containing meshes and 2D point clouds, in addition to 3D point clouds and Gaussian splats.
 PLY loading also uses the faster `ply-rs-bw` 4 API.
 
-[Opening files in Rerun](../getting-started/data-in/open-any-file.md)
+[Opening files in Rerun](../logging-and-ingestion/import/open-any-file.md)
 [PLY and STL example](https://github.com/rerun-io/rerun/tree/main/examples/rust/ply_stl_tetrahedrons)
 
 ### Smoother plot lines
@@ -100,7 +100,7 @@ Pan and zoom changes are saved to the blueprint, and the view supports explicit 
 
 ### State timeline hover duration
 
-[State timeline](../howto/visualization/state-timeline.md) hovers now show a human-readable Length.
+[State timeline](../viewer/plots-and-maps/state-timeline.md) hovers now show a human-readable Length.
 
 <picture>
   <img src="https://static.rerun.io/state-hover/d9799638a7e5fc701298caa1357f609107a8cfd1/full.png" alt="">
@@ -111,7 +111,7 @@ Pan and zoom changes are saved to the blueprint, and the view supports explicit 
 The notebook Viewer now works in [marimo](https://marimo.io/) notebooks: `rr.notebook_show()`, `Viewer.display()`, and a `Viewer` or blueprint as the last expression of a cell all show an embedded Viewer.
 marimo delivers messages from the Viewer only between cells, so to stream data live, create the Viewer in one cell and log to it from a later one.
 
-[Embed Rerun in notebooks](../howto/integrations/embed-notebooks.md#running-in-marimo)
+[Embed Rerun in notebooks](../integrations/embed-notebooks.md#running-in-marimo)
 [marimo example notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/cube_marimo.py)
 
 ### New table blueprints with Python table API
@@ -168,7 +168,7 @@ client.get_table("my_table").register_blueprint(path.as_uri())
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/table_blueprint_cards/c4375be1b19f3e5ed6a440aa0fceaca50cbf0a6d/1200w.png">
 </picture>
 
-There's also a new doc page: [Configure table layouts and segment previews](../howto/visualization/configure-table-blueprints.md) for the full workflow, including dataset and remote storage.
+There's also a new doc page: [Configure table layouts and segment previews](../viewer/blueprints-and-views/configure-table-blueprints.md) for the full workflow, including dataset and remote storage.
 The existing [table blueprints example](https://github.com/rerun-io/rerun/blob/latest/examples/python/table_blueprints) has of course been updated as well.
 
 ### Improved table column settings, with search, display mode and bulk hide/show
@@ -188,7 +188,7 @@ Previews in the table and card views now have a new UI, which comes with more ti
     <source src="https://static.rerun.io/631ab9ba8c128590d45532693db3f32d7f2510b3_new-preview-controls.mp4" type="video/mp4" />
 </video>
 
-[Configure table layouts and previews](../howto/visualization/configure-table-blueprints.md)
+[Configure table layouts and previews](../viewer/blueprints-and-views/configure-table-blueprints.md)
 
 ### Assets can specify what segments they apply to
 
@@ -203,11 +203,11 @@ Which segments an asset applies to can be changed afterwards with `add_segments_
 
 Use `assets_for_segment` to get a list of assets that apply to a segment.
 
-See [assets](../concepts/query-and-transform/catalog-object-model.md#assets) for what an asset is.
+See [assets](../query-and-transform/catalog/catalog-object-model.md#assets) for what an asset is.
 
 ### String literals in lens selectors
 
-[Lens selectors](../concepts/query-and-transform/lenses.md) now support string literals such as `"foo"` to emit one constant string per input value.
+[Lens selectors](../query-and-transform/lenses.md) now support string literals such as `"foo"` to emit one constant string per input value.
 For example, `.location.x | "foo"` emits `"foo"` once per selected value, without a custom function.
 
 ### Agents can read and write the active blueprint over MCP
@@ -224,7 +224,7 @@ The new `GetBlueprint` operation, served as the `rerun_get_blueprint` MCP tool, 
 
 The new `SetBlueprint` operation, served as `rerun_set_blueprint`, replaces the whole blueprint with JSON of the same form.
 
-See the [MCP reference](../reference/viewer/mcp.md#reading-and-writing-the-blueprint).
+See the [MCP reference](../viewer/extend/mcp.md#reading-and-writing-the-blueprint).
 
 ### Agents can read a recording's schema over MCP
 
@@ -244,7 +244,7 @@ It works for any recording the Viewer has open, including one streamed from an S
 A recording too large for one answer comes back truncated with a count of what was left out, and `entity_path` narrows to a subtree.
 `paths_only` answers the cheaper question first — which entities exist at all — so an unfamiliar recording can be listed whole and then read in detail only where it matters.
 
-See the [MCP reference](../reference/viewer/mcp.md).
+See the [MCP reference](../viewer/extend/mcp.md).
 
 ### `ViewerState` reports what is still loading
 
@@ -260,7 +260,7 @@ while state.loading:
 `open_url` returns as soon as a load *starts*, and a recording shows up as soon as its first message lands, so this is how a caller tells a recording that is still arriving from one that arrived empty.
 Sources that only wait for someone else to send data, such as an SDK connection, are left out: they never finish.
 
-See the [MCP reference](../reference/viewer/mcp.md).
+See the [MCP reference](../viewer/extend/mcp.md).
 
 ### Import puffin profiler captures
 
@@ -294,8 +294,8 @@ The [JavaScript and React web viewer APIs](https://ref.rerun.io/docs/js/) now ac
 
 - **Every panel, button and input has an accessible name**: Every panel, icon button, menu and input in the Viewer now has a name in the accessibility tree, so screen readers, `egui_kittest` queries and the MCP UI tools can reach them by name.
 - **Views can hide their title bar**: Views take a new `titlebar` blueprint option, for example `rrb.Spatial2DView(titlebar=False)`, which hides the view's title bar.
-- **Agents can run any command palette command**: The Viewer MCP server and `ViewerControlService` can now list and run every command of the command palette, such as toggling panels, playback, and blueprint undo ([docs](../reference/viewer/mcp.md)).
-- **Viewer state lists connected servers**: `GetViewerState` — and with it the `rerun_get_viewer_state` MCP tool — now lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, so an agent can open one by name. See the [MCP reference](../reference/viewer/mcp.md).
+- **Agents can run any command palette command**: The Viewer MCP server and `ViewerControlService` can now list and run every command of the command palette, such as toggling panels, playback, and blueprint undo ([docs](../viewer/extend/mcp.md)).
+- **Viewer state lists connected servers**: `GetViewerState` — and with it the `rerun_get_viewer_state` MCP tool — now lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, so an agent can open one by name. See the [MCP reference](../viewer/extend/mcp.md).
 - **Pick the agent's model in the agent panel**: The model shown in the agent panel's footer is now a drop-down for switching to any other model the agent offers.
 - **Paste images into the agent panel**: Ctrl/Cmd-V in the agent panel's composer attaches the image on the clipboard.
 - **Set the memory limit of the web viewer**: The JS `WebViewer` has a new `memory_limit` option, e.g. `"500MB"`.

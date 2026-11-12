@@ -3,7 +3,6 @@ use std::sync::{Arc, OnceLock};
 
 use arrow::array::RecordBatch;
 use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::external::re_byte_size;
 use re_chunk::{ChunkId, ComponentIdentifier, EntityPath};
 use re_log_types::StoreId;
 use re_sorbet::{SchemaId, SorbetSchema};
@@ -849,8 +848,8 @@ impl RrdManifest {
 #[cfg(test)]
 mod tests {
     use re_chunk::{Chunk, RowId, TimePoint, Timeline};
+    use re_log_types::StoreKind;
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-    use re_log_types::{StoreId, StoreKind};
 
     use super::*;
 

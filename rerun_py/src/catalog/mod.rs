@@ -36,7 +36,6 @@ mod write_operation;
 
 use errors::{AlreadyExistsError, ChunkNotIndexedError, NotFoundError};
 use pyo3::prelude::*;
-use pyo3::{Bound, PyResult};
 use re_protos::cloud::v1alpha1::ext::{
     ASSET_MODE_COMPONENT, ASSET_PROPERTY, ASSET_SEGMENTS_COMPONENT, AssetMode,
 };

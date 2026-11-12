@@ -37,6 +37,16 @@ if TYPE_CHECKING:
 _DEFAULT_URL = "rerun+http://127.0.0.1:9876/proxy"
 
 
+@dataclass(frozen=True)
+class ViewerViewType:
+    """A registered view type and its discovery metadata."""
+
+    class_identifier: str
+    display_name: str
+    description: str
+    keywords: list[str]
+
+
 StoreId = str
 """
 Identifies one recording open in the viewer, as `{kind}:{application_id}:{recording_id}`.
@@ -1093,6 +1103,19 @@ class ViewerClient:
             for entry in raw.get("entries", [])
         ]
 
+    def list_view_types(self) -> list[ViewerViewType]:
+        """List supported view types before choosing a class for a blueprint. No recording is required."""
+        raw = self._viewer_control("list_view_types", {})
+        return [
+            ViewerViewType(
+                class_identifier=view.get("class_identifier", ""),
+                display_name=view.get("display_name", ""),
+                description=view.get("description", ""),
+                keywords=view.get("keywords", []),
+            )
+            for view in raw.get("view_types", [])
+        ]
+
     def get_state(self) -> ViewerState:
         """
         Report what the viewer is currently showing.
@@ -1293,7 +1316,7 @@ class ViewerClient:
         A recording's blueprint has its layout, views, their properties, and overrides.
         A table's blueprint has its row filters, layout, and column settings.
         Without any arguments, reads the blueprint of what is on screen.
-        See [Blueprints](https://rerun.io/docs/concepts/visualization/blueprints).
+        See [Blueprints](https://rerun.io/docs/viewer/blueprints-and-views/blueprints).
 
         Parameters
         ----------
@@ -1331,7 +1354,7 @@ class ViewerClient:
         ----------
         blueprint:
             The blueprint, keyed by blueprint entity path, then archetype, then field.
-            See [Blueprints](https://rerun.io/docs/concepts/visualization/blueprints).
+            See [Blueprints](https://rerun.io/docs/viewer/blueprints-and-views/blueprints).
         of:
             Whether to write a recording's or a table's blueprint.
             Implied by `store_id` or `table_url`.
@@ -1362,7 +1385,7 @@ class ViewerClient:
         """
         A recording's transform graph at its time cursor: its frames, and the edges between them.
 
-        See [Transforms & Coordinate Frames](https://rerun.io/docs/concepts/logging-and-ingestion/transforms).
+        See [Transforms & Coordinate Frames](https://rerun.io/docs/logging-and-ingestion/data-model/transforms).
 
         Parameters
         ----------

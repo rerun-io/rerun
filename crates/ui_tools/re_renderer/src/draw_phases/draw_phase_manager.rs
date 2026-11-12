@@ -397,8 +397,6 @@ impl<'a> DrawableCollector<'a> {
 
 #[cfg(test)]
 mod tests {
-    use core::f32;
-
     use super::*;
 
     const RENDERER_0: RendererTypeId = RendererTypeId::from_bits(0);

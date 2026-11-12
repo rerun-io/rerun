@@ -6,7 +6,7 @@
 /// If not specified, the coordinate frame uses an implicit frame derived from the entity path.
 /// The implicit frame's name is `tf#/your/entity/path` and has an identity transform connection to its parent path.
 ///
-/// To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/concepts/logging-and-ingestion/transforms) in the reference.
+/// To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/logging-and-ingestion/data-model/transforms) in the reference.
 ///
 /// \example archetypes/coordinate_frame_builtin_frames title="Change coordinate frame to different built-in frames" image="https://static.rerun.io/coordinate_frame_builtin_frame/71f941f35cf73c299c6ea7fbc4487a140db8e8f8/1200w.png"
 /// \example archetypes/transform3d_hierarchy_frames title="Transform hierarchy with explicit frames" !api image="https://static.rerun.io/transform_hierarchy_frames/9ffb0079828f46c22e22ca55737b8a903889b412/full.png"

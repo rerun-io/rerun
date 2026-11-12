@@ -1164,8 +1164,6 @@ pub async fn register_conflicting_property_schema(service: impl RerunCloudServic
 /// The first registration should succeed, and the second should fail with a schema conflict.
 /// The segment table should only show the first (successful) segment.
 pub async fn register_conflicting_schema_filters_segment_table(service: impl RerunCloudService) {
-    use super::common::register_and_wait;
-
     let dataset_name = "test_conflicting_schema_filters_segment_table";
     service.create_dataset_entry_with_name(dataset_name).await;
 
@@ -1241,8 +1239,6 @@ pub async fn register_conflicting_schema_filters_segment_table(service: impl Rer
 pub async fn register_conflicting_schema_same_segment_filters_layer(
     service: impl RerunCloudService,
 ) {
-    use super::common::register_and_wait;
-
     let dataset_name = "test_conflicting_schema_same_segment_filters_layer";
     service.create_dataset_entry_with_name(dataset_name).await;
 
@@ -1455,6 +1451,8 @@ async fn register_and_wait_for_task_result(
                 .expect("Failed to decode response data")
         })
         .collect();
+
+    super::common::wait_for_task_revisions(service, &query_results).await;
 
     // Build TaskResult for each task
     let mut results = Vec::new();

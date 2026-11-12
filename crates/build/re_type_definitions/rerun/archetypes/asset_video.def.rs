@@ -6,7 +6,7 @@
 /// Only MP4 containers are currently supported.
 // TODO(#7354): fix above if ticket is outdated.
 ///
-/// See <https://rerun.io/docs/concepts/logging-and-ingestion/video> for codec support and more general information.
+/// See <https://rerun.io/docs/logging-and-ingestion/media/video> for codec support and more general information.
 ///
 /// In order to display a video, you also need to log a [`rerun::archetypes::VideoFrameReference`] for each frame.
 ///

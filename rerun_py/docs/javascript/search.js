@@ -1,5 +1,4 @@
-// TODO(squidfunk/mkdocs-material#8610): Remove this script and its mkdocs.yml entry
-// after upgrading to a fixed release.
+// Material for MkDocs needs keyup events to refresh results after keyless input or form reset.
 // https://github.com/squidfunk/mkdocs-material/issues/8610
 (() => {
   const query = document.querySelector('[data-md-component="search-query"]');

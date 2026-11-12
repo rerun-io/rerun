@@ -84,6 +84,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         <rerun::archetypes::Points3D as rerun::Archetype>::name(),
                     ]),
                     property_archetypes: vec![color_coordinates_archetype],
+                    ..Default::default()
                 },
             )
             .unwrap();

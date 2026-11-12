@@ -162,8 +162,6 @@ fn default_to_manual_layout(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use re_chunk_store::LatestAtQuery;
     use re_log_types::{StoreId, StoreKind, TimelineName};
     use serde_json::json;

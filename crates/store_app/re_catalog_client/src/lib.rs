@@ -24,6 +24,10 @@ mod write_operation;
 use re_async::AsyncRuntimeHandle;
 use re_redap_client::{ApiResult, ConnectionClient, ConnectionHandle};
 
+pub use re_protos::cloud::v1alpha1::ext::{
+    StorageBucketName, StorageLocation, StorageLocations, StoragePrefix, StorageRegion,
+};
+
 pub use self::asset::{
     Asset, AssetCoverage, AssetLayer, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT,
     RegisteredAssets, asset_data_source,
@@ -67,6 +71,13 @@ impl CatalogClient {
     /// The server this client talks to.
     pub fn origin(&self) -> &re_uri::Origin {
         self.connection.origin()
+    }
+
+    /// Lists storage locations, sorted by alias.
+    ///
+    /// Does not verify reachability or upload support.
+    pub async fn get_storage_locations(&self) -> ApiResult<StorageLocations> {
+        self.client().await?.get_storage_locations().await
     }
 
     /// A short-lived [`ConnectionClient`] for low-level RPCs against this catalog's origin.

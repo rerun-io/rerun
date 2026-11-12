@@ -17,10 +17,20 @@ pub struct Modals {
     /// Shows [`debug_tools_ui`].
     #[cfg(debug_assertions)]
     pub debug_tools: re_ui::modal::ModalHandler,
+
+    /// Lets the user open a recording or server by url.
+    ///
+    /// Shown by the route UI rather than [`Self::ui`].
+    pub open_url: super::OpenUrlModal,
+
+    /// Lets the user share a link to what they are looking at.
+    ///
+    /// Shown by the route UI rather than [`Self::ui`], since it needs the active recording.
+    pub share: super::ShareModal,
 }
 
 impl Modals {
-    /// Show whichever modal is open.
+    /// Show the about and debug-tools modals, if open.
     #[cfg_attr(not(debug_assertions), expect(unused_variables))]
     pub fn ui(
         &mut self,
@@ -267,6 +277,116 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
             ui.end_row();
         }
     });
+
+    egui::CollapsingHeader::new("GPU limits").show(ui, |ui| {
+        gpu_limits_ui(ui, render_state);
+    });
+}
+
+/// Compares the limits of the device in use with the limits the adapter supports.
+///
+/// The device reports the limits the viewer requested; on web, the browser may report
+/// higher values.
+fn gpu_limits_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
+    let adapter_limits = render_state.adapter.limits();
+    let device_limits = render_state.device.limits();
+
+    let tier = render_state
+        .renderer
+        .read()
+        .callback_resources
+        .get::<re_renderer::RenderContext>()
+        .map(|ctx| ctx.device_caps().tier);
+
+    let bytes_ui = |ui: &mut egui::Ui, bytes: u64| {
+        ui.label(re_format::format_bytes(bytes as f64))
+            .on_hover_text(format!("{} B", re_format::format_uint(bytes)));
+    };
+    let count_ui = |ui: &mut egui::Ui, count: u32| {
+        ui.label(re_format::format_uint(count));
+    };
+
+    if let Some(tier) = tier {
+        ui.label(format!("Device tier: {tier}"));
+    }
+
+    egui::Grid::new("gpu_limits_grid")
+        .num_columns(3)
+        .striped(true)
+        .show(ui, |ui| {
+            ui.strong("Limit");
+            ui.strong("Requested")
+                .on_hover_text("What the viewer requested for its device, and so can use");
+            ui.strong("Available")
+                .on_hover_text("What the GPU and driver (or browser) support");
+            ui.end_row();
+
+            for (name, adapter, device) in [
+                (
+                    "Max buffer size",
+                    adapter_limits.max_buffer_size,
+                    device_limits.max_buffer_size,
+                ),
+                (
+                    "Max storage buffer binding size",
+                    adapter_limits.max_storage_buffer_binding_size,
+                    device_limits.max_storage_buffer_binding_size,
+                ),
+                (
+                    "Max uniform buffer binding size",
+                    adapter_limits.max_uniform_buffer_binding_size,
+                    device_limits.max_uniform_buffer_binding_size,
+                ),
+                (
+                    "Max compute workgroup storage size",
+                    adapter_limits.max_compute_workgroup_storage_size.into(),
+                    device_limits.max_compute_workgroup_storage_size.into(),
+                ),
+            ] {
+                ui.label(name);
+                bytes_ui(ui, device);
+                bytes_ui(ui, adapter);
+                ui.end_row();
+            }
+
+            for (name, adapter, device) in [
+                (
+                    "Max compute invocations per workgroup",
+                    adapter_limits.max_compute_invocations_per_workgroup,
+                    device_limits.max_compute_invocations_per_workgroup,
+                ),
+                (
+                    "Max compute workgroups per dimension",
+                    adapter_limits.max_compute_workgroups_per_dimension,
+                    device_limits.max_compute_workgroups_per_dimension,
+                ),
+                (
+                    "Max storage buffers per shader stage",
+                    adapter_limits.max_storage_buffers_per_shader_stage,
+                    device_limits.max_storage_buffers_per_shader_stage,
+                ),
+                (
+                    "Max storage textures per shader stage",
+                    adapter_limits.max_storage_textures_per_shader_stage,
+                    device_limits.max_storage_textures_per_shader_stage,
+                ),
+                (
+                    "Max texture dimension 2D",
+                    adapter_limits.max_texture_dimension_2d,
+                    device_limits.max_texture_dimension_2d,
+                ),
+                (
+                    "Max texture dimension 3D",
+                    adapter_limits.max_texture_dimension_3d,
+                    device_limits.max_texture_dimension_3d,
+                ),
+            ] {
+                ui.label(name);
+                count_ui(ui, device);
+                count_ui(ui, adapter);
+                ui.end_row();
+            }
+        });
 }
 
 #[cfg(debug_assertions)]

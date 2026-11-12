@@ -333,7 +333,7 @@ pb-lint = "buf lint --config scripts/ci/buf.yaml --error-format=json"
 #   "pb-snapshot-main",
 # ]}
 
-pb-breaking = "echo 'ℹ️ If this CI step is failing even though you did not modify any Protobuf files, that means that somebody purposefully published breaking Protobuf changes onto the main branch in the meantime.\nℹ️ For that reason, the Protobuf definitions on your local branch are now incompatible with those on main.\nℹ️ When that happens, simply rebase your branch on latest main, and the errors will go away.' ; buf breaking --config scripts/ci/buf.yaml --against-config scripts/ci/buf.yaml --error-format=json --against '.git#branch=origin/main'"
+pb-breaking = "bash scripts/ci/pb_breaking.sh --config scripts/ci/buf.yaml --against-config scripts/ci/buf.yaml"
 
 pb-check = { depends-on = ["pb-fmt-check", "pb-lint", "pb-breaking"] }
 
@@ -690,7 +690,7 @@ gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
 graphviz = "12.*" # `dot` and `neato`, used by `scripts/generate_crate_graph.py`. Pinned: the SVG is checked in, and a different version lays it out differently.
 jinja2 = ">=3.1.3,<3.2" # For `build_screenshot_compare.py` and other utilities that build websites.
-lychee = "0.23.0.*"
+lychee = "0.24.2.*"
 mypy = "1.14.1.*"
 nasm = ">=2.16" # Required by https://github.com/memorysafety/rav1d for native video support
 pyyaml = ">=6.0" # For `check_doc_redirects.py` and `lint.py`

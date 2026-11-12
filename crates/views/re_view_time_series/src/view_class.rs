@@ -1066,7 +1066,6 @@ fn visualizers_section_ui(ui: &mut egui::Ui, ctx: &re_viewer_context::ViewContex
 /// Returns a priority score for a given Arrow datatype.
 /// Lower scores are preferred.
 fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes::DataType) -> u32 {
-    use re_log_types::external::arrow::datatypes::DataType;
     match datatype {
         DataType::Float64 => 0,
         DataType::Float32 => 1,
@@ -2126,7 +2125,6 @@ fn time_series_visualizers_section(
 mod tests {
     use super::*;
     use crate::StepMode;
-    use re_viewer_context::SingleRequiredComponentMatch;
 
     #[test]
     fn test_interpolated_series_value_respects_line_modes() {

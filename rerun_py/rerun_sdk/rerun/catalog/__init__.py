@@ -36,6 +36,7 @@ from ._entry import (
     TableEntry as TableEntry,
 )
 from ._layer import Layer as Layer
+from ._location import StorageLocation as StorageLocation, StorageLocations as StorageLocations
 from ._registration_handle import (
     RegistrationOperation as RegistrationOperation,
     RegistrationResult as RegistrationResult,

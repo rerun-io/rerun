@@ -150,7 +150,7 @@ struct Args {
     /// `rerun --asset mesh.rrd robot.rrd other.rrd --asset urdf.rrd` registers both assets with
     /// the datasets of both recordings.
     ///
-    /// See <https://www.rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>
+    /// See <https://www.rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets>
     ///
     /// The files are then loaded through the Viewer catalog, which turns on the
     /// "Load files via Viewer catalog" setting if it is off.
@@ -300,7 +300,7 @@ When persisted, the state will be stored at the following locations:
 - A path to a Rerun .rrd recording
 - A path to a Rerun .rbl blueprint
 - An HTTP(S) URL to an .rrd or .rbl file to load
-- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview)
 
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
@@ -573,7 +573,7 @@ impl Args {
             // > - A path to a Rerun .rrd recording
             // > - A path to a Rerun .rbl blueprint
             // > - An HTTP(S) URL to an .rrd or .rbl file to load
-            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
+            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview)
             // >
             // > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
             // """
@@ -672,7 +672,7 @@ enum Command {
     /// `codex mcp add rerun -- rerun viewer-mcp`, or add an `mcp.json` entry with
     /// `"command": "rerun"` and `"args": ["viewer-mcp"]`.
     ///
-    /// See <https://rerun.io/docs/reference/viewer/mcp> for details.
+    /// See <https://rerun.io/docs/viewer/extend/mcp> for details.
     #[cfg(feature = "native_viewer")]
     #[command(name = "viewer-mcp")]
     ViewerMcp {

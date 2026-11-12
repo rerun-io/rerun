@@ -17,12 +17,12 @@
 
 Log, query, visualize, and stream to training on shared columnar storage built for multimodal data.
 
-**What it does:** Rerun ingests multi-rate, multimodal data (images, point clouds, transforms, time series, joint states, video) from many sources and formats (robot logs, human-data rigs, sim, web video; MCAP, rrd, LeRobot). The built-in viewer renders everything in sync, in realtime: scrub episodes, compare sensors side-by-side, watch CV pipelines run live. The same data is queryable with [dataframes](https://rerun.io/docs/howto/query-and-transform/get-data-out) or SQL, and streams directly into training. Built in Rust on column-chunk storage purpose-built for multi-rate physical data. SDKs in Python, Rust, and C++.
+**What it does:** Rerun ingests multi-rate, multimodal data (images, point clouds, transforms, time series, joint states, video) from many sources and formats (robot logs, human-data rigs, sim, web video; MCAP, rrd, LeRobot). The built-in viewer renders everything in sync, in realtime: scrub episodes, compare sensors side-by-side, watch CV pipelines run live. The same data is queryable with [dataframes](https://rerun.io/docs/query-and-transform/catalog/get-data-out) or SQL, and streams directly into training. Built in Rust on column-chunk storage purpose-built for multi-rate physical data. SDKs in Python, Rust, and C++.
 
 **Quickstart:** `pip install rerun-sdk` — log your first multimodal data and see it in the viewer in under 2 minutes.
 
 * [Run the Rerun Viewer in your browser](https://www.rerun.io/viewer)
-* [Read about what Rerun is and who it is for](https://www.rerun.io/docs/overview/what-is-rerun)
+* [Get started with the docs](https://www.rerun.io/docs/getting-started)
 
 ### Use cases
 - Ingest robot logs, egocentric/UMI rigs, sim, and web video into one substrate
@@ -61,9 +61,9 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 </picture>
 
 ## Getting started
-* [**C++**](https://www.rerun.io/docs/getting-started/data-in)
-* [**Python**](https://www.rerun.io/docs/getting-started/data-in): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
-* [**Rust**](https://www.rerun.io/docs/getting-started/data-in): `cargo add rerun`
+* [**C++**](https://www.rerun.io/docs/logging-and-ingestion/tutorial)
+* [**Python**](https://www.rerun.io/docs/logging-and-ingestion/tutorial): `pip install rerun-sdk` or on [`conda`](https://github.com/conda-forge/rerun-sdk-feedstock)
+* [**Rust**](https://www.rerun.io/docs/logging-and-ingestion/tutorial): `cargo add rerun`
 
 ### Installing the Rerun Viewer binary
 To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
@@ -144,13 +144,13 @@ Of course, Rerun is useful for much more than just robots. Any time you have any
 ### Rerun vs. Rviz
 
 When coming from pure visualization tools like [RViz](https://docs.ros.org/en/jazzy/Tutorials/Intermediate/RViz/RViz-Main.html), you might be used to seeing the latest data only.
-Rerun is more than a pure visualization solution, it provides a platform for multimodal data with a powerful visualizer, storage model and query engine (see also: [*"What is Rerun?"*](https://rerun.io/docs/overview/what-is-rerun)).
-In robotics, you can use Rerun e.g. to record test runs, manage and query training data, visually debug live streams or recordings (also from third-party formats like [MCAP](https://rerun.io/docs/howto/logging-and-ingestion/mcap)) and much more.
+Rerun is more than a pure visualization solution, it provides a platform for multimodal data with a powerful visualizer, storage model and query engine (see also the [architecture overview](https://rerun.io/docs/getting-started/how-does-rerun-work)).
+In robotics, you can use Rerun e.g. to record test runs, manage and query training data, visually debug live streams or recordings (also from third-party formats like [MCAP](https://rerun.io/docs/logging-and-ingestion/import/mcap/working-with-mcap)) and much more.
 
 So while Rerun makes your data streams visualizable in the viewer, integrating Rerun logging into your robotics applications also opens up the door for leveraging Rerun's broader capabilities.
 
 If you are only interested in visualization, the Rerun viewer has powerful features like the ability to go back in time thanks to its time-aware in-memory database.
-You can adjust the size of this buffer to your needs (see [here](https://rerun.io/docs/howto/visualization/limit-ram)), e.g. to a smaller size if you want to use Rerun as an RViz replacement in long-running or memory-constrained applications.
+You can adjust the size of this buffer to your needs (see [here](https://rerun.io/docs/viewer/performance/limit-ram)), e.g. to a smaller size if you want to use Rerun as an RViz replacement in long-running or memory-constrained applications.
 
 
 ## Business model

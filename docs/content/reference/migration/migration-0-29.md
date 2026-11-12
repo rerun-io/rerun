@@ -10,7 +10,7 @@ hidden: true
 ### New API for defining visualizer overrides
 
 The Python API for setting blueprint overrides now uses special visualizer objects under the hood.
-A sideffect of that is that `VisualizerOverrides` no longer exists, instead you just list the visualizers out:
+A side effect of that is that `VisualizerOverrides` no longer exists, instead you just list the visualizers out:
 
 
 Before:
@@ -66,7 +66,7 @@ The deprecated `rerun.catalog` APIs that were marked for removal in 0.28 have no
 
 Please refer to the [0.28 migration guide section on catalog API overhaul](migration-0-28.md#python-sdk-catalog-api-overhaul) for more details on the new API patterns.
 
-### Multiple internal submodules were move to properly mark internal
+### Multiple internal submodules were moved to properly mark internal
 Most of their functionality is already exposed indirectly through re-exports.
 If you still need to use any functionality directly you can still find them in their new location.
 * `rr.color_conversion` -> `rr._color_conversion`

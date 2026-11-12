@@ -23,6 +23,9 @@ use crate::cloud::v1alpha1::{
 use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
+pub use crate::storage_location::{
+    InvalidStorageStringValue, StorageBucketName, StoragePrefix, StorageRegion,
+};
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 /// Helper to simplify writing `field_XXX() -> FieldRef` methods.
@@ -2261,13 +2264,163 @@ impl std::fmt::Display for ObjectKey {
     }
 }
 
+/// Names a storage location configured in a catalog deployment.
+///
+/// The alias is only meaningful within one deployment: it does not identify the underlying storage.
+///
+/// An alias has at most 253 characters: lowercase ASCII letters, digits, `-`, and `.`.
+/// Each dot-separated part must be non-empty and start and end with a letter or digit.
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(try_from = "String", into = "String")]
+pub struct StorageLocationAlias(String);
+
+/// Returned when an alias does not follow the [`StorageLocationAlias`] format.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error(
+    "storage location alias must use 1 to 253 lowercase ASCII letters, digits, `-`, and `.`, \
+     with each dot-separated part starting and ending with a letter or digit"
+)]
+pub struct InvalidStorageLocationAliasError;
+
+impl StorageLocationAlias {
+    pub fn try_new(alias: impl Into<String>) -> Result<Self, InvalidStorageLocationAliasError> {
+        let alias = alias.into();
+        let is_alphanumeric = |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit();
+        let is_valid = alias.len() <= 253
+            && alias.split('.').all(|label| {
+                let bytes = label.as_bytes();
+                bytes.first().is_some_and(|&byte| is_alphanumeric(byte))
+                    && bytes.last().is_some_and(|&byte| is_alphanumeric(byte))
+                    && bytes
+                        .iter()
+                        .all(|&byte| is_alphanumeric(byte) || byte == b'-')
+            });
+        if !is_valid {
+            return Err(InvalidStorageLocationAliasError);
+        }
+        Ok(Self(alias))
+    }
+
+    /// The alias as a string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<String> for StorageLocationAlias {
+    type Error = InvalidStorageLocationAliasError;
+
+    fn try_from(alias: String) -> Result<Self, Self::Error> {
+        Self::try_new(alias)
+    }
+}
+
+impl std::str::FromStr for StorageLocationAlias {
+    type Err = InvalidStorageLocationAliasError;
+
+    fn from_str(alias: &str) -> Result<Self, Self::Err> {
+        Self::try_new(alias)
+    }
+}
+
+impl From<StorageLocationAlias> for String {
+    fn from(alias: StorageLocationAlias) -> Self {
+        alias.0
+    }
+}
+
+impl std::fmt::Display for StorageLocationAlias {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Storage locations and the alias selected when none is specified.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageLocations {
+    pub locations: Vec<StorageLocation>,
+    pub default_alias: StorageLocationAlias,
+}
+
+/// A storage location configured in this catalog deployment.
+// TODO(RR-6055): Define provider and network constraints for location selection.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageLocation {
+    pub alias: StorageLocationAlias,
+    pub display_name: Option<String>,
+    pub region: StorageRegion,
+    /// Bucket name, without a URI scheme or object path.
+    pub bucket_name: StorageBucketName,
+    pub prefix: Option<StoragePrefix>,
+    pub read_only: bool,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::StorageLocation> for StorageLocation {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::StorageLocation) -> Result<Self, Self::Error> {
+        Ok(Self {
+            alias: StorageLocationAlias::try_new(value.alias).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "alias",
+                    err.to_string()
+                )
+            })?,
+            display_name: value.display_name,
+            region: StorageRegion::try_new(value.region).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "region",
+                    err.to_string()
+                )
+            })?,
+            bucket_name: StorageBucketName::try_new(value.bucket_name).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "bucket_name",
+                    err.to_string()
+                )
+            })?,
+            prefix: value
+                .prefix
+                .map(StoragePrefix::try_new)
+                .transpose()
+                .map_err(|err| {
+                    invalid_field!(
+                        crate::cloud::v1alpha1::StorageLocation,
+                        "prefix",
+                        err.to_string()
+                    )
+                })?,
+            read_only: value.read_only,
+        })
+    }
+}
+
+impl From<StorageLocation> for crate::cloud::v1alpha1::StorageLocation {
+    fn from(value: StorageLocation) -> Self {
+        Self {
+            alias: value.alias.into(),
+            display_name: value.display_name,
+            region: value.region.into(),
+            bucket_name: value.bucket_name.into(),
+            prefix: value.prefix.map(Into::into),
+            read_only: value.read_only,
+        }
+    }
+}
+
 /// Requests authorization to write one object at `key`.
 #[derive(Debug, Clone)]
 pub struct GetWriteAccessGrantRequest {
     pub key: ObjectKey,
 
     /// The requested storage location, or the server's default.
-    pub location: Option<crate::cloud::v1alpha1::Location>,
+    /// TODO(RR-6055): Negotiate server support before sending an explicit alias.
+    pub storage_location: Option<StorageLocationAlias>,
 
     /// Exact object size, if known.
     pub size_bytes: Option<u64>,
@@ -2294,14 +2447,23 @@ impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAcc
     ) -> Result<Self, Self::Error> {
         let crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
             key,
-            location,
             size_bytes,
             supported_upload_methods,
             signing,
+            storage_location,
         } = value;
         Ok(Self {
             key: ObjectKey::try_new(key)?,
-            location,
+            storage_location: storage_location
+                .map(StorageLocationAlias::try_new)
+                .transpose()
+                .map_err(|err| {
+                    invalid_field!(
+                        crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
+                        "storage_location",
+                        err.to_string()
+                    )
+                })?,
             size_bytes,
             supported_upload_methods: if supported_upload_methods.is_empty() {
                 vec![UploadMethod::SingleRequest]
@@ -2327,14 +2489,14 @@ impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccess
     fn from(value: GetWriteAccessGrantRequest) -> Self {
         let GetWriteAccessGrantRequest {
             key,
-            location,
+            storage_location,
             size_bytes,
             supported_upload_methods,
             signing,
         } = value;
         Self {
             key: key.0,
-            location,
+            storage_location: storage_location.map(Into::into),
             size_bytes,
             supported_upload_methods: if supported_upload_methods.is_empty() {
                 // An empty wire list means single-request only, so encode no support explicitly.
@@ -2867,9 +3029,20 @@ pub struct DataSource {
     /// File format of the recording data.
     pub kind: DataSourceKind,
 
-    /// Use a specific object store provider for this registration.
-    /// Inferred from the URL if not specified.
-    pub object_store_config: Option<String>,
+    /// The storage location that holds the data.
+    ///
+    /// If `None`, the server infers the object store from `storage_url`.
+    #[serde(rename = "object_store_config")]
+    pub storage_location: Option<StorageLocationAlias>,
+
+    /// The store to register out of this source.
+    ///
+    /// `None` picks the first store of the dataset's kind (recording or blueprint) in the source.
+    /// Must be `None` when `is_prefix` is `true`.
+    ///
+    /// Deserializes as `None` when absent, so serialized sources that predate it still load.
+    #[serde(default)]
+    pub store_id: Option<re_log_types::StoreId>,
 }
 
 impl DataSource {
@@ -2877,87 +3050,111 @@ impl DataSource {
 
     pub fn new_rrd(
         storage_url: impl AsRef<str>,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
         })
     }
 
     pub fn new_rrd_prefix(
         storage_url: impl AsRef<str>,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
         })
     }
 
     pub fn new_rrd_layer(
         layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
             layer: layer.into(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
         })
     }
 
     pub fn new_rrd_layer_prefix(
         layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
             layer: layer.into(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
         })
     }
 
-    pub fn new_rrd_url(storage_url: url::Url, object_store_config: Option<String>) -> Self {
+    pub fn new_rrd_url(
+        storage_url: url::Url,
+        storage_location: Option<StorageLocationAlias>,
+    ) -> Self {
         Self {
             storage_url,
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
         }
     }
 
-    pub fn new_rrd_prefix_url(storage_url: url::Url, object_store_config: Option<String>) -> Self {
+    pub fn new_rrd_prefix_url(
+        storage_url: url::Url,
+        storage_location: Option<StorageLocationAlias>,
+    ) -> Self {
         Self {
             storage_url,
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
         }
     }
 }
 
 impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
+    #[expect(deprecated, reason = "Older servers require the legacy selector field")]
     fn from(value: DataSource) -> Self {
+        let DataSource {
+            storage_url,
+            is_prefix,
+            layer,
+            kind,
+            storage_location,
+            store_id,
+        } = value;
+
         crate::cloud::v1alpha1::DataSource {
-            storage_url: Some(value.storage_url.to_string()),
-            prefix: value.is_prefix,
-            layer: Some(value.layer.into()),
-            typ: value.kind as i32,
-            object_store_config: value.object_store_config,
+            storage_url: Some(storage_url.to_string()),
+            prefix: is_prefix,
+            layer: Some(layer.into()),
+            typ: kind as i32,
+            storage_location: storage_location.clone().map(String::from),
+            object_store_config: storage_location.map(String::from),
+            store_id: store_id.map(Into::into),
         }
     }
 }
@@ -2965,7 +3162,32 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
 impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
     type Error = TypeConversionError;
 
+    #[expect(
+        deprecated,
+        reason = "Older clients only send the legacy selector field"
+    )]
     fn try_from(data_source: crate::cloud::v1alpha1::DataSource) -> Result<Self, Self::Error> {
+        let parse_alias = |alias: Option<String>, field| {
+            alias
+                .map(StorageLocationAlias::try_new)
+                .transpose()
+                .map_err(|err| {
+                    invalid_field!(crate::cloud::v1alpha1::DataSource, field, err.to_string())
+                })
+        };
+        let storage_location = parse_alias(data_source.storage_location, "storage_location")?;
+        let object_store_config =
+            parse_alias(data_source.object_store_config, "object_store_config")?;
+        if let (Some(alias), Some(legacy_alias)) = (&storage_location, &object_store_config)
+            && alias != legacy_alias
+        {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "storage_location",
+                "must match object_store_config when both are supplied"
+            ));
+        }
+
         let storage_url = data_source
             .storage_url
             .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::DataSource, "storage_url"))?
@@ -2983,17 +3205,31 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
 
         let prefix = data_source.prefix;
 
+        let store_id = data_source
+            .store_id
+            .map(re_log_types::StoreId::try_from)
+            .transpose()?;
+        if prefix && store_id.is_some() {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "store_id",
+                "a prefix data source cannot select a store",
+            ));
+        }
+
         Ok(Self {
             storage_url,
             is_prefix: prefix,
             layer,
             kind,
-            object_store_config: data_source.object_store_config,
+            storage_location: storage_location.or(object_store_config),
+            store_id,
         })
     }
 }
 
 #[test]
+#[expect(deprecated, reason = "Exercise legacy selector decoding")]
 fn datasource_layer_from_proto() {
     let proto = |layer: Option<&str>| crate::cloud::v1alpha1::DataSource {
         storage_url: Some("s3://bucket/file.rrd".to_owned()),
@@ -3001,6 +3237,8 @@ fn datasource_layer_from_proto() {
         layer: layer.map(ToOwned::to_owned),
         typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
         object_store_config: Some("custom".to_owned()),
+        storage_location: None,
+        store_id: None,
     };
 
     let data_source = DataSource::try_from(proto(None)).unwrap();
@@ -3013,7 +3251,34 @@ fn datasource_layer_from_proto() {
     let data_source = DataSource::try_from(proto(Some("my_layer"))).unwrap();
     assert_eq!(data_source.layer, "my_layer");
 
-    assert_eq!(data_source.object_store_config, Some("custom".to_owned()));
+    assert_eq!(
+        data_source
+            .storage_location
+            .as_ref()
+            .map(StorageLocationAlias::as_str),
+        Some("custom")
+    );
+}
+
+#[test]
+fn datasource_store_id_from_proto() {
+    let store_id = re_log_types::StoreId::recording("app", "rec");
+    let proto = |prefix: bool| crate::cloud::v1alpha1::DataSource {
+        storage_url: Some("s3://bucket/file.rrd".to_owned()),
+        prefix,
+        layer: None,
+        typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+        store_id: Some(store_id.clone().into()),
+        ..Default::default()
+    };
+
+    let data_source = DataSource::try_from(proto(false)).unwrap();
+    assert_eq!(data_source.store_id, Some(store_id.clone()));
+
+    assert!(
+        DataSource::try_from(proto(true)).is_err(),
+        "a prefix must not select a store"
+    );
 }
 
 // --- Tasks ---
@@ -3206,6 +3471,95 @@ mod tests {
         ChunkCandidatesDataframe, QueryDatasetDataframe, QueryTasksDataframe,
         RegisterWithDatasetDataframe, ScanDatasetManifestDataframe,
     };
+
+    #[test]
+    fn storage_location_alias_validation() {
+        for input in ["a", "0", "robot-storage.json", "a--b.0-1", &"a".repeat(253)] {
+            let alias = StorageLocationAlias::try_new(input).unwrap();
+            assert_eq!(String::from(alias), input);
+        }
+
+        for input in [
+            "",
+            ".",
+            ".a",
+            "a.",
+            "-a",
+            "a-",
+            "a..b",
+            "a.-b",
+            "a-.b",
+            "A",
+            "a_b",
+            "a/b",
+            "a b",
+            "é",
+            &"a".repeat(254),
+        ] {
+            assert!(StorageLocationAlias::try_new(input).is_err(), "{input:?}");
+            assert!(
+                serde_json::from_value::<StorageLocationAlias>(serde_json::json!(input)).is_err(),
+                "{input:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn datasource_serde_keeps_legacy_location_key() {
+        let storage_location = StorageLocationAlias::try_new("robot-storage.json").unwrap();
+        let source =
+            DataSource::new_rrd("s3://bucket/file.rrd", Some(storage_location.clone())).unwrap();
+
+        let json = serde_json::to_value(&source).unwrap();
+        assert_eq!(json["object_store_config"], "robot-storage.json");
+
+        let decoded: DataSource = serde_json::from_value(json).unwrap();
+        assert_eq!(decoded.storage_location, Some(storage_location));
+    }
+
+    #[test]
+    #[expect(deprecated, reason = "Exercise both wire selector fields")]
+    fn datasource_storage_location_fields() {
+        let proto =
+            |location: Option<&str>, legacy: Option<&str>| crate::cloud::v1alpha1::DataSource {
+                storage_url: Some("s3://bucket/file.rrd".to_owned()),
+                typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+                storage_location: location.map(str::to_owned),
+                object_store_config: legacy.map(str::to_owned),
+                ..Default::default()
+            };
+        for (location, legacy, expected) in [
+            (None, None, None),
+            (Some("robot-storage.json"), None, Some("robot-storage.json")),
+            (None, Some("robot-storage.json"), Some("robot-storage.json")),
+            (Some("a"), Some("a"), Some("a")),
+        ] {
+            let source = DataSource::try_from(proto(location, legacy)).unwrap();
+            assert_eq!(
+                source
+                    .storage_location
+                    .as_ref()
+                    .map(StorageLocationAlias::as_str),
+                expected
+            );
+            let encoded: crate::cloud::v1alpha1::DataSource = source.into();
+            assert_eq!(encoded.storage_location.as_deref(), expected);
+            assert_eq!(encoded.object_store_config.as_deref(), expected);
+        }
+        for (location, legacy) in [
+            (Some("a"), Some("b")),
+            (Some(""), None),
+            (None, Some("")),
+            (Some("My_Store.json"), None),
+            (None, Some("My_Store.json")),
+        ] {
+            let err = DataSource::try_from(proto(location, legacy)).unwrap_err();
+            assert_eq!(
+                tonic::Status::from(err).code(),
+                tonic::Code::InvalidArgument
+            );
+        }
+    }
 
     #[test]
     fn test_scan_segment_table_response_create_dataframe() {

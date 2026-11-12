@@ -1,12 +1,14 @@
+use re_agent_panel::ShownContent;
 use re_byte_size::NamedMemUsageTree;
 use re_log_channel::{LogSource, RecordingOpenBehavior};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{HasDesignTokens as _, UiExt as _, WindowFrameConfig};
-use re_viewer_context::{ActiveStoreContext, StorageContext, store_hub::StoreHubStats};
-
-use crate::{
-    app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
+use re_viewer_context::{
+    ActiveStoreContext, EntryKind, Route, StorageContext, store_hub::StoreHubStats,
 };
+
+use crate::ui::WelcomeScreenState;
+use crate::{app_blueprint::AppBlueprint, background_tasks::BackgroundTasks};
 
 use super::{AppCore, WindowDecorationsRequest};
 
@@ -14,6 +16,7 @@ impl AppCore {
     /// Top-level ui function.
     ///
     /// Shows the viewer ui.
+    /// Returns where the central panel of the current route was shown, if it has one.
     pub(super) fn ui_impl(
         &mut self,
         ui: &mut egui::Ui,
@@ -24,7 +27,7 @@ impl AppCore {
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
-    ) {
+    ) -> Option<egui::Rect> {
         // Before the panels: the highlight is dismissed by any click, and the welcome screen
         // clears `InputState::pointer` while it paints, so a read afterwards would miss that
         // click. The outline is painted on its own layer, so it still ends up on top.
@@ -42,7 +45,7 @@ impl AppCore {
             main_panel_frame.inner_margin = 1.0.into();
         }
 
-        egui::CentralPanel::default()
+        let central_panel_rect = egui::CentralPanel::default()
             .frame(main_panel_frame)
             .show(ui, |ui| {
                 paint_background_fill(ui);
@@ -117,7 +120,7 @@ impl AppCore {
 
                         // After `on_frame_start`, so a catalog answer that arrived this frame is
                         // taken into account right away.
-                        self.state.resolve_route();
+                        self.navigation.resolve_route(&self.state.redap_servers);
 
                         // Install our url decorator so links render nicely. This is done every frame
                         // so the data stays up-to-date.
@@ -132,46 +135,39 @@ impl AppCore {
                         );
                     }
 
-                    self.texture_readback.poll_and_save_texture_readbacks(
-                        render_ctx,
-                        ui,
-                        &self.command_sender,
-                        &mut self.notifications,
-                    );
+                    self.capture
+                        .texture_readback
+                        .poll_and_save_texture_readbacks(
+                            render_ctx,
+                            ui,
+                            &self.command_sender,
+                            &mut self.notifications,
+                        );
 
                     let welcome_screen_revealed = self.update_welcome_screen_revealed(ui);
-
-                    self.state.show(
-                        &self.startup.app_env,
-                        &self.startup.options,
-                        app_blueprint,
+                    let welcome_screen_state = WelcomeScreenState {
+                        hide_examples: self.startup.options.hide_welcome_screen
+                            || !self.app_options().enable_welcome_screen,
+                        revealed: welcome_screen_revealed,
+                    };
+                    let central_panel_rect = self.route_ui(
                         ui,
+                        app_blueprint,
                         render_ctx,
                         active_store_context,
                         storage_context,
-                        &self.table_blueprints,
-                        &self.registries.reflection.read(),
-                        &self.registries.component_uis,
-                        &self.registries.component_fallbacks,
-                        &self.registries.view_classes,
-                        &self.rx_log,
-                        &self.command_sender,
-                        &WelcomeScreenState {
-                            hide_examples: self.startup.options.hide_welcome_screen
-                                || !self.app_options().enable_welcome_screen,
-                            revealed: welcome_screen_revealed,
-                        },
-                        self.event_dispatcher.as_ref(),
-                        &self.connections.registry,
-                        &self.connections.registrations_in_flight,
-                        &self.async_runtime,
-                        self.custom_window_frame(),
+                        &welcome_screen_state,
                     );
                     render_ctx.before_submit();
 
                     self.show_text_logs_as_notifications();
+
+                    central_panel_rect
+                } else {
+                    None
                 }
-            });
+            })
+            .inner;
 
         if custom_window_decorations {
             custom_windows_decorations_resize_ui(ui);
@@ -180,6 +176,8 @@ impl AppCore {
         if self.app_options().show_notification_toasts {
             self.notifications.show_toasts(ui);
         }
+
+        central_panel_rect
     }
 
     fn dev_panel_ui(
@@ -198,7 +196,7 @@ impl AppCore {
         };
 
         let external_trees = if self.dev_panel.open {
-            self.external_memory_users.captured_trees()
+            self.memory.external_memory_users.captured_trees()
         } else {
             &[]
         };
@@ -219,7 +217,7 @@ impl AppCore {
                     gpu_resource_stats,
                     store_stats,
                     store_context,
-                    &self.state.time_controls,
+                    &self.stores.time_controls,
                     storage_context,
                 );
                 close_requested = response.close_requested;
@@ -250,9 +248,21 @@ impl AppCore {
             target_arch = "wasm32" => None::<std::path::PathBuf>,
             _ => self.app_options().cache_directory.clone(),
         };
-        let recording = active_store_context
-            .map(|context| context.recording)
-            .filter(|recording| !recording.store_id().is_empty_recording());
+        let is_recording_open = active_store_context
+            .is_some_and(|context| !context.recording.store_id().is_empty_recording());
+        let shown_content = match self.navigation.routes.current() {
+            Route::RedapEntry {
+                kind: Some(EntryKind::Dataset(_)),
+                ..
+            } => ShownContent::Dataset,
+            Route::LocalTable(_)
+            | Route::RedapEntry {
+                kind: Some(EntryKind::Table),
+                ..
+            } => ShownContent::Table,
+            _ if is_recording_open => ShownContent::Recording,
+            _ => ShownContent::Other,
+        };
 
         let Self {
             agent_panel,
@@ -270,7 +280,7 @@ impl AppCore {
             viewer_endpoint.as_deref(),
             cache_dir.as_deref(),
             startup.build_info.is_in_rerun_workspace,
-            recording,
+            shown_content,
         );
         state.agent_panel_ever_opened |= state.agent_panel_open;
     }

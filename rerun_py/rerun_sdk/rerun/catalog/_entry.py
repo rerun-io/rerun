@@ -4,7 +4,7 @@ from abc import ABC
 from collections.abc import Iterable, Sequence
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeAlias, TypeVar, overload
 
 import pyarrow as pa
 from pyarrow import RecordBatchReader
@@ -25,6 +25,7 @@ from rerun_bindings import (
 )
 
 from . import ContentFilter, EntryId
+from ._location import _resolve_storage_location
 
 #: Type alias for supported batch input types for TableEntry write methods.
 _BatchesType: TypeAlias = (
@@ -82,7 +83,9 @@ class DatasetQueryScope(StrEnum):
 
     Attributes:
         FULL: Every entity path and timeline in the dataset, indexed or not.
-            On Rerun Hub, a query that needs data outside the policy fails.
+            On Rerun Hub, data outside the policy is read from the recordings themselves, which works only for
+            specific segments: filter the dataset to them first, or the query raises
+            [`ChunkNotIndexedError`][rerun.catalog.ChunkNotIndexedError].
         INDEXED: Only the entity paths and timelines the dataset's chunk indexing policy indexes.
             Naming one the policy excludes raises [`ChunkNotIndexedError`][rerun.catalog.ChunkNotIndexedError].
 
@@ -291,12 +294,35 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """Return the Arrow schema of the data contained in the dataset."""
         return self.schema().to_arrow()
 
+    @overload
     def register_blueprint(
         self,
         uri: str,
         set_default: bool = True,
         *,
         segment_table: bool = False,
+        storage_location: str | None = None,
+    ) -> None: ...
+
+    # TODO(RR-6315): Remove the deprecated overload and object_store_config keyword.
+    @overload
+    @deprecated("object_store_config is deprecated; use storage_location instead.", category=None)
+    def register_blueprint(
+        self,
+        uri: str,
+        set_default: bool = True,
+        *,
+        segment_table: bool = False,
+        object_store_config: str | None,
+    ) -> None: ...
+
+    def register_blueprint(
+        self,
+        uri: str,
+        set_default: bool = True,
+        *,
+        segment_table: bool = False,
+        storage_location: str | None = None,
         object_store_config: str | None = None,
     ) -> None:
         """
@@ -310,12 +336,17 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         `segment_table` has no effect when `set_default=False`.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
         for examples of saving and registering table blueprints with local or remote storage.
 
         The associated blueprint dataset is owned by this dataset for lifecycle purposes.
         Deleting this dataset also deletes the associated blueprint dataset and its storage.
+
+        `storage_location` is the alias of the storage location that holds `uri`, as configured in the catalog.
+        If `None`, the server infers the object store from the URI.
+        `object_store_config` is the deprecated name of `storage_location`. Supplying both raises `ValueError`.
         """
+        storage_location = _resolve_storage_location(storage_location, object_store_config)
 
         blueprint_dataset = self.blueprint_dataset()
 
@@ -324,7 +355,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         segment_id = (
             blueprint_dataset
-            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, storage_location=storage_location)
             .wait()
             .segment_ids[0]
         )
@@ -384,12 +415,35 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         else:
             return asset_dataset.segment_ids()
 
+    @overload
     def register_asset(
         self,
         uri: str,
         *,
         mode: Literal["opt_out", "opt_in"] = "opt_out",
         segments: Sequence[str] | None = None,
+        storage_location: str | None = None,
+    ) -> str: ...
+
+    # TODO(RR-6315): Remove the deprecated overload and object_store_config keyword.
+    @overload
+    @deprecated("object_store_config is deprecated; use storage_location instead.", category=None)
+    def register_asset(
+        self,
+        uri: str,
+        *,
+        mode: Literal["opt_out", "opt_in"] = "opt_out",
+        segments: Sequence[str] | None = None,
+        object_store_config: str | None,
+    ) -> str: ...
+
+    def register_asset(
+        self,
+        uri: str,
+        *,
+        mode: Literal["opt_out", "opt_in"] = "opt_out",
+        segments: Sequence[str] | None = None,
+        storage_location: str | None = None,
         object_store_config: str | None = None,
     ) -> str:
         """
@@ -423,9 +477,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             The segment ids the mode applies to. Defaults to empty, so an `"opt_out"` asset applies
             to every segment and an `"opt_in"` asset applies to none.
 
+        storage_location:
+            The alias of the storage location that holds the data, as configured in the catalog.
+            If `None`, the server infers the object store from the URL.
+
         object_store_config:
-            Use a custom object store configuration for the registration.
-            If not specified, the store is inferred from the URL.
+            Deprecated name of `storage_location`. Supplying both raises `ValueError`.
 
         Returns
         -------
@@ -433,6 +490,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             The segment id of the registered asset.
 
         """
+        storage_location = _resolve_storage_location(storage_location, object_store_config)
 
         asset_dataset = self.asset_dataset()
 
@@ -447,7 +505,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         segment_id = (
             asset_dataset
-            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, storage_location=storage_location)
             .wait()
             .segment_ids[0]
         )
@@ -913,6 +971,28 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
     # TODO(RR-2168): Allow selecting an arbitrary recording from each RRD and add a segment_id
     # parameter once registration supports overriding encoded recording IDs.
+    @overload
+    def register(
+        self,
+        recording_uri: list[str],
+        *,
+        layer_name: str | Sequence[str] = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+        storage_location: str | None = None,
+    ) -> RegistrationOperation: ...
+
+    # TODO(RR-6315): Remove the deprecated overload and object_store_config keyword.
+    @overload
+    @deprecated("object_store_config is deprecated; use storage_location instead.", category=None)
+    def register(
+        self,
+        recording_uri: list[str],
+        *,
+        layer_name: str | Sequence[str] = "base",
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+        object_store_config: str | None,
+    ) -> RegistrationOperation: ...
+
     @with_tracing("DatasetEntry.register")
     def register(
         self,
@@ -921,6 +1001,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         *,
         layer_name: str | Sequence[str] = "base",
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+        storage_location: str | None = None,
         object_store_config: str | None = None,
     ) -> RegistrationOperation:
         """
@@ -952,19 +1033,33 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             reported by `wait()`, and the other segments in the call still register. Servers older than Rerun 0.41
             and Rerun Hub 0.20 reject the whole call with `AlreadyExistsError` instead.
 
+        storage_location:
+            The alias of the storage location that holds the data, as configured in the catalog.
+            If `None`, the server infers the object store from the URL.
+
         object_store_config:
-            Use a custom object store configuration for the registration.
-            If not specified, the store is inferred from the URL.
+            Deprecated name of `storage_location`. Supplying both raises `ValueError`.
 
         Returns
         -------
         RegistrationOperation
             A handle to track and wait on the registration tasks.
 
+        Examples
+        --------
+        Register an existing recording using a named location:
+
+        ```python
+        dataset.register(["s3://recordings/run.rrd"], storage_location="robot-storage").wait()
+        ```
+
         """
         from rerun.error_utils import _send_warning_or_raise
 
         from ._registration_handle import RegistrationOperation
+
+        # One extra frame for the `@with_tracing` wrapper.
+        storage_location = _resolve_storage_location(storage_location, object_store_config, stacklevel=4)
 
         if isinstance(recording_uri, str):
             _send_warning_or_raise(
@@ -990,7 +1085,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
                 recording_uris,
                 recording_layers=layer_names,
                 on_duplicate=on_duplicate,
-                object_store_config=object_store_config,
+                storage_location=storage_location,
             )
         )
 
@@ -1068,12 +1163,35 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         self._internal.delete_segment_properties(list(segment_ids))
 
+    @overload
     def register_prefix(
         self,
         recordings_prefix: str,
         layer_name: str | None = None,
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
         *,
+        storage_location: str | None = None,
+    ) -> RegistrationOperation: ...
+
+    # TODO(RR-6315): Remove the deprecated overload and object_store_config keyword.
+    @overload
+    @deprecated("object_store_config is deprecated; use storage_location instead.", category=None)
+    def register_prefix(
+        self,
+        recordings_prefix: str,
+        layer_name: str | None = None,
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+        *,
+        object_store_config: str | None,
+    ) -> RegistrationOperation: ...
+
+    def register_prefix(
+        self,
+        recordings_prefix: str,
+        layer_name: str | None = None,
+        on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
+        *,
+        storage_location: str | None = None,
         object_store_config: str | None = None,
     ) -> RegistrationOperation:
         """
@@ -1100,9 +1218,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             reported by `wait()`, and the other segments in the call still register. Servers older than Rerun 0.41
             and Rerun Hub 0.20 reject the whole call with `AlreadyExistsError` instead.
 
+        storage_location:
+            The alias of the storage location that holds the data, as configured in the catalog.
+            If `None`, the server infers the object store from the URL.
+
         object_store_config:
-            Use a custom object store configuration for the registration.
-            If not specified, the store is inferred from the URL.
+            Deprecated name of `storage_location`. Supplying both raises `ValueError`.
 
         Returns
         -------
@@ -1111,12 +1232,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         """
         from ._registration_handle import RegistrationOperation
 
+        storage_location = _resolve_storage_location(storage_location, object_store_config)
+
         if layer_name is None:
             layer_name = "base"
 
         return RegistrationOperation(
             self._internal.register_prefix(
-                recordings_prefix, layer_name, on_duplicate, object_store_config=object_store_config
+                recordings_prefix, layer_name, on_duplicate, storage_location=storage_location
             )
         )
 
@@ -1226,7 +1349,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
-        See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
+        See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the full syntax.
 
         Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
         call's expressions select it. To combine includes and excludes, pass them in a single call.
@@ -1815,7 +1938,7 @@ class DatasetSelection:
         - `"/points/**"` matches all entities under /points
         - `"-/text/**"` excludes all entities under /text
 
-        See [entity path filters](https://rerun.io/docs/concepts/logging-and-ingestion/entity-path#entity-path-filters) for the full syntax.
+        See [entity path filters](https://rerun.io/docs/logging-and-ingestion/data-model/entity-path#entity-path-filters) for the full syntax.
 
         Calling `filter_contents()` again on the result narrows it further: an entity is kept only if every
         call's expressions select it. To combine includes and excludes, pass them in a single call.
@@ -1978,11 +2101,32 @@ class TableEntry(Entry[TableEntryInternal]):
 
         return self.reader().schema()
 
+    @overload
     def register_blueprint(
         self,
         uri: str,
         set_default: bool = True,
         *,
+        storage_location: str | None = None,
+    ) -> None: ...
+
+    # TODO(RR-6315): Remove the deprecated overload and object_store_config keyword.
+    @overload
+    @deprecated("object_store_config is deprecated; use storage_location instead.", category=None)
+    def register_blueprint(
+        self,
+        uri: str,
+        set_default: bool = True,
+        *,
+        object_store_config: str | None,
+    ) -> None: ...
+
+    def register_blueprint(
+        self,
+        uri: str,
+        set_default: bool = True,
+        *,
+        storage_location: str | None = None,
         object_store_config: str | None = None,
     ) -> None:
         """
@@ -1991,19 +2135,23 @@ class TableEntry(Entry[TableEntryInternal]):
         By default, also set this blueprint as default.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints)
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
         for examples of configuring columns, cards, and previews, then saving and registering the result.
 
         The associated blueprint dataset is owned by this table for lifecycle purposes.
         Deleting this table also deletes the associated blueprint dataset and its storage.
 
+        `storage_location` is the alias of the storage location that holds `uri`, as configured in the catalog.
+        If `None`, the server infers the object store from the URI.
+        `object_store_config` is the deprecated name of `storage_location`. Supplying both raises `ValueError`.
         """
+        storage_location = _resolve_storage_location(storage_location, object_store_config)
 
         blueprint_dataset = self.blueprint_dataset()
 
         segment_id = (
             blueprint_dataset
-            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, object_store_config=object_store_config)
+            .register([uri], on_duplicate=OnDuplicateSegmentLayer.REPLACE, storage_location=storage_location)
             .wait()
             .segment_ids[0]
         )

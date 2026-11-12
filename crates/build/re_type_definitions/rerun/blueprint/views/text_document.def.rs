@@ -5,6 +5,7 @@
 ///
 /// \example views/text_document title="Use a blueprint to show a text document." image="https://static.rerun.io/text_log/27f15235fe9639ff42b6ea0d2f0ce580685c021c/1200w.png"
 #[rerun::rerun_type]
+#[docs(keywords = "text, document, markdown")]
 #[rerun(view_identifier = "TextDocument")]
 #[rerun(state = "unstable")]
 pub struct TextDocumentView {

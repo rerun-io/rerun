@@ -10,11 +10,11 @@ use crate::viewer_control::v1alpha1::{
     GetSelectionResponse, GetStateRequest, GetStateResponse, GetTableSchemaRequest,
     GetTableSchemaResponse, GetTransformGraphRequest, GetTransformGraphResponse,
     HighlightRectRequest, HighlightRectResponse, ListCommandsRequest, ListCommandsResponse,
-    OpenRequest, OpenResponse, RunCommandRequest, RunCommandResponse, SaveScreenshotRequest,
-    SaveScreenshotResponse, SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest,
-    SetLocationResponse, SetTimeCursorRequest, SetTimeCursorResponse, SubmitFeedbackRequest,
-    SubmitFeedbackResponse, ViewerControlRequest, ViewerControlResponse, viewer_control_request,
-    viewer_control_response,
+    ListViewTypesRequest, ListViewTypesResponse, OpenRequest, OpenResponse, RunCommandRequest,
+    RunCommandResponse, SaveScreenshotRequest, SaveScreenshotResponse, SetBlueprintRequest,
+    SetBlueprintResponse, SetLocationRequest, SetLocationResponse, SetTimeCursorRequest,
+    SetTimeCursorResponse, SubmitFeedbackRequest, SubmitFeedbackResponse, ViewerControlRequest,
+    ViewerControlResponse, viewer_control_request, viewer_control_response,
 };
 
 /// The peer answered a `ViewerControlService::ViewerControl` call with the wrong `kind`.
@@ -124,6 +124,7 @@ viewer_control_ops! {
     "get_state" => GetState(GetStateRequest, GetStateResponse),
     "highlight_rect" => HighlightRect(HighlightRectRequest, HighlightRectResponse),
     "list_commands" => ListCommands(ListCommandsRequest, ListCommandsResponse),
+    "list_view_types" => ListViewTypes(ListViewTypesRequest, ListViewTypesResponse),
     "open" => Open(OpenRequest, OpenResponse),
     "run_command" => RunCommand(RunCommandRequest, RunCommandResponse),
     "save_screenshot" => SaveScreenshot(SaveScreenshotRequest, SaveScreenshotResponse),

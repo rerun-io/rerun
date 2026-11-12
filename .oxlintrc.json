@@ -8,6 +8,16 @@
     "typescript/no-deprecated": "error",
     // Type-only dependencies must use `import type` so they do not become runtime imports.
     "typescript/consistent-type-imports": "error",
+    // Use interfaces for object shapes; unions and mapped types can still use type aliases.
+    "typescript/consistent-type-definitions": ["error", "interface"],
+    // Reject snake_case, not incorrect casing by symbol kind (e.g. a lowercase type name).
+    "id-match": [
+      "error",
+      // Allow ASCII names without underscores, uppercase constants, and one leading underscore.
+      "^(?:[a-zA-Z$][a-zA-Z0-9$]*|[A-Z][A-Z0-9_]*|_[a-zA-Z0-9$]*)$",
+      // Check properties and class fields too; quoted wire keys and legacy names are exempt.
+      { "properties": true, "classFields": true }
+    ],
     // Static imports must precede other statements; import order and dynamic imports are unrestricted.
     "import/first": "error"
   },

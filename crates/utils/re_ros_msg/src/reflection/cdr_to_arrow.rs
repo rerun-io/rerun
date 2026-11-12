@@ -629,7 +629,6 @@ mod tests {
 
     use super::*;
     use crate::MessageSchema;
-    use crate::reflection::MessageDecodePlan;
 
     /// Decodes one CDR message into a single-row message array.
     fn decode_one(plan: &Arc<MessageDecodePlan>, data: &[u8]) -> FixedSizeListArray {

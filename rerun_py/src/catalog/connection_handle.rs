@@ -11,7 +11,7 @@ use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
     ApplyDatasetPolicyResponse, DataSource, DatasetDetails, DatasetEntry, DatasetPolicy,
-    EntryDetails, ObjectKey, TableDetails, TableEntry, VersionResponse,
+    EntryDetails, ObjectKey, StorageLocationAlias, TableDetails, TableEntry, VersionResponse,
 };
 use re_protos::cloud::v1alpha1::{DatasetQueryScope, EntryFilter};
 use re_protos::common::v1alpha1::TaskId;
@@ -63,7 +63,7 @@ impl PyConnectionHandle {
     }
 }
 
-// TODO(RR-6055): Pass object_store_config through both staging paths to StageOpt.
+// TODO(RR-6055): Negotiate server support before forwarding storage_location to StageOpt.
 impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn stage_file(
@@ -137,6 +137,13 @@ impl PyConnectionHandle {
                 .bandwidth_bytes_per_sec(num_bytes, rtt)
                 .await
                 .map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn get_storage_locations(&self, py: Python<'_>) -> PyResult<cloud_ext::StorageLocations> {
+        wait_for_future(py, async {
+            self.inner.get_storage_locations().await.map_err(to_py_err)
         })
     }
 
@@ -440,7 +447,7 @@ impl PyConnectionHandle {
         recording_uris: Vec<String>,
         recording_layers: Vec<LayerName>,
         on_duplicate: IfDuplicateBehavior,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> PyResult<RegistrationHandle> {
         let last_layer = recording_layers
             .last()
@@ -454,7 +461,7 @@ impl PyConnectionHandle {
                 std::iter::repeat_with(|| last_layer.clone()),
             ),
         )
-        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url, object_store_config.clone()))
+        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url, storage_location.clone()))
         .try_collect()
         .map_err(to_py_err)?;
 
@@ -510,14 +517,11 @@ impl PyConnectionHandle {
         recordings_prefix: String,
         recordings_layer: LayerName,
         on_duplicate: IfDuplicateBehavior,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> PyResult<RegistrationHandle> {
-        let data_source = DataSource::new_rrd_layer_prefix(
-            recordings_layer,
-            recordings_prefix,
-            object_store_config,
-        )
-        .map_err(to_py_err)?;
+        let data_source =
+            DataSource::new_rrd_layer_prefix(recordings_layer, recordings_prefix, storage_location)
+                .map_err(to_py_err)?;
         let data_sources = vec![data_source];
 
         wait_for_future(py, async {

@@ -66,19 +66,19 @@ impl IntroItem {
             Self::DocItem {
                 icon: &SEND_DATA_ICON,
                 title: "Send data in",
-                url: "https://rerun.io/docs/getting-started/data-in",
+                url: "https://rerun.io/docs/logging-and-ingestion/tutorial",
                 body: "Ingest multi-rate, multimodal data from robot logs, sensors, simulation, or video.",
             },
             Self::DocItem {
                 icon: &EXPLORE_DATA_ICON,
                 title: "Explore data",
-                url: "https://rerun.io/docs/getting-started/configure-the-viewer",
+                url: "https://rerun.io/docs/viewer/tutorial",
                 body: "Visualize and explore multi-rate, multimodal data across every stage of the pipeline.",
             },
             Self::DocItem {
                 icon: &QUERY_DATA_ICON,
                 title: "Query data out",
-                url: "https://rerun.io/docs/getting-started/data-out",
+                url: "https://rerun.io/docs/query-and-transform/tutorial",
                 body: "Query raw, intermediate, and derived data with dataframes or SQL, and stream to training.",
             },
         ];

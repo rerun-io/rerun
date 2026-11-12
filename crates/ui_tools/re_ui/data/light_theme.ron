@@ -249,6 +249,10 @@
     "card_link_color": {
       "color": "{Blue.500}"
     },
+    // A link inside running text, e.g. in a notification.
+    "inline_link_color": {
+      "color": "{Blue.500}"
+    },
 
     "drag_pill_droppable_fill": {
       "color": "{Blue.725}"
@@ -287,6 +291,9 @@
     },
     "extreme_fg_color": {
       "color": "{Gray.0}"
+    },
+    "code_bg_color": {
+      "color": "{Gray.800}"
     },
     // Text in a field the user cannot edit: reads as a value, not as something
     // to type into.

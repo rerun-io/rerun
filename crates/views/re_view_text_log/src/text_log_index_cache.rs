@@ -303,7 +303,6 @@ mod tests {
 
     use re_chunk_store::Chunk;
     use re_log_types::Timeline;
-    use re_sdk_types::archetypes::TextLog;
 
     use super::*;
     use crate::text_log_span_index::TARGET_SPAN_ROWS;

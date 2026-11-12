@@ -51,8 +51,7 @@ fn speed_selection_is_saved_for_the_conversations_agent_profile() {
     )
     .build_ui_state(|ui, panel| panel.ui(ui), panel);
     harness.run_steps(3);
-    harness.get_by_value("Standard").click();
-    harness.run_steps(2);
+    super::open_settings_submenu(&mut harness, "Manual", "Speed");
     harness.snapshot("chat_speed_menu");
     harness.get_by_label("Ultrafast").click();
     harness.run_steps(2);
@@ -83,9 +82,9 @@ fn speed_selection_is_saved_for_the_conversations_agent_profile() {
     );
 }
 
-/// Claude's on/off values appear as Fast/Standard and preserve their protocol values.
+/// Claude's on/off speed is a single "Fast mode" toggle that preserves the protocol values.
 #[test]
-fn claude_fast_toggle_is_shown_as_standard_and_fast() {
+fn claude_fast_toggle_is_a_checkbox() {
     let mut panel = ready_panel();
     panel
         .session_mut()
@@ -109,9 +108,9 @@ fn claude_fast_toggle_is_shown_as_standard_and_fast() {
     )
     .build_ui_state(|ui, panel| panel.ui(ui), panel);
     harness.run_steps(3);
-    harness.get_by_value("Standard").click();
+    harness.get_by_label("Manual").click();
     harness.run_steps(2);
-    harness.get_by_label("Fast").click();
+    harness.get_by_label("Fast mode").click();
     harness.run_steps(2);
     assert_eq!(
         harness

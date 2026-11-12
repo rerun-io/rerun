@@ -829,6 +829,16 @@ impl RerunCloudService for RerunCloudHandler {
 
     // --- Catalog ---
 
+    async fn get_storage_locations(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::GetStorageLocationsRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetStorageLocationsResponse>>
+    {
+        Err(tonic::Status::unimplemented(
+            "storage locations are not supported",
+        ))
+    }
+
     async fn find_entries(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::FindEntriesRequest>,
@@ -1181,7 +1191,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
     {
         let request: ext::GetWriteAccessGrantRequest = request.into_inner().try_into()?;
-        if request.location.is_some() {
+        if request.storage_location.is_some() {
             return Err(tonic::Status::invalid_argument(
                 "explicit storage locations are not supported",
             ));

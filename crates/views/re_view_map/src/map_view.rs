@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use egui::{Modifiers, NumExt as _, Rect, Response};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
@@ -254,6 +252,7 @@ impl ViewClass for MapView {
             span.zoom_for_screen_size(
                 (ui.available_size() - egui::vec2(15.0, 15.0)).at_least(egui::Vec2::ZERO),
             )
+            .map(|zoom| zoom.min(16.0))
         });
         let zoom_level = blueprint_zoom_level.or(default_zoom_level).unwrap_or(16.0);
 

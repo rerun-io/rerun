@@ -973,6 +973,40 @@ pub trait UiExt {
         response
     }
 
+    /// A menu item with a checkbox on its right.
+    ///
+    /// The checkbox lines up with the values and submenu arrows of the menu items around it.
+    /// Clicking anywhere on the item toggles `checked`.
+    fn checkbox_menu_item<'a>(
+        &mut self,
+        checked: &mut bool,
+        atoms: impl egui::IntoAtoms<'a>,
+    ) -> egui::Response {
+        let ui = self.ui_mut();
+        let checkbox_id = egui::IdSalt::new("checkbox");
+        // A checkbox is as tall as a row, with its box centered in it.
+        let checkbox_size = egui::vec2(ui.spacing().icon_width, ui.spacing().interact_size.y);
+
+        let atom_response = egui::Button::new(atoms)
+            .right_text(egui::Atom::custom(checkbox_id, checkbox_size))
+            .atom_ui(ui);
+        let mut response = atom_response.response.clone();
+
+        let checkbox_clicked = atom_response.rect(checkbox_id).is_some_and(|rect| {
+            let mut value = *checked;
+            ui.put(rect, egui::Checkbox::without_text(&mut value))
+                .labelled_by(response.id)
+                .clicked()
+        });
+
+        if response.clicked() || checkbox_clicked {
+            *checked = !*checked;
+            response.mark_changed();
+        }
+
+        response
+    }
+
     /// Helper for adding a list-item hyperlink.
     ///
     /// By default, the url is open in the same tab or a new tab based on the mouse button and
@@ -980,39 +1014,33 @@ pub trait UiExt {
     /// in a new tab regardless.
     ///
     /// NOTE: for most kinds of URL, the `always_new_tab` is indirectly overridden to `true` by
-    /// `re_viewer::app_state::check_for_clicked_hyperlinks()`, unless the URL is special-cased by
-    /// that function (e.g. `rerun://` URLs).
+    /// `re_viewer::app::route_ui::check_for_clicked_hyperlinks()`, unless the URL is
+    /// special-cased by that function (e.g. `rerun://` URLs).
     fn re_hyperlink(
         &mut self,
         text: impl Into<egui::WidgetText>,
         url: impl Into<String>,
         always_new_tab: bool,
     ) -> egui::Response {
-        let ui = self.ui_mut();
+        hyperlink(
+            self.ui_mut(),
+            text,
+            url,
+            always_new_tab,
+            HyperlinkPlacement::OnItsOwn,
+        )
+    }
 
-        ui.scope(|ui| {
-            let tokens = ui.tokens();
-            let style = ui.style_mut();
-            style.visuals.button_frame = false;
-
-            // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
-            // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
-            let response = ui
-                .add(crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text))
-                .on_hover_cursor(egui::CursorIcon::PointingHand);
-
-            if response.clicked_with_open_in_background() {
-                ui.open_url(egui::OpenUrl::new_tab(url.into()));
-            } else if response.clicked() {
-                ui.open_url(egui::OpenUrl {
-                    url: url.into(),
-                    new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
-                });
-            }
-
-            response
-        })
-        .inner
+    /// Like [`Self::re_hyperlink`], for a link inside running text.
+    ///
+    /// The link is blue, with the icon after the text, and always opens in a new tab.
+    /// Use it only inside running text; every other link keeps the text color.
+    fn re_inline_hyperlink(
+        &mut self,
+        text: impl Into<egui::WidgetText>,
+        url: impl Into<String>,
+    ) -> egui::Response {
+        hyperlink(self.ui_mut(), text, url, true, HyperlinkPlacement::InText)
     }
 
     /// Show some close/maximize/minimize buttons for the native window.
@@ -1118,17 +1146,12 @@ pub trait UiExt {
     }
 
     /// Shows a `?` help button that will show a help UI when clicked or hovered.
-    ///
-    /// Until the help UI of any help button has been shown, we mark the button
-    /// with a dot to draw user attention to it.
     fn help_button(&mut self, help_ui: impl FnOnce(&mut egui::Ui)) -> egui::Response {
         let mut help_ui: Option<_> = Some(help_ui);
 
         let ui = self.ui_mut();
 
         let has_shown_help_id = egui::Id::unique("has_shown_help");
-        let has_shown_help: bool =
-            ui.data_mut(|d| *d.get_persisted_mut_or_default(has_shown_help_id));
 
         let mut show_help = |ui: &mut egui::Ui| {
             if let Some(help_ui) = help_ui.take() {
@@ -1148,14 +1171,24 @@ pub trait UiExt {
             );
 
             let button_response = menu_button.ui(ui, &mut show_help).0;
-
-            if !has_shown_help {
-                ui.paint_button_dot(button_response.rect, ui.tokens().attention_dot_color);
-            }
-
             button_response.on_hover_ui(show_help)
         })
         .inner
+    }
+
+    /// Paints a discovery dot on a button, if [`crate::discovery`] says it is this feature's turn.
+    ///
+    /// `already_discovered` is whether the user has already used the feature,
+    /// in which case no dot is shown.
+    fn maybe_paint_discovery_dot(
+        &self,
+        button_rect: egui::Rect,
+        feature: crate::discovery::Feature,
+        already_discovered: bool,
+    ) {
+        if crate::discovery::claim_dot(self.ui().ctx(), feature, already_discovered) {
+            self.paint_button_dot(button_rect, self.tokens().attention_dot_color);
+        }
     }
 
     /// Paints a small status dot in the top-right corner of a button.
@@ -1431,6 +1464,61 @@ pub trait UiExt {
 
         response
     }
+}
+
+#[derive(Clone, Copy)]
+enum HyperlinkPlacement {
+    /// The link stands on its own, in the text color.
+    OnItsOwn,
+
+    /// The link is inside running text, see [`UiExt::re_inline_hyperlink`].
+    InText,
+}
+
+fn hyperlink(
+    ui: &mut egui::Ui,
+    text: impl Into<egui::WidgetText>,
+    url: impl Into<String>,
+    always_new_tab: bool,
+    placement: HyperlinkPlacement,
+) -> egui::Response {
+    ui.scope(|ui| {
+        let tokens = ui.tokens();
+        let style = ui.style_mut();
+        style.visuals.button_frame = false;
+
+        // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
+        // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
+        let button = match placement {
+            HyperlinkPlacement::OnItsOwn => {
+                crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text)
+            }
+            HyperlinkPlacement::InText => {
+                let color = tokens.inline_link_color;
+                egui::Button::new((
+                    text.into().color(color),
+                    crate::icons::EXTERNAL_LINK.as_image().tint(color),
+                ))
+                // As tall as the text around it, so it stays on the line of text.
+                .size(Size::custom(0.0))
+            }
+        };
+        let response = ui
+            .add(button)
+            .on_hover_cursor(egui::CursorIcon::PointingHand);
+
+        if response.clicked_with_open_in_background() {
+            ui.open_url(egui::OpenUrl::new_tab(url.into()));
+        } else if response.clicked() {
+            ui.open_url(egui::OpenUrl {
+                url: url.into(),
+                new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
+            });
+        }
+
+        response
+    })
+    .inner
 }
 
 /// Paints a gradient rectangle that transitions from `color_from` to `color_to`

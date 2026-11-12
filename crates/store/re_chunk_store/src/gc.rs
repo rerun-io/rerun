@@ -20,10 +20,6 @@ use crate::{
     },
 };
 
-// Used all over in docstrings.
-#[expect(unused_imports)]
-use crate::RowId;
-
 // ---
 
 #[derive(Debug, Clone, Copy)]
@@ -172,7 +168,7 @@ impl ChunkStore {
     /// furthest away from the timestamp specified in [`GarbageCollectionOptions::furthest_from`].
     ///
     /// If no timestamp is specified, or if not enough data could be collected during the
-    /// timestamp-driven pass, then garbage collection falls back to [`RowId`] order
+    /// timestamp-driven pass, then garbage collection falls back to [`RowId`](crate::RowId) order
     /// (specifically, the smallest `RowId` of each respective Chunk), i.e. the order defined
     /// by the clients' wall-clocks, allowing it to drop data across the different timelines in
     /// a fair, deterministic manner.
@@ -787,13 +783,11 @@ impl ChunkStore {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use re_chunk::TimePoint;
-    use re_log_types::{StoreId, Timeline, TimelineName};
+    use re_log_types::{StoreId, Timeline};
     use re_sdk_types::{RowId, archetypes};
 
-    use crate::{Chunk, ChunkStore, ChunkStoreConfig, GarbageCollectionOptions};
+    use crate::ChunkStoreConfig;
 
     use super::*;
 

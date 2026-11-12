@@ -303,19 +303,18 @@ mod tests {
     use std::collections::BTreeSet;
     use std::path::Path;
 
-    use re_chunk_store::external::re_chunk;
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyStore};
     use re_log_encoding::EncodingOptions;
     use re_log_encoding::RrdChunkProvider;
     use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
     use re_log_types::{
-        EntityPath, StoreId, StoreKind, TimePoint, Timeline,
+        EntityPath, StoreId, StoreKind, TimePoint,
         example_components::{MyPoint, MyPoints},
     };
     use re_types_core::ChunkId;
 
     use super::*;
-    use crate::store::{ChunkKey, ResolvedStore};
+    use crate::store::ChunkKey;
 
     fn build_chunks() -> (StoreId, Vec<Arc<Chunk>>) {
         let store_id = StoreId::random(StoreKind::Recording, "test");

@@ -8,6 +8,7 @@ mod context_ext;
 #[cfg(debug_assertions)]
 pub mod debug_only;
 mod design_tokens;
+pub mod discovery;
 pub mod drag_and_drop;
 pub mod egui_ext;
 pub mod filter_widget;
@@ -275,7 +276,7 @@ pub fn apply_style_and_install_loaders(egui_ctx: &egui::Context) {
 /// Without this they fall back to whatever the system (or the browser) has, which differs
 /// between platforms and is absent on font-less CI machines.
 /// Our own SVG renders the same everywhere, so snapshots and UI stay predictable.
-// TODO(#3539): paint these in `egui_commonmark` itself, and drop this.
+// TODO(lucasmerlin): paint these in `egui_commonmark` itself, and drop this.
 fn set_svg_glyphs(egui_ctx: &egui::Context) {
     // `add_glyph_rasterizer` appends and requests a repaint every time, so calling this each
     // frame (as tests do) would never let the UI settle. Install the glyphs only once.

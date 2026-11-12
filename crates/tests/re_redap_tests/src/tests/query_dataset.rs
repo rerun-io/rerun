@@ -176,8 +176,8 @@ pub async fn query_dataset_unknown_segment_id_returns_empty(service: impl RerunC
 //TODO(RR-2613): this recording needs fleshing out in order to test more interesting queries.
 fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
     use re_chunk::{Chunk, TimePoint};
+    use re_log_types::build_frame_nr;
     use re_log_types::example_components::{MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
     use re_sdk::RecordingStreamBuilder;
 
     use crate::utils::rerun::{next_chunk_id_generator, next_row_id_generator};

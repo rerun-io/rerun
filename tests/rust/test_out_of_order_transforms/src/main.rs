@@ -4,7 +4,6 @@
 
 use std::f32::consts::TAU;
 
-use rerun::external::re_log;
 use rerun::{
     Angle, Color, EntityPath, LineStrips3D, Points3D, Position3D, RecordingStream,
     RotationAxisAngle, Transform3D, TransformRelation, ViewCoordinates,

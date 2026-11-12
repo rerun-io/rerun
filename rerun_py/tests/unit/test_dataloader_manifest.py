@@ -588,11 +588,18 @@ def test_map_manifest_decodes_frozen_ranges(monkeypatch: pytest.MonkeyPatch) -> 
     })
     _stub_map_catalog(monkeypatch, fetched_groups=[FetchedGroup(fields=_FIELDS, fetch_requests={}, table=group_table)])
 
-    dataset = RerunMapDataset.from_manifest(_build_manifest(NoShuffle()), _SOURCE, _FIELDS)
+    dataset = RerunMapDataset.from_manifest(
+        _build_manifest(NoShuffle()),
+        _SOURCE,
+        _FIELDS,
+    )
     samples = dataset.__getitems__(list(range(len(dataset))))
+    measurement = dataset.metrics.summary()
 
     values = sorted(cast("torch.Tensor", s["x"]).item() for s in samples)
     assert values == pytest.approx(sorted(a * 1.5 for a in ANCHORS))  # each row decoded from its own anchor
+    assert measurement["fetch_wait_fraction"] > 0
+    assert measurement["decode_fraction"] > 0
 
 
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
@@ -612,8 +619,13 @@ def test_manifest_and_live_decode_identical_content(monkeypatch: pytest.MonkeyPa
     _stub_catalog(monkeypatch, fetched_groups=[FetchedGroup(fields=_FIELDS, fetch_requests={}, table=group_table)])
 
     strategy = NoShuffle()
-    manifest_samples = list(RerunIterableDataset.from_manifest(_build_manifest(strategy), _SOURCE, _FIELDS))
+    frozen_manifest = _build_manifest(strategy)
+    manifest_dataset = RerunIterableDataset.from_manifest(frozen_manifest, _SOURCE, _FIELDS)
+    manifest_samples = list(manifest_dataset)
+    measurement = manifest_dataset.metrics.summary()
     live_samples = list(_build_live(strategy))
+
+    assert measurement["decode_fraction"] > 0
 
     by_anchor = {int(cast("torch.Tensor", s["x"]).item() / 1.5): s for s in manifest_samples}
     assert len(by_anchor) == len(ANCHORS)  # every sample decoded, once
@@ -621,9 +633,9 @@ def test_manifest_and_live_decode_identical_content(monkeypatch: pytest.MonkeyPa
     for live in live_samples:
         live_x = cast("torch.Tensor", live["x"])
         anchor = int(live_x.item() / 1.5)
-        manifest = by_anchor[anchor]
-        manifest_x = cast("torch.Tensor", manifest["x"])
-        assert live.keys() == manifest.keys() == {"x"}  # same schema
+        replayed = by_anchor[anchor]
+        manifest_x = cast("torch.Tensor", replayed["x"])
+        assert live.keys() == replayed.keys() == {"x"}  # same schema
         assert live_x.dtype == manifest_x.dtype == torch.float32  # same precision, preserved from Arrow
         assert live_x.shape == manifest_x.shape == (1,)  # same shape
         assert torch.equal(live_x, manifest_x)  # same values

@@ -1470,8 +1470,7 @@ mod tests {
 
     use agent_client_protocol_schema::v1::{
         ContentChunk, SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption,
-        SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
-        ToolCallUpdate, ToolCallUpdateFields,
+        ToolCall, ToolCallContent, ToolCallLocation, ToolCallUpdate, ToolCallUpdateFields,
     };
 
     use super::*;

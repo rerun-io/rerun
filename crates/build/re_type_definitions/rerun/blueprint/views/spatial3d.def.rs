@@ -5,6 +5,7 @@
 ///
 /// \example views/spatial3d title="Use a blueprint to customize a Spatial3DView." image="https://static.rerun.io/spatial3d/4816694fc4176cc284ff30d9c8f06c936a625ac9/1200w.png"
 #[rerun::rerun_type]
+#[docs(keywords = "3D, spatial, point cloud, mesh, transform, scene")]
 #[rerun(view_identifier = "3D")]
 #[rerun(state = "unstable")]
 pub struct Spatial3DView {

@@ -4,7 +4,10 @@ Hunt down zombie TODOs: TODO comments referencing closed GitHub/Linear issues.
 
 Run with: `pixi run python scripts/zombie_todos.py`
 
-Requires GITHUB_TOKEN (env or --github-token) and LINEAR_TOKEN (env or --linear-token).
+Discovery uses GITHUB_TOKEN (env or --github-token) and LINEAR_TOKEN (env or --linear-token).
+For CI, run from the checkout root with --pr <GitHub PR API response JSON>.
+CI checks only closing references in the PR description and needs no API credentials or third-party packages.
+Both modes skip documentation fixture files and honor NOLINT, NOLINT_START, and NOLINT_END for examples.
 
 What this script does:
 - Scans all text files in the repo for TODO comments referencing GitHub issues
@@ -22,16 +25,149 @@ What to do with zombie TODOs (in rough order of likelihood):
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import subprocess
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from pathlib import Path
 from threading import Lock
 
-import requests
-from github import Github
-from gitignore_parser import parse_gitignore
-from tqdm import tqdm
+REPO = r"[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+"
+URL_SUFFIX = r"(?:[?#][^\s<>),]*)?"
+REFERENCE = re.compile(
+    rf"https://github\.com/(?P<url_repo>{REPO})/issues/(?P<url_number>\d+)\b{URL_SUFFIX}"
+    rf"|https://linear\.app/[^/\s]+/issue/(?P<url_linear>[a-zA-Z][a-zA-Z0-9]*-\d+)\b(?:/[a-zA-Z0-9_-]+)?{URL_SUFFIX}"
+    rf"|(?P<repo>{REPO})?#(?P<number>\d+)\b"
+    r"|(?P<linear>[A-Z][A-Z0-9]*-\d+)\b",
+    re.IGNORECASE,
+)
+TODO = re.compile(r"\bTODO\(([^)\n]+)\)")
+
+
+def issue_key(match: re.Match[str], repository: str) -> str:
+    linear = match["url_linear"] or match["linear"]
+    if linear:
+        return linear.upper()
+    repo = match["url_repo"] or match["repo"] or repository
+    number = match["url_number"] or match["number"]
+    return f"{repo.lower()}#{int(number)}"
+
+
+def todo_issues(line: str, repository: str) -> set[str]:
+    issues: set[str] = set()
+    for todo in TODO.finditer(line):
+        issues.update(issue_key(reference, repository) for reference in REFERENCE.finditer(todo[1]))
+    return issues
+
+
+EXCLUDED_PATHS = {"CODE_STYLE.md", "scripts/lint.py", "scripts/zombie_todos.py"}
+
+
+def excluded_path(path: str) -> bool:
+    """Match fixture paths relative to either the monorepo or standalone Rerun root."""
+    return Path(path).as_posix().removeprefix("rerun/") in EXCLUDED_PATHS
+
+
+def file_todos(path: Path, repository: str) -> Iterator[tuple[int, str, str]]:
+    """Yield (one-based line number, issue, line) from text files, excluding symlinks."""
+    if path.is_symlink() or not path.is_file():
+        return
+    data = path.read_bytes()
+    if b"\0" in data:
+        return
+    ignored = False
+    for number, line in enumerate(data.decode("utf-8", errors="replace").splitlines(), 1):
+        if "NOLINT_START" in line:
+            ignored = True
+        if "NOLINT_END" in line:
+            ignored = False
+        if ignored or "NOLINT" in line:
+            continue
+        for issue in sorted(todo_issues(line, repository)):
+            yield number, issue, line
+
+
+CLOSING = re.compile(
+    r"\b(?:close[sd]?|closing|fix(?:es|ed|ing)?|resolve[sd]?|resolving|complete[sd]?|completing)"
+    r"\b\s*:?\s*",
+    re.IGNORECASE,
+)
+SEPARATOR = re.compile(r"(?:[ \t]*,[ \t]*(?:and\b[ \t]*)?|[ \t]+and\b[ \t]+)", re.IGNORECASE)
+
+
+def read_reference(text: str, start: int, repository: str) -> tuple[str, int] | None:
+    """Read a plain reference, autolink, or Markdown link at the given offset."""
+    link = re.match(r"\[[^]\n]+\]\(([^)\s]+)\)", text[start:])
+    if link:
+        match = REFERENCE.fullmatch(link[1])
+        if match:
+            return issue_key(match, repository), start + link.end()
+    autolink = start < len(text) and text[start] == "<"
+    match = REFERENCE.match(text, start + int(autolink))
+    if match:
+        end = match.end()
+        if autolink:
+            if text[end : end + 1] != ">":
+                return None
+            end += 1
+        return issue_key(match, repository), end
+    return None
+
+
+def closing_issues(text: str, repository: str) -> set[str]:
+    text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+    issues: set[str] = set()
+    for closing in CLOSING.finditer(text):
+        reference = read_reference(text, closing.end(), repository)
+        while reference:
+            issue, end = reference
+            issues.add(issue)
+            separator = SEPARATOR.match(text, end)
+            reference = read_reference(text, separator.end(), repository) if separator else None
+    return issues
+
+
+def find_zombies(root: Path, issues: set[str], repository: str) -> list[tuple[str, int, str]]:
+    """Scan tracked text files; never follow symlinks outside the checkout."""
+    paths = subprocess.check_output(["git", "ls-files", "-z"], cwd=root).split(b"\0")
+    findings = []
+    for raw_path in paths:
+        if not raw_path:
+            continue
+        path = os.fsdecode(raw_path)
+        if excluded_path(path):
+            continue
+        # Bare references in the exported Rerun subtree retain their upstream meaning.
+        todo_repository = "rerun-io/rerun" if path.startswith("rerun/") else repository
+        for number, issue, _ in file_todos(root / path, todo_repository):
+            if issue in issues:
+                findings.append((path, number, issue))
+    return findings
+
+
+def check_pr(pr_path: Path) -> int:
+    pr = json.loads(pr_path.read_text(encoding="utf-8"))
+    repository = pr["base"]["repo"]["full_name"]
+    issues = closing_issues(pr["body"] or "", repository)
+    if not issues:
+        print("No closing issue references found.")
+        return 0
+    print("Checking for zombie TODOs: " + ", ".join(sorted(issues)))
+    findings = find_zombies(Path.cwd(), issues, repository)
+    for path, number, issue in findings:
+        message = f"This PR closes {issue}, but a TODO still references it."
+        print(f"{path}:{number}: {message}")
+    if findings:
+        print(
+            "Remove stale TODOs and obsolete workarounds, or link remaining work to an open issue. "
+            "If the issue still needs work, remove its closing reference from this PR."
+        )
+        return 1
+    print("No zombie TODOs found.")
+    return 0
+
 
 # ---
 
@@ -50,6 +186,7 @@ parser.add_argument(
     default=os.environ.get("LINEAR_TOKEN", None),
     help="Linear API token to fetch issues (required for Linear API mode) (env: LINEAR_TOKEN)",
 )
+parser.add_argument("--pr", type=Path, help="Check issues closed by this GitHub PR API response instead of live states")
 parser.add_argument("--markdown", action="store_true", help="Format output as markdown checklist")
 parser.add_argument(
     "--max-workers",
@@ -59,14 +196,7 @@ parser.add_argument(
 )
 
 
-args = parser.parse_args()
-
-
-if args.GITHUB_TOKEN is None:
-    print("Warning: Without GITHUB_TOKEN can only check public repos.")
-
-if args.LINEAR_TOKEN is None:
-    print("Warning: Without LINEAR_TOKEN cannot check Linear issues.")
+args: argparse.Namespace
 
 # --- GitHub API access ---
 
@@ -89,6 +219,8 @@ linear_cache_lock = Lock()  # Thread safety for the cache
 
 
 def init_github_client() -> None:
+    from github import Github
+
     global github_client
     github_client = Github(args.GITHUB_TOKEN)
 
@@ -140,6 +272,8 @@ def check_issue_closed_api(repo_owner: str, repo_name: str, issue_number: int) -
 
 def check_linear_issue_closed_api(issue_id: str) -> tuple[bool, str]:
     """Check if a Linear issue is closed using GraphQL API."""
+    import requests
+
     try:
         if args.LINEAR_TOKEN is None:
             print(f"Warning: Linear token not provided, skipping Linear issue {issue_id}")
@@ -290,36 +424,6 @@ def get_line_blame_info(file_path: str, line_number: int, repo_path: str = ".") 
 repo_owner = "rerun-io"
 repo_name = "rerun"
 
-internal_issue_number_pattern = re.compile(r"TODO\((?:#(\d+))(?:,\s*(?:#(\d+)))*\)")
-external_issue_pattern = re.compile(r"TODO\(([a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+)#(\d+)\)")
-linear_issue_pattern = re.compile(r"TODO\((RR-\d+)\)")
-
-
-def collect_external_repos_from_file(path: str) -> set[str]:
-    """Scan a file and collect all external repository references."""
-    repos: set[str] = set()
-    try:
-        with open(path, encoding="utf8") as f:
-            content = f.read()
-            matches = external_issue_pattern.findall(content)
-            repos.update(repo_key for repo_key, _ in matches)
-    except Exception as e:
-        print(f"Error reading {path}: {e}")
-    return repos
-
-
-def collect_linear_issues_from_file(path: str) -> set[str]:
-    """Scan a file and collect all Linear issue references."""
-    issues: set[str] = set()
-    try:
-        with open(path, encoding="utf8") as f:
-            content = f.read()
-            matches = linear_issue_pattern.findall(content)
-            issues.update(matches)
-    except Exception as e:
-        print(f"Error reading {path}: {e}")
-    return issues
-
 
 def get_line_output(owner: str, name: str, issue_num: int, path: str, i: int, line: str) -> tuple[bool, str]:
     is_closed, author = check_issue_closed(owner, name, issue_num)
@@ -367,37 +471,15 @@ def get_linear_line_output(issue_id: str, path: str, i: int, line: str) -> tuple
 def check_file(path: str) -> tuple[bool, str]:
     ok = True
     display = ""
-    with open(path, encoding="utf8") as f:
-        for i, line in enumerate(f.readlines()):
-            # Check for internal issue references (TODO(#1234))
-            internal_matches = internal_issue_number_pattern.search(line)
-            if internal_matches is not None:
-                for match in internal_matches.groups():
-                    if match is not None:
-                        issue_num = int(match)
-                        is_closed, line_display = get_line_output(repo_owner, repo_name, issue_num, path, i, line)
-                        display += line_display
-                        ok &= is_closed
-
-            # Check for external issue references (TODO(owner/repo#1234))
-            external_matches = external_issue_pattern.search(line)
-            if external_matches is not None:
-                repo_key = external_matches.group(1)
-                issue_num = int(external_matches.group(2))
-
-                owner, name = repo_key.split("/")
-
-                is_closed, line_display = get_line_output(owner, name, issue_num, path, i, line)
-                display += line_display
-                ok &= is_closed
-
-            # Check for Linear issue references (TODO(ABC-123))
-            linear_matches = linear_issue_pattern.search(line)
-            if linear_matches is not None:
-                issue_id = linear_matches.group(1)
-                is_closed, line_display = get_linear_line_output(issue_id, path, i, line)
-                display += line_display
-                ok &= is_closed
+    for number, issue, line in file_todos(Path(path), f"{repo_owner}/{repo_name}"):
+        if "#" in issue:
+            repository, issue_num = issue.split("#")
+            owner, name = repository.split("/")
+            is_closed, line_display = get_line_output(owner, name, int(issue_num), path, number - 1, line)
+        else:
+            is_closed, line_display = get_linear_line_output(issue, path, number - 1, line)
+        display += line_display
+        ok &= not is_closed
     return ok, display
 
 
@@ -413,7 +495,10 @@ def process_file(filepath: str) -> tuple[bool, str]:
 # ---
 
 
-def main() -> None:
+def discover() -> None:
+    from gitignore_parser import parse_gitignore
+    from tqdm import tqdm
+
     # Initialize GitHub client
     init_github_client()
 
@@ -440,12 +525,6 @@ def main() -> None:
         "cmake",
     ]
 
-    exclude_paths = {
-        "./CODE_STYLE.md",
-        "./scripts/lint.py",
-        "./scripts/zombie_todos.py",
-    }
-
     should_ignore = parse_gitignore(".gitignore")  # TODO(emilk): parse all .gitignore files, not just top-level
 
     # Collect all files to process
@@ -460,7 +539,7 @@ def main() -> None:
                 filepath = os.path.join(root, filename)
                 if should_ignore(filepath):
                     continue
-                if filepath.replace("\\", "/") not in exclude_paths:
+                if not excluded_path(filepath):
                     files_to_process.append(filepath)
 
     print(f"Processing {len(files_to_process)} files…")
@@ -515,5 +594,19 @@ def main() -> None:
         raise ValueError("Clean your zombies!")
 
 
+def main() -> int:
+    global args
+    args = parser.parse_args()
+    if args.pr is not None:
+        return check_pr(args.pr)
+
+    if args.GITHUB_TOKEN is None:
+        print("Warning: Can only check public repos without GITHUB_TOKEN .")
+    if args.LINEAR_TOKEN is None:
+        print("Warning: Cannot check Linear issues without LINEAR_TOKEN .")
+    discover()
+    return 0
+
+
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

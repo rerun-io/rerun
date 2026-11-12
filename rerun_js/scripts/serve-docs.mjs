@@ -1,4 +1,4 @@
-import { script_dir } from "./common.mjs";
+import { scriptDir } from "./common.mjs";
 import { createServer } from "node:http";
 import { createReadStream, promises as fsPromises } from "node:fs";
 import { extname, join, normalize, resolve } from "node:path";
@@ -19,7 +19,7 @@ const mimeTypes = {
 };
 
 // Root directory to serve (default: current working directory)
-const root = resolve(script_dir, "../docs");
+const root = resolve(scriptDir, "../docs");
 
 const port = process.env.PORT || 8001;
 
