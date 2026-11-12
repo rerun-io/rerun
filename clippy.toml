@@ -141,6 +141,7 @@ doc-valid-idents = [
   "WebCodec",
   "WebGL",
   "WebGPU",
+  "WebKit",
   "WebSocket",
   "WebSockets",
 ]

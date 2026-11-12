@@ -513,7 +513,7 @@ pub fn default_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
-    } else if browser::is_safari() || browser::is_firefox() {
+    } else if browser::is_webkit() || browser::is_firefox() {
         // TODO(#12788): Safari WebGPU broken on 26.4 (3D content fails to render)
         // TODO(#11009): Fix videos on WebGPU firefox
         wgpu::Backends::GL
