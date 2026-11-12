@@ -1,7 +1,7 @@
 ---
 title: Query video streams
 order: 200
-description: Query video streams & decode video frames
+description: Query video streams from a catalog server and decode individual frames
 ---
 
 Video streams provide the best compression ratio for camera feeds, but require special handling when querying data back from a catalog server.

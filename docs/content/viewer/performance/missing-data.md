@@ -1,7 +1,7 @@
 ---
 title: Some of my data is not shown
 order: 300
-description: Why logged data, labels, views, or plot series can be missing from the Viewer, and how to make them show up
+description: Why logged data, labels, or plot series can be missing, and how to fix it
 ---
 
 If you logged something but can't see it in the Viewer, go through the list below.

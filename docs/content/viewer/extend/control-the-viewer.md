@@ -1,7 +1,7 @@
 ---
 title: Control playback and drive the Viewer from code
 order: 120
-description: Set the timeline, playback speed, FPS, looping, and play state, seek the time cursor, and open recordings or take screenshots from code
+description: Set playback speed, timeline, and time cursor from code
 ---
 
 ## Configure playback in the blueprint

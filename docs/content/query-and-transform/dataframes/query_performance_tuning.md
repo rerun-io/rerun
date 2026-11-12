@@ -1,7 +1,7 @@
 ---
 title: Query Performance Tuning
 order: 700
-description: Tips for keeping queries fast as datasets grow
+description: Considerations for keeping dataset queries fast as your data grows
 ---
 
 This is a loose collection of considerations when querying Rerun datasets.

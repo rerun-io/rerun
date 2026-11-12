@@ -3,7 +3,7 @@
 
 /// A visual representation of a [`rerun::archetypes::Transform3D`].
 ///
-/// \example archetypes/transform3d_axes title="Visual representation of a transform as three arrows" image="https://static.rerun.io/transform3d_axes/574c482088e9d317b19127fc8bef957dbfd3abe8/1200w.png"
+/// \example archetypes/transform3d_axes title="Visual representation of a transform as three arrows" image="https://static.rerun.io/transform3d_axes/574c482088e9d317b19127fc8bef957dbfd3abe8/1200w.png" alt="3D view with a ground grid showing three sets of red, green, and blue transform axis arrows of different lengths"
 #[rerun::rerun_type]
 #[docs(category = "Transforms")]
 #[docs(view_types = "Spatial3DView")]

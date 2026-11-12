@@ -37,7 +37,7 @@ This can be done by using `.` delimiters in the names.
 The screenshot below is an example of a dot-delimited dataset name showing up as a directory tree in the viewer's data source browser:
 
 <picture>
-  <img src="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/full.png" alt="">
+  <img src="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/full.png" alt="Data source browser with the tree hiw_500, episodes, revision_1 and revision_2 beside a table of the two dataset entries">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/catalog_dirs/1a7f0c9a24f418857c94b46fa7fa39381155a91b/1024w.png">
@@ -75,8 +75,8 @@ Pass `on_duplicate=OnDuplicateSegmentLayer.REPLACE` to `register()` to overwrite
 Additive registration can be achieved by using different layer names for different `.rrd`s with the same recording ID/segment ID.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/6a9690740962bcda73b78a847c04862ba646461a_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/97520fa2e99046614f595be752eec7c48c405e51_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/6a9690740962bcda73b78a847c04862ba646461a_d2.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
+  <img class="d2-light" src="https://static.rerun.io/97520fa2e99046614f595be752eec7c48c405e51_d2-light.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
 </div>
 
 Layers are immutable and can only be overwritten by registering a new `.rrd` file. In other words, datasets support the following mutation operations:
@@ -128,8 +128,8 @@ print(dataset.schema().to_arrow())
 ```
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/43ed31f276a37305d671c76e9ae4083667ccb988_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
+  <img class="d2-light" src="https://static.rerun.io/43ed31f276a37305d671c76e9ae4083667ccb988_d2-light.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
 </div>
 
 Datasets maintain a minimal level of schema self-consistency.

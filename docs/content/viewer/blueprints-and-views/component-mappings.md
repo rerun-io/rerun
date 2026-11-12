@@ -1,7 +1,7 @@
 ---
 title: Component mappings
 order: 500
-description: Redirect a visualizer's input to a different component, for example to switch the coloring of a point cloud (by height, intensity, or class) per view
+description: Point a visualizer at a different component, e.g. to recolor a point cloud
 ---
 
 By default, each visualizer reads its input components from its own archetype — for example, the `Points3D` visualizer reads colors from `Points3D:colors`.
@@ -39,7 +39,7 @@ You can find the full example here:
 * 🦀 [Rust](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/dual_color_point_cloud.rs)
 
 <picture>
-  <img src="https://static.rerun.io/component-mappings-viewer-overview/bb3c3d249b44f1ef7bd569f58481d146380b061d/full.png" alt="">
+  <img src="https://static.rerun.io/component-mappings-viewer-overview/bb3c3d249b44f1ef7bd569f58481d146380b061d/full.png" alt="Two 3D views of the same torus point cloud side by side: Height Colors in a red, white and blue map and Spin Colors in a rainbow map">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/component-mappings-viewer-overview/bb3c3d249b44f1ef7bd569f58481d146380b061d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/component-mappings-viewer-overview/bb3c3d249b44f1ef7bd569f58481d146380b061d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/component-mappings-viewer-overview/bb3c3d249b44f1ef7bd569f58481d146380b061d/1024w.png">
@@ -63,7 +63,7 @@ After this call, the entity's component list contains four components:
 You can inspect this in the viewer by selecting the entity in the streams panel:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/component-mappings-selection/92c625844b0ad513c5985e71b825ee7121134959/full.png" alt="">
+  <img src="https://static.rerun.io/component-mappings-selection/92c625844b0ad513c5985e71b825ee7121134959/full.png" alt="Selection panel for the /pointcloud entity listing HeightColors and SpinColors color components next to Points3D positions and radii">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/component-mappings-selection/92c625844b0ad513c5985e71b825ee7121134959/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/component-mappings-selection/92c625844b0ad513c5985e71b825ee7121134959/768w.png">
 </picture>
@@ -81,7 +81,7 @@ In this example, each view overrides only the color source for the `Points3D` vi
 In the viewer you can access this in the visualizer settings, presented when selecting an entity in a view:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/component-mappings-source-mapping/5718b252fca23f80f794bdd51a4eb391e0466fe6/full.png" alt="">
+  <img src="https://static.rerun.io/component-mappings-source-mapping/5718b252fca23f80f794bdd51a4eb391e0466fe6/full.png" alt="Source dropdown for the Points3D colors component, with SpinColors:colors selected over HeightColors:colors, View default and Add custom">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/component-mappings-source-mapping/5718b252fca23f80f794bdd51a4eb391e0466fe6/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/component-mappings-source-mapping/5718b252fca23f80f794bdd51a4eb391e0466fe6/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/component-mappings-source-mapping/5718b252fca23f80f794bdd51a4eb391e0466fe6/1024w.png">

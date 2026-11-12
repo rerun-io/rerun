@@ -54,7 +54,7 @@ snippet: views/timeseries
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1200w.png">
-  <img src="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/full.png">
+  <img src="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/full.png" alt="Time series view named trig plotting sine and cosine curves in red and blue with steep purple tangent lines">
 </picture>
 
 

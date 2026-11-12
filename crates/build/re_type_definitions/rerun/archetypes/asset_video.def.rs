@@ -10,8 +10,8 @@
 ///
 /// In order to display a video, you also need to log a [`rerun::archetypes::VideoFrameReference`] for each frame.
 ///
-/// \example archetypes/video_auto_frames title="Video with automatically determined frames" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png"
-/// \example archetypes/video_manual_frames title="Demonstrates manual use of video frame references" image="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png"
+/// \example archetypes/video_auto_frames title="Video with automatically determined frames" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png" alt="Rerun Viewer playing a video in a 2D view, an animated forest scene with a large tree above a burrow in a grassy mound"
+/// \example archetypes/video_manual_frames title="Demonstrates manual use of video frame references" image="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png" alt="Two side-by-side 2D views named frame_at_one_second and frame_at_two_second, each showing a different frame of the same video"
 #[rerun::rerun_type]
 #[docs(category = "Video")]
 #[docs(view_types = "Spatial2DView, Spatial3DView: if logged under a projection")]

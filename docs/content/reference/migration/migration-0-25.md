@@ -2,6 +2,7 @@
 title: Migrating from 0.24 to 0.25
 order: 985
 hidden: true
+description: Breaking changes in Rerun 0.25 and how to update code written for 0.24
 ---
 
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->

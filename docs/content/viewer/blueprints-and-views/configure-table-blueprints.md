@@ -1,7 +1,7 @@
 ---
 title: Configure table layouts and segment previews
 order: 700
-description: Use Python table blueprints to customize catalog tables and dataset segment tables
+description: Order, rename, or hide columns and show previews in catalog tables
 ---
 
 Use table blueprints to order, rename, or hide columns, embed segment previews, and display rows as cards in catalog tables and dataset segment tables.

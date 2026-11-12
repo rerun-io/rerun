@@ -1,7 +1,7 @@
 ---
 title: Rust SDK
 order: 300
-description: Setting up the Rust SDK, and how to reduce its dependencies and compile time
+description: Set up the Rust SDK and reduce its dependencies and compile time
 ---
 
 Add the [Rerun crate](https://crates.io/crates/rerun) using `cargo add rerun`.

@@ -1,6 +1,7 @@
 ---
 title: Navigating the Viewer
 order: 400
+description: Rearrange views and containers, edit what they show, and save blueprints
 ---
 
 This page will walk you through the basics of navigating the Rerun Viewer.
@@ -19,7 +20,7 @@ The Rerun Viewer is fully configurable through its UI, making it easy to experim
 ### Viewer overview
 
 <picture>
-  <img src="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/full.png" alt="">
+  <img src="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/full.png" alt="Rerun Viewer with the blueprint panel on the left, a 3D view, camera image and plot in the viewport, the selection panel and the time panel">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/overview/158a13691fe0364ed5d4dc420f5b2c39b60705cd/1024w.png">
@@ -47,13 +48,13 @@ The viewport contains views arranged hierarchically using containers. Containers
 Click the "+" button at the top of the blueprint panel to add containers or views.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/add_view/3933d7096846594304ddec2d51dda9c434d763bf/full.png" alt="">
+  <img src="https://static.rerun.io/add_view/3933d7096846594304ddec2d51dda9c434d763bf/full.png" alt="Blueprint panel with the cursor on the + button at the top, above a tree of a 3D view and a Horizontal container">
 </picture>
 
 If a container (or the viewport) is selected, a "+" button also appears in the selection panel.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/add_view_selection_panel/2daf01c80dcd2496b554e4376af702c7713a47dc/full.png" alt="">
+  <img src="https://static.rerun.io/add_view_selection_panel/2daf01c80dcd2496b554e4376af702c7713a47dc/full.png" alt="Selection panel for a Vertical container with the cursor on the + button in the Contents section">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/add_view_selection_panel/2daf01c80dcd2496b554e4376af702c7713a47dc/480w.png">
 </picture>
 
@@ -62,7 +63,7 @@ If a container (or the viewport) is selected, a "+" button also appears in the s
 Drag and drop items in the blueprint panel to reorganize the hierarchy. You can also drag views directly in the viewport using their title tabs.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/drag_and_drop_viewport/8521fda375a2f6af15628b04ead4ba848cb8bc27/full.png" alt="">
+  <img src="https://static.rerun.io/drag_and_drop_viewport/8521fda375a2f6af15628b04ead4ba848cb8bc27/full.png" alt="Camera view showing a car image with keypoints being dragged by its title tab to a new place in the viewport">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/drag_and_drop_viewport/8521fda375a2f6af15628b04ead4ba848cb8bc27/480w.png">
 </picture>
 
@@ -71,13 +72,13 @@ Drag and drop items in the blueprint panel to reorganize the hierarchy. You can 
 Use the eye icon to show or hide any container, view, or entity:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/show_hide_btn/bbca385d4898ec220bfb91c430ea52d59553913e/full.png" alt="">
+  <img src="https://static.rerun.io/show_hide_btn/bbca385d4898ec220bfb91c430ea52d59553913e/full.png" alt="Blueprint panel with the cursor on the eye icon next to the Camera view to show or hide it">
 </picture>
 
 Use the "-" button to permanently remove an element:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/remove/6b9d97e4297738b8aad89158e4d15420be362b4a/full.png" alt="">
+  <img src="https://static.rerun.io/remove/6b9d97e4297738b8aad89158e4d15420be362b4a/full.png" alt="Blueprint panel with the cursor on the minus button next to the Camera view to remove it">
 </picture>
 
 #### Rename views and containers
@@ -85,7 +86,7 @@ Use the "-" button to permanently remove an element:
 Select a view or container and edit its name at the top of the selection panel.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/rename/9dcb63d36f1676568fb106ee55ab110438b63fa9/full.png" alt="">
+  <img src="https://static.rerun.io/rename/9dcb63d36f1676568fb106ee55ab110438b63fa9/full.png" alt="Selection panel for a Vertical container with the Name field being edited to read my name">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/rename/9dcb63d36f1676568fb106ee55ab110438b63fa9/480w.png">
 </picture>
 
@@ -94,7 +95,7 @@ Select a view or container and edit its name at the top of the selection panel.
 Select a container and change its type using the dropdown in the selection panel.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/container_kind/f123f2220d9e82d520af367b7af020179a4de675/full.png" alt="">
+  <img src="https://static.rerun.io/container_kind/f123f2220d9e82d520af367b7af020179a4de675/full.png" alt="Selection panel Kind dropdown for a container, listing Tabs, Grid, Horizontal and Vertical">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/container_kind/f123f2220d9e82d520af367b7af020179a4de675/480w.png">
 </picture>
 
@@ -103,7 +104,7 @@ Select a container and change its type using the dropdown in the selection panel
 Right-click on any element in the blueprint panel for quick access to common operations:
 
 <picture>
-  <img src="https://static.rerun.io/context_menu_container/e90e4688f306187d902467b452fb7146eec1bf4b/full.png" alt="">
+  <img src="https://static.rerun.io/context_menu_container/e90e4688f306187d902467b452fb7146eec1bf4b/full.png" alt="Blueprint panel context menu on a Horizontal container with Hide, Remove, Expand all, Add container and Move to new container">
 </picture>
 
 Context menus support multi-selection (Ctrl+click or Cmd+click), enabling bulk operations like removing multiple views at once.
@@ -117,7 +118,7 @@ Each view displays data based on its entity query. You can modify what appears i
 Use the eye icon next to any entity to control its visibility.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/show_hide_entity/587a5d8fd763c0bade461bc54a66a4acdd087821/full.png" alt="">
+  <img src="https://static.rerun.io/show_hide_entity/587a5d8fd763c0bade461bc54a66a4acdd087821/full.png" alt="Blueprint panel with the cursor on the eye icon next to the keypoints entity under the Camera view">
 </picture>
 
 #### Remove entities from views
@@ -125,7 +126,7 @@ Use the eye icon next to any entity to control its visibility.
 Click the "-" button next to an entity to remove it from the view.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/remove_entity/ec0447ca7e420bc9d19a7bf015cc39f88b42598a/full.png" alt="">
+  <img src="https://static.rerun.io/remove_entity/ec0447ca7e420bc9d19a7bf015cc39f88b42598a/full.png" alt="Blueprint panel with the cursor on the minus button next to the keypoints entity under the Camera view">
 </picture>
 
 #### Using the query editor
@@ -133,7 +134,7 @@ Click the "-" button next to an entity to remove it from the view.
 With a view selected, click "Edit" next to the entity query in the selection panel to visually add or remove entities.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/add_remove_entity/4c5e536d4ca145058a8bc59a0b32267821663f06/full.png" alt="">
+  <img src="https://static.rerun.io/add_remove_entity/4c5e536d4ca145058a8bc59a0b32267821663f06/full.png" alt="Selection panel for the Camera view with the cursor on the edit button of the Entity path filter, which reads + $origin/**">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/add_remove_entity/4c5e536d4ca145058a8bc59a0b32267821663f06/480w.png">
 </picture>
 
@@ -142,7 +143,7 @@ With a view selected, click "Edit" next to the entity query in the selection pan
 Select one or more entities (in existing views or in the time panel's streams), right-click, and choose "Add to new view" from the context menu.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/full.png" alt="">
+  <img src="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/full.png" alt="Streams tree context menu on the image entity with Add to new space view expanded to list 2D, 3D, Dataframe, Tensor and other view types">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/add_to_new_view/87f2d5ffb3ef896c82f398cd3c3d1c7321d59073/1024w.png">
@@ -155,7 +156,7 @@ The view's origin will automatically be set based on the selected data.
 Select an entity within a view to control which visualizers are used and override component values.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/full.png" alt="">
+  <img src="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/full.png" alt="Visualizers section for a SeriesLines visualizer listing scalars, colors, widths, names, visible_series and aggregation_policy">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/visualizers/826c026c9e26b5fa4f899214f488f13d363816fc/768w.png">
 </picture>
@@ -163,7 +164,7 @@ Select an entity within a view to control which visualizers are used and overrid
 When selecting a view, you can also set default component values that apply when no value has been logged.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/full.png" alt="">
+  <img src="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/full.png" alt="Component defaults section of a view with a SeriesLines widths default of 1.70pt">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/component_defaults/4c0e3ea9d0aa3cbc0eb2f0c444b4a58a765a674d/768w.png">
 </picture>
@@ -181,7 +182,7 @@ Once you've configured your layout, you can save it as a blueprint file (`.rbl`)
 To save your current blueprint, go to the file menu and choose "Save blueprint…":
 
 <picture>
-  <img src="https://static.rerun.io/save_blueprint/85644e086ba9cf7fb81cb7ece55b38bef863c755/full.png" alt="">
+  <img src="https://static.rerun.io/save_blueprint/85644e086ba9cf7fb81cb7ece55b38bef863c755/full.png" alt="Rerun menu with the cursor on Save blueprint and a tooltip about saving the viewer setup as a .rbl file">
 </picture>
 
 Blueprint files are small, portable, and can be version-controlled alongside your code.

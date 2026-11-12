@@ -1,7 +1,7 @@
 ---
 title: Implement custom visualizations (Rust only)
 order: 200
-description: Extend the Rerun Viewer UI using Rust and egui
+description: Add custom panels, visualizers, or views to the Viewer with Rust and egui
 ---
 
 There are three ways to extend the Rerun Viewer with custom Rust code, depending on how deep you need to go:
@@ -38,7 +38,7 @@ To visualize data from a Bevy app, log it with the [Rust SDK](https://docs.rs/re
 ## Custom visualizers for built-in views
 
 <picture>
-  <img src="https://static.rerun.io/custom_visualizer/81fdaf3af887642d0f507039b16aa84ee4970655/full.png" alt="">
+  <img src="https://static.rerun.io/custom_visualizer/81fdaf3af887642d0f507039b16aa84ee4970655/full.png" alt="Rerun Viewer 3D view with a custom HeightField visualizer rendering a color-mapped terrain, its settings shown in the selection panel">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom_visualizer/81fdaf3af887642d0f507039b16aa84ee4970655/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/custom_visualizer/81fdaf3af887642d0f507039b16aa84ee4970655/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom_visualizer/81fdaf3af887642d0f507039b16aa84ee4970655/1024w.png">

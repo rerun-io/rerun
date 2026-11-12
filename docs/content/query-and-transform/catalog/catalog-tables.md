@@ -1,7 +1,7 @@
 ---
 title: Storing query results in catalog tables
 order: 600
-description: Persist derived data from catalog dataset queries
+description: Persist metrics, annotations, and query results in catalog tables
 ---
 
 Catalog tables let you persist arbitrary tabular data, including results derived from queries on your datasets.

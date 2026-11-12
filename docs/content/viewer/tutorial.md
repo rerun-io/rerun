@@ -1,7 +1,7 @@
 ---
 title: "Tutorial: explore the Viewer"
 order: 50
-description: Get familiar with the Viewer's panels, selection, and timeline using an example dataset
+description: Learn the Viewer's panels, selection, and timeline with an example dataset
 ---
 
 This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should be comfortable with the following topics:
@@ -20,7 +20,7 @@ This guide will familiarize you with the basics of using the Rerun Viewer with a
 Here is a preview of the dataset that we will be working with:
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/full.png" alt="">
+  <img src="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/full.png" alt="Rerun Viewer with a COLMAP sparse reconstruction: 3D point cloud and camera frustum, README, camera image of a car, and an error plot">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/c34d413d6fc5793d4731bae54e19ca0bff8306bf/1024w.png">
@@ -62,7 +62,7 @@ like._
 This will bring you the Rerun viewer's Welcome screen:
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/full.png" alt="">
+  <img src="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/full.png" alt="Rerun Viewer welcome screen with a Visualize multimodal data heading and a grid of example recordings">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/1024w.png">
@@ -72,7 +72,7 @@ This will bring you the Rerun viewer's Welcome screen:
 From there you can choose the "Structure from Motion" example. A window that looks like this will appear:
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/full.png" alt="">
+  <img src="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/full.png" alt="Structure from Motion example open in the Rerun Viewer with the Recordings, Blueprint, Selection and Streams panels around the views">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_open/e152be01e1d6ceeb774ddccbc49844430626100f/1024w.png">
@@ -94,7 +94,7 @@ This window has five main sections:
 Each of the three sides has a button in the upper-right corner. Click these to show or hide the corresponding panels.
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/full.png" alt="">
+  <img src="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/full.png" alt="Viewer top bar with the Toggle time panel tooltip shown over the panel buttons, with the side panels hidden">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/2dadc5f29d9948678bdec9ef0e0671f4643c5f24/1024w.png">
@@ -122,7 +122,7 @@ The hierarchy of logged entity streams and their component streams is found unde
 Visualizations can also be customized per each view using [Overrides](blueprints-and-views/customize-views.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and blue. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/full.png" alt="">
+  <img src="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/full.png" alt="Selection panel showing a Points2D color override, with the keypoints entity drawn yellow in the Camera view but not in the 3D view">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/f6b6780491f1ea4312de7ef014362971c6efc541/1024w.png">
@@ -135,7 +135,7 @@ You can easily identify which entity mentions and visual representations refer t
 display a popup with additional information about its content. Clicking on it will reveal more details in the [Selection panel](ui/selection.md).
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/full.png" alt="">
+  <img src="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/full.png" alt="Hover tooltip for the /camera/image/keypoints entity in the streams panel, with the same entity selected and highlighted in the views">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/267707775554601b6ab11e279a286d040c8b4138/1024w.png">
@@ -192,7 +192,7 @@ and switch it to "log_time." If you zoom in on the timeline (using ctrl+scrollwh
 all logged at slightly different times.
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/full.png" alt="">
+  <img src="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/full.png" alt="Timeline dropdown open in the time panel, listing the frame, log_tick and log_time timelines above the streams tree">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/eab5a94ae1a9b43e704ccad46e50ca966449ad63/1024w.png">

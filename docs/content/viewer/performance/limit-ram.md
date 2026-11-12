@@ -1,7 +1,7 @@
 ---
 title: Limit the viewer's memory usage
 order: 100
-description: Set the Viewer's memory limit, find out why memory keeps growing, and open recordings that are larger than RAM
+description: Set the Viewer's memory limit and open recordings that are larger than RAM
 ---
 
 ## --memory-limit

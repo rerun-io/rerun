@@ -1,7 +1,7 @@
 ---
 title: View data from a remote or headless machine
 order: 250
-description: Stream data from a remote server, Docker container, or SSH session to a Viewer on your own machine
+description: Stream data from a remote server, container, or SSH session to your Viewer
 ---
 
 When your code runs on a machine without a display (a cloud VM, a robot, a Docker container, or a server you reach over SSH), run the Viewer on your own machine and send the data to it over gRPC.

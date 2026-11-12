@@ -3,7 +3,7 @@
 
 /// A time series view for scalars over time, for use with [`rerun::archetypes::Scalars`].
 ///
-/// \example views/timeseries title="Use a blueprint to customize a TimeSeriesView." image="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1200w.png"
+/// \example views/timeseries title="Use a blueprint to customize a TimeSeriesView." image="https://static.rerun.io/timeseries_view/c87150647feb413627fdb8563afe33b39d7dbf57/1200w.png" alt="Time series view named trig plotting sine and cosine curves in red and blue with steep purple tangent lines"
 #[rerun::rerun_type]
 #[docs(keywords = "time series, plot, scalar, signal, curve")]
 #[rerun(view_identifier = "TimeSeries")]

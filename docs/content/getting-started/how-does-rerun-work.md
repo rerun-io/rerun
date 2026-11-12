@@ -1,7 +1,7 @@
 ---
 title: How Rerun works
 order: 500
-description: The components, how they connect, and how you use them from logging to training
+description: The components of Rerun, how they connect, and how you use them
 ---
 
 Rerun covers the whole journey from raw recordings to training, on a single unified data layer for multi-rate, multimodal robotics data.
@@ -54,15 +54,15 @@ The Catalog SDK (`rerun.catalog`) is a Python library for querying and manipulat
 ## How they connect
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/d28ca214a6a6e8386b76e6d9a841901a00051a83_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/5ed885f3c2319cad1fe6f6ba55b68ac88ce989d8_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/d28ca214a6a6e8386b76e6d9a841901a00051a83_d2.svg" alt="Diagram of how Rerun connects: the Logging SDK streams to the Viewer or saves .rrd files, which load into the Viewer or a catalog server">
+  <img class="d2-light" src="https://static.rerun.io/5ed885f3c2319cad1fe6f6ba55b68ac88ce989d8_d2-light.svg" alt="Diagram of how Rerun connects: the Logging SDK streams to the Viewer or saves .rrd files, which load into the Viewer or a catalog server">
 </div>
 
 ## Log and ingest
 Use the [logging API](../logging-and-ingestion/tutorial.md) to log multimodal data from your code, or [the chunk processing API](../logging-and-ingestion/import/chunk-processing-api.md) to convert your existing data to the [.rrd](../logging-and-ingestion/chunks-and-rrd/rrd-format.md) file format to later visualize or query.
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/d1c242b745000b3dbba0dc42a861e2e6b760d614_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/0aa33c2c86855ee06122e761562ca31e82486ad6_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/d1c242b745000b3dbba0dc42a861e2e6b760d614_d2.svg" alt="Diagram of two paths into an .rrd file: a data generator writing directly, and existing data (MCAP, LeRobot, etc.) going through a converter">
+  <img class="d2-light" src="https://static.rerun.io/0aa33c2c86855ee06122e761562ca31e82486ad6_d2-light.svg" alt="Diagram of two paths into an .rrd file: a data generator writing directly, and existing data (MCAP, LeRobot, etc.) going through a converter">
 </div>
 
 ### Stream to Viewer
@@ -70,8 +70,8 @@ Use the [logging API](../logging-and-ingestion/tutorial.md) to log multimodal da
 The simplest workflow: stream data directly from your code to the Viewer for live visualization.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/c5379695876baa96bbe0449d5f85d48e33756cf7_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/f90c1b537583a0fb7c3a860aa07aa355711d04de_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/c5379695876baa96bbe0449d5f85d48e33756cf7_d2.svg" alt="Diagram of the Logging SDK streaming data directly to the Viewer">
+  <img class="d2-light" src="https://static.rerun.io/f90c1b537583a0fb7c3a860aa07aa355711d04de_d2-light.svg" alt="Diagram of the Logging SDK streaming data directly to the Viewer">
 </div>
 
 Minimal example:
@@ -85,8 +85,8 @@ Best for: development, debugging, real-time monitoring.
 Log data to `.rrd` files, then open them in the Viewer whenever needed. Files can be loaded from disk or URLs.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/f7a409bc10f2836d5e3e7b87720170a6e5bd4e46_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/7529efba5c4ebb304fb0c7732ded6d22a3921084_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/f7a409bc10f2836d5e3e7b87720170a6e5bd4e46_d2.svg" alt="Diagram of the Logging SDK saving data to an .rrd file, which is then loaded into the Viewer">
+  <img class="d2-light" src="https://static.rerun.io/7529efba5c4ebb304fb0c7732ded6d22a3921084_d2-light.svg" alt="Diagram of the Logging SDK saving data to an .rrd file, which is then loaded into the Viewer">
 </div>
 
 Minimal example:
@@ -106,8 +106,8 @@ Rerun provides an open source pre-built [viewer](../viewer/ui/overview.md) that 
 You can log directly to the viewer, [open](../logging-and-ingestion/import/open-any-file.md) a range of file formats to get data into the viewer, or even connect the viewer to a Rerun [catalog](../query-and-transform/catalog/catalog-object-model.md).
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/2ded478d0e3d66b8532f1b9991ed786a2919d6d7_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/b7baf766ffcb27babd2866ebc05f016e8da53111_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/2ded478d0e3d66b8532f1b9991ed786a2919d6d7_d2.svg" alt="Diagram of data sources feeding the Rerun Viewer: a data generator, .rrd files, automated importers for other formats, and the Rerun Catalog">
+  <img class="d2-light" src="https://static.rerun.io/b7baf766ffcb27babd2866ebc05f016e8da53111_d2-light.svg" alt="Diagram of data sources feeding the Rerun Viewer: a data generator, .rrd files, automated importers for other formats, and the Rerun Catalog">
 </div>
 
 ## Query and transform
@@ -130,8 +130,8 @@ We group recordings as [datasets](../query-and-transform/catalog/catalog-object-
 Since Rerun indexes existing data in place, registration needs paths to RRDs to index: in object store for **Rerun Hub** or on disk for local catalog server.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/40ada7a9f3834208554b8de80a0bab3fb8e5f108_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/63998cd168884dbe92c585650d2d8cdcdff826fc_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/40ada7a9f3834208554b8de80a0bab3fb8e5f108_d2.svg" alt="Diagram of preparing a catalog: create_dataset sends a dataset name, the Rerun Catalog returns a handle, handle.register sends .rrd paths">
+  <img class="d2-light" src="https://static.rerun.io/63998cd168884dbe92c585650d2d8cdcdff826fc_d2-light.svg" alt="Diagram of preparing a catalog: create_dataset sends a dataset name, the Rerun Catalog returns a handle, handle.register sends .rrd paths">
 </div>
 
 Minimal example of creating a dataset and registering files:
@@ -152,8 +152,8 @@ We specify what dataset we want to query, get access to a lazy loaded [dataframe
 Queries can be specified with SQL or dataframe APIs allowing the flexibility to investigate anything about your data.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/4bfd86b4605405d018ecd44d8d8062114126a952_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/6922fdbb9c24357ea3a585be62d6ccb572a70350_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/4bfd86b4605405d018ecd44d8d8062114126a952_d2.svg" alt="Diagram of querying the Rerun Catalog: a dataset handle returns a DataFrame, and a select and where query on it returns the query result">
+  <img class="d2-light" src="https://static.rerun.io/6922fdbb9c24357ea3a585be62d6ccb572a70350_d2-light.svg" alt="Diagram of querying the Rerun Catalog: a dataset handle returns a DataFrame, and a select and where query on it returns the query result">
 </div>
 
 Use the Catalog SDK to query data from a catalog server, process it, and write results back. Visualization is available at any time.
@@ -176,8 +176,8 @@ Best for: data pipelines, batch processing, ML training data preparation.
 Use the catalog as a data source for [training](../train/tutorial.md): a dataloader runs a query against the catalog and yields training batches.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/15a375cfcc03a73d74acdec06b5f36c43e988dfe_d2-dark.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/75c7bcab918f7067cae09eb665cdec4d3d466e70_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/15a375cfcc03a73d74acdec06b5f36c43e988dfe_d2-dark.svg" alt="Diagram of a query feeding a dataloader that reads from the Rerun Catalog, which returns training batches">
+  <img class="d2-light" src="https://static.rerun.io/75c7bcab918f7067cae09eb665cdec4d3d466e70_d2-light.svg" alt="Diagram of a query feeding a dataloader that reads from the Rerun Catalog, which returns training batches">
 </div>
 
 ## What ships where?

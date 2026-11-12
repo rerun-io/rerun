@@ -1,7 +1,7 @@
 ---
 title: Send tables to Rerun
 order: 400
-description: Send tables as dataframes to the Rerun Viewer
+description: Send tables as Arrow record batches and explore them in the Viewer
 ---
 
 > [!NOTE]

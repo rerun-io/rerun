@@ -8,7 +8,7 @@
 ///
 /// \py To compress an image, use [`rerun.Image.compress`](https://ref.rerun.io/docs/python/main/common/archetypes/#rerun.archetypes.Image.compress).
 ///
-/// \example archetypes/encoded_image title="Encoded image" image="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1200w.png"
+/// \example archetypes/encoded_image title="Encoded image" image="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1200w.png" alt="Rerun Viewer with a 2D view of an encoded image, an orange cartoon crab on a black background"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Image & tensor")]

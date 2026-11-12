@@ -12,7 +12,7 @@ The view allows you to pick which components to show, switch between compact and
 Configure it in the Viewer or [with a Python blueprint](../reference/types/views/raw_data_view.md#example).
 
 <picture>
-  <img src="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/full.png" alt="">
+  <img src="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/full.png" alt="Three Raw Data views showing a nested Localization message, compact Robot health values, and selected Landmarks components">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/1024w.png">

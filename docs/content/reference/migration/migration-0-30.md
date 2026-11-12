@@ -2,6 +2,7 @@
 title: Migrating from 0.29 to 0.30
 order: 980
 hidden: true
+description: Breaking changes in Rerun 0.30 and how to update code written for 0.29
 ---
 
 ## 🐍 Python API

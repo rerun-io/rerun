@@ -1,7 +1,7 @@
 ---
 title: The open-source catalog server
 order: 700
-description: What the local `rerun server` does, what it keeps after a restart, and how it differs from Rerun Hub
+description: What the local rerun server does, what it persists, and how Hub differs
 ---
 
 `rerun server` (or `rr.server.Server` in Python) runs an open-source [catalog](catalog-object-model.md) server on your machine.

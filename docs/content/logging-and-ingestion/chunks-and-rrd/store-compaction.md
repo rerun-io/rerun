@@ -1,6 +1,7 @@
 ---
 title: Datastore compaction
 order: 500
+description: How the datastore compacts incoming chunks for speed and memory
 ---
 
 

@@ -1,7 +1,7 @@
 ---
 title: Query images
 order: 100
-description: Query and decode image frames from a catalog
+description: Query image columns from a catalog server and decode the image frames
 ---
 
 Images are incredibly useful, however there are many ways to store and manipulate them.

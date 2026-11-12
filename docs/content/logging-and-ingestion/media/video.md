@@ -1,7 +1,7 @@
 ---
 title: Video
 order: 100
-description: How Rerun handles video streams and codecs
+description: Log video as image sequences, encoded streams, or video files
 ---
 
 A stream of images (like those produced by a camera) can be logged to Rerun in several different ways:

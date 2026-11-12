@@ -1,7 +1,7 @@
 ---
 title: Working with MCAP
 order: 100
-description: Open and inspect MCAP files in Rerun
+description: Open MCAP files and ROS 2 bags in the Viewer or convert them to RRD
 ---
 
 The Rerun Viewer has built-in support for opening [MCAP](https://mcap.dev/) files, an open container format for storing timestamped messages.

@@ -1,7 +1,7 @@
 ---
 title: Show trails, history, and sliding time windows
 order: 250
-description: Use visible time ranges to show trails and a scrolling window of past data in 2D, 3D, and plot views, and link the time axis of several plots
+description: Show trails and a scrolling window of past data in 2D, 3D, and plot views
 ---
 
 By default, a 2D or 3D view shows the latest value of each entity at the time cursor.

@@ -2,6 +2,7 @@
 title: Migrating from 0.23 to 0.24
 order: 986
 hidden: true
+description: Breaking changes in Rerun 0.24 and how to update code written for 0.23
 ---
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
@@ -110,7 +111,7 @@ They are now instead applied to archetype fields, i.e. what is now just called _
 In practice this means that component defaults are now limited to a single archetype, making them a lot more useful!
 
 <picture>
-  <img src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png" alt="">
+  <img src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png" alt="Component defaults menu with GraphEdges and GraphNodes, the latter expanded to positions, colors, labels, show_labels, and radii">
 </picture>
 
 ### Limitations & breaking changes

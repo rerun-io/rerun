@@ -1,7 +1,7 @@
 ---
 title: Show a subset of plotted series
 order: 300
-description: Hide individual series of a multi-value scalar plot
+description: Show or hide individual series of a multi-value scalar time series plot
 ---
 
 When you log several values in one [`Scalars`](../../reference/types/archetypes/scalars.md) batch, such as the joint positions of a robot arm, each value is plotted as its own series in a [TimeSeriesView](../../reference/types/views/time_series_view.md).

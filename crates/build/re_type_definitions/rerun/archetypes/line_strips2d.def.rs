@@ -3,9 +3,9 @@
 
 /// 2D line strips with positions and optional colors, radii, labels, etc.
 ///
-/// \example archetypes/line_strips2d_simple !api image="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1200w.png"
-/// \example archetypes/line_strips2d_segments_simple !api image="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1200w.png"
-/// \example archetypes/line_strips2d_batch image="https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/1200w.png"
+/// \example archetypes/line_strips2d_simple !api image="https://static.rerun.io/line_strip2d_simple/c4e6ce937544e66b497450fd64ac3ac2f244f0e1/1200w.png" alt="2D view showing a single green line strip that zigzags through four points"
+/// \example archetypes/line_strips2d_segments_simple !api image="https://static.rerun.io/line_segment2d_simple/53df596662dd9ffaaea5d09d091ef95220346c83/1200w.png" alt="2D view showing two separate, parallel green line segments instead of one connected strip"
+/// \example archetypes/line_strips2d_batch image="https://static.rerun.io/line_strip2d_batch/c6f4062bcf510462d298a5dfe9fdbe87c754acee/1200w.png" alt="2D view with a thick red line strip labeled one strip here above a thin green zigzag strip labeled and one strip there"
 /// \example archetypes/line_strips2d_ui_radius title="Lines with scene & UI radius each" image="https://static.rerun.io/line_strip2d_ui_radius/d3d7d5bd36278564ee37e2ed6932963ec16f5131/1200w.png
 #[rerun::rerun_type]
 #[docs(category = "Spatial 2D")]

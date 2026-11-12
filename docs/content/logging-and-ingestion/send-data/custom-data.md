@@ -1,7 +1,7 @@
 ---
 title: Send user-defined data
 order: 500
-description: Log custom data via AnyValues and DynamicArchetype
+description: Log your own data types with AnyValues and DynamicArchetype
 ---
 
 Rerun comes with many pre-built [Types](../../reference/types.md) that you can use out of the box. As long as your own data can be decomposed into Rerun [components](../../reference/types/components.md) or can be serialized with [Apache Arrow](https://arrow.apache.org/), you can log it directly without needing to recompile Rerun.
@@ -67,7 +67,7 @@ This is what it looks like in the dataframe view:
 snippet: tutorials/custom_data
 
 <picture>
-  <img src="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/full.png" alt="">
+  <img src="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/full.png" alt="Dataframe view with Points3D positions and user.CustomPoints3D confidences columns for two custom point cloud entities">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/1024w.png">

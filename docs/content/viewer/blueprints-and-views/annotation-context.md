@@ -1,7 +1,7 @@
 ---
 title: Annotation Context
 order: 400
-description: Shared styling and labels across an entity tree
+description: Share labels and colors across entities by mapping class IDs to styles
 ---
 
 ## Overview

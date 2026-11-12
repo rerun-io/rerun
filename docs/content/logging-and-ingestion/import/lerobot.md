@@ -1,7 +1,7 @@
 ---
 title: Working with LeRobot datasets
 order: 400
-description: Open and convert LeRobot datasets in Rerun
+description: View LeRobot robot-learning datasets in Rerun and convert them to RRD
 ---
 
 Rerun reads [LeRobot](https://huggingface.co/docs/lerobot/index) datasets, the directory-based format used for robot-learning datasets.

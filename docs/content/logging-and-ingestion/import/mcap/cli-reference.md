@@ -1,6 +1,7 @@
 ---
 title: CLI Reference for MCAP
 order: 500
+description: Command-line options for viewing, converting, and decoding MCAP files
 ---
 
 This reference guide covers all command-line options and workflows for working with MCAP files in Rerun.

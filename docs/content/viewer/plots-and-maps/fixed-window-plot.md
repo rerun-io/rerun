@@ -1,7 +1,7 @@
 ---
 title: Visualize fixed-window plots
 order: 200
-description: Configure time series views to show a sliding window
+description: Configure a time series view to show a fixed, sliding window of data
 ---
 
 The [TimeSeriesView](../../reference/types/views/time_series_view.md) supports direct manipulation of the visible time range.
@@ -52,7 +52,7 @@ This should create a plot that only shows the last 5 seconds of data. If you sel
 see that the time range is configured as expected.
 
 <picture>
-  <img src="https://static.rerun.io/fixed_window_example/f76228dc2e1212c148064c2193cdf75ef14bb2b9/full.png" alt="">
+  <img src="https://static.rerun.io/fixed_window_example/f76228dc2e1212c148064c2193cdf75ef14bb2b9/full.png" alt="Time series view of a random walk showing only the last 5 seconds, with the visible time range override in the selection panel">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/fixed_window_example/f76228dc2e1212c148064c2193cdf75ef14bb2b9/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/fixed_window_example/f76228dc2e1212c148064c2193cdf75ef14bb2b9/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/fixed_window_example/f76228dc2e1212c148064c2193cdf75ef14bb2b9/1024w.png">

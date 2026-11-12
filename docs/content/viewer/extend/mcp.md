@@ -1,6 +1,7 @@
 ---
 title: MCP server
 order: 300
+description: Let agents such as Claude or Codex drive a running Viewer over MCP
 ---
 
 The Rerun CLI includes an [MCP](https://modelcontextprotocol.io/) server that lets agents such as Codex or Claude interact with a running Viewer.

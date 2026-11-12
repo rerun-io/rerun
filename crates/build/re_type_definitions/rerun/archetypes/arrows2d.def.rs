@@ -3,7 +3,7 @@
 
 /// 2D arrows with optional colors, radii, labels, etc.
 ///
-/// \example archetypes/arrows2d_simple title="Simple batch of 2D arrows" image="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1200w.png"
+/// \example archetypes/arrows2d_simple title="Simple batch of 2D arrows" image="https://static.rerun.io/arrow2d_simple/59f044ccc03f7bc66ee802288f75706618b29a6e/1200w.png" alt="2D view with three thick arrows: a green one pointing up, a red one pointing right, and a purple one pointing down-left"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Spatial 2D")]

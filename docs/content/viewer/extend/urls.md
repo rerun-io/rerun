@@ -1,6 +1,7 @@
 ---
 title: Viewer URLs
 order: 400
+description: How Viewer URLs name a recording, a page, or a location on a Rerun server
 ---
 
 A Viewer URL names a location in the Viewer, also called a route: a recording, a page, or something on a Rerun server.

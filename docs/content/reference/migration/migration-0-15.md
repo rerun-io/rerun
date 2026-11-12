@@ -2,6 +2,7 @@
 title: Migrating from 0.14 to 0.15
 order: 995
 hidden: true
+description: Breaking changes in Rerun 0.15 and how to update code written for 0.14
 ---
 
 ## `InstanceKey` removed from our logging APIs

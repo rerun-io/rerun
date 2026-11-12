@@ -37,7 +37,7 @@ A stable `ApplicationId` will make the Viewer retain its UI state across runs fo
 By default, `spawn` will start a Viewer in another process and automatically pipe the data through. There are other ways to send data to a Viewer (covered at the end of this section), but the spawn default works great as we experiment.
 
 <picture>
-  <img src="https://static.rerun.io/logging_data2_empty/2915f4ef35db229caee6e5cb380b47aa4ecc0b33/full.png" alt="">
+  <img src="https://static.rerun.io/logging_data2_empty/2915f4ef35db229caee6e5cb380b47aa4ecc0b33/full.png" alt="Empty Rerun Viewer after initializing the SDK, listing the rerun_example_dna_abacus recording but no views or data yet">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data2_empty/2915f4ef35db229caee6e5cb380b47aa4ecc0b33/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data2_empty/2915f4ef35db229caee6e5cb380b47aa4ecc0b33/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data2_empty/2915f4ef35db229caee6e5cb380b47aa4ecc0b33/1024w.png">
@@ -54,7 +54,7 @@ Run your program and you should now see this scene in the viewer.
 If the Viewer was still running, Rerun will simply connect to this existing session and replace the data with this new [_recording_](data-model/recordings.md).
 
 <picture>
-  <img src="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/full.png" alt="">
+  <img src="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/full.png" alt="Rerun Viewer 3D view showing two rainbow-colored spiral point clouds that form a DNA-like double helix">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data3_first_points/95c9c556160159eb2e47fb160ced89c899f2fcef/1024w.png">
@@ -109,7 +109,7 @@ snippet: tutorials/dna[beads]
 Once again, although we are getting fancier with our array manipulations, there is nothing new here: it's all about populating archetypes and feeding them to the Rerun API.
 
 <picture>
-  <img src="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/full.png" alt="">
+  <img src="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/full.png" alt="Rerun Viewer 3D view of the DNA double helix with gray scaffolding lines and beads connecting the two colored spirals">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data5_beads/53afa6ca96259c4451a8b7722a8856252c2fdba6/1024w.png">

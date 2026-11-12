@@ -1,7 +1,7 @@
 ---
 title: Share recordings with many users through the web Viewer
 order: 125
-description: Give many users their own recordings in the web Viewer, with links from dashboards and experiment trackers
+description: Give every user a web Viewer link to their own recording
 ---
 
 To let many users look at different recordings in a browser, give each of them a web Viewer link to their recording.

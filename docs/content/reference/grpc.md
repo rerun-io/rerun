@@ -1,6 +1,7 @@
 ---
 title: gRPC API
 order: 925
+description: The gRPC protocol that Rerun components use to talk to each other
 ---
 
 Rerun components talk to each other over [gRPC](https://grpc.io/).

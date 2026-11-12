@@ -2,6 +2,7 @@
 title: Migrating from 0.28 to 0.29
 order: 981
 hidden: true
+description: Breaking changes in Rerun 0.29 and how to update code written for 0.28
 ---
 
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->

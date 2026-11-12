@@ -2,6 +2,7 @@
 title: Migrating from 0.16 to 0.17
 order: 993
 hidden: true
+description: Breaking changes in Rerun 0.17 and how to update code written for 0.16
 ---
 
 
@@ -18,14 +19,14 @@ The visualizer and component override UI of the timeseries views has been unifie
 In 0.16.1 and earlier:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/vizcomp-ui-before/ec7c0b88cdb54420665de32aaf2096dfd3dc05ea/full.png" alt="">
+  <img src="https://static.rerun.io/vizcomp-ui-before/ec7c0b88cdb54420665de32aaf2096dfd3dc05ea/full.png" alt="Old selection panel with separate Visualizers and Component Overrides sections, listing SeriesLine and a magenta Color override">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/vizcomp-ui-before/ec7c0b88cdb54420665de32aaf2096dfd3dc05ea/480w.png">
 </picture>
 
 In 0.17.0:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/vizcomp-ui-after/86f74d239e8b77bc3df00e61cfc35eb9f4c07989/full.png" alt="">
+  <img src="https://static.rerun.io/vizcomp-ui-after/86f74d239e8b77bc3df00e61cfc35eb9f4c07989/full.png" alt="New Visualizers section with SeriesLine expanded, its Color component showing Override, Store, and Fallback values">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/vizcomp-ui-after/86f74d239e8b77bc3df00e61cfc35eb9f4c07989/480w.png">
 </picture>
 

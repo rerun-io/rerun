@@ -1,7 +1,7 @@
 ---
 title: Show and filter text logs
 order: 450
-description: Log text messages, forward Python logging, and choose the columns and log levels shown in the text log view
+description: Log text messages, forward Python logging, and filter by log level
 ---
 
 ## Log text messages

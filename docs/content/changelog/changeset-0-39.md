@@ -45,7 +45,7 @@ AAC is limited to AAC-LC for now.
 The viewer interprets Bayer samples as linear color values and demosaics them on the GPU.
 
 <picture>
-  <img src="https://static.rerun.io/mosaic-droid/328303e534f582719293ca5a4b8f130d828dfb33/full.png" alt="">
+  <img src="https://static.rerun.io/mosaic-droid/328303e534f582719293ca5a4b8f130d828dfb33/full.png" alt="Zoomed-in Bayer camera image in a 2D view, with a hover tooltip for /camera/ext2 showing pixel position, raw Bayer value and RGB color">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mosaic-droid/328303e534f582719293ca5a4b8f130d828dfb33/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mosaic-droid/328303e534f582719293ca5a4b8f130d828dfb33/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mosaic-droid/328303e534f582719293ca5a4b8f130d828dfb33/1024w.png">
@@ -93,7 +93,7 @@ The [state timeline view](../reference/types/views/state_timeline_view.md) now s
 Pan and zoom changes are saved to the blueprint, and the view supports explicit time ranges, zoom locking, and a shared time axis with other plots.
 
 <picture>
-  <img src="https://static.rerun.io/states-time-view/c8056827d31608bf4c3c0723856eda7d64c47885/full.png" alt="">
+  <img src="https://static.rerun.io/states-time-view/c8056827d31608bf4c3c0723856eda7d64c47885/full.png" alt="View properties with Time axis settings: Independent or LinkToGlobal link, a view range with start and end times, and a Zoom lock checkbox">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/states-time-view/c8056827d31608bf4c3c0723856eda7d64c47885/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/states-time-view/c8056827d31608bf4c3c0723856eda7d64c47885/768w.png">
 </picture>
@@ -103,7 +103,7 @@ Pan and zoom changes are saved to the blueprint, and the view supports explicit 
 [State timeline](../viewer/plots-and-maps/state-timeline.md) hovers now show a human-readable Length.
 
 <picture>
-  <img src="https://static.rerun.io/state-hover/d9799638a7e5fc701298caa1357f609107a8cfd1/full.png" alt="">
+  <img src="https://static.rerun.io/state-hover/d9799638a7e5fc701298caa1357f609107a8cfd1/full.png" alt="State timeline hover tooltip for an open state, listing Start +14s, Stop +19s, and Length 5s">
 </picture>
 
 ### Rerun Viewer in marimo notebooks
@@ -267,7 +267,7 @@ See the [MCP reference](../viewer/extend/mcp.md).
 Opening a `.puffin` file in the viewer now loads it as a recording.
 
 <picture>
-  <img src="https://static.rerun.io/puffin-state/036a059235bd469fb2fbc994e9ba2f12b6378a8a/full.png" alt="">
+  <img src="https://static.rerun.io/puffin-state/036a059235bd469fb2fbc994e9ba2f12b6378a8a/full.png" alt="Puffin profiler capture opened as a recording, with nested profiling scopes on the main and rayon threads drawn as stacked colored bars">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/puffin-state/036a059235bd469fb2fbc994e9ba2f12b6378a8a/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/puffin-state/036a059235bd469fb2fbc994e9ba2f12b6378a8a/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/puffin-state/036a059235bd469fb2fbc994e9ba2f12b6378a8a/1024w.png">

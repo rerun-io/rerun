@@ -1,6 +1,7 @@
 ---
 title: About
 order: 1100
+description: The license, technology, and company behind the Rerun SDK and Viewer
 ---
 
 To learn more about Rerun, the company, visit our Website at [https://www.rerun.io/](https://www.rerun.io/).

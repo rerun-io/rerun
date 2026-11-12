@@ -1,7 +1,7 @@
 ---
 title: Loading URDF models
 order: 500
-description: Load and visualize robot models defined in URDF
+description: Load robot models defined in URDF files and visualize them in the 3D view
 ---
 
 Rerun features a built-in [importer](https://rerun.io/docs/logging-and-ingestion/import/importers/overview) for [URDF](https://en.wikipedia.org/wiki/URDF) files.

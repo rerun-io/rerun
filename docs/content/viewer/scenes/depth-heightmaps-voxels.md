@@ -1,7 +1,7 @@
 ---
 title: Visualize depth images, heightmaps, and voxels
 order: 400
-description: Turn a depth image into a 3D point cloud, show heightmaps and elevation grids as meshes, and show voxel grids and dense volumes
+description: Turn depth images into 3D point clouds, and show heightmaps and voxel grids
 ---
 
 ## Depth image to 3D point cloud

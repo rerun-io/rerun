@@ -1,6 +1,7 @@
 ---
 title: Selection
 order: 400
+description: Select entities, views, and data in the Viewer to inspect their properties
 ---
 
 Making selections is one of the primary ways of exploring data in Rerun.

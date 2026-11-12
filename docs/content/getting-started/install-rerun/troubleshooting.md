@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 order: 500
-description: Fix common problems with installing Rerun, starting the Viewer, graphics, rendering, loading .rrd files, and the web Viewer
+description: Fix common problems with installation, graphics, and the web Viewer
 ---
 
 You can set `RUST_LOG=debug` before running to get some verbose logging output.

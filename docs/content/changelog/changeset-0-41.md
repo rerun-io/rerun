@@ -19,7 +19,7 @@ Other ROS 2 messages still need import-time conversion to be visualized automati
 See [Supported Message Formats](../logging-and-ingestion/import/mcap/message-formats.md#visualizing-ros-2-messages-without-conversion) for details.
 
 <picture>
-  <img src="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/full.png" alt="">
+  <img src="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/full.png" alt="Rerun Viewer plotting a ROS Temperature message as a line with a variance band, with a MeasurementsSeries visualizer in the selection panel">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/1024w.png">

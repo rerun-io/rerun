@@ -1,7 +1,7 @@
 ---
 title: React to events in the Viewer
 order: 100
-description: Add buttons, sliders, or callbacks to the Viewer, and react to selection and time changes in web, Jupyter, or Rust
+description: React to selection and time changes in the web Viewer, notebooks, or Rust
 ---
 
 ## Can I add buttons or sliders that call my Python script?

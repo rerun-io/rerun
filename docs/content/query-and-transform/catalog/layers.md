@@ -1,7 +1,7 @@
 ---
 title: Using layers to append data to segments
 order: 400
-description: Append data to existing segments via named layers
+description: Append data to existing dataset segments by registering named layers
 ---
 
 In the [catalog object model](catalog-object-model.md#datasets), a dataset is a collection of segments, and each segment is a collection of named layers.

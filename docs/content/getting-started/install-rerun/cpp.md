@@ -1,7 +1,7 @@
 ---
 title: C++ SDK
 order: 200
-description: Setting up the C++ SDK
+description: Add the Rerun C++ SDK to your project with CMake FetchContent or Bazel
 ---
 
 If you're using CMake you can add the SDK to your project using `FetchContent`:

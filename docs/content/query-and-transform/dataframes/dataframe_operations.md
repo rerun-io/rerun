@@ -1,7 +1,7 @@
 ---
 title: Common Dataframe Operations
 order: 200
-description: Joins, filters, and aggregations on Rerun data
+description: Run joins, filters, and aggregations on Rerun data with DataFusion
 ---
 
 Dataframes are core to modern analytics workflows.

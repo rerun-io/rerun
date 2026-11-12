@@ -1,7 +1,7 @@
 ---
 title: Share recordings with people who don't code
 order: 150
-description: Ship the Rerun Viewer to non-programmers, share recordings as a link, or bundle the Viewer with your Python app
+description: Share recordings as links or ship the Viewer to people who don't code
 ---
 
 You don't need a Python or Rust setup to look at Rerun data.

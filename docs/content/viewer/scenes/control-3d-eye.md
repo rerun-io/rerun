@@ -1,7 +1,7 @@
 ---
 title: Control the 3D camera
 order: 100
-description: Set the 3D view camera (eye) position, look target, and up axis from code, follow an entity, and choose orbital or first-person controls
+description: Set the 3D camera position, target, and up axis, or follow an entity
 ---
 
 In a 3D view, the camera that you look through is called the _eye_.

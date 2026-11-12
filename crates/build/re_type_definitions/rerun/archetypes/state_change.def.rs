@@ -9,7 +9,7 @@
 ///
 /// The state timeline view displays these as horizontal colored lanes over time.
 ///
-/// \example archetypes/state_change title="State changes over time" image="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/1200w.png"
+/// \example archetypes/state_change title="State changes over time" image="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/1200w.png" alt="State timeline view showing a /door lane with colored segments for open, closed, and open again over time"
 #[rerun::rerun_type]
 #[docs(category = "Plotting")]
 #[docs(view_types = "StateTimelineView")]

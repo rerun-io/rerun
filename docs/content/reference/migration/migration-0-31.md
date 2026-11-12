@@ -2,6 +2,7 @@
 title: Migrating from 0.30 to 0.31
 order: 979
 hidden: true
+description: Breaking changes in Rerun 0.31 and how to update code written for 0.30
 ---
 
 ## CLI

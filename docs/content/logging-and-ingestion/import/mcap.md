@@ -1,7 +1,7 @@
 ---
 title: MCAP files
 order: 300
-description: How Rerun reads and interprets MCAP files
+description: Open, convert, and decode MCAP files in Rerun, including ROS messages
 ---
 
 Working with MCAP files in Rerun:

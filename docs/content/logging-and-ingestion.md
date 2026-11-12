@@ -1,7 +1,7 @@
 ---
 title: Log and Ingest
 order: 2
-description: How data is structured, batched, and sent to Rerun
+description: How data is structured, batched, and sent to Rerun from your code
 index: true
 ---
 

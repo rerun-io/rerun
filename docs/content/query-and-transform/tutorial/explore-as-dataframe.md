@@ -1,6 +1,7 @@
 ---
 title: Explore a recording with the dataframe view
 order: 1
+description: Run the face tracking example and explore its data in the dataframe view
 ---
 
 In this first part of the guide, we run the [face tracking example](https://rerun.io/examples/video-image/face_tracking) and explore the data in the viewer.
@@ -24,7 +25,7 @@ Amongst other things, the [MediaPipe Face Landmark](https://ai.google.dev/edge/m
 One signal, `jawOpen` (logged under the `/blendshapes/0/jawOpen` entity as a [`Scalar`](../../reference/types/components/scalar.md) component), is of particular interest for our purpose. Let's inspect it further using a timeseries view:
 
 <picture>
-  <img src="https://static.rerun.io/data-out-jaw-open-signal/258f5ffe043b8affcc54d5ea1bc864efe7403f2c/full.png" alt="">
+  <img src="https://static.rerun.io/data-out-jaw-open-signal/258f5ffe043b8affcc54d5ea1bc864efe7403f2c/full.png" alt="Rerun Viewer with a face tracking video of a man with his mouth open, above a time series plot of the jawOpen signal with four peaks">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/data-out-jaw-open-signal/258f5ffe043b8affcc54d5ea1bc864efe7403f2c/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/data-out-jaw-open-signal/258f5ffe043b8affcc54d5ea1bc864efe7403f2c/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/data-out-jaw-open-signal/258f5ffe043b8affcc54d5ea1bc864efe7403f2c/1024w.png">
@@ -36,7 +37,7 @@ This signal indeed seems to jump from approximately 0.0 to 0.5 whenever the jaws
 Let's create a dataframe view to further inspect the data:
 
 <picture>
-  <img src="https://static.rerun.io/data-out-jaw-open-dataframe/bde18eb7b159e3ea1166a61e4a334eaedf2e04f8/full.png" alt="">
+  <img src="https://static.rerun.io/data-out-jaw-open-dataframe/bde18eb7b159e3ea1166a61e4a334eaedf2e04f8/full.png" alt="Rerun Viewer with the face tracking video, the jawOpen plot and a dataframe view of jawOpen Scalar values per frame_nr">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/data-out-jaw-open-dataframe/bde18eb7b159e3ea1166a61e4a334eaedf2e04f8/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/data-out-jaw-open-dataframe/bde18eb7b159e3ea1166a61e4a334eaedf2e04f8/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/data-out-jaw-open-dataframe/bde18eb7b159e3ea1166a61e4a334eaedf2e04f8/1024w.png">

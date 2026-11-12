@@ -1,7 +1,7 @@
 ---
 title: Send dataframes to a recording
 order: 300
-description: Log a whole table into a recording in a single call
+description: Log an entire dataframe or table into a recording with a single call
 ---
 
 If your data is already in a table, you can log the whole table in a single call instead of logging it row by row or column by column.

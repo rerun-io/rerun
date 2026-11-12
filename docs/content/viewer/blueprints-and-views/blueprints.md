@@ -49,7 +49,7 @@ Think of the Application ID as the "key" that binds a blueprint to a specific ty
 The Viewer provides two types of blueprint reset, accessible from the blueprint panel:
 
 <picture>
-  <img src="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/full.png" alt="">
+  <img src="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/full.png" alt="Blueprint panel menu with Add view or container, Reset to default blueprint, and Reset to heuristic blueprint">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/1024w.png">
@@ -66,7 +66,7 @@ When no default blueprint has been set, the reset button will use the heuristic 
 
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px" alt="Current, default, and heuristic blueprints">
-  <img class="d2-light" src="https://static.rerun.io/current_default_heuristic_invert/f1f07f49b7e90cfeeb6a0c8bbe47004a9d7593ff/full.png" width="550px" alt="">
+  <img class="d2-light" src="https://static.rerun.io/current_default_heuristic_invert/f1f07f49b7e90cfeeb6a0c8bbe47004a9d7593ff/full.png" width="550px" alt="Diagram of how heuristics, user edits and a default blueprint from code or .rrd/.rbl files feed the current blueprint shown in the viewport">
 </div>
 
 ## Three ways to work with blueprints

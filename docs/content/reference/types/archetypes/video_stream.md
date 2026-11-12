@@ -48,6 +48,6 @@ snippet: archetypes/video_stream_synthetic
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png">
-  <img src="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/full.png">
+  <img src="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/full.png" alt="Rerun Viewer playing a synthetic video stream of a yellow circle on a blue gradient, with video sample details in the selection panel">
 </picture>
 

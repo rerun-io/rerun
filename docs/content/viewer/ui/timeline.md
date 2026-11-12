@@ -1,6 +1,7 @@
 ---
 title: Timeline
 order: 500
+description: Control playback, pick the active timeline, and inspect events over time
 ---
 
 Timeline controls

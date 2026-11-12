@@ -2,6 +2,7 @@
 title: Migrating from 0.21 to 0.22
 order: 988
 hidden: true
+description: Breaking changes in Rerun 0.22 and how to update code written for 0.21
 ---
 
 ## Major changes to the logging APIs

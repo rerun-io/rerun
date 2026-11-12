@@ -1,7 +1,7 @@
 ---
 title: Export screenshots, videos, and point clouds
 order: 140
-description: Save or copy a screenshot of a view, take screenshots from code or the command line, and export data such as videos or point clouds
+description: Save screenshots of a view from the Viewer, Python, or the command line
 ---
 
 ## Screenshot of a view in the Viewer

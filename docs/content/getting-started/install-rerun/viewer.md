@@ -1,7 +1,7 @@
 ---
 title: Viewer
 order: 400
-description: Install the standalone Viewer
+description: Install the standalone Rerun Viewer and match its version to your SDK
 ---
 
 The [Viewer](../../viewer/ui/overview.md) can be installed independent of the library language you're using.

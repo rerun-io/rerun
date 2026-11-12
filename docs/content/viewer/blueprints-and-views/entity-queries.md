@@ -1,7 +1,7 @@
 ---
 title: Entity Queries
 order: 300
-description: Control which entities appear in a given view
+description: Use entity query expressions to choose what appears in a view
 ---
 
 Many views are made up of visualizations that include more than one
@@ -22,7 +22,7 @@ edit box, with each query expression shown on its own line. You can find the
 query editor in the right-hand selection panel when selecting a view.
 
 <picture>
-  <img src="https://static.rerun.io/helix_query/e39ed9fa364724d201f19a0ae54f34d4df761c5b/full.png" alt="">
+  <img src="https://static.rerun.io/helix_query/e39ed9fa364724d201f19a0ae54f34d4df761c5b/full.png" alt="Rerun Viewer with a 3D helix view selected and the entity path query in the selection panel including helix/** and excluding scaffolding">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/helix_query/e39ed9fa364724d201f19a0ae54f34d4df761c5b/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/helix_query/e39ed9fa364724d201f19a0ae54f34d4df761c5b/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/helix_query/e39ed9fa364724d201f19a0ae54f34d4df761c5b/1024w.png">

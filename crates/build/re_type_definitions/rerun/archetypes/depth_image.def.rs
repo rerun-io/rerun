@@ -9,8 +9,8 @@
 /// \cpp data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
 /// \cpp If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
 ///
-/// \example archetypes/depth_image_simple !api title="Simple example" image="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/1200w.png"
-/// \example archetypes/depth_image_3d title="Depth to 3D example" image="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png"
+/// \example archetypes/depth_image_simple !api title="Simple example" image="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/1200w.png" alt="2D view of a depth image with a dark square and a yellow-green rectangle on red, with a hover tooltip showing the depth value"
+/// \example archetypes/depth_image_3d title="Depth to 3D example" image="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png" alt="Depth image shown twice: back-projected as layered points with a camera frustum in a 3D view, and flat in a 2D view"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Image & tensor")]

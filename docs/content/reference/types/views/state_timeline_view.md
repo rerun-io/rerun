@@ -35,7 +35,7 @@ snippet: views/state_timeline
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/status_view/997ff1c16765374651ba662812a78e53803aba75/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/status_view/997ff1c16765374651ba662812a78e53803aba75/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/status_view/997ff1c16765374651ba662812a78e53803aba75/1200w.png">
-  <img src="https://static.rerun.io/status_view/997ff1c16765374651ba662812a78e53803aba75/full.png">
+  <img src="https://static.rerun.io/status_view/997ff1c16765374651ba662812a78e53803aba75/full.png" alt="State timeline view titled Status Transitions with a /door lane switching from open to closed and back to open">
 </picture>
 
 

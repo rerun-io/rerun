@@ -27,7 +27,7 @@ snippet: views/map
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/1200w.png">
-  <img src="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/full.png">
+  <img src="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/full.png" alt="Map view with two large purple points plotted over an OpenStreetMap street map">
 </picture>
 
 

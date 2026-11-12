@@ -1,7 +1,7 @@
 ---
 title: Log to several recordings from one process
 order: 600
-description: Create more than one recording from a single process, and why calling rr.init again replaces the global recording
+description: Create several recordings in one process without replacing the global one
 ---
 
 `rr.init` creates one _global_ recording.

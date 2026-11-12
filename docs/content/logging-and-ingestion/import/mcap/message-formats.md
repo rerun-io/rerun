@@ -1,6 +1,7 @@
 ---
 title: Supported Message Formats
 order: 200
+description: ROS 2, ROS 1, and other MCAP message types that Rerun visualizes automatically
 ---
 
 Rerun provides automatic visualization for common message types in MCAP files:
@@ -98,7 +99,7 @@ Here's an example with a custom Protobuf message that contains a robot gripper s
 After adding a new timeseries view via the blueprint panel, we select the Protobuf fields from our MCAP that we want to view through the view's selection panel:
 
 <picture>
-  <img src="https://static.rerun.io/select-custom-proto-timeseries/83c37bb55db1b44cb0225021d889081f6e07a7cb/full.png" alt="">
+  <img src="https://static.rerun.io/select-custom-proto-timeseries/83c37bb55db1b44cb0225021d889081f6e07a7cb/full.png" alt="Empty time series view with the selection panel's add visualizer menu listing GripperStatus and JointState Protobuf fields">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/select-custom-proto-timeseries/83c37bb55db1b44cb0225021d889081f6e07a7cb/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/select-custom-proto-timeseries/83c37bb55db1b44cb0225021d889081f6e07a7cb/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/select-custom-proto-timeseries/83c37bb55db1b44cb0225021d889081f6e07a7cb/1024w.png">
@@ -106,7 +107,7 @@ After adding a new timeseries view via the blueprint panel, we select the Protob
 </picture>
 
 <picture>
-  <img src="https://static.rerun.io/custom-proto-timeseries/6e5c9402d17e315c453656bee887918ac3b2f2f4/full.png" alt="">
+  <img src="https://static.rerun.io/custom-proto-timeseries/6e5c9402d17e315c453656bee887918ac3b2f2f4/full.png" alt="Time series view plotting the left and right gripper position fields, with both visualizers listed in the selection panel">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom-proto-timeseries/6e5c9402d17e315c453656bee887918ac3b2f2f4/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/custom-proto-timeseries/6e5c9402d17e315c453656bee887918ac3b2f2f4/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom-proto-timeseries/6e5c9402d17e315c453656bee887918ac3b2f2f4/1024w.png">
@@ -120,7 +121,7 @@ The column name includes the message's full type name, so a custom `my_robot.Gri
 You can see this also in the selection panel:
 
 <picture>
-  <img src="https://static.rerun.io/custom-proto-reflection/51085b261a6229161519c70fa9f439b3c29ae61e/full.png" alt="">
+  <img src="https://static.rerun.io/custom-proto-reflection/51085b261a6229161519c70fa9f439b3c29ae61e/full.png" alt="Selection panel for a schemas.proto.GripperStatus message component, listing struct fields such as claw_state, position and current">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/custom-proto-reflection/51085b261a6229161519c70fa9f439b3c29ae61e/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/custom-proto-reflection/51085b261a6229161519c70fa9f439b3c29ae61e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom-proto-reflection/51085b261a6229161519c70fa9f439b3c29ae61e/1024w.png">

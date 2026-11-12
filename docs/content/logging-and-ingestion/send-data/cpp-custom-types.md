@@ -1,7 +1,7 @@
 ---
 title: Log Eigen, OpenCV, and custom C++ types without copying
 order: 600
-description: Log data from Eigen, OpenCV, or your own C++ containers, with or without a copy, using rerun::Collection and CollectionAdapter
+description: Log Eigen, OpenCV, or your own C++ types with or without copying
 ---
 
 In C++, every archetype field takes a [`rerun::Collection`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1Collection.html).

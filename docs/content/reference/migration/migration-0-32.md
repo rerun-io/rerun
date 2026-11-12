@@ -2,6 +2,7 @@
 title: Migrating from 0.31 to 0.32
 order: 978
 hidden: true
+description: Breaking changes in Rerun 0.32 and how to update code written for 0.31
 ---
 
 ## "Data loaders" renamed to "importers"

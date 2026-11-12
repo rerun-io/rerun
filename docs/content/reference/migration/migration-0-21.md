@@ -2,6 +2,7 @@
 title: Migrating from 0.20 to 0.21
 order: 989
 hidden: true
+description: Breaking changes in Rerun 0.21 and how to update code written for 0.20
 ---
 
 ## File compatibility

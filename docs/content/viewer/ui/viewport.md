@@ -1,6 +1,7 @@
 ---
 title: Viewport
 order: 200
+description: Arrange views in the viewport by dragging them into docks and tabs
 ---
 
 The viewport is a flexible area where you can arrange your views:
@@ -9,7 +10,7 @@ You can grab the title of any view to dock it to different parts of the viewport
 ## View controls
 
 <picture>
-  <img src="https://static.rerun.io/view-controls/e911cec51fcf840e014340b3cb135b7faeb2e8b6/full.png" alt="">
+  <img src="https://static.rerun.io/view-controls/e911cec51fcf840e014340b3cb135b7faeb2e8b6/full.png" alt="Title bar of a view with moon and planet tabs, a help button and a maximize button on the right">
 </picture>
 
 

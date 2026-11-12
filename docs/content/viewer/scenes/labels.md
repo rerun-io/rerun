@@ -1,7 +1,7 @@
 ---
 title: Show text labels in 2D and 3D
 order: 200
-description: Add text labels to points, boxes, arrows, and lines, show labels for many instances, and place a standalone text label in a scene
+description: Add text labels to points, boxes, arrows, and lines in 2D and 3D views
 ---
 
 ## Add labels

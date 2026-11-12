@@ -1,6 +1,7 @@
 ---
 title: Overview
 order: 100
+description: The panels of the Rerun Viewer and where to find each piece of functionality
 ---
 The following sections give an overview of the basic UI concepts and where to find which functionality.
 

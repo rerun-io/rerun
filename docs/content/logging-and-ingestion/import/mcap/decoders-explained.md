@@ -1,6 +1,7 @@
 ---
 title: MCAP Decoders Explained
 order: 300
+description: How each MCAP decoder interprets and extracts data from the same file
 ---
 
 MCAP processing in Rerun uses a decoder architecture where each decoder represents a different way to interpret and extract data from the same MCAP source.

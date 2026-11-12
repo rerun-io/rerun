@@ -14,7 +14,7 @@ In a time series view each series is drawn as a line with a translucent band aro
 Leave `variances` unset for values whose uncertainty is unknown.
 
 <picture>
-  <img src="https://static.rerun.io/measurements/2388490ab2b487bb6c47a2be3e7d5e7aa17c08f3/full.png" alt="">
+  <img src="https://static.rerun.io/measurements/2388490ab2b487bb6c47a2be3e7d5e7aa17c08f3/full.png" alt="Time series plot of two barometer pressure series in Pa, each drawn as a line with a translucent variance band around it">
 </picture>
 
 Two new components come with it.
@@ -127,7 +127,7 @@ viewer.set_time(duration=1.5, play=True)
 Time series plots can now show the values of all visible series in a shared tooltip at the hovered time.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/full.png" alt="">
+  <img src="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/full.png" alt="Time series plot with a shared tooltip listing the x, y and z values of all three series at the hovered timestamp">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/768w.png">
 </picture>
@@ -135,7 +135,7 @@ Time series plots can now show the values of all visible series in a shared tool
 The new `PlotInteraction` blueprint property also controls whether raw line-series data point markers are always visible.
 
 <picture>
-  <img src="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/full.png" alt="">
+  <img src="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/full.png" alt="Gyroscope time series plot with point markers and a shared tooltip, next to Plot interaction settings in the selection panel">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/1024w.png">

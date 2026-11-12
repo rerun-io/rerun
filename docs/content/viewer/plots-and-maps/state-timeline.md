@@ -1,7 +1,7 @@
 ---
 title: Visualize state changes and events
 order: 400
-description: Show discrete states, events, and time spans (like a Gantt chart) over time, with one lane per entity or instance
+description: Show discrete states, events, and time spans, like a Gantt chart
 ---
 
 The [StateTimelineView](../../reference/types/views/state_timeline_view.md) shows how entities transition between discrete states over time.
@@ -15,7 +15,7 @@ Use [`StateChange`](../../reference/types/archetypes/state_change.md) to log a t
 snippet: howto/state_timeline[log_changes]
 
 <picture>
-  <img src="https://static.rerun.io/state_timeline/90a670f810b9be2fc001a2d83e223215497583d8/full.png" alt="">
+  <img src="https://static.rerun.io/state_timeline/90a670f810b9be2fc001a2d83e223215497583d8/full.png" alt="State timeline view with /door and /window lanes showing open and closed states as green and yellow bars over steps">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/state_timeline/90a670f810b9be2fc001a2d83e223215497583d8/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/state_timeline/90a670f810b9be2fc001a2d83e223215497583d8/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/state_timeline/90a670f810b9be2fc001a2d83e223215497583d8/1024w.png">
@@ -54,7 +54,7 @@ It is usually best to log `StateConfiguration` as static, since it describes how
 snippet: howto/state_timeline[state_config]
 
 <picture>
-  <img src="https://static.rerun.io/state_timeline/8b56b1d7ec02bb6d45f6115dcba7c4ba8875942b/full.png" alt="">
+  <img src="https://static.rerun.io/state_timeline/8b56b1d7ec02bb6d45f6115dcba7c4ba8875942b/full.png" alt="State timeline view where the /door lane has custom labels and colors (green Open, red Closed) and /window keeps defaults">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/state_timeline/8b56b1d7ec02bb6d45f6115dcba7c4ba8875942b/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/state_timeline/8b56b1d7ec02bb6d45f6115dcba7c4ba8875942b/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/state_timeline/8b56b1d7ec02bb6d45f6115dcba7c4ba8875942b/1024w.png">
@@ -99,7 +99,7 @@ The separate `time_ranges` property filters which states are displayed, without 
 By default, no such filter is applied, and long recordings open with a window centered on the time cursor.
 
 <picture>
-  <img src="https://static.rerun.io/state_timeline/40a6d7fc78ebebf316160ad33da1971a3b23e857/full.png" alt="">
+  <img src="https://static.rerun.io/state_timeline/40a6d7fc78ebebf316160ad33da1971a3b23e857/full.png" alt="State timeline view titled Doors and windows, with /door and /window lanes of open and closed states along a step axis">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/state_timeline/40a6d7fc78ebebf316160ad33da1971a3b23e857/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/state_timeline/40a6d7fc78ebebf316160ad33da1971a3b23e857/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/state_timeline/40a6d7fc78ebebf316160ad33da1971a3b23e857/1024w.png">

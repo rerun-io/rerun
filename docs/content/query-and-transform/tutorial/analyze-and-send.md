@@ -1,6 +1,7 @@
 ---
 title: Analyze the data and send back the results
 order: 3
+description: Compute a signal from exported dataframe data and send it back to the Viewer
 ---
 
 In the previous sections, we explored our data and exported it to a Pandas dataframe. In this section, we will analyze the data to extract a "jaw open state" signal and send it back to the viewer.

@@ -72,8 +72,8 @@ Let's unpack what happened here:
 - **Execution**: The `print(df)` implicitly executes the dataframe's query plan and returns the final result. The same would happen when converting to dataframe for other frameworks (Pandas, Polars, PyArrow, etc.).
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/da79987875a81bbabf1ab9f25c869dc7bdc6dc52_d2.svg" alt="">
-  <img class="d2-light" src="https://static.rerun.io/eb4c2e89434a4a61da75d4bdc0de2d2f08c9d873_d2-light.svg" alt="">
+  <img class="d2-dark" src="https://static.rerun.io/da79987875a81bbabf1ab9f25c869dc7bdc6dc52_d2.svg" alt="Diagram of a dataframe query: a Dataset, optionally filtered into a Dataset view, read into a DataFusion DataFrame, then collected into rows">
+  <img class="d2-light" src="https://static.rerun.io/eb4c2e89434a4a61da75d4bdc0de2d2f08c9d873_d2-light.svg" alt="Diagram of a dataframe query: a Dataset, optionally filtered into a Dataset view, read into a DataFusion DataFrame, then collected into rows">
 </div>
 
 

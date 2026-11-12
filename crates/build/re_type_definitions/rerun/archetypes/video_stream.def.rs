@@ -10,7 +10,7 @@
 /// `sample` is then logged repeatedly for each frame on the timeline.
 /// Individual frames can be displayed with [`rerun::archetypes::VideoFrameReference`], which uses the active Viewer timeline.
 ///
-/// \example archetypes/video_stream_synthetic missing="cpp,rs" title="Live streaming of on-the-fly encoded video" image="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png"
+/// \example archetypes/video_stream_synthetic missing="cpp,rs" title="Live streaming of on-the-fly encoded video" image="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png" alt="Rerun Viewer playing a synthetic video stream of a yellow circle on a blue gradient, with video sample details in the selection panel"
 #[rerun::rerun_type]
 #[docs(category = "Video")]
 #[docs(view_types = "Spatial2DView, Spatial3DView: if logged under a projection")]

@@ -1,6 +1,7 @@
 ---
 title: Export the dataframe
 order: 2
+description: Export dataframe view data to Pandas with the dataframe API of the Rerun SDK
 ---
 
 In the [previous section](explore-as-dataframe.md), we explored some face tracking data using the dataframe view. In this section, we will see how we can use the dataframe API of the Rerun SDK to export the same data into a [Pandas](https://pandas.pydata.org) dataframe to further inspect and process it.
@@ -11,7 +12,7 @@ The dataframe SDK loads data from an .RRD file.
 The first step is thus to save the recording as RRD, which can be done from the Rerun menu:
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/save_recording/ece0f887428b1800a305a3e30faeb57fa3d77cd8/full.png" alt="">
+  <img src="https://static.rerun.io/save_recording/ece0f887428b1800a305a3e30faeb57fa3d77cd8/full.png" alt="Rerun menu open in the Viewer with Save recording highlighted, between Open and Save current time selection">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/save_recording/ece0f887428b1800a305a3e30faeb57fa3d77cd8/480w.png">
 </picture>
 

@@ -1,7 +1,7 @@
 ---
 title: Diagnose latency and performance
 order: 200
-description: Find out what is slow with the latency indicator and the built-in profiler, and what to do when the Viewer can't keep up or uses CPU while idle
+description: Find what is slow with the latency indicator and the built-in profiler
 ---
 
 Rerun is built to be fast, but sometimes it falls short. This guide is here to help you diagnose performance problems in the Viewer and during live streaming.

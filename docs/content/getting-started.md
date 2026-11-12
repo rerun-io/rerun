@@ -1,6 +1,7 @@
 ---
 title: Getting Started
 order: 1
+description: Install Rerun, then log, visualize, query, and train on robotics data
 ---
 
 Rerun helps robotics and Physical AI teams iterate faster: log from any sensor, visualize in the Viewer, query with dataframes, and train with a dataloader tailored to robotic learning — across one recording or many.

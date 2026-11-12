@@ -1,7 +1,7 @@
 ---
 title: Send entire columns at once
 order: 100
-description: Log many rows of data in a single call
+description: Log many rows of time-indexed data in a single call with send_columns
 ---
 
 The [`log` API](../tutorial.md#logging-our-first-points) is designed to extract data from your running code as it's being generated. It is, by nature, *row-oriented*.
@@ -71,7 +71,7 @@ snippet: archetypes/scalars_column_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/1200w.png">
-  <img src="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/full.png">
+  <img src="https://static.rerun.io/transform3d_column_updates/2b7ccfd29349b2b107fcf7eb8a1291a92cf1cafc/full.png" alt="Time series view showing one full period of a sine wave of scalars plotted along the step timeline">
 </picture>
 
 
@@ -90,7 +90,7 @@ snippet: archetypes/points3d_column_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png">
-  <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png">
+  <img src="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/full.png" alt="3D view of four cyan points hovering at different heights above the ground grid, at the end of the time timeline">
 </picture>
 
 
@@ -108,7 +108,7 @@ which can be translated to the column-oriented `send_columns` API as such:
 snippet: archetypes/arrows3d_column_updates
 
 <picture data-inline-viewer="snippets/archetypes/arrows3d_column_updates">
-  <img src="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/full.png" alt="">
+  <img src="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/full.png" alt="3D view of cyan arrows of increasing length rising from the ground grid, at the end of the time timeline">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/1024w.png">
@@ -134,7 +134,7 @@ snippet: archetypes/transform3d_column_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
-  <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png">
+  <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" alt="3D view of a rotated magenta box with red, green and blue axis arrows at its origin, at tick 79 of the timeline">
 </picture>
 
 
@@ -153,7 +153,7 @@ snippet: archetypes/image_column_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
-  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png">
+  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png" alt="2D view of a solid blue image with a cyan square on its right side, at the last step of the timeline">
 </picture>
 
 

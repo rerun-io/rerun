@@ -1,7 +1,7 @@
 ---
 title: Embed Rerun in Web pages
 order: 100
-description: Embed the web Viewer in a page with an iframe, the JavaScript package, or Gradio
+description: Embed the web Viewer via iframe, JavaScript package, or Gradio
 ---
 
 For the full JavaScript API, see the [Web Viewer API reference](https://ref.rerun.io/docs/js/).

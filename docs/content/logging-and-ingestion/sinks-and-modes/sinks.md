@@ -1,7 +1,7 @@
 ---
 title: Sinks
 order: 100
-description: The destinations logged data can be sent to
+description: Sinks are the destinations logged data goes to, such as files or a Viewer
 ---
 
 Sinks control where your Rerun data goes. They are the output destinations for your logged data.

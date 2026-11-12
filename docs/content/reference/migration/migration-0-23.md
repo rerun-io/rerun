@@ -2,6 +2,7 @@
 title: Migrating from 0.22 to 0.23
 order: 987
 hidden: true
+description: Breaking changes in Rerun 0.23 and how to update code written for 0.22
 ---
 
 ## Reserved namespaces

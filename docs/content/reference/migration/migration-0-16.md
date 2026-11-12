@@ -2,6 +2,7 @@
 title: Migrating from 0.15 to 0.16
 order: 994
 hidden: true
+description: Breaking changes in Rerun 0.16 and how to update code written for 0.15
 ---
 
 

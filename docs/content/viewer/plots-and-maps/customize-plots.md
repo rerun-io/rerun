@@ -1,7 +1,7 @@
 ---
 title: Customize plots
 order: 150
-description: Set plot series names, colors, and line widths, axis ranges, error bands, XY plots, histograms, and spectra that change over time
+description: Set series names, colors, axis ranges, and error bands in time series plots
 ---
 
 This page collects common questions about plots in the [`TimeSeriesView`](../../reference/types/views/time_series_view.md) and the [`BarChartView`](../../reference/types/views/bar_chart_view.md).

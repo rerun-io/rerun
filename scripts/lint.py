@@ -1583,6 +1583,17 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
         if in_metadata and line.startswith("-->"):
             in_metadata = False
 
+        if (
+            not in_code_block
+            and not source.should_ignore(line_nr)
+            and "docs/content/" in filepath
+            and "<img" in line
+            and not re.search(r'alt="[^"]+"', line)
+        ):
+            errors.append(
+                f'{line_nr}: Images in the docs need alt text: add `alt="…"` saying what the image shows.',
+            )
+
         if not in_code_block and not source.should_ignore(line_nr) and filepath.startswith(rerun_prefix):
             if not in_metadata:
                 # Check the casing on markdown headers

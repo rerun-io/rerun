@@ -1,7 +1,7 @@
 ---
 title: Static data
 order: 500
-description: Logging data that holds across every timeline
+description: Log static data that belongs to all timelines and shadows temporal data
 ---
 
 

@@ -1,7 +1,7 @@
 ---
 title: Set up a Python project
 order: 100
-description: Bootstrap a Python project that depends on rerun-sdk
+description: Bootstrap a Python project that depends on the rerun-sdk package
 ---
 
 You should have already [installed the Python SDK](../install-rerun/python.md).

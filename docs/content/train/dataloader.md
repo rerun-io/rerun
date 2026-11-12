@@ -1,7 +1,7 @@
 ---
 title: Train PyTorch models with Rerun
 order: 200
-description: Stream Rerun recordings into a PyTorch DataLoader for model training, without an intermediate export step.
+description: Stream Rerun recordings into a PyTorch DataLoader without an export step
 ---
 
 Train PyTorch models directly from a Rerun server.
@@ -14,7 +14,7 @@ The experimental [`dataloader`](https://github.com/rerun-io/rerun/tree/main/reru
 The full code for this guide lives in [`examples/python/dataloader/`](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader), which trains a [LeRobot ACT](https://tonyzhaozh.github.io/aloha/) policy from a HuggingFace dataset.
 
 <picture>
-  <img src="https://static.rerun.io/howto-dataloader/c635e994f9d1591811816821173813c54fe440ef/full.png" alt="">
+  <img src="https://static.rerun.io/howto-dataloader/c635e994f9d1591811816821173813c54fe440ef/full.png" alt="Rerun Viewer showing a robot arm episode with a 3D view, joint and gripper position plots, three camera feeds and a language instruction">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/howto-dataloader/c635e994f9d1591811816821173813c54fe440ef/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/howto-dataloader/c635e994f9d1591811816821173813c54fe440ef/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/howto-dataloader/c635e994f9d1591811816821173813c54fe440ef/1024w.png">

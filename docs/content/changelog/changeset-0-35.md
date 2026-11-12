@@ -40,14 +40,14 @@ about consuming live versus server data.
 Rerun now detects links known url formats (links to rrds, hub datasets, etc.) and shows them as a compact link button:
 
 <picture>
-  <img src="https://static.rerun.io/built_in_url_types/64ba024b791f56986f6e2637580d8ab51a6d0aef/full.png" alt="">
+  <img src="https://static.rerun.io/built_in_url_types/64ba024b791f56986f6e2637580d8ab51a6d0aef/full.png" alt="Compact link buttons for Rerun URLs: the droid:sample2k dataset, recordings, an episode, cloud servers, and entity paths like camera/points">
 </picture>
 
 Previously these all would all be shown as a plain link.
 The Rerun Hub dataset open button has been reworked as well:
 
 <picture>
-  <img src="https://static.rerun.io/hub_dataset_open_button/071a7a84e68f25ce1392af1fda2b79437782f96f/full.png" alt="">
+  <img src="https://static.rerun.io/hub_dataset_open_button/071a7a84e68f25ce1392af1fda2b79437782f96f/full.png" alt="Table with a recording link column showing each AUTOLab recording as a compact open button, with extra action icons on the hovered row">
 </picture>
 
 ### Import HDF5 data using the chunk processing API

@@ -1,6 +1,7 @@
 ---
 title: Micro Batching
 order: 300
+description: How the SDK batches log calls in the background for latency and throughput
 ---
 
 

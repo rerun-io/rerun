@@ -1,6 +1,7 @@
 ---
 title: Opening files
 order: 50
+description: File types the Viewer and SDK open out of the box, and how to support more
 ---
 
 The Rerun Viewer and SDK have built-in support for opening many kinds of files, and can be [extended](importers/overview.md) to support any other file type without needing to modify the Rerun codebase itself.

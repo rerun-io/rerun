@@ -1,6 +1,7 @@
 ---
 title: Blueprint Panel
 order: 300
+description: See the structure of your blueprint and change the Viewer layout
 ---
 
 The Blueprint Panel shows the hierarchical structure of your current blueprint and provides controls for modifying the Viewer layout.

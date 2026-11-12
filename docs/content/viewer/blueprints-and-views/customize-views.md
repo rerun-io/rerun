@@ -11,7 +11,7 @@ This section explains the process by which logged data is used to produce a visu
 <!-- schematics source: https://excalidraw.com/#json=AZT206K0Tsph5vuZpJHFA,Tc13rWiMnD2ISMWHH7t2QA -->
 
 <picture>
-  <img src="https://static.rerun.io/customize-view-diagram/65d8c5a579c74606d147dfa693a09da9fa734411/full.png" alt="">
+  <img src="https://static.rerun.io/customize-view-diagram/65d8c5a579c74606d147dfa693a09da9fa734411/full.png" alt="Diagram of a view blueprint: entities and component mappings (fed by overrides and defaults) go into visualizers that render the view">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/customize-view-diagram/65d8c5a579c74606d147dfa693a09da9fa734411/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/customize-view-diagram/65d8c5a579c74606d147dfa693a09da9fa734411/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/customize-view-diagram/65d8c5a579c74606d147dfa693a09da9fa734411/1024w.png">
@@ -50,7 +50,7 @@ The view now displays a series of points in addition to connecting the values wi
 Here is how the visualizers are displayed in the user interface:
 
 <picture>
-  <img src="https://static.rerun.io/series_points_visualizer/affbe3fee18bb09057d29f27cf3993ab5a14f061/full.png" alt="">
+  <img src="https://static.rerun.io/series_points_visualizer/affbe3fee18bb09057d29f27cf3993ab5a14f061/full.png" alt="SeriesPoints visualizer in the selection panel with scalars, colors, markers set to Circle, names, visible_series and marker_sizes">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/series_points_visualizer/affbe3fee18bb09057d29f27cf3993ab5a14f061/480w.png">
 </picture>
 
@@ -79,13 +79,13 @@ The Source dropdown menu allows quick toggling between the different input repre
 By clicking on "Add custom" you can create a new custom component override:
 
 <picture>
-  <img src="https://static.rerun.io/viscomp-add-custom/ac6e0df27139c7be2f446c17981bed74509c0b31/full.png" alt="">
+  <img src="https://static.rerun.io/viscomp-add-custom/ac6e0df27139c7be2f446c17981bed74509c0b31/full.png" alt="Source dropdown for the Boxes2D colors component, listing Boxes2D:colors, View default and the highlighted Add custom option">
 </picture>
 
 You then can use the color picker to determine a color:
 
 <picture>
-  <img src="https://static.rerun.io/viscomp-color-picker/9d7d054c9374a63d9c68e1c89ee840518d614717/full.png" alt="">
+  <img src="https://static.rerun.io/viscomp-color-picker/9d7d054c9374a63d9c68e1c89ee840518d614717/full.png" alt="Color picker open on the colors component of a Boxes2D visualizer, set to bright green (R 71, G 255, B 0)">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/viscomp-color-picker/9d7d054c9374a63d9c68e1c89ee840518d614717/480w.png">
 </picture>
 
@@ -114,7 +114,7 @@ The Viewer can even look for data with compatible datatypes in nested fields of 
 Suitable components show up in the source dropdown:
 
 <picture>
-  <img src="https://static.rerun.io/source_dropdown_scalars/9fb672d6984475010dfb58df485281c327f80368/full.png" alt="">
+  <img src="https://static.rerun.io/source_dropdown_scalars/9fb672d6984475010dfb58df485281c327f80368/full.png" alt="Source dropdown for the scalars of a SeriesLines visualizer, listing JointState joint_positions, velocities, efforts and timestamp fields">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/source_dropdown_scalars/9fb672d6984475010dfb58df485281c327f80368/480w.png">
 </picture>
 
@@ -143,14 +143,14 @@ visualizers of a view, to avoid redundant blueprint definitions.
 This can be done through the UI by selecting the view in question and specifying a new default there:
 
 <picture>
-  <img src="https://static.rerun.io/components_default_view/285a714b9ae87afa18fd1492a10d3bb62a9c5800/full.png" alt="">
+  <img src="https://static.rerun.io/components_default_view/285a714b9ae87afa18fd1492a10d3bb62a9c5800/full.png" alt="Component defaults section of a selected view, with a Pinhole image_plane_distance default set to 5.00">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/components_default_view/285a714b9ae87afa18fd1492a10d3bb62a9c5800/480w.png">
 </picture>
 
 A custom default value set this way will show up on the respective visualizers:
 
 <picture>
-  <img src="https://static.rerun.io/components_default_plane_distance/d279824ff5fe94fee7787550d22df313f46eac2c/full.png" alt="">
+  <img src="https://static.rerun.io/components_default_plane_distance/d279824ff5fe94fee7787550d22df313f46eac2c/full.png" alt="Source dropdown for image_plane_distance with View default selected and Add custom as the other option">
 </picture>
 
 This is how it is achieved with the blueprint API:
@@ -160,13 +160,13 @@ snippet: concepts/viscomp-component-default
 Here, the `/boxes/2` entity is no longer logged with a color value, but a default box color is added to the blueprint. Here is how the user interface represents its visualizer:
 
 <picture>
-  <img src="https://static.rerun.io/viscomp-component-default-1/47dc9337eb6aae6b7c82e44409cd83e06689cd38/full.png" alt="">
+  <img src="https://static.rerun.io/viscomp-component-default-1/47dc9337eb6aae6b7c82e44409cd83e06689cd38/full.png" alt="Boxes2D visualizer in the selection panel with a blue colors value whose Source is set to View default">
 </picture>
 
 And as before, this also shows up in the View's component defaults.
 
 <picture>
-  <img src="https://static.rerun.io/viscomp-component-default-2/c6943e2139dc7271075999a71b09596f07aa0776/full.png" alt="">
+  <img src="https://static.rerun.io/viscomp-component-default-2/c6943e2139dc7271075999a71b09596f07aa0776/full.png" alt="Component defaults section of a view listing a blue colors default for Boxes2D">
 </picture>
 
 ## Hide entities by default

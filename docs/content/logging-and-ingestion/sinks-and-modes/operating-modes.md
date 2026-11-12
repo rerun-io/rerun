@@ -1,6 +1,7 @@
 ---
 title: Operating Modes
 order: 200
+description: Send data to the Viewer with spawn, connect, serve, or save to a file
 ---
 
 There are many different ways of sending data to the Rerun Viewer depending on what you're trying to achieve and whether the Viewer is running in the same process as your code, in another process, or even as a separate web application.

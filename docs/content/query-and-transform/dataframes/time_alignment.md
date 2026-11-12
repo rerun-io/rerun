@@ -1,7 +1,7 @@
 ---
 title: Time-align data
 order: 400
-description: Fill forward to run compute at a fixed frequency
+description: Fill forward unaligned data so you can run compute at a fixed frequency
 ---
 
 Real-world data is usually not time-aligned.

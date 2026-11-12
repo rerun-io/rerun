@@ -37,7 +37,7 @@ snippet: views/dataframe
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1200w.png">
-  <img src="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/full.png">
+  <img src="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/full.png" alt="Dataframe view of the /trig entities with cos, sin and tan_sparse scalar columns, and its query settings in the selection panel">
 </picture>
 
 

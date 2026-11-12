@@ -2,6 +2,7 @@
 title: Migrating from 0.18 to 0.19
 order: 991
 hidden: true
+description: Breaking changes in Rerun 0.19 and how to update code written for 0.18
 ---
 
 Blueprint files (.rbl) from previous Rerun versions will no longer load _automatically_.

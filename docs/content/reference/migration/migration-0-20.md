@@ -2,6 +2,7 @@
 title: Migrating from 0.19 to 0.20
 order: 990
 hidden: true
+description: Breaking changes in Rerun 0.20 and how to update code written for 0.19
 ---
 
 

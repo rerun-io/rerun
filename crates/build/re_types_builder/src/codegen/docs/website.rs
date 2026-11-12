@@ -764,6 +764,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         name,
         title,
         image,
+        alt,
         exclude_from_api_docs: _,
         missing_extensions: _,
     } in examples
@@ -774,7 +775,9 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         putln!(o, "snippet: {path}");
         if let Some(image_url) = image {
             putln!(o);
-            for line in image_url.image_stack().snippet_id(path).finish() {
+            // Without a dedicated alt text, the example title is the best description we have.
+            let alt = alt.unwrap_or(title);
+            for line in image_url.image_stack().snippet_id(path).alt(alt).finish() {
                 putln!(o, "{line}");
             }
         }

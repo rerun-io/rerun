@@ -1,7 +1,7 @@
 ---
 title: Events and Timelines
 order: 400
-description: Events, timelines, and how Rerun tracks time
+description: How events are placed on one or more timelines, and how Rerun tracks time
 ---
 
 ## Timelines
@@ -77,7 +77,7 @@ With `send_columns`, pass one `rr.TimeColumn` per timeline in `indexes`.
 An _event_ refers to an instance of logging one or more component batches to one or more timelines. In the viewer, the Time panel provides a graphical representation of these events across time and entities.
 
 <picture>
-  <img src="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/full.png" alt="">
+  <img src="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/full.png" alt="Time panel streams for a scalar entity, with a tooltip on the Scalar component row reporting 5 events and a value">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/1024w.png">

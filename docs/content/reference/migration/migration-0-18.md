@@ -2,6 +2,7 @@
 title: Migrating from 0.17 to 0.18
 order: 992
 hidden: true
+description: Breaking changes in Rerun 0.18 and how to update code written for 0.17
 ---
 
 ## ⚠️ Breaking changes

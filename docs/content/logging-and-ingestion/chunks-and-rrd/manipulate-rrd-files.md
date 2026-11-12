@@ -1,7 +1,7 @@
 ---
 title: Work with .rrd files
 order: 300
-description: Inspect, migrate, trim, split, merge, compact, and append to .rrd files with the rerun rrd command
+description: Inspect, trim, split, merge, and compact .rrd files with rerun rrd
 ---
 
 The `rerun rrd` command can inspect and change `.rrd` files without writing any code.

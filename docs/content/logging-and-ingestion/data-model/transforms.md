@@ -1,7 +1,7 @@
 ---
 title: Transforms & Coordinate Frames
 order: 800
-description: Coordinate frames and how transforms relate them
+description: Model spatial relationships with transforms, poses, and coordinate frames
 ---
 
 <!-- Figma file for diagrams in this article: https://www.figma.com/board/PTwJKgi9kQOqG7ZgzdhrDL/Transforms-doc-page-graphs?t=fWkOGxxn6mZkkCON-1 -->
@@ -127,7 +127,7 @@ rr.log("robot/arm/gripper", rr.CoordinateFrame("tf#/robot/arm/gripper"), rr.Poin
 ```
 
 <picture>
-  <img src="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/480w.png" alt="">
+  <img src="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/480w.png" alt="Diagram linking entities /robot, /robot/arm and /robot/arm/gripper to implicit tf# frames chained from child to parent">
 </picture>
 
 #### Mixing named and implicit transform frames
@@ -147,7 +147,7 @@ rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
 ```
 
 <picture>
-  <img src="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/480w.png" alt="">
+  <img src="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/480w.png" alt="Diagram of /robot linked to implicit frame tf#/robot, with /arm and /gripper both linked to arm_frame, a child of tf#/robot">
 </picture>
 
 ## Other transform types
@@ -207,7 +207,7 @@ snippet: archetypes/pinhole_projections
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/1200w.png">
-  <img src="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/full.png">
+  <img src="https://static.rerun.io/pinhole-projections/ceb1b4124e111b5d0a786dd48909a1cbb52eca4c/full.png" alt="3D view of colored spheres, a red wireframe box and a checkerboard pinhole camera, beside the 2D camera view of their projection">
 </picture>
 
 
@@ -255,7 +255,7 @@ snippet: archetypes/mesh3d_instancing
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">
-  <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png">
+  <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png" alt="3D view of a rainbow-colored pyramid mesh instanced four times inside a single magenta wireframe box">
 </picture>
 
 In this example, the mesh at `"shape"` is instantiated four times with different translations and rotations.

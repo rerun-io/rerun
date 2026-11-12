@@ -1,7 +1,7 @@
 ---
 title: Export recordings to LeRobot datasets
 order: 90
-description: Align multi-rate sensor data and export to LeRobot
+description: Align multi-rate sensor data and export it as a LeRobot dataset
 ---
 
 Convert Rerun data into the training dataset version of your choice.

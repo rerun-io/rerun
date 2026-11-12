@@ -1,7 +1,7 @@
 ---
 title: Query semantics & partial updates
 order: 600
-description: How Rerun resolves queries at any point in time
+description: How latest-at queries resolve data at any point in time, with partial updates
 ---
 
 ## The Rerun data model is based around streams of entities with components

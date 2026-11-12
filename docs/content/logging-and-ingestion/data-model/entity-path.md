@@ -1,7 +1,7 @@
 ---
 title: The Entity Path Hierarchy
 order: 300
-description: How entity paths organize data into a hierarchy
+description: How entity paths organize logged data into a hierarchy you can query
 ---
 
 ## Entity paths

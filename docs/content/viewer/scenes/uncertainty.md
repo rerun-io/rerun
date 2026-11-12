@@ -1,7 +1,7 @@
 ---
 title: Visualize uncertainty and covariance
 order: 500
-description: Show covariance ellipsoids in 3D, covariance ellipses in 2D, error bands in plots, and Gaussian splats
+description: Show covariance ellipsoids, error bands, and Gaussian splats
 ---
 
 ## Covariance ellipsoids in 3D

@@ -7,7 +7,7 @@
 /// but can also be useful for other use cases where an image buffer needs to be placed in a scene.
 ///
 /// \example archetypes/grid_map_simple title="Simple occupancy grid map"
-/// \example archetypes/grid_map_pose missing="cpp,rs" title="Log a grid map at a specific pose" image="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1200w.png"
+/// \example archetypes/grid_map_pose missing="cpp,rs" title="Log a grid map at a specific pose" image="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1200w.png" alt="3D view of a grid map showing an orange cartoon crab, tilted in space with a white outline and axes labeled map at its origin"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Spatial 3D")]

@@ -1,7 +1,7 @@
 ---
 title: Chunks
 order: 100
-description: The Arrow-backed storage unit Rerun uses internally
+description: Chunks, the Arrow-backed unit Rerun uses to log, store, and query data
 ---
 
 A *Chunk* is the core datastructure at the heart of Rerun: it dictates how data gets logged, injected, stored, and queried.
@@ -27,7 +27,7 @@ A *Component Column* contains one or more [*Component Batches*](../data-model/ba
 This design allows for keeping chunks within a target size range, even for recordings that combine low frequency but large data like point clouds or tensors (wide columns), with high frequency but small signals (tall columns).
 
 <picture>
-  <img src="https://static.rerun.io/weird_chunks/ce98d89bfefbe59a816ae4650e634573d59cf34a/full.png" alt="">
+  <img src="https://static.rerun.io/weird_chunks/ce98d89bfefbe59a816ae4650e634573d59cf34a/full.png" alt="Diagram comparing a tall chunk of small high-frequency components with a wide chunk holding a single large component">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/weird_chunks/ce98d89bfefbe59a816ae4650e634573d59cf34a/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/weird_chunks/ce98d89bfefbe59a816ae4650e634573d59cf34a/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/weird_chunks/ce98d89bfefbe59a816ae4650e634573d59cf34a/1024w.png">

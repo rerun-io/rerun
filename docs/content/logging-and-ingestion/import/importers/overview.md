@@ -1,6 +1,7 @@
 ---
 title: Overview
 order: 50
+description: How importers load files into the Viewer and SDK, and how to write your own
 ---
 
 Internally, the [`Importer`](https://docs.rs/re_importer/latest/re_importer/trait.Importer.html) trait takes care of loading files into the Viewer and/or SDK.
@@ -27,7 +28,7 @@ From there, it can log data as usual, using the [`stdout` logging sink](../../si
 The Rerun Viewer/SDK will then automatically load the data streamed to the external importer's standard output.
 
 <picture>
-  <img src="https://static.rerun.io/data-loader-external-overview/97e978000c709b78290f50d52c229a91f7543648/full.png" alt="">
+  <img src="https://static.rerun.io/data-loader-external-overview/97e978000c709b78290f50d52c229a91f7543648/full.png" alt="Diagram of an external importer: the Rerun Viewer passes a file path via argv to a rerun-loader executable and reads logged data from stdout">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/data-loader-external-overview/97e978000c709b78290f50d52c229a91f7543648/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/data-loader-external-overview/97e978000c709b78290f50d52c229a91f7543648/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/data-loader-external-overview/97e978000c709b78290f50d52c229a91f7543648/1024w.png">

@@ -2,7 +2,7 @@
 title: Use Rerun with ROS 2
 order: 300
 ogImageUrl: /docs-media/og-howto-ros.jpg
-description: Write a ROS 2 Python node that subscribes to common topics and logs them to Rerun. For recorded bags, see the MCAP pages.
+description: Log common ROS 2 topics to Rerun from a live system with a Python node
 ---
 
 This guide is for logging from a running ROS 2 system.

@@ -1,7 +1,7 @@
 ---
 title: Control mesh appearance
 order: 300
-description: Mesh colors, textures, transparency, normals, and lighting for Mesh3D and Asset3D, and why a mesh looks flat or unlit
+description: Mesh colors, textures, transparency, normals, and lighting for Mesh3D
 ---
 
 This page explains how [`Mesh3D`](../../reference/types/archetypes/mesh3d.md) and [`Asset3D`](../../reference/types/archetypes/asset3d.md) are shaded, and which settings you can change.
