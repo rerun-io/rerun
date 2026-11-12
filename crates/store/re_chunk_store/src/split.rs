@@ -139,7 +139,7 @@ impl ChunkStore {
                         let start_revised = keyframes[p];
 
                         if start_revised < start_inclusive {
-                            re_log::info!(
+                            re_log::debug!(
                                 %entity,
                                 %timeline,
                                 ?start_inclusive,
@@ -192,7 +192,7 @@ impl ChunkStore {
                 if entity_has_multiplexed_transforms_on_timeline
                     || entity_has_multiplexed_pinholes_on_timeline
                 {
-                    re_log::info!(
+                    re_log::debug!(
                         %entity,
                         %timeline,
                         ?start_inclusive,

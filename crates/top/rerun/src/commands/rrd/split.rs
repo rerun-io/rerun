@@ -528,7 +528,14 @@ impl SplitCommand {
         );
 
         // One split at a time: each is sent to its encoder before the next one is computed.
-        for (i, all_chunks_in_split) in splits.enumerate() {
+        for (i, (range, all_chunks_in_split)) in std::iter::zip(&ranges, splits).enumerate() {
+            re_log::info!(
+                cutoff_timeline = %cutoff_timeline.name(),
+                start_inclusive = %time_to_human_string(cutoff_timeline, range.min()),
+                end_inclusive = %time_to_human_string(cutoff_timeline, range.max()),
+                "splitting…"
+            );
+
             let mut all_unique_indexes_in_split = HashSet::default();
 
             send_crossbeam(
