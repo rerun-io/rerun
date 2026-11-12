@@ -593,14 +593,22 @@ pub trait UiExt {
         use std::f32::consts::TAU;
 
         let angle = egui::remap(openness, 0.0..=1.0, 0.0..=TAU / 4.0);
-        let size = egui::vec2(8.0, 8.0);
-        let rect = egui::Rect::from_center_size(center, size);
 
-        crate::icons::CHEVRON
+        let image = crate::icons::CHEVRON
             .as_image()
+            .fit_to_original_size(1.0)
             .tint(color)
-            .rotate(angle, egui::vec2(0.5, 0.5))
-            .paint_at(self.ui(), rect);
+            .rotate(angle, egui::vec2(0.5, 0.5));
+        let Some(size) = image.load_and_calc_size(self.ui(), egui::Vec2::INFINITY) else {
+            return;
+        };
+
+        // `chevron.svg` has an even size, with its tip at (+1.5, +0.5) points from the center.
+        // With the center snapped to a pixel, the tip lands on a pixel center at 1x
+        // (a sharp one-pixel point) both closed and open, and on a pixel corner at 2x
+        // (matching the two-pixel-wide stroke).
+        let center = center.round_to_pixels(self.ui().pixels_per_point());
+        image.paint_at(self.ui(), egui::Rect::from_center_size(center, size));
     }
 
     /// Workaround for putting a label into a grid at the top left of its row.
