@@ -1114,6 +1114,21 @@ fn chat_effort_picker() {
     harness.snapshot("chat_effort_picker");
 }
 
+/// The settings button's padding reaches into the composer margin, so its hover background must
+/// still stay inside the composer.
+#[test]
+fn chat_settings_button_hovered() {
+    let mut panel = panel();
+    panel.show_chat();
+    open_session(panel.session_mut());
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    harness.get_by_label("Manual").hover();
+    harness.run_steps(4);
+    harness.snapshot("chat_settings_button_hovered");
+}
+
 /// An agent offering dozens of models gets a scrolling model submenu.
 #[test]
 fn chat_model_picker_long() {

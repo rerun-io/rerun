@@ -22,6 +22,16 @@ use super::tool_call_ui::{code_ui, tool_fields_ui, tool_input_ui};
 use super::transcript_ui::{plan_ui, transcript_ui};
 use re_agent::{AgentPreferences, AgentSession, AuthPrompt, Phase, Prompt, PromptImage};
 
+/// How far the contents of the composer sit from its edges: the prompt text, the settings
+/// button's text, and the send button.
+const COMPOSER_MARGIN: f32 = 6.0;
+
+/// Size of the settings button below the prompt.
+const SETTINGS_BUTTON_SIZE: re_ui::Size = re_ui::Size::Tiny;
+
+/// Size of the send and stop buttons, which also sets the height of the row below the prompt.
+const SEND_BUTTON_SIZE: re_ui::Size = re_ui::Size::Small;
+
 /// Height a pasted image is previewed at in the composer, in points.
 const PREVIEW_HEIGHT: f32 = 48.0;
 
@@ -370,7 +380,9 @@ fn settings_menu_ui(
     }
 
     egui::containers::menu::MenuButton::from_button(
-        egui::Button::dropdown(egui::Atoms::from_iter(summary)).gap(SETTINGS_BUTTON_GAP),
+        egui::Button::dropdown(egui::Atoms::from_iter(summary))
+            .size(SETTINGS_BUTTON_SIZE)
+            .gap(SETTINGS_BUTTON_GAP),
     )
     .config(egui::containers::menu::MenuConfig::new().style(re_ui::menu::menu_style()))
     .ui(ui, |ui| {
@@ -856,6 +868,7 @@ fn footer_ui(
         && (!input.prompt.text.trim().is_empty() || !input.prompt.images.is_empty());
 
     let ((), clicked) = egui::containers::Sides::new()
+        .height(SEND_BUTTON_SIZE.height())
         .shrink_left()
         .truncate()
         .show(
@@ -866,24 +879,35 @@ fn footer_ui(
                 let mut clip_rect = ui.clip_rect();
                 clip_rect.max.x = clip_rect.max.x.min(ui.max_rect().max.x);
                 ui.set_clip_rect(clip_rect);
-                settings_menu_ui(ui, session, input, preferences, agent_name);
 
+                // A child that takes no space in the row, so the part of it that reaches into the
+                // composer margin does not grow the composer.
+                let mut child = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(settings_rect(ui))
+                        .layout(egui::Layout::left_to_right(egui::Align::Center)),
+                );
+                settings_menu_ui(&mut child, session, input, preferences, agent_name);
                 match session.phase() {
                     Phase::Connecting { status } => {
-                        ui.weak(status);
+                        child.weak(status);
                     }
                     Phase::Disconnected { reason } => {
-                        ui.error_label(reason.clone());
+                        child.error_label(reason.clone());
                     }
                     Phase::Idle | Phase::Ready => {}
                 }
+                ui.allocate_rect(
+                    child.min_rect().intersect(ui.max_rect()),
+                    egui::Sense::hover(),
+                );
             },
             |ui| {
                 let clicked = if turn_in_progress {
                     ui.add(
                         egui::Button::icon(icons::STOP, "Stop")
                             .primary()
-                            .size_small(),
+                            .size(SEND_BUTTON_SIZE),
                     )
                     .on_hover_text("Cancel the current turn (Esc)")
                     .clicked()
@@ -892,7 +916,7 @@ fn footer_ui(
                         can_send,
                         egui::Button::icon(icons::ARROW_UP, "Send")
                             .primary()
-                            .size_small(),
+                            .size(SEND_BUTTON_SIZE),
                     )
                     .on_hover_text("Send (⏎)")
                     .clicked()
@@ -912,6 +936,25 @@ fn footer_ui(
             input.focus = true;
         }
     }
+}
+
+/// Where the settings button goes in the row below the prompt.
+///
+/// Its own padding hangs out into the composer margin, so that its text lines up with the prompt
+/// text, and sits as far from the bottom edge as from the left.
+fn settings_rect(ui: &egui::Ui) -> egui::Rect {
+    let row = ui.max_rect();
+    let padding = SETTINGS_BUTTON_SIZE.padding().x;
+    // The font size, not the row height: the row also holds room for descenders below the text.
+    let font_size = egui::TextStyle::Body.resolve(ui.style()).size;
+    let text_gap = 0.5 * (SETTINGS_BUTTON_SIZE.height() - font_size);
+    egui::Rect::from_min_max(
+        egui::pos2(
+            row.left() - padding,
+            row.bottom() + text_gap - SETTINGS_BUTTON_SIZE.height(),
+        ),
+        egui::pos2(row.right(), row.bottom() + text_gap),
+    )
 }
 
 /// Returns the auth method the user picked, if any.
@@ -1097,7 +1140,7 @@ fn input_ui(
         .fill(tokens.text_edit_bg_color)
         .stroke(tokens.control_stroke)
         .corner_radius(6)
-        .inner_margin(6)
+        .inner_margin(COMPOSER_MARGIN)
         .show(ui, |ui| {
             pending_images_ui(ui, input);
 
