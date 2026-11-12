@@ -37,7 +37,7 @@ use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender, Ses
 /// The id of the model selector the backend offers as a session config option.
 const MODEL_CONFIG_ID: &str = "model";
 const EFFORT_CONFIG_ID: &str = "effort";
-const DEFAULT_EFFORT: &str = "default";
+const DEFAULT_EFFORT: &str = crate::Effort::DEFAULT;
 
 /// Why a model-API agent could not start, or could not finish a turn.
 #[derive(Debug, thiserror::Error)]
@@ -232,13 +232,20 @@ impl ModelApiProvider {
 
     /// The model a new session starts with, unless the user has picked another.
     ///
-    /// A fast one, like the models `DEFAULT_MODEL_PREFERENCES` picks for agent harnesses,
-    /// because the agent panel should feel fast.
+    /// The first of [`crate::DEFAULT_MODEL_PREFERENCES`] the provider offers, as for agent
+    /// harnesses, because the agent panel should feel fast.
     pub fn default_model(self) -> &'static str {
-        match self {
-            Self::Anthropic => rig_core::providers::anthropic::CLAUDE_SONNET_5_5,
-            Self::OpenAi => rig_core::providers::openai::GPT_5_MINI,
-        }
+        let models = self.models();
+        crate::DEFAULT_MODEL_PREFERENCES
+            .iter()
+            .find_map(|preference| {
+                models
+                    .iter()
+                    .find(|model| crate::transcript::matches_model_preference(model, preference))
+            })
+            .or_else(|| models.first())
+            .copied()
+            .unwrap_or_default()
     }
 
     /// The definitions of the `hosted` tools that this provider runs on its own servers during
@@ -1803,16 +1810,14 @@ mod tests {
     #[test]
     #[cfg(agent_harness_backend)]
     fn default_models_are_the_preferred_fast_ones() {
-        for provider in [ModelApiProvider::Anthropic, ModelApiProvider::OpenAi] {
-            let model = provider.default_model();
-            assert!(provider.models().contains(&model), "{model:?}");
-            assert!(
-                crate::settings::DEFAULT_MODEL_PREFERENCES
-                    .iter()
-                    .any(|preference| model.contains(preference)),
-                "{model:?} is not one of DEFAULT_MODEL_PREFERENCES"
-            );
-        }
+        assert_eq!(
+            ModelApiProvider::Anthropic.default_model(),
+            rig_core::providers::anthropic::CLAUDE_SONNET_5_5
+        );
+        assert_eq!(
+            ModelApiProvider::OpenAi.default_model(),
+            rig_core::providers::openai::GPT_5_MINI
+        );
     }
 
     #[test]

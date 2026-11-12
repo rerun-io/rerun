@@ -797,9 +797,34 @@ fn chat_agent_log() {
             panel,
         );
     harness.run_steps(4);
-    harness.get_by_label_contains("Agent log (").click();
+    harness.get_by_label("Manual").click();
+    harness.run_steps(2);
+    harness.snapshot("chat_agent_log_menu");
+    harness.get_by_label("Show agent log").click();
     harness.run_steps(4);
     harness.snapshot("chat_agent_log");
+
+    // Dragging the top edge of the log panel to the bottom closes it.
+    let log_top = harness.get_by_label_contains("initialize").rect().top() - 8.0;
+    let edge = egui::pos2(SIZE.x / 2.0, log_top);
+    harness.hover_at(edge);
+    harness.run_steps(2);
+    harness.drag_at(edge);
+    harness.run_steps(1);
+    harness.hover_at(egui::pos2(edge.x, SIZE.y));
+    harness.run_steps(1);
+    harness.drop_at(egui::pos2(edge.x, SIZE.y));
+    harness.run_steps(8);
+    harness.get_by_label("Manual").click();
+    harness.run_steps(2);
+    assert_eq!(
+        harness
+            .get_by_label("Show agent log")
+            .accesskit_node()
+            .toggled(),
+        Some(egui::accesskit::Toggled::False),
+        "dragging the log panel closed should uncheck it"
+    );
 }
 
 /// A table wider than the panel must scroll on its own, not widen the messages after it.
@@ -1015,7 +1040,8 @@ fn chat_waiting_for_the_first_reply() {
     snapshot("chat_waiting_for_the_first_reply", panel);
 }
 
-/// The footer names the concrete model behind the agent's default, and opens a list of the others.
+/// The settings button names the concrete model behind the agent's default and shows fast mode as a
+/// bolt; its menu lists the other models.
 #[test]
 fn chat_model_picker() {
     let mut panel = panel();
@@ -1036,13 +1062,22 @@ fn chat_model_picker() {
         ConfigOptionUpdate::new(vec![
             SessionConfigOption::select("model", "Model", "default", models)
                 .category(SessionConfigOptionCategory::Model),
+            SessionConfigOption::select(
+                "fast",
+                "Fast mode",
+                "on",
+                vec![
+                    SessionConfigSelectOption::new("off", "Off"),
+                    SessionConfigSelectOption::new("on", "On"),
+                ],
+            ),
         ]),
     )));
 
     let mut harness = harness(panel);
     harness.run_steps(4);
-    harness.get_by_value("Opus 5.5").click();
-    harness.run_steps(4);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Model");
+    harness.run_steps(2);
     harness.snapshot("chat_model_picker");
 }
 
@@ -1074,9 +1109,35 @@ fn chat_effort_picker() {
 
     let mut harness = harness(panel);
     harness.run_steps(4);
-    harness.get_by_value("High").click();
-    harness.run_steps(4);
+    super::open_settings_submenu(&mut harness, "Opus 5.5", "Effort");
+    harness.run_steps(2);
     harness.snapshot("chat_effort_picker");
+}
+
+/// An agent offering dozens of models gets a scrolling model submenu.
+#[test]
+fn chat_model_picker_long() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+    let models: Vec<_> = (1..=40)
+        .map(|index| {
+            SessionConfigSelectOption::new(format!("model-{index}"), format!("Gizmo {index}"))
+        })
+        .collect();
+    session.handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+        ConfigOptionUpdate::new(vec![
+            SessionConfigOption::select("model", "Model", "model-1", models)
+                .category(SessionConfigOptionCategory::Model),
+        ]),
+    )));
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    super::open_settings_submenu(&mut harness, "Gizmo 1", "Model");
+    harness.run_steps(2);
+    harness.snapshot("chat_model_picker_long");
 }
 
 /// In a narrow panel, the composer footer truncates instead of running under the stop button.

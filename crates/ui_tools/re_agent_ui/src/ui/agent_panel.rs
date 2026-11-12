@@ -558,6 +558,11 @@ impl AgentPanel {
     /// another agent than the selected one, unless the selected agent cannot be launched or the
     /// draft's own setup is open. What the user typed into it carries over.
     fn refresh_draft(&mut self) {
+        // Leaving setup by any way, including Escape, ends the user's own setup of the draft.
+        if self.draft.screen == Screen::Chat {
+            self.user_opened_draft_setup = false;
+        }
+
         // A draft whose start failed keeps its setup screen, with the error in the transcript.
         let draft = &mut self.draft;
         if draft.screen == Screen::Setup
@@ -696,6 +701,10 @@ impl AgentPanel {
 
         if new_conversation_shortcut_pressed(ui, panel_rect) {
             action = Some(PanelAction::NewConversation);
+        }
+        let shown = self.active_conversation_mut();
+        if std::mem::take(&mut shown.input.open_setup_requested) {
+            action = Some(PanelAction::OpenSetup(shown.id));
         }
         self.handle_action(ui.ctx(), action);
         self.promote_started_draft();
@@ -1141,10 +1150,12 @@ mod tests {
 
         panel.settings.profile_id = AgentProfileId::new("codex");
         panel.user_opened_draft_setup = true;
+        panel.draft.screen = Screen::Setup;
         panel.refresh_draft();
         assert_eq!(panel.draft.id, first, "the draft's own setup starts codex");
 
-        panel.user_opened_draft_setup = false;
+        // Leaving setup with Escape goes straight back to the chat, without a panel action.
+        panel.draft.screen = Screen::Chat;
         panel.refresh_draft();
         assert_ne!(panel.draft.id, first, "codex is installed");
         assert_eq!(panel.draft.input.prompt.text, "Half-written");

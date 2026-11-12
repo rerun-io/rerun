@@ -718,6 +718,26 @@ pub fn model_name(model: &SessionConfigSelectOption) -> &str {
     concrete.unwrap_or(&model.name)
 }
 
+/// The first of `models` to match one of `preferences`, which are ordered best first.
+///
+/// A preference matches a model whose value or name contains it, ignoring case.
+pub fn preferred_model<'a>(
+    models: &[&'a SessionConfigSelectOption],
+    preferences: &[impl AsRef<str>],
+) -> Option<&'a SessionConfigSelectOption> {
+    preferences.iter().find_map(|preference| {
+        models.iter().copied().find(|model| {
+            matches_model_preference(&model.value.0, preference.as_ref())
+                || matches_model_preference(&model.name, preference.as_ref())
+        })
+    })
+}
+
+/// Whether a model's id or name matches a preference such as "sonnet", ignoring case.
+pub fn matches_model_preference(model: &str, preference: &str) -> bool {
+    model.to_lowercase().contains(&preference.to_lowercase())
+}
+
 /// Claude and Codex expose speed with the config ids `fast` and `fast-mode`, respectively.
 pub fn speed_selector(
     options: &[SessionConfigOption],

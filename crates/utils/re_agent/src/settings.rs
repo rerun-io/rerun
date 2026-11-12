@@ -11,7 +11,6 @@ use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProv
 /// Fast models to select, best first, unless the user has picked a model for the profile.
 ///
 /// The agent panel should feel fast, and flagship models are often too slow for that.
-#[cfg(agent_harness_backend)]
 pub const DEFAULT_MODEL_PREFERENCES: &[&str] = &[
     "sonnet", // Anthropic: Claude
     "flash",  // Google: Gemini
@@ -193,6 +192,16 @@ pub struct AgentPreferences {
 #[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct Effort(pub String);
+
+impl Effort {
+    /// The effort that leaves the level to the model, offered by the model APIs as "Default".
+    pub const DEFAULT: &'static str = "default";
+
+    /// Whether this leaves the level to the model.
+    pub fn is_default(&self) -> bool {
+        self.0 == Self::DEFAULT
+    }
+}
 
 impl From<&SessionConfigValueId> for Effort {
     fn from(value: &SessionConfigValueId) -> Self {

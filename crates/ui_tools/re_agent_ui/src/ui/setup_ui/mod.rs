@@ -302,12 +302,17 @@ fn tag_ui(ui: &mut egui::Ui, text: &str) -> egui::Response {
 
 /// The name of the selected agent, e.g. "Claude Code" or "Anthropic API".
 pub fn selected_agent_name(settings: &AgentSettings, agents: &[AgentEntry]) -> Option<String> {
-    if let Some(provider) = settings.profile_id.model_api_provider() {
+    agent_name(&settings.profile_id, agents)
+}
+
+/// The name of the agent with `profile_id`, e.g. "Claude Code" or "Anthropic API".
+pub fn agent_name(profile_id: &AgentProfileId, agents: &[AgentEntry]) -> Option<String> {
+    if let Some(provider) = profile_id.model_api_provider() {
         return Some(format!("{} API", provider.name()));
     }
     agents
         .iter()
-        .find(|agent| agent.profile.id == settings.profile_id)
+        .find(|agent| &agent.profile.id == profile_id)
         .map(|agent| agent.profile.name.clone())
 }
 

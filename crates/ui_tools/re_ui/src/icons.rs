@@ -188,6 +188,7 @@ pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.svg");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.svg");
 pub const COMBO_ARROW: Icon = icon_from_path!("../data/icons/combo_arrow.svg");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
+pub const FAST_MODE: Icon = icon_from_path!("../data/icons/fast_mode.svg");
 pub const FILTER: Icon = icon_from_path!("../data/icons/filter.svg");
 
 pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.svg");

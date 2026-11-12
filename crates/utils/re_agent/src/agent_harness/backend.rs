@@ -10,9 +10,9 @@ use agent_client_protocol_schema::v1::{
     ElicitationFormCapabilities, Implementation, InitializeRequest, InitializeResponse,
     LoadSessionRequest, McpServer, McpServerStdio, NewSessionRequest, PromptRequest,
     RequestPermissionRequest, SessionConfigId, SessionConfigKind, SessionConfigOption,
-    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionConfigValueId, SessionId, SessionModeId, SessionModeState, SessionNotification,
-    SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
+    SessionConfigOptionCategory, SessionConfigSelectOptions, SessionConfigValueId, SessionId,
+    SessionModeId, SessionModeState, SessionNotification, SessionUpdate,
+    SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
 };
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
@@ -546,25 +546,16 @@ fn pick_model(
     let SessionConfigKind::Select(select) = &selector.kind else {
         return None;
     };
-    let models: Vec<&SessionConfigSelectOption> = match &select.options {
-        SessionConfigSelectOptions::Ungrouped(models) => models.iter().collect(),
-        SessionConfigSelectOptions::Grouped(groups) => {
-            groups.iter().flat_map(|group| &group.options).collect()
-        }
-        _ => return None,
-    };
+    let models = crate::transcript::select_options(select);
 
     let model = preferred_model
-        .and_then(|preferred| models.iter().find(|model| &model.value == preferred))
-        .or_else(|| {
-            preferences.iter().find_map(|preference| {
-                let preference = preference.to_lowercase();
-                models.iter().find(|model| {
-                    model.value.0.to_lowercase().contains(&preference)
-                        || model.name.to_lowercase().contains(&preference)
-                })
-            })
-        })?;
+        .and_then(|preferred| {
+            models
+                .iter()
+                .copied()
+                .find(|model| &model.value == preferred)
+        })
+        .or_else(|| crate::transcript::preferred_model(&models, preferences))?;
 
     (model.value != select.current_value).then(|| (selector.id.clone(), model.value.clone()))
 }
@@ -622,7 +613,8 @@ fn pick_effort(
 mod tests {
     use agent_client_protocol::Channel;
     use agent_client_protocol_schema::v1::{
-        NewSessionResponse, SessionConfigSelectGroup, SessionMode, SetSessionConfigOptionResponse,
+        NewSessionResponse, SessionConfigSelectGroup, SessionConfigSelectOption, SessionMode,
+        SetSessionConfigOptionResponse,
     };
 
     use super::*;

@@ -161,7 +161,7 @@ fn requested_input_focus_is_applied() {
         );
     harness.run_steps(2);
 
-    harness.get_by_value("Manual").focus();
+    harness.get_by_label("Manual").focus();
     harness.run_steps(2);
     let input = harness.get_by_role(Role::MultilineTextInput);
     assert!(!input.accesskit_node().is_focused());
@@ -172,7 +172,28 @@ fn requested_input_focus_is_applied() {
     assert!(input.accesskit_node().is_focused());
 }
 
-/// Picking a mode in the footer dropdown asks the agent to switch.
+/// The settings menu names the agent, and its settings button opens the agent setup.
+#[test]
+fn settings_menu_opens_agent_setup() {
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
+        .build_ui_state(
+            |ui, panel: &mut AgentPanel| {
+                panel.ui(ui);
+            },
+            ready_panel(),
+        );
+    harness.run_steps(2);
+    assert!(harness.query_by_label_contains("Start Claude").is_none());
+
+    harness.get_by_label("Manual").click();
+    harness.run_steps(2);
+    harness.get_by_label("Claude Code");
+    harness.get_by_label("Agent setup").click();
+    harness.run_steps(2);
+    assert!(harness.query_by_label_contains("Start Claude").is_some());
+}
+
+/// Picking a mode in the settings menu asks the agent to switch.
 #[test]
 fn mode_picker_requests_the_clicked_mode() {
     let mut panel = ready_panel();
@@ -190,8 +211,7 @@ fn mode_picker_requests_the_clicked_mode() {
         );
     harness.run_steps(2);
 
-    harness.get_by_value("Manual").click();
-    harness.run_steps(2);
+    super::open_settings_submenu(&mut harness, "Manual", "Mode");
     harness.get_by_label("Accept edits").click();
     harness.run_steps(2);
 

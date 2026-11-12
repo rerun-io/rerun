@@ -973,6 +973,40 @@ pub trait UiExt {
         response
     }
 
+    /// A menu item with a checkbox on its right.
+    ///
+    /// The checkbox lines up with the values and submenu arrows of the menu items around it.
+    /// Clicking anywhere on the item toggles `checked`.
+    fn checkbox_menu_item<'a>(
+        &mut self,
+        checked: &mut bool,
+        atoms: impl egui::IntoAtoms<'a>,
+    ) -> egui::Response {
+        let ui = self.ui_mut();
+        let checkbox_id = egui::IdSalt::new("checkbox");
+        // A checkbox is as tall as a row, with its box centered in it.
+        let checkbox_size = egui::vec2(ui.spacing().icon_width, ui.spacing().interact_size.y);
+
+        let atom_response = egui::Button::new(atoms)
+            .right_text(egui::Atom::custom(checkbox_id, checkbox_size))
+            .atom_ui(ui);
+        let mut response = atom_response.response.clone();
+
+        let checkbox_clicked = atom_response.rect(checkbox_id).is_some_and(|rect| {
+            let mut value = *checked;
+            ui.put(rect, egui::Checkbox::without_text(&mut value))
+                .labelled_by(response.id)
+                .clicked()
+        });
+
+        if response.clicked() || checkbox_clicked {
+            *checked = !*checked;
+            response.mark_changed();
+        }
+
+        response
+    }
+
     /// Helper for adding a list-item hyperlink.
     ///
     /// By default, the url is open in the same tab or a new tab based on the mouse button and

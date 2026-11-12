@@ -10,6 +10,27 @@ mod pasted_images;
 mod self_improve;
 mod speed_selection;
 
+/// Opens the composer's settings menu, then its submenu for `setting`, e.g. "Model" or "Effort".
+///
+/// `summary` is part of the settings button's text, e.g. the current model.
+fn open_settings_submenu(
+    harness: &mut egui_kittest::Harness<'_, re_agent_ui::AgentPanel>,
+    summary: &str,
+    setting: &str,
+) {
+    use egui_kittest::kittest::Queryable as _;
+
+    harness.get_by_label_contains(summary).click();
+    harness.run_steps(2);
+    harness
+        .get_by(|node| {
+            node.label()
+                .is_some_and(|label| label.split_whitespace().next() == Some(setting))
+        })
+        .hover();
+    harness.run_steps(2);
+}
+
 /// Offered by an empty conversation in the test panels.
 fn example_prompts() -> Vec<String> {
     [
