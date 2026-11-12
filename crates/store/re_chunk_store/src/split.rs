@@ -26,7 +26,7 @@ impl ChunkStore {
     pub fn split_by_time_ranges<'a>(
         &'a self,
         tracking: ChunkTrackingMode,
-        timeline: &'a TimelineName,
+        timeline: TimelineName,
         ranges: &'a [AbsoluteTimeRange],
         is_start_of_gop: Option<&IsStartOfGop>,
     ) -> impl Iterator<Item = impl Iterator<Item = Chunk> + use<>> + use<'a> {
@@ -171,21 +171,21 @@ impl ChunkStore {
                 // Special cases: transforms and/or pinholes with multiplexed coordinate frames
                 let entity_has_multiplexed_transforms_on_timeline =
                     self.entity_has_component_on_timeline(
-                        Some(timeline),
+                        Some(&timeline),
                         entity,
                         transform_parent_frame_identifier,
                     ) || self.entity_has_component_on_timeline(
-                        Some(timeline),
+                        Some(&timeline),
                         entity,
                         transform_child_frame_identifier,
                     );
                 let entity_has_multiplexed_pinholes_on_timeline =
                     self.entity_has_component_on_timeline(
-                        Some(timeline),
+                        Some(&timeline),
                         entity,
                         pinhole_parent_frame_identifier,
                     ) || self.entity_has_component_on_timeline(
-                        Some(timeline),
+                        Some(&timeline),
                         entity,
                         pinhole_child_frame_identifier,
                     );
@@ -234,14 +234,14 @@ impl ChunkStore {
         &self,
         tracking: ChunkTrackingMode,
         entity_path: &EntityPath,
-        timeline: &TimelineName,
+        timeline: TimelineName,
         is_start_of_gop: &dyn Fn(&[u8], VideoCodec) -> anyhow::Result<bool>,
     ) -> Vec<TimeInt> {
         let codec = {
             let codec_identifier = VideoStream::descriptor_codec().component;
             let results = self.latest_at_relevant_chunks(
                 tracking,
-                &LatestAtQuery::new(*timeline, TimeInt::MAX),
+                &LatestAtQuery::new(timeline, TimeInt::MAX),
                 entity_path,
                 codec_identifier,
             );
@@ -260,7 +260,7 @@ impl ChunkStore {
         let sample_identifier = VideoStream::descriptor_sample().component;
         let results = self.range_relevant_chunks(
             tracking,
-            &RangeQuery::everything(*timeline),
+            &RangeQuery::everything(timeline),
             entity_path,
             sample_identifier,
         );
@@ -268,7 +268,7 @@ impl ChunkStore {
         let mut keyframes = Vec::new();
         for chunk in &results.chunks {
             let it = itertools::izip!(
-                chunk.iter_indices(timeline),
+                chunk.iter_indices(&timeline),
                 chunk.iter_component::<re_sdk_types::components::VideoSample>(sample_identifier)
             );
 
@@ -310,7 +310,7 @@ impl ChunkStore {
         tracking: ChunkTrackingMode,
         entity: &'a EntityPath,
         components: &'a HashSet<ComponentIdentifier>,
-        timeline: &'a TimelineName,
+        timeline: TimelineName,
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
         bootstrap: bool,
@@ -320,9 +320,9 @@ impl ChunkStore {
             "start_inclusive={start_inclusive:?}, end_exclusive={end_exclusive:?}",
         );
 
-        let query_bootstrap = LatestAtQuery::new(*timeline, start_inclusive);
+        let query_bootstrap = LatestAtQuery::new(timeline, start_inclusive);
         let query = RangeQuery::new(
-            *timeline,
+            timeline,
             AbsoluteTimeRange::new(start_inclusive, end_exclusive.saturating_sub(1)),
         );
 
@@ -345,7 +345,7 @@ impl ChunkStore {
                     // the highest (time, row_id) index.
                     let Some(chunk) = chunks.max_by_key(|chunk| {
                         chunk
-                            .iter_indices(timeline)
+                            .iter_indices(&timeline)
                             .next()
                             .expect("non-empty latest-at chunk must have a single row")
                     }) else {
@@ -355,7 +355,7 @@ impl ChunkStore {
                     re_log::debug_assert!(chunk.num_rows() == 1);
 
                     let (time, _row_id) = chunk
-                        .iter_indices(timeline)
+                        .iter_indices(&timeline)
                         .next()
                         .expect("non-empty latest-at chunk must have a single row");
 
@@ -401,8 +401,8 @@ impl ChunkStore {
                     continue;
                 }
 
-                let chunk = chunk.sorted_by_timeline_if_unsorted(timeline); // binsearch incoming
-                let Some(time_col) = chunk.timelines().get(timeline) else {
+                let chunk = chunk.sorted_by_timeline_if_unsorted(&timeline); // binsearch incoming
+                let Some(time_col) = chunk.timelines().get(&timeline) else {
                     continue;
                 };
                 let times = time_col.times_raw();

@@ -519,7 +519,7 @@ impl SplitCommand {
 
         let splits = store.split_by_time_ranges(
             ChunkTrackingMode::PanicOnMissing,
-            cutoff_timeline.name(),
+            *cutoff_timeline.name(),
             &ranges,
             cfg_select! {
                 feature = "video" => Some(&is_start_of_gop),

@@ -62,7 +62,7 @@ fn split_many(
     let splits: Vec<Vec<Chunk>> = store
         .split_by_time_ranges(
             ChunkTrackingMode::PanicOnMissing,
-            frame().name(),
+            *frame().name(),
             &ranges,
             is_start_of_gop,
         )
