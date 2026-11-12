@@ -344,6 +344,15 @@ impl ViewerMcpServer {
         tools
     }
 
+    /// `name` must be the tool name from the request, before [`RERUN_PREFIX`] is stripped.
+    fn tool_name_for_analytics(&self, name: &str) -> String {
+        if self.all_tools().iter().any(|tool| tool.name == name) {
+            name.to_owned()
+        } else {
+            "unknown".to_owned()
+        }
+    }
+
     /// Run one operation generated from `viewer_control.proto`.
     ///
     /// The arguments are validated against the operation's descriptor, sent as the single
@@ -582,6 +591,10 @@ impl ServerHandler for ViewerMcpServer {
         } else {
             let conn = self.conn.lock().clone();
             let Some(conn) = conn else {
+                re_analytics::record(|| re_analytics::event::McpToolCalled {
+                    tool: self.tool_name_for_analytics(&name),
+                    is_error: true,
+                });
                 return Ok(text_error("no app connected — call `rerun_connect` first").into());
             };
             conn.ui.dispatch(&self.ui_router, request, context).await?
@@ -590,6 +603,11 @@ impl ServerHandler for ViewerMcpServer {
         if !TOOLS_WITHOUT_LOG.contains(&name.as_ref()) {
             self.append_new_logs(&mut result).await;
         }
+        let is_error = result.is_error == Some(true);
+        re_analytics::record(|| re_analytics::event::McpToolCalled {
+            tool: self.tool_name_for_analytics(&name),
+            is_error,
+        });
         Ok(result.into())
     }
 }
@@ -635,6 +653,25 @@ mod tests {
         ));
         assert!(instructions.ends_with(INSTRUCTIONS));
         assert_eq!(ViewerMcpServer::new(None).instructions(), INSTRUCTIONS);
+    }
+
+    #[test]
+    fn analytics_names_only_listed_tools() {
+        let server = ViewerMcpServer::new(None);
+        assert_eq!(
+            server.tool_name_for_analytics("rerun_connect"),
+            "rerun_connect"
+        );
+        assert_eq!(
+            server.tool_name_for_analytics("rerun_get_state"),
+            "rerun_get_state"
+        );
+        assert_eq!(server.tool_name_for_analytics("click"), "click");
+        assert_eq!(server.tool_name_for_analytics("connect"), "unknown");
+        assert_eq!(
+            server.tool_name_for_analytics("/home/me/data.rrd"),
+            "unknown"
+        );
     }
 
     #[test]

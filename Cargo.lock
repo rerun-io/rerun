@@ -12228,6 +12228,7 @@ dependencies = [
  "egui_mcp",
  "insta",
  "parking_lot",
+ "re_analytics",
  "re_log",
  "re_protos",
  "re_viewer_control_tools",

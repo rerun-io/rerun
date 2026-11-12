@@ -1165,6 +1165,35 @@ impl McpLauncher {
 
 // -----------------------------------------------
 
+/// Sent by `rerun viewer-mcp` for each tool call it answers with a tool result.
+///
+/// Only calls to this server's own tools are sent.
+/// An agent calls other MCP servers, such as a Linear integration, directly, so those calls never reach this event.
+/// A tool call that ends in a JSON-RPC error sends no event.
+/// This event contains no tool arguments, tool output, or error text.
+pub struct McpToolCalled {
+    /// A name from [`ViewerMcpServer::all_tools`](https://github.com/rerun-io/rerun/blob/main/crates/top/re_viewer_mcp/src/lib.rs), or `unknown`.
+    ///
+    /// A client can send any text as a tool name, so other names are replaced.
+    pub tool: String,
+    pub is_error: bool,
+}
+
+impl Event for McpToolCalled {
+    const NAME: &'static str = "mcp_tool_called";
+}
+
+impl Properties for McpToolCalled {
+    fn serialize(self, event: &mut AnalyticsEvent) {
+        let Self { tool, is_error } = self;
+        event.insert("tool", tool);
+        event.insert("is_error", is_error);
+        event.insert("rerun_version", CrateVersion::LOCAL.to_string());
+    }
+}
+
+// -----------------------------------------------
+
 /// Tracks navigation clicks on the welcome screen cards.
 ///
 /// This event is sent when users click on cards on the welcome screen,
