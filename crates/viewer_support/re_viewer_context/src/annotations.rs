@@ -1,7 +1,7 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::sync::{Arc, OnceLock};
 
-use ahash::HashMap;
+use ahash::{HashMap, HashSet};
 use nohash_hasher::IntMap;
 use re_chunk::{Chunk, ChunkId, RowId};
 use re_chunk_store::{
@@ -298,7 +298,7 @@ pub struct AnnotationContextStoreSubscriber {
     /// An entity can have several chunks holding an annotation context at once, e.g. temporal ones
     /// logged at different times, or a static one alongside the newer one overwriting it.
     /// It keeps its annotation context until the last of them is removed.
-    chunks_per_entity: IntMap<EntityPath, BTreeSet<ChunkId>>,
+    chunks_per_entity: IntMap<EntityPath, HashSet<ChunkId>>,
 }
 
 impl AnnotationContextStoreSubscriber {
