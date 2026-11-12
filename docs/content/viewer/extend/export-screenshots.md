@@ -11,7 +11,7 @@ Right-click the title bar or tab of a view, or the view in the blueprint panel, 
 - "Copy screenshot" to copy it to the clipboard, or
 - "Save screenshot…" to save it as a PNG file.
 
-Copying screenshots is not supported in Safari.
+Copying screenshots is not supported in Safari and other WebKit browsers, including every browser on iOS.
 
 ## Screenshots from Python
 

@@ -135,7 +135,7 @@ The native Viewer supports these graphics backends:
 DirectX 12 is not supported.
 
 The web Viewer uses WebGPU in Chromium-based browsers, and falls back to WebGL if WebGPU is not available.
-In Safari and Firefox it always uses WebGL.
+In Safari, other WebKit browsers (including every browser on iOS), and Firefox, it always uses WebGL.
 
 The configuration we use for wgpu can be influenced in the following ways:
 
