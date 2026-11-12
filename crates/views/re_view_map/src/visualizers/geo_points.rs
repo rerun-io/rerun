@@ -5,8 +5,8 @@ use re_sdk_types::Archetype as _;
 use re_sdk_types::archetypes::GeoPoints;
 use re_sdk_types::components::{LatLon, Radius};
 use re_view::{
-    AnnotationMapCache, DataResultQuery as _, VisualizerInstructionQueryResults,
-    process_color_slice,
+    AnnotationMapCache, DataResultQuery as _, MaxRadii, VisualizerInstructionQueryResults,
+    clamped_or, process_color_slice,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, ViewContext, ViewContextCollection, ViewHighlights, ViewQuery,
@@ -35,6 +35,8 @@ pub struct GeoPointBatch {
 #[derive(Default, Clone)]
 pub struct GeoPointsOutput {
     pub batches: Vec<(EntityPath, GeoPointBatch)>,
+    /// The largest scene/screen radii across the points from all batches
+    pub max_radii: MaxRadii,
 }
 
 /// Visualizer for [`GeoPoints`].
@@ -72,6 +74,8 @@ impl VisualizerSystem for GeoPointsVisualizer {
         let latest_at_query = view_query.latest_at_query();
         let annotations = AnnotationMapCache::for_query(ctx.viewer_ctx, &latest_at_query);
         let mut batches = Vec::new();
+
+        let mut max_radii = MaxRadii::new();
 
         for (data_result, instruction) in
             view_query.iter_visualizer_instruction_for(Self::identifier())
@@ -116,16 +120,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 );
                 let radii = radii.unwrap_or(&[]);
 
-                // optional components values to be used for instance clamping semantics
-                let last_radii = radii.last().copied().unwrap_or(fallback_radius.0.0);
+                if let Some(radius) = radii.iter().max_by(|a, b| a.total_cmp(b)).copied() {
+                    max_radii.update(Radius::from(radius));
+                }
 
                 // iterate over all instances
-                for (instance_index, (position, color, radius)) in itertools::izip!(
-                    positions,
-                    &colors,
-                    std::iter::chain(radii, std::iter::repeat(&last_radii)),
-                )
-                .enumerate()
+                let radii = clamped_or(radii, &fallback_radius.0.0);
+                for (instance_index, (position, color, radius)) in
+                    itertools::izip!(positions, &colors, radii,).enumerate()
                 {
                     batch_data
                         .positions
@@ -141,7 +143,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
             batches.push((data_result.entity_path.clone(), batch_data));
         }
 
-        Ok(output.with_visualizer_data(GeoPointsOutput { batches }))
+        Ok(output.with_visualizer_data(GeoPointsOutput { batches, max_radii }))
     }
 }
 
