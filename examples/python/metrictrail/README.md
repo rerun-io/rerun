@@ -5,7 +5,7 @@ tags = ["2D", "3D", "SLAM", "Depth", "Pinhole camera", "Video", "Mesh", "Hugging
 source = "https://github.com/rerun-io/examples-monorepo/tree/main/packages/metrictrail"
 thumbnail = "https://static.rerun.io/metrictrail_thumbnail_768x576_8a77f49cf/e8ed3b325985585b67ad56689f2521ba092ef99d/full.png"
 thumbnail_dimensions = [768, 576]
-preview_rrd_url = "https://pablo-dl-server.ilish-ruler.ts.net:8477/metrictrail-preview/metrictrail-pool-live-8a77f49cf.rrd"  # PREVIEW ONLY: TODO(pablo) host on a public Hugging Face dataset with a card
+preview_rrd_url = "https://huggingface.co/datasets/pablovela5620/metrictrail-rerun-example/resolve/main/metrictrail-pool-17s.rrd"
 -->
 
 [![Open in Hugging Face Spaces](https://huggingface.co/datasets/huggingface/badges/resolve/main/open-in-hf-spaces-md.svg)](https://pablovela5620-metrictrail-rerun.hf.space)
@@ -15,9 +15,7 @@ preview_rrd_url = "https://pablo-dl-server.ilish-ruler.ts.net:8477/metrictrail-p
 
 Try it in your browser with no install (the Space runs MetricTrail on ZeroGPU), or copy a prompt for your coding agent to install and run it on your own Linux machine with an NVIDIA GPU.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-<video src="https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/seg-run-8a77f49cf.mp4" poster="https://static.rerun.io/metrictrail_seg_run_8a77f49cf/4112f266d04716aa7a688bc48d5cea57fd472a6e/full.webp" autoplay muted loop playsinline></video>
+<video src="https://static.rerun.io/ec6c5f7ac2cfe59a4fca10fe8780e3200c1e01ef_seg-run-8a77f49cf-17s.mp4" poster="https://static.rerun.io/metrictrail_seg_run_8a77f49cf/4112f266d04716aa7a688bc48d5cea57fd472a6e/full.webp" autoplay muted loop playsinline></video>
 
 MetricTrail tracks a moving camera through one uncalibrated video and returns the camera path, the focal length and a surface, all in meters.
 This example runs [NVIDIA's MetricTrail](https://research.nvidia.com/labs/sil/projects/metrictrail/) on a phone video and logs every step to Rerun: the video with the tracked patches, the metric depth, the camera path and a mesh of the scene.
@@ -67,7 +65,7 @@ This runs the default clip, `IMG_0497.mp4`: a 1:58 walk along a stone balustrade
 The first run installs the environment, builds the Mojo kernels and TensorRT engines, and downloads the weights and six example clips; with the conda packages, MoGe-2 and droid.pth already cached, it took about 6 minutes on a DGX Spark.
 Without a display, add `--rr-config.save /abs/path/balustrade.rrd`.
 
-The video and pictures on this page come from another clip: 23 s (0:44 to 1:07) of `pool.mp4`. These commands, run from the `examples-monorepo` folder, download it, cut the same 23 s and track them:
+The video and pictures on this page come from another clip: 23 s (0:44 to 1:07) of `pool.mp4`; the video at the top shows the first 17 s of that run. These commands, run from the `examples-monorepo` folder, download it, cut the same 23 s and track them:
 
 ```sh
 pixi run --frozen -e metrictrail _download-metrictrail-iphone-data
@@ -83,7 +81,7 @@ To run your own video, use `pixi run --frozen -e metrictrail metrictrail-run --i
 
 ## The result
 
-The video at the top is 23 s of a phone video on a rooftop terrace, with no calibration given.
+The video at the top shows the first 17 s of a 23 s phone video on a rooftop terrace, with no calibration given.
 Left, top: the video. The amber boxes are the 64 patches of the newest keyframe: small image squares that the DPVO tracker follows from frame to frame.
 Left, bottom: the predicted metric depth, 0.5 m (blue) to 20 m (red).
 Right: the final camera path and a mesh of the terrace, with the camera moving along the path.
