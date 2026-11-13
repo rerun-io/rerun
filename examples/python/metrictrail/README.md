@@ -3,7 +3,7 @@ title = "MetricTrail: metric camera tracking from one video"
 description = "Track a moving camera through one uncalibrated video with NVIDIA's MetricTrail and get the camera path, the focal length and a surface in meters, step by step."
 tags = ["2D", "3D", "SLAM", "Depth", "Pinhole camera", "Video", "Mesh", "Hugging Face"]
 source = "https://github.com/rerun-io/examples-monorepo/tree/main/packages/metrictrail"
-thumbnail = "https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/thumbnail-768x576-8a77f49cf.png"  # PREVIEW ONLY: TODO(pablo) upload to static.rerun.io (pixi run upload-image)
+thumbnail = "https://static.rerun.io/metrictrail_thumbnail_768x576_8a77f49cf/e8ed3b325985585b67ad56689f2521ba092ef99d/full.png"
 thumbnail_dimensions = [768, 576]
 preview_rrd_url = "https://pablo-dl-server.ilish-ruler.ts.net:8477/metrictrail-preview/metrictrail-pool-live-8a77f49cf.rrd"  # PREVIEW ONLY: TODO(pablo) host on a public Hugging Face dataset with a card
 -->
@@ -17,7 +17,7 @@ Try it in your browser with no install (the Space runs MetricTrail on ZeroGPU), 
 
 <!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
 
-<video src="https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/seg-run-8a77f49cf.mp4" poster="https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/seg-run-8a77f49cf.webp" autoplay muted loop playsinline></video>
+<video src="https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/seg-run-8a77f49cf.mp4" poster="https://static.rerun.io/metrictrail_seg_run_8a77f49cf/4112f266d04716aa7a688bc48d5cea57fd472a6e/full.webp" autoplay muted loop playsinline></video>
 
 MetricTrail tracks a moving camera through one uncalibrated video and returns the camera path, the focal length and a surface, all in meters.
 This example runs [NVIDIA's MetricTrail](https://research.nvidia.com/labs/sil/projects/metrictrail/) on a phone video and logs every step to Rerun: the video with the tracked patches, the metric depth, the camera path and a mesh of the scene.
@@ -102,25 +102,37 @@ Mesh fusion takes 2.30 s and 1.98 s.
 
 Where the time goes, per stage: in each pair, the left bar is with capture and the right bar is without. Without capture, the run logs the saved depth maps after tracking, which takes 2.7 s. Other pipeline work is model loading and setup.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![Runtime per stage of this run as one Rerun bar chart, with and without capture](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/seg-stages-v5.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_seg_stages_v5/e2c397989d3512fbe485fb638a98a14d94a08a88/full.webp" alt="Runtime per stage of this run as one Rerun bar chart, with and without capture">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_seg_stages_v5/e2c397989d3512fbe485fb638a98a14d94a08a88/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_seg_stages_v5/e2c397989d3512fbe485fb638a98a14d94a08a88/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_seg_stages_v5/e2c397989d3512fbe485fb638a98a14d94a08a88/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_seg_stages_v5/e2c397989d3512fbe485fb638a98a14d94a08a88/1200w.webp">
+</picture>
 
 ## How one frame goes through it
 
 Frame 345 of the run above, 11.5 s into the clip: the camera walks along the pool, with the deck on the left and the city behind the glass railing.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![The pipeline on frame 345 as a graph: the input frame feeds calibration, image features and metric depth; calibration gives the focal length to metric depth; features and depth feed the patches; patches carry MoGe-2's depth as their prior into bundle adjustment, which solves 10 cameras and 1,408 patch depths and gives the poses of the output; the output mesh also fuses the depth](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/metrictrail-flow-dag-v3.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_metrictrail_flow_dag_v3/c168b0b16ddef89cb4d64167a0f71a4dc10d2e61/full.webp" alt="The pipeline on frame 345 as a graph: the input frame feeds calibration, image features and metric depth; calibration gives the focal length to metric depth; features and depth feed the patches; patches carry MoGe-2's depth as their prior into bundle adjustment, which solves 10 cameras and 1,408 patch depths and gives the poses of the output; the output mesh also fuses the depth">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_metrictrail_flow_dag_v3/c168b0b16ddef89cb4d64167a0f71a4dc10d2e61/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_metrictrail_flow_dag_v3/c168b0b16ddef89cb4d64167a0f71a4dc10d2e61/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_metrictrail_flow_dag_v3/c168b0b16ddef89cb4d64167a0f71a4dc10d2e61/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_metrictrail_flow_dag_v3/c168b0b16ddef89cb4d64167a0f71a4dc10d2e61/1200w.webp">
+</picture>
 
 ### 1. The input frame
 
 Frame 345 is one frame of the 23 s cut, scaled from the 1920 × 1080 phone video to 1280 × 720, with no calibration given; the tracker reads a copy scaled to 504 × 280. Right: the camera of this frame (white) at its final pose on the path, over the mesh, with a grid of 1 m squares on the deck.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![Frame 345 next to its camera on the final path over the mesh, with a 1 m grid on the deck](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-1-frame-v4.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_1_frame_v4/74189fd8a873b399c72243cbac48673cc5a50e40/full.webp" alt="Frame 345 next to its camera on the final path over the mesh, with a 1 m grid on the deck">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_1_frame_v4/74189fd8a873b399c72243cbac48673cc5a50e40/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_1_frame_v4/74189fd8a873b399c72243cbac48673cc5a50e40/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_1_frame_v4/74189fd8a873b399c72243cbac48673cc5a50e40/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_1_frame_v4/74189fd8a873b399c72243cbac48673cc5a50e40/1200w.webp">
+</picture>
 
 ### 2. One focal length for the clip
 
@@ -128,9 +140,13 @@ MoGe-2's depth and every camera pose need the focal length that step 1 lacks, so
 
 The pixels are those of the 504 × 280 tracking image: on the 1280 px frame, fx is about 961.5 px.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![The 43-keyframe calibration map next to the focal length after each solve, over the calibration steps](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-2-calibration-v4.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_2_calibration_v4/042c7a288e23be92ae04591f9c8a6cea71313215/full.webp" alt="The 43-keyframe calibration map next to the focal length after each solve, over the calibration steps">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_2_calibration_v4/042c7a288e23be92ae04591f9c8a6cea71313215/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_2_calibration_v4/042c7a288e23be92ae04591f9c8a6cea71313215/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_2_calibration_v4/042c7a288e23be92ae04591f9c8a6cea71313215/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_2_calibration_v4/042c7a288e23be92ae04591f9c8a6cea71313215/1200w.webp">
+</picture>
 
 ### 3. Image features
 
@@ -138,9 +154,13 @@ The pixels are those of the 504 × 280 tracking image: on the 1280 px frame, fx 
 
 From left, the picture shows frame 345, DPVO's own features, the DINOv3 term, and their sum. Colors show the three strongest directions of each feature map (PCA) as RGB. DPVO's own features and the sum use the same PCA. Per cell, the DINOv3 term is a median 9 % of the length of DPVO's own feature vector, so the two look almost the same.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![Frame 345, DPVO's own matching features, the DINOv3 adapter term and their sum, as PCA colors](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-3-fusion-v3.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_3_fusion_v3/d040e56ac34264da64340e8290ade1652f16aa0d/full.webp" alt="Frame 345, DPVO's own matching features, the DINOv3 adapter term and their sum, as PCA colors">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_3_fusion_v3/d040e56ac34264da64340e8290ade1652f16aa0d/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_3_fusion_v3/d040e56ac34264da64340e8290ade1652f16aa0d/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_3_fusion_v3/d040e56ac34264da64340e8290ade1652f16aa0d/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_3_fusion_v3/d040e56ac34264da64340e8290ade1652f16aa0d/1200w.webp">
+</picture>
 
 ### 4. Metric depth and normals
 
@@ -148,55 +168,87 @@ From left, the picture shows frame 345, DPVO's own features, the DINOv3 term, an
 
 MoGe-2 has its own encoder, a DINOv2 ViT-L, separate from the DINOv3 of step 3. The encoder turns the frame, resized to 644 × 364, into a 26 × 46 grid of tokens. Image-filter (conv) heads read the tokens and predict a 3D point map with no unit and a mask that drops pixels with no usable depth (0.01 % here). A small MLP reads one summary vector of the whole image (the CLS token) and predicts one scale, s = 5.19. MoGe-2 adds a small shift (-0.05) to z: the offset with which the points, projected through the given focal length, land back on their own pixels. Then it multiplies them by s: the result is points in meters.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
+<picture>
+  <img src="https://static.rerun.io/metrictrail_readme_walk_4_flow_v3/ee712eb20dc3ad6c5fb79440ec9b9dbd12ef8566/full.webp" alt="Inside MoGe-2: frame, DINOv2 encoder, point map, mask and scale heads, metric points, metric depth">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_flow_v3/ee712eb20dc3ad6c5fb79440ec9b9dbd12ef8566/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_flow_v3/ee712eb20dc3ad6c5fb79440ec9b9dbd12ef8566/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_flow_v3/ee712eb20dc3ad6c5fb79440ec9b9dbd12ef8566/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_flow_v3/ee712eb20dc3ad6c5fb79440ec9b9dbd12ef8566/1200w.webp">
+</picture>
 
-![Inside MoGe-2: frame, DINOv2 encoder, point map, mask and scale heads, metric points, metric depth](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/readme-walk-4-flow-v3.webp)
-
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![Frame 345's DINOv2 tokens, the point map's z with no unit (0.1 purple to 3.9 yellow), and the metric points with the camera and a 1 m grid](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/readme-walk-4-inside-v2.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_readme_walk_4_inside_v2/a98e9f513c350f94075c05f138342b68f95c8cd7/full.webp" alt="Frame 345's DINOv2 tokens, the point map's z with no unit (0.1 purple to 3.9 yellow), and the metric points with the camera and a 1 m grid">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_inside_v2/a98e9f513c350f94075c05f138342b68f95c8cd7/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_inside_v2/a98e9f513c350f94075c05f138342b68f95c8cd7/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_inside_v2/a98e9f513c350f94075c05f138342b68f95c8cd7/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_inside_v2/a98e9f513c350f94075c05f138342b68f95c8cd7/1200w.webp">
+</picture>
 
 The result for frame 345, with depth from 0.5 m (blue) to 20 m (red): 2.6 m to the nearest point and 6.6 m median. On this frame alone, MoGe-2 guesses a focal length of 413.4 px, and its guesses change from frame to frame (step 2). So the example gives it the one SharedK focal length, 378.60 px on the 504 × 280 tracking image. With its own guess, the median depth would be 7.0 m.
 
 The same pass also gives surface normals (color = direction: the deck, which faces up, is magenta). The tracker does not use them; the recording keeps them for display.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![Frame 345, its metric depth (0.5 m blue to 20 m red), its surface normals, and the depth key](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/readme-walk-4-output-v2.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_readme_walk_4_output_v2/572c17a22a770d1111084d115ce10b02e8e168c2/full.webp" alt="Frame 345, its metric depth (0.5 m blue to 20 m red), its surface normals, and the depth key">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_output_v2/572c17a22a770d1111084d115ce10b02e8e168c2/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_output_v2/572c17a22a770d1111084d115ce10b02e8e168c2/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_output_v2/572c17a22a770d1111084d115ce10b02e8e168c2/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_readme_walk_4_output_v2/572c17a22a770d1111084d115ce10b02e8e168c2/1200w.webp">
+</picture>
 
 ### 5. Patches start at the predicted depth
 
 DPVO follows the frame through 64 patches. A patch is a 12 x 12 px square, 3 x 3 cells of DPVO's 4 px feature grid, on the 504 x 280 tracking frame. Each patch starts at MoGe-2's depth at its center: all 64 get a valid depth, with a median of 8.0 m (7.9 m after the frame's first bundle adjustment). DPVO draws the 64 centers at random, so their median need not match the 6.6 m median of all pixels. Plain DPVO has no metric depth: it gives all new patches one shared value, the median depth of the patches of the last three keyframes. Below, each box is colored by the depth it starts at, on the same scale as the depth map: 0.5 m (blue) to 20 m (red).
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![Left: the 64 patches colored by their start depth. Right: MoGe-2 depth with the same boxes. Both use 0.5 m (blue) to 20 m (red)](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-5-patches-v2.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_5_patches_v2/cbd50fb8cecba97b9e896a30b1dab7ed9ffb6e4f/full.webp" alt="Left: the 64 patches colored by their start depth. Right: MoGe-2 depth with the same boxes. Both use 0.5 m (blue) to 20 m (red)">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_5_patches_v2/cbd50fb8cecba97b9e896a30b1dab7ed9ffb6e4f/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_5_patches_v2/cbd50fb8cecba97b9e896a30b1dab7ed9ffb6e4f/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_5_patches_v2/cbd50fb8cecba97b9e896a30b1dab7ed9ffb6e4f/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_5_patches_v2/cbd50fb8cecba97b9e896a30b1dab7ed9ffb6e4f/1200w.webp">
+</picture>
 
 The start depth and the camera pose put each patch into the other keyframes. DPVO compares the patch's features only in a 7 x 7-cell window around that spot, so a good start depth starts the search near the answer. The recurrent update then predicts where the patch really lies (its target) and how much to trust that match (a weight from 0 to 1). The update runs again on every new frame. For the 64 patches matched into the older keyframe 342, the median weight rises from 0.10 after the first update to 0.75 after the third, two frames later. Below, purple boxes have a low weight and green to yellow boxes a high one.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![Eight patches of frame 345 and their targets in frame 342 after update 1 and update 3, colored by weight from 0 (purple) to 1 (yellow)](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-5-tracking-v3.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_5_tracking_v3/88c1e031dafcab0a8b9e5785142575a4559d9660/full.webp" alt="Eight patches of frame 345 and their targets in frame 342 after update 1 and update 3, colored by weight from 0 (purple) to 1 (yellow)">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_5_tracking_v3/88c1e031dafcab0a8b9e5785142575a4559d9660/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_5_tracking_v3/88c1e031dafcab0a8b9e5785142575a4559d9660/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_5_tracking_v3/88c1e031dafcab0a8b9e5785142575a4559d9660/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_5_tracking_v3/88c1e031dafcab0a8b9e5785142575a4559d9660/1200w.webp">
+</picture>
 
 ### 6. Bundle adjustment in meters
 
 At frame 345, DPVO's graph holds 22 keyframes: the ones whose patches still have matches. Bundle adjustment moves the newest 10 cameras and the depths of all 1,408 patches in the graph, so that each patch lands closer to the target that DPVO's network set in step 5. The 12 older cameras stay fixed as anchors. The metric depth term adds one pull per patch toward MoGe-2's depth, and that keeps the scale in meters.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![The bundle adjustment at frame 345 from above and from the side: window keyframes 1 to 10 are solved, 12 older keyframes stay fixed, on a 1 m grid](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-6-window-v2.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_6_window_v2/c5b05f1f248524b4f6cfc6fea92a46b8e50a10c4/full.webp" alt="The bundle adjustment at frame 345 from above and from the side: window keyframes 1 to 10 are solved, 12 older keyframes stay fixed, on a 1 m grid">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_6_window_v2/c5b05f1f248524b4f6cfc6fea92a46b8e50a10c4/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_6_window_v2/c5b05f1f248524b4f6cfc6fea92a46b8e50a10c4/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_6_window_v2/c5b05f1f248524b4f6cfc6fea92a46b8e50a10c4/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_6_window_v2/c5b05f1f248524b4f6cfc6fea92a46b8e50a10c4/1200w.webp">
+</picture>
 
 Amber frustums (camera pyramids) 1 to 10 are solved, gray ones stay fixed, and frame 345 is white. Keyframes 7 to 10 are frames 342 to 345: DPVO adds every frame as a keyframe and later drops the ones that add little motion. Blue points belong to the 640 patches of the window keyframes, green points to the 768 patches of the older keyframes. Bundle adjustment solves the depths of both.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![Window patches at frame 345, MoGe-2 depth against bundle adjustment depth: with the metric depth term the points follow the equal line; with its weight at 0 they fall below it](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-6-prior-v2.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_6_prior_v2/128b2f3e4e13570f6091bbc7abfacba1a3a3b7c3/full.webp" alt="Window patches at frame 345, MoGe-2 depth against bundle adjustment depth: with the metric depth term the points follow the equal line; with its weight at 0 they fall below it">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_6_prior_v2/128b2f3e4e13570f6091bbc7abfacba1a3a3b7c3/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_6_prior_v2/128b2f3e4e13570f6091bbc7abfacba1a3a3b7c3/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_6_prior_v2/128b2f3e4e13570f6091bbc7abfacba1a3a3b7c3/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_6_prior_v2/128b2f3e4e13570f6091bbc7abfacba1a3a3b7c3/1200w.webp">
+</picture>
 
 Each point above is one window patch at frame 345: MoGe-2's depth across, the bundle adjustment depth up. With the term, the median gap is 5.5 % (0.42 m). Track the whole clip with the term's weight at 0, and most depths shrink, while some far ones drift past 20 m onto the edge: the median gap grows to 33 % (2.1 m). The reprojection error (how far a patch lands from its target) stays almost the same, 1.04 px with the term and 1.06 px without, so the matches alone cannot fix the scale.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![The final keyframe path from above, with the metric depth term (amber, 28.8 m) and with its weight at 0 (purple, 24.5 DPVO units)](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-6-noprior-v2.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_6_noprior_v2/c384e69285d5fe6890fb4a247db0026423c73973/full.webp" alt="The final keyframe path from above, with the metric depth term (amber, 28.8 m) and with its weight at 0 (purple, 24.5 DPVO units)">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_6_noprior_v2/c384e69285d5fe6890fb4a247db0026423c73973/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_6_noprior_v2/c384e69285d5fe6890fb4a247db0026423c73973/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_6_noprior_v2/c384e69285d5fe6890fb4a247db0026423c73973/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_6_noprior_v2/c384e69285d5fe6890fb4a247db0026423c73973/1200w.webp">
+</picture>
 
 The path shrinks too: 24.5 DPVO units against 28.8 m with the term, 15 % shorter. The clip has no ground truth, so this shows scale drift, not which length is right. MetricTrail rejects a weight-0 run at its end; this path comes from the tracker before that check.
 
@@ -204,9 +256,13 @@ The path shrinks too: 24.5 DPVO units against 28.8 m with the term, 15 % shorter
 
 The run returns 690 camera poses in meters and a mesh of 1,181,157 triangles, fused from MoGe-2's depth at the final poses (the fusion keeps depths from 0.2 to 8 m, so the far city is not in the mesh). A known size checks the scale: the camera rides about 1.5 m above the deck (1.2 to 1.7 m along the path), the height at which a person holds a phone. The grid squares are 1 m and help to read such sizes. Right: the same mesh colored by its normals, so the flat deck and the walls stand out.
 
-<!-- PREVIEW ONLY: media on the tailnet NAS. TODO(pablo): upload to static.rerun.io -->
-
-![The mesh with the final path, the camera of frame 345 and a 1 m grid, and the same mesh colored by its normals](https://pablos-4800gt.ilish-ruler.ts.net:8768/metrictrail-example/media/walk-7-output-v4.webp)
+<picture>
+  <img src="https://static.rerun.io/metrictrail_walk_7_output_v4/54c87f03622057b3561e81f025db67c3ea13d516/full.webp" alt="The mesh with the final path, the camera of frame 345 and a 1 m grid, and the same mesh colored by its normals">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/metrictrail_walk_7_output_v4/54c87f03622057b3561e81f025db67c3ea13d516/480w.webp">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/metrictrail_walk_7_output_v4/54c87f03622057b3561e81f025db67c3ea13d516/768w.webp">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/metrictrail_walk_7_output_v4/54c87f03622057b3561e81f025db67c3ea13d516/1024w.webp">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/metrictrail_walk_7_output_v4/54c87f03622057b3561e81f025db67c3ea13d516/1200w.webp">
+</picture>
 
 ## How it works
 
