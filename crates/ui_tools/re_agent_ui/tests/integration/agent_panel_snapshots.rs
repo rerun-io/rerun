@@ -577,6 +577,9 @@ fn chat_hover_timestamp() {
 }
 
 /// A user message taller than the panel still shows its timestamp when its top is scrolled away.
+///
+/// Scrolled up by a line and a half, so the snapshot also shows the conversation being clipped
+/// at both the header and the composer frame.
 #[test]
 fn chat_hover_timestamp_user_scrolled() {
     crate::use_utc();
@@ -585,15 +588,22 @@ fn chat_hover_timestamp_user_scrolled() {
     panel.show_chat();
     let session = panel.session_mut();
     open_session(session);
-    let lines = (1..=60).map(|i| format!("Line {i}")).collect::<Vec<_>>();
+    let lines = (1..=80).map(|i| format!("Line {i}")).collect::<Vec<_>>();
     session.transcript_mut().push_user(lines.join("\n").into());
     crate::pin_entry_times(session);
 
     let mut harness = harness(panel);
     harness.run_steps(4);
 
-    let bubble = harness.get_by_label_contains("Line 60").rect();
-    harness.hover_at(egui::pos2(bubble.center().x, bubble.bottom() - 20.0));
+    let bubble = harness.get_by_label_contains("Line 80").rect();
+    harness.hover_at(egui::pos2(bubble.center().x, bubble.bottom() - 100.0));
+    harness.event(egui::Event::MouseWheel {
+        unit: egui::MouseWheelUnit::Point,
+        delta: egui::vec2(0.0, 30.0),
+        phase: egui::TouchPhase::Move,
+        modifiers: egui::Modifiers::NONE,
+        source: egui::MouseWheelSource::Unknown,
+    });
     harness.try_run_realtime().ok();
     harness.snapshot("chat_hover_timestamp_user_scrolled");
 }

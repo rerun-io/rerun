@@ -41,6 +41,12 @@ const EMPTY_STATE_WIDTH: f32 = 240.0;
 /// Starting height of the agent log panel, which the user can resize.
 const LOG_DEFAULT_HEIGHT: f32 = 200.0;
 
+/// Space between the header line and the start of the conversation.
+const CONVERSATION_TOP_SPACE: f32 = 12.0;
+
+/// Space between the end of the conversation and the composer.
+const CONVERSATION_BOTTOM_SPACE: f32 = 8.0;
+
 /// Agents can offer dozens of models, so longer submenus scroll.
 ///
 /// The half row cuts the last visible item off, which shows that there is more to scroll to.
@@ -227,7 +233,11 @@ pub fn chat_ui(
         .show_collapsible(ui, &mut input.log_open, |ui| log_ui(ui, session));
 
     egui::Panel::bottom("agent_composer")
-        .frame(egui::Frame::new().inner_margin(8))
+        .show_separator_line(false)
+        .frame(egui::Frame::new().inner_margin(egui::Margin {
+            top: 0,
+            ..egui::Margin::same(8)
+        }))
         .show(ui, |ui| {
             composer_ui(ui, session, input, preferences, agent_name, login_hint);
         });
@@ -236,11 +246,12 @@ pub fn chat_ui(
         .frame(egui::Frame::new().inner_margin(egui::Margin {
             left: 12,
             right: 12,
-            top: 12,
-            bottom: 4,
+            top: 0,
+            bottom: 0,
         }))
         .show(ui, |ui| {
             if let Some(home_ui) = home_ui {
+                ui.add_space(CONVERSATION_TOP_SPACE);
                 home_ui(ui);
                 if session.transcript().items.is_empty() {
                     empty_state_ui(ui, input, example_prompts);
@@ -250,14 +261,18 @@ pub fn chat_ui(
             if session.transcript().items.is_empty()
                 && !matches!(session.phase(), Phase::Connecting { .. })
             {
+                ui.add_space(CONVERSATION_TOP_SPACE);
                 empty_state_ui(ui, input, example_prompts);
                 return;
             }
 
+            // The spacing is inside the scroll area, so that scrolled content is clipped right at
+            // the header line and the composer frame.
             egui::ScrollArea::vertical()
                 .auto_shrink(false)
                 .stick_to_bottom(true)
                 .show(ui, |ui| {
+                    ui.add_space(CONVERSATION_TOP_SPACE);
                     if let Some(prompt) = transcript_ui(ui, session, show_thoughts)
                         && !session.send_prompt(prompt)
                     {
@@ -270,6 +285,8 @@ pub fn chat_ui(
                         ui.add_space(8.0);
                         ui.loading_indicator(status);
                     }
+
+                    ui.add_space(CONVERSATION_BOTTOM_SPACE);
                 });
         });
 }
