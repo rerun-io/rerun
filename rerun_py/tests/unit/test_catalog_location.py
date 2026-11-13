@@ -67,7 +67,7 @@ StorageLocations
 
 def test_deprecated_selector_warns_once_through_wrapper() -> None:
     internal = MagicMock()
-    internal.blueprint_dataset.return_value.register_blueprint.return_value = ("blueprint", None)
+    internal.blueprint_dataset.return_value.register_blueprint.return_value = ("blueprint", None, "recording")
 
     with pytest.warns(DeprecationWarning, match="object_store_config") as caught:
         DatasetEntry(internal).register_blueprint(  # ty: ignore[deprecated]

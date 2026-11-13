@@ -328,7 +328,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         name: str | None = None,
         *,
         set_default: bool = True,
-        segment_table: bool = False,
         storage_location: str | None = None,
     ) -> RegisteredBlueprint: ...
 
@@ -341,7 +340,6 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         name: str | None = None,
         *,
         set_default: bool = True,
-        segment_table: bool = False,
         object_store_config: str | None,
     ) -> RegisteredBlueprint: ...
 
@@ -351,29 +349,24 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         name: str | None = None,
         *,
         set_default: bool = True,
-        segment_table: bool = False,
         storage_location: str | None = None,
         object_store_config: str | None = None,
     ) -> RegisteredBlueprint:
         """
-        Register an existing .rbl visible to the server, and return the registered blueprint.
+        Register an existing .rbl visible to the server as a recording blueprint, and return the registered blueprint.
+
+        A recording blueprint lays out the dataset's individual recordings.
+        For the dataset's segment table, use [`register_table_blueprint`][rerun.catalog.DatasetEntry.register_table_blueprint].
 
         By default, also set this blueprint as default.
 
         With `name`, the blueprint is registered under that name.
         If another blueprint has `name`, this raises `AlreadyExistsError` and leaves the registered blueprints and the default blueprint unchanged.
         Without `name`, a new blueprint has no name, and a warning is logged once per process.
-        Registering the same .rbl again replaces it, and renames it to `name` if `name` is given and differs.
+        Registering the same .rbl again replaces it, renames it to `name` if `name` is given and differs, and makes it a recording blueprint.
         See [`RegisteredBlueprint.name`][rerun.catalog.RegisteredBlueprint.name] for how names work.
 
-        Without `segment_table`, `uri` is a viewport blueprint for the dataset's individual recordings.
-        With `segment_table=True`, `uri` is a table blueprint for the dataset's segment table,
-        configuring its columns, cards, and segment previews.
-        `segment_table` has no effect when `set_default=False`.
-
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
-        for examples of saving and registering table blueprints with local or remote storage.
 
         The associated blueprint dataset is owned by this dataset for lifecycle purposes.
         Deleting this dataset also deletes the associated blueprint dataset and its storage.
@@ -388,14 +381,56 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         blueprint = _registered_blueprint_from_internal(
             self._internal,
-            self._require_blueprint_dataset()._internal.register_blueprint(uri, name, storage_location),
+            self._require_blueprint_dataset()._internal.register_blueprint(
+                uri, name, storage_location, kind="recording"
+            ),
         )
 
         if set_default:
-            if segment_table:
-                self.set_default_segment_table_blueprint(blueprint)
-            else:
-                self.set_default_blueprint(blueprint)
+            self.set_default_blueprint(blueprint)
+
+        return blueprint
+
+    def register_table_blueprint(
+        self,
+        uri: str,
+        name: str | None = None,
+        *,
+        set_default: bool = True,
+        storage_location: str | None = None,
+    ) -> RegisteredBlueprint:
+        """
+        Register an existing .rbl visible to the server as a table blueprint, and return the registered blueprint.
+
+        A table blueprint lays out the dataset's segment table, configuring its columns, cards, and segment previews.
+        For the dataset's individual recordings, use [`register_blueprint`][rerun.catalog.DatasetEntry.register_blueprint].
+
+        By default, also set this blueprint as the default segment table blueprint.
+
+        With `name`, the blueprint is registered under that name.
+        If another blueprint has `name`, this raises `AlreadyExistsError` and leaves the registered blueprints and the default blueprints unchanged.
+        Without `name`, a new blueprint has no name, and a warning is logged once per process.
+        Registering the same .rbl again replaces it, renames it to `name` if `name` is given and differs, and makes it a table blueprint.
+        See [`RegisteredBlueprint.name`][rerun.catalog.RegisteredBlueprint.name] for how names work.
+
+        The URI is read by the server; this method does not upload a local file.
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
+        for examples of saving and registering table blueprints with local or remote storage.
+
+        The associated blueprint dataset is owned by this dataset for lifecycle purposes.
+        Deleting this dataset also deletes the associated blueprint dataset and its storage.
+
+        `storage_location` is the alias of the storage location that holds `uri`, as configured in the catalog.
+        If `None`, the server infers the object store from the URI.
+        """
+
+        blueprint = _registered_blueprint_from_internal(
+            self._internal,
+            self._require_blueprint_dataset()._internal.register_blueprint(uri, name, storage_location, kind="table"),
+        )
+
+        if set_default:
+            self.set_default_segment_table_blueprint(blueprint)
 
         return blueprint
 
@@ -427,7 +462,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
     def set_default_blueprint(self, blueprint: RegisteredBlueprint | None) -> None:
         """Set an already-registered blueprint as default for this dataset, or clear the default with `None`."""
 
-        self._internal.set_default_blueprint(None if blueprint is None else blueprint.id, False)
+        self._internal.set_default_blueprint(None if blueprint is None else blueprint.id, kind="recording")
 
     def default_blueprint(self) -> RegisteredBlueprint | None:
         """
@@ -436,12 +471,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         This doesn't check that the blueprint is registered, and an unregistered one comes back without a name.
         """
 
-        return _optional_registered_blueprint(self._internal, self._internal.default_blueprint(False))
+        return _optional_registered_blueprint(self._internal, self._internal.default_blueprint(kind="recording"))
 
     def set_default_segment_table_blueprint(self, blueprint: RegisteredBlueprint | None) -> None:
         """Set an already-registered blueprint as the default segment table blueprint for this dataset, or clear it with `None`."""
 
-        self._internal.set_default_blueprint(None if blueprint is None else blueprint.id, True)
+        self._internal.set_default_blueprint(None if blueprint is None else blueprint.id, kind="table")
 
     def default_segment_table_blueprint(self) -> RegisteredBlueprint | None:
         """
@@ -450,7 +485,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         This doesn't check that the blueprint is registered, and an unregistered one comes back without a name.
         """
 
-        return _optional_registered_blueprint(self._internal, self._internal.default_blueprint(True))
+        return _optional_registered_blueprint(self._internal, self._internal.default_blueprint(kind="table"))
 
     def _require_blueprint_dataset(self) -> DatasetEntry:
         blueprint_dataset = self.blueprint_dataset()
@@ -2224,7 +2259,7 @@ class TableEntry(Entry[TableEntryInternal]):
 
         blueprint = _registered_blueprint_from_internal(
             self._internal,
-            self._internal.blueprint_dataset().register_blueprint(uri, name, storage_location),
+            self._internal.blueprint_dataset().register_blueprint(uri, name, storage_location, kind="table"),
         )
 
         if set_default:

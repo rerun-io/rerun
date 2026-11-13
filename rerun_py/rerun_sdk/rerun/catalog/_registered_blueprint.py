@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, TypeAlias
 
 if TYPE_CHECKING:
     from rerun_bindings import DatasetEntryInternal, TableEntryInternal
@@ -25,6 +25,15 @@ class RegisteredBlueprint:
     Registering or renaming to a name another blueprint has raises `AlreadyExistsError`.
     Two calls that give different blueprints the same name at the same time can both succeed.
     On a server that doesn't store blueprint names, the name is `None`.
+    """
+
+    kind: Literal["recording", "table"] = "recording"
+    """
+    What the blueprint lays out, `"recording"` or `"table"`.
+
+    A recording blueprint lays out the individual recordings of a dataset.
+    A table blueprint lays out a table, or the segment table of a dataset.
+    On a server that doesn't store blueprint names, the kind is `"recording"`.
     """
 
     _entry: DatasetEntryInternal | TableEntryInternal | None = field(
@@ -54,18 +63,22 @@ class RegisteredBlueprint:
         return _registered_blueprint_from_internal(self._entry, blueprint_dataset.set_blueprint_name(self.id, name))
 
 
+_BlueprintFields: TypeAlias = tuple[str, str | None, Literal["recording", "table"]]
+"""The ID, name and kind of a blueprint, as the bindings return them."""
+
+
 def _registered_blueprint_from_internal(
-    entry: DatasetEntryInternal | TableEntryInternal, id_and_name: tuple[str, str | None]
+    entry: DatasetEntryInternal | TableEntryInternal, fields: _BlueprintFields
 ) -> RegisteredBlueprint:
-    id, name = id_and_name
-    blueprint = RegisteredBlueprint(id=id, name=name)
+    id, name, kind = fields
+    blueprint = RegisteredBlueprint(id=id, name=name, kind=kind)
     object.__setattr__(blueprint, "_entry", entry)
     return blueprint
 
 
 def _optional_registered_blueprint(
-    entry: DatasetEntryInternal | TableEntryInternal, id_and_name: tuple[str, str | None] | None
+    entry: DatasetEntryInternal | TableEntryInternal, fields: _BlueprintFields | None
 ) -> RegisteredBlueprint | None:
-    if id_and_name is None:
+    if fields is None:
         return None
-    return _registered_blueprint_from_internal(entry, id_and_name)
+    return _registered_blueprint_from_internal(entry, fields)

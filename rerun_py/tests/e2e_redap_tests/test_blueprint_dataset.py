@@ -59,6 +59,38 @@ def test_configure_blueprint_dataset(entry_factory: EntryFactory, resource_prefi
     assert ds.default_blueprint() == second
 
 
+def test_register_blueprint_stores_kind(entry_factory: EntryFactory, resource_prefix: str) -> None:
+    """
+    `register_table_blueprint` registers a table blueprint and `register_blueprint` a recording blueprint.
+
+    Each one sets the default blueprint of its own kind.
+    Registering the same .rbl again with the other method changes its kind.
+    """
+    rbl_uri = resource_prefix + "blueprints/table_blueprint.rbl"
+    rbl_uri2 = resource_prefix + "blueprints/table_blueprint2.rbl"
+
+    ds = entry_factory.create_dataset("blueprint_kind")
+
+    table_blueprint = ds.register_table_blueprint(rbl_uri, set_default=False, name="table")
+    assert table_blueprint.kind == "table"
+    assert ds.default_segment_table_blueprint() is None
+    assert ds.get_blueprint_by_name("table") == table_blueprint
+
+    recording_blueprint = ds.register_blueprint(rbl_uri2, name="recording")
+    assert recording_blueprint.kind == "recording"
+    assert recording_blueprint.id != table_blueprint.id
+    assert ds.default_blueprint() == recording_blueprint
+    assert ds.default_segment_table_blueprint() is None
+
+    assert ds.register_table_blueprint(rbl_uri, name="table") == table_blueprint
+    assert ds.default_segment_table_blueprint() == table_blueprint
+    assert ds.default_blueprint() == recording_blueprint
+
+    made_recording = ds.register_blueprint(rbl_uri, set_default=False, name="table")
+    assert made_recording == RegisteredBlueprint(id=table_blueprint.id, name="table", kind="recording")
+    assert ds.get_blueprint_by_name("table") == made_recording
+
+
 def test_reregister_same_blueprint(entry_factory: EntryFactory, resource_prefix: str) -> None:
     """Re-registering the same blueprint does not raise, and the dataset still has one blueprint."""
     rbl_uri = resource_prefix + "blueprints/table_blueprint.rbl"
@@ -337,6 +369,7 @@ def test_table_blueprint_set_default_false_creates_dataset_without_default(
 
     blueprint = table.register_blueprint(rbl_uri, set_default=False)
 
+    assert blueprint.kind == "table"
     assert table.default_blueprint() is None
     blueprint_dataset = table.blueprint_dataset()
     assert blueprint_dataset is not None

@@ -75,7 +75,7 @@ blueprint = rrb.TableBlueprint(
     ),
 )
 blueprint.save("my_app", path)
-dataset.register_blueprint(path.as_uri(), name="segments", segment_table=True)
+dataset.register_table_blueprint(path.as_uri(), name="segments")
 ```
 
 `Column` takes the column's name as the table has it, such as

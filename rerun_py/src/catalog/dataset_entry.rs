@@ -25,8 +25,8 @@ use super::chunk_indexing_policy::{PyNameSelection, to_policy, to_py_tuple};
 use super::registration_handle::{DEFAULT_TIMEOUT_SECS, PyRegistrationHandleInternal};
 use super::write_operation::PyWriteOperationInternal;
 use super::{
-    PyCatalogClientInternal, PyDatasetInfoInternal, PyEntryDetails, PyTableProviderAdapterInternal,
-    blueprint_id_and_name, to_py_err,
+    BlueprintFields, PyCatalogClientInternal, PyDatasetInfoInternal, PyEntryDetails,
+    PyTableProviderAdapterInternal, blueprint_fields, parse_blueprint_kind, to_py_err,
 };
 use crate::catalog::PySchemaInternal;
 use crate::catalog::entry::set_entry_name;
@@ -377,13 +377,8 @@ impl PyDatasetEntryInternal {
         connection.delete_segment_properties(py, self_.entry_details.id, segment_ids)
     }
 
-    /// The ID and name of each blueprint, with this dataset as the blueprint dataset.
-    ///
-    /// The name is `None` for a blueprint without a name.
-    fn blueprints(
-        self_: PyRef<'_, Self>,
-        py: Python<'_>,
-    ) -> PyResult<Vec<(String, Option<String>)>> {
+    /// Each blueprint, with this dataset as the blueprint dataset.
+    fn blueprints(self_: PyRef<'_, Self>, py: Python<'_>) -> PyResult<Vec<BlueprintFields>> {
         let _span = read_trace_context_from_python(py, "DatasetEntry.blueprints").entered();
         let connection = self_.client.borrow(py).connection().clone();
         let blueprint_dataset = self_.entry_details.id;
@@ -395,18 +390,17 @@ impl PyDatasetEntryInternal {
                 .await
                 .map_err(to_py_err)
         })?;
-        Ok(blueprints.into_iter().map(blueprint_id_and_name).collect())
+        Ok(blueprints.into_iter().map(blueprint_fields).collect())
     }
 
-    /// The ID and name of the blueprint with this name, if any, with this dataset as the
-    /// blueprint dataset.
+    /// The blueprint with this name, if any, with this dataset as the blueprint dataset.
     ///
     /// Raises `ValueError` if `name` is empty.
     fn blueprint_by_name(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
         name: String,
-    ) -> PyResult<Option<(String, Option<String>)>> {
+    ) -> PyResult<Option<BlueprintFields>> {
         let _span = read_trace_context_from_python(py, "DatasetEntry.blueprint_by_name").entered();
         let name = BlueprintName::try_new(name).map_err(to_py_err)?;
         let connection = self_.client.borrow(py).connection().clone();
@@ -419,11 +413,11 @@ impl PyDatasetEntryInternal {
                 .await
                 .map_err(to_py_err)
         })?;
-        Ok(blueprint.map(blueprint_id_and_name))
+        Ok(blueprint.map(blueprint_fields))
     }
 
-    /// Name a blueprint, with this dataset as the blueprint dataset, and return the ID and name
-    /// of the renamed blueprint.
+    /// Name a blueprint, with this dataset as the blueprint dataset, and return the renamed
+    /// blueprint.
     ///
     /// Raises `ValueError` if `name` is empty, and `AlreadyExistsError` if another blueprint has
     /// this name.
@@ -432,7 +426,7 @@ impl PyDatasetEntryInternal {
         py: Python<'_>,
         segment_id: String,
         name: String,
-    ) -> PyResult<(String, Option<String>)> {
+    ) -> PyResult<BlueprintFields> {
         let _span = read_trace_context_from_python(py, "DatasetEntry.set_blueprint_name").entered();
         let name = BlueprintName::try_new(name).map_err(to_py_err)?;
         let connection = self_.client.borrow(py).connection().clone();
@@ -445,31 +439,35 @@ impl PyDatasetEntryInternal {
                 .await
                 .map_err(to_py_err)
         })?;
-        Ok(blueprint_id_and_name(blueprint))
+        Ok(blueprint_fields(blueprint))
     }
 
-    /// Register a blueprint, with this dataset as the blueprint dataset, and return the ID and
-    /// name of the registered blueprint.
+    /// Register a blueprint, with this dataset as the blueprint dataset, and return the
+    /// registered blueprint.
     ///
     /// With a `name`, the blueprint is registered under that name. With `None`, a new blueprint
     /// has no name, and a blueprint that is already registered keeps its name.
     ///
-    /// Raises `ValueError` if `name` is empty, and `AlreadyExistsError` if a blueprint with
-    /// another segment ID has this name.
-    #[pyo3(signature = (uri, name, storage_location))]
+    /// `kind` is `"recording"` or `"table"`.
+    ///
+    /// Raises `ValueError` if `name` is empty or `kind` is unknown, and `AlreadyExistsError` if a
+    /// blueprint with another segment ID has this name.
+    #[pyo3(signature = (uri, name, storage_location, *, kind))]
     fn register_blueprint(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
         uri: String,
         name: Option<String>,
         storage_location: Option<String>,
-    ) -> PyResult<(String, Option<String>)> {
+        kind: &str,
+    ) -> PyResult<BlueprintFields> {
         let _span = read_trace_context_from_python(py, "DatasetEntry.register_blueprint").entered();
         let name = name
             .map(BlueprintName::try_new)
             .transpose()
             .map_err(to_py_err)?;
         let storage_location = parse_storage_location(storage_location)?;
+        let kind = parse_blueprint_kind(kind)?;
         let connection = self_.client.borrow(py).connection().clone();
         let blueprint_dataset = self_.entry_details.id;
 
@@ -480,60 +478,57 @@ impl PyDatasetEntryInternal {
                     blueprint_dataset,
                     uri,
                     name.as_ref(),
+                    kind,
                     storage_location,
                     std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS),
                 )
                 .await
                 .map_err(to_py_err)
         })?;
-        Ok(blueprint_id_and_name(blueprint))
+        Ok(blueprint_fields(blueprint))
     }
 
-    /// The ID and name of the default blueprint of this dataset, or of its segment table with
-    /// `segment_table`, if any.
-    ///
-    /// The name is `None` for a blueprint without a name.
+    /// The default `kind` blueprint of this dataset, if any. `kind` is `"recording"` or `"table"`.
+    #[pyo3(signature = (*, kind))]
     fn default_blueprint(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
-        segment_table: bool,
-    ) -> PyResult<Option<(String, Option<String>)>> {
+        kind: &str,
+    ) -> PyResult<Option<BlueprintFields>> {
         let _span = read_trace_context_from_python(py, "DatasetEntry.default_blueprint").entered();
+        let kind = parse_blueprint_kind(kind)?;
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
         let blueprint = wait_for_future(py, async {
             connection
                 .inner()
-                .get_dataset_default_blueprint(dataset_id, segment_table)
+                .get_dataset_default_blueprint(dataset_id, kind)
                 .await
                 .map_err(to_py_err)
         })?;
-        Ok(blueprint.map(blueprint_id_and_name))
+        Ok(blueprint.map(blueprint_fields))
     }
 
-    /// Set the default blueprint of this dataset, or of its segment table with `segment_table`,
-    /// to the blueprint with this segment ID, or clear it with `None`.
-    #[pyo3(signature = (segment_id, segment_table))]
+    /// Set the default `kind` blueprint of this dataset to the blueprint with this segment ID, or
+    /// clear it with `None`. `kind` is `"recording"` or `"table"`.
+    #[pyo3(signature = (segment_id, *, kind))]
     fn set_default_blueprint(
         mut self_: PyRefMut<'_, Self>,
         py: Python<'_>,
         segment_id: Option<String>,
-        segment_table: bool,
+        kind: &str,
     ) -> PyResult<()> {
         let _span =
             read_trace_context_from_python(py, "DatasetEntry.set_default_blueprint").entered();
+        let kind = parse_blueprint_kind(kind)?;
         let connection = self_.client.borrow(py).connection().clone();
         let dataset_id = self_.entry_details.id;
 
         let dataset_entry = wait_for_future(py, async {
             connection
                 .inner()
-                .set_dataset_default_blueprint(
-                    dataset_id,
-                    segment_table,
-                    segment_id.map(SegmentId::from),
-                )
+                .set_dataset_default_blueprint(dataset_id, kind, segment_id.map(SegmentId::from))
                 .await
                 .map_err(to_py_err)
         })?;

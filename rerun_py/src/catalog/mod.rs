@@ -36,7 +36,7 @@ mod write_operation;
 
 use errors::{AlreadyExistsError, ChunkNotIndexedError, NotFoundError};
 use pyo3::prelude::*;
-use re_catalog_client::{BlueprintName, RegisteredBlueprint};
+use re_catalog_client::{BlueprintKind, BlueprintName, RegisteredBlueprint};
 use re_protos::cloud::v1alpha1::ext::{
     ASSET_MODE_COMPONENT, ASSET_PROPERTY, ASSET_SEGMENTS_COMPONENT, AssetMode,
 };
@@ -63,14 +63,26 @@ pub use self::table_provider_adapter::PyTableProviderAdapterInternal;
 pub use self::type_aliases::{AnyComponentColumn, IndexValuesLike, PyIndexValuesLikeInternal};
 pub use self::unregistration_handle::PyUnregistrationHandleInternal;
 
-/// The ID of a blueprint, which is its segment ID in the blueprint dataset, and its name.
+/// The ID of a blueprint, which is its segment ID in the blueprint dataset, its name, and its kind.
 ///
-/// The name is `None` for a blueprint without a name.
-fn blueprint_id_and_name(blueprint: RegisteredBlueprint) -> (String, Option<String>) {
+/// The name is `None` for a blueprint without a name. The kind is `"recording"` or `"table"`.
+type BlueprintFields = (String, Option<String>, &'static str);
+
+fn blueprint_fields(blueprint: RegisteredBlueprint) -> BlueprintFields {
     (
         blueprint.segment_id.to_string(),
         blueprint.name.map(BlueprintName::into_string),
+        blueprint.kind.as_str(),
     )
+}
+
+/// The [`BlueprintKind`] with this name, or a `ValueError` for any other string.
+fn parse_blueprint_kind(kind: &str) -> PyResult<BlueprintKind> {
+    BlueprintKind::parse(kind).ok_or_else(|| {
+        pyo3::exceptions::PyValueError::new_err(format!(
+            "Unknown blueprint kind {kind:?}, expected \"recording\" or \"table\""
+        ))
+    })
 }
 
 /// Register the `rerun.catalog` module.

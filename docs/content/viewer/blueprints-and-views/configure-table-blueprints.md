@@ -161,11 +161,11 @@ It filters the table like any other filter, and the Viewer shows it as SQL text.
 
 Dataset segment tables use the same blueprint API.
 The Viewer provides a `"recording link"` column for previews and card links; metadata columns use [property names](../../query-and-transform/catalog/properties-and-segments.md), such as DROID's `"property:episode:uuid"`.
-Register the saved blueprint with `segment_table=True`:
+Register the saved blueprint with `register_table_blueprint`:
 
 snippet: howto/visualization/configure_table_blueprints[register_segments]
 
-Without `segment_table=True`, registration sets the blueprint for opening individual recordings, not the segment table.
+`register_blueprint` registers a blueprint for opening individual recordings, not the segment table.
 
 ## Using remote storage
 
@@ -173,7 +173,7 @@ Upload the `.rbl` file to storage the server has permission to read, then regist
 
 snippet: howto/visualization/configure_table_blueprints[register_remote]
 
-For dataset segment tables, use `get_dataset(…).register_blueprint(uri, name=…, segment_table=True)` instead.
+For dataset segment tables, use `get_dataset(…).register_table_blueprint(uri, name=…)` instead.
 
 ## What the blueprint stores
 
