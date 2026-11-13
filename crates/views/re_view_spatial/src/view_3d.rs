@@ -195,7 +195,10 @@ impl ViewClass for SpatialView3D {
                     center = Vec3::ZERO;
                 }
 
-                let mut radius = 1.5 * view_state.bounding_boxes.region_of_interest_current.half_size().length();
+                // We don't bother with max_point_radius.ui_points(), since we don't have
+                // the needed info to apply it properly, and not handling it doesn't cause many
+                // issues for reasonable point sizes.
+                let mut radius = 1.5 * (view_state.bounding_boxes.region_of_interest_current.half_size().length() + view_state.bounding_boxes.max_point_radius.scene_units().unwrap_or_default());
                 if !radius.is_finite() || radius == 0.0 {
                     radius = 1.0;
                 }

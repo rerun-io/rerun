@@ -81,6 +81,9 @@ pub struct ScreenSpace2D {
     /// Physical pixels per scene unit.
     pub pixels_per_scene_unit: f32,
 
+    /// Size of the view in ui points.
+    pub viewport_size: egui::Vec2,
+
     /// The part of the scene that was visible.
     pub visible_scene_rect: egui::Rect,
 }

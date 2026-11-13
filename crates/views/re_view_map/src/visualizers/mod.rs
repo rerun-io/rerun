@@ -79,6 +79,22 @@ impl GeoSpan {
             (None, None) => return None,
         })
     }
+
+    /// Grow the span outward by `radius` meters in every direction.
+    pub fn extend_meters(&self, radius: f64) -> Self {
+        const M_PER_DEG_LAT: f64 = 111_320.0;
+        let d_lat = radius / M_PER_DEG_LAT;
+        // latitude closest to a pole => widest longitude delta (worst case)
+        let worst_lat = self.min_latitude.abs().max(self.max_latitude.abs());
+        let cos_lat = worst_lat.to_radians().cos().max(1e-6); // guard the poles
+        let d_lon = radius / (M_PER_DEG_LAT * cos_lat);
+        Self {
+            min_latitude: (self.min_latitude - d_lat).max(-90.0),
+            max_latitude: (self.max_latitude + d_lat).min(90.0),
+            min_longitude: self.min_longitude - d_lon,
+            max_longitude: self.max_longitude + d_lon,
+        }
+    }
 }
 
 /// Extend a span to include another span, if any.
@@ -168,5 +184,71 @@ mod tests {
             .zoom_for_screen_size(egui::Vec2::new(1024.0, 512.0))
             .unwrap();
         assert!(zoom >= 8.0 && zoom <= 9.0);
+    }
+
+    #[test]
+    fn test_extend_meters() {
+        let screen = egui::Vec2::new(1024.0, 512.0);
+
+        let span = GeoSpan {
+            min_latitude: 46.0,
+            max_latitude: 47.0,
+            min_longitude: 6.0,
+            max_longitude: 7.0,
+        };
+
+        // Zero radius is a no-op.
+        let same = span.extend_meters(0.0);
+        assert_eq!(same.min_latitude, span.min_latitude);
+        assert_eq!(same.max_latitude, span.max_latitude);
+        assert_eq!(same.min_longitude, span.min_longitude);
+        assert_eq!(same.max_longitude, span.max_longitude);
+
+        // Extending always grows the span
+        let bigger = span.extend_meters(1_000.0);
+        assert!(bigger.min_latitude < span.min_latitude);
+        assert!(bigger.max_latitude > span.max_latitude);
+        assert!(bigger.min_longitude < span.min_longitude);
+        assert!(bigger.max_longitude > span.max_longitude);
+
+        // Extended spans always have a lower zoom
+        let base_zoom = span.zoom_for_screen_size(screen).unwrap();
+        let zoom_1km = span
+            .extend_meters(1_000.0)
+            .zoom_for_screen_size(screen)
+            .unwrap();
+        let zoom_10km = span
+            .extend_meters(10_000.0)
+            .zoom_for_screen_size(screen)
+            .unwrap();
+        assert!(zoom_1km < base_zoom);
+        assert!(zoom_10km < zoom_1km);
+
+        // Away from the equator, a longitude degree is shorter than a latitude degree,
+        // so the longitude should scale faster than latitude
+        let polar = GeoSpan {
+            min_latitude: 70.0,
+            max_latitude: 70.0,
+            min_longitude: 0.0,
+            max_longitude: 0.0,
+        };
+        let extended = polar.extend_meters(10_000.0);
+        let d_lat = extended.max_latitude - extended.min_latitude;
+        let d_lon = extended.max_longitude - extended.min_longitude;
+        assert!(d_lon > d_lat);
+
+        // Latitude should be clamped to +-90, to not break zoom_for_screen_size
+        let extended = GeoSpan {
+            min_latitude: -80.0,
+            max_latitude: 80.0,
+            min_longitude: -10.0,
+            max_longitude: 10.0,
+        }
+        .extend_meters(2_000_000.0);
+        assert_eq!(extended.min_latitude, -90.0);
+        assert_eq!(extended.max_latitude, 90.0);
+        let zoom = extended.zoom_for_screen_size(screen).unwrap();
+        assert!(zoom.is_finite());
+        assert!(zoom <= 2.0); // should be very zoomed out
     }
 }

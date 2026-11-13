@@ -14,6 +14,7 @@ mod component_drop;
 mod component_mapping_error;
 mod component_mapping_query_plan;
 mod instance_hash_conversions;
+mod max_radii;
 mod outlines;
 mod pan_zoom_2d;
 mod query;
@@ -44,6 +45,7 @@ pub use component_mapping_error::ComponentMappingError;
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
+pub use max_radii::MaxRadii;
 pub use outlines::{
     SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES, outline_config,
 };

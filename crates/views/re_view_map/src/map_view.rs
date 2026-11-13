@@ -243,11 +243,38 @@ impl ViewClass for MapView {
         let blueprint_zoom_level = map_zoom
             .component_or_empty::<ZoomLevel>(MapZoom::descriptor_zoom().component)?
             .map(|zoom| **zoom);
+
         let default_zoom_level = span.and_then(|span| {
-            span.zoom_for_screen_size(
-                (ui.available_size() - egui::vec2(15.0, 15.0)).at_least(egui::Vec2::ZERO),
-            )
-            .map(|zoom| zoom.min(16.0))
+            // We only want to pad our zoom by the largest point,
+            // and we can't easily convert scene <-> screen,
+            // so we compute the zoom twice for each space and use the smallest one.
+
+            let ui_point_radius = geo_points_visualizer.max_radii.ui_points();
+            // Scene radii are treated as meters in map views
+            let point_radius_meters = geo_points_visualizer
+                .max_radii
+                .scene_units()
+                .map(|s| s as f64);
+
+            re_log::debug!(?geo_points_visualizer.max_radii);
+
+            let screen = ui.available_size() - egui::vec2(15.0, 15.0);
+
+            let ui_zoom = ui_point_radius.and_then(|radius| {
+                span.zoom_for_screen_size(
+                    (screen - egui::Vec2::splat(2.0 * radius)).at_least(egui::Vec2::ZERO),
+                )
+            });
+            let scene_zoom = point_radius_meters.and_then(|radius| {
+                span.extend_meters(radius)
+                    .zoom_for_screen_size(screen.at_least(egui::Vec2::ZERO))
+            });
+
+            [ui_zoom, scene_zoom]
+                .into_iter()
+                .flatten()
+                .reduce(f64::min)
+                .map(|zoom| zoom.min(16.0))
         });
         let zoom_level = blueprint_zoom_level.or(default_zoom_level).unwrap_or(16.0);
 
