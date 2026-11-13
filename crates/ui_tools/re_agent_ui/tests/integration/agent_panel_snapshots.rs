@@ -629,6 +629,27 @@ fn chat_hover_timestamp_user_scrolled() {
     harness.snapshot("chat_hover_timestamp_user_scrolled");
 }
 
+/// A long paste scrolls inside the input instead of pushing the transcript out of the panel.
+#[test]
+fn chat_long_prompt() {
+    let mut panel = panel();
+    panel.show_chat();
+    open_session(panel.session_mut());
+
+    let mut harness = harness(panel);
+    harness.run_steps(2);
+    let lines = (1..=100).map(|i| format!("row {i}")).collect::<Vec<_>>();
+    let input = harness.get_by_role(egui::Role::MultilineTextInput);
+    input.focus();
+    input.type_text(&lines.join("\n"));
+    harness.run_steps(10);
+    harness
+        .get_by_role(egui::Role::MultilineTextInput)
+        .type_text("x");
+    harness.run_steps(10);
+    harness.snapshot("chat_long_prompt");
+}
+
 /// A small solid image, standing in for a pasted screenshot.
 fn pasted_image() -> PromptImage {
     let resolution = [64, 48];

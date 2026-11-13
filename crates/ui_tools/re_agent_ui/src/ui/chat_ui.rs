@@ -27,6 +27,11 @@ use re_agent::{AgentPreferences, AgentSession, AuthPrompt, Phase, Prompt, Prompt
 /// button's text, and the send button.
 const COMPOSER_MARGIN: f32 = 6.0;
 
+/// Horizontal space around the transcript and the empty state.
+///
+/// The vertical space is [`CONVERSATION_TOP_SPACE`] and [`CONVERSATION_BOTTOM_SPACE`].
+const TRANSCRIPT_MARGIN: egui::Margin = egui::Margin::symmetric(12, 0);
+
 /// Size of the settings button below the prompt.
 const SETTINGS_BUTTON_SIZE: re_ui::Size = re_ui::Size::Tiny;
 
@@ -57,6 +62,11 @@ const SETTINGS_BUTTON_GAP: f32 = 6.0;
 
 /// Leaves room between a setting's name and its value in the settings menu.
 const SETTINGS_MENU_MIN_WIDTH: f32 = 180.0;
+
+/// The prompt input grows with its text up to this many rows, then scrolls.
+///
+/// Keeps a long paste from pushing the transcript out of the panel.
+const INPUT_MAX_ROWS: f32 = 12.0;
 
 /// What the user is typing, plus whether the text field should grab focus this frame.
 #[derive(Default)]
@@ -246,41 +256,43 @@ pub fn chat_ui(
         });
 
     egui::CentralPanel::default()
-        .frame(egui::Frame::new().inner_margin(egui::Margin {
-            left: 12,
-            right: 12,
-            top: 0,
-            bottom: 0,
-        }))
+        .frame(egui::Frame::new())
         .show(ui, |ui| {
-            if session.transcript().items.is_empty() {
-                ui.add_space(CONVERSATION_TOP_SPACE);
-                update_recommendation_ui(ui, session, &mut input.upgrade_notice_dismissed);
-            }
-            if let Some(home_ui) = home_ui {
-                if !session.transcript().items.is_empty() {
-                    ui.add_space(CONVERSATION_TOP_SPACE);
-                }
-                home_ui(ui);
-                if session.transcript().items.is_empty() {
-                    empty_state_ui(ui, input, example_prompts);
-                }
-                return;
-            }
-            if session.transcript().items.is_empty()
-                && !matches!(session.phase(), Phase::Connecting { .. })
-            {
-                empty_state_ui(ui, input, example_prompts);
+            let is_empty = session.transcript().items.is_empty();
+            let is_connecting = matches!(session.phase(), Phase::Connecting { .. });
+            if home_ui.is_some() || (is_empty && !is_connecting) {
+                egui::Frame::new()
+                    .inner_margin(TRANSCRIPT_MARGIN)
+                    .show(ui, |ui| {
+                        ui.add_space(CONVERSATION_TOP_SPACE);
+                        if is_empty {
+                            update_recommendation_ui(
+                                ui,
+                                session,
+                                &mut input.upgrade_notice_dismissed,
+                            );
+                        }
+                        if let Some(home_ui) = home_ui {
+                            home_ui(ui);
+                        }
+                        if is_empty {
+                            empty_state_ui(ui, input, example_prompts);
+                        }
+                    });
                 return;
             }
 
-            // The spacing is inside the scroll area, so that scrolled content is clipped right at
-            // the header line and the composer frame.
+            // The margin goes inside the scroll area, so the content scrolls all the way to the
+            // panel edges and the scroll bar sits at the edge of the panel.
             egui::ScrollArea::vertical()
                 .auto_shrink(false)
                 .stick_to_bottom(true)
+                .content_margin(TRANSCRIPT_MARGIN)
                 .show(ui, |ui| {
                     ui.add_space(CONVERSATION_TOP_SPACE);
+                    if is_empty {
+                        update_recommendation_ui(ui, session, &mut input.upgrade_notice_dismissed);
+                    }
                     if let Some(prompt) = transcript_ui(ui, session, show_thoughts)
                         && !session.send_prompt(prompt)
                     {
@@ -1136,26 +1148,36 @@ fn input_ui(
         .show(ui, |ui| {
             pending_images_ui(ui, input);
 
-            let output = CompletionPopup::new(input_id)
-                .event_filter(EventFilter {
-                    horizontal_arrows: true,
-                    vertical_arrows: true,
-                    escape: true,
-                    ..Default::default()
+            let max_height = INPUT_MAX_ROWS * ui.text_style_height(&egui::TextStyle::Body);
+            let output = egui::ScrollArea::vertical()
+                .id_salt("chat_input_scroll")
+                .max_height(max_height)
+                .show(ui, |ui| {
+                    CompletionPopup::new(input_id)
+                        .event_filter(EventFilter {
+                            horizontal_arrows: true,
+                            vertical_arrows: true,
+                            escape: true,
+                            ..Default::default()
+                        })
+                        .show(
+                            ui,
+                            &mut input.prompt.text,
+                            |text| {
+                                egui::TextEdit::multiline(text)
+                                    .hint_text(hint)
+                                    .desired_rows(2)
+                                    .desired_width(f32::INFINITY)
+                                    .frame(egui::Frame::new())
+                                    .return_key(Some(KeyboardShortcut::new(
+                                        Modifiers::SHIFT,
+                                        Key::Enter,
+                                    )))
+                            },
+                            |query| slash_command_suggestions(session, query),
+                        )
                 })
-                .show(
-                    ui,
-                    &mut input.prompt.text,
-                    |text| {
-                        egui::TextEdit::multiline(text)
-                            .hint_text(hint)
-                            .desired_rows(2)
-                            .desired_width(f32::INFINITY)
-                            .frame(egui::Frame::new())
-                            .return_key(Some(KeyboardShortcut::new(Modifiers::SHIFT, Key::Enter)))
-                    },
-                    |query| slash_command_suggestions(session, query),
-                );
+                .inner;
             input.completion_open = output.is_open;
             let response = output.text_edit.response.response;
 
