@@ -235,10 +235,6 @@ impl AppCore {
         ui: &mut egui::Ui,
         active_store_context: Option<&ActiveStoreContext<'_>>,
     ) {
-        if !self.app_options().experimental.agent_panel {
-            return;
-        }
-
         let viewer_endpoint = self
             .connections
             .registry

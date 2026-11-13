@@ -74,7 +74,9 @@ async fn settings_screen() {
             os: Some(os),
             ..Default::default()
         });
-        harness.get_by_label_contains("Search commands…").click();
+        harness
+            .get_by_label_contains("Search commands or ask agent…")
+            .click();
         harness.run_ok();
         harness.get_by_role(Role::TextInput).type_text("settings");
         harness.run_ok();
@@ -147,7 +149,9 @@ async fn command_palette_from_top_bar() {
         ..Default::default()
     });
 
-    let trigger_rect = harness.get_by_label_contains("Search commands…").rect();
+    let trigger_rect = harness
+        .get_by_label_contains("Search commands or ask agent…")
+        .rect();
     let back_rect = harness.get_by_label("go back").rect();
     let forward_rect = harness.get_by_label("go forward").rect();
     assert!((trigger_rect.center().x - 600.0).abs() < 0.5);
@@ -155,7 +159,9 @@ async fn command_palette_from_top_bar() {
     assert!(forward_rect.right() < trigger_rect.left());
 
     harness.snapshot("top_bar_command_palette_trigger");
-    harness.get_by_label_contains("Search commands…").click();
+    harness
+        .get_by_label_contains("Search commands or ask agent…")
+        .click();
     harness.run_ok();
     harness.get_by_role(Role::TextInput);
 }
@@ -168,7 +174,9 @@ async fn debug_tools_toggle_top_bar_diagnostics() {
         ..Default::default()
     });
 
-    harness.get_by_label_contains("Search commands…").click();
+    harness
+        .get_by_label_contains("Search commands or ask agent…")
+        .click();
     harness.run_ok();
     harness
         .get_by_role(Role::TextInput)
@@ -188,7 +196,6 @@ async fn debug_tools_toggle_top_bar_diagnostics() {
 async fn command_palette_agent_mode() {
     let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
         window_size: Some(egui::vec2(1200.0, 768.0)),
-        app_options_editor: Some(Box::new(|options| options.experimental.agent_panel = true)),
         ..Default::default()
     });
     harness
@@ -219,10 +226,7 @@ async fn command_palette_agent_mode() {
 /// Checks that the attention dot on the agent panel button stays hidden once the panel has been shown.
 #[tokio::test]
 async fn agent_panel_ever_opened_persists() {
-    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions {
-        app_options_editor: Some(Box::new(|options| options.experimental.agent_panel = true)),
-        ..Default::default()
-    });
+    let mut harness = viewer_test_utils::viewer_harness(&HarnessOptions::default());
     assert!(!harness.state().agent_panel_ever_opened());
     harness.get_by_label("Agent panel toggle").click();
     harness.run_ok();

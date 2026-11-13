@@ -22,7 +22,7 @@ This page gives a high-level overview of ongoing and planned work.
 
 ### Near term
 - The agent panel: chat with a coding agent that can inspect and drive the Viewer through the [Rerun MCP server](../viewer/extend/mcp.md)
-    - You can try it today in the native Viewer: enable **Settings → Experimental → Agent panel**
+    - You can try it today: click the agent button in the top right corner of the Viewer
     - We are working on making it a stable, non-experimental feature
 - A refreshed look and feel for the Viewer
 - Greater capabilities around sharing links to data

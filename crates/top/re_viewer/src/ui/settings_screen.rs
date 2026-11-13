@@ -216,7 +216,6 @@ fn settings_screen_ui_impl(
 
     {
         let ExperimentalAppOptions {
-            agent_panel,
             gamepad_navigation,
             point_cloud_transparency,
         } = experimental;
@@ -227,9 +226,6 @@ fn settings_screen_ui_impl(
                 "Alpha-blend semi-transparent point clouds, sorting them back-to-front.\n\n\
                  Sorting happens on the CPU every frame, so this is very slow for large point clouds.",
             );
-        ui.checkbox(agent_panel, "Agent panel").on_hover_text(
-            "Experimental: chat with an AI agent that can drive the viewer, in a panel on the right.",
-        );
         cfg_select! {
             target_arch = "wasm32" => {
                 let _ = gamepad_navigation;
