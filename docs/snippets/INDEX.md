@@ -28,6 +28,7 @@ Use it to quickly find copy-pastable snippets of code for any Rerun feature you'
 | **Catalog server** | `query_images` | Query various image representations | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/query_images.py) |  |  |
 | **Catalog server** | `query_videos` | Query video streams | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/query_videos.py) |  |  |
 | **Catalog server** | `query_video_keyframes` | Query video streams efficiently using keyframe information | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/query_video_keyframes.py) |  |  |
+| **Catalog server** | `spans` | Create, edit, and query annotated time spans | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/spans.py) |  |  |
 | **Catalog server** | `sub_dataset` | Create a new dataset from a subset of segments of an existing dataset | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/sub_dataset.py) |  |  |
 | **Catalog server** | `time_alignment` | Efficiently time align multirate columns | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/time_alignment.py) |  |  |
 | **Catalog server** | `view_operations` | Leverage filters to more efficiently perform downstream queries | [🐍](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/view_operations.py) |  |  |
