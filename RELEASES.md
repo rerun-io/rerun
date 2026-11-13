@@ -163,6 +163,7 @@ The workflow is dispatched on the release branch from step 2, with these inputs:
 
 The workflow refuses to run when the branch name and `release-type` disagree.
 In all three cases, the workflow opens (or updates) a release pull request against `main`.
+A patch's release PR is opened before the workflow runs, against the previous release's `prepare-release-0.x.y` branch so its diff shows exactly the patch, and labeled `do-not-merge`; the workflow reuses it.
 
 #### Running the release again
 
@@ -177,7 +178,7 @@ In all three cases, the workflow opens (or updates) a release pull request again
 
 ### 7. Wait for the release workflow to finish
 
-Once the release workflow is started, it will create a pull request for the release.
+Once the release workflow is started, it will create a pull request for the release, unless one already exists.
 The pull request description lists the follow-up steps.
 
 [The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts, run PR checks, and publish them to PyPI, crates.io, npm, etc.
