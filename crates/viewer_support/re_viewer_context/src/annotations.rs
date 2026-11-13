@@ -12,7 +12,9 @@ use re_entity_db::EntityPath;
 use re_log_types::StoreId;
 use re_sdk_types::archetypes;
 use re_sdk_types::components::{AnnotationContext, Color, Text};
-use re_sdk_types::datatypes::{AnnotationInfo, ClassDescription, ClassId, KeypointId};
+use re_sdk_types::datatypes::{
+    AnnotationInfo, ClassDescription, ClassDescriptionMapElem, ClassId, KeypointId,
+};
 use re_types_core::{Component as _, ComponentDescriptor, ComponentIdentifier};
 
 use super::auto_color_egui;
@@ -94,6 +96,23 @@ impl AnnotationContextQuery {
 }
 
 impl Annotations {
+    /// The annotations of `context`, identified by the [`RowId`] of the chunk it was read from.
+    pub fn new(row_id: RowId, context: AnnotationContext) -> Self {
+        Self {
+            row_id,
+            class_map: context
+                .0
+                .into_iter()
+                .map(|elem| {
+                    (
+                        elem.class_id,
+                        CachedClassDescription::from(elem.class_description),
+                    )
+                })
+                .collect(),
+        }
+    }
+
     #[inline]
     pub fn missing() -> Self {
         Self {
@@ -128,6 +147,20 @@ impl Annotations {
     #[inline]
     pub fn row_id(&self) -> RowId {
         self.row_id
+    }
+
+    /// The annotation context these annotations were created from, with its classes sorted by id.
+    pub fn annotation_context(&self) -> AnnotationContext {
+        let mut classes: Vec<_> = self
+            .class_map
+            .iter()
+            .map(|(&class_id, cached)| ClassDescriptionMapElem {
+                class_id,
+                class_description: cached.class_description.clone(),
+            })
+            .collect();
+        classes.sort_by_key(|class| class.class_id.0);
+        AnnotationContext(classes)
     }
 }
 
@@ -259,20 +292,8 @@ impl AnnotationMap {
                 time_query,
                 archetypes::AnnotationContext::descriptor_context().component,
             ) {
-                let annotations = Annotations {
-                    row_id,
-                    class_map: ann_ctx
-                        .0
-                        .into_iter()
-                        .map(|elem| {
-                            (
-                                elem.class_id,
-                                CachedClassDescription::from(elem.class_description),
-                            )
-                        })
-                        .collect(),
-                };
-                self.0.insert(entity, Arc::new(annotations));
+                self.0
+                    .insert(entity, Arc::new(Annotations::new(row_id, ann_ctx)));
             }
         }
     }

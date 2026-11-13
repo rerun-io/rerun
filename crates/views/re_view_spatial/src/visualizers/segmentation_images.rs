@@ -1,14 +1,17 @@
 use re_sdk_types::Archetype as _;
-use re_sdk_types::archetypes::SegmentationImage;
-use re_sdk_types::components::{ImageBuffer, ImageFormat, MagnificationFilter, Opacity};
+use re_sdk_types::archetypes::{self, SegmentationImage};
+use re_sdk_types::components::{
+    AnnotationContext, ImageBuffer, ImageFormat, MagnificationFilter, Opacity,
+};
 use re_sdk_types::image::ImageKind;
 use re_viewer_context::{
-    IdentifiedViewSystem, ImageInfo, ViewClass as _, ViewContext, ViewContextCollection, ViewQuery,
-    ViewSystemExecutionError, ViewerReportSeverity, VisualizerExecutionOutput, VisualizerQueryInfo,
-    VisualizerSystem, typed_fallback_for,
+    Annotations, IdentifiedViewSystem, ImageInfo, ViewClass as _, ViewContext,
+    ViewContextCollection, ViewQuery, ViewSystemExecutionError, ViewerReportSeverity,
+    VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
 use super::SpatialViewVisualizerData;
+use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::textured_rect_from_image;
 use crate::{PickableRectSourceData, PickableTexturedRect, SpaceKind};
 
@@ -34,10 +37,17 @@ impl VisualizerSystem for SegmentationImageVisualizer {
         &self,
         _app_options: &re_viewer_context::AppOptions,
     ) -> VisualizerQueryInfo {
+        // The annotation context is queried too, so that a blueprint override or view default of it
+        // restyles the classes of this image.
+        let queried = [
+            SegmentationImage::all_components().as_ref(),
+            &[archetypes::AnnotationContext::descriptor_context()],
+        ]
+        .concat();
         VisualizerQueryInfo::buffer_and_format::<ImageBuffer, ImageFormat>(
             &SegmentationImage::descriptor_buffer(),
             &SegmentationImage::descriptor_format(),
-            &SegmentationImage::all_components(),
+            &queried,
         )
     }
 
@@ -63,6 +73,16 @@ impl VisualizerSystem for SegmentationImageVisualizer {
             self,
             |ctx, spatial_ctx, results| {
                 let entity_path = ctx.target_entity_path;
+
+                let blueprint_annotations = results
+                    .blueprint_mono_with_row_id::<AnnotationContext>(
+                        archetypes::AnnotationContext::descriptor_context().component,
+                    )
+                    .map(|(row_id, context)| Annotations::new(row_id, context));
+                let spatial_ctx = &SpatialSceneVisualizerInstructionContext {
+                    annotations: blueprint_annotations.as_ref().or(spatial_ctx.annotations),
+                    ..*spatial_ctx
+                };
 
                 let all_buffers =
                     results.iter_required(SegmentationImage::descriptor_buffer().component);

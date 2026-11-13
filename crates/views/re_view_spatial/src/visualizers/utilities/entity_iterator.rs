@@ -17,7 +17,8 @@ use crate::visualizers::utilities::{
 /// Iterates through all entity views for a given archetype.
 ///
 /// The callback passed in gets passed along a [`SpatialSceneVisualizerInstructionContext`] which contains
-/// various useful information about an entity in the context of the current scene.
+/// various useful information about an entity in the context of the current scene,
+/// and the results for the components the visualizer queries.
 ///
 /// The visualizer's [`VisualizerSystem::affinity`] is used to determine its preferred spatial view kind (2D or 3D).
 /// Based on this, 2D entities require a pinhole parent in 3D views, and 3D entities require a pinhole at the root of 2D views.
@@ -45,6 +46,10 @@ where
 
     let latest_at = query.latest_at_query();
     let annotations = AnnotationMapCache::for_query(ctx.viewer_ctx, &query.latest_at_query());
+    let queried_components: Vec<_> = visualizer
+        .visualizer_query_info(ctx.viewer_ctx.app_options())
+        .queried_components()
+        .collect();
 
     let system_identifier = V::identifier();
     let archetype_kind = spatial_view_kind_from_affinity(visualizer.affinity());
@@ -79,9 +84,10 @@ where
             view_class_identifier: context_systems.view_class_identifier(),
         };
 
-        let results = data_result.query_archetype_with_history::<A>(
+        let results = data_result.query_components_with_history(
             ctx,
             query,
+            queried_components.iter().copied(),
             visualizer_instruction,
             instruction_context.annotations,
         );

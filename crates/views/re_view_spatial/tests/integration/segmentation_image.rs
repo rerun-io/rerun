@@ -184,3 +184,56 @@ fn test_segmentation_image_class_ids_beyond_128() {
     harness.run();
     harness.snapshot("segmentation_image_class_ids_beyond_128");
 }
+
+/// A blueprint override of the annotation context restyles the classes of a segmentation image:
+/// class 1 turns from red to blue, and class 2 is hidden by making it fully transparent.
+#[test]
+fn test_segmentation_image_annotation_context_override() {
+    use re_sdk_types::archetypes::{AnnotationContext, SegmentationImage};
+    use re_test_context::VisualizerBlueprintContext as _;
+
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView2D>();
+    let entity_path = re_log_types::EntityPath::from("segmentation");
+    test_context.log_entity(entity_path.clone(), |builder| {
+        builder
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &AnnotationContext::new([
+                    (1, "red", Rgba32::from_rgb(255, 0, 0)),
+                    (2, "green", Rgba32::from_rgb(0, 255, 0)),
+                ]),
+            )
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
+                &SegmentationImage::try_from(ndarray::arr2(&[[1u8, 2], [2, 1]]))
+                    .unwrap()
+                    .with_opacity(1.0),
+            )
+    });
+
+    let view_id = test_context.setup_viewport_blueprint(|ctx, blueprint| {
+        let view =
+            ViewBlueprint::new_with_root_wildcard(re_view_spatial::SpatialView2D::identifier());
+        ctx.save_visualizers(
+            &entity_path,
+            view.id,
+            [
+                re_sdk_types::Visualizer::new("SegmentationImage").with_overrides(
+                    &AnnotationContext::new([
+                        (1, "red", Rgba32::from_rgb(0, 0, 255)),
+                        (2, "green", Rgba32::from_unmultiplied_rgba(0, 255, 0, 0)),
+                    ]),
+                ),
+            ],
+        );
+        blueprint.add_view_at_root(view)
+    });
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_3d(egui::vec2(100.0, 100.0))
+        .build_ui(|ui| {
+            test_context.run_with_single_view(ui, view_id);
+        });
+    harness.run();
+    harness.snapshot("segmentation_image_annotation_context_override");
+}
