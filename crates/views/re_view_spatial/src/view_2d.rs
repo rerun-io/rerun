@@ -73,7 +73,7 @@ impl ViewClass for SpatialView2D {
                     .map(|pinhole| pinhole.resolution_rect())
                     .unwrap_or_else(|| {
                         // TODO(emilk): if there is a single image in this view, use that as the default bounds
-                        let max_radii = view_state.bounding_boxes.max_point_radius;
+                        let max_radii = view_state.bounding_boxes.max_point_radii;
                         let scene_radius = max_radii.scene_units().unwrap_or_default();
                         let ui_radius = max_radii.ui_points().unwrap_or_default();
 
