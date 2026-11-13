@@ -256,8 +256,6 @@ impl ViewClass for MapView {
                 .scene_units()
                 .map(|s| s as f64);
 
-            re_log::debug!(?geo_points_visualizer.max_radii);
-
             let screen = ui.available_size() - egui::vec2(15.0, 15.0);
 
             let ui_zoom = ui_point_radius.and_then(|radius| {
