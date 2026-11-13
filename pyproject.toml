@@ -13,7 +13,7 @@
 name = "rerun-workspace"
 version = "0.28.0-alpha.1+dev"
 description = "Rerun Python workspace"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11.5,<3.13"
 
 [dependency-groups]
 dev = [
