@@ -136,6 +136,12 @@ impl Points2DVisualizer {
                 .max_point_radii
                 .update_from_radii(data.radii.iter().copied());
 
+            if data.radii.is_empty() {
+                let fallback_radius: Radius =
+                    typed_fallback_for(ctx, Points2D::descriptor_radii().component);
+                bounds.max_point_radii.update(fallback_radius);
+            }
+
             if let Some(annotations) = ent_context.annotations {
                 load_keypoint_connections(
                     line_builder,
