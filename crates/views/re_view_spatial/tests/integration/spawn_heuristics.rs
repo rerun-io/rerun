@@ -4,7 +4,7 @@ use ndarray::{Array, ShapeBuilder as _};
 use re_log_types::{EntityPath, Timeline};
 use re_sdk_types::{AsComponents, archetypes};
 use re_test_context::TestContext;
-use re_viewer_context::{ViewClass as _, ViewSpawnHeuristics};
+use re_viewer_context::{ViewClass as _, ViewSpawnContext, ViewSpawnHeuristics};
 
 enum ImageSize {
     Small,
@@ -101,6 +101,44 @@ fn build_test_scene(entities: &[(&'static str, EntityKind)]) -> TestContext {
     test_context
 }
 
+#[test]
+fn properties_trigger_only_explicit_recommendations() {
+    use re_viewer_context::ViewSpawnContext;
+
+    let test_context = build_test_scene(&[
+        ("/__properties/boxes_2d", EntityKind::BBox2D),
+        ("/__properties/boxes_3d", EntityKind::BBox3D),
+        ("/__properties/coordinates", EntityKind::ViewCoords),
+        (
+            "/__properties/camera",
+            EntityKind::Pinhole(ImageSize::Small),
+        ),
+    ]);
+
+    test_context.run_in_egui_central_panel(|ctx, _ui| {
+        for identifier in [
+            re_view_spatial::SpatialView2D::identifier(),
+            re_view_spatial::SpatialView3D::identifier(),
+        ] {
+            let class = ctx.view_class_registry().get_class_or_log_error(identifier);
+            assert!(
+                class
+                    .spawn_heuristics(ctx, ViewSpawnContext::Automatic)
+                    .into_vec()
+                    .is_empty(),
+                "{identifier} should not auto-spawn for properties",
+            );
+            assert!(
+                !class
+                    .spawn_heuristics(ctx, ViewSpawnContext::Explicit)
+                    .into_vec()
+                    .is_empty(),
+                "{identifier} should consider properties for explicit creation",
+            );
+        }
+    });
+}
+
 fn run_heuristics_snapshot_test(name: &str, test_context: &TestContext) {
     let view_class_2d = test_context
         .view_class_registry
@@ -119,14 +157,11 @@ fn run_heuristics_snapshot_test(name: &str, test_context: &TestContext) {
             views_3d: Option<ViewSpawnHeuristics>,
         }
 
-        let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
-        let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
-
         let recommended_views = RecommendedViews {
             views_2d: view_class_2d
-                .map(|view_class| view_class.spawn_heuristics(ctx, &include_entity)),
+                .map(|view_class| view_class.spawn_heuristics(ctx, ViewSpawnContext::Automatic)),
             views_3d: view_class_3d
-                .map(|view_class| view_class.spawn_heuristics(ctx, &include_entity)),
+                .map(|view_class| view_class.spawn_heuristics(ctx, ViewSpawnContext::Automatic)),
         };
 
         insta::assert_debug_snapshot!(name, recommended_views);

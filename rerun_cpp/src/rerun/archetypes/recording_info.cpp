@@ -15,46 +15,4 @@ namespace rerun::archetypes {
             ComponentBatch::empty<rerun::components::Name>(Descriptor_name).value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> RecordingInfo::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (start_time.has_value()) {
-            columns.push_back(start_time.value().partitioned(lengths_).value_or_throw());
-        }
-        if (name.has_value()) {
-            columns.push_back(name.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> RecordingInfo::columns() {
-        if (start_time.has_value()) {
-            return columns(std::vector<uint32_t>(start_time.value().length(), 1));
-        }
-        if (name.has_value()) {
-            return columns(std::vector<uint32_t>(name.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<archetypes::RecordingInfo>::as_batches(
-        const archetypes::RecordingInfo& archetype
-    ) {
-        using namespace archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.start_time.has_value()) {
-            cells.push_back(archetype.start_time.value());
-        }
-        if (archetype.name.has_value()) {
-            cells.push_back(archetype.name.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

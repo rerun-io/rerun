@@ -116,6 +116,33 @@ def test_static_overlay_layer_fills_every_row(entry_factory: EntryFactory, tmp_p
     assert null_rows == 0, f"{null_rows}/{total_rows} rows are missing the static value"
 
 
+@pytest.mark.parametrize("fill_latest_at", [False, True])
+def test_dataframe_pipelines_return_the_same_table(
+    readonly_test_dataset: DatasetEntry, monkeypatch: pytest.MonkeyPatch, fill_latest_at: bool
+) -> None:
+    """
+    The `v2` and `v2-columnar` dataframe pipelines return the same table, schema included.
+
+    The schema comparison covers nullability and column order and ignores field metadata.
+    `v2-columnar` runs latest-at fill on `QueryHandle`, so with `fill_latest_at` this checks
+    that fallback until the columnar emitter supports fill.
+    The SDK reads `RERUN_DATAFRAME_PIPELINE` when it plans a query, so the variable is set
+    before each one.
+    """
+    tables: dict[str, pyarrow.Table] = {}
+    for pipeline in ("v2", "v2-columnar"):
+        monkeypatch.setenv("RERUN_DATAFRAME_PIPELINE", pipeline)
+        tables[pipeline] = readonly_test_dataset.reader(index="time_1", fill_latest_at=fill_latest_at).to_arrow_table()
+    baseline, columnar = tables["v2"], tables["v2-columnar"]
+
+    assert columnar.schema.equals(baseline.schema, check_metadata=False), (
+        f"v2 schema:\n{baseline.schema}\n\nv2-columnar schema:\n{columnar.schema}"
+    )
+    assert columnar.num_rows > 0, "the query returned no rows"
+    keys = [("rerun_segment_id", "ascending"), ("time_1", "ascending")]
+    assert columnar.sort_by(keys).equals(baseline.sort_by(keys))
+
+
 def test_dataset_to_arrow_reader(readonly_test_dataset: DatasetEntry) -> None:
     for rb_stream in readonly_test_dataset.reader(index="time_1").execute_stream():
         assert rb_stream.to_pyarrow().num_rows > 0
@@ -158,3 +185,23 @@ def test_readonly_dataset_schema_comparison_self_consistent(readonly_test_datase
 
     assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
     assert schema_0 == schema_1, "Schema is not self-consistent"
+
+
+def test_schema_column_for_selector(readonly_test_dataset: DatasetEntry) -> None:
+    schema = readonly_test_dataset.schema()
+
+    column = schema.column_for_selector("/obj1:Points3D:positions")
+    assert column.entity_path == "/obj1"
+    assert column.component == "Points3D:positions"
+
+    column = schema.column_for_selector(rr.catalog.ComponentColumnSelector("/text1", "TextDocument:text"))
+    assert column.entity_path == "/text1"
+    assert column.component == "TextDocument:text"
+
+    assert schema.column_for_selector(column) == column
+
+    with pytest.raises(LookupError):
+        schema.column_for_selector("/nonexistent:Foo:bar")
+
+    with pytest.raises(ValueError):
+        schema.column_for_selector("invalid-format-no-colon")

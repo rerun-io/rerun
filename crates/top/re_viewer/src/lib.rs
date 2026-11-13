@@ -25,10 +25,6 @@
 //!
 //! See [`re_viewer_context::VisualizerInstructionReport`] for how these break down further.
 
-#[cfg(all(agent_panel, feature = "analytics"))]
-mod agent_analytics;
-#[cfg(agent_panel)]
-mod agent_panel;
 mod app;
 mod app_blueprint;
 mod app_state;
@@ -45,6 +41,7 @@ mod external_memory;
 mod history;
 mod konami;
 mod latency_tracker;
+mod loading_errors;
 #[cfg(target_os = "macos")]
 mod native_menu;
 mod navigation;
@@ -55,6 +52,7 @@ mod screen_highlight;
 mod screenshotter;
 mod server_connections;
 mod startup_options;
+mod store_states;
 mod texture_readback;
 mod ui;
 mod version_check;

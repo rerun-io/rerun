@@ -62,7 +62,7 @@ datafusion-common = { version = "54", default-features = false, features = ["obj
 datafusion-expr = { version = "54" }
 digest = { version = "0.10", features = ["mac", "std"] }
 ecolor = { version = "0.37", features = ["bytemuck", "color-hex", "serde"] }
-eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
+eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "experimental", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
@@ -84,7 +84,6 @@ getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-f
 glam = { version = "0.33", features = ["bytemuck", "debug-glam-assert", "serde"] }
 half = { version = "2", features = ["bytemuck", "num-traits"] }
 hashbrown-9067fe90e8c1f593 = { package = "hashbrown", version = "0.17" }
-hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16", default-features = false, features = ["default-hasher", "inline-more", "serde"] }
 http = { version = "1" }
 httparse = { version = "1" }
 icu_locale_core = { version = "2", default-features = false, features = ["alloc", "zerovec"] }
@@ -100,6 +99,7 @@ log = { version = "0.4", default-features = false, features = ["release_max_leve
 lz4_flex = { version = "0.13" }
 matrixmultiply = { version = "0.3", default-features = false, features = ["cgemm", "threading"] }
 memchr = { version = "2" }
+mime_guess = { version = "2" }
 mime_guess2 = { version = "2" }
 miniz_oxide = { version = "0.8", features = ["simd"] }
 ndarray = { version = "0.16", features = ["matrixmultiply-threading"] }
@@ -115,7 +115,6 @@ parking_lot = { version = "0.12", features = ["arc_lock", "serde"] }
 peg-runtime = { version = "0.8", default-features = false, features = ["std"] }
 percent-encoding = { version = "2" }
 petgraph = { version = "0.8" }
-pico-args = { version = "0.5", features = ["eq-separator"] }
 potential_utf = { version = "0.1", default-features = false, features = ["alloc", "zerovec"] }
 proc-macro2 = { version = "1", features = ["span-locations"] }
 profiling = { version = "1", default-features = false, features = ["profile-with-puffin"] }
@@ -132,29 +131,32 @@ re_math = { version = "0.33", features = ["serde"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4" }
 regex-syntax = { version = "0.8" }
-reqwest = { version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
+reqwest-594e8ee84c453af0 = { package = "reqwest", version = "0.13", default-features = false, features = ["charset", "http2", "json", "multipart", "rustls-no-provider", "stream", "system-proxy"] }
+reqwest-5ef9efb8ec2df382 = { package = "reqwest", version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
 rfd = { version = "0.17", default-features = false, features = ["file-handle-inner", "xdg-portal"] }
+rig-core = { version = "0.45", default-features = false, features = ["test-utils"] }
+rig-http = { version = "0.45", default-features = false, features = ["test-utils"] }
 rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
 rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
 schemars = { version = "1", features = ["chrono04"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_core = { version = "1", features = ["alloc", "rc"] }
-serde_json = { version = "1", features = ["alloc", "preserve_order", "raw_value", "unbounded_depth"] }
+serde_json = { version = "1", features = ["alloc", "float_roundtrip", "preserve_order", "raw_value", "unbounded_depth"] }
 serde_spanned = { version = "1", default-features = false, features = ["serde", "std"] }
 serde_with = { version = "3", features = ["json", "schemars_1"] }
 simd-adler32 = { version = "0.3" }
 similar = { version = "2", features = ["inline", "unicode"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
-stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit", "visit-mut"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
 tempfile = { version = "3" }
 thiserror = { version = "2" }
 tinystr = { version = "0.8", default-features = false, features = ["alloc", "zerovec"] }
-tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "test-util"] }
 tokio-stream = { version = "0.1", features = ["net", "sync"] }
 tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
 toml = { version = "1", default-features = false, features = ["parse", "preserve_order", "serde"] }
@@ -223,7 +225,7 @@ datafusion-common = { version = "54", default-features = false, features = ["obj
 datafusion-expr = { version = "54" }
 digest = { version = "0.10", features = ["mac", "std"] }
 ecolor = { version = "0.37", features = ["bytemuck", "color-hex", "serde"] }
-eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
+eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "experimental", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
@@ -245,7 +247,6 @@ getrandom-468e82937335b1c9 = { package = "getrandom", version = "0.3", default-f
 glam = { version = "0.33", features = ["bytemuck", "debug-glam-assert", "serde"] }
 half = { version = "2", features = ["bytemuck", "num-traits"] }
 hashbrown-9067fe90e8c1f593 = { package = "hashbrown", version = "0.17" }
-hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16", default-features = false, features = ["default-hasher", "inline-more", "serde"] }
 http = { version = "1" }
 httparse = { version = "1" }
 icu_locale_core = { version = "2", default-features = false, features = ["alloc", "zerovec"] }
@@ -261,6 +262,7 @@ log = { version = "0.4", default-features = false, features = ["release_max_leve
 lz4_flex = { version = "0.13" }
 matrixmultiply = { version = "0.3", default-features = false, features = ["cgemm", "threading"] }
 memchr = { version = "2" }
+mime_guess = { version = "2" }
 mime_guess2 = { version = "2" }
 miniz_oxide = { version = "0.8", features = ["simd"] }
 ndarray = { version = "0.16", features = ["matrixmultiply-threading"] }
@@ -276,7 +278,6 @@ parking_lot = { version = "0.12", features = ["arc_lock", "serde"] }
 peg-runtime = { version = "0.8", default-features = false, features = ["std"] }
 percent-encoding = { version = "2" }
 petgraph = { version = "0.8" }
-pico-args = { version = "0.5", features = ["eq-separator"] }
 potential_utf = { version = "0.1", default-features = false, features = ["alloc", "zerovec"] }
 proc-macro2 = { version = "1", features = ["span-locations"] }
 profiling = { version = "1", default-features = false, features = ["profile-with-puffin"] }
@@ -293,15 +294,18 @@ re_math = { version = "0.33", features = ["serde"] }
 regex = { version = "1" }
 regex-automata = { version = "0.4" }
 regex-syntax = { version = "0.8" }
-reqwest = { version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
+reqwest-594e8ee84c453af0 = { package = "reqwest", version = "0.13", default-features = false, features = ["charset", "http2", "json", "multipart", "rustls-no-provider", "stream", "system-proxy"] }
+reqwest-5ef9efb8ec2df382 = { package = "reqwest", version = "0.12", default-features = false, features = ["charset", "gzip", "http2", "json", "multipart", "rustls-tls", "rustls-tls-native-roots", "stream"] }
 rfd = { version = "0.17", default-features = false, features = ["file-handle-inner", "xdg-portal"] }
+rig-core = { version = "0.45", default-features = false, features = ["test-utils"] }
+rig-http = { version = "0.45", default-features = false, features = ["test-utils"] }
 rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
 rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
 schemars = { version = "1", features = ["chrono04"] }
 semver = { version = "1", features = ["serde"] }
 serde = { version = "1", features = ["alloc", "derive", "rc"] }
 serde_core = { version = "1", features = ["alloc", "rc"] }
-serde_json = { version = "1", features = ["alloc", "preserve_order", "raw_value", "unbounded_depth"] }
+serde_json = { version = "1", features = ["alloc", "float_roundtrip", "preserve_order", "raw_value", "unbounded_depth"] }
 serde_spanned = { version = "1", default-features = false, features = ["serde", "std"] }
 serde_with = { version = "3", features = ["json", "schemars_1"] }
 serde_with_macros = { version = "3", default-features = false, features = ["schemars_1"] }
@@ -309,14 +313,14 @@ simd-adler32 = { version = "0.3" }
 similar = { version = "2", features = ["inline", "unicode"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
-stable_deref_trait = { version = "1", default-features = false, features = ["std"] }
+stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit", "visit-mut"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
 tempfile = { version = "3" }
 thiserror = { version = "2" }
 tinystr = { version = "0.8", default-features = false, features = ["alloc", "zerovec"] }
-tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "test-util"] }
 tokio-stream = { version = "0.1", features = ["net", "sync"] }
 tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
 toml = { version = "1", default-features = false, features = ["parse", "preserve_order", "serde"] }
@@ -362,8 +366,8 @@ errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
@@ -378,6 +382,7 @@ objc2-core-graphics = { version = "0.3", default-features = false, features = ["
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
 security-framework-sys = { version = "2" }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -408,8 +413,8 @@ errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
@@ -424,6 +429,7 @@ objc2-core-graphics = { version = "0.3", default-features = false, features = ["
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
 security-framework-sys = { version = "2" }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -455,9 +461,9 @@ event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -466,7 +472,7 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -499,9 +505,9 @@ event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -510,7 +516,7 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -542,8 +548,8 @@ errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
@@ -558,6 +564,7 @@ objc2-core-graphics = { version = "0.3", default-features = false, features = ["
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
 security-framework-sys = { version = "2" }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -588,8 +595,8 @@ errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["tiff"] }
@@ -604,6 +611,7 @@ objc2-core-graphics = { version = "0.3", default-features = false, features = ["
 objc2-foundation = { version = "0.3", default-features = false, features = ["NSAppleEventDescriptor", "NSArray", "NSAttributedString", "NSBundle", "NSCoder", "NSData", "NSDate", "NSDictionary", "NSEnumerator", "NSError", "NSException", "NSFileManager", "NSFileWrapper", "NSFormatter", "NSGeometry", "NSItemProvider", "NSKeyValueObserving", "NSLocale", "NSNotification", "NSNull", "NSObjCRuntime", "NSObject", "NSPathUtilities", "NSProcessInfo", "NSRange", "NSSet", "NSString", "NSThread", "NSURL", "NSUndoManager", "NSUserActivity", "NSValue", "NSZone", "block2", "objc2-core-foundation", "std"] }
 objc2-io-kit = { version = "0.3", default-features = false, features = ["hid", "libc", "std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "termios", "time"] }
 security-framework-sys = { version = "2" }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -635,11 +643,13 @@ futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["bmp"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1", default-features = false, features = ["io-util"] }
@@ -659,10 +669,10 @@ windows-core = { version = "0.62" }
 windows-future = { version = "0.3", default-features = false, features = ["std"] }
 windows-numerics = { version = "0.3", default-features = false, features = ["std"] }
 windows-strings = { version = "0.5", default-features = false, features = ["std"] }
-windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Storage_FileSystem", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Globalization", "Win32_Networking_WinSock", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Time", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell"] }
 windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
-windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
 zstd = { version = "0.13", default-features = false, features = ["zstdmt"] }
 zstd-safe = { version = "7", default-features = false, features = ["zstdmt"] }
@@ -680,11 +690,13 @@ futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 image = { version = "0.25", default-features = false, features = ["bmp"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1", default-features = false, features = ["io-util"] }
@@ -704,10 +716,10 @@ windows-core = { version = "0.62" }
 windows-future = { version = "0.3", default-features = false, features = ["std"] }
 windows-numerics = { version = "0.3", default-features = false, features = ["std"] }
 windows-strings = { version = "0.5", default-features = false, features = ["std"] }
-windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Storage_FileSystem", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
+windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Globalization", "Win32_Networking_WinSock", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_Time", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell"] }
 windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
-windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
 zstd = { version = "0.13", default-features = false, features = ["zstdmt"] }
 zstd-safe = { version = "7", default-features = false, features = ["zstdmt"] }
@@ -725,9 +737,9 @@ event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -736,7 +748,7 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
@@ -769,9 +781,9 @@ event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
-gimli = { version = "0.32" }
 gpu-allocator = { version = "0.28", default-features = false, features = ["d3d12", "hashbrown", "vulkan"] }
 hashbrown-986da7b5efc2b80e = { package = "hashbrown", version = "0.16" }
+hyper = { version = "1", features = ["client", "http1", "http2", "server"] }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "http2", "native-tokio", "ring", "tls12", "webpki-tokio"] }
 hyper-util = { version = "0.1", features = ["client-legacy", "client-proxy", "client-proxy-system", "server-auto", "service"] }
 libc = { version = "0.2", features = ["extra_traits"] }
@@ -780,7 +792,7 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
+rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }

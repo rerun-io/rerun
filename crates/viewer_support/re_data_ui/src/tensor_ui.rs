@@ -1,9 +1,11 @@
 use itertools::Itertools as _;
 use re_log_types::EntityPath;
 use re_sdk_types::encodings::TensorData;
-use re_sdk_types::{ComponentDescriptor, ComponentIdentifier, RowId};
+use re_sdk_types::{ComponentDescriptor, RowId};
 use re_ui::UiExt as _;
-use re_viewer_context::{StoreViewContext, TensorStats, TensorStatsCache, UiLayout};
+use re_viewer_context::{
+    StoreViewContext, TensorStats, TensorStatsCache, UiLayout, VisualizerComponentSource,
+};
 
 use super::EntityDataUi;
 
@@ -38,18 +40,12 @@ impl EntityDataUi for re_sdk_types::components::TensorData {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         _entity_path: &EntityPath,
-        component_descriptor: &ComponentDescriptor,
-        row_id: Option<RowId>,
+        _target_component_descriptor: &ComponentDescriptor,
+        source_row_id: Option<RowId>,
+        source: &VisualizerComponentSource,
     ) {
         re_tracing::profile_function!();
-        tensor_ui(
-            ctx,
-            ui,
-            ui_layout,
-            row_id,
-            component_descriptor.component,
-            &self.0,
-        );
+        tensor_ui(ctx, ui, ui_layout, source_row_id, source, &self.0);
     }
 }
 
@@ -57,14 +53,12 @@ pub fn tensor_ui(
     ctx: &StoreViewContext<'_>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
-    row_id: Option<RowId>,
-    component: ComponentIdentifier,
+    source_row_id: Option<RowId>,
+    source: &VisualizerComponentSource,
     tensor: &TensorData,
 ) {
-    // See if we can convert the tensor to a GPU texture.
-    // Even if not, we will show info about the tensor.
-    let tensor_stats = if let Some(row_id) = row_id {
-        ctx.memoizer(|c: &mut TensorStatsCache| c.entry(row_id, component, tensor))
+    let tensor_stats = if let Some(source_row_id) = source_row_id {
+        ctx.memoizer(|c: &mut TensorStatsCache| c.entry(source_row_id, source, tensor))
     } else {
         TensorStats::from_tensor(tensor)
     };

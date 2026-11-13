@@ -41,11 +41,15 @@ itertools.workspace = true
 jiff.workspace = true
 lz4_flex.workspace = true
 opentelemetry.workspace = true
+# For `json`, which transcodes through the embedded descriptor set.
+prost-reflect = { workspace = true, features = ["serde"] }
 prost-types.workspace = true
 prost.workspace = true
 pyo3 = { workspace = true, optional = true }
 quiver = { workspace = true, features = ["derive"] }
 serde.workspace = true
+serde_json.workspace = true
+serde_path_to_error.workspace = true
 thiserror.workspace = true
 tonic-prost.workspace = true
 tonic-types.workspace = true
@@ -61,12 +65,6 @@ tonic = { workspace = true, default-features = false, features = [
   "transport",
 ] }
 tonic-reflection.workspace = true
-
-# Only needed by `json`, which transcodes through the embedded descriptor set. Keeping these
-# native-only keeps the descriptor set out of the wasm viewer.
-prost-reflect = { workspace = true, features = ["serde"] }
-serde_json.workspace = true
-serde_path_to_error.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

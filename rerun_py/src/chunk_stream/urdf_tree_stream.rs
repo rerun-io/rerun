@@ -38,7 +38,7 @@ impl ChunkStreamFactory for UrdfTreeStreamFactory {
                     &mut |chunk| {
                         re_quota_channel::send_crossbeam(&tx, Ok(Arc::new(chunk))).ok();
                     },
-                    &TimePoint::default(),
+                    &TimePoint::STATIC,
                     include_joint_transforms,
                 );
 

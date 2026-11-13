@@ -6,7 +6,7 @@ use egui::NumExt as _;
 use re_data_ui::item_ui::{self, timeline_button};
 use re_dataframe_ui::{apply_table_style_fixes, cell_ui, header_ui};
 use re_log::ResultExt as _;
-use re_log_types::{EntityPath, TimeInt, TimelineName};
+use re_log_types::{TimeInt, TimelineName};
 use re_sdk_types::blueprint::archetypes::{TextLogColumns, TextLogFormat, TextLogRows};
 use re_sdk_types::blueprint::components::{Enabled, TextLogColumn, TimelineColumn};
 use re_sdk_types::blueprint::encodings as bp_encodings;
@@ -16,7 +16,7 @@ use re_ui::list_item::LabelContent;
 use re_ui::{Help, TableStyle, UiExt as _};
 use re_viewer_context::{
     IdentifiedViewSystem as _, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewContext,
-    ViewId, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewId, ViewQuery, ViewSpawnContext, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewerContext, level_to_rich_text,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -142,21 +142,13 @@ Filter message types and toggle column visibility in a selection panel.",
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: ViewSpawnContext,
     ) -> re_viewer_context::ViewSpawnHeuristics {
-        re_tracing::profile_function!();
-
-        // Spawn a single log view at the root if there's any text logs around anywhere.
-        // Checking indicators is enough, since we know that this is enough to infer visualizability here.
-        if ctx
-            .indicated_entities_per_visualizer
-            .get(&TextLogSystem::identifier())
-            .is_some_and(|entities| entities.iter().any(include_entity))
-        {
-            ViewSpawnHeuristics::root()
-        } else {
-            ViewSpawnHeuristics::empty()
-        }
+        re_viewer_context::suggest_root_view_if_indicated_for(
+            ctx,
+            spawn_context,
+            [TextLogSystem::identifier()],
+        )
     }
 
     fn selection_ui<'a>(
@@ -541,9 +533,8 @@ fn view_property_ui_rows(ctx: &ViewContext<'_>, ui: &mut egui::Ui) {
 
                         let mut any_change = false;
                         for (lvl, active) in &mut new_levels {
-                            any_change |= ui
-                                .re_checkbox(active, level_to_rich_text(ui, lvl))
-                                .changed();
+                            any_change |=
+                                ui.checkbox(active, level_to_rich_text(ui, lvl)).changed();
                         }
 
                         if any_change {

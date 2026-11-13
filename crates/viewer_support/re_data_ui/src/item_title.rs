@@ -6,13 +6,12 @@ use re_log_types::{ComponentPath, EntityPath};
 use re_sdk_types::archetypes::RecordingInfo;
 use re_sdk_types::components::{Name, Timestamp};
 use re_ui::list_item::LabelContent;
-use re_ui::syntax_highlighting::{
-    InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder,
-};
-use re_ui::{HasDesignTokens as _, SyntaxHighlighting as _, icons};
+use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
+use re_ui::{HasDesignTokens as _, icons};
 use re_viewer_context::{
-    ContainerId, Contents, DataResultInteractionAddress, Item, RedapEntryKind, ViewId,
-    ViewerContext,
+    ContainerId, Contents, DataResultInteractionAddress,
+    InstanceInBrackets as InstanceWithBrackets, Item, RedapEntryKind, StoreSyntaxHighlighting as _,
+    ViewId, ViewerContext,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -71,13 +70,13 @@ impl ItemTitle {
             }) => {
                 let item_title = Self::from_instance_path(ctx, style, instance_path);
                 if let Some(view) = viewport.view(view_id) {
-                    item_title.with_tooltip(
-                        SyntaxHighlightedBuilder::new()
-                            .with(instance_path)
-                            .with_body(" in view ")
-                            .with(&view.display_name_or_default())
-                            .into_widget_text(&ctx.egui_ctx().global_style()),
-                    )
+                    let mut tooltip = SyntaxHighlightedBuilder::new();
+                    instance_path.syntax_highlight_into(&mut tooltip);
+                    tooltip
+                        .append_body(" in view ")
+                        .append(&view.display_name_or_default());
+                    item_title
+                        .with_tooltip(tooltip.into_widget_text(&ctx.egui_ctx().global_style()))
                 } else {
                     item_title
                 }
@@ -259,13 +258,19 @@ impl ItemTitle {
     }
 
     /// The icon and the label as atoms, ready for a button or a label.
+    ///
+    /// Atoms can't carry a tooltip, so callers must show [`Self::tooltip`] themselves.
     pub fn into_atoms(self, style: &egui::Style, icon_tint: egui::Color32) -> Atoms<'static> {
+        let Self {
+            icon,
+            label,
+            tooltip: _,
+        } = self;
         Atoms::new((
-            self.icon
-                .as_image()
+            icon.as_image()
                 .fit_to_exact_size(style.tokens().small_icon_size)
                 .tint(icon_tint),
-            self.label,
+            label,
         ))
     }
 
@@ -290,7 +295,7 @@ impl ItemTitle {
 pub fn part_separator_image(tint: egui::Color32) -> egui::Image<'static> {
     icons::CHEVRON
         .as_image()
-        .fit_to_exact_size(egui::Vec2::splat(8.0))
+        .fit_to_original_size(1.0)
         .tint(tint)
 }
 

@@ -1,17 +1,17 @@
 // Script responsible for building the wasm and transforming the JS bindings for the web viewer.
 
-import * as child_process from "node:child_process";
+import * as childProcess from "node:child_process";
 import { fileURLToPath } from "node:url";
 import * as path from "node:path";
 import * as fs from "node:fs";
 import * as util from "node:util";
 
-const __filename = path.resolve(fileURLToPath(import.meta.url));
-const __dirname = path.dirname(__filename);
+const filename = path.resolve(fileURLToPath(import.meta.url));
+const dirname = path.dirname(filename);
 
 const exec = (cmd) => {
   console.log(cmd);
-  child_process.execSync(cmd, { cwd: __dirname, stdio: "inherit" });
+  childProcess.execSync(cmd, { cwd: dirname, stdio: "inherit" });
 };
 
 function buildWebViewer(mode) {
@@ -37,8 +37,8 @@ function buildWebViewer(mode) {
   );
 }
 
-function re_viewer_js() {
-  let code = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
+function reViewerJs() {
+  let code = fs.readFileSync(path.join(dirname, "re_viewer.js"), "utf-8");
 
   // this transforms the module, wrapping it in a default-exported function.
   // calling the function produces a new "instance" of the module, because
@@ -56,10 +56,14 @@ function re_viewer_js() {
 })({ __proto__: null });`;
 
   if (code.indexOf(start) === -1) {
-    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find replace start marker");
+    throw new Error(
+      "failed to run js build script: failed to patch re_viewer.js, could not find replace start marker",
+    );
   }
   if (code.indexOf(end) === -1) {
-    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find replace end marker");
+    throw new Error(
+      "failed to run js build script: failed to patch re_viewer.js, could not find replace end marker",
+    );
   }
   code = code.replace(start, "").replace(end, "");
 
@@ -93,27 +97,29 @@ return Object.assign(__wbg_init, { initSync, deinit }, exports);
   // Patch CLOSURE_DTORS to guard against null `wasm` during deinit.
   // The FinalizationRegistry callback may fire after we've nulled `wasm`,
   // so we need to check that wasm is still alive before calling the destructor.
-  const closure_dtors_original = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
+  const closureDtorsOriginal = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
         ? { register: () => {}, unregister: () => {} }
         : new FinalizationRegistry(state => wasm.__wbindgen_destroy_closure(state.a, state.b));`;
 
-  const closure_dtors_patch = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
+  const closureDtorsPatch = `const CLOSURE_DTORS = (typeof FinalizationRegistry === 'undefined')
         ? { register: () => {}, unregister: () => {} }
         : new FinalizationRegistry(state => {
         if (wasm) wasm.__wbindgen_destroy_closure(state.a, state.b);
     });`;
 
-  if (code.indexOf(closure_dtors_original) === -1) {
-    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find CLOSURE_DTORS block");
+  if (code.indexOf(closureDtorsOriginal) === -1) {
+    throw new Error(
+      "failed to run js build script: failed to patch re_viewer.js, could not find CLOSURE_DTORS block",
+    );
   }
 
-  code = code.replace(closure_dtors_original, closure_dtors_patch);
+  code = code.replace(closureDtorsOriginal, closureDtorsPatch);
 
   // Patch makeMutClosure to guard against null `wasm` during deinit.
   // After deinit, pending async callbacks (requestAnimationFrame, setTimeout, etc.)
   // may still fire and try to invoke closures that call into the now-null `wasm`.
   // We guard both the closure invocation and the destructor call.
-  const make_mut_closure_original = `function makeMutClosure(arg0, arg1, f) {
+  const makeMutClosureOriginal = `function makeMutClosure(arg0, arg1, f) {
         const state = { a: arg0, b: arg1, cnt: 1 };
         const real = (...args) => {
 
@@ -141,7 +147,7 @@ return Object.assign(__wbg_init, { initSync, deinit }, exports);
         return real;
     }`;
 
-  const make_mut_closure_patch = `function makeMutClosure(arg0, arg1, f) {
+  const makeMutClosurePatch = `function makeMutClosure(arg0, arg1, f) {
         const state = { a: arg0, b: arg1, cnt: 1 };
         const real = (...args) => {
             state.cnt++;
@@ -166,17 +172,19 @@ return Object.assign(__wbg_init, { initSync, deinit }, exports);
         return real;
     }`;
 
-  if (code.indexOf(make_mut_closure_original) === -1) {
-    throw new Error("failed to run js build script: failed to patch re_viewer.js, could not find makeMutClosure block");
+  if (code.indexOf(makeMutClosureOriginal) === -1) {
+    throw new Error(
+      "failed to run js build script: failed to patch re_viewer.js, could not find makeMutClosure block",
+    );
   }
 
-  code = code.replace(make_mut_closure_original, make_mut_closure_patch);
+  code = code.replace(makeMutClosureOriginal, makeMutClosurePatch);
 
-  fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
+  fs.writeFileSync(path.join(dirname, "re_viewer.js"), code);
 }
 
-function re_viewer_d_ts() {
-  let code = fs.readFileSync(path.join(__dirname, "re_viewer.d.ts"), "utf-8");
+function reViewerDTs() {
+  let code = fs.readFileSync(path.join(dirname, "re_viewer.d.ts"), "utf-8");
 
   // this transformation just re-exports WebHandle and adds a default export inside the `.d.ts` file
 
@@ -186,7 +194,7 @@ export type WebHandle = wasm_bindgen.WebHandle;
 export default function(): wasm_bindgen;
 `;
 
-  fs.writeFileSync(path.join(__dirname, "re_viewer.d.ts"), code);
+  fs.writeFileSync(path.join(dirname, "re_viewer.d.ts"), code);
 }
 
 function main() {
@@ -204,8 +212,8 @@ function main() {
   }
 
   buildWebViewer(mode);
-  re_viewer_js();
-  re_viewer_d_ts();
+  reViewerJs();
+  reViewerDTs();
 }
 
 try {

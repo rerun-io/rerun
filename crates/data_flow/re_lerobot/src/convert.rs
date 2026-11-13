@@ -271,7 +271,7 @@ fn apply_lenses(
 fn build_series_names_chunk(entity: &EntityPath, names: &[String]) -> Result<Chunk, LeRobotError> {
     let series = SeriesLines::update_fields().with_names(names.iter().cloned());
     Ok(Chunk::builder(entity.clone())
-        .with_archetype(RowId::new(), TimePoint::default(), &series)
+        .with_archetype(RowId::new(), TimePoint::STATIC, &series)
         .build()?)
 }
 
@@ -439,7 +439,7 @@ pub fn build_text_chunk(
     let mut chunk = Chunk::builder(entity.clone());
     let mut row_id = RowId::new();
     for (time, text) in rows {
-        let timepoint = TimePoint::default().with(*timeline, *time);
+        let timepoint = TimePoint::STATIC.with(*timeline, *time);
         chunk = chunk.with_archetype(row_id, timepoint, &TextDocument::new(text.clone()));
         row_id = row_id.next();
     }
@@ -449,8 +449,6 @@ pub fn build_text_chunk(
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
-
-    use std::sync::Arc;
 
     use arrow::array::Int64Array;
     use arrow::datatypes::Field;

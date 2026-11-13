@@ -13,7 +13,6 @@
 
 use std::sync::{Arc, OnceLock};
 
-use js_sys::wasm_bindgen;
 use re_log::ResultExt as _;
 use re_log_channel::RecordingOpenBehavior;
 use re_mutex::Mutex;

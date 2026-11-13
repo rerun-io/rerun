@@ -1,4 +1,3 @@
-use re_ui::UiExt as _;
 use re_viewer_context::MaybeMutRef;
 
 /// Generic editor for a boolean value.
@@ -20,9 +19,9 @@ fn edit_bool_impl(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, bool>) -> egui:
         MaybeMutRef::Ref(value) => {
             // Show a disabled checkbox for immutable values
             let mut value_copy: bool = **value;
-            ui.add_enabled_ui(false, |ui| ui.re_checkbox(&mut value_copy, ""))
+            ui.add_enabled_ui(false, |ui| ui.checkbox(&mut value_copy, ""))
                 .inner
         }
-        MaybeMutRef::MutRef(value) => ui.re_checkbox(value, ""),
+        MaybeMutRef::MutRef(value) => ui.checkbox(value, ""),
     }
 }

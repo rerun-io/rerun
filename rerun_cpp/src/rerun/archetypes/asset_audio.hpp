@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../archetype_utils.hpp"
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
@@ -21,7 +22,15 @@ namespace rerun::archetypes {
     ///
     /// The audio starts playing at the time it was logged,
     /// so log it on a temporal timeline (duration or timestamp) at the point where playback should begin.
-    /// The viewer plays it while time is playing, in an `views::AudioView`.
+    /// The viewer plays it while time is playing, in an `views::AudioView`,
+    /// which also shows the waveform.
+    ///
+    /// The viewer can also open audio files directly, like any other supported file.
+    ///
+    /// Streaming raw PCM samples (e.g. from a microphone) is not supported yet.
+    /// As a workaround, encode the samples as an in-memory WAV file and log that.
+    /// For live audio, encode short segments, and log each segment at the time it starts.
+    /// To plot the raw signal instead of playing it, log the samples as `archetypes::Scalars`.
     ///
     /// ## Example
     ///
@@ -185,13 +194,17 @@ namespace rerun::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches({&blob, &media_type}, lengths_).value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length({&blob, &media_type}).value_or_throw();
+        }
     };
 
 } // namespace rerun::archetypes
@@ -206,6 +219,8 @@ namespace rerun {
     struct AsComponents<archetypes::AssetAudio> {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(const archetypes::AssetAudio& archetype
-        );
+        ) {
+            return detail::collect_batches({&archetype.blob, &archetype.media_type});
+        }
     };
 } // namespace rerun

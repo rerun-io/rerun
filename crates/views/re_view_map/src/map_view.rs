@@ -1,9 +1,6 @@
-use std::mem::size_of;
-
 use egui::{Modifiers, NumExt as _, Rect, Response};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
-use re_log_types::EntityPath;
 use re_renderer::view_builder::ViewBuilderError;
 use re_renderer::{ViewBuilder, ViewPickingConfiguration};
 use re_sdk_types::blueprint::archetypes::{MapBackground, MapZoom};
@@ -13,9 +10,8 @@ use re_ui::{Help, IconText, icons, list_item};
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, StoreViewContext, SystemCommand,
     SystemCommandSender as _, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, gpu_bridge,
+    ViewClassRegistryError, ViewHighlights, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
@@ -168,10 +164,6 @@ impl ViewClass for MapView {
         Some(1.0)
     }
 
-    fn layout_priority(&self) -> ViewClassLayoutPriority {
-        ViewClassLayoutPriority::default()
-    }
-
     fn supports_visible_time_range(&self) -> bool {
         true
     }
@@ -179,28 +171,16 @@ impl ViewClass for MapView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
-        re_tracing::profile_function!();
-
-        // Spawn a single map view at the root if any geospatial entity exists.
-        let any_map_entity = [
-            GeoPointsVisualizer::identifier(),
-            GeoLineStringsVisualizer::identifier(),
-        ]
-        .iter()
-        .any(|system_id| {
-            // TODO(grtlr): This looks slow.
-            ctx.indicated_entities_per_visualizer
-                .get(system_id)
-                .is_some_and(|indicated_entities| indicated_entities.iter().any(include_entity))
-        });
-
-        if any_map_entity {
-            ViewSpawnHeuristics::root()
-        } else {
-            ViewSpawnHeuristics::empty()
-        }
+        re_viewer_context::suggest_root_view_if_indicated_for(
+            ctx,
+            spawn_context,
+            [
+                GeoPointsVisualizer::identifier(),
+                GeoLineStringsVisualizer::identifier(),
+            ],
+        )
     }
 
     fn ui(
@@ -267,6 +247,7 @@ impl ViewClass for MapView {
             span.zoom_for_screen_size(
                 (ui.available_size() - egui::vec2(15.0, 15.0)).at_least(egui::Vec2::ZERO),
             )
+            .map(|zoom| zoom.min(16.0))
         });
         let zoom_level = blueprint_zoom_level.or(default_zoom_level).unwrap_or(16.0);
 

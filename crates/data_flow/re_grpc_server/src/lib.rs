@@ -72,7 +72,7 @@ pub struct ServerOptions {
 
     /// Additional origin patterns allowed to make cross-origin requests to the server.
     ///
-    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    /// By default, only `localhost`, `127.0.0.1`, `rerun.io`, and its subdomains are allowed.
     /// Patterns are matched against the full `Origin` header value (e.g. `https://example.com:8080`),
     /// using glob-style matching where `*` matches any sequence of characters.
     ///
@@ -161,6 +161,8 @@ const DEFAULT_CORS_PATTERNS: &[&str] = &[
     "*://127.0.0.1:*",
     "*://rerun.io",
     "*://rerun.io:*",
+    "*://*.rerun.io",
+    "*://*.rerun.io:*",
 ];
 
 /// Returns true if the given origin is allowed by the given patterns.
@@ -168,7 +170,7 @@ fn is_origin_allowed(origin: &str, patterns: &[wildmatch::WildMatch]) -> bool {
     patterns.iter().any(|pat| pat.matches(origin))
 }
 
-/// Build a CORS layer that allows only localhost, 127.0.0.1, rerun.io,
+/// Build a CORS layer that allows only localhost, 127.0.0.1, rerun.io and its subdomains,
 /// and any additional user-specified origin patterns.
 ///
 /// Patterns are matched against the full `Origin` header value,
@@ -1431,7 +1433,6 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
-    use std::net::SocketAddr;
     use std::sync::Arc;
     use std::time::Duration;
 
@@ -1442,9 +1443,7 @@ mod tests {
     use re_log_types::{StoreId, StoreKind};
     use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
     use similar_asserts::assert_eq;
-    use tokio::net::TcpListener;
     use tokio_util::sync::CancellationToken;
-    use tonic::transport::server::TcpIncoming;
     use tonic::transport::{Channel, Endpoint};
 
     use super::*;
@@ -1550,7 +1549,7 @@ mod tests {
                 re_chunk::Chunk::builder("test_entity")
                     .with_archetype(
                         re_chunk::RowId::new(),
-                        re_log_types::TimePoint::default().with(
+                        re_log_types::TimePoint::STATIC.with(
                             re_log_types::Timeline::new_sequence("blueprint"),
                             re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                         ),
@@ -1601,7 +1600,7 @@ mod tests {
         for _ in 0..n {
             let timepoint = match temporalness {
                 Temporalness::Static => re_log_types::TimePoint::STATIC,
-                Temporalness::Temporal => re_log_types::TimePoint::default().with(
+                Temporalness::Temporal => re_log_types::TimePoint::STATIC.with(
                     re_log_types::Timeline::new_sequence("log_time"),
                     re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::MIN),
                 ),
@@ -2125,6 +2124,8 @@ mod tests {
             assert!(check("https://127.0.0.1:9090", &[]));
             assert!(check("https://rerun.io", &[]));
             assert!(check("https://rerun.io:443", &[]));
+            assert!(check("https://app.rerun.io", &[]));
+            assert!(check("https://app.rerun.io:443", &[]));
         }
 
         #[test]
@@ -2132,6 +2133,8 @@ mod tests {
             assert!(!check("https://evil.com", &[]));
             assert!(!check("https://notlocalhost.com", &[]));
             assert!(!check("https://localhost.evil.com", &[]));
+            assert!(!check("https://evilrerun.io", &[]));
+            assert!(!check("https://rerun.io.evil.com", &[]));
         }
 
         #[test]

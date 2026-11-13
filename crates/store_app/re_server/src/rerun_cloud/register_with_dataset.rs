@@ -17,6 +17,9 @@ use re_web::fs;
 #[cfg(not(target_arch = "wasm32"))]
 use tokio::fs;
 
+/// How much of a file [`guess_file_type`] reads.
+const MAX_FILE_TYPE_PREFIX_LEN: u64 = 8 * 1024;
+
 /// Return type of [`do_register_with_dataset`].
 #[derive(Default)]
 pub struct RegisterWithDatasetResult {
@@ -101,7 +104,8 @@ async fn validate_sources(
             is_prefix,
             layer,
             kind,
-            object_store_config: _,
+            storage_location: _,
+            store_id,
         } = source;
 
         // TODO(ab): Should some or all of these errors be returned as task error instead?
@@ -110,6 +114,13 @@ async fn validate_sources(
             return Err(tonic::Status::internal(
                 "register_with_dataset: prefix data sources should have been resolved already",
             ));
+        }
+
+        if store_id.is_some() {
+            return Err(tonic::Status::unimplemented(format!(
+                "registering a single recording from a multi-recording file is not supported yet: \
+                 leave `store_id` unset\nURL: {storage_url}"
+            )));
         }
 
         match kind {
@@ -489,9 +500,26 @@ async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
         }
     };
 
-    let store_ids = re_log_encoding::enumerate_rrd_stores(&file)
-        .await
-        .map_err(|err| {
+    let store_ids = match re_log_encoding::enumerate_rrd_stores(&file).await {
+        Ok(store_ids) => store_ids,
+        Err(re_log_encoding::CodecError::NotAnRrd(err)) => {
+            let file_type = guess_file_type(&file).await;
+            return Err(tonic::Status::invalid_argument(format!(
+                "{err} (detected file type: {file_type})\nFile path: {rrd_path:?}"
+            )));
+        }
+        Err(
+            err @ (re_log_encoding::CodecError::IncompatibleRerunVersion { .. }
+            | re_log_encoding::CodecError::InvalidOptions(
+                re_log_encoding::rrd::OptionsError::RemovedMsgPackSerializer,
+            )
+            | re_log_encoding::CodecError::OldRrdVersion),
+        ) => {
+            return Err(tonic::Status::failed_precondition(format!(
+                "Failed to enumerate RRD stores: {err:#}: the .rrd was written by an unsupported version of Rerun: re-export it with a supported version"
+            )));
+        }
+        Err(err) => {
             let code = match &err {
                 re_log_encoding::CodecError::Io(err)
                     if err.kind() != std::io::ErrorKind::UnexpectedEof =>
@@ -501,10 +529,33 @@ async fn load_store_ids(rrd_path: &Path) -> tonic::Result<BTreeSet<StoreId>> {
                 re_log_encoding::CodecError::DecompressionAllocation(_) => tonic::Code::Internal,
                 _ => tonic::Code::InvalidArgument,
             };
-            tonic::Status::new(code, format!("Failed to enumerate RRD stores: {err:#}"))
-        })?;
+            return Err(tonic::Status::new(
+                code,
+                format!("Failed to enumerate RRD stores: {err:#}"),
+            ));
+        }
+    };
 
     Ok(store_ids.into_iter().collect())
+}
+
+/// Guess what a file is from its magic bytes, e.g. `image/png (.png)`, or `unknown`.
+async fn guess_file_type(file: &impl re_async::AsyncReadAt) -> String {
+    let prefix = match file.size().await {
+        Ok(size) => file
+            .read_exact_at(re_span::Span::from_start_len(
+                0,
+                size.min(MAX_FILE_TYPE_PREFIX_LEN),
+            ))
+            .await
+            .ok(),
+        Err(_err) => None,
+    };
+
+    prefix.and_then(|prefix| infer::get(&prefix)).map_or_else(
+        || "unknown".to_owned(),
+        |kind| format!("{} (.{})", kind.mime_type(), kind.extension()),
+    )
 }
 
 /// Parses a `memory:///store/{store_slot_id}` URL and returns the [`StoreSlotId`].

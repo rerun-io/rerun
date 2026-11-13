@@ -7,7 +7,6 @@ use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use re_chunk_store::LatestAtQuery;
-use re_entity_db::EntityPath;
 use re_log_types::{EntityPathHash, EntityPathSubs};
 use re_mutex::Mutex;
 use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
@@ -141,14 +140,13 @@ impl ViewportBlueprint {
             .collect();
 
         // Auto layouting and auto view are only enabled if no blueprint has been provided by the user.
-        // Only enable auto-views if this is the app-default blueprint
-        let is_app_default_blueprint = blueprint_db
+        // Only enable auto-views if this is the heuristic blueprint
+        let is_heuristic_blueprint = blueprint_db
             .store_info()
-            .is_some_and(|ri| ri.is_app_default_blueprint());
+            .is_some_and(|ri| ri.is_heuristic_blueprint());
         let auto_layout =
-            AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| *auto.0));
-        let auto_views =
-            AtomicBool::new(auto_views.map_or(is_app_default_blueprint, |auto| *auto.0));
+            AtomicBool::new(auto_layout.map_or(is_heuristic_blueprint, |auto| *auto.0));
+        let auto_views = AtomicBool::new(auto_views.map_or(is_heuristic_blueprint, |auto| *auto.0));
 
         let root_container = root_container.unwrap_or_else(|| {
             let new_root_id = ContainerId::hashed_from_str("placeholder_root_container");
@@ -312,10 +310,9 @@ impl ViewportBlueprint {
         for entry in ctx.view_class_registry().iter_registry() {
             let class_id = entry.identifier;
 
-            let excluded_entities = re_log_types::ResolvedEntityPathFilter::properties();
-            let include_entity = |ent: &EntityPath| !excluded_entities.matches(ent);
-
-            let spawn_heuristics = entry.class.spawn_heuristics(ctx, &include_entity);
+            let spawn_heuristics = entry
+                .class
+                .spawn_heuristics(ctx, re_viewer_context::ViewSpawnContext::Automatic);
             let mut recommended_views = spawn_heuristics.into_vec();
 
             re_tracing::profile_scope!("filter_recommendations_for", class_id);

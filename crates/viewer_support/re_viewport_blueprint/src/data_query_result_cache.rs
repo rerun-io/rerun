@@ -169,7 +169,7 @@ enum RecordingSchema {
     ///
     /// Only used while every column and entity of the recording came from the manifest, and the
     /// manifest's schema covers all of its chunks.
-    RrdManifest([u8; 32]),
+    RrdManifest(re_sorbet::SchemaId),
 
     /// The schema generation of the store, which also changes when the store is replaced by a
     /// new one with the same id.
@@ -185,7 +185,7 @@ impl RecordingSchema {
             && let Some(manifest) = recording.rrd_manifest_index().manifest()
             && manifest.schema_covers_all_chunks()
         {
-            Self::RrdManifest(*manifest.sorbet_schema_sha256())
+            Self::RrdManifest(manifest.sorbet_schema_sha256())
         } else {
             Self::Store {
                 store_id: recording.store_id().clone(),
@@ -418,11 +418,7 @@ mod tests {
     fn recording_with(entities: &[&str]) -> EntityDb {
         let mut recording = EntityDb::new(StoreId::random(StoreKind::Recording, "test_app"));
         for path in entities {
-            add_points(
-                &mut recording,
-                &EntityPath::from(*path),
-                TimePoint::default(),
-            );
+            add_points(&mut recording, &EntityPath::from(*path), TimePoint::STATIC);
         }
         recording
     }
@@ -583,7 +579,7 @@ mod tests {
             [false, false]
         );
 
-        add_points(&mut recording, &"second".into(), TimePoint::default());
+        add_points(&mut recording, &"second".into(), TimePoint::STATIC);
         let second = setup.run(&recording, &latest());
         assert_eq!(rebuilt(&first, &second), [true, true]);
         assert!(has_entity(&second[0], "second"));
@@ -619,7 +615,7 @@ mod tests {
         let before = setup.run(&recording, &latest());
 
         let mut replaced = EntityDb::new(recording.store_id().clone());
-        add_points(&mut replaced, &"second".into(), TimePoint::default());
+        add_points(&mut replaced, &"second".into(), TimePoint::STATIC);
         let after = setup.run(&replaced, &latest());
 
         assert_eq!(rebuilt(&before, &after), [true, true]);

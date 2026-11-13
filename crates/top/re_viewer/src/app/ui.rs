@@ -1,12 +1,14 @@
+use re_agent_panel::ShownContent;
 use re_byte_size::NamedMemUsageTree;
-use re_entity_db::LogSource;
+use re_log_channel::{LogSource, RecordingOpenBehavior};
 use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::{HasDesignTokens as _, UiExt as _, WindowFrameConfig};
-use re_viewer_context::{ActiveStoreContext, StorageContext, store_hub::StoreHubStats};
-
-use crate::{
-    app_blueprint::AppBlueprint, app_state::WelcomeScreenState, background_tasks::BackgroundTasks,
+use re_viewer_context::{
+    ActiveStoreContext, EntryKind, Route, StorageContext, store_hub::StoreHubStats,
 };
+
+use crate::ui::WelcomeScreenState;
+use crate::{app_blueprint::AppBlueprint, background_tasks::BackgroundTasks};
 
 use super::{AppCore, WindowDecorationsRequest};
 
@@ -14,6 +16,7 @@ impl AppCore {
     /// Top-level ui function.
     ///
     /// Shows the viewer ui.
+    /// Returns where the central panel of the current route was shown, if it has one.
     pub(super) fn ui_impl(
         &mut self,
         ui: &mut egui::Ui,
@@ -24,7 +27,7 @@ impl AppCore {
         storage_context: &StorageContext<'_>,
         mem_usage_tree: Option<NamedMemUsageTree>,
         store_stats: Option<&StoreHubStats>,
-    ) {
+    ) -> Option<egui::Rect> {
         // Before the panels: the highlight is dismissed by any click, and the welcome screen
         // clears `InputState::pointer` while it paints, so a read afterwards would miss that
         // click. The outline is painted on its own layer, so it still ends up on top.
@@ -42,7 +45,7 @@ impl AppCore {
             main_panel_frame.inner_margin = 1.0.into();
         }
 
-        egui::CentralPanel::default()
+        let central_panel_rect = egui::CentralPanel::default()
             .frame(main_panel_frame)
             .show(ui, |ui| {
                 paint_background_fill(ui);
@@ -65,8 +68,7 @@ impl AppCore {
                     ui,
                 );
 
-                #[cfg(agent_panel)]
-                self.agent_panel_ui(ui);
+                self.agent_panel_ui(ui, active_store_context);
 
                 self.dev_panel_ui(
                     ui,
@@ -118,7 +120,7 @@ impl AppCore {
 
                         // After `on_frame_start`, so a catalog answer that arrived this frame is
                         // taken into account right away.
-                        self.state.resolve_route();
+                        self.navigation.resolve_route(&self.state.redap_servers);
 
                         // Install our url decorator so links render nicely. This is done every frame
                         // so the data stays up-to-date.
@@ -133,44 +135,39 @@ impl AppCore {
                         );
                     }
 
-                    self.texture_readback.poll_and_save_texture_readbacks(
-                        render_ctx,
-                        ui,
-                        &self.command_sender,
-                        &mut self.notifications,
-                    );
+                    self.capture
+                        .texture_readback
+                        .poll_and_save_texture_readbacks(
+                            render_ctx,
+                            ui,
+                            &self.command_sender,
+                            &mut self.notifications,
+                        );
 
-                    self.state.show(
-                        &self.startup.app_env,
-                        &self.startup.options,
-                        app_blueprint,
+                    let welcome_screen_revealed = self.update_welcome_screen_revealed(ui);
+                    let welcome_screen_state = WelcomeScreenState {
+                        hide_examples: self.startup.options.hide_welcome_screen
+                            || !self.app_options().enable_welcome_screen,
+                        revealed: welcome_screen_revealed,
+                    };
+                    let central_panel_rect = self.route_ui(
                         ui,
+                        app_blueprint,
                         render_ctx,
                         active_store_context,
                         storage_context,
-                        &self.table_blueprints,
-                        &self.registries.reflection.read(),
-                        &self.registries.component_uis,
-                        &self.registries.component_fallbacks,
-                        &self.registries.view_classes,
-                        &self.rx_log,
-                        &self.command_sender,
-                        &WelcomeScreenState {
-                            hide_examples: self.startup.options.hide_welcome_screen
-                                || !self.app_options().enable_welcome_screen,
-                            opacity: self.welcome_screen_opacity(ui),
-                        },
-                        self.event_dispatcher.as_ref(),
-                        &self.connections.registry,
-                        &self.connections.registrations_in_flight,
-                        &self.async_runtime,
-                        self.custom_window_frame(),
+                        &welcome_screen_state,
                     );
                     render_ctx.before_submit();
 
                     self.show_text_logs_as_notifications();
+
+                    central_panel_rect
+                } else {
+                    None
                 }
-            });
+            })
+            .inner;
 
         if custom_window_decorations {
             custom_windows_decorations_resize_ui(ui);
@@ -179,6 +176,8 @@ impl AppCore {
         if self.app_options().show_notification_toasts {
             self.notifications.show_toasts(ui);
         }
+
+        central_panel_rect
     }
 
     fn dev_panel_ui(
@@ -197,7 +196,7 @@ impl AppCore {
         };
 
         let external_trees = if self.dev_panel.open {
-            self.external_memory_users.captured_trees()
+            self.memory.external_memory_users.captured_trees()
         } else {
             &[]
         };
@@ -218,7 +217,7 @@ impl AppCore {
                     gpu_resource_stats,
                     store_stats,
                     store_context,
-                    &self.state.time_controls,
+                    &self.stores.time_controls,
                     storage_context,
                 );
                 close_requested = response.close_requested;
@@ -231,23 +230,41 @@ impl AppCore {
     }
 
     /// The rightmost panel: a chat with a coding agent that drives this viewer.
-    #[cfg(agent_panel)]
-    fn agent_panel_ui(&mut self, ui: &mut egui::Ui) {
-        if !self.app_options().experimental.agent_panel {
-            return;
-        }
-
+    fn agent_panel_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        active_store_context: Option<&ActiveStoreContext<'_>>,
+    ) {
         let viewer_endpoint = self
             .connections
             .registry
             .internal_origin()
             .map(|origin| origin.as_url());
-        let cache_dir = self.app_options().cache_directory.clone();
+        let cache_dir = cfg_select! {
+            target_arch = "wasm32" => None::<std::path::PathBuf>,
+            _ => self.app_options().cache_directory.clone(),
+        };
+        let is_recording_open = active_store_context
+            .is_some_and(|context| !context.recording.store_id().is_empty_recording());
+        let shown_content = match self.navigation.routes.current() {
+            Route::RedapEntry {
+                kind: Some(EntryKind::Dataset(_)),
+                ..
+            } => ShownContent::Dataset,
+            Route::LocalTable(_)
+            | Route::RedapEntry {
+                kind: Some(EntryKind::Table),
+                ..
+            } => ShownContent::Table,
+            _ if is_recording_open => ShownContent::Recording,
+            _ => ShownContent::Other,
+        };
 
         let Self {
             agent_panel,
             state,
             startup,
+            async_runtime,
             ..
         } = self;
 
@@ -255,10 +272,13 @@ impl AppCore {
             ui,
             &mut state.agent_panel_open,
             &mut state.agent_settings,
+            async_runtime,
             viewer_endpoint.as_deref(),
             cache_dir.as_deref(),
             startup.build_info.is_in_rerun_workspace,
+            shown_content,
         );
+        state.agent_panel_ever_opened |= state.agent_panel_open;
     }
 
     fn egui_debug_panel_ui(&mut self, ui: &mut egui::Ui) {
@@ -300,59 +320,31 @@ impl AppCore {
         self.egui_debug_panel_open = egui_debug_panel_open;
     }
 
-    fn should_fade_in_welcome_screen(&self) -> bool {
-        if let Some(expect_data_soon) = self.startup.options.expect_data_soon {
-            return expect_data_soon;
-        }
+    /// Whether the welcome screen may be drawn this frame.
+    ///
+    /// When data is expected right after startup, the welcome screen is held back briefly so it
+    /// doesn't flash before the recording arrives. It is not skipped entirely, because the data
+    /// may never come. Once revealed it stays revealed: sources that connect later must never
+    /// blank a welcome screen the user can already see.
+    fn update_welcome_screen_revealed(&mut self, egui_ctx: &egui::Context) -> bool {
+        // Enough for `spawn()` to send its recording info, which it does right after connecting.
+        const HOLD_BACK: std::time::Duration = std::time::Duration::from_millis(400);
 
-        // The reason for the fade-in is to avoid the welcome screen
-        // flickering quickly before receiving some data.
-        // So: if we expect data very soon, we do a fade-in.
-
-        for source in self.rx_log.sources() {
-            match &*source {
-                LogSource::File { .. }
-                | LogSource::HttpStream { .. }
-                | LogSource::RedapGrpcStream { .. }
-                | LogSource::Stdin
-                | LogSource::RrdWebEvent
-                | LogSource::Sdk
-                | LogSource::JsChannel { .. } => {
-                    return true; // We expect data soon, so fade-in
-                }
-
-                // We start a gRPC server by default in native rerun, i.e. when just running `rerun`,
-                // and in that case fading in the welcome screen would be slightly annoying.
-                // However, we also use the gRPC server for sending data from the logging SDKs
-                // when they call `spawn()`, and in that case we really want to fade in the welcome screen.
-                // Therefore `spawn()` uses the special `--expect-data-soon` flag
-                // (handled earlier in this function), so here we know we are in the other case:
-                // a user calling `rerun` in their terminal (don't fade in).
-                LogSource::MessageProxy { .. } => {}
+        if !self.welcome_screen_revealed {
+            let elapsed = self.startup.start_time.elapsed();
+            if HOLD_BACK <= elapsed
+                || !expects_data_soon(
+                    self.startup.options.expect_data_soon,
+                    &self.rx_log.sources(),
+                )
+            {
+                self.welcome_screen_revealed = true;
+            } else {
+                egui_ctx.request_repaint_after(HOLD_BACK.saturating_sub(elapsed));
             }
         }
 
-        false // No special sources (or no sources at all), so don't fade in
-    }
-
-    /// Handle fading in the welcome screen, if we should.
-    fn welcome_screen_opacity(&self, egui_ctx: &egui::Context) -> f32 {
-        if self.should_fade_in_welcome_screen() {
-            // The reason for this delay is to avoid the welcome screen
-            // flickering quickly before receiving some data.
-            // The only time it has for that is between the call to `spawn` and sending the recording info,
-            // which should happen _right away_, so we only need a small delay.
-            // Why not skip the wlecome screen completely when we expect the data?
-            // Because maybe the data never comes.
-            let sec_since_first_shown = self.startup.start_time.elapsed().as_secs_f32();
-            let opacity = egui::remap_clamp(sec_since_first_shown, 0.4..=0.6, 0.0..=1.0);
-            if opacity < 1.0 {
-                egui_ctx.request_repaint();
-            }
-            opacity
-        } else {
-            1.0
-        }
+        self.welcome_screen_revealed
     }
 
     /// Show recent text log messages to the user as toast notifications.
@@ -545,45 +537,101 @@ pub(super) fn paint_custom_window_frame(egui_ctx: &egui::Context) {
     );
 }
 
-pub(super) fn preview_files_being_dropped(egui_ctx: &egui::Context) {
+/// Whether a dropped file is an image that the agent prompt can take.
+pub(super) fn is_agent_image_path(path: &std::path::Path) -> bool {
+    path.extension()
+        .and_then(|extension| extension.to_str())
+        .is_some_and(|extension| {
+            ["jpeg", "jpg", "png"]
+                .iter()
+                .any(|image_extension| extension.eq_ignore_ascii_case(image_extension))
+        })
+}
+
+/// Whether a hovered file is an image that the agent prompt can take.
+///
+/// The web backend only gives the MIME type of a hovered file, not its path.
+fn is_agent_image(file: &egui::HoveredFile) -> bool {
+    match &file.path {
+        Some(path) => is_agent_image_path(path),
+        None => ["image/jpeg", "image/png"].contains(&file.mime.as_str()),
+    }
+}
+
+/// Shows where hovered files will go when dropped.
+///
+/// Images go to the agent panel when there is an `agent_drop_target`, everything else is loaded
+/// into the central panel, or the whole window if there is no `central_panel_rect`.
+pub(super) fn preview_files_being_dropped(
+    egui_ctx: &egui::Context,
+    central_panel_rect: Option<egui::Rect>,
+    agent_drop_target: Option<&re_agent_panel::ImageDropTarget>,
+) {
     use egui::{Align2, Id, LayerId, Order, TextStyle};
 
-    // Preview hovering files:
-    if !egui_ctx.input(|i| i.raw.hovered_files.is_empty()) {
+    let hovered_files = egui_ctx.input(|i| i.raw.hovered_files.clone());
+    if hovered_files.is_empty() {
+        return;
+    }
+
+    let (images, files_to_load): (Vec<_>, Vec<_>) = hovered_files
+        .iter()
+        .partition(|file| agent_drop_target.is_some() && is_agent_image(file));
+
+    let style = egui_ctx.global_style();
+    let font = TextStyle::Body.resolve(&style);
+    let text_color = style.visuals.strong_text_color();
+    let fill = style.visuals.extreme_bg_color.gamma_multiply_u8(192);
+    let stroke = egui_ctx.tokens().drop_target_container_stroke;
+
+    let painter = egui_ctx.layer_painter(LayerId::new(
+        Order::Foreground,
+        Id::unique("file_drop_target"),
+    ));
+
+    let file_list = |title: &str, files: &[&egui::HoveredFile]| {
         use std::fmt::Write as _;
 
-        let mut text = "Drop to load:\n".to_owned();
-        egui_ctx.input(|input| {
-            for file in &input.raw.hovered_files {
-                if let Some(path) = &file.path {
-                    write!(text, "\n{}", path.display()).ok();
-                } else if !file.mime.is_empty() {
-                    write!(text, "\n{}", file.mime).ok();
-                }
+        let mut text = format!("{title}\n");
+        for file in files {
+            if let Some(path) = &file.path {
+                write!(text, "\n{}", path.display()).ok();
+            } else if !file.mime.is_empty() {
+                write!(text, "\n{}", file.mime).ok();
             }
-        });
+        }
+        text
+    };
 
-        let painter = egui_ctx.layer_painter(LayerId::new(
-            Order::Foreground,
-            Id::unique("file_drop_target"),
-        ));
-
-        let screen_rect = egui_ctx.content_rect();
-        painter.rect_filled(
-            screen_rect,
-            0.0,
-            egui_ctx
-                .global_style()
-                .visuals
-                .extreme_bg_color
-                .gamma_multiply_u8(192),
-        );
+    if let Some(agent_drop_target) = agent_drop_target
+        && !images.is_empty()
+    {
+        let rect = agent_drop_target.rect;
+        painter.rect_filled(rect, 0.0, fill);
+        painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
         painter.text(
-            screen_rect.center(),
+            rect.center(),
             Align2::CENTER_CENTER,
-            text,
-            TextStyle::Body.resolve(&egui_ctx.global_style()),
-            egui_ctx.global_style().visuals.strong_text_color(),
+            if images.len() == 1 {
+                "Add image to prompt"
+            } else {
+                "Add images to prompt"
+            },
+            font.clone(),
+            text_color,
+        );
+    }
+
+    if !files_to_load.is_empty() {
+        let rect = central_panel_rect.unwrap_or_else(|| egui_ctx.content_rect());
+        painter.rect_filled(rect, 0.0, fill);
+        painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
+        painter.text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            file_list("Drop to load:", &files_to_load),
+            font,
+            text_color,
         );
     }
 }
@@ -624,4 +672,33 @@ pub(super) fn file_saver_progress_ui(
                 });
         }
     }
+}
+
+/// Is a recording likely to arrive within moments?
+fn expects_data_soon(
+    expect_data_soon: Option<bool>,
+    sources: &[std::sync::Arc<LogSource>],
+) -> bool {
+    if let Some(expect_data_soon) = expect_data_soon {
+        return expect_data_soon;
+    }
+
+    sources.iter().any(|source| match &**source {
+        // Background streams (e.g. table blueprints) never open a recording.
+        // Plain `rerun` starts a gRPC server by default, and nothing may ever be sent to it;
+        // `spawn()` also uses that server, but passes `--expect-data-soon`, handled above.
+        LogSource::RedapGrpcStream {
+            open_behavior: RecordingOpenBehavior::Background,
+            ..
+        }
+        | LogSource::MessageProxy { .. } => false,
+
+        LogSource::File { .. }
+        | LogSource::HttpStream { .. }
+        | LogSource::JsChannel { .. }
+        | LogSource::RedapGrpcStream { .. }
+        | LogSource::RrdWebEvent
+        | LogSource::Sdk
+        | LogSource::Stdin => true,
+    })
 }

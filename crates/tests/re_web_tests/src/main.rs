@@ -1,5 +1,7 @@
 //! Discovers and runs Rerun web tests.
 
+#![expect(clippy::print_stderr)] // Test runner
+
 use std::path::PathBuf;
 use std::process::ExitCode;
 
@@ -116,7 +118,15 @@ async fn run_package(args: &Args, package: &WebTestPackage) -> anyhow::Result<()
     };
 
     let mut command = Command::new("wasm-pack");
-    command.arg("test");
+
+    // Together with the browser flag below, --node runs separate Node and browser passes.
+    // Each pass skips test binaries configured for the other runtime.
+    command.arg("test").arg("--node");
+    // Unmarked test binaries default to the browser, including during the Node pass.
+    // An explicit run_in_node_experimental marker overrides this default, so only
+    // Node-marked binaries run in the Node pass.
+    command.env("WASM_BINDGEN_USE_BROWSER", "1");
+
     if !args.no_headless {
         command.arg("--headless");
     }

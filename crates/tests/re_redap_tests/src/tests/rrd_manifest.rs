@@ -3,7 +3,7 @@ use std::sync::Arc;
 use arrow::array::{Float32Array, RecordBatch};
 use itertools::Itertools as _;
 use re_arrow_util::{RecordBatchExt as _, RecordBatchTestExt as _, SchemaTestExt as _};
-use re_chunk_index::{RawRrdManifest, sha256_to_hex};
+use re_chunk_index::RawRrdManifest;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, GetRrdManifestRequest, ScanSegmentTableRequest,
@@ -124,6 +124,7 @@ pub async fn layered_segment(service: impl RerunCloudService) {
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_name.into()),
                 generate_direct_urls: false,
+                client_meta: None,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -181,6 +182,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_name.into()),
                 generate_direct_urls: false,
+                client_meta: None,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -232,6 +234,7 @@ pub async fn layered_segment_stress(service: impl RerunCloudService) {
                     tonic::Request::new(GetRrdManifestRequest {
                         segment_id: Some(segment_name.into()),
                         generate_direct_urls: false,
+                        client_meta: None,
                     })
                     .with_entry_name(entry_name(dataset_name)),
                 )
@@ -270,6 +273,7 @@ pub async fn unregistered_segment(service: impl RerunCloudService) {
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some("my_segment_id".into()),
                 generate_direct_urls: false,
+                client_meta: None,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -287,6 +291,7 @@ pub async fn segment_id_not_found(service: impl RerunCloudService) {
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_id.into()),
                 generate_direct_urls: false,
+                client_meta: None,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -308,6 +313,7 @@ async fn dataset_rrd_manifest_snapshot(
             tonic::Request::new(GetRrdManifestRequest {
                 segment_id: Some(segment_id.into()),
                 generate_direct_urls: false,
+                client_meta: None,
             })
             .with_entry_name(entry_name(dataset_name)),
         )
@@ -366,7 +372,7 @@ async fn dataset_rrd_manifest_snapshot(
     );
     insta::assert_snapshot!(
         format!("{snapshot_name}_sorbet_schema_sha256"),
-        sha256_to_hex(&rrd_manifest.sorbet_schema_sha256),
+        rrd_manifest.sorbet_schema_sha256.to_string(),
     );
 
     Ok(rrd_manifest)

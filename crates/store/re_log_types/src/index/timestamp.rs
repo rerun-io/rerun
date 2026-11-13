@@ -2,7 +2,6 @@ use std::ops::RangeInclusive;
 use std::str::FromStr as _;
 
 use super::{Duration, TimestampFormat};
-use crate::external::re_types_core;
 use crate::{DateVisibility, TimestampFormatKind};
 
 /// Encodes a timestamp in nanoseconds since unix epoch.
@@ -153,8 +152,7 @@ impl Timestamp {
     ///
     /// Omits the date of same-day timestamps.
     pub fn format(self, timestamp_format: TimestampFormat) -> String {
-        let subsecond_decimals = 0..=6; // NOTE: we currently ignore sub-microsecond
-        self.format_opt(timestamp_format, subsecond_decimals)
+        timestamp_format.format_nanos(self.0)
     }
 
     /// Human-readable timestamp.
@@ -167,73 +165,7 @@ impl Timestamp {
         timestamp_format: TimestampFormat,
         subsecond_decimals: RangeInclusive<usize>,
     ) -> String {
-        let format_fractional_nanos = move |ns: i32| {
-            re_format::DurationFormatOptions::default()
-                .with_always_sign(false)
-                .with_min_decimals(*subsecond_decimals.start())
-                .with_max_decimals(*subsecond_decimals.end())
-                .round_towards_zero()
-                .format_nanos(ns as _)
-                // Turn `0.123s` into `.123`:
-                .trim_start_matches('0')
-                .trim_end_matches('s')
-                .to_owned()
-        };
-
-        let timestamp = jiff::Timestamp::from(self);
-
-        match timestamp_format.kind() {
-            TimestampFormatKind::SecondsSinceUnixEpoch => {
-                format!(
-                    "{}{}",
-                    re_format::format_int(timestamp.as_second()),
-                    format_fractional_nanos(timestamp.subsec_nanosecond())
-                )
-            }
-
-            TimestampFormatKind::LocalTimezone
-            | TimestampFormatKind::LocalTimezoneImplicit
-            | TimestampFormatKind::Utc => {
-                let tz = timestamp_format.to_jiff_time_zone();
-                let zoned = timestamp.to_zoned(tz.clone());
-
-                let hide_date = match timestamp_format.date_visibility() {
-                    // `ShowDate` takes priority over `short`, so a caller can get a date with
-                    // whole seconds, no nanos and no suffix.
-                    DateVisibility::ShowDate => false,
-                    DateVisibility::HideDate => true,
-                    DateVisibility::HideDateToday => {
-                        timestamp_format.short()
-                            || zoned.date() == jiff::Timestamp::now().to_zoned(tz.clone()).date()
-                    }
-                };
-                let formatted = if hide_date {
-                    zoned.strftime("%H:%M:%S").to_string()
-                } else {
-                    zoned.strftime("%Y-%m-%d %H:%M:%S").to_string()
-                };
-
-                let nanos = if timestamp_format.short() {
-                    String::new()
-                } else {
-                    format_fractional_nanos(zoned.subsec_nanosecond())
-                };
-
-                let suffix = if timestamp_format.short() {
-                    String::new()
-                } else {
-                    match timestamp_format.kind() {
-                        TimestampFormatKind::LocalTimezone => tz.to_offset(timestamp).to_string(),
-                        TimestampFormatKind::LocalTimezoneImplicit => String::new(),
-                        TimestampFormatKind::Utc | TimestampFormatKind::SecondsSinceUnixEpoch => {
-                            "Z".to_owned()
-                        }
-                    }
-                };
-
-                format!("{formatted}{nanos}{suffix}")
-            }
-        }
+        timestamp_format.format_nanos_opt(self.0, subsecond_decimals)
     }
 
     /// Useful when showing dates/times on a timeline and you want it compact.
@@ -411,10 +343,10 @@ mod tests {
             ),
             "2026-08-14 14:20:39"
         );
-        // Without `short`, the sub-second digits are grouped by a thin space and a suffix is added.
+        // Without `short`, the sub-second digits are grouped by a narrow no-break space and a suffix is added.
         assert_eq!(
             &datetime.format(TimestampFormat::utc()),
-            "2026-08-14 14:20:39.020\u{2009}119Z"
+            "2026-08-14 14:20:39.020\u{202F}119Z"
         );
     }
 
@@ -432,7 +364,7 @@ mod tests {
         let datetime = Timestamp::from_str("2022-02-28 22:35:42.0690427Z").unwrap();
         assert_eq!(
             &datetime.format(TimestampFormat::utc()),
-            "2022-02-28 22:35:42.069 042Z"
+            "2022-02-28 22:35:42.069 042Z"
         ); // format function is not rounding
     }
 
@@ -555,19 +487,19 @@ mod tests {
                         .unwrap()
                 ))
             );
-            // Full date and time with microseconds
-            assert_eq!(
-                parse(
-                    "1954-04-11 22:35:42.069 123 987",
-                    TimestampFormat::local_timezone()
-                ),
-                Some(Timestamp::from(
-                    jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069123987")
-                        .unwrap()
-                        .to_zoned(tz)
-                        .unwrap()
-                ))
-            );
+            // Full date and time with microseconds, grouped by narrow no-break space or thin space
+            let expected = Some(Timestamp::from(
+                jiff::civil::DateTime::from_str("1954-04-11 22:35:42.069123987")
+                    .unwrap()
+                    .to_zoned(tz)
+                    .unwrap(),
+            ));
+            for text in [
+                "1954-04-11 22:35:42.069\u{202F}123\u{202F}987",
+                "1954-04-11 22:35:42.069\u{2009}123\u{2009}987",
+            ] {
+                assert_eq!(parse(text, TimestampFormat::local_timezone()), expected);
+            }
         }
 
         // Test invalid formats

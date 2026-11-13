@@ -32,7 +32,7 @@ class VideoStream(Archetype, VisualizableArchetype):
     **Archetype**: Video stream consisting of raw video chunks.
 
     For logging video containers like mp4, refer to [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo] and [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
-    To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
+    To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 
     All components except `sample` are typically logged statically once per entity.
     `sample` is then logged repeatedly for each frame on the timeline.
@@ -172,6 +172,8 @@ class VideoStream(Archetype, VisualizableArchetype):
             never log this component as static data as this means that you loose all information of
             previous samples which may be required to decode an image.
 
+            Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
+
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         is_keyframe:
             Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
@@ -264,6 +266,8 @@ class VideoStream(Archetype, VisualizableArchetype):
             Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
             never log this component as static data as this means that you loose all information of
             previous samples which may be required to decode an image.
+
+            Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
 
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         is_keyframe:
@@ -399,6 +403,8 @@ class VideoStream(Archetype, VisualizableArchetype):
             never log this component as static data as this means that you loose all information of
             previous samples which may be required to decode an image.
 
+            Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
+
             See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
         is_keyframe:
             Whether the corresponding [`components.VideoSample`][rerun.components.VideoSample] contains a keyframe.
@@ -513,6 +519,8 @@ class VideoStream(Archetype, VisualizableArchetype):
     # Unless your stream consists entirely of key-frames (in which case you should consider [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage])
     # never log this component as static data as this means that you loose all information of
     # previous samples which may be required to decode an image.
+    #
+    # Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
     #
     # See [`components.VideoCodec`][rerun.components.VideoCodec] for codec specific requirements.
     #

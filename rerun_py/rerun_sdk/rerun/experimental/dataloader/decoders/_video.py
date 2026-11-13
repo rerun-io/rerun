@@ -17,6 +17,7 @@ from rerun._tracing import set_current_span_attributes, with_tracing
 
 from ....components import VideoCodec
 from ...video import detect_gop_start, is_annex_b, length_prefixed_to_annex_b
+from .._metrics import _record_video_frames
 from .._yuv import ColorRange, ColorSpace, Yuv420Frame
 from ._arrow import _flatten_blob
 from ._base import ColumnDecoder, DecodedValue, DecodeRequest, FieldBatch
@@ -178,15 +179,17 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
     """
     Compressed video random access via keyframe-aware fetching.
 
-    Anchors the decode window at the prior keyframe by consulting the sibling
+    The loader finds the preceding keyframe in the required sibling
     `is_keyframe` component on the `VideoStream` archetype, derived from
     `Field.path` (e.g. `/cam:VideoStream:sample` pairs with
-    `/cam:VideoStream:is_keyframe`). The marker is populated by the user or by
-    `LazyChunkStream.collect(optimize=…)`, and lives in dedicated chunks
-    separate from the video sample, so the lookup is cheap.
+    `/cam:VideoStream:is_keyframe`). Populate these markers when logging or
+    with `LazyChunkStream.collect(optimize=…)`.
 
-    The sibling `is_keyframe` column is required. This makes every decode range
-    deterministic rather than relying on an estimated GOP length.
+    When all selected fields share a dense, zero-based integer frame grid and
+    videos have regularly spaced keyframes, pass
+    `timeline_sampling=TimeAlignedSampling(keyframe_interval=…)` to the dataset to calculate
+    decode starts using the declared interval. See
+    [`TimeAlignedSampling`][rerun.experimental.dataloader.TimeAlignedSampling] for the data requirements.
 
     Samples may be raw H.264 AVC1/AVCC (length-prefixed NAL units) or Annex B;
     the format is detected automatically per sample.
@@ -202,12 +205,10 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
     `output_format="yuv420p"`, it returns a [`Yuv420Frame`][rerun.experimental.dataloader.Yuv420Frame] whose Y and UV
     planes remain in YUV form until collation and device transfer.
 
-    Returns `None` when a request's resolved window contains no decodable
-    keyframe: the target precedes the entity's first frame in a multi-modal
-    segment, or the first row was user-logged `is_keyframe=true` on a sample
-    that isn't actually a codec keyframe (run optimize with
-    `fix_keyframe=True` to re-derive markers from the encoded samples).
-    Consumers must filter these out in their collate function before stacking.
+    Returns `None` when the resolved window does not start with a decodable
+    keyframe, for example before the video's first frame or with incorrect
+    keyframe markers. Map-dataset consumers must handle `None` before
+    stacking.
     """
 
     @overload
@@ -407,8 +408,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         )
         if not samples:
             return
-        # Explicit keyframe metadata guarantees that the range starts at a
-        # bootstrap packet. Validate the marker when this codec has a detector.
+        # Validate the starting packet when this codec has a keyframe detector.
         if self._is_keyframe(samples[0]) is False:
             return
 
@@ -532,6 +532,8 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
                 if frame is not None:
                     decoded_frames_by_packet_position[packet_position] = frame
 
+        _record_video_frames(output=len(decoded_frames_by_packet_position))
+
         if view_packet_positions_by_request is not None and self._try_emit_view_windows(
             packet_positions_by_request=view_packet_positions_by_request,
             wanted_packet_positions=wanted_packet_positions,
@@ -545,9 +547,10 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
 
         # 4. Scatter captured frames back into each request's ordered output slots.
         for packet_position, tensor in decoded_frames_by_packet_position.items():
-            for request_position, output_slot in output_slots_by_packet_position[packet_position]:
+            for use, (request_position, output_slot) in enumerate(output_slots_by_packet_position[packet_position]):
+                # Each capture is a fresh frame, so only its repeat unwindowed outputs need their own copy.
                 frames_by_request_position[request_position][output_slot] = (
-                    tensor if batch.is_windowed else tensor.clone()
+                    tensor if batch.is_windowed or use == 0 else tensor.clone()
                 )
 
         for request_position, frames in frames_by_request_position.items():
@@ -686,9 +689,11 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         captured: dict[int, DecodedValue] = {}
         wanted_set = set(wanted)
         saw_b_frame = False
+        frames_decoded = 0
 
         def receive_frame(frame: av.VideoFrame) -> None:
-            nonlocal saw_b_frame
+            nonlocal frames_decoded, saw_b_frame
+            frames_decoded += 1
             pos = session.frames_emitted
             session.frames_emitted += 1
             session.last_frame = frame
@@ -722,6 +727,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
                 "rerun.dataloader.video.sessions_evicted": evicted,
                 "rerun.dataloader.video.live_sessions": len(self._sessions),
             })
+            _record_video_frames(decoded=frames_decoded)
             return captured
 
         # Frame threading pipelines several packets before emitting their
@@ -737,6 +743,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             receive_frame(frame)
 
         if session.frames_emitted == len(feed) and not saw_b_frame:
+            _record_video_frames(decoded=frames_decoded)
             return captured
 
         # A B-frame stream has decode order != presentation order, while raw
@@ -744,11 +751,14 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         # behavior: replay through the requested position and take the final
         # displayed frame.
         if wanted != [len(feed) - 1]:
+            _record_video_frames(decoded=frames_decoded)
             return None
         target_frame = session.last_frame
         if target_frame is None:
+            _record_video_frames(decoded=frames_decoded)
             return {}
         position = len(feed) - 1
+        _record_video_frames(decoded=frames_decoded)
         return {position: frame_capture(position, target_frame)}
 
     def _feed_last(
@@ -819,7 +829,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         return self._frame_to_tensor(frame)
 
     def _frame_to_tensor(self, frame: av.VideoFrame) -> torch.Tensor:
-        """Convert a PyAV VideoFrame to a `(3, H, W)` uint8 tensor."""
+        """Convert a PyAV VideoFrame to a `(3, H, W)` uint8 tensor that never shares memory with `frame`."""
         reformatters = self._rgb_reformatters
         if reformatters is None:
             reformatters = self._rgb_reformatters = threading.local()
@@ -828,6 +838,9 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             reformatter = reformatters.rgb = VideoReformatter()
         rgb = reformatter.reformat(frame, format="rgb24")
         arr = rgb.to_ndarray()
+        if rgb is frame:
+            # An `rgb24` input comes back as-is, and `to_ndarray` may view its buffer.
+            arr = arr.copy()
         return torch.from_numpy(arr).permute(2, 0, 1)
 
     def _frame_to_yuv420(self, frame: av.VideoFrame) -> Yuv420Frame:

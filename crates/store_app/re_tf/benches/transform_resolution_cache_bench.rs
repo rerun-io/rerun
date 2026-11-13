@@ -40,7 +40,7 @@ fn setup_store() -> (EntityDb, Vec<ChunkStoreEvent>) {
 
             let mut builder = Chunk::builder(EntityPath::from(format!("entity{entity_idx}")));
             for t in 0..NUM_TIMEPOINTS_PER_ENTITY {
-                let mut timepoint = TimePoint::default();
+                let mut timepoint = TimePoint::STATIC;
                 for timeline in &timelines {
                     #[expect(clippy::cast_possible_wrap)]
                     timepoint.insert(*timeline, (chunk_base_time + t) as i64);

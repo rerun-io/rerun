@@ -21,11 +21,13 @@ Utf8
 
 * [`AnnotationInfo`](../encodings/annotation_info.md)
 * [`GraphNode`](../components/graph_node.md)
+* [`LayerName`](../components/layer_name.md)
 * [`MediaType`](../components/media_type.md)
 * [`Name`](../components/name.md)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
 * [`TransformFrameId`](../components/transform_frame_id.md)
 * [`Unit`](../components/unit.md)
+* [`Url`](../components/url.md)
 * [`Utf8Pair`](../encodings/utf8pair.md)
 * [`VisibleTimeRange`](../encodings/visible_time_range.md)

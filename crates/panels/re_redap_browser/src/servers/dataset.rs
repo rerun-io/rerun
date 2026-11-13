@@ -1,32 +1,32 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
 use re_catalog_client::{Asset, AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
-use re_dataframe_ui::{TableCellKind, TableLayoutKind};
+use re_dataframe_ui::TableLayoutKind;
 use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
 use re_log_types::{EntityPathPart, EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
 use re_quota_channel::send_crossbeam;
-use re_redap_client::{ApiError, ConnectionHandle};
+use re_redap_client::ApiError;
+use re_ui::ButtonExt as _;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
-use re_ui::{
-    DesignTokens, ReButton, ServerValue, TabBar, TableCommand, TableCommandKind,
-    TableCommandSender as _, UiExt as _, icons,
-};
+use re_ui::{ContextExt as _, DesignTokens, ServerValue, TabBar, UiExt as _, icons};
 use re_uri::DatasetResource;
 use re_viewer_context::{
     AppContext, SystemCommand, SystemCommandSender as _, TableReference as ViewerTableReference,
     ViewStates,
 };
+use re_viewer_context::{TableCommand, TableCommandKind, TableCommandSender as _};
 
 use crate::asset_coverage_modal::{ASSETS_DOCS_URL, AssetTarget, card_frame};
 use crate::asset_registration::{AssetRegistration, RegistrationState};
 use crate::context::Context;
 use crate::entry_meta::{AssetsRef, DatasetSegments, EntryMeta, EntryMetaQuery, StoredCoverage};
-use crate::register_asset_modal::{AssetSlots, AssetSourcesCapabilities};
+use crate::register_asset_modal::{ASSET_FILE, AssetSlots};
 use crate::servers::Command;
+use crate::source_field::SourceCapabilities;
 use crate::{
     Server,
     entries::{Dataset, Entry, EntryInner},
@@ -77,9 +77,8 @@ impl Server {
         dataset: &'a Dataset,
     ) -> EntryMetaQuery<'a> {
         EntryMetaQuery {
-            runtime: &self.runtime,
+            client: &self.client,
             egui_ctx,
-            connection: &self.connection,
             dataset_id: dataset.id(),
         }
     }
@@ -94,8 +93,7 @@ impl Server {
         view_states: &mut ViewStates,
         kind: Option<re_viewer_context::EntryKind>,
     ) {
-        let asset_sources =
-            AssetSourcesCapabilities::new(app_ctx.connection_registry, &dataset.origin);
+        let asset_sources = SourceCapabilities::new(app_ctx.connection_registry, &dataset.origin);
 
         let resource = match kind {
             Some(re_viewer_context::EntryKind::Dataset(resource)) => resource,
@@ -108,11 +106,7 @@ impl Server {
             ui.spacing_mut().item_spacing.y = 0.0;
 
             let name = dataset.name();
-
-            let path = name
-                .as_str()
-                .split(re_uri::DATASET_HIERARCHY_SEPARATOR)
-                .collect::<Vec<_>>();
+            let leaf_name = re_uri::dataset_hierarchy_leaf_name(name.as_str());
 
             ui.horizontal(|ui| {
                 ui.add_space(PADDING);
@@ -121,39 +115,34 @@ impl Server {
                     ui.spacing_mut().item_spacing.y = 0.0;
                     ui.add_space(PADDING);
 
-                    if path.len() > 1 {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = 0.0;
-                            for (idx, part) in path.iter().enumerate() {
-                                let last = idx == path.len() - 1;
-                                if last {
-                                    ui.strong(*part);
-                                } else {
-                                    ui.label(format!("{part} / "));
-                                }
-                            }
-                        });
+                    if leaf_name != name.as_str() {
+                        crate::breadcrumbs::hierarchy_breadcrumbs_ui(
+                            ui,
+                            &dataset.origin,
+                            name.as_str(),
+                            app_ctx.command_sender(),
+                        );
                         ui.add_space(BREADCRUMB_TO_NAME_SPACE);
                     }
 
-                    if let Some(name) = path.last() {
-                        ui.allocate_ui_with_layout(
-                            egui::vec2(ui.available_width(), HEADER_HEIGHT),
-                            egui::Layout::left_to_right(egui::Align::Center),
-                            |ui| {
-                                ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
-                                ui.label(
-                                    egui::RichText::new(*name).size(HEADER_FONT_SIZE).strong(),
-                                );
-                                refresh_button_ui(
-                                    ui,
-                                    app_ctx,
-                                    dataset,
-                                    self.segments_queried_at(ui, dataset),
-                                );
-                            },
-                        );
-                    }
+                    ui.allocate_ui_with_layout(
+                        egui::vec2(ui.available_width(), HEADER_HEIGHT),
+                        egui::Layout::left_to_right(egui::Align::Center),
+                        |ui| {
+                            ui.spacing_mut().item_spacing.x = NAME_TO_REFRESH_SPACE;
+                            ui.label(
+                                egui::RichText::new(leaf_name)
+                                    .size(HEADER_FONT_SIZE)
+                                    .strong(),
+                            );
+                            refresh_button_ui(
+                                ui,
+                                app_ctx,
+                                dataset,
+                                self.segments_queried_at(ui, dataset),
+                            );
+                        },
+                    );
 
                     ui.add_space(NAME_TO_TABS_SPACE);
                 });
@@ -162,7 +151,8 @@ impl Server {
             let mut new_resource = resource;
             TabBar::new(ui)
                 .selectable_value(&mut new_resource, DatasetResource::Segments, "Segments")
-                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets");
+                .selectable_value(&mut new_resource, DatasetResource::Assets, "Assets")
+                .selectable_value(&mut new_resource, DatasetResource::Schema, "Schema");
 
             if new_resource != resource {
                 app_ctx
@@ -182,6 +172,12 @@ impl Server {
                 }
                 DatasetResource::Assets => {
                     self.assets_ui(ui, app_ctx, ctx, dataset, &asset_sources);
+                }
+                DatasetResource::Schema => {
+                    let schema = dataset
+                        .requests()
+                        .schema(self.entry_meta_query(ui.ctx(), dataset));
+                    crate::dataset_schema::schema_ui(ui, &schema);
                 }
             }
         });
@@ -238,6 +234,7 @@ impl Server {
                 entry_id: dataset.id(),
             },
         )
+        .loading_header("Loading dataset")
         .toolbar_summary(|ui| self.segment_count_ui(ui, dataset))
         .additional_column_heuristics(|layout, desc, mut column| {
             // TODO(andreas): we should not operate on display name as much since this can be very brittle.
@@ -257,11 +254,6 @@ impl Server {
 
                 column = column.with_default_visibility(default_visible);
             }
-
-            if desc.display_name().as_str() == RECORDING_LINK_COLUMN_NAME {
-                column = column.with_default_cell_kind(TableCellKind::Link);
-            }
-
             column
         })
         .generate_segment_links(
@@ -270,7 +262,13 @@ impl Server {
             self.origin().clone(),
             dataset.id(),
         )
-        .show(app_ctx, &self.runtime, ui, table_blueprints, view_states);
+        .show(
+            app_ctx,
+            self.client.runtime(),
+            ui,
+            table_blueprints,
+            view_states,
+        );
     }
 
     /// Lists the assets of a dataset, or says why there is nothing to list.
@@ -280,7 +278,7 @@ impl Server {
         app_ctx: &AppContext<'_>,
         ctx: &Context<'_>,
         dataset: &Dataset,
-        asset_sources: &AssetSourcesCapabilities,
+        asset_sources: &SourceCapabilities,
     ) {
         let assets = dataset.requests().assets(
             self.entry_meta_query(ui.ctx(), dataset),
@@ -489,7 +487,7 @@ impl Server {
                     let total_bytes = assets
                         .get()
                         .map(|a| a.iter().map(|a| a.size as f64).sum::<f64>())
-                        .map(re_format::format_bytes);
+                        .map(|total| asset_size_text(ui.ctx(), total));
 
                     // There is no total size until the asset list has arrived, so while it is
                     // pending only the count is shown, with its loading indicator.
@@ -748,8 +746,8 @@ impl Server {
                             return;
                         }
 
-                        // `outlined` is the `ReButton` variant with a border.
-                        let open_button = ui.add(re_ui::ReButton::new("Open").outlined().small());
+                        // `outlined` is the button variant with a border.
+                        let open_button = ui.add(egui::Button::new("Open").outlined().size_small());
 
                         if open_button.clicked_with_open_in_background() {
                             open_asset_ui(ui, dataset, asset, true);
@@ -765,7 +763,7 @@ impl Server {
                                 ui.spacing_mut().item_spacing.y = 3.0;
                                 ui.label(egui::RichText::new("SIZE").monospace().size(10.0).weak());
                                 ui.label(
-                                    egui::RichText::new(re_format::format_bytes(asset.size as _))
+                                    egui::RichText::new(asset_size_text(ui.ctx(), asset.size as _))
                                         .monospace()
                                         .size(14.0)
                                         .strong(),
@@ -841,6 +839,18 @@ fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool)
 
 const COVERAGE_NOT_EDITABLE: &str = "This server does not support editing coverage";
 
+/// The size of an asset, or of several, as text.
+///
+/// In tests it is always the same placeholder, because the size depends on how the data is
+/// encoded.
+fn asset_size_text(egui_ctx: &egui::Context, size_bytes: f64) -> String {
+    if egui_ctx.is_test() {
+        "* KiB".to_owned()
+    } else {
+        re_format::format_bytes(size_bytes)
+    }
+}
+
 fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &Asset) {
     send_crossbeam(
         ctx.command_sender,
@@ -877,21 +887,27 @@ fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
         let date_format = app_ctx.app_options.timestamp_format;
         ui.spacing_mut().item_spacing.x = 0.0;
 
-        short_duration_ui(ui, asset.registered_at, date_format, |ui, registered_at| {
-            ui.label(format!("Registered {registered_at}"))
-        });
+        short_duration_ui(
+            ui,
+            asset.registered_at.into(),
+            date_format,
+            |ui, registered_at| ui.label(format!("Registered {registered_at}")),
+        );
 
         // Registering an asset sets both timestamps, and the manifest rows of one asset can be
         // written a few milliseconds apart, so the two differ slightly even for an asset that was
         // never updated. Comparing the formatted text instead of the raw timestamps keeps the line
         // from showing the same moment twice. A re-registration is seconds or more later, see
         // `CatalogClient::register_asset`.
-        if short_duration_text(asset.last_updated_at, date_format)
-            != short_duration_text(asset.registered_at, date_format)
+        if short_duration_text(asset.last_updated_at.into(), date_format)
+            != short_duration_text(asset.registered_at.into(), date_format)
         {
-            short_duration_ui(ui, asset.last_updated_at, date_format, |ui, updated_at| {
-                ui.label(format!(" · Updated {updated_at}"))
-            });
+            short_duration_ui(
+                ui,
+                asset.last_updated_at.into(),
+                date_format,
+                |ui, updated_at| ui.label(format!(" · Updated {updated_at}")),
+            );
         }
     });
 }
@@ -1210,7 +1226,7 @@ fn no_assets_ui(
     ctx: &Context<'_>,
     asset_target: &AssetTarget,
     asset_slots: &AssetSlots,
-    asset_sources: &AssetSourcesCapabilities,
+    asset_sources: &SourceCapabilities,
 ) {
     /// The explanation wraps within this width, so it stays readable on a wide screen.
     const EXPLANATION_WIDTH: f32 = 460.0;
@@ -1233,7 +1249,7 @@ fn no_assets_ui(
 
     // A server that takes no asset has nothing to walk the reader through, so the empty list only
     // says that it is empty.
-    if !asset_sources.registers_assets() {
+    if !asset_sources.can_register() {
         ui.add_space(48.0);
         ui.vertical_centered(|ui| {
             ui.label(egui::RichText::new("This dataset has no assets").color(tokens.text_subdued));
@@ -1299,7 +1315,7 @@ fn no_assets_ui(
 
                 ui.add_space(20.0);
 
-                let source_example = asset_sources.source_example();
+                let source_example = asset_sources.source_example(ASSET_FILE);
                 let sdk_label = || egui::RichText::new("or use the SDK").color(tokens.text_subdued);
 
                 // The call shrinks into what the row leaves it. Under `SDK_CALL_MIN_WIDTH` too
@@ -1492,20 +1508,19 @@ fn centered_row<R>(
         ui.ctx().request_discard("centered row without a width yet");
     }
 
-    let mut leading_space = 0.0;
-
     let response = ui.horizontal(|ui| {
         if let Some(row_width) = row_width {
-            leading_space = ((ui.available_width() - row_width) / 2.0).max(0.0);
-            ui.add_space(leading_space);
+            ui.add_space(((ui.available_width() - row_width) / 2.0).max(0.0));
         }
 
-        add_contents(ui)
+        let contents_left = ui.cursor().min.x;
+        (add_contents(ui), contents_left)
     });
 
-    ui.data_mut(|data| data.insert_temp(id, response.response.rect.width() - leading_space));
+    let (inner, contents_left) = response.inner;
+    ui.data_mut(|data| data.insert_temp(id, response.response.rect.max.x - contents_left));
 
-    response.inner
+    inner
 }
 
 /// Button that opens the register modal, disabled while the dataset has no room for another asset.
@@ -1519,7 +1534,7 @@ fn register_asset_button(
 
     let response = ui.add_enabled(
         no_room_reason.is_none(),
-        ReButton::new("Register asset").blue().small(),
+        egui::Button::new("Register asset").blue().size_small(),
     );
 
     if let Some(reason) = no_room_reason {
@@ -1540,12 +1555,12 @@ fn register_asset_button(
 ///
 /// Returns whether the server dropped it.
 pub(crate) async fn unregister_asset(
-    connection: ConnectionHandle,
+    client: CatalogClient,
     dataset_id: EntryId,
     asset_id: SegmentId,
     has_failed: bool,
 ) -> bool {
-    match CatalogClient::new(connection)
+    match client
         .unregister_asset(
             dataset_id,
             asset_id.clone(),
@@ -1593,7 +1608,7 @@ fn refresh_button_ui(
             if let Some(queried_at) = queried_at {
                 ui.horizontal(|ui| {
                     ui.label("Last updated:");
-                    short_duration_ui(ui, queried_at, timestamp_format, egui::Ui::strong);
+                    short_duration_ui(ui, queried_at.into(), timestamp_format, egui::Ui::strong);
                 });
             }
         })
@@ -1611,7 +1626,48 @@ fn refresh_button_ui(
 
 #[cfg(test)]
 mod tests {
-    use super::source_uri_file_name;
+    use super::{centered_row, source_uri_file_name};
+
+    /// A centered row with a fractional width stays at the same position across frames.
+    #[test]
+    fn centered_row_settles() {
+        for width in [400.0, 601.0] {
+            let ctx = egui::Context::default();
+            let mut previous_rect = None;
+            for frame in 0..4 {
+                let mut rect = egui::Rect::NOTHING;
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(width, 100.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| {
+                        egui::CentralPanel::default().show(ui, |ui| {
+                            rect = centered_row(ui, "row", |ui| {
+                                ui.allocate_exact_size(
+                                    egui::vec2(100.03125, 20.0),
+                                    egui::Sense::hover(),
+                                )
+                                .0
+                            });
+                        });
+                    },
+                );
+                output.textures_delta.clear();
+                if previous_rect.is_some() {
+                    assert_eq!(
+                        Some(rect),
+                        previous_rect,
+                        "the row moved between frames at width {width}, frame {frame}"
+                    );
+                }
+                previous_rect = Some(rect);
+            }
+        }
+    }
 
     /// A registration card is titled with the file name of the uri it registers, whatever scheme
     /// the uri uses and whatever query it carries. A uri with nothing to take a file name from

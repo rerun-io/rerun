@@ -5,7 +5,7 @@
 //! - **Agent ↔ this server: MCP.** MCP is JSON-RPC over stdio: the agent's harness spawns this
 //!   process and exchanges JSON messages on stdin/stdout. The agent sees only JSON — the tool
 //!   list with JSON Schemas for their arguments, the `INSTRUCTIONS` prose, and JSON or text
-//!   results. It never sees gRPC, but it does read the `.proto` documentation: `proto_tools`
+//!   results. It never sees gRPC, but it does read the `.proto` documentation: `re_viewer_control_tools`
 //!   derives each viewer-control tool's schema and description from the descriptor set, which
 //!   carries the comments.
 //! - **This server ↔ the viewer: gRPC.** Every tool call becomes one call on the viewer's
@@ -37,13 +37,11 @@ use rmcp::{
     model::{
         CacheScope, CallToolRequestParams, CallToolResponse, CallToolResult, ContentBlock,
         Implementation, ListToolsResult, PaginatedRequestParams, ServerCapabilities, ServerConfig,
-        Tool,
+        Tool, ToolAnnotations,
     },
-    schemars,
     service::{RequestContext, RoleServer},
     tool, tool_router, transport,
 };
-mod proto_tools;
 
 use serde::Deserialize;
 use tonic::transport::Channel;
@@ -55,8 +53,15 @@ use re_protos::viewer_control::v1alpha1::{
     EguiInspectRequest, GetLogsRequest, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
+use re_viewer_control_tools::{ScreenshotDelivery, ToolEffect};
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
+
+/// Agents on MCP are coding agents that can read files. See [`ScreenshotDelivery::File`].
+const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::File;
+
+/// Appended to the description of every viewer-control tool, since they share one connection.
+const REQUIRES_CONNECT: &str = "\n\nRequires `rerun_connect`.";
 
 /// Deadline for one viewer-control operation.
 ///
@@ -142,7 +147,15 @@ async fn connect_grpc(
         .connect_timeout(REQUEST_TIMEOUT)
         .connect()
         .await
-        .map_err(|err| err.to_string())?;
+        .map_err(|err| {
+            re_error::StructuredError::from_summary(
+                "Nothing serves ViewerControl at this endpoint. \
+                 Is a viewer started with the `rerun` command running there?",
+            )
+            .with_detail(re_error::format_ref(&err))
+            .with_detail(format!("Endpoint: {endpoint}"))
+            .to_string()
+        })?;
     let client = ViewerControlServiceClient::new(channel);
     let inspector = GrpcInspector {
         client: client.clone(),
@@ -189,7 +202,7 @@ struct Connection {
 /// The egui tools keep their upstream names on purpose: they are the same tools the standalone
 /// `egui-mcp` binary serves, and its `batch` tool re-enters its own router by unprefixed name, so
 /// renaming them here would make a name inside `batch` differ from the same name outside it.
-const RERUN_PREFIX: &str = "rerun_";
+const RERUN_PREFIX: &str = re_viewer_control_tools::TOOL_NAME_PREFIX;
 
 /// Tools whose results cannot include viewer log entries.
 const TOOLS_WITHOUT_LOG: &[&str] = &["rerun_disconnect"];
@@ -311,7 +324,25 @@ impl ViewerMcpServer {
     /// disconnected.
     fn all_tools(&self) -> Vec<Tool> {
         let mut tools = self.tool_router.list_all();
-        tools.extend(proto_tools::tools());
+        tools.extend(
+            re_viewer_control_tools::tools(SCREENSHOT_DELIVERY)
+                .into_iter()
+                .map(
+                    |re_viewer_control_tools::ToolDefinition {
+                         name,
+                         description,
+                         input_schema,
+                         effect,
+                     }| {
+                        Tool::new(
+                            name,
+                            format!("{description}{REQUIRES_CONNECT}"),
+                            Arc::new(input_schema),
+                        )
+                        .with_annotations(annotations(effect))
+                    },
+                ),
+        );
         for tool in &mut tools {
             tool.name = std::borrow::Cow::Owned(format!("{RERUN_PREFIX}{}", tool.name));
         }
@@ -319,6 +350,15 @@ impl ViewerMcpServer {
         // The egui tools keep their upstream names, so they are added after the prefixing.
         tools.extend(self.ui_router.list_all());
         tools
+    }
+
+    /// `name` must be the tool name from the request, before [`RERUN_PREFIX`] is stripped.
+    fn tool_name_for_analytics(&self, name: &str) -> String {
+        if self.all_tools().iter().any(|tool| tool.name == name) {
+            name.to_owned()
+        } else {
+            "unknown".to_owned()
+        }
     }
 
     /// Run one operation generated from `viewer_control.proto`.
@@ -331,14 +371,14 @@ impl ViewerMcpServer {
         name: &str,
         arguments: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> ToolResult<CallToolResult> {
-        let request = proto_tools::build_request(name, arguments)?;
+        let request = re_viewer_control_tools::build_request(name, arguments, SCREENSHOT_DELIVERY)?;
         let mut client = self.client()?;
         let response = client
             .viewer_control(request)
             .await
             .map_err(|err| format!("{name} failed: {err}"))?
             .into_inner();
-        let json = proto_tools::response_json(name, &response)
+        let json = re_viewer_control_tools::response_json(name, &response)
             .map_err(|err| format!("{name} failed: {err}"))?;
         Ok(CallToolResult::success(vec![ContentBlock::text(
             json.to_string(),
@@ -379,7 +419,12 @@ impl ViewerMcpServer {
     /// Connecting again to the same endpoint is a no-op. Connecting to a different endpoint
     /// replaces the old connection once the new connection succeeds. Call `rerun_disconnect` to drop
     /// the connection without replacing it.
-    #[tool]
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        idempotent_hint = true,
+        open_world_hint = false
+    ))]
     async fn connect(
         &self,
         Parameters(args): Parameters<ConnectArgs>,
@@ -401,7 +446,12 @@ impl ViewerMcpServer {
 
     /// Disconnect from the viewer, dropping the gRPC-backed bridge.
     /// The tools stop working until `rerun_connect` is called again.
-    #[tool]
+    #[tool(annotations(
+        read_only_hint = false,
+        destructive_hint = false,
+        idempotent_hint = true,
+        open_world_hint = false
+    ))]
     async fn disconnect(
         &self,
         Parameters(_args): Parameters<EmptyArgs>,
@@ -413,6 +463,27 @@ impl ViewerMcpServer {
         } else {
             Err("not connected".to_owned())
         }
+    }
+}
+
+/// The MCP hints for a viewer-control tool, telling the agent harness what it can change.
+fn annotations(effect: ToolEffect) -> ToolAnnotations {
+    match effect {
+        ToolEffect::ReadOnly => ToolAnnotations::new()
+            .read_only(true)
+            .destructive(false)
+            .idempotent(true)
+            .open_world(false),
+        ToolEffect::NonDestructive => ToolAnnotations::new()
+            .read_only(false)
+            .destructive(false)
+            .idempotent(false)
+            .open_world(false),
+        ToolEffect::Destructive => ToolAnnotations::new()
+            .read_only(false)
+            .destructive(true)
+            .idempotent(false)
+            .open_world(true),
     }
 }
 
@@ -506,7 +577,9 @@ impl ServerHandler for ViewerMcpServer {
         let ours = name
             .strip_prefix(RERUN_PREFIX)
             .map(ToOwned::to_owned)
-            .filter(|name| self.tool_router.has_route(name) || proto_tools::is_operation(name));
+            .filter(|name| {
+                self.tool_router.has_route(name) || re_viewer_control_tools::is_operation(name)
+            });
 
         let mut result = if let Some(ours) = ours {
             if self.tool_router.has_route(&ours) {
@@ -526,6 +599,10 @@ impl ServerHandler for ViewerMcpServer {
         } else {
             let conn = self.conn.lock().clone();
             let Some(conn) = conn else {
+                re_analytics::record(|| re_analytics::event::McpToolCalled {
+                    tool: self.tool_name_for_analytics(&name),
+                    is_error: true,
+                });
                 return Ok(text_error("no app connected — call `rerun_connect` first").into());
             };
             conn.ui.dispatch(&self.ui_router, request, context).await?
@@ -534,6 +611,11 @@ impl ServerHandler for ViewerMcpServer {
         if !TOOLS_WITHOUT_LOG.contains(&name.as_ref()) {
             self.append_new_logs(&mut result).await;
         }
+        let is_error = result.is_error == Some(true);
+        re_analytics::record(|| re_analytics::event::McpToolCalled {
+            tool: self.tool_name_for_analytics(&name),
+            is_error,
+        });
         Ok(result.into())
     }
 }
@@ -556,7 +638,7 @@ pub async fn serve(viewer_endpoint: Option<Url>) -> anyhow::Result<()> {
     if let Some(endpoint) = viewer_endpoint {
         match server.connect_to(&endpoint).await {
             Ok(_) => re_log::info!("Connected to viewer at {endpoint}"),
-            Err(err) => re_log::warn!("Failed to connect to viewer at {endpoint}: {err}"),
+            Err(err) => re_log::warn!("Failed to connect to the viewer: {err}"),
         }
     }
     let running = server.serve(transport::stdio()).await?;
@@ -579,6 +661,68 @@ mod tests {
         ));
         assert!(instructions.ends_with(INSTRUCTIONS));
         assert_eq!(ViewerMcpServer::new(None).instructions(), INSTRUCTIONS);
+    }
+
+    #[tokio::test]
+    async fn a_viewer_without_viewer_control_gets_an_actionable_error() {
+        let port = std::net::TcpListener::bind("127.0.0.1:0")
+            .and_then(|listener| listener.local_addr())
+            .map(|addr| addr.port())
+            .expect("a free port");
+        let endpoint = Url::parse(&format!("http://127.0.0.1:{port}")).expect("a valid URL");
+
+        let err = ViewerMcpServer::new(None)
+            .connect_to(&endpoint)
+            .await
+            .expect_err("nothing listens on the port");
+        assert!(
+            err.contains("refused"),
+            "The error keeps its root cause, not just \"transport error\": {err}"
+        );
+        assert!(
+            err.contains("Is a viewer started with the `rerun` command running there?"),
+            "The error says how to fix it: {err}"
+        );
+        assert!(
+            err.ends_with(&format!("\n- Endpoint: {endpoint}")),
+            "The endpoint is the last detail: {err}"
+        );
+    }
+
+    #[test]
+    fn analytics_names_only_listed_tools() {
+        let server = ViewerMcpServer::new(None);
+        assert_eq!(
+            server.tool_name_for_analytics("rerun_connect"),
+            "rerun_connect"
+        );
+        assert_eq!(
+            server.tool_name_for_analytics("rerun_get_state"),
+            "rerun_get_state"
+        );
+        assert_eq!(server.tool_name_for_analytics("click"), "click");
+        assert_eq!(server.tool_name_for_analytics("connect"), "unknown");
+        assert_eq!(
+            server.tool_name_for_analytics("/home/me/data.rrd"),
+            "unknown"
+        );
+    }
+
+    #[test]
+    fn instructions_name_available_tools() {
+        let tools = ViewerMcpServer::new(None).all_tools();
+        let names = INSTRUCTIONS
+            .split('`')
+            .skip(1)
+            .step_by(2)
+            .filter(|name| name.starts_with(RERUN_PREFIX))
+            .filter(|name| name.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
+        for name in names {
+            assert!(
+                tools.iter().any(|tool| tool.name == name),
+                "unknown tool: {name}"
+            );
+        }
     }
 
     /// Snapshot of the documentation the llm will see when loading the mcp tools.
@@ -610,6 +754,21 @@ mod tests {
         }
 
         insta::assert_snapshot!("agent_surface", surface);
+    }
+
+    /// The Anthropic and `OpenAI` APIs reject a tool schema with a top-level `oneOf`, `anyOf`, or
+    /// `allOf`, and some agents pass our schemas through to them unchanged.
+    #[test]
+    fn no_top_level_schema_combinators() {
+        for tool in ViewerMcpServer::new(None).all_tools() {
+            for keyword in ["allOf", "anyOf", "oneOf"] {
+                assert!(
+                    !tool.input_schema.contains_key(keyword),
+                    "`{}` has a top-level `{keyword}`",
+                    tool.name
+                );
+            }
+        }
     }
 
     #[test]

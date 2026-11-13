@@ -1,0 +1,68 @@
+mod agent_panel_snapshots;
+mod chat_input;
+mod config_options;
+mod conversation_list;
+mod copy_response;
+mod elicitation;
+mod feedback_button;
+mod model_selection;
+mod new_conversation_shortcut;
+mod pasted_images;
+mod self_improve;
+mod speed_selection;
+
+/// Opens the composer's settings menu, then its submenu for `setting`, e.g. "Model" or "Effort".
+///
+/// `summary` is part of the settings button's text, e.g. the current model.
+fn open_settings_submenu(
+    harness: &mut egui_kittest::Harness<'_, re_agent_ui::AgentPanel>,
+    summary: &str,
+    setting: &str,
+) {
+    use egui_kittest::kittest::Queryable as _;
+
+    harness.get_by_label_contains(summary).click();
+    harness.run_steps(2);
+    harness
+        .get_by(|node| {
+            node.label().is_some_and(|label| {
+                label
+                    .strip_prefix(setting)
+                    .is_some_and(|rest| rest.starts_with(' '))
+            })
+        })
+        .hover();
+    harness.run_steps(2);
+}
+
+/// Offered by an empty conversation in the test panels.
+fn example_prompts() -> Vec<String> {
+    [
+        "Example prompt one",
+        "Example prompt two",
+        "Example prompt three",
+    ]
+    .map(str::to_owned)
+    .to_vec()
+}
+
+/// Shows hover timestamps in UTC, so snapshots do not depend on where they run.
+///
+/// Call it first in the test: setting an env var is only sound while no other thread is running.
+/// Nextest runs each test in its own process, so this affects no other test.
+fn use_utc() {
+    #[expect(unsafe_code)]
+    // SAFETY: called before the test starts any other thread.
+    unsafe {
+        std::env::set_var("TZ", "UTC");
+    }
+}
+
+/// Gives every transcript entry the same fixed creation time, on another day than today, so
+/// hover timestamps in snapshots do not depend on when the test runs.
+fn pin_entry_times(session: &mut re_agent::AgentSession) {
+    let created_at = std::time::UNIX_EPOCH + std::time::Duration::from_secs(1_700_000_000);
+    for entry in &mut session.transcript_mut().items {
+        entry.created_at = created_at;
+    }
+}

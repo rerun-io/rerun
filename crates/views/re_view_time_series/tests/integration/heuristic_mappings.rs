@@ -10,7 +10,9 @@ use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view::BlueprintResolvedResultsExt as _;
 use re_view_time_series::TimeSeriesView;
-use re_viewer_context::{ViewClass as _, ViewContext, VisualizerComponentSource};
+use re_viewer_context::{
+    DragAndDropFeedback, DragAndDropPayload, ViewClass as _, ViewContext, VisualizerComponentSource,
+};
 use re_viewport_blueprint::ViewBlueprint;
 
 #[test]
@@ -50,16 +52,19 @@ fn dropping_temperature_preserves_heuristic_mappings() {
     });
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         assert_eq!(
-            TimeSeriesView.handle_component_drop(
-                ctx,
-                drop_view,
-                &[re_log_types::ComponentPath::new(
-                    entity.clone(),
-                    source.into()
-                )],
+            TimeSeriesView.handle_drop(
+                &ViewBlueprint::try_from_db(drop_view, ctx.blueprint_db(), ctx.blueprint_query)
+                    .expect("view should exist")
+                    .bundle_context_with_state(ctx, TimeSeriesView.new_state().as_ref()),
+                &DragAndDropPayload::Components {
+                    component_paths: vec1::vec1![re_log_types::ComponentPath::new(
+                        entity.clone(),
+                        source.into()
+                    )]
+                },
                 true,
             ),
-            re_viewer_context::DragAndDropFeedback::Accept
+            DragAndDropFeedback::Accept
         );
     });
     test_context.handle_system_commands(&egui::Context::default());
@@ -76,16 +81,19 @@ fn dropping_temperature_preserves_heuristic_mappings() {
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         for view in [automatic_view, drop_view] {
             assert_eq!(
-                TimeSeriesView.handle_component_drop(
-                    ctx,
-                    view,
-                    &[re_log_types::ComponentPath::new(
-                        entity.clone(),
-                        source.into()
-                    )],
+                TimeSeriesView.handle_drop(
+                    &ViewBlueprint::try_from_db(view, ctx.blueprint_db(), ctx.blueprint_query)
+                        .expect("view should exist")
+                        .bundle_context_with_state(ctx, TimeSeriesView.new_state().as_ref()),
+                    &DragAndDropPayload::Components {
+                        component_paths: vec1::vec1![re_log_types::ComponentPath::new(
+                            entity.clone(),
+                            source.into()
+                        )]
+                    },
                     false,
                 ),
-                re_viewer_context::DragAndDropFeedback::Reject(Some("Already visualized"))
+                DragAndDropFeedback::Reject(Some("Already visualized"))
             );
         }
     });
@@ -100,16 +108,19 @@ fn dropping_temperature_preserves_heuristic_mappings() {
     test_context.setup_viewport_blueprint(|_ctx, _blueprint| {});
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
         assert_eq!(
-            TimeSeriesView.handle_component_drop(
-                ctx,
-                drop_view,
-                &[re_log_types::ComponentPath::new(
-                    entity.clone(),
-                    re_sdk_types::archetypes::Scalars::descriptor_scalars().component,
-                )],
+            TimeSeriesView.handle_drop(
+                &ViewBlueprint::try_from_db(drop_view, ctx.blueprint_db(), ctx.blueprint_query)
+                    .expect("view should exist")
+                    .bundle_context_with_state(ctx, TimeSeriesView.new_state().as_ref()),
+                &DragAndDropPayload::Components {
+                    component_paths: vec1::vec1![re_log_types::ComponentPath::new(
+                        entity.clone(),
+                        re_sdk_types::archetypes::Scalars::descriptor_scalars().component,
+                    )]
+                },
                 true,
             ),
-            re_viewer_context::DragAndDropFeedback::Accept
+            DragAndDropFeedback::Accept
         );
     });
     test_context.handle_system_commands(&egui::Context::default());

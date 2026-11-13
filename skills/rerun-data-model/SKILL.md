@@ -11,7 +11,7 @@ The hard part of ingesting a dataset is the **modeling decision**, not the API c
 Get the model right and any mechanism works; get it wrong and queries, views, and training all break.
 This skill is just the decisions.
 For mechanism details see `rerun-chunk-processing` (pipeline mechanics) and the importer skills it routes to: `rerun-mcap`,`rerun-urdf`,`rerun-parquet`, `rerun-mp4`, `rerun-lerobot`.
-For exact signatures, the docs at `rerun.io/docs/concepts/logging-and-ingestion`.
+For exact signatures, the docs at `rerun.io/docs/logging-and-ingestion`.
 
 **Before writing conversion code, fill in the mapping table below.** It is the design, and a human can review it in seconds.
 

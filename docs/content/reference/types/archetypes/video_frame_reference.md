@@ -9,7 +9,7 @@ Used to display individual video frames from an [`archetypes.AssetVideo`](https:
 To show an entire video, a video frame reference for each frame of the video should be logged.
 References to a [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream) use the active Viewer timeline.
 
-See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+See <https://rerun.io/docs/logging-and-ingestion/media/video> for details of what is and isn't supported.
 
 ## Fields
 ### Required
@@ -25,6 +25,7 @@ See <https://rerun.io/docs/reference/video> for details of what is and isn't sup
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoFrameReference`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoFrameReference.html)
@@ -42,7 +43,7 @@ snippet: archetypes/video_auto_frames
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png">
-  <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png">
+  <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png" alt="Rerun Viewer playing a video in a 2D view, an animated forest scene with a large tree above a burrow in a grassy mound">
 </picture>
 
 ### Demonstrates manual use of video frame references
@@ -54,6 +55,6 @@ snippet: archetypes/video_manual_frames
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png">
-  <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png">
+  <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" alt="Two side-by-side 2D views named frame_at_one_second and frame_at_two_second, each showing a different frame of the same video">
 </picture>
 

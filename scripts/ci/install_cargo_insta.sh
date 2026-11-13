@@ -13,7 +13,6 @@ NAME="cargo-insta-x86_64-unknown-linux-musl"
 ARCHIVE="$(mktemp)"
 trap 'rm -f "$ARCHIVE"' EXIT
 
-curl --fail --silent --show-error --location --output "$ARCHIVE" \
-    "https://github.com/mitsuhiko/insta/releases/download/$VERSION/$NAME.tar.xz"
-echo "$SHA256  $ARCHIVE" | sha256sum --check
+"$(dirname "$0")/download_verified.sh" \
+    "https://github.com/mitsuhiko/insta/releases/download/$VERSION/$NAME.tar.xz" "$SHA256" "$ARCHIVE"
 tar -xJf "$ARCHIVE" -C ~/.cargo/bin --strip-components=1 "$NAME/cargo-insta"

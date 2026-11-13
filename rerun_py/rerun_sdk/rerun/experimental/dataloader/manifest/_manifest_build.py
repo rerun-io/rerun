@@ -47,8 +47,7 @@ from ._manifest import (
 if TYPE_CHECKING:
     from rerun.catalog._entry import DatasetEntry
 
-    from .._config import DataSource, Field
-    from .._sample_index import FixedRateSampling
+    from .._config import DataSource, Field, FixedRateSampling, TimeAlignedSampling
 
 # Sorted, unique index values (ns / step counts) per segment: `{segment_id: values}`.
 _SegmentIndices = dict[str, np.ndarray]
@@ -80,7 +79,7 @@ def build_manifest_table(
     index: str,
     fields: dict[str, Field],
     *,
-    timeline_sampling: FixedRateSampling | None = None,
+    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
     fetch_block_size: int = 128,
     num_ranks: int = 1,
     num_workers_per_rank: int = 1,
@@ -90,6 +89,7 @@ def build_manifest_table(
     """
     Build a validity-checked, **unshuffled** sampling-manifest table for one epoch.
 
+    Video fields require keyframe markers during manifest generation.
     Scans the source once to capture each non-video field's **actual observed**
     index values and each video field's sparse keyframe index (not the algebraic
     grid), drops samples whose required fields have no usable data, then unrolls

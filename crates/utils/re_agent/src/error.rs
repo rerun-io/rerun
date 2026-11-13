@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use agent_client_protocol::schema::v1::{
+use agent_client_protocol_schema::v1::{
     ContentBlock, SessionUpdate, ToolCallContent, ToolCallStatus,
 };
 
@@ -55,14 +55,23 @@ impl McpStartupFailure {
             })
     }
 
+    /// Decodes an agent's report that an MCP server we asked for never started.
+    ///
+    /// ACP says nothing about MCP startup failures, so each adapter has its own convention.
+    /// We support only Claude and Codex here for this reason, other agents always yield `None`.
+    pub fn from_update(
+        update: &SessionUpdate,
+        requested_servers: &[McpStdioServer],
+    ) -> Option<Self> {
+        Self::from_codex_update(update, requested_servers)
+            .or_else(|| Self::from_claude_code_update(update, requested_servers))
+    }
+
     /// Decodes codex-acp's synthetic failed tool call for an MCP server that never started:
     /// tool call id `mcp_startup.<name>`, title `mcp__<name>__startup`.
     ///
-    /// ACP says nothing about MCP startup failures, and this convention is codex-acp's own,
-    /// so every other agent yields `None` here and its updates reach the transcript unchanged.
-    /// Recognizing it keeps the failure out of the turn report's tool-call counts and gives it a
-    /// dedicated transcript item that can name the server definition we asked for.
-    pub fn from_codex_update(
+    /// Recognizing it also keeps the failure out of the turn report's tool-call counts.
+    fn from_codex_update(
         update: &SessionUpdate,
         requested_servers: &[McpStdioServer],
     ) -> Option<Self> {
@@ -96,9 +105,6 @@ impl McpStartupFailure {
                     .map(str::to_owned)
             })
             .unwrap_or_else(|| "The agent did not provide an error message.".to_owned());
-        let requested = requested_servers
-            .iter()
-            .find(|server| server.name == server_name);
         let hint = error
             .contains("codex-acp forwarded startup error")
             .then(|| {
@@ -109,7 +115,53 @@ impl McpStartupFailure {
                 )
             });
 
-        Some(Self {
+        Some(Self::new(server_name, error, requested_servers, hint))
+    }
+
+    /// Decodes claude-agent-acp's message about a host-provided MCP server that failed to start.
+    ///
+    /// We do not advertise ACP session notices, so the adapter sends an agent message chunk
+    /// tagged with `_meta.claudeCode = { kind: "mcpServerStatus", server, status }`.
+    /// Claude Code does not pass on the server's error, so the message's description stands in
+    /// for it.
+    ///
+    /// Claude Code only reports this once the session's first prompt has started it.
+    fn from_claude_code_update(
+        update: &SessionUpdate,
+        requested_servers: &[McpStdioServer],
+    ) -> Option<Self> {
+        let SessionUpdate::AgentMessageChunk(chunk) = update else {
+            return None;
+        };
+        let status = chunk.meta.as_ref()?.get("claudeCode")?;
+        if status.get("kind")?.as_str()? != "mcpServerStatus"
+            || status.get("status")?.as_str()? != "failed"
+        {
+            return None;
+        }
+        let server_name = status.get("server")?.as_str()?.to_owned();
+        let ContentBlock::Text(text) = &chunk.content else {
+            return None;
+        };
+        // The text is `**<title>:** <description>`, and the title only repeats the server name.
+        let error = text
+            .text
+            .split_once(":** ")
+            .map_or(text.text.as_str(), |(_title, description)| description)
+            .to_owned();
+        Some(Self::new(server_name, error, requested_servers, None))
+    }
+
+    fn new(
+        server_name: String,
+        error: String,
+        requested_servers: &[McpStdioServer],
+        hint: Option<String>,
+    ) -> Self {
+        let requested = requested_servers
+            .iter()
+            .find(|server| server.name == server_name);
+        Self {
             server_name,
             error,
             requested_command: requested.map(|server| server.command.clone()),
@@ -117,6 +169,99 @@ impl McpStartupFailure {
                 .map(|server| server.args.clone())
                 .unwrap_or_default(),
             hint,
-        })
+        }
+    }
+}
+
+/// Who reported an [`AgentError`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AgentErrorSource {
+    /// An agent such as Claude Code or `OpenCode`, as it introduced itself, if it did.
+    Agent {
+        /// The name the agent gave, e.g. `OpenCode`.
+        name: Option<String>,
+
+        /// The version the agent gave, e.g. `1.4.2`.
+        version: Option<String>,
+    },
+
+    /// A model provider's API, called by our own agent loop.
+    ModelApi {
+        /// The provider's name, e.g. `Anthropic`.
+        provider: Option<String>,
+    },
+}
+
+/// What the agent was asked to do when it reported an [`AgentError`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FailedRequest {
+    /// Answer a prompt: the turn ended with the error.
+    Prompt,
+
+    /// Anything else, e.g. connecting or changing a setting.
+    Other,
+}
+
+/// A request that the agent failed, e.g. a prompt it could not answer.
+///
+/// Unlike an error from the host, the user can only fix this by changing the agent, its
+/// configuration, or what it is connected to, so it is shown along with who reported it.
+#[derive(Clone, Debug)]
+pub struct AgentError {
+    /// Who reported the error.
+    pub source: AgentErrorSource,
+
+    /// What the agent failed to do.
+    pub request: FailedRequest,
+
+    /// What went wrong, as [`re_error::StructuredError`] text.
+    pub message: String,
+}
+
+impl AgentError {
+    /// Who reported the error, e.g. "`OpenCode` 1.4.2", or "the Anthropic API".
+    pub fn reporter(&self) -> String {
+        match &self.source {
+            AgentErrorSource::Agent {
+                name: Some(name),
+                version: Some(version),
+            } => format!("{name} {version}"),
+            AgentErrorSource::Agent {
+                name: Some(name),
+                version: None,
+            } => name.clone(),
+            AgentErrorSource::Agent { name: None, .. } => "the agent".to_owned(),
+            AgentErrorSource::ModelApi {
+                provider: Some(provider),
+            } => format!("the {provider} API"),
+            AgentErrorSource::ModelApi { provider: None } => "the model API".to_owned(),
+        }
+    }
+
+    /// What the user can do about the error.
+    pub fn hint(&self) -> String {
+        match &self.source {
+            AgentErrorSource::Agent { name, .. } => {
+                let agent = name.as_deref().unwrap_or("the agent");
+                if self.message.contains("input_schema") {
+                    format!(
+                        "The model provider rejected a tool that {agent} offered it. \
+                         Tools come from {agent} itself and from its MCP servers, including Rerun's. \
+                         Update {agent} and Rerun. If that does not help, turn off the MCP servers \
+                         of {agent} one at a time to find the faulty one."
+                    )
+                } else {
+                    format!(
+                        "This comes from {agent} or the model provider it calls. \
+                         If it keeps happening, update {agent}, or choose another agent in the agent setup."
+                    )
+                }
+            }
+            AgentErrorSource::ModelApi { .. } => {
+                "If it keeps happening, check your API key and account with the provider, \
+                 or choose another model in the agent setup."
+                    .to_owned()
+            }
+        }
     }
 }

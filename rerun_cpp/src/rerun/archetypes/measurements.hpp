@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../archetype_utils.hpp"
 #include "../collection.hpp"
 #include "../component_batch.hpp"
 #include "../component_column.hpp"
@@ -326,13 +327,38 @@ namespace rerun::archetypes {
         /// This makes it possible to use `RecordingStream::send_columns` to send columnar data directly into Rerun.
         ///
         /// The specified `lengths` must sum to the total length of the component batch.
-        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_);
+        Collection<ComponentColumn> columns(const Collection<uint32_t>& lengths_) {
+            return detail::partition_batches(
+                       {&values,
+                        &variances,
+                        &units,
+                        &colors,
+                        &widths,
+                        &names,
+                        &visible_series,
+                        &aggregation_policy,
+                        &interpolation_mode},
+                       lengths_
+            )
+                .value_or_throw();
+        }
 
         /// Partitions the component data into unit-length sub-batches.
         ///
         /// This is semantically similar to calling `columns` with `std::vector<uint32_t>(n, 1)`,
         /// where `n` is automatically guessed.
-        Collection<ComponentColumn> columns();
+        Collection<ComponentColumn> columns() {
+            return detail::partition_batches_of_unit_length({&values,
+                                                             &variances,
+                                                             &units,
+                                                             &colors,
+                                                             &widths,
+                                                             &names,
+                                                             &visible_series,
+                                                             &aggregation_policy,
+                                                             &interpolation_mode})
+                .value_or_throw();
+        }
     };
 
 } // namespace rerun::archetypes
@@ -348,6 +374,18 @@ namespace rerun {
         /// Serialize all set component batches.
         static Result<Collection<ComponentBatch>> as_batches(
             const archetypes::Measurements& archetype
-        );
+        ) {
+            return detail::collect_batches(
+                {&archetype.values,
+                 &archetype.variances,
+                 &archetype.units,
+                 &archetype.colors,
+                 &archetype.widths,
+                 &archetype.names,
+                 &archetype.visible_series,
+                 &archetype.aggregation_policy,
+                 &archetype.interpolation_mode}
+            );
+        }
     };
 } // namespace rerun

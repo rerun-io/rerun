@@ -29,6 +29,7 @@ The underlying data needs to be logged to the same entity path using [`archetype
 ## Can be shown in
 * [StateTimelineView](../views/state_timeline_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `StateConfiguration`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1StateConfiguration.html)

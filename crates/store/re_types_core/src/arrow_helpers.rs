@@ -177,7 +177,7 @@ pub fn deserialize_strings(array: &StringArray) -> DeserializationResult<Vec<Opt
                             buffer.len(),
                         ));
                     }
-                    // TODO(apache/arrow-rs#6900): slice_with_length_unchecked unsafe when https://github.com/apache/arrow-rs/pull/6901 is merged and released
+                    // Unchecked slicing is not planned: https://github.com/apache/arrow-rs/issues/6900
                     Ok(ArrowString::from(
                         buffer.slice_with_length(start, end - start),
                     ))

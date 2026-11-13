@@ -7,7 +7,7 @@ title: "VideoStream"
 Video stream consisting of raw video chunks.
 
 For logging video containers like mp4, refer to [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video) and [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference).
-To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
+To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 
 All components except `sample` are typically logged statically once per entity.
 `sample` is then logged repeatedly for each frame on the timeline.
@@ -30,6 +30,7 @@ Individual frames can be displayed with [`archetypes.VideoFrameReference`](https
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoStream`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoStream.html)
@@ -47,6 +48,6 @@ snippet: archetypes/video_stream_synthetic
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png">
-  <img src="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/full.png">
+  <img src="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/full.png" alt="Rerun Viewer playing a synthetic video stream of a yellow circle on a blue gradient, with video sample details in the selection panel">
 </picture>
 

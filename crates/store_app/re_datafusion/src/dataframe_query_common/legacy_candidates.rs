@@ -7,6 +7,7 @@ use arrow::record_batch::RecordBatchOptions;
 use datafusion::common::{DataFusionError, exec_datafusion_err};
 use re_dataframe::TimelineName;
 use re_dataframe::external::re_chunk::TimeColumn;
+use re_protos::cloud::v1alpha1::DatasetQueryScope;
 use re_protos::cloud::v1alpha1::ext::{
     ChunkCandidatesDataframe, ChunkMode, FillMode, FindChunksRequest, LegacyPlan,
     QueryDatasetRequest, RangeSelection, adapt_legacy,
@@ -69,6 +70,7 @@ pub fn to_wire(
                 contents,
                 mode,
                 direct_url_mode,
+                scope: DatasetQueryScope::Full,
             }
         }
     })

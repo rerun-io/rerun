@@ -1,6 +1,7 @@
 //! Decodes an mp4 to a folder of images.
 
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stdout)] // Example
 
 use std::fs::{File, OpenOptions};
 use std::io::Write as _;

@@ -12,9 +12,9 @@ use re_integration_test::ViewerHarnessExt as _;
 use re_protos::cloud::v1alpha1::ScanTableRequest;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
 use re_sdk::RecordingStreamBuilder;
-use re_sdk::external::re_log_types;
+use re_sdk_types::Component as _;
 use re_sdk_types::blueprint::archetypes::{CardLayout, TableColumn, TableLayout};
-use re_sdk_types::blueprint::components::TableCellKind;
+use re_sdk_types::components::Flag;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 #[tokio::test(flavor = "multi_thread")]
@@ -176,7 +176,7 @@ fn flag_blueprint_rbl_file() -> tempfile::NamedTempFile {
             "table/layouts/table/columns/flagged",
             &TableColumn::new()
                 .with_editable(true)
-                .with_cell_kind(TableCellKind::Flag),
+                .with_column_type(Flag::name()),
         )
         .expect("Failed to log table column blueprint");
     stream
@@ -190,7 +190,7 @@ fn flag_blueprint_rbl_file() -> tempfile::NamedTempFile {
             "table/layouts/cards/fields/flagged",
             &TableColumn::new()
                 .with_editable(true)
-                .with_cell_kind(TableCellKind::Flag),
+                .with_column_type(Flag::name()),
         )
         .expect("Failed to log flag field blueprint");
     stream

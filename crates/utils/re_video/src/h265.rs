@@ -62,13 +62,10 @@ fn hevc_codec_string(profile_tier_level: &ProfileTierLevel) -> String {
     write!(codec, "{}", profile_tier_level.general_profile_idc).ok();
 
     // .B: A 32-bit value representing one or more general profile compatibility flags.
-    let mut reversed = 0;
-    for i in 0..32 {
-        reversed |= profile_tier_level.general_profile_compatibility_flag[i] as u32;
-        if i != 31 {
-            reversed <<= 1;
-        }
-    }
+    let reversed = profile_tier_level
+        .general_profile_compatibility_flag
+        .iter()
+        .fold(0u32, |acc, &flag| (acc << 1) | flag as u32);
     codec.push_str(format!(".{reversed:X}").trim_end_matches('0'));
 
     // .C: The general_tier_flag, encoded as L (general_tier_flag === 0) or H (general_tier_flag === 1), followed by the general_level_idc, encoded as a decimal number.

@@ -181,7 +181,7 @@ fn own_chunk_static() {
         Chunk::builder_with_id(ChunkId::from_u128(1), "entity")
             .with_serialized_batches(
                 RowId::from_u128(1 << 32),
-                re_log_types::TimePoint::default(),
+                re_log_types::TimePoint::STATIC,
                 [
                     MyPoint::from_iter(0..4)
                         .try_serialized(MyPoints::descriptor_points())

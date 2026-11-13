@@ -12,10 +12,12 @@ use egui_kittest::kittest::Queryable as _;
 use re_async::AsyncRuntimeHandle;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_dataframe_ui::{DataFusionTableWidget, TableBlueprints, TableLayoutKind};
-use re_log_types::{StoreId, StoreKind};
-use re_sdk_types::blueprint::archetypes::CardLayout;
+use re_log_types::{EntityPath, StoreId, StoreKind};
+use re_sdk_types::blueprint::archetypes::{
+    CardLayout, TableColumnPreview, ViewBlueprint, VisualBounds2D,
+};
 use re_test_context::TestContext;
-use re_viewer_context::{TableReference, blueprint_timepoint_for_writes};
+use re_viewer_context::{TableReference, ViewId, blueprint_timepoint_for_writes};
 
 use common::run_async_harness;
 
@@ -71,6 +73,125 @@ async fn test_cards_view_resize() {
 
         harness.snapshot(format!("cards_view_resize_{suffix}"));
         snapshot_results.extend_harness(&mut harness);
+    }
+}
+
+/// Card grids reflow on resize and when rendered views learn new aspect ratios.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_cards_with_two_preview_views_reflow() {
+    let (session_context, table_ref) = setup_test_table();
+    let test_context =
+        TestContext::new_with_view_class::<crate::preview_test_view::PreviewTestView>();
+    let runtime_handle = AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().unwrap();
+    let table_reference = TableReference::local(table_ref);
+    let table_blueprints =
+        setup_table_blueprint(&test_context, table_reference.clone(), &["notes"], "name");
+    let views = [ViewId::random(), ViewId::random()].map(|id| id.as_entity_path());
+    {
+        let mut store_hub = test_context.store_hub.lock();
+        let store = store_hub
+            .store_bundle_mut()
+            .blueprint_entry(table_blueprints.active_id(&table_reference).unwrap());
+        let timepoint = blueprint_timepoint_for_writes(store);
+        let mut log = |path: EntityPath, archetype: &dyn re_types_core::AsComponents| {
+            let chunk = Chunk::builder(path)
+                .with_archetype_auto_row(timepoint.clone(), archetype)
+                .build()
+                .unwrap();
+            store.add_chunk(&Arc::new(chunk)).unwrap();
+        };
+        for path in &views {
+            log(path.clone(), &ViewBlueprint::new("PreviewTest"));
+        }
+        log(
+            "table/layouts/cards/fields/notes".into(),
+            &TableColumnPreview::new(views.each_ref().map(|path| path.to_string())),
+        );
+    }
+
+    let mut harness = test_context
+        .setup_kittest_for_rendering_ui([1000.0, 940.0])
+        .build_ui(|ui| {
+            test_context.run_recording(&ui.ctx().clone(), |ctx| {
+                ui.set_style(ui.ctx().global_style());
+                DataFusionTableWidget::new(
+                    Arc::clone(&session_context),
+                    table_ref,
+                    table_reference.clone(),
+                )
+                .show(
+                    ctx.app_ctx,
+                    &runtime_handle,
+                    ui,
+                    &table_blueprints,
+                    &mut test_context.view_states.lock(),
+                );
+            });
+        });
+    run_async_harness(&test_context, &mut harness).await;
+    harness.get_by_label("Cards view").click();
+
+    for (size, suffix) in [
+        ([1000.0, 940.0], "default_ratio"),
+        ([1400.0, 680.0], "three_columns"),
+        ([500.0, 1460.0], "one_column"),
+        ([760.0, 1460.0], "before_second_column"),
+        ([780.0, 940.0], "compact_two_columns"),
+        ([1140.0, 680.0], "compact_three_columns"),
+        ([760.0, 1460.0], "before_second_column"),
+        ([1000.0, 940.0], "default_ratio"),
+    ] {
+        harness.set_size(size.into());
+        run_async_harness(&test_context, &mut harness).await;
+        harness.snapshot(format!("cards_two_preview_views_{suffix}"));
+    }
+
+    for (ratios, size, suffix) in [
+        (&[1.0, 1.0][..], [1000.0, 940.0], "two_columns"),
+        (&[16.0 / 9.0, 16.0 / 9.0][..], [1000.0, 940.0], "wide"),
+        (&[16.0 / 9.0, 0.5][..], [1000.0, 940.0], "mixed"),
+        (&[0.75, 0.75][..], [1000.0, 940.0], "portraits_3_4"),
+        (
+            &[9.0 / 16.0, 9.0 / 16.0][..],
+            [1000.0, 940.0],
+            "portraits_9_16",
+        ),
+        (&[1.0][..], [1000.0, 940.0], "single_square"),
+        (&[0.5][..], [1000.0, 940.0], "single_portrait"),
+        (&[1.0][..], [300.0, 940.0], "single_square_narrow"),
+        (&[1.0][..], [1000.0, 300.0], "single_square_short"),
+        (&[1.0, 1.0][..], [1000.0, 940.0], "two_columns"),
+    ] {
+        harness.set_size(size.into());
+        {
+            let mut hub = test_context.store_hub.lock();
+            let store = hub
+                .store_bundle_mut()
+                .blueprint_entry(table_blueprints.active_id(&table_reference).unwrap());
+            let timepoint = blueprint_timepoint_for_writes(store);
+            let chunk = Chunk::builder("table/layouts/cards/fields/notes")
+                .with_archetype_auto_row(
+                    timepoint.clone(),
+                    &TableColumnPreview::new(views[..ratios.len()].iter().map(ToString::to_string)),
+                )
+                .build()
+                .unwrap();
+            store.add_chunk(&Arc::new(chunk)).unwrap();
+            for (path, &ratio) in std::iter::zip(&views, ratios) {
+                let bounds = VisualBounds2D::new(re_sdk_types::encodings::Range2D {
+                    x_range: [0.0, ratio].into(),
+                    y_range: [0.0, 1.0].into(),
+                });
+                let chunk = Chunk::builder(path.join(&"VisualBounds2D".into()))
+                    .with_archetype_auto_row(timepoint.clone(), &bounds)
+                    .build()
+                    .unwrap();
+                store.add_chunk(&Arc::new(chunk)).unwrap();
+            }
+        }
+        run_async_harness(&test_context, &mut harness).await;
+        harness.run();
+        harness.snapshot(format!("cards_two_preview_views_{suffix}"));
     }
 }
 

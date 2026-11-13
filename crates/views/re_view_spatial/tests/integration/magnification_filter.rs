@@ -30,7 +30,7 @@ fn run_magnification_filter_test(
     test_context.log_entity("image", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Image::from_elements(
                 &pixels,
                 size,
@@ -78,7 +78,7 @@ fn run_depth_image_magnification_filter_test(
     test_context.log_entity("depth", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::DepthImage::from_gray16(
                 bytemuck::cast_slice::<u16, u8>(&pixels),
                 size,

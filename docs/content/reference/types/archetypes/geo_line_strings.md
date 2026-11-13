@@ -19,6 +19,7 @@ Also known as "line strips" or "polylines".
 ## Can be shown in
 * [MapView](../views/map_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GeoLineStrings`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoLineStrings.html)
@@ -36,6 +37,6 @@ snippet: archetypes/geo_line_strings_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/1200w.png">
-  <img src="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/full.png">
+  <img src="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/full.png" alt="Map view with a blue line string tracing the rectangular border of Colorado over an OpenStreetMap background">
 </picture>
 

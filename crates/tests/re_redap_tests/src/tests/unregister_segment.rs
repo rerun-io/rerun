@@ -1,7 +1,7 @@
 #![expect(clippy::unwrap_used)]
 
 use super::common::{
-    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
+    DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name, prop,
 };
 use crate::tests::common::concat_record_batches;
 use crate::{FieldsTestExt as _, RecordBatchTestExt as _, SchemaTestExt as _};
@@ -18,10 +18,11 @@ use re_protos::cloud::v1alpha1::ext::{
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{
-    GetDatasetManifestSchemaRequest, GetSegmentTableSchemaRequest, ReadDatasetEntryRequest,
-    ScanDatasetManifestRequest, ScanSegmentTableRequest,
+    GetDatasetManifestSchemaRequest, GetDatasetSchemaRequest, GetSegmentTableSchemaRequest,
+    ReadDatasetEntryRequest, ScanDatasetManifestRequest, ScanSegmentTableRequest,
 };
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_sdk_types::archetypes::TextLog;
 
 pub async fn unregister_simple(service: impl RerunCloudService) {
     let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
@@ -269,38 +270,195 @@ pub async fn unregister_then_query(service: impl RerunCloudService) {
     find_chunks_snapshot(&service, dataset_name, "unregister_then_query_2_removed").await;
 }
 
+/// Unregistering a segment removes the properties that only it logged from the segment table,
+/// the dataset manifest and the dataset schema. A property that a remaining segment also logs
+/// stays, with that segment's value.
+pub async fn unregister_segment_drops_its_logged_properties(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::properties(
+                "drop_me",
+                [
+                    prop("shared", TextLog::new("shared, from drop_me")),
+                    prop("only_in_drop_me", TextLog::new("only in drop_me")),
+                ],
+            ),
+            LayerDefinition::properties(
+                "keep_me",
+                [
+                    prop("shared", TextLog::new("shared, from keep_me")),
+                    prop("only_in_keep_me", TextLog::new("only in keep_me")),
+                ],
+            ),
+        ],
+    );
+
+    let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    for property in ["shared", "only_in_drop_me", "only_in_keep_me"] {
+        assert_property_visible(&service, dataset_name, property, true).await;
+    }
+
+    service
+        .unregister_from_dataset_name_blocking(dataset_name, &["drop_me"], &[])
+        .await
+        .expect("removal should succeed");
+
+    assert_property_visible(&service, dataset_name, "only_in_drop_me", false).await;
+    assert_property_visible(&service, dataset_name, "shared", true).await;
+    assert_property_visible(&service, dataset_name, "only_in_keep_me", true).await;
+
+    let snapshot_name = "logged_properties_segment_removed";
+    scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
+}
+
+/// Unregistering one layer of a segment removes the properties that only that layer logged,
+/// while the segment survives through its other layer.
+pub async fn unregister_layer_drops_its_logged_properties(service: impl RerunCloudService) {
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [
+            LayerDefinition::properties(
+                "my_segment_id",
+                [prop("from_base", TextLog::new("from the base layer"))],
+            )
+            .layer_name("base"),
+            LayerDefinition::properties(
+                "my_segment_id",
+                [prop("from_extra", TextLog::new("from the extra layer"))],
+            )
+            .layer_name("extra"),
+        ],
+    );
+
+    let dataset_name = "my_dataset1";
+    service.create_dataset_entry_with_name(dataset_name).await;
+    service
+        .register_with_dataset_name_blocking(dataset_name, data_sources_def.to_data_sources())
+        .await;
+
+    assert_property_visible(&service, dataset_name, "from_base", true).await;
+    assert_property_visible(&service, dataset_name, "from_extra", true).await;
+
+    service
+        .unregister_from_dataset_name_blocking(dataset_name, &["my_segment_id"], &["extra"])
+        .await
+        .expect("removal should succeed");
+
+    assert_property_visible(&service, dataset_name, "from_extra", false).await;
+    assert_property_visible(&service, dataset_name, "from_base", true).await;
+
+    // The segment survives, and its layer list shows only `base`.
+    let snapshot_name = "logged_properties_layer_removed";
+    scan_segment_table_and_snapshot(&service, dataset_name, snapshot_name).await;
+    scan_dataset_manifest_and_snapshot(&service, dataset_name, snapshot_name).await;
+}
+
 // ---
 
-async fn scan_segment_table_and_snapshot(
+/// Asserts whether the property logged at `/__properties/<property>` shows up in the three
+/// places a client can see it: the segment table, the dataset manifest, and the dataset schema.
+async fn assert_property_visible(
     service: &impl RerunCloudService,
     dataset_name: &str,
-    snapshot_name: &str,
-) -> RecordBatch {
+    property: &str,
+    expected: bool,
+) {
+    let column_prefix = format!("property:{property}:");
+    let has_property_column = |schema: &Schema| {
+        schema
+            .fields()
+            .iter()
+            .any(|field| field.name().starts_with(&column_prefix))
+    };
+
+    let segment_table = scan_segment_table(service, dataset_name).await;
+    assert_eq!(
+        has_property_column(segment_table.schema_ref()),
+        expected,
+        "`{property}` in the segment table:\n{}",
+        segment_table.schema().format_snapshot(),
+    );
+
+    let manifest = scan_dataset_manifest(service, dataset_name).await;
+    assert_eq!(
+        has_property_column(manifest.schema_ref()),
+        expected,
+        "`{property}` in the dataset manifest:\n{}",
+        manifest.schema().format_snapshot(),
+    );
+
+    let entity_path = format!("/__properties/{property}");
+    let dataset_schema = service
+        .get_dataset_schema(
+            tonic::Request::new(GetDatasetSchemaRequest::default())
+                .with_entry_name(entry_name(dataset_name)),
+        )
+        .await
+        .expect("get_dataset_schema should succeed")
+        .into_inner()
+        .schema()
+        .expect("the response carries a valid schema");
+    let in_dataset_schema = dataset_schema.fields().iter().any(|field| {
+        field
+            .metadata()
+            .get(re_sorbet::metadata::SORBET_ENTITY_PATH)
+            .map(String::as_str)
+            == Some(entity_path.as_str())
+    });
+    assert_eq!(
+        in_dataset_schema,
+        expected,
+        "`{property}` in the dataset schema:\n{}",
+        dataset_schema.format_snapshot(),
+    );
+}
+
+async fn scan_segment_table(service: &impl RerunCloudService, dataset_name: &str) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_segment_table(
             tonic::Request::new(ScanSegmentTableRequest::all())
                 .with_entry_name(entry_name(dataset_name)),
         )
         .await
-        .unwrap()
+        .expect("scan_segment_table should succeed")
         .into_inner()
         .try_collect()
         .await
-        .unwrap();
+        .expect("the segment table stream should not fail");
 
     let batches: Vec<RecordBatch> = responses
         .into_iter()
-        .map(|resp| resp.data.unwrap().try_into().unwrap())
+        .map(|resp| {
+            resp.data
+                .expect("every response carries data")
+                .try_into()
+                .expect("the response data is a valid record batch")
+        })
         .collect_vec();
 
-    let batch = arrow::compute::concat_batches(
+    arrow::compute::concat_batches(
         batches
             .first()
             .expect("there should be at least one batch")
             .schema_ref(),
         &batches,
     )
-    .unwrap();
+    .expect("the segment table batches should concatenate")
+}
+
+async fn scan_segment_table_and_snapshot(
+    service: &impl RerunCloudService,
+    dataset_name: &str,
+    snapshot_name: &str,
+) -> RecordBatch {
+    let batch = scan_segment_table(service, dataset_name).await;
 
     // check that the _advertised_ schema is consistent with the actual data.
     let alleged_schema: Schema = service
@@ -309,12 +467,12 @@ async fn scan_segment_table_and_snapshot(
                 .with_entry_name(entry_name(dataset_name)),
         )
         .await
-        .unwrap()
+        .expect("get_segment_table_schema should succeed")
         .into_inner()
         .schema
-        .unwrap()
+        .expect("the response carries a schema")
         .try_into()
-        .unwrap();
+        .expect("the schema is valid");
 
     // Note: we check fields only because some schema-level sorbet metadata is injected in one of
     // the paths and not the other. Anyway, that's what matters.
@@ -341,7 +499,7 @@ async fn scan_segment_table_and_snapshot(
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
         .auto_sort_rows()
-        .unwrap()
+        .expect("sorting the rows should succeed")
         .sort_property_columns()
         .sort_index_columns();
 
@@ -357,10 +515,9 @@ async fn scan_segment_table_and_snapshot(
     batch
 }
 
-async fn scan_dataset_manifest_and_snapshot(
+async fn scan_dataset_manifest(
     service: &impl RerunCloudService,
     dataset_name: &str,
-    snapshot_name: &str,
 ) -> RecordBatch {
     let responses: Vec<_> = service
         .scan_dataset_manifest(
@@ -368,25 +525,38 @@ async fn scan_dataset_manifest_and_snapshot(
                 .with_entry_name(entry_name(dataset_name)),
         )
         .await
-        .unwrap()
+        .expect("scan_dataset_manifest should succeed")
         .into_inner()
         .try_collect()
         .await
-        .unwrap();
+        .expect("the dataset manifest stream should not fail");
 
     let batches: Vec<RecordBatch> = responses
         .into_iter()
-        .map(|resp| resp.data.unwrap().try_into().unwrap())
+        .map(|resp| {
+            resp.data
+                .expect("every response carries data")
+                .try_into()
+                .expect("the response data is a valid record batch")
+        })
         .collect_vec();
 
-    let batch = arrow::compute::concat_batches(
+    arrow::compute::concat_batches(
         batches
             .first()
             .expect("there should be at least one batch")
             .schema_ref(),
         &batches,
     )
-    .unwrap();
+    .expect("the dataset manifest batches should concatenate")
+}
+
+async fn scan_dataset_manifest_and_snapshot(
+    service: &impl RerunCloudService,
+    dataset_name: &str,
+    snapshot_name: &str,
+) -> RecordBatch {
+    let batch = scan_dataset_manifest(service, dataset_name).await;
 
     // check that the _advertised_ schema is consistent with the actual data.
     let alleged_schema: Schema = service
@@ -395,12 +565,12 @@ async fn scan_dataset_manifest_and_snapshot(
                 .with_entry_name(entry_name(dataset_name)),
         )
         .await
-        .unwrap()
+        .expect("get_dataset_manifest_schema should succeed")
         .into_inner()
         .schema
-        .unwrap()
+        .expect("the response carries a schema")
         .try_into()
-        .unwrap();
+        .expect("the schema is valid");
 
     // Note: we check fields only because some schema-level sorbet metadata is injected in one of
     // the paths and not the other. Anyway, that's what matters.
@@ -430,8 +600,9 @@ async fn scan_dataset_manifest_and_snapshot(
     let filtered_batch = batch
         .remove_columns(&unstable_column_names)
         .auto_sort_rows()
-        .unwrap()
-        .sort_property_columns();
+        .expect("sorting the rows should succeed")
+        .sort_property_columns()
+        .sort_index_columns();
 
     insta::assert_snapshot!(
         format!("{snapshot_name}_manifest_schema"),
@@ -465,12 +636,15 @@ async fn snapshot_response(
         .try_into()
         .unwrap();
 
+    // The response only guarantees the base manifest columns, not the per-dataset property and
+    // index-range columns that `get_dataset_manifest_schema` advertises.
     // Note: we check fields only because some schema-level sorbet metadata is injected in one of
     // the paths and not the other. Anyway, that's what matters.
-    assert_eq!(
-        alleged_schema.fields(),
-        batch.schema_ref().fields(),
-        "The actual schema is not consistent with the schema advertised by \
+    assert!(
+        alleged_schema
+            .fields()
+            .contains_unordered(batch.schema().fields()),
+        "The actual schema is not a subset of the schema advertised by \
         `get_dataset_manifest_schema`.\n\nActual:\n{}\n\nAlleged:\n{}\n",
         batch.schema().format_snapshot(),
         alleged_schema.format_snapshot(),
@@ -527,6 +701,7 @@ async fn find_chunks_snapshot(
             },
         },
         direct_url_mode: re_protos::cloud::v1alpha1::ext::DirectUrlMode::Omit,
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     };
 
     let chunk_info = service
@@ -586,21 +761,9 @@ async fn find_chunks_snapshot(
     );
 }
 
-/// Remove columns such `frame:start`, `log_time:end`, etc.
+/// Removes index-range columns, such as `frame_nr:start` and `frame_nr:end`.
 ///
-/// There is a fundamental discrepancy between how OSS and DPF handle deleted segments/layers:
-/// * OSS actually deletes things and doesn't keep track of any kind of history.
-/// * DPF keeps segments around but marks them with a tombstone.
-///
-/// On its own this is fine, but this interacts with yet another discrepancy: how OSS vs. DPF
-/// compute schemas and such.
-/// * OSS computes schemas just-in-time, based on whatever data exists at the moment of the call.
-/// * DPF materializes all schemas.
-///
-/// All of this results in OSS dropping index ranges where the last layer using those indexes has
-/// been removed, while they will still be there in DPF, as empty columns.
-///
-/// For now, we just accept it and move on.
+/// These snapshots check which segments and layers survive unregistration, not index ranges.
 fn filter_out_index_ranges(batch: RecordBatch) -> RecordBatch {
     batch
         .filter_columns_by(|f| f.metadata().get("rerun:index_marker").is_none())

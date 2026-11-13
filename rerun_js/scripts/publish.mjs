@@ -1,35 +1,24 @@
 #!/usr/bin/env node
 // @ts-check
 
-import {
-  $,
-  fs,
-  script_dir,
-  path,
-  inferTag,
-  isPublished,
-} from "./common.mjs";
+import { $, fs, scriptDir, path, inferTag, isPublished } from "./common.mjs";
 
-const root_dir = path.resolve(script_dir, "..");
+const rootDir = path.resolve(scriptDir, "..");
 
 /** @type {{ workspaces: string[] }} */
-const root_package_json = JSON.parse(
-  fs.readFileSync(path.join(root_dir, "package.json"), "utf-8"),
-);
+const rootPackageJson = JSON.parse(fs.readFileSync(path.join(rootDir, "package.json"), "utf-8"));
 
-const all_packages = await Promise.all(
-  root_package_json.workspaces.map(async (pkg) => {
-    const dir = path.join(root_dir, pkg);
-    const { name, version } = JSON.parse(
-      fs.readFileSync(path.join(dir, "package.json"), "utf-8"),
-    );
+const allPackages = await Promise.all(
+  rootPackageJson.workspaces.map(async (pkg) => {
+    const dir = path.join(rootDir, pkg);
+    const { name, version } = JSON.parse(fs.readFileSync(path.join(dir, "package.json"), "utf-8"));
     const published = await isPublished(name, version);
 
     return { dir, name, version, published };
   }),
 );
 
-const unpublished = all_packages.filter((pkg) => {
+const unpublished = allPackages.filter((pkg) => {
   if (pkg.published) {
     console.log(`${pkg.name}@${pkg.version} is already published`);
     return false;
@@ -37,9 +26,9 @@ const unpublished = all_packages.filter((pkg) => {
   return true;
 });
 
-$(`npm ci`, { cwd: root_dir });
+$(`npm ci`, { cwd: rootDir });
 
-for (const pkg of all_packages) {
+for (const pkg of allPackages) {
   console.log(`building ${pkg.name}@${pkg.version}`);
   $(`npm run build`, { cwd: pkg.dir });
 }
@@ -54,9 +43,8 @@ if (unpublished.length === 0) {
   }
 }
 
-
 const tarballs = [];
-for (const pkg of all_packages) {
+for (const pkg of allPackages) {
   $(`npm run pack`, { cwd: pkg.dir });
   const filename = `${pkg.name.split("/")[1]}.tar.gz`;
   tarballs.push(path.join(pkg.dir, filename));
@@ -64,9 +52,9 @@ for (const pkg of all_packages) {
 
 console.log("constructing final package for GCS upload");
 console.log(`files: ${tarballs.join(" ")}`);
-const rerun_js_package_dir = "rerun_js_package";
-fs.mkdirSync(rerun_js_package_dir);
+const rerunJsPackageDir = "rerun_js_package";
+fs.mkdirSync(rerunJsPackageDir);
 for (const tarball of tarballs) {
-  const dest = path.join(rerun_js_package_dir, path.basename(tarball));
+  const dest = path.join(rerunJsPackageDir, path.basename(tarball));
   fs.copyFileSync(tarball, dest);
 }

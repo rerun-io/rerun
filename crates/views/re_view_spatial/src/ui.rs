@@ -70,6 +70,19 @@ pub struct SpatialViewState {
     pub pinhole_at_origin: Option<Pinhole>,
 
     pub visual_bounds_2d: Option<VisualBounds2D>,
+
+    /// What last frame's 2D view showed. `None` for 3D views.
+    pub screen_space_2d: Option<ScreenSpace2D>,
+}
+
+/// Scale and visible area of last frame's 2D view.
+#[derive(Clone, Copy, Debug, PartialEq, re_byte_size::SizeBytes)]
+pub struct ScreenSpace2D {
+    /// Physical pixels per scene unit.
+    pub pixels_per_scene_unit: f32,
+
+    /// The part of the scene that was visible.
+    pub visible_scene_rect: egui::Rect,
 }
 
 impl Clone for SpatialViewState {
@@ -84,6 +97,7 @@ impl Clone for SpatialViewState {
             state_3d: self.state_3d.clone(),
             pinhole_at_origin: self.pinhole_at_origin,
             visual_bounds_2d: self.visual_bounds_2d,
+            screen_space_2d: self.screen_space_2d,
         }
     }
 }
@@ -519,7 +533,7 @@ pub fn paint_loading_indicators(
 pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &SpatialViewState) {
     let mut show_smoothed_bbox = state.show_smoothed_bbox.load(Relaxed);
     if ui
-        .re_checkbox(&mut show_smoothed_bbox, "Smoothed bbox")
+        .checkbox(&mut show_smoothed_bbox, "Smoothed bbox")
         .changed()
     {
         state.show_smoothed_bbox.store(show_smoothed_bbox, Relaxed);
@@ -529,7 +543,7 @@ pub fn bbox_debug_ui(ui: &mut egui::Ui, state: &SpatialViewState) {
 
     let mut show_per_entity_bbox = state.show_per_entity_bbox.load(Relaxed);
     if ui
-        .re_checkbox(&mut show_per_entity_bbox, "Per-entity bboxes")
+        .checkbox(&mut show_per_entity_bbox, "Per-entity bboxes")
         .changed()
     {
         state

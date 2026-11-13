@@ -1,24 +1,34 @@
+import { build } from "esbuild";
 import assert from "node:assert/strict";
+import { fileURLToPath } from "node:url";
 import { test } from "node:test";
 
-import { parse_store_id } from "./store_id.ts";
+const { outputFiles } = await build({
+  entryPoints: [fileURLToPath(new URL("./store_id.ts", import.meta.url))],
+  bundle: true,
+  write: false,
+  format: "esm",
+});
+const { parseStoreId } = await import(
+  `data:text/javascript;base64,${Buffer.from(outputFiles[0].text).toString("base64")}`
+);
 
 test("splits a store id into its parts", () => {
-  assert.deepEqual(parse_store_id("Recording:my_app:rec1"), {
+  assert.deepEqual(parseStoreId("Recording:my_app:rec1"), {
     kind: "Recording",
-    application_id: "my_app",
-    recording_id: "rec1",
+    applicationId: "my_app",
+    recordingId: "rec1",
   });
 });
 
 test("unescapes the application id, and keeps colons in the recording id", () => {
-  assert.deepEqual(parse_store_id("Blueprint:a\\:b\\\\c:x:y"), {
+  assert.deepEqual(parseStoreId("Blueprint:a\\:b\\\\c:x:y"), {
     kind: "Blueprint",
-    application_id: "a:b\\c",
-    recording_id: "x:y",
+    applicationId: "a:b\\c",
+    recordingId: "x:y",
   });
 });
 
 test("an empty recording id", () => {
-  assert.equal(parse_store_id("Recording:app:").recording_id, "");
+  assert.equal(parseStoreId("Recording:app:").recordingId, "");
 });

@@ -94,7 +94,7 @@ impl Chunk {
         &self,
         timeline: TimelineName,
         component: ComponentIdentifier,
-    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ + use<'_> {
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
         let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
@@ -143,7 +143,7 @@ impl Chunk {
             .collect_vec();
 
         (0..self.num_rows()).map(move |row| {
-            let mut timepoint = TimePoint::default();
+            let mut timepoint = TimePoint::STATIC;
             for (timeline, times) in &timelines {
                 timepoint.insert(*timeline, TimeInt::new_temporal(times[row]));
             }
@@ -160,7 +160,7 @@ impl Chunk {
     pub fn iter_component_timepoints(
         &self,
         component: ComponentIdentifier,
-    ) -> impl Iterator<Item = TimePoint> + '_ + use<'_> {
+    ) -> impl Iterator<Item = TimePoint> + '_ {
         let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
@@ -177,7 +177,7 @@ impl Chunk {
             (0..self.num_rows())
                 .filter(move |&row| validity.is_none_or(|validity| validity.is_valid(row)))
                 .map(move |row| {
-                    let mut timepoint = TimePoint::default();
+                    let mut timepoint = TimePoint::STATIC;
                     for (timeline, times) in &timelines {
                         timepoint.insert(*timeline, TimeInt::new_temporal(times[row]));
                     }
@@ -230,7 +230,7 @@ impl Chunk {
     pub fn iter_slices<'a, S: 'a + ChunkComponentSlicer>(
         &'a self,
         component: ComponentIdentifier,
-    ) -> impl Iterator<Item = S::Item<'a>> + 'a + use<'a, S> {
+    ) -> impl Iterator<Item = S::Item<'a>> + 'a {
         let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
@@ -1241,7 +1241,7 @@ impl Chunk {
     pub fn iter_component<C: Component>(
         &self,
         component: ComponentIdentifier,
-    ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + '_ + use<'_, C>> {
+    ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + '_> {
         let Some(list_array) = self.components.get_array(component) else {
             return ChunkComponentIter {
                 values: Arc::new(vec![]),
@@ -1437,9 +1437,9 @@ mod tests {
 
     #[test]
     fn iter_component_timepoints_static() {
-        let chunk = timepoint_chunk((0..3).map(|_| (TimePoint::default(), true)));
+        let chunk = timepoint_chunk((0..3).map(|_| (TimePoint::STATIC, true)));
         assert!(chunk.is_static());
-        let expected = vec![TimePoint::default(); 3];
+        let expected = vec![TimePoint::STATIC; 3];
         similar_asserts::assert_eq!(
             expected,
             chunk
@@ -1451,12 +1451,12 @@ mod tests {
     #[test]
     fn iter_component_timepoints_static_sparse() {
         let chunk = timepoint_chunk([
-            (TimePoint::default(), true),
-            (TimePoint::default(), false),
-            (TimePoint::default(), true),
+            (TimePoint::STATIC, true),
+            (TimePoint::STATIC, false),
+            (TimePoint::STATIC, true),
         ]);
         assert!(chunk.is_static());
-        let expected = vec![TimePoint::default(); 2];
+        let expected = vec![TimePoint::STATIC; 2];
         similar_asserts::assert_eq!(
             expected,
             chunk
@@ -1493,9 +1493,9 @@ mod tests {
 
     #[test]
     fn iter_timepoints_static() {
-        let chunk = timepoint_chunk((0..3).map(|_| (TimePoint::default(), true)));
+        let chunk = timepoint_chunk((0..3).map(|_| (TimePoint::STATIC, true)));
         assert!(chunk.is_static());
-        let expected = vec![TimePoint::default(); 3];
+        let expected = vec![TimePoint::STATIC; 3];
         similar_asserts::assert_eq!(expected, chunk.iter_timepoints().collect_vec());
     }
 
@@ -1521,27 +1521,27 @@ mod tests {
             Chunk::builder(entity_path.clone())
                 .with_component_batches(
                     row_id1,
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [(MyPoints::descriptor_points(), points1 as _)],
                 )
                 .with_component_batches(
                     row_id2,
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [(MyPoints::descriptor_points(), points2 as _)],
                 )
                 .with_component_batches(
                     row_id3,
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [(MyPoints::descriptor_points(), points3 as _)],
                 )
                 .with_component_batches(
                     row_id4,
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [(MyPoints::descriptor_points(), points4 as _)],
                 )
                 .with_component_batches(
                     row_id5,
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [(MyPoints::descriptor_points(), points5 as _)],
                 )
                 .build()?,

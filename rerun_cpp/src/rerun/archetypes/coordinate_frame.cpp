@@ -13,37 +13,4 @@ namespace rerun::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> CoordinateFrame::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(1);
-        if (frame.has_value()) {
-            columns.push_back(frame.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> CoordinateFrame::columns() {
-        if (frame.has_value()) {
-            return columns(std::vector<uint32_t>(frame.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>> AsComponents<archetypes::CoordinateFrame>::as_batches(
-        const archetypes::CoordinateFrame& archetype
-    ) {
-        using namespace archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(1);
-
-        if (archetype.frame.has_value()) {
-            cells.push_back(archetype.frame.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

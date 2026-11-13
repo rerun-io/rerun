@@ -2,7 +2,9 @@ use std::str::FromStr as _;
 
 use egui_kittest::SnapshotResults;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
-use re_integration_test::{HarnessConfig, InspectionHarness, TestServer, ViewerHarnessExt as _};
+use re_integration_test::{
+    HarnessConfig, InspectionHarness, TEST_DATASET_ID, TestServer, ViewerHarnessExt as _,
+};
 use re_sdk::{
     TimeCell, Timeline,
     external::{re_log_types::AbsoluteTimeRange, re_tuid},
@@ -71,7 +73,7 @@ pub async fn start_with_dataset_url() {
 
     let mut harness = InspectionHarness::spawn(HarnessConfig {
         startup_url: Some(format!(
-            "rerun+http://localhost:{}/entry/187b552b95a5c2f73f37894708825ba5",
+            "rerun+http://localhost:{}/entry/{TEST_DATASET_ID}",
             server.port()
         )),
         ..Default::default()
@@ -98,11 +100,170 @@ pub async fn start_with_dataset_url() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn startup_segment_url_expands_ancestor_folders() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(
+            "parent.child.my_dataset",
+            TEST_DATASET_ID,
+            "new_recording_id",
+        )
+        .await;
+
+    let mut harness = InspectionHarness::spawn(HarnessConfig {
+        startup_url: Some(format!(
+            "rerun+http://localhost:{}/dataset/{TEST_DATASET_ID}?segment_id={segment_id}",
+            server.port()
+        )),
+        ..Default::default()
+    });
+
+    assert_segment_revealed_in_sources(&mut harness);
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn command_palette_segment_url_expands_ancestor_folders() {
+    // TODO(RR-6358): in the browser, the segment never downloads its chunks.
+    if InspectionHarness::is_browser() {
+        return;
+    }
+
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(
+            "parent.child.my_dataset",
+            TEST_DATASET_ID,
+            "new_recording_id",
+        )
+        .await;
+    let mut harness = InspectionHarness::spawn(HarnessConfig::default());
+
+    harness
+        .get_by_label_contains("Search commands or ask agent…")
+        .click();
+    harness.run();
+    harness
+        .get_by_role(egui::Role::TextInput)
+        .type_text(&format!(
+            "rerun+http://localhost:{}/dataset/{TEST_DATASET_ID}?segment_id={segment_id}",
+            server.port()
+        ));
+    harness.run();
+    for pressed in [true, false] {
+        harness.queue_event(egui::Event::Key {
+            key: egui::Key::Enter,
+            physical_key: None,
+            pressed,
+            repeat: false,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+
+    assert_segment_revealed_in_sources(&mut harness);
+}
+
+/// Chevron collapses must persist while the selection remains unchanged.
+#[tokio::test(flavor = "multi_thread")]
+async fn source_chevrons_preserve_manual_collapse() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(
+            "parent.child.my_dataset",
+            TEST_DATASET_ID,
+            "new_recording_id",
+        )
+        .await;
+    let mut harness = InspectionHarness::spawn(HarnessConfig {
+        startup_url: Some(format!(
+            "rerun+http://localhost:{}/dataset/{TEST_DATASET_ID}?segment_id={segment_id}",
+            server.port()
+        )),
+        ..Default::default()
+    });
+    assert_segment_revealed_in_sources(&mut harness);
+    // Finishing loads change the selection, which re-expands collapsed ancestors.
+    harness.step_until("Segment finishes loading", |harness| !harness.is_loading());
+
+    for (ancestor, child) in [
+        ("my_dataset", "new_recording_id"),
+        ("child", "my_dataset"),
+        ("parent", "child"),
+        ("localhost:", "parent"),
+    ] {
+        collapse_source_and_check(&mut harness, ancestor, child);
+    }
+
+    harness
+        .section_node(Some("_recording_panel"))
+        .get_by_label_contains("localhost:")
+        .click();
+    harness.step_until("Selecting the server reveals its entries", |harness| {
+        harness
+            .section_node(Some("_recording_panel"))
+            .query_by_label("parent")
+            .is_some()
+    });
+    assert_eq!(
+        harness
+            .section_node(Some("_recording_panel"))
+            .get_by_label_contains("localhost:")
+            .accesskit_node()
+            .toggled(),
+        Some(egui::accesskit::Toggled::True)
+    );
+    collapse_source_and_check(&mut harness, "localhost:", "parent");
+}
+
+fn collapse_source_and_check(harness: &mut InspectionHarness, ancestor: &str, child: &str) {
+    harness
+        .section_node(Some("_recording_panel"))
+        .get_by_label_contains(ancestor)
+        .parent()
+        .expect("Source items have a row containing their chevron")
+        .get_by_role(egui::Role::DisclosureTriangle)
+        .click();
+    harness.step_until("Chevron collapses the source item", |harness| {
+        harness
+            .section_node(Some("_recording_panel"))
+            .query_by_label_contains(child)
+            .is_none()
+    });
+
+    harness.run_ok();
+    assert!(
+        harness
+            .section_node(Some("_recording_panel"))
+            .query_by_label_contains(child)
+            .is_none(),
+        "{ancestor} must stay collapsed after the chevron click"
+    );
+}
+
+fn assert_segment_revealed_in_sources(harness: &mut InspectionHarness) {
+    harness.step_until(
+        "Segment and its ancestor folders appear in sources",
+        |harness| {
+            if harness.query_by_label_contains("STREAMS").is_none() {
+                return false;
+            }
+            // Make sure all expected segments and folders are present in the sources:
+            let sources = harness.section_node(Some("_recording_panel"));
+            sources.query_by_label("parent").is_some()
+                && sources.query_by_label("child").is_some()
+                && sources.query_by_label("my_dataset").is_some()
+                && sources
+                    .query_by_label_contains("new_recording_id")
+                    .is_some()
+        },
+    );
+    harness.run_ok();
+}
+
+#[tokio::test(flavor = "multi_thread")]
 pub async fn start_with_segment_fragment_url() {
     let (server, segment_id) = TestServer::spawn().await.with_test_data().await;
 
-    let dataset_id =
-        re_tuid::Tuid::from_str("187b552b95a5c2f73f37894708825ba5").expect("Failed to parse TUID");
+    let dataset_id = re_tuid::Tuid::from_str(TEST_DATASET_ID).expect("Failed to parse TUID");
     let segment_uri = re_uri::DatasetUri {
         origin: re_uri::Origin {
             scheme: re_uri::Scheme::RerunHttp,

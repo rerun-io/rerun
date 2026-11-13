@@ -10,13 +10,20 @@ use std::sync::Arc;
 use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
 use re_log_channel::LogSource;
 
-use crate::app_state::WelcomeScreenState;
-
 pub use intro_section::{CloudState, LoginState};
 use re_viewer_context::AppContext;
 
 const MIN_PAGE_MARGIN: f32 = 16.0;
 const MAX_PAGE_MARGIN: f32 = 40.0;
+
+/// How the welcome screen should be shown this frame.
+pub(crate) struct WelcomeScreenState {
+    /// The normal examples screen should be hidden. Show a fallback "no data ui" instead.
+    pub hide_examples: bool,
+
+    /// `false` while the welcome screen is held back at startup.
+    pub revealed: bool,
+}
 
 fn page_horizontal_margin(available_width: f32) -> i8 {
     ((available_width - MIN_COLUMN_WIDTH) / 2.0)
@@ -43,7 +50,7 @@ impl WelcomeScreen {
         log_sources: &[Arc<LogSource>],
         login_state: &CloudState,
     ) {
-        if welcome_screen_state.opacity <= 0.0 {
+        if !welcome_screen_state.revealed {
             return;
         }
 
@@ -55,7 +62,7 @@ impl WelcomeScreen {
 
         let horizontal_margin = page_horizontal_margin(ui.available_width());
 
-        let response = egui::ScrollArea::vertical()
+        egui::ScrollArea::vertical()
             .id_salt("welcome_screen_page")
             .auto_shrink([false, false])
             .show(ui, |ui| {
@@ -82,13 +89,6 @@ impl WelcomeScreen {
                     }
                 });
             });
-
-        if welcome_screen_state.opacity < 1.0 {
-            let cover_opacity = 1.0 - welcome_screen_state.opacity;
-            let fill_color = ui.visuals().panel_fill.gamma_multiply(cover_opacity);
-            ui.painter()
-                .rect_filled(response.inner_rect, 0.0, fill_color);
-        }
     }
 }
 

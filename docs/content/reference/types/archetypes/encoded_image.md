@@ -25,6 +25,7 @@ For images that refer to video frames see [`archetypes.VideoFrameReference`](htt
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `EncodedImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1EncodedImage.html)
@@ -42,6 +43,6 @@ snippet: archetypes/encoded_image
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/1200w.png">
-  <img src="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/full.png">
+  <img src="https://static.rerun.io/encoded_image/6e92868b6533be5fb2dfd9e26938eb7a256bfb01/full.png" alt="Rerun Viewer with a 2D view of an encoded image, an orange cartoon crab on a black background">
 </picture>
 

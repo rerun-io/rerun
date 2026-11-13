@@ -9,6 +9,8 @@
 //! Settings default to `OptimizationProfile::OBJECT_STORE`; no own-chunk rules are applied, and
 //! every video stream is GoP-batched unless `--no-rebatch-videos` is passed.
 
+#![expect(clippy::print_stderr)] // Example
+
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write as _;
@@ -302,8 +304,9 @@ impl ProfileStats {
     }
 
     fn print(self, wall: std::time::Duration) {
-        puffin::GlobalProfiler::lock().remove_sink(self.sink_id);
-        let inner = self.inner.lock();
+        let Self { inner, sink_id } = self;
+        puffin::GlobalProfiler::lock().remove_sink(sink_id);
+        let inner = inner.lock();
 
         let mut rows: Vec<(String, ScopeStats)> = inner
             .stats

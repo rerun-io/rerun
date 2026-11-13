@@ -5,7 +5,6 @@
 use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::log::RowId;
-use re_viewer::external::re_sdk_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 

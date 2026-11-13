@@ -15,25 +15,15 @@ import { assert } from "./util.mjs";
  * @typedef {"encrypted" | "secret"} EnvType
  */
 
-function isDeploymentReady(
-  /** @type {Deployment | DeploymentBuild} */ deployment,
-) {
+function isDeploymentReady(/** @type {Deployment | DeploymentBuild} */ deployment) {
   return deployment.readyState === "READY" || deployment.state === "READY";
 }
 
-function isDeploymentFailed(
-  /** @type {Deployment | DeploymentBuild} */ deployment,
-) {
-  if (
-    deployment?.readyState?.endsWith("_ERROR") ||
-    deployment?.readyState === "ERROR"
-  ) {
+function isDeploymentFailed(/** @type {Deployment | DeploymentBuild} */ deployment) {
+  if (deployment?.readyState?.endsWith("_ERROR") || deployment?.readyState === "ERROR") {
     return true;
   }
-  if (
-    (deployment.state && deployment.state.endsWith("_ERROR")) ||
-    deployment.state === "ERROR"
-  ) {
+  if ((deployment.state && deployment.state.endsWith("_ERROR")) || deployment.state === "ERROR") {
     return true;
   }
   return false;
@@ -43,8 +33,7 @@ export function getDeploymentId(
   /** @type {LegacyDeployment | Deployment | DeploymentBuild} */ deployment,
 ) {
   if ("uid" in deployment) return deployment.uid;
-  if ("deploymentId" in deployment && deployment.deploymentId)
-    return deployment.deploymentId;
+  if ("deploymentId" in deployment && deployment.deploymentId) return deployment.deploymentId;
   return deployment.id;
 }
 
@@ -88,10 +77,7 @@ export class Project {
     console.log("get latest production deployment");
     const productionDeployments = await this.deployments("production");
     const latestProductionDeployment = productionDeployments[0];
-    assert(
-      latestProductionDeployment,
-      `failed to get latest production deployment`,
-    );
+    assert(latestProductionDeployment, `failed to get latest production deployment`);
     return latestProductionDeployment;
   }
 
@@ -101,12 +87,9 @@ export class Project {
    * @returns {Promise<Env[]>}
    */
   async envs() {
-    const response = await this.client.get(
-      `v9/projects/${this.project.id}/env`,
-      {
-        teamId: this.team.id,
-      },
-    );
+    const response = await this.client.get(`v9/projects/${this.project.id}/env`, {
+      teamId: this.team.id,
+    });
     assert(
       "envs" in response,
       () => `failed to get environment variables: ${JSON.stringify(response)}`,
@@ -123,16 +106,9 @@ export class Project {
    * @param {EnvType} [type]
    * @returns {Promise<any>}
    */
-  async setEnv(
-    key,
-    value,
-    target = ["production", "preview", "development"],
-    type = "encrypted",
-  ) {
+  async setEnv(key, value, target = ["production", "preview", "development"], type = "encrypted") {
     console.log(`set env ${key}=${value} (target: ${target}, type: ${type})`);
-    const env = await this.envs().then((envs) =>
-      envs.find((env) => env.key === key),
-    );
+    const env = await this.envs().then((envs) => envs.find((env) => env.key === key));
     assert(env);
     return this.client.patch(
       `v9/projects/${this.project.id}/env/${env.id}`,
@@ -174,10 +150,7 @@ export class Project {
    * @returns {Promise<Deployment>}
    */
   async deployPreviewFrom(deploymentId, name, env) {
-    console.log(
-      `deploy preview from ${name} (id: ${deploymentId}) with env:`,
-      env,
-    );
+    console.log(`deploy preview from ${name} (id: ${deploymentId}) with env:`, env);
     // `target` not being set means "preview"
     const body = {
       deploymentId,
@@ -209,9 +182,7 @@ export class Project {
     let deployment = await this.getDeployment(id);
     while (true) {
       if ("error" in deployment) {
-        throw new Error(
-          `deployment failed: ${JSON.stringify(deployment.error)}`,
-        );
+        throw new Error(`deployment failed: ${JSON.stringify(deployment.error)}`);
       }
 
       if (isDeploymentFailed(deployment)) {
@@ -360,10 +331,7 @@ export class Client {
    */
   async teams() {
     const response = await this.get("v2/teams");
-    assert(
-      "teams" in response,
-      () => `failed to get teams: ${JSON.stringify(response)}`,
-    );
+    assert("teams" in response, () => `failed to get teams: ${JSON.stringify(response)}`);
     return response.teams;
   }
 
@@ -376,10 +344,7 @@ export class Client {
    */
   async projects(teamId) {
     const response = await this.get("v9/projects", { teamId });
-    assert(
-      "projects" in response,
-      () => `failed to get projects: ${JSON.stringify(response)}`,
-    );
+    assert("projects" in response, () => `failed to get projects: ${JSON.stringify(response)}`);
     return response.projects;
   }
 

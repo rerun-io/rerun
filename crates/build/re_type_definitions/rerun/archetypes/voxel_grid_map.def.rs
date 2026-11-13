@@ -28,7 +28,6 @@ pub struct VoxelGridMap {
     ///
     /// This defines the voxel size along the local grid X/Y/Z axes.
     /// Each dimension must be finite and positive.
-    #[rerun(no_ui_edit)]
     #[rerun(required)]
     pub voxel_size: rerun::components::VoxelSize,
 
@@ -50,7 +49,6 @@ pub struct VoxelGridMap {
     /// grid relative to the map's parent coordinate frame.
     ///
     /// If not set, the minimum corner is placed at the origin of the map's parent coordinate frame.
-    #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub translation: Option<rerun::components::Translation3D>,
 
@@ -61,7 +59,6 @@ pub struct VoxelGridMap {
     ///
     /// Note: either this or [`rerun::components::RotationQuat`] can be set to specify the grid's rotation, but not both.
     /// If both this and [`rerun::components::RotationQuat`] are set, this is ignored in favor of the quaternion.
-    #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub rotation_axis_angle: Option<rerun::components::RotationAxisAngle>,
 
@@ -69,7 +66,6 @@ pub struct VoxelGridMap {
     ///
     /// Together with [`rerun::components::Translation3D`], this defines the pose of the grid relative to the
     /// map's parent coordinate frame.
-    #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub quaternion: Option<rerun::components::RotationQuat>,
 

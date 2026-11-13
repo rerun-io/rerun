@@ -28,10 +28,14 @@ re_tracing.workspace = true
 re_tuid.workspace = true
 re_types_core.workspace = true
 
+ahash.workspace = true
 arrow.workspace = true
+bytemuck = { workspace = true, features = ["derive"] }
 itertools.workspace = true
 nohash-hasher.workspace = true
+quiver.workspace = true
 semver.workspace = true
+static_assertions.workspace = true
 strum = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 tracing.workspace = true

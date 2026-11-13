@@ -126,7 +126,7 @@ pub fn archetype_field_fallbacks(registry: &mut FallbackProviderRegistry) {
     // Points2D
     registry.register_component_fallback_provider(
         archetypes::Points2D::descriptor_draw_order().component,
-        |_| components::DrawOrder::DEFAULT_LINES2D,
+        |_| components::DrawOrder::DEFAULT_POINTS2D,
     );
     registry.register_component_fallback_provider(
         archetypes::Points2D::descriptor_show_labels().component,
@@ -652,7 +652,7 @@ fn tensor_data_range_at(
         .store_ctx()
         .memoizer_read_or_compute::<TensorStatsCache, _, _>(&TensorStatsAccessor {
             row_id,
-            component,
+            source: &re_viewer_context::VisualizerComponentSource::identity(component),
             tensor: &tensor,
         });
 

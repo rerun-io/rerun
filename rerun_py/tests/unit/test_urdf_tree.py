@@ -136,7 +136,7 @@ def test_urdf_tree_custom_static_transform_entity_path(tmp_path: Path) -> None:
     rrd_path = tmp_path / "urdf_static_transforms.rrd"
 
     with rr.RecordingStream(
-        "test_urdf_tree_custom_static_transform_entity_path",
+        "rerun_example_urdf_tree_custom_static_transform_entity_path",
         make_default=False,
         make_thread_default=False,
     ) as rec:

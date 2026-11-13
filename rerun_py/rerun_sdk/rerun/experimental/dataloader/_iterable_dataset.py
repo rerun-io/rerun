@@ -12,19 +12,23 @@ import torch.utils.data
 
 from rerun._tracing import set_current_span_attributes, tracing_scope, with_tracing
 
-from ._sample_index import FixedRateSampling, SampleIndex
+from ._config import TimeAlignedSampling
+from ._metrics import DataloaderMetrics
+from ._sample_index import SampleIndex, _validate_timeline_sampling
 from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_blocks
 from ._utils import (
     FetchedBlock,
+    FetchMetricsAccumulator,
     _build_query_plans,
     _build_targets,
     _decode_iter,
     _decode_pool,
-    _fetch_prior_keyframes,
+    _discover_prior_keyframes,
     _fetch_queries_parallel,
     _index_fetched_block,
     _locate_samples,
     _pipeline_blocks,
+    _record_query_metrics,
     _replay,
     _resolve_decode_requests_in_block,
     _resolve_decode_threads,
@@ -38,7 +42,8 @@ if TYPE_CHECKING:
 
     import pyarrow as pa
 
-    from ._config import DataSource, Field
+    from ._config import DataSource, Field, FixedRateSampling
+    from ._metrics import _WorkerMetricsPublisher
     from ._utils import Target
     from .manifest._manifest import Manifest
 
@@ -50,6 +55,7 @@ def _skip_incomplete(
     samples: Generator[DecodedSample, None, None],
     *,
     max_consecutive_skipped_samples: int | None = _DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES,
+    metrics: _WorkerMetricsPublisher | None = None,
 ) -> Generator[DecodedSample, None, None]:
     """Drop live samples with missing fields up to the configured limit."""
     if max_consecutive_skipped_samples is not None and max_consecutive_skipped_samples < 0:
@@ -69,6 +75,8 @@ def _skip_incomplete(
 
             skipped += 1
             consecutive_skipped += 1
+            if metrics is not None:
+                metrics.record_skipped_samples()
             for key in missing:
                 skipped_by_field[key] = skipped_by_field.get(key, 0) + 1
             set_current_span_attributes({"rerun.dataloader.iter.num_samples_skipped": skipped})
@@ -117,9 +125,7 @@ def _check_complete(
         yield sample
 
 
-def _count_yields(
-    samples: Generator[DecodedSample, None, None],
-) -> Generator[DecodedSample, None, None]:
+def _count_yields(samples: Generator[DecodedSample, None, None]) -> Generator[DecodedSample, None, None]:
     """
     Yield `samples` through, recording the yield count and downstream pull gaps on the current span.
 
@@ -161,9 +167,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
     """
     Iterable dataset backed by a catalog server.
 
-    Fetches `fetch_block_size` samples per server query and yields individual
-    samples, so per-query overhead is amortized across many samples while
-    the `DataLoader` controls the training batch size independently.
+    Fetches samples in blocks and yields them individually. The `DataLoader`
+    controls the training batch size independently.
 
     The index list is partitioned across DDP ranks and DataLoader workers
     internally. With shuffling enabled (default), the sample order is permuted
@@ -182,11 +187,12 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
     fields
         Sample fields, keyed by output name.
     timeline_sampling
-        Required when `index` is a timestamp timeline; ignored for
-        integer indices. Pass [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]
-        to sample on a fixed grid (e.g. 30 Hz).
+        `None` uses ordinary integer sampling.
+        [`TimeAlignedSampling`][rerun.experimental.dataloader.TimeAlignedSampling] declares aligned integer fields.
+        Use [`FixedRateSampling`][rerun.experimental.dataloader.FixedRateSampling]
+        for timestamp and duration timelines.
     fetch_block_size
-        Number of samples to fetch per server query. Larger values
+        Number of samples to fetch per block. Larger values
         amortize network overhead but use more memory. Defaults to 128.
     shuffle_strategy
         The [`ShuffleStrategy`][rerun.experimental.dataloader.ShuffleStrategy]
@@ -212,7 +218,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         index: str,
         fields: dict[str, Field],
         *,
-        timeline_sampling: FixedRateSampling | None = None,
+        timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
         fetch_block_size: int = 128,
         shuffle_strategy: ShuffleStrategy | None = None,
         decode_threads: int | None = None,
@@ -227,6 +233,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
             )
 
         self._fields = fields
+        self._timeline_sampling = timeline_sampling
         self._index = index
         self._fetch_block_size = fetch_block_size
         self._decode_threads = _resolve_decode_threads(decode_threads, fields)
@@ -244,6 +251,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
             self._fields,
             timeline_sampling=timeline_sampling,
         )
+        self._metrics: DataloaderMetrics | None = DataloaderMetrics()
+        self._metrics_publisher = self._metrics._worker_publisher()
 
         self._connection = _WorkerConnection.from_source(source, fields)
 
@@ -254,6 +263,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         source: DataSource,
         fields: dict[str, Field],
         *,
+        timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
         decode_threads: int | None = None,
     ) -> RerunIterableDataset:
         """
@@ -270,6 +280,9 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
             The live catalog connection.
         fields:
             The decoders, keyed by field name (a manifest records only their spec, not the objects).
+        timeline_sampling:
+            Optional sampling declaration matching the manifest's stored grid.
+            Stored sample positions and decode ranges are unchanged.
         decode_threads:
             Fields to decode concurrently within each `DataLoader` worker.
 
@@ -283,13 +296,27 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         torch.utils.data.IterableDataset.__init__(self)
         _warn_if_fork_unsafe(stacklevel=3)
         self._fields = fields
+        self._timeline_sampling = timeline_sampling
         self._index = manifest.metadata.index_name
+        self._sample_index = SampleIndex(
+            [], ns_per_sample=manifest.metadata.ns_per_sample, ns_dtype=manifest.metadata.ns_dtype
+        )
+        _validate_timeline_sampling(timeline_sampling, self._sample_index)
         self._epoch = 0
         self._manifest = manifest
         self._parent_ddp_topology = None
         self._decode_threads = _resolve_decode_threads(decode_threads, fields)
+        self._metrics = DataloaderMetrics()
+        self._metrics_publisher = self._metrics._worker_publisher()
         self._connection = _WorkerConnection.from_source(source, fields)
         return self
+
+    @property
+    def metrics(self) -> DataloaderMetrics:
+        """Cumulative fetch and decode metrics aggregated across this dataset's workers."""
+        if self._metrics is None:
+            raise RuntimeError("Dataloader metrics are only available from the process that created the dataset")
+        return self._metrics
 
     @property
     def sample_index(self) -> SampleIndex:
@@ -310,6 +337,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         """Carry the parent's DDP rank into spawned workers, which have no process group of their own."""
         state = self.__dict__.copy()
         state["_parent_ddp_topology"] = _live_ddp_topology() or self._parent_ddp_topology
+        state["_metrics"] = None
         return state
 
     def _ddp_topology(self) -> tuple[int, int]:
@@ -348,48 +376,68 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
 
             @with_tracing("RerunDataset._fetch_block")
             def fetch_block(block: np.ndarray) -> FetchedBlock:
-                # 1. Locate requested samples within their segments.
+                fetch_metrics = FetchMetricsAccumulator()
                 located = _locate_samples(
                     block,
                     sample_index=self._sample_index,
                     num_fields=len(self._fields),
                 )
-                # 2. Fetch the prior-keyframe metadata needed by compressed-video requests.
-                keyframes = _fetch_prior_keyframes(
-                    view=view,
-                    index=self._index,
-                    fields=self._fields,
-                    located=located,
-                    sample_index=self._sample_index,
+                with _record_query_metrics(fetch_metrics):
+                    keyframes = (
+                        {}
+                        if isinstance(self._timeline_sampling, TimeAlignedSampling)
+                        else _discover_prior_keyframes(
+                            view=view,
+                            index=self._index,
+                            fields=self._fields,
+                            located=located,
+                            sample_index=self._sample_index,
+                        )
+                    )
+                    targets = _build_targets(
+                        located,
+                        keyframes,
+                        fields=self._fields,
+                        sample_index=self._sample_index,
+                        timeline_sampling=self._timeline_sampling,
+                    )
+                    query_plans = _build_query_plans(
+                        targets,
+                        self._fields,
+                        sample_index=self._sample_index,
+                        timeline_sampling=self._timeline_sampling,
+                        index=self._index,
+                    )
+                    fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
+                return FetchedBlock(
+                    targets=targets,
+                    fetched_groups=fetched_groups,
+                    fetch_direct_original_ranges=fetch_metrics.direct_original_ranges,
+                    fetch_direct_merged_ranges=fetch_metrics.direct_merged_ranges,
+                    fetch_grpc_requests=fetch_metrics.grpc_requests,
+                    delivered_bytes=fetch_metrics.delivered_bytes,
                 )
-                # 3. Match samples with prior video keyframes and compute each field's index ranges.
-                targets = _build_targets(
-                    located,
-                    keyframes,
-                    fields=self._fields,
-                    sample_index=self._sample_index,
-                )
-                # 4. Aggregate compatible field requests into server queries.
-                query_plans = _build_query_plans(targets, self._fields, sample_index=self._sample_index)
-                # 5. Execute independent server queries concurrently.
-                fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
-                return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
 
             def process(fetched: FetchedBlock) -> Iterator[DecodedSample]:
+                preparation_started_ns = time.perf_counter_ns()
                 # 1. Group each fetched table into contiguous, index-ordered segment spans.
                 indexed = _index_fetched_block(fetched, self._index)
                 # 2. Map each requested timeline range to physical Arrow rows.
                 prepared = _resolve_decode_requests_in_block(indexed)
+                preparation_elapsed_ns = time.perf_counter_ns() - preparation_started_ns
                 # 3. Decode field batches and scatter their results back into sample order.
                 return _decode_iter(
                     prepared=prepared,
                     decoders=decoders,
                     executor=executor,
+                    metrics=self._metrics_publisher,
+                    preparation_elapsed_ns=preparation_elapsed_ns,
                 )
 
             samples = _skip_incomplete(
-                _pipeline_blocks(blocks, fetch=fetch_block, process=process),
+                _pipeline_blocks(blocks, fetch=fetch_block, process=process, metrics=self._metrics_publisher),
                 max_consecutive_skipped_samples=self._max_consecutive_skipped_samples,
+                metrics=self._metrics_publisher,
             )
             if self._shuffle_buffer is not None:
                 rank, _ = self._ddp_topology()
@@ -435,33 +483,52 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
             })
 
             # Query construction only needs the grid step / dtype, not the full sample space.
-            sample_index = SampleIndex([], ns_per_sample=meta.ns_per_sample, ns_dtype=meta.ns_dtype)
+            sample_index = self._sample_index
 
             @with_tracing("RerunDataset._fetch_block")
             def fetch_block(block: pa.Table) -> FetchedBlock:
+                fetch_metrics = FetchMetricsAccumulator()
                 targets = targets_from_rows(block, fields=self._fields, sample_index=sample_index)
                 set_current_span_attributes({"rerun.dataloader.fetch.block_size": len(targets)})
-                query_plans = _build_query_plans(targets, self._fields, sample_index=sample_index)
-                fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
-                return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
+                with _record_query_metrics(fetch_metrics):
+                    query_plans = _build_query_plans(
+                        targets,
+                        self._fields,
+                        sample_index=sample_index,
+                        timeline_sampling=self._timeline_sampling,
+                        index=self._index,
+                    )
+                    fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
+                return FetchedBlock(
+                    targets=targets,
+                    fetched_groups=fetched_groups,
+                    fetch_direct_original_ranges=fetch_metrics.direct_original_ranges,
+                    fetch_direct_merged_ranges=fetch_metrics.direct_merged_ranges,
+                    fetch_grpc_requests=fetch_metrics.grpc_requests,
+                    delivered_bytes=fetch_metrics.delivered_bytes,
+                )
 
             # Only the fields being decoded: a replay may ask for a subset of what was frozen.
             required = {key for key in meta.required_fields if key in self._fields}
 
             def process(fetched: FetchedBlock) -> Iterator[DecodedSample]:
+                preparation_started_ns = time.perf_counter_ns()
                 # 1. Group each fetched table into contiguous, index-ordered segment spans.
                 indexed = _index_fetched_block(fetched, self._index)
                 # 2. Map each requested timeline range to physical Arrow rows.
                 prepared = _resolve_decode_requests_in_block(indexed)
+                preparation_elapsed_ns = time.perf_counter_ns() - preparation_started_ns
                 # 3. Decode field batches and scatter their results back into sample order.
                 decoded = _decode_iter(
                     prepared=prepared,
                     decoders=decoders,
                     executor=executor,
+                    metrics=self._metrics_publisher,
+                    preparation_elapsed_ns=preparation_elapsed_ns,
                 )
                 return _check_complete(decoded, fetched.targets, required)
 
-            samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process)
+            samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process, metrics=self._metrics_publisher)
             yield from _count_yields(_replay(samples, emit_order))
 
     def _worker_order(self) -> tuple[np.ndarray, np.ndarray]:

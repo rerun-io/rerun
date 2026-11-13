@@ -25,11 +25,20 @@ use crate::data::{
 #[derive(Debug, Clone, Default)]
 pub struct RecordingPanel {
     commands: Vec<RecordingPanelCommand>,
+
+    /// Selected items waiting to be revealed when the panel is shown.
+    /// Entries whose parent folders need an unloaded dataset list remain here for retry.
+    pending_expansion: Vec<Item>,
 }
 
 impl RecordingPanel {
     pub fn send_command(&mut self, command: RecordingPanelCommand) {
         self.commands.push(command);
+    }
+
+    /// Notify the panel even when hidden, so the latest selection is revealed when shown.
+    pub fn on_selection_changed(&mut self, selection: &re_viewer_context::ItemCollection) {
+        self.pending_expansion = selection.iter_items().cloned().collect();
     }
 
     pub fn show_panel(
@@ -53,9 +62,9 @@ impl RecordingPanel {
             }
         }
 
-        for item in ctx.selection().iter_items() {
-            expand_parents_for_item(ui.ctx(), &recording_panel_data, item);
-        }
+        // Consume resolved requests so subsequent frames preserve manual collapses.
+        self.pending_expansion
+            .retain(|item| !expand_parents_for_item(ctx, &recording_panel_data, item));
 
         ui.name_panel("Sources panel");
 
@@ -161,11 +170,15 @@ fn add_button_ui(
                             .entity_dbs()
                             .filter(|entity_db| entity_db.store_id().is_recording())
                             .collect::<Vec<_>>();
-                        println!("Recording entity DBs:\n{recording_entity_dbs:#?}\n");
+                        let _err = re_error::try_println!(
+                            "Recording entity DBs:\n{recording_entity_dbs:#?}\n"
+                        );
                     }
 
                     if ui.button("Print recording panel data").clicked() {
-                        println!("Recording panel data:\n{_recording_panel_data:#?}\n");
+                        let _err = re_error::try_println!(
+                            "Recording panel data:\n{_recording_panel_data:#?}\n"
+                        );
                     }
                 }
             }),
@@ -351,7 +364,7 @@ fn server_section_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, server_data: &Serv
 
     let mut content = list_item::LabelContent::header(server_title(ctx, origin, *is_internal))
         .with_menu_button(&icons::MORE, "Actions", move |ui| {
-            for command in re_ui::RedapServerCommand::all_for_server(origin) {
+            for command in re_viewer_context::RedapServerCommand::all_for_server(origin) {
                 if command.requires_editable_server() && *is_internal {
                     continue;
                 }
@@ -416,15 +429,31 @@ fn server_entries_ui(
             message,
             is_auth_error,
         } => {
-            let (label, color) = if *is_auth_error {
-                ("Authentication required", ui.visuals().weak_text_color())
+            if *is_auth_error {
+                let response = ui
+                    .list_item()
+                    .show_flat(
+                        ui,
+                        list_item::LabelContent::new(
+                            egui::RichText::new("Authentication required")
+                                .color(ui.visuals().weak_text_color()),
+                        ),
+                    )
+                    .on_hover_text(message);
+
+                if response.clicked() {
+                    ctx.command_sender()
+                        .send_system(SystemCommand::EditRedapServerModal(
+                            re_viewer_context::EditRedapServerModalCommand::new(origin.clone()),
+                        ));
+                }
             } else {
-                ("Failed to load entries", ui.visuals().error_fg_color)
-            };
-            ui.list_item_flat_noninteractive(list_item::LabelContent::new(
-                egui::RichText::new(label).color(color),
-            ))
-            .on_hover_text(message);
+                ui.list_item_flat_noninteractive(list_item::LabelContent::new(
+                    egui::RichText::new("Failed to load entries")
+                        .color(ui.visuals().error_fg_color),
+                ))
+                .on_hover_text(message);
+            }
         }
 
         ServerEntriesData::Loaded { entry_tree } => {
@@ -479,6 +508,27 @@ fn entry_tree_node_ui(
                 })
                 .item_response;
 
+            item_response.context_menu(|ui| {
+                if let Some(route) = &route {
+                    let url = ViewerUrl::from_route(ctx.store_hub(), route)
+                        .and_then(|url| url.sharable_url(None));
+                    if ui
+                        .add_enabled(url.is_ok(), egui::Button::new("Copy link to folder"))
+                        .on_disabled_hover_text("Can't copy a link to this folder")
+                        .clicked()
+                        && let Ok(url) = url
+                    {
+                        ctx.command_sender()
+                            .send_system(SystemCommand::CopyViewerUrl(url));
+                    }
+                }
+
+                if ui.button("Copy folder name").clicked() {
+                    re_log::info!("Copied {path_prefix:?} to clipboard");
+                    ui.copy_text(path_prefix.clone());
+                }
+            });
+
             ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
             ctx.handle_select_focus_sync(&item_response, item.clone());
 
@@ -515,7 +565,7 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
         re_ui::list_item::LabelContent::new(dataset_hierarchy_leaf_name(name.as_str()))
             .with_icon(icon);
 
-    let id = ui.make_persistent_id(dataset_entry_data.entry_data.id());
+    let id = dataset_item_id(origin, *entry_id);
 
     if !displayed_segments.is_empty() {
         list_item_content = list_item_content.with_buttons(|ui| {
@@ -638,16 +688,32 @@ fn remote_table_entry_ui(
     let list_item_content = LabelContent::new(text).with_icon(icon);
     let item_response = list_item.show_hierarchical(ui, list_item_content);
 
+    let new_route = Route::RedapEntry {
+        origin: origin.clone(),
+        entry_id: *entry_id,
+        kind: Some(re_viewer_context::EntryKind::Table),
+    };
+
+    item_response.context_menu(|ui| {
+        let url = ViewerUrl::from_route(ctx.store_hub(), &new_route)
+            .and_then(|url| url.sharable_url(None));
+        if ui
+            .add_enabled(url.is_ok(), egui::Button::new("Copy link to table"))
+            .on_disabled_hover_text("Can't copy a link to this table")
+            .clicked()
+            && let Ok(url) = url
+        {
+            ctx.command_sender()
+                .send_system(SystemCommand::CopyViewerUrl(url));
+        }
+    });
+
     ctx.handle_select_hover_drag_interactions(&item_response, item.clone(), false);
     ctx.handle_select_focus_sync(&item_response, item.clone());
 
     if item_response.clicked() {
         ctx.command_sender()
-            .send_system(SystemCommand::SetRoute(Route::RedapEntry {
-                origin: origin.clone(),
-                entry_id: *entry_id,
-                kind: Some(re_viewer_context::EntryKind::Table),
-            }));
+            .send_system(SystemCommand::SetRoute(new_route));
         ctx.command_sender()
             .send_system(SystemCommand::set_selection(item));
     }
@@ -840,48 +906,73 @@ fn receiver_ui(
 
 /// Force the server item and all ancestor folder nodes for `item` to be expanded.
 ///
-/// Returns `true` once expansion completed (or the item doesn't need any), `false` if a
-/// dependent lookup (entry name) failed because the dataset list isn't loaded yet — in
-/// which case the caller should retry next frame.
+/// Returns `true` once expansion completes or the item needs no expansion.
+/// Returns `false` while the server or catalog entry is unavailable;
+/// the caller should retry next frame.
 fn expand_parents_for_item(
-    egui_ctx: &egui::Context,
+    ctx: &AppContext<'_>,
     recording_panel_data: &RecordingPanelData<'_>,
     item: &Item,
 ) -> bool {
-    let force_open = |id| {
-        let mut state = CollapsingState::load_with_default_open(egui_ctx, id, true);
-        state.set_open(true);
-        state.store(egui_ctx);
-    };
-
-    let expand_folder_path = |path: &str| {
-        for ancestor in ancestor_folder_paths(path) {
-            force_open(dataset_group_id(ancestor));
-        }
-    };
-
     match item {
         Item::RedapServer(origin) => {
-            force_open(server_item_id(origin));
+            expand_node(ctx.egui_ctx, server_item_id(origin));
             true
         }
-        Item::RedapEntry { origin, kind } => {
-            force_open(server_item_id(origin));
-            match kind {
-                RedapEntryKind::Folder(path) => {
-                    expand_folder_path(path);
-                    true
+
+        Item::RedapEntry { origin, kind } => match kind {
+            RedapEntryKind::Folder(path) => {
+                expand_node(ctx.egui_ctx, server_item_id(origin));
+                for ancestor in ancestor_folder_paths(path) {
+                    expand_node(ctx.egui_ctx, dataset_group_id(ancestor));
                 }
-                RedapEntryKind::Entry(entry_id) => expand_parent_folders_for_entry(
-                    egui_ctx,
-                    recording_panel_data,
-                    origin,
-                    *entry_id,
-                ),
+                true
             }
+            RedapEntryKind::Entry(entry_id) => expand_parent_folders_for_entry(
+                ctx.egui_ctx,
+                recording_panel_data,
+                origin,
+                *entry_id,
+            ),
+        },
+
+        Item::StoreId(store_id) => {
+            // Segment URLs select the recording, not its dataset entry. The recording can
+            // already be loaded while its Sources ancestors are collapsed or its catalog
+            // metadata is still loading.
+            let Some(recording) = ctx.store_hub().entity_db(store_id) else {
+                return true;
+            };
+            let re_entity_db::entity_db::EntityDbClass::DatasetSegment(uri) =
+                recording.store_class()
+            else {
+                return true;
+            };
+            let entry_id = uri.dataset_id.into();
+            if !expand_parent_folders_for_entry(
+                ctx.egui_ctx,
+                recording_panel_data,
+                &uri.origin,
+                entry_id,
+            ) {
+                return false;
+            }
+            expand_node(ctx.egui_ctx, dataset_item_id(&uri.origin, entry_id));
+            true
         }
         _ => true,
     }
+}
+
+fn expand_node(egui_ctx: &egui::Context, id: egui::Id) {
+    let mut state = CollapsingState::load_with_default_open(egui_ctx, id, true);
+    state.set_open(true);
+    state.store(egui_ctx);
+}
+
+/// The reveal pass needs this ID even when collapsed ancestors prevent creation of the dataset UI.
+fn dataset_item_id(origin: &re_uri::Origin, entry_id: re_log_types::EntryId) -> egui::Id {
+    egui::Id::unique((origin, entry_id, "dataset_item"))
 }
 
 fn server_item_id(origin: &re_uri::Origin) -> egui::Id {
@@ -906,11 +997,13 @@ fn expand_parent_folders_for_entry(
             return false;
         };
 
-        expand_folder_nodes_containing_entry(egui_ctx, entry_tree, entry_id);
-        return true;
+        if expand_folder_nodes_containing_entry(egui_ctx, entry_tree, entry_id) {
+            expand_node(egui_ctx, server_item_id(origin));
+            return true;
+        }
     }
 
-    true
+    false
 }
 
 fn expand_folder_nodes_containing_entry(
@@ -931,13 +1024,7 @@ fn expand_folder_nodes_containing_entry(
                 ..
             } => {
                 if expand_folder_nodes_containing_entry(egui_ctx, children, entry_id) {
-                    let mut state = CollapsingState::load_with_default_open(
-                        egui_ctx,
-                        dataset_group_id(path_prefix),
-                        true,
-                    );
-                    state.set_open(true);
-                    state.store(egui_ctx);
+                    expand_node(egui_ctx, dataset_group_id(path_prefix));
                     return true;
                 }
             }

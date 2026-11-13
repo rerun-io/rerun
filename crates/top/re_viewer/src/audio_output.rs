@@ -1,6 +1,6 @@
 //! The viewer's shared audio output.
 
-/// The one audio output of the viewer, owned by [`crate::AppState`].
+/// The one audio output of the viewer, owned by `AppCore`.
 ///
 /// Empty when built without the `audio` feature.
 #[derive(Default)]

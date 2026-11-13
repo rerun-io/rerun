@@ -42,8 +42,7 @@ pub struct ChunkMeta {
     pub byte_size_uncompressed: u64,
 
     /// Component columns with data in this chunk — a non-null range on some timeline, or the
-    /// static flag — with the type each carries when it has one. An all-null temporal column is
-    /// absent.
+    /// static flag — with the type each carries when it has one. An all-null column is absent.
     pub components: ComponentSet,
 }
 
@@ -444,7 +443,7 @@ mod tests {
         let static_chunk = Chunk::builder_with_id(ChunkId::from_u128(1), "static_entity")
             .with_serialized_batches(
                 RowId::from_u128(1 << 32),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [MyColor::from_iter(0..=0).try_serialized(MyPoints::descriptor_colors())?],
             )
             .build()?;

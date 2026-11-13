@@ -15,7 +15,7 @@ pub fn test_pinhole_camera() {
     test_context.log_entity("world/camera", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &Pinhole::from_focal_length_and_resolution([3., 3.], [3., 3.])
                 .with_color(Color::from_rgb(255, 144, 1)) // #FF9001
                 .with_line_width(Radius::new_ui_points(2.0)),

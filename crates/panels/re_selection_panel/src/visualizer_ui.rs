@@ -144,7 +144,7 @@ pub fn visualizer_ui_impl(
                 if let Ok(visualizer) = all_visualizers.get_by_type_identifier(visualizer_type) {
                     ui.list_item()
                         .with_y_offset(1.0)
-                        .with_height(20.0)
+                        .with_density(re_ui::ListItemDensity::Compact)
                         .interactive(false)
                         .show_flat(
                             ui,
@@ -345,6 +345,7 @@ fn visualizer_components(
                     &data_result.entity_path,
                     target_component_descr,
                     current_value_row_id,
+                    source,
                     raw_current_value_array,
                 );
             }
@@ -804,7 +805,7 @@ mod tests {
 
     use arrow::datatypes::DataType;
     use re_sdk_types::archetypes::{GaussianSplats3D, Points3D};
-    use re_viewer_context::{ComponentMatch, SingleRequiredComponentMatch};
+    use re_viewer_context::SingleRequiredComponentMatch;
 
     fn positions() -> ComponentIdentifier {
         Points3D::descriptor_positions().component

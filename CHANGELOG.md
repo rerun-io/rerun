@@ -1,5 +1,280 @@
 # Rerun changelog
 
+## [0.43.2](https://github.com/rerun-io/rerun/compare/0.43.1...0.43.2) - 2026-11-13
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix points and depth clouds not rendering in Safari [988f847](https://github.com/rerun-io/rerun/commit/988f847b27b61d0853752d3a9163dd04d47f6ebf)
+- Detect Safari 27 and other WebKit browsers by user agent [b3606ff](https://github.com/rerun-io/rerun/commit/b3606ff8bb9e1e2c70ac7d3e91976e0f1c76a724)
+- Fix overwritten static `AnnotationContext` being ignored [#13011](https://github.com/rerun-io/rerun/pull/13011) (thanks [@m-pilia](https://github.com/m-pilia)!)
+
+## [0.43.1](https://github.com/rerun-io/rerun/compare/0.43.0...0.43.1) - 2026-11-11
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Backwards compatibility fix: Accept `snake_case` web viewer options again [92896c4](https://github.com/rerun-io/rerun/commit/92896c45dd23f9670a722eda65b0e7488cf20f04)
+
+
+## [0.43.0](https://github.com/rerun-io/rerun/compare/0.42.0...0.43.0) - 2026-11-11
+
+### ✨ Overview
+
+- [Pan and zoom](https://rerun.io/docs/changelog/changeset-0-43#pan-and-zoom-in-the-tensor-view) in the [tensor view](https://rerun.io/docs/reference/types/views/tensor_view) ([video](https://static.rerun.io/ea60f9e014adbbbcbec191d62bd096cd9599a7a4_tensor_view_zoom_viewer.mp4))
+- [Edit the translation](https://rerun.io/docs/changelog/changeset-0-43#edit-grid-and-volume-placement-and-voxel-size-in-the-viewer) of [`GridMap`](https://rerun.io/docs/reference/types/archetypes/grid_map), [`VoxelGridMap`](https://rerun.io/docs/reference/types/archetypes/voxel_grid_map), and [`Volume3D`](https://rerun.io/docs/reference/types/archetypes/volume3d) in the viewer, and the voxel size of `VoxelGridMap` and `Volume3D` ([video](https://static.rerun.io/81609249d07ae1aa5c7cd1cfc0f18b1c93fd959e_volume_translation_viewer.mp4))
+- New "Switch to newly streamed recordings" setting to stay on the current recording while new ones stream in
+- [Memory limits](https://rerun.io/docs/howto/visualization/limit-ram) respect cgroup limits on Linux
+- `TimelineInfo.kind` is now a `rerun.catalog.TimelineKind` enum
+
+#### 🧪 Experimental and unstable
+
+These may change in future releases, and unstable types may not stay backwards compatible.
+
+- Read the selection over ViewerControl with [`ViewerClient.get_selection()`](https://rerun.io/docs/howto/visualization/control-the-viewer#drive-a-running-viewer-from-python) in Python, [`WebViewer.getSelection()`](https://rerun.io/docs/howto/integrations/embed-web) in JavaScript, and the [`rerun_get_selection` MCP tool](https://rerun.io/docs/reference/viewer/mcp#what-the-agent-sees)
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-43#new-features
+
+### ⚠️ Breaking changes
+
+- [JavaScript API uses camelCase](https://rerun.io/docs/changelog/changeset-0-43#javascript-api-uses-camelcase)
+- [`object_store_config` renamed to `storage_location`](https://rerun.io/docs/changelog/changeset-0-43#object_store_config-renamed-to-storage_location)
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-43#breaking-changes
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Chunk indexing policy and dataset scope in the catalog API (Rerun Hub only) [b15b0a3](https://github.com/rerun-io/rerun/commit/b15b0a3e4d6205f297ed353c3f4160030588b250)
+- Rename `object_store_config` to [`StorageLocationAlias`](https://rerun.io/docs/changelog/changeset-0-43#object_store_config-renamed-to-storage_location) [e19b954](https://github.com/rerun-io/rerun/commit/e19b954fb25362cc6779ba6244655ca0395dd120)
+- Make `TimelineKind` a proper enum with `pa.DataType` conversion [e8aa7b9](https://github.com/rerun-io/rerun/commit/e8aa7b96ed3230f49fc55b7d95476d9a41d112f1)
+- Add [`get_selection`](https://rerun.io/docs/howto/visualization/control-the-viewer#drive-a-running-viewer-from-python) to ViewerControl [b51f120](https://github.com/rerun-io/rerun/commit/b51f120eae15ecbc063381062905bca25a7342dd)
+
+#### 🦀 Rust API
+- Rename `object_store_config` to `StorageLocationAlias` [e19b954](https://github.com/rerun-io/rerun/commit/e19b954fb25362cc6779ba6244655ca0395dd120)
+
+#### 🪳 Bug fixes
+- Fix `FindChunks` Samples returning another segment's chunks when segments share chunk ids [2468592](https://github.com/rerun-io/rerun/commit/2468592efc35c92eee3a2cc1b6c9fa3969763df1)
+- Return InvalidArgument for bad WriteTable batches [63543f7](https://github.com/rerun-io/rerun/commit/63543f7b33348fe6d5c098f06b40d77982ebd2c4)
+- Show an error page for invalid dataset links [a365205](https://github.com/rerun-io/rerun/commit/a365205d48f64017f17c1f2ca9a58dce686f3af1)
+- Fix preview prefetch time [3a5ffb2](https://github.com/rerun-io/rerun/commit/3a5ffb27c9facff86c522fa55efd3424df195ac3)
+- Fix collapsing selected servers with the chevron [6b4b08a](https://github.com/rerun-io/rerun/commit/6b4b08a21dc76d8941ffd2889b0a7e4e8f287fa2)
+- Fix initial [raw data view](https://rerun.io/docs/reference/types/views/raw_data_view) entity filter [bb934c2](https://github.com/rerun-io/rerun/commit/bb934c2c804983a6657506b0f3ab6c8c3d91efde)
+- Prevent source changes for read-only components [616fd7e](https://github.com/rerun-io/rerun/commit/616fd7ef1cd1101c072014a6716efdf13b39679e)
+- Clamp [MapView](https://rerun.io/docs/reference/types/views/map_view) default zoom level + fix collinear edgecase [#13007](https://github.com/rerun-io/rerun/pull/13007)
+- Support Wasm timers outside browser windows [e2ca642](https://github.com/rerun-io/rerun/commit/e2ca64231294991c3c6d7dcb8da67dbe5d8779fc)
+- Explain browser requirements when constructing [WebViewer](https://rerun.io/docs/howto/integrations/embed-web) in Node [a759c67](https://github.com/rerun-io/rerun/commit/a759c670eef6fb30b47a0635ce49b5eacbda13e0)
+- Fix agent panel: picking the local agent after a model API did nothing [7c63900](https://github.com/rerun-io/rerun/commit/7c6390074fb30e0a41ede87f58294d8fbc0bacd1)
+
+#### 🌁 Viewer improvements
+- Persist blueprints per segment id [1bbb761](https://github.com/rerun-io/rerun/commit/1bbb76167ddf807315f34be6cd9432880b706281)
+- Allow [grid](https://rerun.io/docs/reference/types/archetypes/grid_map) and [volume](https://rerun.io/docs/reference/types/archetypes/volume3d) size and pose overrides [4cb20ec](https://github.com/rerun-io/rerun/commit/4cb20ec444168b4bcb661f44d23e690ba73e2a0f)
+
+#### 🚀 Performance improvements
+- Fix slow component source dropdown for voxel data [fbdfc60](https://github.com/rerun-io/rerun/commit/fbdfc60b5668fdc4e2827ce9bb9c2feba2351224)
+- Don't draw [`Ellipses2D`](https://rerun.io/docs/reference/types/archetypes/ellipses2d) whose outline is out of view [#12995](https://github.com/rerun-io/rerun/pull/12995) (thanks [@michele-xilo](https://github.com/michele-xilo)!)
+
+#### 🖼 UI improvements
+- Add zoom support for [tensors](https://rerun.io/docs/reference/types/views/tensor_view) [f5e6e58](https://github.com/rerun-io/rerun/commit/f5e6e58fd71631dc049905af0f7154afc8dd56bc)
+
+#### 🕸️ Web
+- Use [camelCase](https://rerun.io/docs/changelog/changeset-0-43#javascript-api-uses-camelcase) in the TypeScript/JavaScript viewer API [a70da8a](https://github.com/rerun-io/rerun/commit/a70da8abed8bfba14b0cbc13ac672189f1661ab5)
+
+#### 🤷‍ Other
+- Add a setting to stay on the current recording while new ones stream in [#12978](https://github.com/rerun-io/rerun/pull/12978) (thanks [@frederiksemmel](https://github.com/frederiksemmel)!)
+- Add `DatasetQueryScope` to `FindChunks` and route it in the clients (Rerun Hub only) [a8d5ea2](https://github.com/rerun-io/rerun/commit/a8d5ea286f8d4547d2ba47a1e5605ee16ab0a60a)
+
+## [0.42.0](https://github.com/rerun-io/rerun/compare/0.41.0...0.42.0) - 2026-11-04
+
+### ✨ Overview & highlights
+
+- New [Raw Data view](https://rerun.io/docs/changelog/changeset-0-42#raw-data-view) to inspect an entity's components, including nested fields and individual instances
+
+  <picture>
+    <img src="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/full.png" alt="The Raw Data view showing the components of an entity">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/1024w.png">
+  </picture>
+
+- [Schema tab for datasets](https://rerun.io/docs/changelog/changeset-0-42#schema-tab-for-datasets), showing the combined [schema](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#schema) of all layers as a searchable entity tree
+
+  <picture>
+    <img src="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/full.png" alt="The schema tab of a dataset, with the entity tree on the left and the components of the selected entity on the right">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dataset_schema_tab/0d89f852f6fc0d912e2b96e426b31c0a8ad66a9f/1200w.png">
+  </picture>
+
+- Hovering a tensor in the [tensor view](https://rerun.io/docs/reference/types/views/tensor_view) shows a zoomed preview and the value of the element under the cursor
+
+  <img src="https://static.rerun.io/tensor-view-hover/9e0adf6a485257e0e0721130bd28f3c557e7d005/full.png" alt="Tooltip over a tensor showing a zoomed preview, the element index and its value">
+
+- [Give table columns semantic meaning](https://rerun.io/docs/howto/query-and-transform/catalog-tables#give-columns-semantic-meaning) with `Component.table_field()`, optionally editable without a table blueprint
+- `Layer.schema()` and `DatasetSelection.info()` in the Python catalog API
+- Catalog folders have clickable breadcrumbs, and folders and tables can copy a link to themselves
+- Layer names show as tags in segment tables
+- Repeated notifications merge into one
+- The gRPC server and proxy accept browser connections from `rerun.io` subdomains by default
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-42#highlights
+
+### ⚠️ Breaking changes
+
+- [`DatasetSelection.schema()` covers only the selected segments](https://rerun.io/docs/changelog/changeset-0-42#datasetselectionschema-covers-only-the-selected-segments)
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-42#breaking-changes
+
+### 🔎 Details
+
+#### 🐍 Python API
+- Better [table schema API](https://rerun.io/docs/howto/query-and-transform/catalog-tables#give-columns-semantic-meaning) [6001efd](https://github.com/rerun-io/rerun/commit/6001efd9c92cd8b57a3cdff969ff1179b5c12fec)
+- Add `layer.schema()` [022859f](https://github.com/rerun-io/rerun/commit/022859f5b65da70d64c20fc07e499cec78b7b403)
+- Add `selection.info()` to `DatasetSelection` [86f9bc9](https://github.com/rerun-io/rerun/commit/86f9bc9dcf7ac400c616b67fb42dbf52651b435c)
+- `DatasetSelection.schema` now takes into account the segment selection [826dc6e](https://github.com/rerun-io/rerun/commit/826dc6e493eda05a65f167303c6bb97bfa50d309)
+
+#### 🦀 Rust API
+- Update `arrow_rs` to 58.4.1 [a38ef38](https://github.com/rerun-io/rerun/commit/a38ef386d6eb042fe495f1dcd79d7bc657ba0381)
+
+#### 🪳 Bug fixes
+- Don't crash the headless viewer on characters no font can draw [#12980](https://github.com/rerun-io/rerun/pull/12980) (thanks [@jaeminbird](https://github.com/jaeminbird)!)
+- Don't panic on broken pipe [13efe4d](https://github.com/rerun-io/rerun/commit/13efe4de084822693b8eb22c9cf84868b1ba17bb)
+- Draw 2D points above lines again by default [a235fbc](https://github.com/rerun-io/rerun/commit/a235fbc072e3624e9ba0a6c75a472bc8430b52f0)
+- Smoother `Ellipses2D` outlines when zoomed in [#12988](https://github.com/rerun-io/rerun/pull/12988) (thanks [@michele-xilo](https://github.com/michele-xilo)!)
+- Pass `--time_timestamp_nanos` to external importers for timestamp timelines [d98777b](https://github.com/rerun-io/rerun/commit/d98777b249856072e3e38c4ab26cf5ab9618ea67)
+- Return InvalidArgument when registering a non-RRD file [7e5529e](https://github.com/rerun-io/rerun/commit/7e5529e2417097f7f940d451edaa7125b6033339)
+- Classify all RRD decode errors from user files as client errors [a6175b1](https://github.com/rerun-io/rerun/commit/a6175b142baece9ec0c2a10552fad9f36fdf9d90)
+- Fix welcome screen flicker while the viewer connects to a server [43e7161](https://github.com/rerun-io/rerun/commit/43e7161868bcbe80d09be22084b1422f1bbb2364)
+- Align catalog breadcrumbs with the title below them [8ae43b7](https://github.com/rerun-io/rerun/commit/8ae43b790bf2e00985137e2617a0c062d68a1faa)
+- Show item tooltips in the selection history menu [544c33d](https://github.com/rerun-io/rerun/commit/544c33dc24fb8cee971dfe8f2de0730e359023d7)
+- Fix invisible play/pause icon on table previews in light mode [4f16dff](https://github.com/rerun-io/rerun/commit/4f16dff27e11cae78f938f01f36b4b46c187848c)
+- Keep selected text readable in text edits [cd45097](https://github.com/rerun-io/rerun/commit/cd450978fa9f85335a0ee65df027cbf4f970b2d7)
+- Center value toggles correctly [0bb3b58](https://github.com/rerun-io/rerun/commit/0bb3b5828eca58ae290a5c4855f89211497007b0)
+
+#### 🌁 Viewer improvements
+- Add new [Raw Data view](https://rerun.io/docs/changelog/changeset-0-42#raw-data-view) [c2e5b74](https://github.com/rerun-io/rerun/commit/c2e5b74f8fe371082cc64d5786d92ca8153267fd)
+- Dataset [Schema](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#schema) Tab [d6de728](https://github.com/rerun-io/rerun/commit/d6de728c57f165be14344e07ffbd99015c2012fd)
+- Make dataset folder paths clickable with breadcrumbs [131096b](https://github.com/rerun-io/rerun/commit/131096bae6941ef85e2fd7793f6d1dcf1fe29e06)
+- Add "Copy link to folder" to folder context menu [28021de](https://github.com/rerun-io/rerun/commit/28021de775dbe081e7dfc977680afb1bf609d164)
+- Layer names component UI [0a4c196](https://github.com/rerun-io/rerun/commit/0a4c1967e68d67c4b9dda9439f8d08ae0dbe6a1e)
+- Merge repeated notifications into one [8e02bd4](https://github.com/rerun-io/rerun/commit/8e02bd45a5d65297c18e5f1fe0d4a253535203f3)
+
+#### 🚀 Performance improvements
+- Store uncompressed chunks where optimal [f63cf29](https://github.com/rerun-io/rerun/commit/f63cf298d80b7096c5ef1f6267e6a5ac239e927b)
+- dataloader: Skip copying the first use of each decoded video frame [8217e81](https://github.com/rerun-io/rerun/commit/8217e814932c79c3b2e8cbf4f5aec87aecfd12c7)
+
+#### 🖼 UI improvements
+- Support [tensor](https://rerun.io/docs/reference/types/views/tensor_view) hover previews [ee88e60](https://github.com/rerun-io/rerun/commit/ee88e60c94fce20f57a07665d3980757b422cb3a)
+
+#### 🕸️ Web
+- Allow rerun.io subdomains in the default gRPC CORS allowlist [0dbaf30](https://github.com/rerun-io/rerun/commit/0dbaf30bda24ba6d816d7c6e1370a393e4d4f553)
+
+
+## [0.41.0](https://github.com/rerun-io/rerun/compare/0.40.0...0.41.0) - 2026-10-28
+
+### ✨ Overview & highlights
+
+- [Automatic visualization of raw ROS messages](https://rerun.io/docs/concepts/logging-and-ingestion/mcap/message-formats#visualizing-ros-2-messages-without-conversion): the Viewer sets up [component mappings](https://rerun.io/docs/howto/visualization/component-mappings) for common `std_msgs` and `sensor_msgs` types
+
+  <picture>
+    <img src="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/full.png" alt="ROS sensor messages shown as measurements with units and variance bands">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/heuristic-lensing/f688680e5a84910692f11448f309a310e8085497/1200w.png">
+  </picture>
+
+- [New streaming dataset-query pipeline](https://rerun.io/docs/changelog/changeset-0-41#new-streaming-dataset-query-pipeline-enabled-by-default), enabled by default, with bounded memory and reliable cancellation
+- Copy table cells, rows, and selected rows from the context menu
+
+  <img src="https://static.rerun.io/77853dcf01bfb9f5315d9bb4c6a4b81632895774_table_copy_context_menu.png" alt="Table context menu with Copy cell, Copy row, and Copy selected rows">
+
+- Hovering a truncated value shows all of it in a tooltip ([video](https://static.rerun.io/0da2574c1cf47ede4ed35a2c5310fef516865dd1_truncated_value_tooltip.mp4))
+- The text log view loads data lazily and scales to much larger logs
+- The web viewer wasm is served with Brotli, a 35% smaller download
+
+#### 🧪 Experimental and unstable
+
+These may change in future releases, and unstable types may not stay backwards compatible.
+
+- [Table columns show and edit any component type](https://rerun.io/docs/howto/visualization/configure-table-blueprints#editing-columns) ([video](https://static.rerun.io/5f7a1167b2174451397129941509c166b25ef807_table_column_types_v2.mp4))
+- Python `ViewerClient` can read schemas, read and write blueprints, run commands, and take screenshots
+- [Typed viewer API in the JS web viewer](https://rerun.io/docs/howto/integrations/embed-web), with a [`viewer_control` example](https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control)
+- [Segment preview time controls](https://rerun.io/docs/howto/visualization/configure-table-blueprints#configuring-card-and-table-layouts) in the table blueprint
+
+📖 Release notes: https://rerun.io/docs/changelog/changeset-0-41#highlights
+
+### ⚠️ Breaking changes
+
+- [Chained `filter_contents()` calls intersect](https://rerun.io/docs/changelog/changeset-0-41#chained-filter_contents-calls-intersect)
+- [Table blueprints: `Column(cell=…)` is now `Column(column_type=…)`, and the `*Cell` classes are removed](https://rerun.io/docs/changelog/changeset-0-41#table-blueprints-columncell-is-now-columncolumn_type)
+- [Duplicate and segment-limit registration failures are reported by the registration task](https://rerun.io/docs/changelog/changeset-0-41#duplicate-and-segment-limit-registration-failures-are-reported-by-the-registration-task)
+- [`ViewerClient.set_time` takes a `play_state`](https://rerun.io/docs/changelog/changeset-0-41#viewerclientset_time-takes-a-play_state)
+- [Rust 1.98 is the minimum supported version](https://rerun.io/docs/changelog/changeset-0-41#update-to-rust-198)
+- [Rust: `build_info()` removed, the binary passes in its build info](https://rerun.io/docs/changelog/changeset-0-41#rust-build_info-removed-the-binary-passes-in-its-build-info)
+
+🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-41#breaking-changes
+
+### 🔎 Details
+
+#### 🌊 C++ API
+- Configurable gRPC flush timeout in the C and C++ SDKs [595ba5f](https://github.com/rerun-io/rerun/commit/595ba5f8d74cdca0a284e4da7e646edba2360a12)
+
+#### 🐍 Python API
+- Add every ViewerControl operation to the Python ViewerClient [4e7c6f0](https://github.com/rerun-io/rerun/commit/4e7c6f0d6ffa4200d27f14aec80dcbad7b63de8d)
+- Improve `SetTimeCursor` `ViewerControl` API [d0ec12d](https://github.com/rerun-io/rerun/commit/d0ec12d35b999be3ec341d28dd9058a0180b569d)
+- Rename `GetViewerState` to `GetState` [2a19757](https://github.com/rerun-io/rerun/commit/2a19757dbef09d18ae256bc62aee321d0087921d)
+- Fetch the dataset schema once per dataset revision [aa0bfe3](https://github.com/rerun-io/rerun/commit/aa0bfe3aa23a5337953ac446ef78df0e0e2f68b2)
+- Optionally account for assets with `segment.schema()` and use `/GetSchemas` when available [01054be](https://github.com/rerun-io/rerun/commit/01054be1062e33b75c4dd71c08677ebc5cfd2bde)
+
+#### 🦀 Rust API
+- Update to Rust 1.98.1 [344e1c9](https://github.com/rerun-io/rerun/commit/344e1c959863dd154c719646ab322d49ab9f5b8a)
+- Only embed build info in top-level binaries [fa4f449](https://github.com/rerun-io/rerun/commit/fa4f449282e84f3b3a981b7ba6b8900d644963cf)
+
+#### 🪳 Bug fixes
+- Rely on TLS certificates provided by the OS for all requests [6aae3bb](https://github.com/rerun-io/rerun/commit/6aae3bbc098d44325dca29dce45e3d1f04be0010)
+- Bump pulldown-cmark to 0.13.5 for RUSTSEC-2026-0414 [6da992a](https://github.com/rerun-io/rerun/commit/6da992aa994ef2ae2db7c17bc7a7744e5892f3a4)
+- Fix incorrect behavior of `DatasetSelection` with no segments selected [2430ac9](https://github.com/rerun-io/rerun/commit/2430ac9f959a1ebcdddc224705143cc5f5af07fe)
+- Prevent overwrites from concurrent write access grants [b2639ae](https://github.com/rerun-io/rerun/commit/b2639aefc0cbee10110fbc388a3d7cf1da55130b)
+- Fix chunk-scanner cache memory accounting [40c31ae](https://github.com/rerun-io/rerun/commit/40c31ae0c607185f0369948dbb25159b74e0dcd9)
+- Loading spinner next to Catalog name for ongoing registrations [0c35191](https://github.com/rerun-io/rerun/commit/0c351910ba67d9aa5f3f60f7956dbf4d978cfc21)
+- Fix default blueprint sometimes not loading for recordings that were shown as previews [c79700f](https://github.com/rerun-io/rerun/commit/c79700f44951288a188d55f22251085ef6f235e6)
+- Fix empty rows for video streams & encoded images [c50ba3a](https://github.com/rerun-io/rerun/commit/c50ba3ab09dbc886e8f5f90efac612ce1aa355b7)
+- Keep up better when keyframes are logged in the live case [6c6d00a](https://github.com/rerun-io/rerun/commit/6c6d00af621fa273668698eacfc52bdcbf9902ff)
+- Fix undo history filling up when the JS or gRPC API changes the time [447b630](https://github.com/rerun-io/rerun/commit/447b6302f6a5141a04b92728b850f697287400c6)
+- Fix hardcoded units in spatial depth labels [a576790](https://github.com/rerun-io/rerun/commit/a576790ff24ff7949eff870a21d769676b764720)
+- Fix Arrow type hover labels overlapping scrollbars [7050fa0](https://github.com/rerun-io/rerun/commit/7050fa06268ef031762bc27ca5eafcf283e10ce0)
+- Fix `missing grpc-status trailer` on web viewer [9c4e5c4](https://github.com/rerun-io/rerun/commit/9c4e5c484dd1a91e791f1cb0cba850d7aaf5e016)
+- Web viewer: import `./re_viewer.js` with its extension, so it works without a bundler [f3e2374](https://github.com/rerun-io/rerun/commit/f3e2374618ab8dcd0e25013b48b96a0c242532b9)
+- Fix audio issues on web [a9880d0](https://github.com/rerun-io/rerun/commit/a9880d034f7ffa8d0b8255147dafcdfcc6afca2d)
+
+#### 🌁 Viewer improvements
+- Automatic [visualization of raw ROS messages](https://rerun.io/docs/concepts/logging-and-ingestion/mcap/message-formats#visualizing-ros-2-messages-without-conversion) through heuristic component mappings [e88ef2e](https://github.com/rerun-io/rerun/commit/e88ef2e36b0a89e990adf85e34ace2de38929443)
+- Use rerun components for [table columns](https://rerun.io/docs/howto/visualization/configure-table-blueprints#editing-columns) [f4626ea](https://github.com/rerun-io/rerun/commit/f4626eac072a96ceb4d43d86aab15564329aa339)
+- Show arrow ui tooltip when hovering truncated table fields [24b39d1](https://github.com/rerun-io/rerun/commit/24b39d1dd1750bc211f0cb2c570d54b3c08f7b0c)
+- [Preview time controls](https://rerun.io/docs/howto/visualization/configure-table-blueprints#configuring-card-and-table-layouts) in blueprint [a3e5790](https://github.com/rerun-io/rerun/commit/a3e57906fd6de78e728d73f5b766aadb3aa987b7)
+- Start previews at their midpoint [b9a651e](https://github.com/rerun-io/rerun/commit/b9a651e19a8bd580271882d5e5fe226201b71c4e)
+
+#### 🗄️ OSS server
+- Report duplicate and segment-limit registration failures through the registration task [f9eb37f](https://github.com/rerun-io/rerun/commit/f9eb37f2be2e5910504f3bec8ca908602aee5eea)
+
+#### 🚀 Performance improvements
+- Text log view no longer queries entire timeline, making it much more scalable [f6161a3](https://github.com/rerun-io/rerun/commit/f6161a30a15ef75c9859c55431f2bd237b13d202)
+- Serve the web viewer wasm with Brotli (35% smaller download) [aca2d09](https://github.com/rerun-io/rerun/commit/aca2d09eb8e0bedae92ac357788312c5b89da021)
+
+#### 🖼 UI improvements
+- Allow copying table cells and rows [7947439](https://github.com/rerun-io/rerun/commit/7947439cd07e26d82eafbc517b2765f4e7a82d68)
+
+#### 🕸️ Web
+- Add WebViewer methods for all ViewerControl commands [6b16fd7](https://github.com/rerun-io/rerun/commit/6b16fd7a734aa3936a54487bf54b937461433da2)
+- Move the WebViewer time and recording methods onto the Viewer Control API [e5fc7f0](https://github.com/rerun-io/rerun/commit/e5fc7f0885496c25aa294a3448140806c6f5c5ea)
+- Async WebViewer.open and close, through ViewerControl [b4b4a11](https://github.com/rerun-io/rerun/commit/b4b4a11260074ba4c2273e37e2072736a1f81946)
+- Take screenshots over ViewerControl as PNG bytes, and in the web viewer [16350de](https://github.com/rerun-io/rerun/commit/16350de62d7b3c818ea47bab0dee940887d1af19)
+
+#### 🤷‍ Other
+- Replace `cargo-run-wasm` with a Python script for `re_renderer` web examples [#12982](https://github.com/rerun-io/rerun/pull/12982) (thanks [@michele-xilo](https://github.com/michele-xilo)!)
+
 ## [0.40.0](https://github.com/rerun-io/rerun/compare/0.39.0...0.40.0) - 2026-10-21
 
 ### ✨ Overview & highlights

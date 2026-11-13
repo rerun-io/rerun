@@ -45,7 +45,7 @@ pub enum Mode {
     /// Emit an `AssetVideo` blob chunk plus a `VideoFrameReference` index chunk.
     ///
     /// `timepoint` is placed on the `AssetVideo` blob chunk. Public callers
-    /// generally pass `TimePoint::default()` (static); the file importer passes
+    /// generally pass `TimePoint::STATIC`; the file importer passes
     /// its enriched timepoint with a zero-duration cell on the `video`
     /// timeline plus any `created_at` / `modified_at` cells.
     Asset { timepoint: TimePoint },

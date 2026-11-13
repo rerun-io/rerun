@@ -145,8 +145,9 @@ impl TimeType {
             _ => match self {
                 Self::Sequence => format!("#{}", re_format::format_int(time_int.as_i64())),
                 Self::DurationNs => super::Duration::from(time_int).format_secs(subsecond_decimals),
-                Self::TimestampNs => super::Timestamp::from(time_int)
-                    .format_opt(timestamp_format, subsecond_decimals),
+                Self::TimestampNs => {
+                    timestamp_format.format_nanos_opt(time_int.as_i64(), subsecond_decimals)
+                }
             },
         }
     }
@@ -308,7 +309,7 @@ mod tests {
             (TimeInt::MIN, "beginning"),
             (TimeInt::MAX, "end"),
             (TimeInt::new_temporal(-42), "#−42"),
-            (TimeInt::new_temporal(12345), "#12 345"),
+            (TimeInt::new_temporal(12345), "#12 345"),
         ];
 
         for (int, s) in cases {

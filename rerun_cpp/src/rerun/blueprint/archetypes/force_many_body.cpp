@@ -16,47 +16,4 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> ForceManyBody::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(2);
-        if (enabled.has_value()) {
-            columns.push_back(enabled.value().partitioned(lengths_).value_or_throw());
-        }
-        if (strength.has_value()) {
-            columns.push_back(strength.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> ForceManyBody::columns() {
-        if (enabled.has_value()) {
-            return columns(std::vector<uint32_t>(enabled.value().length(), 1));
-        }
-        if (strength.has_value()) {
-            return columns(std::vector<uint32_t>(strength.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::ForceManyBody>::as_batches(
-            const blueprint::archetypes::ForceManyBody& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(2);
-
-        if (archetype.enabled.has_value()) {
-            cells.push_back(archetype.enabled.value());
-        }
-        if (archetype.strength.has_value()) {
-            cells.push_back(archetype.strength.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

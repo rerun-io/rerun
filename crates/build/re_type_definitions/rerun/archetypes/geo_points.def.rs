@@ -3,7 +3,7 @@
 
 /// Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 ///
-/// \example archetypes/geo_points_simple title="Log a geospatial point" image="https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/1200w.png"
+/// \example archetypes/geo_points_simple title="Log a geospatial point" image="https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/1200w.png" alt="Map view with a single red point placed near Slussen in central Stockholm on an OpenStreetMap background"
 #[rerun::rerun_type]
 #[docs(category = "Geospatial")]
 #[docs(view_types = "MapView")]

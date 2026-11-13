@@ -698,8 +698,7 @@ impl EyeController {
             return GamepadNavigationStatus::Disconnected;
         }
 
-        let repaint_ctx = egui_ctx.clone();
-        re_gamepad::set_event_waker(move || repaint_ctx.request_repaint());
+        re_gamepad::set_event_waker(egui_ctx.ui_waker());
 
         let dt = egui_ctx.input(|input| input.stable_dt.at_most(0.1));
         let Some(navigation) = re_gamepad::navigation_from_active_gamepad(dt) else {

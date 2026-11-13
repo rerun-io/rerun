@@ -1,11 +1,16 @@
+use egui::class::HasClasses as _;
 use egui::{
-    Align, Atom, Button, Color32, Image, Layout, Popup, RichText, Sense, TextStyle, include_image,
+    Align, Atom, Button, Color32, Image, Layout, Popup, RichText, Sense, TextStyle, UiBuilder,
+    include_image,
 };
 use emath::{Rect, RectAlign, Vec2};
 use re_format::format_uint;
 use re_renderer::WgpuResourcePoolStatistics;
-use re_ui::{ContextExt as _, UICommand, UICommandSender as _, UiExt as _, icons};
-use re_viewer_context::{ActiveStoreContext, StoreHub, SystemCommand, SystemCommandSender as _};
+use re_ui::ButtonExt as _;
+use re_ui::{ContextExt as _, Size, UICommand, UICommandSender as _, UiExt as _, icons};
+use re_viewer_context::{
+    ActiveStoreContext, RecordingCommandKind, StoreHub, SystemCommand, SystemCommandSender as _,
+};
 
 use crate::AppCore;
 use crate::app_blueprint::AppBlueprint;
@@ -68,14 +73,12 @@ pub fn top_panel(
             let title_bar_response = ui.interact(
                 ui.max_rect(),
                 ui.make_persistent_id("background"),
-                egui::Sense::click(),
+                egui::Sense::click_and_drag(),
             );
             if title_bar_response.double_clicked() {
                 let maximized = ui.input(|i| i.viewport().maximized.unwrap_or(false));
                 ui.send_viewport_cmd(egui::ViewportCommand::Maximized(!maximized));
-            } else if title_bar_response.is_pointer_button_down_on() {
-                // TODO(emilk): This should probably only run on `title_bar_response.drag_started_by(PointerButton::Primary)`,
-                // see https://github.com/emilk/egui/pull/4656
+            } else if title_bar_response.drag_started_by(egui::PointerButton::Primary) {
                 ui.send_viewport_cmd(egui::ViewportCommand::StartDrag);
             }
         }
@@ -85,14 +88,25 @@ pub fn top_panel(
             ui.add_space(top_bar_style.indent);
 
             if show_content {
-                top_bar_ui(
-                    frame,
-                    app,
-                    app_blueprint,
-                    store_context,
-                    store_hub,
-                    ui,
-                    gpu_resource_stats,
+                // The title bar is roomier than a list item, so everything in it is one size up.
+                // The widgets inherit this, and only need to say so if they want something else.
+                ui.scope_builder(
+                    UiBuilder::new().with_class(Size::Small.class_name()),
+                    |ui| {
+                        // The buttons carry their own padding at this size, so the gap between
+                        // them is already wide enough without the full item spacing on top.
+                        ui.spacing_mut().item_spacing.x = 4.0;
+
+                        top_bar_ui(
+                            frame,
+                            app,
+                            app_blueprint,
+                            store_context,
+                            store_hub,
+                            ui,
+                            gpu_resource_stats,
+                        );
+                    },
                 );
             }
         });
@@ -157,7 +171,11 @@ fn top_bar_ui(
 
                 show_memory_tab |=
                     fixed_width_diagnostic_ui(ui, "9999.9 GiB", &TextStyle::Monospace, |ui| {
-                        memory_use_label_ui(ui, gpu_resource_stats, &app.external_memory_users)
+                        memory_use_label_ui(
+                            ui,
+                            gpu_resource_stats,
+                            &app.memory.external_memory_users,
+                        )
                     });
                 fixed_width_diagnostic_ui(ui, "9999.9 ms", &TextStyle::Monospace, |ui| {
                     frame_time_label_ui(ui, app);
@@ -222,8 +240,9 @@ fn top_bar_ui(
                 ui.separator();
             } else {
                 // Make the first button the same distance form the side as from the top,
-                // no matter how high the top bar is.
-                let extra_margin = (ui.available_height() - 24.0) / 2.0;
+                // no matter how high the top bar is. The button's height comes from the theme, so
+                // ask it rather than assuming one.
+                let extra_margin = (ui.available_height() - Size::inherited(ui).height()) / 2.0;
                 ui.add_space(extra_margin);
             }
 
@@ -233,7 +252,7 @@ fn top_bar_ui(
                 connection_status_ui(
                     ui,
                     &mut app.connections.latency_trackers,
-                    app.state.navigation.current(),
+                    app.navigation.routes.current(),
                     store_hub,
                 );
             }
@@ -287,7 +306,6 @@ fn command_palette_trigger_ui(
     const NAVIGATION_GAP: f32 = 8.0;
 
     let navigation_buttons_state = navigation_buttons_state(app);
-    let agent_enabled = cfg!(agent_panel) && app.app_options().experimental.agent_panel;
     let navigation_width = if navigation_buttons_state.is_visible() {
         2.0 * NAVIGATION_BUTTON_SIZE + NAVIGATION_GAP
     } else {
@@ -325,43 +343,18 @@ fn command_palette_trigger_ui(
     let button = Button::image_and_text(
         icons::SEARCH
             .as_image()
-            .fit_to_exact_size(ui.tokens().small_icon_size),
-        RichText::new(if agent_enabled {
-            "Search commands or ask agent…"
-        } else {
-            "Search commands…"
-        })
-        .color(subdued_color),
+            .fit_to_exact_size(ui.tokens().small_icon_size)
+            .tint(subdued_color),
+        RichText::new("Search commands or ask agent…").color(subdued_color),
     )
     .truncate()
     .right_text(RichText::new(shortcut).color(subdued_color))
-    .image_tint_follows_text_color(true)
-    .corner_radius(ui.tokens().normal_corner_radius())
+    .outlined()
+    // The icon is already tinted like the text; following the variant's text color would darken it.
+    .image_tint_follows_text_color(false)
     .min_size(button_rect.size());
 
-    let top_bar_color = ui.tokens().top_bar_color;
-    let border = ui.visuals().widgets.noninteractive.bg_stroke;
-    let response = ui
-        .scope(|ui| {
-            ui.spacing_mut().button_padding = egui::vec2(8.0, 0.0);
-
-            let widgets = &mut ui.visuals_mut().widgets;
-            widgets.inactive.bg_fill = top_bar_color;
-            widgets.inactive.weak_bg_fill = top_bar_color;
-            for widget in [
-                &mut widgets.inactive,
-                &mut widgets.hovered,
-                &mut widgets.active,
-                &mut widgets.open,
-            ] {
-                widget.bg_stroke = border;
-                widget.fg_stroke.color = subdued_color;
-                widget.expansion = 0.0;
-            }
-
-            ui.place(button_rect, button)
-        })
-        .inner;
+    let response = ui.place(button_rect, button);
 
     if response.clicked() {
         app.command_sender.send_ui(UICommand::ToggleCommandPalette);
@@ -406,8 +399,8 @@ fn navigation_buttons_state(app: &AppCore) -> NavigationButtonsState {
     }
 
     NavigationButtonsState::Visible {
-        can_go_back: app.state.history.has_back(),
-        can_go_forward: app.state.history.has_forward(),
+        can_go_back: app.navigation.history.has_back(),
+        can_go_forward: app.navigation.history.has_forward(),
     }
 }
 
@@ -467,7 +460,10 @@ fn navigation_button(
     command: UICommand,
     rect: Rect,
 ) {
-    let button = ui.small_icon_button_widget(icon, alt_text);
+    // The buttons are placed edge to edge in `rect`, so they must not grow to the top bar's size.
+    let button = ui
+        .small_icon_button_widget(icon, alt_text)
+        .size(Size::custom(rect.height()));
     let response = ui
         .add_enabled_ui(enabled, |ui| ui.place(rect, button))
         .inner;
@@ -547,7 +543,7 @@ fn software_rasterizer_warning_ui(ui: &mut egui::Ui, info: &wgpu::AdapterInfo) {
         egui::RichText::new("⚠ Software rasterizer")
             .small()
             .color(ui.visuals().warn_fg_color),
-        "https://www.rerun.io/docs/overview/installing-rerun/troubleshooting#graphics-issues",
+        "https://www.rerun.io/docs/getting-started/install-rerun/troubleshooting#graphics-issues",
     )
     .on_hover_ui(|ui| {
         ui.label("Software rasterizer detected - expect poor performance.");
@@ -664,19 +660,25 @@ fn panel_buttons_r2l(
     ui: &mut egui::Ui,
     store_hub: &StoreHub,
 ) {
-    #[cfg(agent_panel)]
-    if app.app_options().experimental.agent_panel {
-        let mut open = app.agent_panel_open();
-        if ui
-            .medium_icon_toggle_button(&re_ui::icons::AGENT, "Agent panel toggle", &mut open)
-            .on_hover_ui(|ui| UICommand::ToggleAgentPanel.tooltip_ui(ui))
-            .clicked()
-        {
-            app.toggle_agent_panel();
-        }
+    // Square icon buttons already leave room around their icons, so the toggles sit closer
+    // together than the rest of the bar.
+    let item_spacing = ui.spacing().item_spacing.x;
+    ui.spacing_mut().item_spacing.x = 2.0;
+
+    let mut open = app.agent_panel_open();
+    let response = ui
+        .medium_icon_toggle_button(&re_ui::icons::AGENT, "Agent panel toggle", &mut open)
+        .on_hover_ui(|ui| UICommand::ToggleAgentPanel.tooltip_ui(ui));
+    ui.maybe_paint_discovery_dot(
+        response.rect,
+        re_ui::discovery::Feature::AgentPanel,
+        app.state.agent_panel_ever_opened,
+    );
+    if response.clicked() {
+        app.toggle_agent_panel();
     }
 
-    let route = app.state.navigation.current();
+    let route = app.navigation.routes.current();
 
     #[cfg(target_arch = "wasm32")]
     if app.is_fullscreen_allowed() {
@@ -723,7 +725,7 @@ fn panel_buttons_r2l(
                     "Time panel toggle",
                     &mut app_blueprint.time_panel_state().is_expanded(),
                 )
-                .on_hover_ui(|ui| re_ui::RecordingCommandKind::ToggleTimePanel.tooltip_ui(ui))
+                .on_hover_ui(|ui| RecordingCommandKind::ToggleTimePanel.tooltip_ui(ui))
                 .clicked()
             {
                 app_blueprint.toggle_time_panel(&app.command_sender);
@@ -751,19 +753,21 @@ fn panel_buttons_r2l(
 
     app.notifications.notification_toggle_button(ui);
 
-    let selection = app.state.selection_state.selected_items();
+    ui.spacing_mut().item_spacing.x = item_spacing;
+
+    let selection = app.selection_state.selected_items();
     let time_ctrl = app
         .active_recording_id()
-        .and_then(|id| app.state.time_controls.get(id));
-    app.state.share_modal.button_ui(
+        .and_then(|id| app.stores.time_controls.get(id));
+    app.modals.share.button_ui(
         ui,
         store_hub,
-        app.state.navigation.current(),
+        app.navigation.routes.current(),
         time_ctrl,
         selection,
     );
 
-    if let Some(auth) = &app.state.auth_state
+    if let Some(auth) = &app.connections.auth
         && !app.is_screenshotting()
     {
         let user_icon_size = 16.0;
@@ -799,7 +803,7 @@ fn panel_buttons_r2l(
                 if !ui.is_sizing_pass() {
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui
-                            .add(re_ui::ReButton::new("Log out").small().primary())
+                            .add(egui::Button::new("Log out").size_small().primary())
                             .clicked()
                         {
                             app.command_sender.send_system(SystemCommand::Logout);

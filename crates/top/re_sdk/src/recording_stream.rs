@@ -1056,7 +1056,7 @@ impl RecordingStreamInner {
             re_log::trace!(recording_info = ?recording_info, "Adding RecordingInfo to batcher");
 
             let chunk = Chunk::builder(EntityPath::properties())
-                .with_archetype(RowId::new(), TimePoint::default(), recording_info)
+                .with_archetype(RowId::new(), TimePoint::STATIC, recording_info)
                 .build()?;
 
             batcher.push_chunk(chunk);
@@ -1237,7 +1237,7 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
     ///
     /// See also: [`Self::log_static`] for logging static data.
     ///
@@ -1278,7 +1278,7 @@ impl RecordingStream {
     /// stream.log("data", &rerun::Points3D::new(points))?;
     /// ```
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log<AS: ?Sized + AsComponents>(
@@ -1343,7 +1343,7 @@ impl RecordingStream {
     ///
     /// See also [`Self::log`].
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log_static<AS: ?Sized + AsComponents>(
@@ -1368,13 +1368,13 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log_with_static<AS: ?Sized + AsComponents>(
@@ -1408,13 +1408,13 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching
     ///
     /// [`SerializedComponentBatch`]: [re_types_core::SerializedComponentBatch]
     pub fn log_serialized_batches(
@@ -1478,7 +1478,7 @@ impl RecordingStream {
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
-        let timepoint = TimePoint::default();
+        let timepoint = TimePoint::STATIC;
 
         if !components.is_empty() {
             let row = PendingRow {
@@ -1499,7 +1499,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
     #[cfg(feature = "importers")]
     pub fn log_file_from_path(
         &self,
@@ -1517,7 +1517,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
     #[cfg(feature = "importers")]
     pub fn log_file_from_contents(
         &self,
@@ -1579,7 +1579,7 @@ impl RecordingStream {
 
                     now
                 })
-                .unwrap_or_default()
+                .unwrap_or(TimePoint::STATIC)
             }),
             timestamp_offset_ns: None,
             timeline_type: re_log_types::TimeType::TimestampNs,
@@ -2641,7 +2641,11 @@ impl ThreadInfo {
     /// The current `TimePoint`, including all user-set timelines,
     /// plus the default `log_time` (if enabled).
     fn now(&self, rid: &StoreId, log_time: bool) -> TimePoint {
-        let mut timepoint = self.timepoints.get(rid).cloned().unwrap_or_default();
+        let mut timepoint = self
+            .timepoints
+            .get(rid)
+            .cloned()
+            .unwrap_or(TimePoint::STATIC);
 
         if log_time {
             timepoint.insert_cell(TimelineName::log_time(), TimeCell::timestamp_now());
@@ -2653,7 +2657,7 @@ impl ThreadInfo {
     fn set_time(&mut self, rid: &StoreId, timeline: TimelineName, cell: TimeCell) {
         self.timepoints
             .entry(rid.clone())
-            .or_default()
+            .or_insert(TimePoint::STATIC)
             .insert_cell(timeline, cell);
     }
 
@@ -2665,7 +2669,7 @@ impl ThreadInfo {
 
     fn reset_time(&mut self, rid: &StoreId) {
         if let Some(timepoint) = self.timepoints.get_mut(rid) {
-            *timepoint = TimePoint::default();
+            *timepoint = TimePoint::STATIC;
         }
     }
 }
@@ -2697,7 +2701,7 @@ impl RecordingStream {
             res
         } else {
             re_log::warn_once!("Recording disabled - call to now() ignored");
-            TimePoint::default()
+            TimePoint::STATIC
         }
     }
 
@@ -3033,7 +3037,7 @@ mod tests {
 
             let row = PendingRow {
                 row_id: RowId::new(),
-                timepoint: TimePoint::default(),
+                timepoint: TimePoint::STATIC,
                 components: std::iter::once((
                     MyPoints::descriptor_points().component,
                     SerializedComponentBatch::new(
@@ -3340,12 +3344,12 @@ mod tests {
     }
 
     fn example_rows(static_: bool) -> Vec<PendingRow> {
-        use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
+        use re_log_types::example_components::{MyColor, MyPoint};
         use re_sdk_types::ToArrow;
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {
-            let mut tp = TimePoint::default();
+            let mut tp = TimePoint::STATIC;
             if !static_ {
                 tp.insert(Timeline::log_time(), re_log_types::Timestamp::now());
                 tp.insert(Timeline::log_tick(), tick);

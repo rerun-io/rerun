@@ -180,6 +180,33 @@ def test_segment_store_without_assets_sharing_the_segment_id(
     assert ASSET_ENTITY not in {chunk.entity_path for chunk in store.stream().to_chunks()}
 
 
+@pytest.mark.local_only
+@pytest.mark.parametrize("dataset_fixture", ["dataset_with_asset", "dataset_with_asset_sharing_segment_id"])
+def test_segment_schema_includes_assets_on_request(dataset_fixture: str, request: pytest.FixtureRequest) -> None:
+    """A segment's schema leaves its assets out unless asked, even one going by the segment's id."""
+    ds, segment_id = request.getfixturevalue(dataset_fixture)
+    segment = ds.segment(segment_id)
+
+    assert set(segment.schema().entity_paths()) == {SEGMENT_ENTITY}
+    assert set(segment.schema(include_assets=True).entity_paths()) == {SEGMENT_ENTITY, ASSET_ENTITY}
+
+
+@pytest.mark.local_only
+@pytest.mark.parametrize("dataset_fixture", ["dataset_with_asset", "dataset_with_asset_sharing_segment_id"])
+def test_segment_schema_of_an_asset_ignores_include_assets(
+    dataset_fixture: str, request: pytest.FixtureRequest
+) -> None:
+    """An asset dataset holds no assets of its own, so its segments' schemas are the same with or without assets."""
+    ds, _ = request.getfixturevalue(dataset_fixture)
+    asset_dataset = ds.asset_dataset()
+    assert asset_dataset is not None
+    [asset_id] = asset_dataset.segment_ids()
+    asset = asset_dataset.segment(asset_id)
+
+    assert set(asset.schema().entity_paths()) == {ASSET_ENTITY}
+    assert set(asset.schema(include_assets=True).entity_paths()) == {ASSET_ENTITY}
+
+
 def test_segment_store_basic(first_segment_store: LazyStore) -> None:
     assert isinstance(first_segment_store, LazyStore)
     assert len(first_segment_store) > 0

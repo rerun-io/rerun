@@ -14,10 +14,43 @@ viewer MCP, read and write the blueprint with `rerun_get_blueprint` and
 `rerun_set_blueprint` rather than the low-level click tools.
 
 A blueprint decides how a recording is shown, and the recording decides what exists.
-Read the data, design a first layout, then **iterate from screenshots** until it
-reads at a glance. The constructors are discoverable (`dir(rrb)`,
+Read the data, design a first layout, then **verify state before assessing screenshots** until it reads at a glance.
+The constructors are discoverable (`dir(rrb)`,
 `help(rrb.Spatial3DView)`); this skill covers what you can't guess. Import as
 `import rerun.blueprint as rrb`.
+
+## Editing a recording's blueprint through MCP
+
+If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
+
+Without a target, `rerun_get_blueprint` and `rerun_set_blueprint` use what is on screen: the table if one is shown, else the active recording.
+Use `{"recording": {}}` to target the active recording even when a table is shown.
+`rerun_set_blueprint` accepts `mode: "full"` (default) or `mode: "partial"`.
+Use partial mode for focused edits: send only changed fields, leaving the layout and all omitted fields untouched.
+Full mode clears omitted fields and entities; use it for a complete layout, reading the existing blueprint first to preserve settings you intend to keep.
+Both modes replace arrays and struct-valued fields as a whole, so preserve other entries when changing lists such as `component_map` or `instruction_ids`.
+Set a field to `null` to clear it; an empty object is a no-op in partial mode.
+Reuse view and container UUIDs when editing them.
+For a deliberate layout, set `root_container` to the root container UUID and set both `auto_layout` and `auto_views` to `false` in `/viewport` → `ViewportBlueprint`.
+Automatic layout can rearrange the supplied tree, and automatic views can add unwanted panes.
+In full mode, an explicit root defaults omitted automatic options to `false`, but values copied from the previous blueprint are preserved.
+Partial mode preserves omitted automatic options, even when changing the root.
+A write that would break a reference is rejected, and nothing is written.
+That covers a missing or unreferenced view, container, or visualizer instruction, and a loop of containers.
+So add a new view and the reference to it in the same call, and delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.
+
+After each write, check the views and their `reports` in `rerun_get_state`, plus logs appended to tool results.
+If the structure differs, inspect `rerun_get_blueprint` before retrying.
+Then check a screenshot for framing and readability before reporting completion.
+
+### Component defaults and overrides
+
+For view-wide styling, prefer [component defaults](https://rerun.io/docs/viewer/extend/mcp#component-defaults-for-a-whole-view).
+For example, send `{"/view/<view UUID>/defaults": {"Boxes3D": {"show_labels": false}}}` as the `json` string of a partial update to hide Boxes3D labels.
+Defaults apply across the view but do not supersede logged values or per-entity overrides.
+
+For selected entities or to supersede logged values, follow the [MCP component override example](https://rerun.io/docs/viewer/extend/mcp#component-overrides).
+Verify the effective value in the entity's Visualizers section and the visual result, not just stored rows.
 
 ## Tables
 
@@ -42,12 +75,14 @@ blueprint = rrb.TableBlueprint(
     ),
 )
 blueprint.save("my_app", path)
-dataset.register_blueprint(path.as_uri(), segment_table=True)
+dataset.register_table_blueprint(path.as_uri(), name="segments")
 ```
 
 `Column` takes the column's name as the table has it, such as
 `property:episode:uuid`, not its header. Registering makes it the default for
 everyone who opens the table, and the server must be able to read `path`.
+For an `.rbl` in an S3-compatible bucket outside AWS (Cloudflare R2, MinIO, …),
+also pass `object_store_config=` with the store's name on the Hub deployment.
 
 Row filters are SQL expressions, one per string, all of which must be true for a
 row: `rrb.TableBlueprint(filters=["\"task\" ILIKE '%pick%'", '"duration" > 10'])`.
@@ -57,13 +92,44 @@ Double quotes for column names, single quotes for strings, and
 With the viewer MCP, change the table on screen directly:
 `rerun_get_table_schema` names the columns, `rerun_get_blueprint` with
 `{"table": {}}` reads the table blueprint, and `rerun_set_blueprint` with
-`{"table": {}}` replaces it. `rerun_set_blueprint` returns an error for a filter
+`{"table": {}, "mode": "partial"}` updates only supplied fields.
+Omitting `mode` or choosing `"full"` replaces the table blueprint.
+`rerun_set_blueprint` returns an error for a column name the table lacks, or a filter
 that fails. A column's entry sits at `/table/layouts/table/columns/<column name>`,
 with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
-as `\\:` and `\\ `. The [MCP docs](https://rerun.io/docs/reference/viewer/mcp#table-blueprints)
-have a worked example of the JSON. For the whole Python API, including cards
-and segment previews, see
-[Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints).
+as `\\:` and `\\ `.
+
+For a vague request such as "table with previews", don't ask first.
+Write cards with one 2D preview of the first camera entity, then offer to change it.
+Take the entity from `rerun_get_dataset_schema`.
+Call `rerun_set_blueprint` with `{"table": {}, "mode": "full"}` and this `json`, which shows a 2D preview of `/camera/ext1` on each card.
+The view id is any fresh UUID, used identically in the three `/view/…` paths:
+
+```json
+{
+  "/table": {"TableBlueprint": {"layout": "Cards"}},
+  "/table/layouts/cards": {
+    "CardLayout": {"link": "recording link", "field_order": ["recording link"]}
+  },
+  "/table/layouts/cards/fields/recording\\ link": {
+    "TableColumnPreview": {"views": "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d"}
+  },
+  "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d": {
+    "ViewBlueprint": {"class_identifier": "2D", "space_origin": "/camera/ext1"}
+  },
+  "/view/0f3c9a52-7d1e-4b8a-9c2f-1e5d6a7b8c9d/ViewContents": {
+    "ViewContents": {"query": "+ /camera/ext1/**"}
+  }
+}
+```
+
+`"full"` replaces the whole table blueprint, which suits a table nobody has configured yet.
+Use `"partial"` when the user has already changed the table: it changes only the fields you send, and keeps their column order and filters.
+Every name in `field_order` must be a column from `rerun_get_table_schema`.
+Check the write with `rerun_get_blueprint`, not a full-window screenshot.
+The [MCP docs](https://rerun.io/docs/viewer/extend/mcp#table-blueprints) have more examples.
+For the whole Python API, including cards and segment previews, see
+[Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints).
 
 ## 1. Read the data
 

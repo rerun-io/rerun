@@ -1,8 +1,7 @@
 //! Integration tests for dropping entities from the streams tree onto a state timeline view.
 //!
-//! These exercise the viewport's entity-drop path together with
-//! [`re_viewer_context::ViewClass::reject_entity_drop_reason`]: which entities the view accepts,
-//! and the resulting blueprint mutation.
+//! These exercise [`re_viewer_context::ViewClass::handle_drop`] for entity payloads: which
+//! entities the view accepts, and the resulting blueprint mutation.
 
 use re_chunk_store::RowId;
 use re_log_types::{EntityPath, TimePoint, Timeline};
@@ -11,8 +10,9 @@ use re_sdk_types::archetypes::{Scalars, StateChange};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_view_state_timeline::StateTimelineView;
-use re_viewer_context::{DragAndDropFeedback, RecommendedView, ViewClass as _, ViewId};
-use re_viewport::ViewportUi;
+use re_viewer_context::{
+    DragAndDropFeedback, DragAndDropPayload, RecommendedView, ViewClass as _, ViewId,
+};
 use re_viewport_blueprint::ViewBlueprint;
 
 /// An entity the view contains from the start, so dropped entities are always "new".
@@ -54,15 +54,20 @@ fn drop_entities(
 ) -> DragAndDropFeedback {
     let mut feedback = None;
     test_context.run_once_in_egui_central_panel(|ctx, _ui| {
-        let view_blueprint =
-            ViewBlueprint::try_from_db(view_id, ctx.blueprint_db(), ctx.blueprint_query)
-                .expect("view blueprint should exist");
-        feedback = Some(ViewportUi::handle_drop_entities_to_view(
-            ctx,
-            &view_blueprint,
-            entities,
-            released,
-        ));
+        feedback = Some(
+            StateTimelineView.handle_drop(
+                &ViewBlueprint::try_from_db(view_id, ctx.blueprint_db(), ctx.blueprint_query)
+                    .expect("view should exist")
+                    .bundle_context_with_state(ctx, StateTimelineView.new_state().as_ref()),
+                &DragAndDropPayload::Entities {
+                    entities: entities
+                        .to_vec()
+                        .try_into()
+                        .expect("entity payload must not be empty"),
+                },
+                released,
+            ),
+        );
     });
     test_context.handle_system_commands(&egui::Context::default());
 

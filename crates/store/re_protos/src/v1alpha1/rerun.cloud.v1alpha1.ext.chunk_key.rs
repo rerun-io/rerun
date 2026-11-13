@@ -207,6 +207,11 @@ pub struct RrdManifestKey {
 
     /// Presigned URL
     pub direct_url: Option<url::Url>,
+
+    /// The store whose manifest to pick from the footer.
+    ///
+    /// `None` for legacy registrations: pick the manifest whose recording id is the segment id.
+    pub store_id: Option<re_log_types::StoreId>,
 }
 
 impl TryFrom<crate::cloud::v1alpha1::RrdManifestKey> for RrdManifestKey {
@@ -245,22 +250,38 @@ impl TryFrom<crate::cloud::v1alpha1::RrdManifestKey> for RrdManifestKey {
                 )
             })?;
 
+        let store_id = value
+            .store_id
+            .map(re_log_types::StoreId::try_from)
+            .transpose()
+            .map_err(TypeConversionError::from)?;
+
         Ok(Self {
             location,
             layer,
             etag: value.etag.map(ETag::new),
             direct_url,
+            store_id,
         })
     }
 }
 
 impl From<RrdManifestKey> for crate::cloud::v1alpha1::RrdManifestKey {
     fn from(value: RrdManifestKey) -> Self {
+        let RrdManifestKey {
+            location,
+            layer,
+            etag,
+            direct_url,
+            store_id,
+        } = value;
+
         Self {
-            location: Some(value.location.into()),
-            layer: value.layer.map(Into::into),
-            etag: value.etag.map(Into::into),
-            direct_url: value.direct_url.map(|url| url.to_string()),
+            location: Some(location.into()),
+            layer: layer.map(Into::into),
+            etag: etag.map(Into::into),
+            direct_url: direct_url.map(|url| url.to_string()),
+            store_id: store_id.map(Into::into),
         }
     }
 }
@@ -439,6 +460,7 @@ mod tests {
             layer: Some(LayerName::DEFAULT_STR.to_owned()),
             etag: None,
             direct_url: None,
+            store_id: None,
         };
 
         assert!(RrdManifestKey::try_from(proto).is_err());
@@ -464,6 +486,7 @@ mod tests {
                 layer: None,
                 etag: None,
                 direct_url: None,
+                store_id: None,
             };
 
             assert!(
@@ -485,6 +508,7 @@ mod tests {
             layer: None,
             etag: None,
             direct_url: Some("not a url".to_owned()),
+            store_id: None,
         };
 
         assert!(RrdManifestKey::try_from(proto).is_err());
@@ -504,6 +528,7 @@ mod tests {
             direct_url: Some(
                 "https://bucket.s3.amazonaws.com/segment.rrd?X-Amz-Signature=abc".to_owned(),
             ),
+            store_id: Some(re_log_types::StoreId::recording("app", "segment").into()),
         };
 
         let key = RrdManifestKey::try_from(proto).expect("valid key must decode");
@@ -512,6 +537,10 @@ mod tests {
             "https://bucket.s3.amazonaws.com/segment.rrd?X-Amz-Signature=abc"
         );
         assert_eq!(key.location.url.as_str(), "s3://bucket/segment.rrd");
+        assert_eq!(
+            key.store_id,
+            Some(re_log_types::StoreId::recording("app", "segment"))
+        );
     }
 
     #[test]

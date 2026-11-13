@@ -1,4 +1,3 @@
-use re_chunk::EntityPath;
 use re_chunk_store::MissingChunkReporter;
 use re_sdk_types::ViewClassIdentifier;
 use re_ui::{Help, UiExt as _};
@@ -37,10 +36,6 @@ impl ViewClass for ViewClassPlaceholder {
         Ok(())
     }
 
-    fn new_state(&self) -> Box<dyn ViewState> {
-        Box::<()>::default()
-    }
-
     fn layout_priority(&self) -> crate::ViewClassLayoutPriority {
         crate::ViewClassLayoutPriority::Low
     }
@@ -48,7 +43,7 @@ impl ViewClass for ViewClassPlaceholder {
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _include_entity: &dyn Fn(&EntityPath) -> bool,
+        _spawn_context: crate::ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
         ViewSpawnHeuristics::empty()
     }

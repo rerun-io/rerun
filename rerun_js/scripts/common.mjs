@@ -12,7 +12,7 @@ export const $ = /** @type {typeof execSync} */ (
   }
 );
 export const argv = process.argv.slice(2);
-export const script_dir = path.dirname(fileURLToPath(import.meta.url));
+export const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 
 /**
  * Logs `message` and exits with code `1`.
@@ -82,9 +82,7 @@ export function inferTag(version) {
  * @type {(packageName: string, version: string) => Promise<boolean>}
  */
 export async function isPublished(packageName, version) {
-  const response = await fetch(
-    `https://registry.npmjs.org/${packageName}/${version}`,
-  );
+  const response = await fetch(`https://registry.npmjs.org/${packageName}/${version}`);
   return response.status === 200;
 }
 

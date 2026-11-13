@@ -15,38 +15,4 @@ namespace rerun::blueprint::archetypes {
                 .value_or_throw();
         return archetype;
     }
-
-    Collection<ComponentColumn> NearClipPlane::columns(const Collection<uint32_t>& lengths_) {
-        std::vector<ComponentColumn> columns;
-        columns.reserve(1);
-        if (near_clip_plane.has_value()) {
-            columns.push_back(near_clip_plane.value().partitioned(lengths_).value_or_throw());
-        }
-        return columns;
-    }
-
-    Collection<ComponentColumn> NearClipPlane::columns() {
-        if (near_clip_plane.has_value()) {
-            return columns(std::vector<uint32_t>(near_clip_plane.value().length(), 1));
-        }
-        return Collection<ComponentColumn>();
-    }
 } // namespace rerun::blueprint::archetypes
-
-namespace rerun {
-
-    Result<Collection<ComponentBatch>>
-        AsComponents<blueprint::archetypes::NearClipPlane>::as_batches(
-            const blueprint::archetypes::NearClipPlane& archetype
-        ) {
-        using namespace blueprint::archetypes;
-        std::vector<ComponentBatch> cells;
-        cells.reserve(1);
-
-        if (archetype.near_clip_plane.has_value()) {
-            cells.push_back(archetype.near_clip_plane.value());
-        }
-
-        return rerun::take_ownership(std::move(cells));
-    }
-} // namespace rerun

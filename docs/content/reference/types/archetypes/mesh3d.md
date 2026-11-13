@@ -36,6 +36,7 @@ front faces are assumed to be those with counter clockwise triangle winding orde
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Mesh3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Mesh3D.html)
@@ -53,7 +54,7 @@ snippet: archetypes/mesh3d_indexed
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png">
-  <img src="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/full.png">
+  <img src="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/full.png" alt="Rerun Viewer showing a triangle mesh with red, green, and blue vertex colors blended across it, and Mesh3D data in the selection panel">
 </picture>
 
 ### 3D mesh with instancing
@@ -65,7 +66,7 @@ snippet: archetypes/mesh3d_instancing
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png">
-  <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png">
+  <img src="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/full.png" alt="3D view of a rainbow-colored pyramid mesh instanced four times inside a single magenta wireframe box">
 </picture>
 
 ### Update specific parts of a 3D mesh over time
@@ -77,7 +78,7 @@ snippet: archetypes/mesh3d_partial_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1200w.png">
-  <img src="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/full.png">
+  <img src="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/full.png" alt="3D view of a triangle mesh with red, green and blue vertex colors, with a hover tooltip for /triangle listing its components">
 </picture>
 
 ### Image as a 3D quad
@@ -89,6 +90,6 @@ snippet: archetypes/mesh3d_image
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/1200w.png">
-  <img src="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/full.png">
+  <img src="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/full.png" alt="3D view showing a square quad mesh textured with an image whose corners fade between black, red, green, and yellow">
 </picture>
 

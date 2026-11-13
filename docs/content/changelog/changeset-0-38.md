@@ -14,7 +14,7 @@ In a time series view each series is drawn as a line with a translucent band aro
 Leave `variances` unset for values whose uncertainty is unknown.
 
 <picture>
-  <img src="https://static.rerun.io/measurements/2388490ab2b487bb6c47a2be3e7d5e7aa17c08f3/full.png" alt="">
+  <img src="https://static.rerun.io/measurements/2388490ab2b487bb6c47a2be3e7d5e7aa17c08f3/full.png" alt="Time series plot of two barometer pressure series in Pa, each drawn as a line with a translucent variance band around it">
 </picture>
 
 Two new components come with it.
@@ -81,7 +81,7 @@ Passing `--asset` without any local `.rrd` recording produces an error.
 
 `--asset` can be passed several times and needs **Load files via Viewer catalog** under **Settings** → **Viewer catalog** to be enabled, so it automatically enables the setting if it is off.
 
-See [assets](../concepts/query-and-transform/catalog-object-model.md#assets) for what an asset is, and the [CLI manual](../reference/cli.md) for the full list of arguments.
+See [assets](../query-and-transform/catalog/catalog-object-model.md#assets) for what an asset is, and the [CLI manual](../reference/cli.md) for the full list of arguments.
 
 ### Drive a running Viewer from Python
 
@@ -107,7 +107,7 @@ client.close_recordings(state.recordings[0].store_id)  # or "current", or "all"
 `viewer_state` reports what the Viewer is showing: the open recordings with their timelines and time ranges, the current time cursor, and the views of the current blueprint together with the warnings and errors each one reports.
 It also reports the Viewer's own catalog address, which you can hand to `CatalogClient` to read the data behind those recordings.
 
-See the [Viewer control reference](../reference/viewer/mcp.md) for the same operations driven by an agent over MCP.
+See the [Viewer control reference](../viewer/extend/mcp.md) for the same operations driven by an agent over MCP.
 
 ### Control the Viewer time cursor from Python
 
@@ -127,7 +127,7 @@ viewer.set_time(duration=1.5, play=True)
 Time series plots can now show the values of all visible series in a shared tooltip at the hovered time.
 
 <picture style="zoom: 0.5">
-  <img src="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/full.png" alt="">
+  <img src="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/full.png" alt="Time series plot with a shared tooltip listing the x, y and z values of all three series at the hovered timestamp">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/plot_hover/8e3880a3c3225b3b724209f82a2b4385582f8667/768w.png">
 </picture>
@@ -135,7 +135,7 @@ Time series plots can now show the values of all visible series in a shared tool
 The new `PlotInteraction` blueprint property also controls whether raw line-series data point markers are always visible.
 
 <picture>
-  <img src="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/full.png" alt="">
+  <img src="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/full.png" alt="Gyroscope time series plot with point markers and a shared tooltip, next to Plot interaction settings in the selection panel">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/plot-improvements/3ae9ce49d240fe2734cac1dc9400abd2f9a62c18/1024w.png">
@@ -246,8 +246,8 @@ view = rrb.Spatial2DView(
     }
 )
 ```
-For a general overview of component mappings see [component mappings](../howto/visualization/component-mappings.md).
-For a guide about annotation context see [annotation context](../concepts/visualization/annotation-context.md).
+For a general overview of component mappings see [component mappings](../viewer/blueprints-and-views/component-mappings.md).
+For a guide about annotation context see [annotation context](../viewer/blueprints-and-views/annotation-context.md).
 
 Under the hood we now resolve annotation context more rigoriously & consistently,
 which led to some subtle changes in behavior, see [Recorded labels no longer mix with annotation labels](#recorded-labels-no-longer-mix-with-annotation-labels).
@@ -375,7 +375,7 @@ rr.log(
 Previously, the third point was labeled `car`; now it is unlabeled.
 Log `labels=["first", "second", "car"]` to preserve the previous result, or omit recorded labels to use annotations for all points.
 
-See the [annotation context documentation](../concepts/visualization/annotation-context.md).
+See the [annotation context documentation](../viewer/blueprints-and-views/annotation-context.md).
 
 ### Custom views must now provide reflection metadata
 

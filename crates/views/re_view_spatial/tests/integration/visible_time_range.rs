@@ -98,13 +98,13 @@ fn visible_timerange_data_2d(test_context: &mut TestContext) {
         let y_red = 40.0;
         let y_green = 60.0;
         let time_point =
-            TimePoint::default().with(timeline, TimeInt::from_secs(i.try_into().unwrap()));
+            TimePoint::STATIC.with(timeline, TimeInt::from_secs(i.try_into().unwrap()));
 
         for y in [y_green, y_red] {
             test_context.log_entity(format!("point_{:02}_{:02}", i, y as i32), |builder| {
                 builder.with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &Points2D::new([(x, y)])
                         .with_colors([0x555555FF])
                         .with_radii([4.0])
@@ -242,7 +242,7 @@ fn intra_timestamp_data(test_context: &mut TestContext) {
     let points_path = EntityPath::from("points");
 
     let frame = |sequence: i64| {
-        TimePoint::default().with(
+        TimePoint::STATIC.with(
             timeline,
             TimeInt::from_sequence(sequence.try_into().unwrap()),
         )
@@ -430,7 +430,7 @@ fn visible_timerange_data_3d(test_context: &mut TestContext) {
     for i in 0..10i64 {
         let y = i as f32 * 2.0;
         let color = colors[i as usize];
-        let time_point = TimePoint::default().with(timeline, TimeInt::from_secs(i as f64));
+        let time_point = TimePoint::STATIC.with(timeline, TimeInt::from_secs(i as f64));
 
         let point_radius = 0.15 + i as f32 * 0.06;
         test_context.log_entity(points_path.clone(), |builder| {

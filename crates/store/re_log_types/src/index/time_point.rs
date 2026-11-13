@@ -7,13 +7,11 @@ use crate::TimelineName;
 ///
 /// You can think of this as all the index values for one row of data.
 ///
-/// If a [`TimePoint`] is empty ([`TimePoint::default`]), the data will be considered _static_.
 /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
 /// any temporal data of the same type.
 #[derive(
     Clone,
     Debug,
-    Default,
     Hash,
     PartialEq,
     Eq,
@@ -64,7 +62,7 @@ impl From<BTreeMap<TimelineName, TimeCell>> for TimePoint {
 }
 
 impl TimePoint {
-    /// A static time point, equivalent to [`TimePoint::default`].
+    /// A static time point with no associated time.
     pub const STATIC: Self = Self(BTreeMap::new());
 
     #[inline]

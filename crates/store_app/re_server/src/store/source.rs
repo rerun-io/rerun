@@ -41,7 +41,7 @@ pub struct Source {
 
     /// Computed once: the backing store is never mutated after registration, so the schema
     /// is fixed for the lifetime of the source.
-    schema_sha256: [u8; 32],
+    schema_sha256: re_sorbet::SchemaId,
 }
 
 impl Source {
@@ -139,7 +139,7 @@ impl Source {
         schema_of_store(&self.resolved)
     }
 
-    pub fn schema_sha256(&self) -> [u8; 32] {
+    pub fn schema_sha256(&self) -> re_sorbet::SchemaId {
         self.schema_sha256
     }
 
@@ -303,19 +303,18 @@ mod tests {
     use std::collections::BTreeSet;
     use std::path::Path;
 
-    use re_chunk_store::external::re_chunk;
     use re_chunk_store::{Chunk, ChunkStore, ChunkStoreConfig, ChunkStoreHandle, LazyStore};
     use re_log_encoding::EncodingOptions;
     use re_log_encoding::RrdChunkProvider;
     use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
     use re_log_types::{
-        EntityPath, StoreId, StoreKind, TimePoint, Timeline,
+        EntityPath, StoreId, StoreKind, TimePoint,
         example_components::{MyPoint, MyPoints},
     };
     use re_types_core::ChunkId;
 
     use super::*;
-    use crate::store::{ChunkKey, ResolvedStore};
+    use crate::store::ChunkKey;
 
     fn build_chunks() -> (StoreId, Vec<Arc<Chunk>>) {
         let store_id = StoreId::random(StoreKind::Recording, "test");
@@ -333,7 +332,7 @@ mod tests {
                 let chunk = Chunk::builder(entity_path)
                     .with_sparse_component_batches(
                         re_chunk::RowId::new(),
-                        TimePoint::default().with(timeline, frame_idx),
+                        TimePoint::STATIC.with(timeline, frame_idx),
                         [(MyPoints::descriptor_points(), Some(&points as _))],
                     )
                     .build()

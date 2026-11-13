@@ -14,6 +14,7 @@ import time
 import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal, overload
+from uuid import UUID
 
 import psutil
 from typing_extensions import deprecated
@@ -25,7 +26,6 @@ if TYPE_CHECKING:
     from collections.abc import Sequence
     from datetime import datetime, timedelta
     from types import TracebackType
-    from uuid import UUID
 
     import datafusion
     import numpy as np
@@ -35,6 +35,16 @@ if TYPE_CHECKING:
 
 
 _DEFAULT_URL = "rerun+http://127.0.0.1:9876/proxy"
+
+
+@dataclass(frozen=True)
+class ViewerViewType:
+    """A registered view type and its discovery metadata."""
+
+    class_identifier: str
+    display_name: str
+    description: str
+    keywords: list[str]
 
 
 StoreId = str
@@ -101,7 +111,7 @@ class ViewReport:
 class View:
     """One view of the viewer's current blueprint."""
 
-    view_id: str
+    view_id: UUID
     view_class: str
     name: str
     origin: str
@@ -162,6 +172,66 @@ class ViewerState:
     Which Rerun this is decides which API and which docs apply, so read it here rather than
     shelling out to `rerun --version` and hoping it found the same binary.
     """
+
+
+@dataclass
+class SelectedEntity:
+    """A selected entity, or one instance of it."""
+
+    entity_path: str
+
+    instance: int | None
+    """The index of the selected instance, e.g. one point of a point cloud. None when the whole entity is selected."""
+
+    view_id: UUID | None
+    """The view it was selected in, as a `view_id` from `ViewerState.views`. None when selected outside of a view."""
+
+
+@dataclass
+class SelectedComponent:
+    """A selected component of an entity."""
+
+    entity_path: str
+
+    component: str
+    """The component, as `get_recording_schema` names it, e.g. `Points3D:positions`."""
+
+
+@dataclass
+class SelectedView:
+    """A selected view."""
+
+    view_id: UUID
+    """The view id, as in `ViewerState.views`."""
+
+
+@dataclass
+class SelectedContainer:
+    """A selected container in the layout of the views."""
+
+    container_id: UUID
+
+
+@dataclass
+class SelectedRecording:
+    """A selected recording or blueprint."""
+
+    store_id: StoreId
+
+
+SelectedItem = SelectedEntity | SelectedComponent | SelectedView | SelectedContainer | SelectedRecording
+"""One item of a [`Selection`][rerun.experimental.Selection]."""
+
+
+@dataclass
+class Selection:
+    """What the user has selected in the viewer."""
+
+    store_id: StoreId | None
+    """The recording that the selected entities and components belong to: the active recording, if any."""
+
+    items: list[SelectedItem]
+    """The selected items, in selection order. Empty if nothing is selected."""
 
 
 @dataclass
@@ -402,7 +472,7 @@ def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
 
     views = [
         View(
-            view_id=view.get("view_id", ""),
+            view_id=UUID(view["view_id"]),
             view_class=view.get("class", ""),
             name=view.get("name", ""),
             origin=view.get("origin", ""),
@@ -432,6 +502,45 @@ def _viewer_state_from_json(raw: dict[str, Any]) -> ViewerState:
         catalog_url=raw.get("catalog_url"),
         viewer_version=raw.get("viewer_version"),
     )
+
+
+def _selection_from_json(raw: dict[str, Any]) -> Selection:
+    """
+    Build a `Selection` out of the canonical protobuf JSON the bindings return.
+
+    Items of a kind this client does not know are left out, so a newer viewer still answers.
+    """
+
+    items: list[SelectedItem] = []
+    for item in raw.get("items", []):
+        if (entity := item.get("entity")) is not None:
+            instance = entity.get("instance")
+            items.append(
+                SelectedEntity(
+                    entity_path=entity.get("entity_path", ""),
+                    instance=None if instance is None else int(instance),
+                    view_id=_uuid_from_json(entity.get("view_id")),
+                )
+            )
+        elif (component := item.get("component")) is not None:
+            items.append(
+                SelectedComponent(
+                    entity_path=component.get("entity_path", ""),
+                    component=component.get("component", ""),
+                )
+            )
+        elif (view := item.get("view")) is not None:
+            items.append(SelectedView(view_id=UUID(view["view_id"]["uuid"])))
+        elif (container := item.get("container")) is not None:
+            items.append(SelectedContainer(container_id=UUID(container["container_id"]["uuid"])))
+        elif (recording := item.get("recording")) is not None:
+            items.append(SelectedRecording(store_id=recording.get("store_id", "")))
+
+    return Selection(store_id=raw.get("store_id"), items=items)
+
+
+def _uuid_from_json(raw: dict[str, Any] | None) -> UUID | None:
+    return None if raw is None else UUID(raw["uuid"])
 
 
 def _timeline_from_json(timeline: dict[str, Any]) -> Timeline:
@@ -994,6 +1103,19 @@ class ViewerClient:
             for entry in raw.get("entries", [])
         ]
 
+    def list_view_types(self) -> list[ViewerViewType]:
+        """List supported view types before choosing a class for a blueprint. No recording is required."""
+        raw = self._viewer_control("list_view_types", {})
+        return [
+            ViewerViewType(
+                class_identifier=view.get("class_identifier", ""),
+                display_name=view.get("display_name", ""),
+                description=view.get("description", ""),
+                keywords=view.get("keywords", []),
+            )
+            for view in raw.get("view_types", [])
+        ]
+
     def get_state(self) -> ViewerState:
         """
         Report what the viewer is currently showing.
@@ -1006,6 +1128,19 @@ class ViewerClient:
 
         """
         return _viewer_state_from_json(self._viewer_control("get_state", {}))
+
+    def get_selection(self) -> Selection:
+        """
+        Report what the user has selected in the viewer.
+
+        Covers entities or instances of them, components, views, containers, and recordings.
+        Other things the user can select, such as servers and catalog entries, are left out.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        """
+        return _selection_from_json(self._viewer_control("get_selection", {}))
 
     def take_screenshot(self, view_id: str | UUID | None = None, *, max_size: int | None = None) -> bytes:
         """
@@ -1181,7 +1316,7 @@ class ViewerClient:
         A recording's blueprint has its layout, views, their properties, and overrides.
         A table's blueprint has its row filters, layout, and column settings.
         Without any arguments, reads the blueprint of what is on screen.
-        See [Blueprints](https://rerun.io/docs/concepts/visualization/blueprints).
+        See [Blueprints](https://rerun.io/docs/viewer/blueprints-and-views/blueprints).
 
         Parameters
         ----------
@@ -1219,7 +1354,7 @@ class ViewerClient:
         ----------
         blueprint:
             The blueprint, keyed by blueprint entity path, then archetype, then field.
-            See [Blueprints](https://rerun.io/docs/concepts/visualization/blueprints).
+            See [Blueprints](https://rerun.io/docs/viewer/blueprints-and-views/blueprints).
         of:
             Whether to write a recording's or a table's blueprint.
             Implied by `store_id` or `table_url`.
@@ -1250,7 +1385,7 @@ class ViewerClient:
         """
         A recording's transform graph at its time cursor: its frames, and the edges between them.
 
-        See [Transforms & Coordinate Frames](https://rerun.io/docs/concepts/logging-and-ingestion/transforms).
+        See [Transforms & Coordinate Frames](https://rerun.io/docs/logging-and-ingestion/data-model/transforms).
 
         Parameters
         ----------

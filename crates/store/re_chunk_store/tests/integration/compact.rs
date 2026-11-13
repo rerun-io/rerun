@@ -95,7 +95,7 @@ fn synthetic_video_store(entity: &str, num_samples: i64) -> ChunkStore {
     let codec_chunk = Chunk::builder(entity_path.clone())
         .with_component(
             RowId::new(),
-            TimePoint::default(), // static
+            TimePoint::STATIC,
             VideoStream::descriptor_codec(),
             &VideoCodec::H264,
         )
@@ -161,7 +161,7 @@ fn synthetic_multi_timeline_video_store(entity: &str, num_samples: i64) -> Chunk
     let codec_chunk = Chunk::builder(entity_path.clone())
         .with_component(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             VideoStream::descriptor_codec(),
             &VideoCodec::H264,
         )
@@ -332,7 +332,7 @@ fn indexed_video_store(entity: &str, num_samples: i64) -> ChunkStore {
     let codec_chunk = Chunk::builder(entity_path.clone())
         .with_component(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             VideoStream::descriptor_codec(),
             &VideoCodec::H264,
         )
@@ -760,7 +760,7 @@ fn optimize_strips_user_supplied_is_keyframe_from_sample_chunks() {
     let codec_chunk = Chunk::builder(entity_path.clone())
         .with_component(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             VideoStream::descriptor_codec(),
             &VideoCodec::H264,
         )
@@ -874,7 +874,7 @@ fn rebatching_is_insensitive_to_timeline_map_iteration_order() {
     let codec_chunk = Chunk::builder(entity_path.clone())
         .with_component(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             VideoStream::descriptor_codec(),
             &VideoCodec::H264,
         )
@@ -1047,7 +1047,7 @@ fn optimize_collects_all_keyframe_markers_into_one_chunk() {
     let codec_chunk = Chunk::builder(entity_path.clone())
         .with_component(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             VideoStream::descriptor_codec(),
             &VideoCodec::H264,
         )

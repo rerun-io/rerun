@@ -36,7 +36,9 @@ pub fn time_range_tooltip_ui(
         .num_columns(2)
         .spacing(egui::vec2(12.0, 0.0))
         .min_col_width(0.0)
-        .min_row_height(re_ui::DesignTokens::list_item_height())
+        .min_row_height(re_ui::DesignTokens::list_item_height(
+            re_ui::ListItemDensity::Spacious,
+        ))
         .show(ui, |ui| {
             for (label, value) in [
                 ("Start", format_time(start)),

@@ -994,7 +994,7 @@ mod tests {
     };
 
     use super::*;
-    use crate::{Chunk, RowId, Timeline};
+    use crate::Timeline;
 
     #[test]
     fn cell() -> anyhow::Result<()> {
@@ -1290,7 +1290,7 @@ mod tests {
         let row_id4 = RowId::new();
         let row_id5 = RowId::new();
 
-        let timepoint_static = TimePoint::default();
+        let timepoint_static = TimePoint::STATIC;
 
         let points1 = &[MyPoint::new(1.0, 1.0), MyPoint::new(2.0, 2.0)];
         let points3 = &[MyPoint::new(6.0, 7.0)];

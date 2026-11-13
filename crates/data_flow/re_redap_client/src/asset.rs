@@ -1,6 +1,6 @@
 //! Resolve asset coverage and chunk manifests on the data path.
 
-use crate::{ApiError, ApiErrorKind, ApiResult, ConnectionClient};
+use crate::{ApiError, ApiResult, ConnectionClient};
 use arrow::array::RecordBatch;
 use re_chunk_index::{RawRrdManifest, RrdManifest};
 use re_log_encoding::CodecResult;
@@ -72,22 +72,12 @@ pub(crate) async fn asset_segments(
         .get_assets_for_segment(dataset_id, Some(segment_id.clone()))
         .await
     {
-        Ok(Some((dataset_id, segment_ids))) => Some(AssetSegments {
+        Ok(assets) => assets.map(|(dataset_id, segment_ids)| AssetSegments {
             dataset_id,
             segment_ids,
         }),
-
-        Ok(None) => None,
-
         Err(err) => {
-            if !matches!(
-                err.kind,
-                ApiErrorKind::NotFound
-                    | ApiErrorKind::Unimplemented
-                    | ApiErrorKind::InvalidArguments
-            ) {
-                re_log::warn!("Failed to fetch assets: {err}");
-            }
+            re_log::warn!("Failed to fetch assets: {err}");
             None
         }
     }

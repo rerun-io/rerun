@@ -25,7 +25,7 @@ fn test_select_box_instances() {
     test_context.log_entity("shapes", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &archetypes::Boxes3D::from_half_sizes([[0.5, 0.5, 0.5]])
                 .with_centers([[0.0, -2.0, 0.0], [0.0, 0.0, 0.0], [0.0, 2.0, 0.0]])
                 .with_fill_mode(FillMode::Solid)

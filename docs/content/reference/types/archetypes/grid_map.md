@@ -27,6 +27,7 @@ but can also be useful for other use cases where an image buffer needs to be pla
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GridMap`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GridMap.html)
@@ -48,6 +49,6 @@ snippet: archetypes/grid_map_pose
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1200w.png">
-  <img src="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/full.png">
+  <img src="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/full.png" alt="3D view of a grid map showing an orange cartoon crab, tilted in space with a white outline and axes labeled map at its origin">
 </picture>
 

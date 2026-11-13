@@ -1134,10 +1134,6 @@ mod tests {
             registry.register_visualizer::<AnnotationTestVisualizer>()
         }
 
-        fn new_state(&self) -> Box<dyn re_viewer_context::ViewState> {
-            Box::new(())
-        }
-
         fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
             re_viewer_context::ViewClassLayoutPriority::Low
         }
@@ -1145,7 +1141,7 @@ mod tests {
         fn spawn_heuristics(
             &self,
             _ctx: &re_viewer_context::ViewerContext<'_>,
-            _include_entity: &dyn Fn(&EntityPath) -> bool,
+            _spawn_context: re_viewer_context::ViewSpawnContext,
         ) -> re_viewer_context::ViewSpawnHeuristics {
             re_viewer_context::ViewSpawnHeuristics::root()
         }

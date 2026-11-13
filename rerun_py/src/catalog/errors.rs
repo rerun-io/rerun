@@ -37,6 +37,30 @@ pyo3::create_exception!(
     "Raised when trying to create a resource that already exists."
 );
 
+pyo3::create_exception!(
+    rerun_bindings.rerun_bindings,
+    ChunkNotIndexedError,
+    PyException,
+    "Raised when a query reads data the dataset's chunk indexing policy excludes and the server can't serve it."
+);
+
+fn is_chunk_not_indexed(err: &re_redap_client::ApiError) -> bool {
+    use re_protos::external::tonic_types::StatusExt as _;
+    err.source
+        .as_ref()
+        .and_then(|source| source.downcast_ref::<TonicStatusError>())
+        .and_then(|status| status.as_ref().get_details_error_info())
+        .is_some_and(|info| {
+            info.domain == re_protos::error::ERROR_DOMAIN
+                && [
+                    re_protos::error::CHUNK_NOT_INDEXED,
+                    re_protos::error::UNINDEXED_DATA_NEEDS_SEGMENTS,
+                    re_protos::error::UNINDEXED_DATA_TOO_LARGE,
+                ]
+                .contains(&info.reason.as_str())
+        })
+}
+
 // ---
 
 /// Private error type to server as a bridge between various external error type and the
@@ -96,6 +120,9 @@ enum ExternalError {
 
     #[error(transparent)]
     InvalidLayerNameError(#[from] re_types_core::InvalidLayerNameError),
+
+    #[error(transparent)]
+    InvalidBlueprintNameError(#[from] re_catalog_client::InvalidBlueprintNameError),
 }
 
 const _: () = assert!(
@@ -194,6 +221,9 @@ impl From<ExternalError> for PyErr {
                 ApiErrorKind::NotFound => NotFoundError::new_err(err.to_string()),
                 ApiErrorKind::AlreadyExists => AlreadyExistsError::new_err(err.to_string()),
                 ApiErrorKind::Timeout => PyTimeoutError::new_err(err.to_string()),
+                ApiErrorKind::FailedPrecondition if is_chunk_not_indexed(&err) => {
+                    ChunkNotIndexedError::new_err(err.to_string())
+                }
                 ApiErrorKind::Unimplemented
                 | ApiErrorKind::Internal
                 | ApiErrorKind::FailedPrecondition => PyRuntimeError::new_err(err.to_string()),
@@ -252,6 +282,8 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::InvalidLayerNameError(err) => PyValueError::new_err(err.to_string()),
+
+            ExternalError::InvalidBlueprintNameError(err) => PyValueError::new_err(err.to_string()),
         }
     }
 }
@@ -268,7 +300,7 @@ pub fn to_py_err(err: impl Into<ExternalError>) -> PyErr {
 mod tests {
     use super::*;
     use datafusion::error::DataFusionError;
-    use re_redap_client::{ApiError, ApiErrorKind, TraceId};
+    use re_redap_client::{ApiError, TraceId};
 
     /// A `DataFusionError::External` wrapping an `ApiError` must be recovered
     /// as `ExternalError::ApiError`, with the trace-id and kind preserved.

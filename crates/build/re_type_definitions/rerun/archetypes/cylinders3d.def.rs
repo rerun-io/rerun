@@ -8,7 +8,7 @@
 ///
 /// Orienting and placing cylinders forms a separate transform that is applied prior to [`rerun::archetypes::InstancePoses3D`] and [`rerun::archetypes::Transform3D`].
 ///
-/// \example archetypes/cylinders3d_batch title="Batch of cylinders" image="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1200w.png"
+/// \example archetypes/cylinders3d_batch title="Batch of cylinders" image="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1200w.png" alt="3D view with five wireframe cylinders from red to blue, growing longer and tilting further from left to right"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Spatial 3D")]

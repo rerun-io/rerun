@@ -3,16 +3,15 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::Context as _;
-use re_catalog_client::AssetCoverage;
+use re_catalog_client::{AssetCoverage, CatalogClient};
 use re_log_types::EntryId;
-use re_redap_client::ConnectionRegistryHandle;
 use re_viewer_context::{CommandSender, SystemCommand, SystemCommandSender as _};
 
 use super::add_data_source::RegistrationTarget;
 
 /// Registers `.rrd` files as assets of the dataset a file was registered with.
 pub async fn register_assets(
-    connection_registry: &ConnectionRegistryHandle,
+    catalog_client: &CatalogClient,
     command_sender: &CommandSender,
     target: &RegistrationTarget,
     paths: &[PathBuf],
@@ -20,13 +19,6 @@ pub async fn register_assets(
     if paths.is_empty() {
         return;
     }
-
-    let Some(connection) = connection_registry.internal_connection_handle() else {
-        re_log::error!("Failed to register assets: the internal catalog is not running");
-        return;
-    };
-
-    let catalog_client = re_catalog_client::CatalogClient::new(connection);
 
     for path in paths {
         let source_uri = match asset_file_url(path) {
@@ -63,9 +55,9 @@ pub async fn register_assets(
 
     // The asset dataset comes from the entry list, which the server only reports once the first
     // asset is registered.
-    if let Some(origin) = connection_registry.internal_origin() {
-        command_sender.send_system(SystemCommand::RefreshRedapServer(origin.clone()));
-    }
+    command_sender.send_system(SystemCommand::RefreshRedapServer(
+        catalog_client.origin().clone(),
+    ));
 }
 
 /// The dataset the file was registered with.

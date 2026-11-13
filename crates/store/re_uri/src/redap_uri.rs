@@ -181,7 +181,7 @@ mod tests {
     use re_types_core::SegmentId;
 
     use super::*;
-    use crate::{DatasetResource, DatasetUri, Fragment, Scheme};
+    use crate::{DatasetResource, Scheme};
 
     #[test]
     fn scheme_conversion() {
@@ -280,6 +280,10 @@ mod tests {
     #[test]
     fn test_dataset_url_resource_roundtrip() {
         for (url, expected_resource) in [
+            (
+                "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/schema",
+                DatasetResource::Schema,
+            ),
             (
                 "rerun://127.0.0.1:1234/dataset/1830B33B45B963E7774455beb91701ae/assets?segment_id=robot_mesh",
                 DatasetResource::Assets,

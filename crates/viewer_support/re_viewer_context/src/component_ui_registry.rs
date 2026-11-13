@@ -8,7 +8,7 @@ use re_log_types::{Instance, StoreId};
 use re_sdk_types::{ComponentDescriptor, ComponentType};
 use re_ui::{UiExt as _, UiLayout};
 
-use crate::{AppContext, MaybeMutRef, QueryContext, StoreViewContext};
+use crate::{AppContext, MaybeMutRef, QueryContext, StoreViewContext, VisualizerComponentSource};
 
 /// Describes where an edit should be written to if any
 pub struct EditTarget {
@@ -56,6 +56,7 @@ type LegacyDisplayComponentUiCallback = Box<
             &EntityPath,
             &ComponentDescriptor,
             Option<RowId>,
+            &VisualizerComponentSource,
             &dyn arrow::array::Array,
         ) + Send
         + Sync,
@@ -69,14 +70,6 @@ pub enum EditOrView {
     View,
 }
 
-re_string_interner::declare_new_type_nonempty!(
-    /// The name of a UI variant (see [`ComponentUiIdentifier::Variant`]).
-    ///
-    /// This name is only an identifier, never shown to the user: it is the key a component UI
-    /// is registered under, so registering twice under the same name replaces the first UI.
-    pub struct VariantName;
-);
-
 /// The identifier under which component UIs are registered.
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 enum ComponentUiIdentifier {
@@ -88,15 +81,6 @@ enum ComponentUiIdentifier {
 
     /// Component UI for an array of a specific component type.
     ComponentArray(ComponentType),
-
-    /// Component UI explicitly opted into by providing a variant name.
-    Variant(VariantName),
-}
-
-impl From<VariantName> for ComponentUiIdentifier {
-    fn from(name: VariantName) -> Self {
-        Self::Variant(name)
-    }
 }
 
 /// Callback for viewing, and maybe editing, a component via UI.
@@ -247,6 +231,7 @@ impl ComponentUiRegistry {
                             component_descriptor,
                             &mut MaybeMutRef::MutRef(&mut deserialized_value),
                         );
+                        name_unnamed_editor(ui, &response, component_descriptor);
 
                         if response.changed() {
                             use re_sdk_types::ComponentBatch as _;
@@ -363,9 +348,9 @@ impl ComponentUiRegistry {
         + 'static,
     ) {
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
-            move |ctx, ui, _component_descriptor, _row_id, value, edit_or_view| {
+            move |ctx, ui, component_descriptor, _row_id, value, edit_or_view| {
                 // if we end up being called with a mismatching component, its likely a bug.
-                debug_assert_eq!(_component_descriptor.component_type, Some(C::name()));
+                debug_assert_eq!(component_descriptor.component_type, Some(C::name()));
 
                 let mut deserialized_value = try_deserialize(value)?;
                 match edit_or_view {
@@ -376,6 +361,7 @@ impl ComponentUiRegistry {
                     EditOrView::Edit => {
                         let response =
                             callback(ctx, ui, &mut MaybeMutRef::MutRef(&mut deserialized_value));
+                        name_unnamed_editor(ui, &response, component_descriptor);
 
                         if response.changed() {
                             use re_sdk_types::ComponentBatch as _;
@@ -408,9 +394,9 @@ impl ComponentUiRegistry {
         + 'static,
     ) {
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
-            move |ctx, ui, _component_descriptor, _row_id, value, edit_or_view| {
+            move |ctx, ui, component_descriptor, _row_id, value, edit_or_view| {
                 // if we end up being called with a mismatching component, its likely a bug.
-                debug_assert_eq!(_component_descriptor.component_type, Some(C::name()));
+                debug_assert_eq!(component_descriptor.component_type, Some(C::name()));
 
                 let mut deserialized_values = try_deserialize_array(value)?;
                 match edit_or_view {
@@ -421,6 +407,7 @@ impl ComponentUiRegistry {
                     EditOrView::Edit => {
                         let response =
                             callback(ctx, ui, &mut MaybeMutRef::MutRef(&mut deserialized_values));
+                        name_unnamed_editor(ui, &response, component_descriptor);
 
                         if response.changed() {
                             use re_sdk_types::ComponentBatch as _;
@@ -454,15 +441,12 @@ impl ComponentUiRegistry {
         .insert(component_type, untyped_callback);
     }
 
-    /// Registers singleline UI to view Arrow data using a specific [`VariantName`].
+    /// Registers a read-only single line UI for a component that works on the raw Arrow data.
     ///
-    /// The callback remains read-only when this variant is requested from an editable context.
-    ///
-    /// `variant_name` must be a valid [`VariantName`] (i.e. non-empty); passing an empty
-    /// string literal/const will panic.
-    pub fn add_variant_ui(
+    /// Unlike the typed editors, the callback gets the row id of the value.
+    /// If the callback fails, the fallback UI shows the data instead.
+    pub fn add_singleline_view_raw<C: re_sdk_types::Component>(
         &mut self,
-        variant_name: impl Into<VariantName>,
         callback: impl Fn(
             &AppContext<'_>,
             &mut egui::Ui,
@@ -474,7 +458,7 @@ impl ComponentUiRegistry {
         + Sync
         + 'static,
     ) {
-        let variant_name = variant_name.into();
+        let component_type = C::name();
         let fallback_ui = self.fallback_ui;
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
             move |ctx, ui, component_descriptor, row_id, value, _edit_or_view| {
@@ -482,7 +466,7 @@ impl ComponentUiRegistry {
 
                 if let Err(err) = res {
                     re_log::error_once!(
-                        "UI for variant {variant_name} failed to display the provided data {err}"
+                        "UI for {component_type} failed to display the provided data: {err}"
                     );
 
                     fallback_ui(ui, UiLayout::List, ctx.app_options.timestamp_format, value);
@@ -492,14 +476,20 @@ impl ComponentUiRegistry {
             },
         );
 
-        self.component_singleline_edit_or_view
-            .insert(variant_name.into(), untyped_callback);
+        self.insert_untyped_callback(
+            ComponentUiIdentifier::Component(component_type),
+            false,
+            untyped_callback,
+        );
     }
 
-    /// Registers a variant UI that can edit an Arrow value when given a mutable reference.
-    pub fn add_edit_or_view_variant_ui(
+    /// Registers a single line UI for a component that works on the raw Arrow data
+    /// and can edit it when given a mutable reference.
+    ///
+    /// Unlike the typed editors, the callback gets the row id of the value.
+    /// If the callback fails, the fallback UI shows the data instead.
+    pub fn add_singleline_edit_or_view_raw<C: re_sdk_types::Component>(
         &mut self,
-        variant_name: impl Into<VariantName>,
         callback: impl Fn(
             &AppContext<'_>,
             &mut egui::Ui,
@@ -511,7 +501,7 @@ impl ComponentUiRegistry {
         + Sync
         + 'static,
     ) {
-        let variant_name = variant_name.into();
+        let component_type = C::name();
         let fallback_ui = self.fallback_ui;
         let untyped_callback: UntypedComponentEditOrViewCallback = Box::new(
             move |ctx, ui, component_descriptor, row_id, value, edit_or_view| {
@@ -534,7 +524,7 @@ impl ComponentUiRegistry {
                     Ok(_) => None,
                     Err(err) => {
                         re_log::error_once!(
-                            "UI for variant {variant_name} failed to display the provided data: {err}"
+                            "UI for {component_type} failed to display the provided data: {err}"
                         );
                         fallback_ui(ui, UiLayout::List, ctx.app_options.timestamp_format, value);
                         None
@@ -543,8 +533,11 @@ impl ComponentUiRegistry {
             },
         );
 
-        self.component_singleline_edit_or_view
-            .insert(variant_name.into(), untyped_callback);
+        self.insert_untyped_callback(
+            ComponentUiIdentifier::Component(component_type),
+            false,
+            untyped_callback,
+        );
     }
 
     /// Queries which UI types are registered for a component.
@@ -644,6 +637,7 @@ impl ComponentUiRegistry {
             entity_path,
             component_descr,
             unit.row_id(),
+            &VisualizerComponentSource::identity(component_descr.component),
             component_raw.as_ref(),
         );
 
@@ -705,20 +699,23 @@ impl ComponentUiRegistry {
     }
 
     /// Show a UI for a single raw component.
+    ///
+    /// `source` identifies the data for caching, independently of the descriptor used to select the UI.
     pub fn component_ui_raw(
         &self,
         ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        component_descr: &ComponentDescriptor,
-        row_id: Option<RowId>,
+        target_component_descriptor: &ComponentDescriptor,
+        source_row_id: Option<RowId>,
+        source: &VisualizerComponentSource,
         component_raw: &dyn arrow::array::Array,
     ) {
-        re_tracing::profile_function!(component_descr.display_name());
+        re_tracing::profile_function!(target_component_descriptor.display_name());
 
         // Prefer the versatile UI callback if there is one.
-        if let Some(ui_callback) = component_descr
+        if let Some(ui_callback) = target_component_descriptor
             .component_type
             .and_then(|cn| self.legacy_display_component_uis.get(&cn))
         {
@@ -727,30 +724,33 @@ impl ComponentUiRegistry {
                 ui,
                 ui_layout,
                 entity_path,
-                component_descr,
-                row_id,
+                target_component_descriptor,
+                source_row_id,
+                source,
                 component_raw,
             );
             return;
         }
 
         // Fallback to the more specialized UI callbacks (which are only available for known components).
-        if component_descr.component_type.is_some() {
+        if target_component_descriptor.component_type.is_some() {
             let allow_multiline = ui_layout == UiLayout::SelectionPanel;
             let is_single_value = component_raw.len() == 1;
             let edit_or_view_ui = self.untyped_component_ui_callback(
-                component_descr,
+                target_component_descriptor,
                 allow_multiline,
                 is_single_value,
             );
 
             if let Some(edit_or_view_ui) = edit_or_view_ui {
-                // Use it in view mode (no mutation).
+                // These callbacks cannot distinguish source mappings in their cache keys.
+                let source_row_id = source_row_id
+                    .filter(|_| source.is_identity_mapping(target_component_descriptor.component));
                 (*edit_or_view_ui)(
                     ctx,
                     ui,
-                    component_descr,
-                    row_id,
+                    target_component_descriptor,
+                    source_row_id,
                     component_raw,
                     EditOrView::View,
                 );
@@ -766,90 +766,48 @@ impl ComponentUiRegistry {
         );
     }
 
-    /// Show a UI corresponding to the provided variant name.
-    pub fn variant_ui_raw(
+    /// Show an editor for a single raw component and return the edited value, if any.
+    ///
+    /// The caller decides where the edited value is written to.
+    /// Without an editor for the component, this shows the same UI as [`Self::component_ui_raw`].
+    pub fn component_edit_ui_raw(
         &self,
         ctx: &AppContext<'_>,
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
-        variant_name: VariantName,
+        entity_path: &EntityPath,
         component_descr: &ComponentDescriptor,
         row_id: Option<RowId>,
         component_raw: &dyn arrow::array::Array,
-    ) {
-        re_tracing::profile_function!(variant_name);
+    ) -> Option<arrow::array::ArrayRef> {
+        re_tracing::profile_function!(component_descr.display_name());
 
-        // Fallback to the more specialized UI callbacks.
-        let edit_or_view_ui = if ui_layout == UiLayout::SelectionPanel {
-            self.component_multiline_edit_or_view
-                .get(&variant_name.into())
-                .or_else(|| {
-                    self.component_singleline_edit_or_view
-                        .get(&variant_name.into())
-                })
-        } else {
-            self.component_singleline_edit_or_view
-                .get(&variant_name.into())
-        };
-
-        if let Some(edit_or_view_ui) = edit_or_view_ui {
-            // Use it in view mode (no mutation).
-            (*edit_or_view_ui)(
+        let allow_multiline = ui_layout == UiLayout::SelectionPanel;
+        let is_single_value = component_raw.len() == 1;
+        if let Some(edit_or_view_ui) =
+            self.untyped_component_ui_callback(component_descr, allow_multiline, is_single_value)
+        {
+            return (*edit_or_view_ui)(
                 ctx,
                 ui,
                 component_descr,
                 row_id,
                 component_raw,
-                EditOrView::View,
+                EditOrView::Edit,
             );
-            return;
         }
-        re_log::debug_once!("Variant name {variant_name} was not found, using fallback ui instead");
 
-        //TODO(ab): should we instead revert to using the component based ui?
-
-        (self.fallback_ui)(
-            ui,
-            ui_layout,
-            ctx.app_options.timestamp_format,
-            component_raw,
-        );
-    }
-
-    /// Show an editable variant UI and return its edited Arrow value.
-    pub fn variant_edit_ui_raw(
-        &self,
-        ctx: &AppContext<'_>,
-        ui: &mut egui::Ui,
-        variant_name: VariantName,
-        component_descr: &ComponentDescriptor,
-        row_id: Option<RowId>,
-        component_raw: &dyn arrow::array::Array,
-    ) -> Option<arrow::array::ArrayRef> {
-        let Some(callback) = self
-            .component_singleline_edit_or_view
-            .get(&variant_name.into())
-        else {
-            re_log::debug_once!(
-                "Variant name {variant_name} was not found, using fallback ui instead"
-            );
-            (self.fallback_ui)(
-                ui,
-                UiLayout::List,
-                ctx.app_options.timestamp_format,
-                component_raw,
-            );
-            return None;
-        };
-
-        callback(
+        self.component_ui_raw(
             ctx,
             ui,
+            ui_layout,
+            entity_path,
             component_descr,
             row_id,
+            &VisualizerComponentSource::identity(component_descr.component),
             component_raw,
-            EditOrView::Edit,
-        )
+        );
+        None
     }
 
     /// Show a multi-line editor for this instance of this component.
@@ -979,6 +937,7 @@ impl ComponentUiRegistry {
                 query_ctx.target_entity_path,
                 component_descr,
                 row_id,
+                &VisualizerComponentSource::identity(component_descr.component),
                 component_raw,
             );
         }
@@ -1040,6 +999,20 @@ impl ComponentUiRegistry {
             TryShowEditUiResult::NotShown
         }
     }
+}
+
+/// Names an editor widget after the component in the accessibility tree,
+/// unless it already has a name or is labelled by another widget.
+fn name_unnamed_editor(
+    ui: &egui::Ui,
+    response: &egui::Response,
+    component_descriptor: &ComponentDescriptor,
+) {
+    ui.ctx().accesskit_node_builder(response.id, |node| {
+        if node.label().is_none() && node.labelled_by().is_empty() {
+            node.set_label(component_descriptor.display_name());
+        }
+    });
 }
 
 fn try_deserialize_array<C: re_sdk_types::Component>(

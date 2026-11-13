@@ -8,6 +8,7 @@ mod fetch_chunks;
 mod find_chunks;
 mod find_entries_filters;
 mod get_schemas;
+mod protocol_level;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
@@ -116,6 +117,7 @@ define_redap_tests! {
     find_chunks::find_chunks_invalid_requests,
     find_chunks::find_chunks_range_bounds,
     find_chunks::find_chunks_samples,
+    find_chunks::find_chunks_samples_shared_chunk_ids,
     find_chunks::find_chunks_segment_scope,
     find_chunks::find_chunks_simple_dataset,
     find_chunks::find_chunks_with_layers,
@@ -134,6 +136,7 @@ define_redap_tests! {
     get_schemas::get_schemas_invalid_id,
     get_schemas::get_schemas_other_dataset_id,
     get_schemas::get_schemas_too_many_ids,
+    protocol_level::new_dataset_serves_clients_without_protocol_level,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_has_uncompressed_sizes,
     query_dataset::query_dataset_matches_find_chunks,
@@ -182,6 +185,7 @@ define_redap_tests! {
     register_segment::register_and_scan_simple_dataset_with_properties,
     register_segment::register_and_scan_simple_dataset_with_properties_out_of_order,
     register_segment::register_bad_file_uri_should_error,
+    register_segment::register_bad_rrd_file_should_error,
     register_segment::register_conflicting_property_schema,
     register_segment::register_conflicting_schema,
     register_segment::register_conflicting_schema_filters_segment_table,
@@ -189,6 +193,7 @@ define_redap_tests! {
     register_segment::register_empty_request,
     register_segment::register_fully_skipped,
     register_segment::register_intra_request_duplicates,
+    register_segment::register_non_rrd_file_should_error,
     register_segment::register_segment_bumps_timestamp,
     register_segment::register_with_dataset_if_duplicate_behavior_overwrite,
     register_segment::register_with_dataset_if_duplicate_behavior_skip,
@@ -202,12 +207,17 @@ define_redap_tests! {
     rrd_manifest::layered_segment,
     rrd_manifest::layered_segment_stress,
     unregister_segment::unregister_invalid_args,
+    unregister_segment::unregister_layer_drops_its_logged_properties,
     unregister_segment::unregister_missing_dataset,
     unregister_segment::unregister_missing_segment,
     unregister_segment::unregister_products,
+    unregister_segment::unregister_segment_drops_its_logged_properties,
     unregister_segment::unregister_simple,
     unregister_segment::unregister_then_query,
+    update_entry::apply_dataset_policy_stores_the_policy,
+    update_entry::create_dataset_entry_rejects_an_unset_selection,
     update_entry::update_dataset_entry_keeps_asset_dataset,
+    update_entry::update_dataset_entry_keeps_policy,
     update_entry::update_dataset_entry_rejects_invalid_asset_details,
     update_entry::update_dataset_entry_rejects_invalid_blueprint_details,
     update_entry::update_dataset_entry_replaces_deleted_asset_dataset,
@@ -216,6 +226,7 @@ define_redap_tests! {
     update_entry::update_table_entry_blueprint_details,
     update_entry::update_table_entry_rejects_invalid_blueprint_details,
     write_table::write_table,
+    write_table::write_table_rejects_bad_batches,
     ; // Tests that return `anyhow::Result<()>`:
     register_asset::asset_dataset_enforces_segment_limit,
     register_asset::asset_dataset_segment_limit_counts_layers,

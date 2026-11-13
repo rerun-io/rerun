@@ -14,7 +14,7 @@ use re_log_channel::{
     BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, ViewerControlCommand,
 };
 use re_log_msg::{BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreInfo, StoreSource};
-use re_log_types::{EntryId, StoreId, StoreKind};
+use re_log_types::{ApplicationId, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::DatasetKind;
 use re_types_core::SegmentId;
@@ -210,7 +210,6 @@ impl PoolChannel {
 
     /// Index of the connection with the fewest requests in flight.
     fn least_loaded(&self) -> usize {
-        use std::sync::atomic::Ordering;
         self.in_flight
             .iter()
             .enumerate()
@@ -283,8 +282,6 @@ impl tower::Service<tonic::codegen::http::Request<tonic::body::Body>> for PoolCh
     }
 
     fn call(&mut self, req: tonic::codegen::http::Request<tonic::body::Body>) -> Self::Future {
-        use std::sync::atomic::Ordering;
-
         let idx = self.least_loaded();
         self.in_flight[idx].fetch_add(1, Ordering::Relaxed);
         let guard = InFlightGuard {
@@ -664,12 +661,28 @@ pub struct StreamingOptions {
 
 impl std::fmt::Debug for StreamingOptions {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            force_full_download,
+            download,
+            on_progress,
+        } = self;
         f.debug_struct("StreamingOptions")
-            .field("force_full_download", &self.force_full_download)
-            .field("download", &self.download)
-            .field("on_progress", &self.on_progress.as_ref().map(|_| "…"))
+            .field("force_full_download", force_full_download)
+            .field("download", download)
+            .field("on_progress", &on_progress.as_ref().map(|_| "…"))
             .finish()
     }
+}
+
+/// The store id of a blueprint streamed from a segment of a blueprint dataset.
+///
+/// The recording id is the blueprint's segment id, so streaming the same blueprint again uses the
+/// same store.
+pub fn blueprint_store_id_for_segment(
+    application_id: ApplicationId,
+    blueprint_segment: &SegmentId,
+) -> StoreId {
+    StoreId::new(StoreKind::Blueprint, application_id, blueprint_segment)
 }
 
 async fn stream_blueprint_segment(
@@ -854,6 +867,13 @@ pub async fn stream_blueprint_and_segment_from_server(
 
             (asset_dataset, DatasetKind::Asset)
         }
+
+        re_uri::DatasetResource::Schema => {
+            return Err(ApiError::invalid_arguments(
+                client.origin(),
+                format!("Cannot stream a dataset schema\nUri: {uri}"),
+            ));
+        }
     };
 
     // An asset shows something else entirely than the dataset's own segments, so the dataset's
@@ -864,10 +884,9 @@ pub async fn stream_blueprint_and_segment_from_server(
         {
             re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-            // For blueprint, we can use a random recording ID
-            let blueprint_store_id = StoreId::random(
-                StoreKind::Blueprint,
+            let blueprint_store_id = blueprint_store_id_for_segment(
                 recording_store_id.application_id().clone(),
+                &blueprint_segment,
             );
 
             match stream_blueprint_segment(

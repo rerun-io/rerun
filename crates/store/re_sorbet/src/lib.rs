@@ -27,6 +27,7 @@ pub mod metadata;
 mod migrations;
 mod row_id_column_descriptor;
 mod schema_builder;
+mod schema_id;
 mod selectors;
 mod sorbet_batch;
 mod sorbet_columns;
@@ -50,9 +51,10 @@ pub use self::metadata::{
     ArrowBatchMetadata, ArrowFieldMetadata, MetadataExt, MissingFieldMetadata, MissingMetadataKey,
     RERUN_KIND, SORBET_INDEX_NAME, SORBET_IS_STATIC,
 };
-pub use self::migrations::{migrate_record_batch, migrate_schema_ref};
+pub use self::migrations::{migrate_record_batch, migrate_rrd_manifest_data, migrate_schema_ref};
 pub use self::row_id_column_descriptor::RowIdColumnDescriptor;
 pub use self::schema_builder::SchemaBuilder;
+pub use self::schema_id::{SchemaId, SchemaIdMap, SchemaIdSet};
 pub use self::selectors::{
     ColumnSelector, ColumnSelectorParseError, ComponentColumnSelector, TimeColumnSelector,
 };

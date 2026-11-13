@@ -26,6 +26,8 @@
 //! ```
 //!
 
+#![expect(clippy::print_stdout)] // Prints the benchmark results
+
 use clap::Parser as _;
 
 use crate::image::ImageCommand;

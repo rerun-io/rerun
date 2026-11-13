@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.41.0-alpha.1+dev",
+  "version": "0.44.0-alpha.1+dev",
   "description": "Embed the Rerun web viewer in your app",
   "licenses": [
     {
@@ -11,13 +11,17 @@
     }
   ],
   "scripts": {
+    "build:proto": "rm -rf proto && mkdir -p proto && protoc -I ../../crates/store/re_protos/proto --plugin=protoc-gen-es=../node_modules/.bin/protoc-gen-es --es_out=proto --es_opt=target=ts,import_extension=js rerun/v1alpha1/viewer_control.proto rerun/v1alpha1/cloud.proto rerun/v1alpha1/common.proto rerun/v1alpha1/log_msg.proto",
+    "prebuild:js": "npm run build:proto",
     "build:wasm": "node build-wasm.mjs --mode release",
     "build:js": "tsc --emitDeclarationOnly && esbuild index.ts --bundle --format=esm --platform=browser --target=esnext --external:./re_viewer.js --legal-comments=inline --keep-names --sourcemap --outfile=index.js",
     "build": "npm run build:wasm && npm run build:js",
     "build:wasm:debug": "node build-wasm.mjs --mode debug",
     "build:debug": "npm run build:wasm:debug && npm run build:js",
     "pack": "npm pack && mv rerun-io-web-viewer-*.tgz web-viewer.tar.gz",
+    "predocs": "npm run build:proto",
     "docs": "typedoc",
+    "pretest": "npm run build:proto",
     "test": "node --test"
   },
   "repository": {
@@ -48,6 +52,9 @@
     }
   },
   "files": [
+    "compat.d.ts",
+    "compat.d.ts.map",
+    "compat.ts",
     "exact_json.d.ts",
     "exact_json.d.ts.map",
     "exact_json.ts",

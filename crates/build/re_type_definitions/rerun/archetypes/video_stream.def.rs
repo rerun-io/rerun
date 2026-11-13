@@ -4,13 +4,13 @@
 /// Video stream consisting of raw video chunks.
 ///
 /// For logging video containers like mp4, refer to [`rerun::archetypes::AssetVideo`] and [`rerun::archetypes::VideoFrameReference`].
-/// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/reference/video).
+/// To learn more about video support in Rerun, check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 ///
 /// All components except `sample` are typically logged statically once per entity.
 /// `sample` is then logged repeatedly for each frame on the timeline.
 /// Individual frames can be displayed with [`rerun::archetypes::VideoFrameReference`], which uses the active Viewer timeline.
 ///
-/// \example archetypes/video_stream_synthetic missing="cpp,rs" title="Live streaming of on-the-fly encoded video" image="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png"
+/// \example archetypes/video_stream_synthetic missing="cpp,rs" title="Live streaming of on-the-fly encoded video" image="https://static.rerun.io/video_stream_synthetic/4dd34da01980afa5604994fa4cce34d7573b0763/1200w.png" alt="Rerun Viewer playing a synthetic video stream of a yellow circle on a blue gradient, with video sample details in the selection panel"
 #[rerun::rerun_type]
 #[docs(category = "Video")]
 #[docs(view_types = "Spatial2DView, Spatial3DView: if logged under a projection")]
@@ -46,6 +46,8 @@ pub struct VideoStream {
     /// Unless your stream consists entirely of key-frames (in which case you should consider [`rerun::archetypes::EncodedImage`])
     /// never log this component as static data as this means that you loose all information of
     /// previous samples which may be required to decode an image.
+    ///
+    /// Clearing the fields of this archetype hides the video until the next sample, and samples after it can still decode from earlier keyframes.
     ///
     /// See [`rerun::components::VideoCodec`] for codec specific requirements.
     #[rerun(recommended)]

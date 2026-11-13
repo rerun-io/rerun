@@ -77,30 +77,6 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "is_final=$is_final" >> "$GITHUB_OUTPUT"
 
-  announce-discord:
-    name: "Announce on Discord"
-    # After the assets are attached, since the release notes link to them.
-    needs: [final-release, sync-release-assets]
-    # Only the first attempt posts: "Re-run all jobs" keeps the `release` event and would announce again.
-    # If the post itself failed, re-post by hand.
-    if: github.event_name == 'release' && github.run_attempt == 1 && needs.final-release.outputs.is_final == 'true'
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
-        with:
-          sparse-checkout: scripts/ci
-
-      - name: Post to Discord
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
-          RELEASE_BODY: ${{ github.event.release.body }}
-          RELEASE_TITLE: ${{ github.event.release.name || github.event.release.tag_name }}
-          RELEASE_URL: ${{ github.event.release.html_url }}
-        run: python3 scripts/ci/announce_release.py --title "$RELEASE_TITLE" --url "$RELEASE_URL"
-
   remove-patch-labels:
     name: "Remove patch labels"
     needs: [final-release]

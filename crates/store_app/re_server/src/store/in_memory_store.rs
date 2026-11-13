@@ -1,15 +1,11 @@
 use std::sync::Arc;
 
 use ahash::HashMap;
-use arrow::array::{
-    ArrayRef, Int32Array, RecordBatch, RecordBatchOptions, StringArray, TimestampNanosecondArray,
-};
+use arrow::array::RecordBatch;
 #[cfg(not(target_arch = "wasm32"))]
 use arrow::datatypes::SchemaRef;
-use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
 use datafusion::catalog::MemTable;
 use datafusion::common::DataFusionError;
-use itertools::Itertools as _;
 use re_chunk_store::{Chunk, ChunkStoreConfig};
 #[cfg(not(target_arch = "wasm32"))]
 use re_log_types::StoreKind;
@@ -21,7 +17,8 @@ use re_protos::cloud::v1alpha1::ext as cloud_ext;
 #[cfg(not(target_arch = "wasm32"))]
 use re_protos::cloud::v1alpha1::ext::TableEntry;
 use re_protos::cloud::v1alpha1::ext::{
-    DatasetDetails, EntryDetails, ProviderDetails, TableDetails,
+    ChunkIndexingPolicy, DatasetDetails, DatasetPolicy, EntriesTableDataframe, EntryDetails,
+    ProviderDetails, TableDetails,
 };
 use re_protos::common::v1alpha1::ext::DatasetKind;
 #[cfg(not(target_arch = "wasm32"))]
@@ -29,7 +26,6 @@ use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_tuid::Tuid;
 #[cfg(not(target_arch = "wasm32"))]
 use re_types_core::LayerName;
-use re_types_core::{ArrowDataType as _, ComponentBatch as _};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::NamedPath;
@@ -233,7 +229,7 @@ impl InMemoryStore {
         let entry_name = EntryName::new(entry_name).map_err(Error::InvalidEntryName)?;
 
         let dataset_id = self
-            .create_dataset(entry_name, None)
+            .create_dataset(entry_name, None, DatasetPolicy::default())
             .expect("Name cannot yet exist");
 
         let mut entries = tokio::fs::read_dir(&directory).await?;
@@ -285,8 +281,6 @@ impl InMemoryStore {
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<EntryId, Error> {
-        use std::sync::Arc;
-
         use re_protos::cloud::v1alpha1::ext::LanceTable;
 
         let directory = tokio::fs::canonicalize(&named_path.path).await?;
@@ -363,14 +357,19 @@ impl InMemoryStore {
             };
         }
 
-        if let Some(dataset) = self.datasets.get_mut(&entry_id) {
+        let old_name = if let Some(dataset) = self.datasets.get_mut(&entry_id) {
+            let old_name = dataset.name().clone();
             dataset.set_name(entry_name.clone());
+            old_name
         } else if let Some(table) = self.tables.get_mut(&entry_id) {
+            let old_name = table.name().clone();
             table.set_name(entry_name.clone());
+            old_name
         } else {
             return Err(Error::EntryIdNotFound(entry_id));
-        }
+        };
 
+        self.id_by_name.remove(&old_name);
         self.id_by_name.insert(entry_name, entry_id);
         self.update_entries_table()
     }
@@ -422,8 +421,9 @@ impl InMemoryStore {
         &mut self,
         dataset_name: EntryName,
         dataset_id: Option<EntryId>,
+        policy: DatasetPolicy,
     ) -> Result<EntryId, Error> {
-        self.create_dataset_with_kind(dataset_name, dataset_id, DatasetKind::Recording)
+        self.create_dataset_with_kind(dataset_name, dataset_id, DatasetKind::Recording, policy)
     }
 
     pub(crate) fn create_blueprint_dataset_for_entry(
@@ -469,6 +469,7 @@ impl InMemoryStore {
         dataset_name: EntryName,
         dataset_id: Option<EntryId>,
         dataset_kind: DatasetKind,
+        policy: DatasetPolicy,
     ) -> Result<EntryId, Error> {
         let dataset_id = dataset_id.unwrap_or_else(EntryId::new);
 
@@ -477,11 +478,16 @@ impl InMemoryStore {
                 let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(dataset_id)?;
                 let asset_dataset_id = self.create_asset_dataset_for_entry(dataset_id)?;
 
+                // The OSS server has no configurable default: an unset policy indexes everything.
+                let mut policy = policy;
+                policy.resolve_chunk_indexing_policy(ChunkIndexingPolicy::ALL);
+
                 let dataset_details = DatasetDetails {
                     blueprint_dataset: Some(blueprint_dataset_id),
                     asset_dataset: Some(asset_dataset_id),
                     default_blueprint_segment: None,
                     default_segment_table_blueprint_segment: None,
+                    policy: Some(policy),
                 };
 
                 self.create_dataset_impl(
@@ -574,8 +580,6 @@ impl InMemoryStore {
     /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
     /// TODO(#11369)
     fn update_entries_table(&mut self) -> Result<(), Error> {
-        use std::sync::Arc;
-
         use re_protos::cloud::v1alpha1::SystemTableKind;
         use re_protos::cloud::v1alpha1::ext::SystemTable;
 
@@ -690,62 +694,9 @@ impl InMemoryStore {
 }
 
 fn generate_entries_table(entries: &[EntryDetails]) -> Result<RecordBatch, Error> {
-    #[expect(clippy::type_complexity)]
-    let (id, name, entry_kind, created_at, updated_at): (
-        Vec<Tuid>,
-        Vec<EntryName>,
-        Vec<i32>,
-        Vec<i64>,
-        Vec<i64>,
-    ) = entries
-        .iter()
-        .map(|entry| {
-            (
-                entry.id.id,
-                entry.name.clone(),
-                entry.kind as i32,
-                entry.created_at.as_nanosecond() as i64,
-                entry.updated_at.as_nanosecond() as i64,
-            )
-        })
-        .multiunzip();
-
-    let id_arr = id
-        .to_arrow()
+    let rb = EntriesTableDataframe::new(entries)
+        .into_record_batch()
         .map_err(|err| DataFusionError::External(Box::new(err)))?;
-    let name_arr = Arc::new(StringArray::from(
-        name.iter().map(|n| n.as_str()).collect::<Vec<_>>(),
-    )) as ArrayRef;
-    let kind_arr = Arc::new(Int32Array::from(entry_kind)) as ArrayRef;
-    let created_at_arr = Arc::new(TimestampNanosecondArray::from(created_at)) as ArrayRef;
-    let updated_at_arr = Arc::new(TimestampNanosecondArray::from(updated_at)) as ArrayRef;
-
-    let schema = Arc::new(Schema::new_with_metadata(
-        vec![
-            Field::new("id", Tuid::arrow_data_type(), false),
-            Field::new("name", DataType::Utf8, false),
-            Field::new("entry_kind", DataType::Int32, false),
-            Field::new(
-                "created_at",
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                false,
-            ),
-            Field::new(
-                "updated_at",
-                DataType::Timestamp(TimeUnit::Nanosecond, None),
-                false,
-            ),
-        ],
-        Default::default(),
-    ));
-
-    let num_rows = id_arr.len();
-    let rb = RecordBatch::try_new_with_options(
-        schema,
-        vec![id_arr, name_arr, kind_arr, created_at_arr, updated_at_arr],
-        &RecordBatchOptions::default().with_row_count(Some(num_rows)),
-    )
-    .map_err(DataFusionError::from)?;
 
     Ok(rb)
 }

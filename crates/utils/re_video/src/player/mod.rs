@@ -290,6 +290,9 @@ pub struct PlayerFrameStatus {
 
     /// Meta information about the decoded frame.
     pub frame_info: Option<FrameInfo>,
+
+    /// Whether the sample at the requested time is a clear. Nothing is shown then.
+    pub cleared: bool,
 }
 
 // --- VideoPlayer ---
@@ -363,6 +366,7 @@ pub fn request_keyframe_before(
         .rev()
         .find(|(_, s)| match s {
             crate::SampleMetadataState::Present(s) => s.is_sync,
+            crate::SampleMetadataState::Clear { .. } => false,
             // We don't know if this is a keyframe or not. So we stop here and wait for it
             // to be loaded.
             crate::SampleMetadataState::Unloaded { .. } => true,
@@ -397,17 +401,19 @@ pub fn request_keyframe_before(
         }
 
         match s {
-            crate::SampleMetadataState::Present(_) => video_description
-                .keyframe_indices
-                .binary_search(&from_idx)
-                .map_err(|_idx| {
-                    if cfg!(debug_assertions) {
-                        re_log::error_once!(
-                            "[DEBUG] Not tracking the keyframe at sample idx {from_idx}"
-                        );
-                    }
-                    VideoPlayerError::BadData
-                }),
+            crate::SampleMetadataState::Present(_) | crate::SampleMetadataState::Clear { .. } => {
+                video_description
+                    .keyframe_indices
+                    .binary_search(&from_idx)
+                    .map_err(|_idx| {
+                        if cfg!(debug_assertions) {
+                            re_log::error_once!(
+                                "[DEBUG] Not tracking the keyframe at sample idx {from_idx}"
+                            );
+                        }
+                        VideoPlayerError::BadData
+                    })
+            }
             crate::SampleMetadataState::Unloaded { .. } => {
                 Err(UnloadedSampleDataError::ExpectedSampleNotLoaded.into())
             }
@@ -525,6 +531,20 @@ impl<T: Default> VideoPlayer<T> {
                 }
             };
 
+        // A clear shows nothing and leaves the decoder and the last output as they are.
+        if video_description
+            .samples
+            .get(requested_sample_idx)
+            .is_some_and(|s| s.is_clear())
+        {
+            return Ok(PlayerFrameStatus {
+                decoder_delay_state: DecoderDelayState::UpToDate,
+                show_loading_indicator: false,
+                frame_info: None,
+                cleared: true,
+            });
+        }
+
         let requested_sample = video_description
             .samples
             .get(requested_sample_idx)
@@ -631,6 +651,7 @@ impl<T: Default> VideoPlayer<T> {
             decoder_delay_state: self.decoder_delay_state,
             show_loading_indicator,
             frame_info: self.frame_info.clone(),
+            cleared: false,
         })
     }
 
@@ -974,6 +995,11 @@ impl<T: Default> VideoPlayer<T> {
         {
             let sample = match sample {
                 crate::SampleMetadataState::Present(sample) => sample,
+                crate::SampleMetadataState::Clear { .. } => {
+                    self.sample_decoder.skip(sample_idx)?;
+                    self.last_enqueued = Some(sample_idx);
+                    continue;
+                }
                 crate::SampleMetadataState::Unloaded { .. } => {
                     // We handle unloaded samples in `Self::enqueue_samples`
                     return Ok(());

@@ -1,4 +1,3 @@
-use std::iter;
 use std::sync::Arc;
 
 use egui::emath::GuiRounding as _;
@@ -17,8 +16,7 @@ use crate::table_selection::TableSelectionState;
 
 pub struct PreviewColumn {
     pub data_column_index: usize,
-    pub num_views: usize,
-    pub preview_height: f32,
+    pub content_width: f32,
 }
 
 /// Wrapper around [`egui_table::TableDelegate`] that handles styling, selection, column visibility, row numbers, etc.
@@ -36,8 +34,11 @@ pub struct ReTable<'a> {
     /// We remember the original so it doesn't affect the cell contents.
     original_style: Arc<egui::Style>,
 
-    /// Data-column indices rendered as previews and the number of views in each column.
+    /// Preview widths exclude the cell margins added by the table.
     preview_columns: Vec<PreviewColumn>,
+
+    /// Whether the table starts with a row number column. Rows can only be selected through it.
+    row_numbers: bool,
 }
 
 impl<'a> ReTable<'a> {
@@ -63,7 +64,21 @@ impl<'a> ReTable<'a> {
             table_style: TableStyle::Spacious,
             original_style: Arc::new(egui::Style::default()), // Will be set in show().
             preview_columns: Vec::new(),
+            row_numbers: true,
         }
+    }
+
+    /// Shows or hides the row number column.
+    ///
+    /// Without it, rows can't be selected.
+    pub fn with_row_numbers(mut self, row_numbers: bool) -> Self {
+        self.row_numbers = row_numbers;
+        self
+    }
+
+    /// The table column index of the first data column.
+    fn first_data_column(&self) -> usize {
+        usize::from(self.row_numbers)
     }
 
     /// Marks the given columns as preview columns.
@@ -94,7 +109,7 @@ impl<'a> ReTable<'a> {
         name: &str,
     ) -> egui::Response {
         Self::add_row_number_content(ui, |ui| {
-            ui.checkbox_indeterminate(checked, (), intermediate)
+            ui.add(egui::Checkbox::new(checked, ()).indeterminate(intermediate))
                 .accessible_name(name)
         })
     }
@@ -126,28 +141,28 @@ impl<'a> ReTable<'a> {
         self.original_style = ui.style().clone();
         apply_table_style_fixes(ui.style_mut());
 
-        // 1 for row number is sticky.
-        let num_sticky_cols = 1;
+        // The row number column is sticky.
+        let num_sticky_cols = self.first_data_column();
 
         egui_table::Table::new()
             .id_salt(self.session_id)
             .num_sticky_cols(num_sticky_cols)
             .columns(
                 chain!(
-                    iter::once(
+                    self.row_numbers.then(|| {
                         egui_table::Column::new(row_number_cell_width)
                             .resizable(false)
                             .range(Rangef::new(row_number_cell_width, row_number_cell_width))
-                            .id(ui.make_persistent_id("row_number")),
-                    ),
+                            .id(ui.make_persistent_id("row_number"))
+                    }),
                     self.visible_columns.iter().map(|(id, index)| {
                         if let Some(preview_column) = self
                             .preview_columns
                             .iter()
                             .find(|preview_column| preview_column.data_column_index == *index)
                         {
-                            let width = preview_column.preview_height
-                                * preview_column.num_views.max(1) as f32;
+                            let width = preview_column.content_width
+                                + ui.tokens().table_cell_margin(self.table_style).sum().x;
                             egui_table::Column::new(width)
                                 .resizable(false)
                                 .range(Rangef::new(width, width))
@@ -177,12 +192,13 @@ impl egui_table::TableDelegate for ReTable<'_> {
 
     fn header_cell_ui(&mut self, ui: &mut Ui, cell: &HeaderCellInfo) {
         let table_style = self.table_style;
+        let is_row_number = self.row_numbers && cell.group_index == 0;
 
-        header_ui(ui, table_style, cell.group_index != 0, |ui| {
+        header_ui(ui, table_style, !is_row_number, |ui| {
             ui.set_style(self.original_style.clone());
             ui.set_truncate_style();
 
-            if cell.group_index == 0 {
+            if is_row_number {
                 // Row number / checkbox header.
                 let hovered = ui.rect_contains_pointer(
                     ui.max_rect().expand(ui.style().interaction.interact_radius),
@@ -216,7 +232,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
                 }
             } else {
                 // Data column headers.
-                let column_index = cell.group_index - 1;
+                let column_index = cell.group_index - self.first_data_column();
 
                 if let Some((_, col_index)) = self.visible_columns.get(column_index) {
                     let mut header_cell_info = cell.clone();
@@ -229,7 +245,7 @@ impl egui_table::TableDelegate for ReTable<'_> {
     }
 
     fn cell_ui(&mut self, ui: &mut Ui, cell: &CellInfo) {
-        if cell.col_nr == 0 {
+        if self.row_numbers && cell.col_nr == 0 {
             // Row number column.
             cell_ui(ui, self.table_style, false, |ui| {
                 ui.set_truncate_style();
@@ -257,14 +273,14 @@ impl egui_table::TableDelegate for ReTable<'_> {
             });
         } else {
             // Data column.
+            let col_index = cell.col_nr - self.first_data_column();
             if ui.rect_contains_pointer(ui.max_rect())
-                && let Some((_, col_index)) = self.visible_columns.get(cell.col_nr - 1)
+                && let Some((_, col_index)) = self.visible_columns.get(col_index)
             {
                 self.selection.hovered_column = Some(*col_index);
             }
             cell_ui(ui, self.table_style, false, |ui| {
                 ui.set_truncate_style();
-                let col_index = cell.col_nr - 1;
                 if let Some((_, col_index)) = self.visible_columns.get(col_index) {
                     let mut cell_info = cell.clone();
                     cell_info.col_nr = *col_index;
@@ -276,6 +292,11 @@ impl egui_table::TableDelegate for ReTable<'_> {
 
     fn row_ui(&mut self, ui: &mut Ui, row_nr: u64) {
         ui.set_style(self.original_style.clone());
+        if !self.row_numbers {
+            self.inner.row_ui(ui, row_nr);
+            return;
+        }
+
         let response = ui.response();
         if response.container_contains_pointer() {
             self.selection.hovered_row = Some(row_nr);

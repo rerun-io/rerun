@@ -482,7 +482,7 @@ def main() -> None:
 
     rr.script_setup(
         args,
-        "rerun_ocr_example",
+        "rerun_example_ocr",
         default_blueprint=rrb.Blueprint(
             rrb.Vertical(
                 rrb.Spatial2DView(name="Input", contents=["Image/**"]),

@@ -25,8 +25,7 @@ from .._shuffle import BlockShuffle, ShuffleStrategy
 if TYPE_CHECKING:
     import os
 
-    from .._config import DataSource, Field
-    from .._sample_index import FixedRateSampling
+    from .._config import DataSource, Field, FixedRateSampling, TimeAlignedSampling
 
 MANIFEST_FORMAT_VERSION = "1"
 
@@ -199,7 +198,7 @@ class Manifest:
         index: str,
         fields: dict[str, Field],
         *,
-        timeline_sampling: FixedRateSampling | None = None,
+        timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
         fetch_block_size: int = 128,
         num_ranks: int = 1,
         num_workers_per_rank: int = 1,
@@ -209,6 +208,7 @@ class Manifest:
         """
         Generate an **unshuffled** manifest for one epoch by scanning the source.
 
+        Video fields require keyframe markers during manifest generation.
         Scans the source, drops invalid samples, and unrolls one epoch in natural
         order (segment by segment, along the timeline) into `fetch_group` /
         `emit_rank` columns. To shuffle, call

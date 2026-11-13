@@ -3,8 +3,9 @@
 
 /// A view on a tensor of any dimensionality.
 ///
-/// \example views/tensor title="Use a blueprint to create a TensorView." image="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/1200w.png"
+/// \example views/tensor title="Use a blueprint to create a TensorView." image="https://static.rerun.io/tensor_view/04158807b970c16af7922698389b239b0575c436/1200w.png" alt="Tensor view showing one slice of a random tensor as a turbo colormap heatmap, with a batch slider and width and height dimension labels"
 #[rerun::rerun_type]
+#[docs(keywords = "tensor, array, multidimensional, slice")]
 #[rerun(view_identifier = "Tensor")]
 #[rerun(state = "unstable")]
 pub struct TensorView {
@@ -16,4 +17,10 @@ pub struct TensorView {
 
     /// Configures how the selected slice should fit into the view.
     pub view_fit: rerun::blueprint::archetypes::TensorViewFit,
+
+    /// The visible region of the selected slice, in element coordinates.
+    ///
+    /// Use this to control pan & zoom of the view.
+    /// It is cleared when the dimensions shown as width or height change, or when the view fit changes.
+    pub visual_bounds: rerun::blueprint::archetypes::VisualBounds2D,
 }

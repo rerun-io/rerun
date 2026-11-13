@@ -89,8 +89,8 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::Archetype,
                 1,
                 r"Archetypes are bundles of components for which the Rerun viewer has first-class
-built-in support. See [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md) and
-[Visualizers and Overrides](../../concepts/visualization/customize-views.md) for more information.
+built-in support. See [Entities and Components](../../logging-and-ingestion/data-model/entity-component.md) and
+[Visualizers and Overrides](../../viewer/blueprints-and-views/customize-views.md) for more information.
 
 This page lists all built-in archetypes.",
                 &archetypes,
@@ -104,7 +104,7 @@ An entity can only ever contain a single array of any given component type.
 If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
 
 For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).",
+on [Entities and Components](../../logging-and-ingestion/data-model/entity-component.md).",
                 &components,
             ),
             (
@@ -159,6 +159,7 @@ fn index_page(
         kind.plural_name(),
         Some(order),
         Some("alphabetical"),
+        &[],
     );
     putln!(page);
     putln!(page, "{prelude}");
@@ -247,7 +248,15 @@ fn object_page(
         object.name.clone()
     };
 
-    write_frontmatter(&mut page, &title, None, None);
+    let keywords = object
+        .try_get_attr::<String>(DocsAttr::Keywords)
+        .unwrap_or_default();
+    let keywords = keywords
+        .split(',')
+        .map(str::trim)
+        .filter(|keyword| !keyword.is_empty())
+        .collect::<Vec<_>>();
+    write_frontmatter(&mut page, &title, None, None, &keywords);
     putln!(page);
 
     if let Some(docline_summary) = object.state.docline_summary() {
@@ -373,9 +382,18 @@ fn list_links(page: &mut String, object: &Object) {
     }
 }
 
-fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>, sort_children: Option<&str>) {
+fn write_frontmatter(
+    o: &mut String,
+    title: &str,
+    order: Option<u64>,
+    sort_children: Option<&str>,
+    keywords: &[&str],
+) {
     putln!(o, "---");
     putln!(o, "title: {title:?}");
+    if !keywords.is_empty() {
+        putln!(o, "keywords: {keywords:?}");
+    }
     if let Some(order) = order {
         // The order is used to sort `rerun.io/docs` side navigation
         putln!(o, "order: {order}");
@@ -764,6 +782,7 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         name,
         title,
         image,
+        alt,
         exclude_from_api_docs: _,
         missing_extensions: _,
     } in examples
@@ -774,7 +793,9 @@ fn write_example_list(o: &mut String, examples: &[ExampleInfo<'_>]) {
         putln!(o, "snippet: {path}");
         if let Some(image_url) = image {
             putln!(o);
-            for line in image_url.image_stack().snippet_id(path).finish() {
+            // Without a dedicated alt text, the example title is the best description we have.
+            let alt = alt.unwrap_or(title);
+            for line in image_url.image_stack().snippet_id(path).alt(alt).finish() {
                 putln!(o, "{line}");
             }
         }

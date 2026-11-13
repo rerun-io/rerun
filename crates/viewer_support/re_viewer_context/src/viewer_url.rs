@@ -174,7 +174,7 @@ impl std::str::FromStr for ViewerUrl {
     /// Tries to parse a content URL or file inside the viewer.
     ///
     /// Uses conservative defaults: extensionless HTTP URLs are **not** accepted,
-    /// so plain URLs like `https://rerun.io/docs/getting-started/data-in` fall through to be opened
+    /// so plain URLs like `https://rerun.io/docs/logging-and-ingestion/tutorial` fall through to be opened
     /// in the browser. Use [`Self::parse_with_options`] to control this behavior.
     fn from_str(url: &str) -> Result<Self, Self::Err> {
         Self::parse_with_options(url, &re_data_source::FromUriOptions::default())

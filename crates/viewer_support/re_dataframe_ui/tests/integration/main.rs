@@ -1,9 +1,10 @@
 mod common;
+mod preview_test_view;
 
 mod ascending_descending;
 mod cards_view;
-mod cell_kinds;
 mod column_header_tooltips;
+mod component_types;
 mod copy_context_menu;
 mod filter_bar;
 mod filter_tests;

@@ -1,12 +1,15 @@
 use std::panic::Location;
 
+use crate::{
+    BoundCommand, RecordingCommand, RecordingCommandSender, RedapServerCommand, TableCommand,
+};
 use re_chunk::ChunkId;
 use re_chunk::EntityPath;
 use re_chunk_store::external::re_chunk::Chunk;
 use re_data_source::LogDataSource;
 use re_log_channel::LogReceiver;
 use re_log_types::StoreId;
-use re_ui::{RecordingCommand, RecordingCommandSender, UICommand, UICommandSender};
+use re_ui::{UICommand, UICommandSender};
 
 use crate::time_control::TimeControlCommand;
 use crate::{AuthContext, RecordingOrLocalTable, Route, ScreenshotTarget, ViewId};
@@ -71,11 +74,11 @@ pub enum SystemCommand {
 
     /// A command acting on a specific redap server,
     /// e.g. from the command palette or a server context menu.
-    RedapServer(re_ui::RedapServerCommand),
+    RedapServer(RedapServerCommand),
 
     /// A command acting on a specific redap entry (dataset or table),
     /// e.g. from the command palette or a keyboard shortcut.
-    Table(re_ui::TableCommand),
+    Table(TableCommand),
 
     /// Give a table an active blueprint if it has none yet, the way showing the table does.
     EnsureTableBlueprint(re_uri::TableReference),
@@ -409,28 +412,28 @@ impl RecordingCommandSender for CommandSender {
     }
 }
 
-impl re_ui::RedapServerCommandSender for CommandSender {
-    fn send_redap_server_command(&self, command: re_ui::RedapServerCommand) {
+impl crate::RedapServerCommandSender for CommandSender {
+    fn send_redap_server_command(&self, command: RedapServerCommand) {
         self.send_system(SystemCommand::RedapServer(command));
     }
 }
 
-impl re_ui::TableCommandSender for CommandSender {
-    fn send_table_command(&self, command: re_ui::TableCommand) {
+impl crate::TableCommandSender for CommandSender {
+    fn send_table_command(&self, command: TableCommand) {
         self.send_system(SystemCommand::Table(command));
     }
 }
 
 impl CommandSender {
     /// Send a command of any type to be executed.
-    pub fn send_command(&self, command: re_ui::BoundCommand) {
-        use re_ui::{RedapServerCommandSender as _, TableCommandSender as _};
+    pub fn send_command(&self, command: BoundCommand) {
+        use crate::{RedapServerCommandSender as _, TableCommandSender as _};
 
         match command {
-            re_ui::BoundCommand::Ui(cmd) => self.send_ui(cmd),
-            re_ui::BoundCommand::Recording(cmd) => self.send_recording_command(cmd),
-            re_ui::BoundCommand::RedapServer(cmd) => self.send_redap_server_command(cmd),
-            re_ui::BoundCommand::Table(cmd) => self.send_table_command(cmd),
+            BoundCommand::Ui(cmd) => self.send_ui(cmd),
+            BoundCommand::Recording(cmd) => self.send_recording_command(cmd),
+            BoundCommand::RedapServer(cmd) => self.send_redap_server_command(cmd),
+            BoundCommand::Table(cmd) => self.send_table_command(cmd),
         }
     }
 }

@@ -624,13 +624,13 @@ impl ChunkStoreDiffDeletion {
 mod tests {
     use std::collections::{BTreeMap, BTreeSet};
 
-    use re_chunk::{RowId, TimelineName};
+    use re_chunk::TimelineName;
     use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
     use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline};
     use re_sdk_types::ComponentDescriptor;
 
     use super::*;
-    use crate::{ChunkStore, GarbageCollectionOptions};
+    use crate::GarbageCollectionOptions;
 
     /// A simple store subscriber for test purposes that keeps track of the quantity of data available
     /// in the store at the lowest level of detail.
@@ -854,7 +854,7 @@ mod tests {
         );
 
         let row_id3 = RowId::new();
-        let timepoint3 = TimePoint::default();
+        let timepoint3 = TimePoint::STATIC;
         let chunk3 = {
             let num_instances = 6;
             let colors = vec![MyColor::from(0x00DD00FF); num_instances];

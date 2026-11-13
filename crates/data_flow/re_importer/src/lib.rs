@@ -259,15 +259,12 @@ impl ImporterSettings {
                     }
                     re_log_types::TimeType::TimestampNs => {
                         args.extend([
-                            "--time_duration_nanos".to_owned(),
+                            "--time_timestamp_nanos".to_owned(),
                             format!("{timeline}={}", cell.value),
                         ]);
 
                         // for backwards compatibility:
-                        args.extend([
-                            "--sequence".to_owned(),
-                            format!("{timeline}={}", cell.value),
-                        ]);
+                        args.extend(["--time".to_owned(), format!("{timeline}={}", cell.value)]);
                     }
                 }
             }
@@ -307,7 +304,7 @@ pub type ImporterName = String;
 ///
 /// ## Registering custom importers
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview).
+/// Checkout our [guide](https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview).
 ///
 /// ## Execution
 ///
@@ -596,8 +593,7 @@ pub const SUPPORTED_DEPTH_IMAGE_EXTENSIONS: &[&str] = &["rvl", "png"];
 
 pub const SUPPORTED_VIDEO_EXTENSIONS: &[&str] = &["mp4"];
 
-pub const SUPPORTED_AUDIO_EXTENSIONS: &[&str] =
-    &["aac", "flac", "m4a", "mp3", "oga", "ogg", "opus", "wav"];
+pub const SUPPORTED_AUDIO_EXTENSIONS: &[&str] = &["aac", "flac", "m4a", "mp3", "oga", "ogg", "wav"];
 
 /// Note that `.ply` is also in [`SUPPORTED_POINT_CLOUD_EXTENSIONS`]: its header decides
 /// whether a given file holds a mesh or a point cloud.

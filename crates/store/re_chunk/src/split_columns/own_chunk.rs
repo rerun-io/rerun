@@ -257,7 +257,7 @@ mod tests {
     /// should not have to fetch the samples.
     #[test]
     fn splits_from_a_static_chunk_too() {
-        let chunk = video_chunk("video", TimePoint::default());
+        let chunk = video_chunk("video", TimePoint::STATIC);
 
         assert!(chunk.is_static());
         assert_eq!(split(&chunk, &options()).expect("should split").len(), 2);

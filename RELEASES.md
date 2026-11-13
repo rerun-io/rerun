@@ -158,13 +158,27 @@ The workflow is dispatched on the release branch from step 2, with these inputs:
     - `final` for the final public release.
 -   `publish-crates` (default `true`): `false` skips publishing to crates.io.
     With `true`, the workflow fails before publishing anything if `Cargo.toml` has a `[patch.crates-io]` override, since crates.io cannot resolve it.
+-   `increase-rc` (default `true`, `rc` only): `false` publishes the branch's current `-rc.N` again instead of the next one.
+    See "Running the release again" below.
 
 The workflow refuses to run when the branch name and `release-type` disagree.
 In all three cases, the workflow opens (or updates) a release pull request against `main`.
+A patch's release PR is opened before the workflow runs, against the previous release's `prepare-release-0.x.y` branch so its diff shows exactly the patch, and labeled `do-not-merge`; the workflow reuses it.
+
+#### Running the release again
+
+- A `final` can be dispatched again at any time before it is tagged: its version comes from the branch name, and every publish job skips what is already published.
+- Every `rc` dispatch publishes the next `-rc.N`, unless `increase-rc` is `false`.
+  Turning it off is for a run that failed partway through publishing, followed by a small fix that unblocks it, such as a file missing from a crate's `include`.
+  The rc then mixes code: what the failed run published keeps the old code, since registries never accept a second upload of the same version, and only what was missing gets the fix.
+  Any bigger change needs a new rc.
+  The workflow refuses this once the rc is tagged, i.e. once it published everything.
+- Re-running failed jobs of a run (`gh run rerun --failed`) reuses that run's version and release commit, so it does not pick up commits pushed since.
+  Use it for flaky failures, and dispatch again for anything that needs a fix on the branch.
 
 ### 7. Wait for the release workflow to finish
 
-Once the release workflow is started, it will create a pull request for the release.
+Once the release workflow is started, it will create a pull request for the release, unless one already exists.
 The pull request description lists the follow-up steps.
 
 [The `Release` workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml) will build artifacts, run PR checks, and publish them to PyPI, crates.io, npm, etc.
@@ -177,15 +191,15 @@ Publishing the release triggers the [`GitHub Release` workflow](https://github.c
 
 For a final release, the same workflow also does the post-release chores:
 
-- Announces the release on Discord, with a link and the first paragraph of the release highlights.
 - Removes `consider-patch` (rerun-io/rerun) and `consider-oss-patch` (rerun-io/reality) from the PRs that shipped in this release.
 - Waits for the website to redeploy, then runs [`scripts/ci/verify_release.py`](./scripts/ci/verify_release.py), which fails the job if anything is missing and writes its summary to the workflow run.
   It checks PyPI, npm, crates.io and conda-forge, the GitHub release, rerun.io/docs, rerun.io/viewer, app.rerun.io, the web viewer embedded by `rerun-io/landing`, `docs-latest`, and the gradio-rerun-viewer release.
   conda-forge often lags behind by hours, so a missing conda-forge version is only a warning.
-  The same goes for `rerun-io/landing`: Dependabot opens its `@rerun-io/web-viewer` bump PR within a day, and someone must merge it by hand.
+  The same goes for `rerun-io/landing`: Dependabot opens its `@rerun-io/web-viewer` bump PR within a day, and it merges itself once its CI is green.
 
 Follow up on anything the check reports as failed.
 The `#ship-room` Slack announcement is done by the release captain, or the release agent via the `oss-release` skill.
+The Discord announcement is drafted by the `oss-release` skill, and then edited and posted by the release captain.
 To re-run the check later, run `python3 scripts/ci/verify_release.py 0.x.y`.
 
 ### 8. Merge changes to `main`

@@ -19,6 +19,7 @@ use re_integration_test::{
 };
 use re_log_channel::{DataSourceMessage, LogSource, RecordingOpenBehavior};
 use re_protos::cloud::v1alpha1::ext::AssetMode;
+use re_redap_browser::UploadAssetExt as _;
 use re_redap_client::{
     ApiError, ApiErrorKind, ConnectionClient, ConnectionRegistry, ConnectionRegistryHandle,
     StreamingOptions,
@@ -300,6 +301,65 @@ async fn register_asset_stores_the_coverage_it_is_given() {
         .expect("Failed to get assets")
         .expect("the dataset should have assets");
     assert_eq!(segments, vec![asset_segment_id]);
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset should have assets");
+    assert!(segments.is_empty());
+}
+
+/// Uploading a file from this machine registers the server's own copy of it as an asset, rather
+/// than the file where it is. The asset only reaches the segments its coverage lists.
+#[tokio::test(flavor = "multi_thread")]
+async fn upload_asset_registers_an_uploaded_copy_with_its_coverage() {
+    let (server, segment_id) = TestServer::spawn()
+        .await
+        .with_named_test_data(DATASET_NAME, DATASET_ID, RECORDING_ID)
+        .await;
+    let catalog_client = server.catalog_client();
+    let mut client = catalog_client
+        .client()
+        .await
+        .expect("Failed to connect to server");
+
+    let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
+    let local_url = file_url(asset.path()).expect("Failed to build the asset url");
+
+    let asset_id = catalog_client
+        .upload_asset_path(
+            dataset_id(),
+            asset.path().to_owned(),
+            Some(&AssetCoverage {
+                mode: AssetMode::OptIn,
+                segments: vec![segment_id.clone()],
+            }),
+            DEFAULT_ASSET_TASK_TIMEOUT,
+        )
+        .await
+        .expect("Failed to upload asset");
+
+    let registered = catalog_client
+        .registered_assets(dataset_id())
+        .await
+        .expect("Failed to list the registered assets")
+        .expect("the dataset should have an asset dataset");
+    let registered_ids: Vec<_> = registered.assets.iter().map(|asset| &asset.id).collect();
+    assert_eq!(registered_ids, vec![&asset_id]);
+
+    let layers = &registered.assets[0].layers;
+    assert!(
+        layers.iter().all(|layer| layer.storage_url != local_url),
+        "the asset should be registered from the uploaded copy, got {layers:?}"
+    );
+
+    let (_entry, segments) = client
+        .get_assets_for_segment(dataset_id(), Some(segment_id))
+        .await
+        .expect("Failed to get assets")
+        .expect("the dataset should have assets");
+    assert_eq!(segments, vec![asset_id]);
 
     let (_entry, segments) = client
         .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))
@@ -643,7 +703,11 @@ async fn asset_chunks_are_only_downloaded_once() {
 
     // Every client handed out by one registry shares a connection, and with it a chunk cache.
     let registry = ConnectionRegistry::new_without_stored_credentials();
-    let catalog_client = CatalogClient::new(registry.connection_handle(origin(&server)));
+    let catalog_client = CatalogClient::new(
+        registry.connection_handle(origin(&server)),
+        re_viewer::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
+            .expect("test runtime is running"),
+    );
     let mut client = catalog_client
         .client()
         .await
@@ -1042,48 +1106,6 @@ async fn dataset_assets_tab() {
             egui::vec2(AGE_MASK_WIDTH, rect.height()),
         ));
     }
-
-    // Each asset's size is the compressed size of its chunks, which varies by a few bytes between
-    // runs and is enough to change the rounded number. Each card's mask covers the column under
-    // its `SIZE` header, which is right aligned.
-    const SIZE_COLUMN_WIDTH: f32 = 74.0;
-    const SIZE_COLUMN_HEIGHT: f32 = 40.0;
-    let size_headers: Vec<egui::Rect> = harness
-        .query_all_by_label("SIZE")
-        .map(|node| node.rect())
-        .collect();
-    assert_eq!(
-        size_headers.len(),
-        ASSET_IDS.len(),
-        "every asset card should say how big its asset is"
-    );
-    for header in size_headers {
-        harness.mask(egui::Rect::from_min_size(
-            egui::pos2(header.max.x - SIZE_COLUMN_WIDTH, header.min.y),
-            egui::vec2(SIZE_COLUMN_WIDTH, SIZE_COLUMN_HEIGHT),
-        ));
-    }
-
-    // The toolbar's total varies the same way. The mask starts where the asset count ends and is
-    // wider than the rest of the line, so its own width stays fixed.
-    const SIZE_MASK_WIDTH: f32 = 240.0;
-    let asset_count = harness
-        .query_by_label("assets")
-        .expect("the toolbar should say how many assets there are")
-        .rect();
-    let size_mask = egui::Rect::from_min_size(
-        egui::pos2(asset_count.max.x, asset_count.min.y),
-        egui::vec2(SIZE_MASK_WIDTH, asset_count.height()),
-    );
-    let total_label = harness
-        .query_by_label("total")
-        .expect("the toolbar should say the assets' total size")
-        .rect();
-    assert!(
-        size_mask.contains_rect(total_label),
-        "the mask should cover the rest of the line"
-    );
-    harness.mask(size_mask);
 
     harness.snapshot("dataset_assets_tab");
 }

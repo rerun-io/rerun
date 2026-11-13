@@ -10,9 +10,9 @@ use arrow::{
 };
 use itertools::Itertools as _;
 use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType, TimelineName};
+use re_sorbet::SchemaId;
 use re_types_core::reflection::ComponentDescriptorExt as _;
 use re_types_core::{
     ComponentDescriptor, FIELD_METADATA_KEY_ARCHETYPE, FIELD_METADATA_KEY_COMPONENT,
@@ -158,7 +158,7 @@ pub struct RawRrdManifest {
     ///
     /// This is always computed by sorting the fields of the schema by name first.
     /// See [`RrdManifest::compute_sorbet_schema_sha256]`.
-    pub sorbet_schema_sha256: [u8; 32],
+    pub sorbet_schema_sha256: SchemaId,
 
     /// The actual manifest data, which catalogs every chunk in this recording.
     ///
@@ -385,7 +385,7 @@ impl RawRrdManifest {
     /// `(merged_sorbet_schema, merged_sha256, merged_data_batch)`.
     pub fn merge_polymorphic_parts(
         parts: Vec<(arrow::datatypes::Schema, RecordBatch)>,
-    ) -> ChunkIndexResult<(arrow::datatypes::Schema, [u8; 32], RecordBatch)> {
+    ) -> ChunkIndexResult<(arrow::datatypes::Schema, SchemaId, RecordBatch)> {
         use re_arrow_util::{RecordBatchExt as _, concat_polymorphic_batches};
 
         let (sorbet_schemas, data_batches): (Vec<_>, Vec<_>) = parts.into_iter().unzip();
@@ -732,14 +732,14 @@ impl PartialEq for RawRrdManifest {
 // helpers centralize the conventions so downstream code doesn't reach into names or metadata.
 impl RawRrdManifest {
     /// Field metadata key holding the index name an index column belongs to.
-    const FIELD_METADATA_KEY_INDEX: &str = "rerun:index";
+    pub const FIELD_METADATA_KEY_INDEX: &str = "rerun:index";
 
     /// Field metadata key holding the index kind (`"sequence"`, `"timestamp"`, `"duration"`).
-    const FIELD_METADATA_KEY_INDEX_KIND: &str = "rerun:index_kind";
+    pub const FIELD_METADATA_KEY_INDEX_KIND: &str = "rerun:index_kind";
 
     /// Field metadata key holding the index marker in the Segment Manifest schema, where the RRD
     /// manifest encodes it as the column name's last `:`-separated part instead.
-    const FIELD_METADATA_KEY_INDEX_MARKER: &str = "rerun:index_marker";
+    pub const FIELD_METADATA_KEY_INDEX_MARKER: &str = "rerun:index_marker";
 
     /// The `rerun:index` value of the static-data pseudo-index.
     ///
@@ -749,8 +749,11 @@ impl RawRrdManifest {
     /// The Segment Manifest's `rerun:index` value of the static-data pseudo-index.
     const INDEX_NAME_STATIC_SEGMENT_MANIFEST: &str = "static";
 
-    const INDEX_MARKER_START: &str = "start";
-    const INDEX_MARKER_END: &str = "end";
+    /// Index marker of the column holding the lower bound of an index range.
+    pub const INDEX_MARKER_START: &str = "start";
+
+    /// Index marker of the column holding the upper bound of an index range.
+    pub const INDEX_MARKER_END: &str = "end";
     const INDEX_MARKER_NUM_ROWS: &str = "num_rows";
     const INDEX_MARKER_HAS_DATA: &str = "has_data";
     const INDEX_MARKER_HAS_STATIC_DATA: &str = "has_static_data";
@@ -894,7 +897,7 @@ impl RawRrdManifest {
 impl RawRrdManifest {
     pub fn compute_sorbet_schema_sha256(
         schema: &arrow::datatypes::Schema,
-    ) -> Result<[u8; 32], ArrowError> {
+    ) -> Result<SchemaId, ArrowError> {
         let schema = {
             // Sort and remove top-level metadata before hashing.
             let mut fields = schema.fields().to_vec();
@@ -916,7 +919,7 @@ impl RawRrdManifest {
             &mut hash,
         ));
 
-        Ok(hash)
+        Ok(SchemaId::from_sha256(hash))
     }
 
     /// Computes the appropriate column name for the provided parts.
@@ -1359,9 +1362,8 @@ impl RawRrdManifest {
         if self.sorbet_schema_sha256 != expected_sorbet_schema_sha256 {
             return Err(ChunkIndexError::ArrowDeserialization(
                 ArrowError::SchemaError(format!(
-                    "invalid schema hash: expected {} but got {}",
-                    sha256_to_hex(&expected_sorbet_schema_sha256),
-                    sha256_to_hex(&self.sorbet_schema_sha256),
+                    "invalid schema hash: expected {expected_sorbet_schema_sha256} but got {}",
+                    self.sorbet_schema_sha256,
                 )),
             ));
         }
@@ -1942,7 +1944,7 @@ mod tests {
             .unwrap();
         let r#static = re_chunk::Chunk::builder(entity_path)
             .with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &MyPoints::new(MyPoint::from_iter(0..3))
                     .with_labels([MyLabel("static".to_owned())]),
             )

@@ -28,6 +28,7 @@ Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`]
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `EncodedDepthImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1EncodedDepthImage.html)
@@ -45,6 +46,6 @@ snippet: archetypes/encoded_depth_image
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1200w.png">
-  <img src="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png">
+  <img src="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png" alt="Rerun Viewer with a 2D view of a depth image in a rainbow colormap, showing two arms reaching forward in front of a chair">
 </picture>
 

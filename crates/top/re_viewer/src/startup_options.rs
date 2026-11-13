@@ -9,11 +9,15 @@ use crate::event::ViewerEventCallback;
 /// Both URLs must be absolute (e.g. `https://example.com/signed-in`).
 /// The JS layer resolves relative URLs before passing them here.
 #[derive(Clone, Default, serde::Deserialize)]
+// The web viewer's JavaScript callers pass camelCase or snake_case keys, like for the web `AppOptions`.
+#[serde(rename_all = "camelCase")]
 pub struct LoginOptions {
     /// Absolute URL to redirect to after successful `OAuth` login.
+    #[serde(alias = "signed_in_url")]
     pub signed_in_url: String,
 
     /// Absolute URL to redirect to after logout.
+    #[serde(alias = "signed_out_url")]
     pub signed_out_url: String,
 }
 
@@ -199,5 +203,31 @@ impl Default for StartupOptions {
 
             viewer_base_url: None,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::LoginOptions;
+
+    #[test]
+    fn login_options_accept_one_spelling_per_key() {
+        let parse = |json| serde_json::from_str::<LoginOptions>(json).map(|l| l.signed_in_url);
+
+        assert_eq!(
+            parse(r#"{"signedInUrl": "a", "signedOutUrl": "b"}"#)
+                .ok()
+                .as_deref(),
+            Some("a")
+        );
+        assert_eq!(
+            parse(r#"{"signed_in_url": "a", "signed_out_url": "b"}"#)
+                .ok()
+                .as_deref(),
+            Some("a")
+        );
+        assert!(
+            parse(r#"{"signedInUrl": "a", "signed_in_url": "a", "signedOutUrl": "b"}"#).is_err()
+        );
     }
 }

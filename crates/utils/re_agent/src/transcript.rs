@@ -1,14 +1,13 @@
 use std::collections::HashMap;
 
-use agent_client_protocol::schema::v1::{
+use agent_client_protocol_schema::v1::{
     AvailableCommand, ContentBlock, Plan, SessionConfigId, SessionConfigKind, SessionConfigOption,
     SessionConfigOptionCategory, SessionConfigSelect, SessionConfigSelectOption,
-    SessionConfigSelectOptions, SessionModeId, SessionUpdate, TextContent, ToolCall,
-    ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
-    ToolCallUpdateFields, ToolKind, UsageUpdate,
+    SessionConfigSelectOptions, SessionUpdate, TextContent, ToolCall, ToolCallContent, ToolCallId,
+    ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 
-use crate::{McpStartupFailure, Prompt, PromptImage};
+use crate::{AgentError, McpStartupFailure, Prompt, PromptImage};
 
 /// The accumulated state of one tool call, patched by later updates.
 #[derive(Clone, Debug)]
@@ -136,6 +135,8 @@ pub enum TranscriptItem {
 
     McpStartupFailure(McpStartupFailure),
 
+    AgentError(AgentError),
+
     /// Something the UI wants to say inline: an error, a cancelled turn, …
     Note {
         text: String,
@@ -152,13 +153,14 @@ impl TranscriptItem {
         }
     }
 
-    /// The text of an error note.
+    /// The text of an error note or agent error.
     pub fn error_text(&self) -> Option<&str> {
         match self {
             Self::Note {
                 text,
                 is_error: true,
             } => Some(text),
+            Self::AgentError(error) => Some(&error.message),
             _ => None,
         }
     }
@@ -168,7 +170,7 @@ impl TranscriptItem {
 #[derive(Clone, Debug)]
 pub struct TranscriptEntry {
     /// When the item was first added. Later updates to the item do not move it.
-    pub created_at: std::time::SystemTime,
+    pub created_at: web_time::SystemTime,
 
     /// The item itself.
     pub item: TranscriptItem,
@@ -189,9 +191,6 @@ pub struct Transcript {
     /// Slash commands the agent accepts, as of its latest update.
     pub available_commands: Vec<AvailableCommand>,
 
-    /// The permission mode the agent reports being in.
-    pub current_mode: Option<SessionModeId>,
-
     /// The agent's configuration, e.g. its model selector, as of its latest update.
     pub config_options: Vec<SessionConfigOption>,
 
@@ -205,7 +204,7 @@ pub struct Transcript {
 impl Transcript {
     fn push(&mut self, item: TranscriptItem) {
         self.items.push(TranscriptEntry {
-            created_at: std::time::SystemTime::now(),
+            created_at: web_time::SystemTime::now(),
             item,
         });
     }
@@ -214,8 +213,29 @@ impl Transcript {
         self.push(TranscriptItem::User(prompt));
     }
 
+    /// Adds one text block of a prompt from a loaded session's history.
+    ///
+    /// The agent replays each block of a prompt separately, so consecutive blocks join into one
+    /// prompt.
+    pub fn push_replayed_user_text(&mut self, text: &str) {
+        if let Some(TranscriptEntry {
+            item: TranscriptItem::User(prompt),
+            ..
+        }) = self.items.last_mut()
+        {
+            prompt.text.push_str("\n\n");
+            prompt.text.push_str(text);
+        } else {
+            self.push_user(Prompt::from(text.to_owned()));
+        }
+    }
+
     pub fn push_mcp_startup_failure(&mut self, failure: McpStartupFailure) {
         self.push(TranscriptItem::McpStartupFailure(failure));
+    }
+
+    pub fn push_agent_error(&mut self, error: AgentError) {
+        self.push(TranscriptItem::AgentError(error));
     }
 
     pub fn push_note(&mut self, text: impl Into<String>, is_error: bool) {
@@ -227,10 +247,22 @@ impl Transcript {
 
     /// The agent's model selector and its config id, if it offers one.
     pub fn model_selector(&self) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
+        self.selector(&SessionConfigOptionCategory::Model)
+    }
+
+    /// The agent's effort selector and its config id, if it offers one.
+    pub fn effort_selector(&self) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
+        self.selector(&SessionConfigOptionCategory::ThoughtLevel)
+    }
+
+    fn selector(
+        &self,
+        category: &SessionConfigOptionCategory,
+    ) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
         let selector = self
             .config_options
             .iter()
-            .find(|option| option.category == Some(SessionConfigOptionCategory::Model))?;
+            .find(|option| option.category.as_ref() == Some(category))?;
         match &selector.kind {
             SessionConfigKind::Select(select) => Some((&selector.id, select)),
             _ => None,
@@ -240,22 +272,19 @@ impl Transcript {
     /// The name of the model the agent says it is using, if it offers a model selector.
     pub fn current_model(&self) -> Option<&str> {
         let (_, select) = self.model_selector()?;
-        let mut models: Box<dyn Iterator<Item = &SessionConfigSelectOption>> = match &select.options
-        {
-            SessionConfigSelectOptions::Ungrouped(models) => Box::new(models.iter()),
-            SessionConfigSelectOptions::Grouped(groups) => {
-                Box::new(groups.iter().flat_map(|group| &group.options))
-            }
-            _ => return None,
-        };
+        current_name(select, model_name)
+    }
 
-        // An agent may report a value it does not offer as an option; show it raw rather than
-        // claim it has no model.
-        Some(
-            models
-                .find(|model| model.value == select.current_value)
-                .map_or_else(|| select.current_value.0.as_ref(), model_name),
-        )
+    /// The name of the effort the agent says it is using, if it offers an effort
+    /// selector.
+    pub fn current_effort_name(&self) -> Option<&str> {
+        let (_, select) = self.effort_selector()?;
+        current_name(select, |level| &level.name)
+    }
+
+    pub fn current_effort(&self) -> Option<crate::Effort> {
+        let (_, select) = self.effort_selector()?;
+        Some(crate::Effort::from(&select.current_value))
     }
 
     pub fn tool_call(&self, id: &ToolCallId) -> Option<&ToolCallState> {
@@ -298,9 +327,6 @@ impl Transcript {
             SessionUpdate::AvailableCommandsUpdate(update) => {
                 self.available_commands = update.available_commands;
             }
-            SessionUpdate::CurrentModeUpdate(update) => {
-                self.current_mode = Some(update.current_mode_id);
-            }
             SessionUpdate::ConfigOptionUpdate(update) => {
                 self.config_options = update.config_options;
             }
@@ -308,7 +334,7 @@ impl Transcript {
                 self.usage = Some(usage);
             }
             SessionUpdate::SessionInfoUpdate(info) => {
-                if let agent_client_protocol::schema::MaybeUndefined::Value(title) = info.title {
+                if let agent_client_protocol_schema::MaybeUndefined::Value(title) = info.title {
                     self.title = Some(title);
                 }
             }
@@ -433,6 +459,9 @@ impl Transcript {
                         writeln!(out, "Hint: {hint}").ok();
                     }
                 }
+                TranscriptItem::AgentError(error) => {
+                    writeln!(out, "Error from {}: {}", error.reporter(), error.message).ok();
+                }
                 TranscriptItem::Note { text, is_error } => {
                     let prefix = if *is_error { "Error" } else { "Note" };
                     writeln!(out, "{prefix}: {text}").ok();
@@ -533,6 +562,12 @@ impl Transcript {
                     }
                 }
 
+                TranscriptItem::AgentError(error) => {
+                    let reporter = error.reporter();
+                    let message = &error.message;
+                    writeln!(out, "## Error from {reporter}{elapsed}\n\n{message}\n").ok();
+                }
+
                 TranscriptItem::Note { text, is_error } => {
                     let prefix = if *is_error { "Error" } else { "Note" };
                     writeln!(out, "## {prefix}{elapsed}\n\n{text}\n").ok();
@@ -631,6 +666,28 @@ pub fn message_text(content: &[ContentBlock]) -> String {
         .join("\n")
 }
 
+/// The name of the current value of `select`, as `name` gives it for the matching option.
+fn current_name<'a>(
+    select: &'a SessionConfigSelect,
+    name: impl FnOnce(&'a SessionConfigSelectOption) -> &'a str,
+) -> Option<&'a str> {
+    let mut options: Box<dyn Iterator<Item = &SessionConfigSelectOption>> = match &select.options {
+        SessionConfigSelectOptions::Ungrouped(options) => Box::new(options.iter()),
+        SessionConfigSelectOptions::Grouped(groups) => {
+            Box::new(groups.iter().flat_map(|group| &group.options))
+        }
+        _ => return None,
+    };
+
+    // An agent may report a value it does not offer as an option; show it raw rather than
+    // claim it has none.
+    Some(
+        options
+            .find(|option| option.value == select.current_value)
+            .map_or_else(|| select.current_value.0.as_ref(), name),
+    )
+}
+
 /// The most specific name for a model option, e.g. "Opus 5.5" rather than "Default (recommended)".
 ///
 /// Agents may give an alias a versionless name and put the concrete model in the description,
@@ -649,13 +706,43 @@ pub fn model_name(model: &SessionConfigSelectOption) -> &str {
     concrete.unwrap_or(&model.name)
 }
 
+/// The first of `models` to match one of `preferences`, which are ordered best first.
+///
+/// A preference matches a model whose value or name contains it, ignoring case.
+pub fn preferred_model<'a>(
+    models: &[&'a SessionConfigSelectOption],
+    preferences: &[impl AsRef<str>],
+) -> Option<&'a SessionConfigSelectOption> {
+    preferences.iter().find_map(|preference| {
+        models.iter().copied().find(|model| {
+            matches_model_preference(&model.value.0, preference.as_ref())
+                || matches_model_preference(&model.name, preference.as_ref())
+        })
+    })
+}
+
+/// Whether a model's id or name matches a preference such as "sonnet", ignoring case.
+pub fn matches_model_preference(model: &str, preference: &str) -> bool {
+    model.to_lowercase().contains(&preference.to_lowercase())
+}
+
+/// All options of a select, flattening groups.
+pub fn select_options(select: &SessionConfigSelect) -> Vec<&SessionConfigSelectOption> {
+    match &select.options {
+        SessionConfigSelectOptions::Ungrouped(options) => options.iter().collect(),
+        SessionConfigSelectOptions::Grouped(groups) => {
+            groups.iter().flat_map(|group| &group.options).collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
-    use agent_client_protocol::schema::v1::{
+    use agent_client_protocol_schema::v1::{
         ConfigOptionUpdate, ContentChunk, Diff, SessionConfigSelectGroup,
-        SessionConfigSelectOption, ToolCall,
     };
 
     use super::*;
@@ -738,6 +825,38 @@ mod tests {
             .category(SessionConfigOptionCategory::Mode),
         ];
         assert_eq!(transcript(modes).current_model(), None);
+    }
+
+    #[test]
+    fn names_the_selected_effort_apart_from_the_model() {
+        let options = vec![
+            model_selector("opus"),
+            SessionConfigOption::select(
+                "effort",
+                "Effort",
+                "high",
+                vec![
+                    SessionConfigSelectOption::new("low", "Low"),
+                    SessionConfigSelectOption::new("high", "High"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::ThoughtLevel),
+        ];
+        let transcript = transcript(options);
+        assert_eq!(transcript.current_model(), Some("Opus 4.6"));
+        assert_eq!(transcript.current_effort_name(), Some("High"));
+        assert_eq!(
+            transcript.current_effort(),
+            Some(crate::Effort("high".to_owned()))
+        );
+    }
+
+    #[test]
+    fn has_no_effort_without_an_effort_selector() {
+        assert_eq!(
+            transcript(vec![model_selector("opus")]).current_effort(),
+            None
+        );
     }
 
     #[test]

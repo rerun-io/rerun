@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from pathlib import Path
 
     import datafusion
-    from rerun.catalog import DatasetEntry, IndexValuesLike
+    from rerun.catalog import DatasetEntry, IndexValuesLike, Schema
     from syrupy import SnapshotAssertion
 
     from e2e_redap_tests.conftest import EntryFactory
@@ -56,6 +56,40 @@ def test_dataset_selection_filter_segments_unknown_and_empty(readonly_test_datas
         reader = empty.reader(index=index)
         assert reader.count() == 0
         assert reader.schema() == full_reader.schema()
+
+
+# Unknown segment IDs match no rows instead of raising, whichever way they reach the server: `filter_segments`,
+# `using_index_values`, or a `rerun_segment_id` filter pushed down by DataFusion.
+# All three end up in the same `QueryDatasetRequest.segment_ids` field, so the server cannot treat them differently.
+# Rejecting unknown IDs would cost a round trip and turn a typo in a SQL `WHERE` into an error,
+# so callers who want typo detection must validate IDs client-side.
+
+
+def test_reader_filter_unknown_segment_id(readonly_test_dataset: DatasetEntry) -> None:
+    known = min(readonly_test_dataset.segment_ids())
+    index = readonly_test_dataset.schema().index_columns()[0].name
+    reader = readonly_test_dataset.reader(index=index)
+    segment_id = dfn.col("rerun_segment_id")
+
+    assert reader.filter(segment_id == dfn.lit("does-not-exist")).count() == 0
+
+    known_only = reader.filter(segment_id == dfn.lit(known))
+    mixed = reader.filter(dfn.functions.in_list(segment_id, [dfn.lit(known), dfn.lit("does-not-exist")]))
+    assert known_only.count() > 0
+    assert mixed.count() == known_only.count()
+    assert set(pa.table(mixed.select("rerun_segment_id")).column(0).to_pylist()) == {known}
+
+
+def test_using_index_values_mixed_known_unknown(readonly_test_dataset: DatasetEntry) -> None:
+    known = "3ee345b2e801448cace33a1097b9b49b"
+    index_values = np.array([np.datetime64("2024-01-15T10:34:45.123456789", "ns")], dtype=np.datetime64)
+
+    df = readonly_test_dataset.reader(
+        index="time_1",
+        using_index_values={known: index_values, "does-not-exist": index_values},
+    )
+
+    assert pa.table(df).column("rerun_segment_id").to_pylist() == [known]
 
 
 @pytest.mark.local_only
@@ -176,6 +210,7 @@ def test_dataset_selection_chained_filter_contents_intersect(readonly_test_datas
     assert entity_columns(pa.schema(not_undone.reader(index="time_1").schema())) == []
 
 
+@pytest.mark.min_hub_version("0.20.0")  # the schema of a segment selection needs `/GetSchemas`
 def test_dataset_selection_no_filter_contents(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
     """Test that not using filter_contents returns all data columns."""
 
@@ -189,6 +224,40 @@ def test_dataset_selection_no_filter_contents(readonly_test_dataset: DatasetEntr
     df = selection.reader(index="time_1")
     schema = sort_schema(pa.schema(df.schema()))
     assert str(schema) == snapshot()
+
+
+@pytest.mark.min_hub_version("0.20.0")  # the schema of a segment selection needs `/GetSchemas`
+def test_dataset_selection_filter_segments_schema(entry_factory: EntryFactory, resource_prefix: str) -> None:
+    """A segment-filtered schema has only the columns of the selected segments."""
+
+    dataset = entry_factory.create_dataset("dataset_selection_segments_schema")
+    dataset.register([
+        resource_prefix + f"segment_schema/{segment_id}.rrd" for segment_id in ("first", "second")
+    ]).wait()
+    dataset.register([resource_prefix + "segment_schema/predictions.rrd"], layer_name="predictions").wait()
+
+    def indexes(schema: Schema) -> set[str]:
+        return {column.name for column in schema.index_columns()}
+
+    full = dataset.schema()
+    assert full.entity_paths() == ["/first", "/predictions", "/second", "/static"]
+    assert {"first", "second"} <= indexes(full)
+
+    first = dataset.filter_segments("first")
+    assert first.schema().entity_paths() == ["/first", "/predictions", "/static"]
+    assert indexes(first.schema()) == indexes(full) - {"second"}
+    assert set(first.schema().column_names()) == set(dataset.segment("first").schema().column_names())
+    assert first.filter_contents("/static").schema().entity_paths() == ["/static"]
+    assert dataset.filter_segments("second").schema().entity_paths() == ["/second", "/static"]
+
+    both = dataset.filter_segments(["first", "second"]).schema()
+    assert set(both.column_names()) == set(full.column_names())
+
+    for nothing in (dataset.filter_segments([]), dataset.filter_segments("unknown")):
+        assert nothing.schema().column_names() == []
+
+    # The index ranges keep every index of the dataset, whatever the segment filter.
+    assert set(first.get_index_ranges().schema().names) == set(dataset.get_index_ranges().schema().names)
 
 
 def test_dataset_selection_reader(readonly_test_dataset: DatasetEntry, snapshot: SnapshotAssertion) -> None:
@@ -547,6 +616,7 @@ def test_content_filter_exclude_matches_raw(readonly_test_dataset: DatasetEntry,
     assert builder == snapshot()
 
 
+@pytest.mark.min_hub_version("0.20.0")  # the schema of a segment selection needs `/GetSchemas`
 def test_content_filter_on_dataset_selection(readonly_test_dataset: DatasetEntry) -> None:
     """ContentFilter should work when called on a DatasetSelection (chained from filter_segments)."""
     all_segments = sorted(readonly_test_dataset.segment_ids())

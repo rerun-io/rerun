@@ -75,6 +75,7 @@ impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
             query: value.query.map(Into::into),
             generate_direct_urls: value.generate_direct_urls,
             unsigned_direct_urls: value.unsigned_direct_urls,
+            client_meta: Some(crate::cloud::v1alpha1::ClientMeta::current()),
         }
     }
 }
@@ -387,6 +388,9 @@ pub struct FindChunksRequest {
 
     /// Which direct chunk URLs the response carries.
     pub direct_url_mode: DirectUrlMode,
+
+    /// Which data the request reads. `Unspecified` reads the full scope.
+    pub scope: crate::cloud::v1alpha1::DatasetQueryScope,
 }
 
 impl FindChunksRequest {
@@ -677,6 +681,13 @@ impl TryFrom<crate::cloud::v1alpha1::FindChunksRequest> for FindChunksRequest {
         use crate::cloud::v1alpha1::find_chunks_request::Mode;
 
         let direct_url_mode = try_direct_url_mode(value.direct_url_mode)?;
+        let scope =
+            crate::cloud::v1alpha1::DatasetQueryScope::try_from(value.scope).map_err(|_err| {
+                tonic::Status::invalid_argument(format!(
+                    "`scope` has unknown value {}",
+                    value.scope
+                ))
+            })?;
         let contents = try_content_selection(required_field(value.contents, "contents")?)?;
 
         let mode = required_field(value.mode, "mode")?;
@@ -711,6 +722,7 @@ impl TryFrom<crate::cloud::v1alpha1::FindChunksRequest> for FindChunksRequest {
             contents,
             mode,
             direct_url_mode,
+            scope,
         })
     }
 }
@@ -829,6 +841,8 @@ impl From<FindChunksRequest> for crate::cloud::v1alpha1::FindChunksRequest {
                 DirectUrlMode::Signed => crate::cloud::v1alpha1::DirectUrlMode::Signed as i32,
             },
             mode: Some(value.mode.into()),
+            scope: value.scope as i32,
+            client_meta: Some(crate::cloud::v1alpha1::ClientMeta::current()),
         }
     }
 }
@@ -1286,6 +1300,8 @@ mod tests {
             contents,
             direct_url_mode: cloud_proto::DirectUrlMode::Unspecified as i32,
             mode,
+            scope: cloud_proto::DatasetQueryScope::Unspecified as i32,
+            client_meta: None,
         }
     }
 
@@ -1664,6 +1680,7 @@ mod tests {
                                 range,
                             },
                             direct_url_mode: DirectUrlMode::Signed,
+                            scope: cloud_proto::DatasetQueryScope::Full,
                         };
                         assert!(
                             !request.is_empty(),
@@ -1699,6 +1716,7 @@ mod tests {
                     segments: SegmentSelection::All,
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Unspecified,
             },
             FindChunksRequest {
                 contents: ContentSelection::Explicit(vec![EntitySelection {
@@ -1718,6 +1736,7 @@ mod tests {
                     },
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Indexed,
             },
             FindChunksRequest {
                 contents: ContentSelection::All,
@@ -1731,6 +1750,7 @@ mod tests {
                     },
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Full,
             },
             FindChunksRequest {
                 contents: ContentSelection::All,
@@ -1743,6 +1763,7 @@ mod tests {
                     fill_mode: FillMode::None,
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Full,
             },
             FindChunksRequest {
                 contents: ContentSelection::All,
@@ -1755,6 +1776,7 @@ mod tests {
                     fill_mode: FillMode::EarliestAt,
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Full,
             },
         ];
 
@@ -1824,6 +1846,7 @@ mod tests {
                 segments: SegmentSelection::All,
             },
             direct_url_mode: DirectUrlMode::default(),
+            scope: cloud_proto::DatasetQueryScope::Full,
         };
 
         assert!(
@@ -1874,9 +1897,25 @@ mod tests {
             direct_url_mode: 99,
             contents: Some(fcr_all_contents()),
             mode: Some(fcr_static_mode(Some(fcr_explicit_segments(&[])))),
+            scope: cloud_proto::DatasetQueryScope::Unspecified as i32,
+            client_meta: None,
         })
         .expect_err("unknown direct URL mode must be rejected before empty-selection handling");
         assert_eq!(err.code(), tonic::Code::InvalidArgument);
         assert!(err.message().contains("direct_url_mode"));
+    }
+
+    #[test]
+    fn unknown_scope_is_rejected() {
+        let err = FindChunksRequest::try_from(cloud_proto::FindChunksRequest {
+            scope: 99,
+            ..fcr_request(
+                Some(fcr_all_contents()),
+                Some(fcr_static_mode(Some(fcr_all_segments()))),
+            )
+        })
+        .expect_err("unknown scope must be rejected");
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+        assert!(err.message().contains("scope"));
     }
 }

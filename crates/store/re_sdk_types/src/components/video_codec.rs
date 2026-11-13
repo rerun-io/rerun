@@ -26,7 +26,7 @@ use ::std::borrow::Cow;
 /// **Component**: The codec used to encode video stored in [`components::VideoSample`][crate::components::VideoSample].
 ///
 /// Support of these codecs by the Rerun Viewer is platform dependent.
-/// For more details see check the [video reference](https://rerun.io/docs/reference/video).
+/// For more details see check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 ///
 /// ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, ::re_byte_size::SizeBytes)]

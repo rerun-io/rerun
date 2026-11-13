@@ -675,7 +675,7 @@ class RecordingStream:
             If `False`, the messages will be played back in the order they arrived.
         cors_allow_origin:
             Additional origin patterns allowed to make CORS requests to the gRPC server.
-            By default, only localhost and rerun.io are allowed.
+            By default, only localhost, rerun.io, and its subdomains are allowed.
             Patterns are matched against the full `Origin` header (e.g. `"https://example.com:8080"`),
             using glob-style matching where `*` matches any sequence of characters.
             Examples: `"https://*.example.com"`, `"https://example.com:8080"`,
@@ -1017,7 +1017,7 @@ class RecordingStream:
         This is the main entry point for logging data to rerun. It can be used to log anything
         that implements the [`rerun.AsComponents`][] interface, or a collection of [`rerun.ComponentBatchLike`][] objects.
 
-        When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path)
+        When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path)
         for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
         itself and should not be used for logging user data. This is where Rerun will log additional information
         such as properties and warnings.
@@ -1054,7 +1054,7 @@ class RecordingStream:
             This means that logging to `"world/my\ image\!"` is the same as logging
             to ["world", "my image!"].
 
-            See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+            See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
 
         entity:
             Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype.
@@ -1099,7 +1099,7 @@ class RecordingStream:
         This method blocks until either at least one `Importer` starts
         streaming data in or all of them fail.
 
-        See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
+        See <https://www.rerun.io/docs/logging-and-ingestion/import/open-any-file> for more information.
 
         Parameters
         ----------
@@ -1148,7 +1148,7 @@ class RecordingStream:
         This method blocks until either at least one `Importer` starts
         streaming data in or all of them fail.
 
-        See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
+        See <https://www.rerun.io/docs/logging-and-ingestion/import/open-any-file> for more information.
 
         Parameters
         ----------
@@ -1203,7 +1203,7 @@ class RecordingStream:
         entity_path:
             Path to the entity in the space hierarchy.
 
-            See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+            See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
         indexes:
             The time values of this batch of data. Each `TimeColumnLike` object represents a single column
             of timestamps. Generally, you should use one of the provided class [`TimeColumn`][rerun.TimeColumn].

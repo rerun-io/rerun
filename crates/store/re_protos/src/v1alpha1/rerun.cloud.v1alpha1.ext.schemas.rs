@@ -215,6 +215,7 @@ pub struct ScanSegmentTableDataframe {
     /// Layer names for this segment, one per layer.
     ///
     /// Same length as [`Self::rerun_storage_urls`].
+    #[quiver(metadata("rerun:component_type" = "rerun.components.LayerName"))]
     pub rerun_layer_names: quiver::Column<quiver::List<LayerName>>,
 
     /// Storage URLs for this segment, one per layer.
@@ -278,13 +279,16 @@ pub struct ScanDatasetManifestDataframe {
 
     /// SHA-256 hash of the schema of this row's source. Nullable for the same
     /// reason as [`Self::rerun_num_chunks`].
-    pub rerun_schema_sha256: quiver::Column<Option<quiver::FixedSizeBinary<32>>>,
+    pub rerun_schema_sha256: quiver::Column<Option<re_sorbet::SchemaId>>,
 
     /// The registration status of this row's source
     /// (see [`LayerRegistrationStatus`](crate::cloud::v1alpha1::ext::LayerRegistrationStatus)).
     pub rerun_registration_status: quiver::Column<quiver::Utf8>,
 
-    /// Any per-dataset property columns appended at runtime.
+    /// Any per-dataset property and index-range columns appended at runtime.
+    ///
+    /// Older servers send no index-range columns, see
+    /// [`crate::cloud::v1alpha1::ScanDatasetManifestResponse::data`].
     #[quiver(extra_columns)]
     pub extra_columns: Vec<quiver::DynColumn>,
 }
@@ -308,7 +312,7 @@ impl ScanDatasetManifestDataframe {
         last_updated_at_times: Vec<i64>,
         num_chunks: Vec<u64>,
         size_bytes: Vec<u64>,
-        schema_sha256s: Vec<[u8; 32]>,
+        schema_sha256s: Vec<re_sorbet::SchemaId>,
         registration_statuses: Vec<String>,
     ) -> Self {
         Self {
@@ -325,10 +329,59 @@ impl ScanDatasetManifestDataframe {
             rerun_size_bytes: Self::COLUMN_RERUN_SIZE_BYTES
                 .new_from_values(size_bytes.into_iter().map(Some)),
             rerun_schema_sha256: Self::COLUMN_RERUN_SCHEMA_SHA256
-                .new_from_values(schema_sha256s.into_iter().map(Some)),
+                .new_from_values(schema_sha256s.iter().copied().map(Some)),
             rerun_registration_status: Self::COLUMN_RERUN_REGISTRATION_STATUS
                 .new_from_values(registration_statuses),
             extra_columns: vec![],
+        }
+    }
+}
+
+// --- Entries table ---
+
+/// Strongly-typed view of the `__entries` table, with one row per catalog entry.
+///
+/// The field names are the column names.
+#[derive(quiver::Quiver)]
+pub struct EntriesTableDataframe {
+    /// The unique identifier of the entry.
+    pub id: quiver::Column<re_tuid::Tuid>,
+
+    /// The name of the entry.
+    pub name: quiver::Column<quiver::Utf8>,
+
+    /// The kind of entry, as an [`EntryKind`](crate::cloud::v1alpha1::EntryKind) value.
+    ///
+    /// Stored as `u8`, the datatype of the `rerun.components.EntryKind` component.
+    #[quiver(metadata("rerun:component_type" = "rerun.components.EntryKind"))]
+    pub entry_kind: quiver::Column<u8>,
+
+    /// When the entry was created.
+    pub created_at: quiver::Column<quiver::TimestampNanosecond>,
+
+    /// When the entry was last updated.
+    pub updated_at: quiver::Column<quiver::TimestampNanosecond>,
+}
+
+impl EntriesTableDataframe {
+    /// One row per entry, in the given order.
+    pub fn new(entries: &[crate::cloud::v1alpha1::ext::EntryDetails]) -> Self {
+        Self {
+            id: Self::COLUMN_ID.new_from_values(entries.iter().map(|entry| entry.id.id)),
+            name: Self::COLUMN_NAME
+                .new_from_values(entries.iter().map(|entry| entry.name.as_str().to_owned())),
+            entry_kind: Self::COLUMN_ENTRY_KIND
+                .new_from_values(entries.iter().map(|entry| entry.kind as u8)),
+            created_at: Self::COLUMN_CREATED_AT.new_from_values(
+                entries
+                    .iter()
+                    .map(|entry| entry.created_at.as_nanosecond() as i64),
+            ),
+            updated_at: Self::COLUMN_UPDATED_AT.new_from_values(
+                entries
+                    .iter()
+                    .map(|entry| entry.updated_at.as_nanosecond() as i64),
+            ),
         }
     }
 }

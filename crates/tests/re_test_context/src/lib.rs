@@ -1,6 +1,7 @@
 //! Provides a test context that builds on `re_viewer_context`.
 
 #![expect(clippy::unwrap_used)] // This is only a test
+#![expect(clippy::print_stderr)] // This is only a test
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -1029,7 +1030,6 @@ impl TestContext {
     }
 
     pub fn test_help_view(help: impl Fn(OperatingSystem) -> Help) {
-        use egui::os::OperatingSystem;
         let mut snapshot_results = egui_kittest::SnapshotResults::new();
         for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
             let mut harness = egui_kittest::Harness::builder()
@@ -1102,7 +1102,6 @@ impl TestContext {
 
 #[cfg(test)]
 mod test {
-    use re_entity_db::InstancePath;
     use re_viewer_context::Item;
 
     use super::*;

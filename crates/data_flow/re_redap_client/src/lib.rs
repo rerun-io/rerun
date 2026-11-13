@@ -12,6 +12,7 @@ mod dataset_revisions;
 mod grpc;
 mod registration_response;
 mod rpc_retry;
+mod schema_cache;
 mod tasks;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -26,8 +27,8 @@ pub use self::api_error::{ApiError, ApiErrorKind, ApiResult};
 pub use self::api_response_stream::ApiResponseStream;
 pub use self::chunk_cache::{ChunkCache, ChunkCacheHandle};
 pub use self::connection_client::{
-    BoxedRedapClientStack, Connection, ConnectionClient, DatasetSchema, FetchChunksResponseStream,
-    RedapClient,
+    BoxedRedapClientStack, Connection, ConnectionClient, DatasetManifest, DatasetSchema,
+    FetchChunksResponseStream, OnMissingGetSchemas, RedapClient,
 };
 pub use self::connection_handle::ConnectionHandle;
 pub use self::connection_registry::{
@@ -36,9 +37,10 @@ pub use self::connection_registry::{
 };
 pub use self::dataset_revisions::{DatasetRevisions, dataset_revisions};
 pub use self::grpc::{
-    ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions, channel,
-    fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
-    stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
+    ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions,
+    blueprint_store_id_for_segment, channel, fetch_chunks_response_to_chunk_and_segment_id,
+    stream_blueprint_and_segment_from_server, stream_table_blueprint_segment_from_server,
+    table_blueprint_log_channel,
 };
 pub use self::tasks::TaskCompletion;
 

@@ -90,10 +90,7 @@ impl GrpcStreamToTable for SegmentTableProvider {
 
         let request = tonic::Request::new(ScanSegmentTableRequest {
             columns: params
-                .projected_columns
-                .as_deref()
-                .unwrap_or_default()
-                .to_vec(),
+                .requested_columns(ScanSegmentTableDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME),
             segment_id_filter,
         })
         .with_entry_id(self.dataset_id);

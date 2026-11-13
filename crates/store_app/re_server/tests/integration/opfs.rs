@@ -11,9 +11,9 @@ use re_chunk::{Chunk, RowId, TimePoint, Timeline};
 use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
 use re_log_types::example_components::{MyPoint, MyPoints};
 use re_log_types::{EntityPath, EntryName, StoreId, StoreKind};
-use re_protos::cloud::v1alpha1::VersionRequest;
 use re_protos::cloud::v1alpha1::ext::DataSource;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::cloud::v1alpha1::{DatasetQueryScope, VersionRequest};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_redap_client::{Connection, ConnectionRegistry};
 use re_server::RerunCloudHandlerBuilder;
@@ -61,6 +61,7 @@ fn in_process_catalog_client<T: RerunCloudService>(service: Arc<T>) -> CatalogCl
         registry
             .internal_connection_handle()
             .expect("internal connection is configured"),
+        re_async::AsyncRuntimeHandle::new_web(),
     )
 }
 
@@ -84,7 +85,7 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
         .expect("failed to write OPFS file");
 
     let dataset = client
-        .create_dataset_entry(dataset_name, None)
+        .create_dataset_entry(dataset_name, None, Default::default())
         .await
         .expect("failed to create dataset");
     let registration = catalog_client
@@ -102,7 +103,7 @@ async fn register_rrd_from_file_url_in_opfs(with_footer: bool) {
     assert_eq!(segment_ids.len(), 1);
 
     let schema = client
-        .get_dataset_schema(dataset.details.id)
+        .get_dataset_schema(dataset.details.id, DatasetQueryScope::Full)
         .await
         .expect("failed to get dataset schema")
         .schema;
@@ -125,7 +126,7 @@ fn encode_rrd(with_footer: bool) -> Vec<u8> {
     let chunk = Chunk::builder(EntityPath::from("/test/entity"))
         .with_sparse_component_batches(
             RowId::new(),
-            TimePoint::default().with(timeline, 0),
+            TimePoint::STATIC.with(timeline, 0),
             [(MyPoints::descriptor_points(), Some(&points as _))],
         )
         .build()

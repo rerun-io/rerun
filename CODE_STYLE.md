@@ -16,6 +16,46 @@ We have a bunch of Bash and Python scripts that [we want to replace with Rust](h
 For configs we like JSON and TOML, and [dislike YAML](https://ruudvanasseldonk.com/2023/01/11/the-yaml-document-from-hell).
 
 
+## TypeScript and JavaScript code
+
+Follow the [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html), and apply its language-independent rules to JavaScript, with the exceptions below.
+
+### Exceptions
+
+- **External names:** Preserve generated names and wire-protocol keys, including viewer event names and notebook messages.
+  Quote wire keys; alias generated imports to local camelCase or PascalCase names.
+
+  ```ts
+  viewer.on("recording_open", (event) => {
+    const message = { "recording_id": event.recordingId };
+    console.log(JSON.stringify(message));
+  });
+  ```
+
+- **Private members:** Use `#private`, despite the guide's [ban](https://google.github.io/styleguide/tsguide.html#no-private-fields): it enforces privacy for JavaScript consumers, and our `esnext` target avoids downlevel compilation costs.
+  Use TypeScript `private` only for documented runtime integration access.
+
+### Naming and types
+
+Use `camelCase` for functions, methods, parameters, variables, fields, and module aliases, `PascalCase` for types and classes, and `SCREAMING_SNAKE_CASE` for constants.
+Use interfaces for named object shapes; keep type aliases for unions, mapped types, and other types that interfaces cannot express.
+
+### Formatting and checks
+
+Separate top-level declarations and class methods with a blank line. Group static imports at the top of the file.
+
+Follow Google's [type-only import and re-export rules](https://google.github.io/styleguide/tsguide.html#import-and-export-type): use `import type` or inline `type` imports, and `export type` for type-only re-exports.
+These markers require explicit import/export changes to add runtime dependencies or expose runtime values.
+
+Use the repository's [Prettier configuration](.prettierrc.toml) for formatting and [oxlint configuration](.oxlintrc.json) for linting.
+JavaScript and TypeScript use two-space indentation, semicolons and trailing commas.
+
+Run these commands from `rerun/` to enforce some of the rules (also done by CI):
+
+- `pixi run misc-fmt` — format with Prettier.
+- `pixi run misc-fmt-check` — check formatting without changing files.
+- `pixi run js-lint` — lint with oxlint (requires built web-viewer bindings).
+
 ## Rust code
 
 ### Avoid `unsafe`
@@ -72,6 +112,7 @@ Strive to encode code invariants and contracts in the type system as much as pos
 Prefer strong types over primitive ones:
 * `url::Url` and `PathBuf` over `String`.
 * A newtype (`struct StreamId(u64)`) over a bare integer or a type alias.
+* A newtype (`struct SchemaId([u8; 32])`) over a bare byte array (`[u8; N]`) holding a hash, key, or ID.
 * An enum over a `bool` field or parameter (`enum Screen { Setup, Chat }` over `show_setup: bool`).
 * `Option<Result<(), Error>>` over `Option<bool>`.
 * A named struct (or `Rangef`, `Span`, …) over a tuple.
@@ -205,6 +246,7 @@ Keep hand-written lists sorted alphabetically, unless the order carries meaning.
 This includes enum variants, match arms, Cargo features, `clippy.toml` entries, `.gitattributes` lines, and tables in docs.
 
 Prefer `cfg_select!` over pairs of `#[cfg(…)]`/`#[cfg(not(…))]` blocks.
+When every branch compiles without warnings on all targets, prefer a plain `if cfg!(…) { … } else { … }` over `cfg_select!`.
 For UI, prefer a runtime check (e.g. a disabled button on web) over compile-time `#[cfg]`.
 
 Add `re_tracing::profile_function!()` (or `profile_scope!`) to functions that may be slow, e.g. I/O, encoding and decoding, opening or closing devices, and large loops.
@@ -212,6 +254,8 @@ Add `re_tracing::profile_function!()` (or `profile_scope!`) to functions that ma
 Don't wrap code in a closure that is called immediately, and don't extract a helper that is only called once unless it names a concept.
 
 Avoid catch-all `_ =>` arms when matching on our own enums, so that the compiler flags every `match` that needs updating when a variant is added.
+
+Prefer `if let … else` over a `match … pattern => …, _ => …` when possible.
 
 Every new timeout, size limit, or threshold needs a reason: say where the number comes from, or reuse an existing constant.
 Refer to metadata keys and column names through their constants, never through a string literal.
@@ -270,13 +314,14 @@ println!("{:-}, value"); // The `-` option stands for redaction.
 Look for `f.sign_minus()` in the code for where we handle this.
 
 ## Python
-Prefer kw-args (key-word arguments) for non-obvious parameters, especially when there are many of them.
+Arguments that every caller passes are positional; all others are keyword-only (kw-args).
 
 * Bad: `def serve(ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
-* Better: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
-* Best: `def serve(*, ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Bad: `def serve(*, ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Good: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
 
-This forces the use of kw-args for everything following the `*`.
+The `*` forces the use of kw-args for everything following it.
+Flags and modes (`bool`, `Literal[…]`) always go after the `*`, so call sites read `overwrite=True` instead of a bare `True`.
 
 kw-args have two big benefits:
 
@@ -284,7 +329,9 @@ First, they make future API changes a lot easier. We can add or remove arguments
 
 Secondly, named arguments makes the caller code a lot more readable.
 
-Usually, we do NOT use kw-args for single-parameter functions, nor for functions where the first (or all) parameters are obvious from the caller. For instance, `def load_file(path: str) -> bytes`
+Do not make a required argument keyword-only, unless a positional call would be ambiguous: several required arguments a caller could swap (`set_default_size(*, width, height)`, `stage(source, *, key)`), or a choice between keyword alternatives (`set_time(timeline, sequence=…)`).
+Otherwise every caller pays for it.
+The argument nearly every caller passes may stay positional even with a default, as in `get_dataset(name: str | None = None, *, id: EntryId | str | None = None)`.
 
 ## C++
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).

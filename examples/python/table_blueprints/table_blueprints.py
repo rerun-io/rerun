@@ -8,7 +8,7 @@ on demand and renders them through the views in `rrb.table.PreviewCell`.
 `rrb.table.PreviewsConfig` stores the timeline shared by all preview columns.
 
 The demo also includes a boolean `marker_flag` column. Its `rrb.table.Column` uses an
-editable `rrb.table.FlagCell`, and `rrb.table.CardLayout` includes it as a field.
+editable `rr.components.Flag` column type, and `rrb.table.CardLayout` includes it as a field.
 Toggling the flag updates the visible table immediately and upserts the new boolean value back to
 the server using the `rerun:is_table_index` column as the row key.
 
@@ -144,8 +144,8 @@ def make_dataset_blueprints(blueprint_dir: Path) -> dict[str, Path]:
         ("previews_3d_only", (views.spatial_3d,)),
         ("previews_3d_and_2d", (views.spatial_3d, views.spatial_2d)),
     ):
-        preview = rrb.table.Column("recording_uri", name="Recording", cell=rrb.table.PreviewCell(*preview_views))
-        flag = rrb.table.Column(MARKER_FLAG_COLUMN, name="Reviewed", editable=True, cell=rrb.table.FlagCell())
+        preview = rrb.table.Column("recording_uri", name="Recording", column_type=rrb.table.PreviewCell(*preview_views))
+        flag = rrb.table.Column(MARKER_FLAG_COLUMN, name="Reviewed", editable=True, column_type=rr.components.Flag)
         rrb.table.TableBlueprint(
             table_layout=rrb.table.TableLayout(columns=[preview, flag]),
             card_layout=rrb.table.CardLayout(title="uuid", link="recording_uri", fields=[preview, flag]),
@@ -173,7 +173,7 @@ def make_segment_table_blueprint(blueprint_dir: Path) -> Path:
     preview = rrb.table.Column(
         SEGMENT_RECORDING_LINK_COLUMN,
         name="Recording",
-        cell=rrb.table.PreviewCell(views.spatial_3d, views.spatial_2d),
+        column_type=rrb.table.PreviewCell(views.spatial_3d, views.spatial_2d),
     )
     rrb.table.TableBlueprint(
         table_layout=rrb.table.TableLayout(columns=[preview]),
@@ -275,7 +275,7 @@ def create_demo_tables(
         )
         uri = blueprint_uri(name, blueprint_paths[name], blueprint_uri_base)
         # Register a file the server can access.
-        table.register_blueprint(uri)
+        table.register_blueprint(uri, name=name)
         print(f"  {name}: registered table blueprint {uri}")
 
 
@@ -288,8 +288,7 @@ def apply_segment_table_blueprint(
     """Register the segment-table blueprint on the dataset's own segment table."""
     path = make_segment_table_blueprint(blueprint_dir)
     uri = blueprint_uri(SEGMENT_TABLE_BLUEPRINT_NAME, path, blueprint_uri_base)
-    # Apply to the segment table, not individual recordings.
-    dataset.register_blueprint(uri, segment_table=True)
+    dataset.register_table_blueprint(uri, name=SEGMENT_TABLE_BLUEPRINT_NAME)
     print(f"  segment table: registered blueprint {uri}")
 
 

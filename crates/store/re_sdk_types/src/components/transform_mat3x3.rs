@@ -22,7 +22,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{DeserializationError, DeserializationResult};
 use ::std::borrow::Cow;
 
-/// **Component**: A 3x3 transformation matrix Matrix.
+/// **Component**: A 3x3 transformation matrix.
 ///
 /// 3x3 matrixes are able to represent any affine transformation in 3D space,
 /// i.e. rotation, scaling, shearing, reflection etc.

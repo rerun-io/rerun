@@ -5,6 +5,7 @@ pub mod sigint;
 #[cfg(not(target_os = "windows"))]
 use parking_lot::Mutex;
 use re_build_info::BuildInfo;
+use re_error::try_eprintln;
 
 // The easiest way to pass this to our signal handler.
 #[cfg(not(target_os = "windows"))]
@@ -25,7 +26,7 @@ pub fn install_crash_handlers(build_info: BuildInfo) {
     install_signal_handler(build_info);
 }
 
-fn install_panic_hook(_build_info: BuildInfo) {
+fn install_panic_hook(build_info: BuildInfo) {
     let previous_panic_hook = std::panic::take_hook();
 
     std::panic::set_hook(Box::new(
@@ -50,11 +51,11 @@ fn install_panic_hook(_build_info: BuildInfo) {
                     .name()
                     .map_or_else(|| format!("{:?}", thread.id()), |name| name.to_owned());
 
-                eprintln!("\nthread '{thread_name}' panicked at '{msg}'");
+                let _err = try_eprintln!("\nthread '{thread_name}' panicked at '{msg}'");
                 if let Some(file_line) = &file_line {
-                    eprintln!("{file_line}");
+                    let _err = try_eprintln!("{file_line}");
                 }
-                eprintln!("stack backtrace:\n{callstack}");
+                let _err = try_eprintln!("stack backtrace:\n{callstack}");
             } else {
                 // This prints the panic message and callstack:
                 (*previous_panic_hook)(panic_info);
@@ -62,15 +63,14 @@ fn install_panic_hook(_build_info: BuildInfo) {
 
             econtext::print_econtext(); // Print additional error context, if any
 
-            eprintln!(
+            let _err = try_eprintln!(
                 "\n\
-            Troubleshooting Rerun: https://www.rerun.io/docs/overview/installing-rerun/troubleshooting \n\
+            Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/install-rerun/troubleshooting \n\
             Report bugs: https://github.com/rerun-io/rerun/issues"
             );
 
-            #[cfg(feature = "analytics")]
             re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashPanic {
-                build_info: _build_info.clone(),
+                build_info: build_info.clone(),
                 callstack,
                 message: None,
                 file_line,
@@ -111,7 +111,7 @@ pub fn install_signal_handler(build_info: BuildInfo) {
             write_to_stderr(signal_name);
             write_to_stderr("\n");
             write_to_stderr(
-                "Troubleshooting Rerun: https://www.rerun.io/docs/overview/installing-rerun/troubleshooting \n",
+                "Troubleshooting Rerun: https://www.rerun.io/docs/getting-started/install-rerun/troubleshooting \n",
             );
             write_to_stderr("Report bugs: https://github.com/rerun-io/rerun/issues \n");
             write_to_stderr("\n");
@@ -153,7 +153,6 @@ pub fn install_signal_handler(build_info: BuildInfo) {
         print_problem_and_links(signal_name);
 
         // Send analytics - this also sleeps a while to give the analytics time to send the event.
-        #[cfg(feature = "analytics")]
         if let Some(build_info) = BUILD_INFO.lock().clone() {
             re_analytics::record_and_flush_blocking(|| re_analytics::event::CrashSignal {
                 build_info,

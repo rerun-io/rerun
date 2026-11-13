@@ -333,12 +333,9 @@ mod tests {
     use std::assert_matches;
 
     use std::collections::HashMap;
-    use std::sync::Arc;
 
-    use arrow::array::{
-        BooleanArray, Float64Array, Int32Array, RecordBatch, StringArray, StructArray, UInt64Array,
-    };
-    use arrow::datatypes::{DataType, Field, Schema};
+    use arrow::array::{BooleanArray, Float64Array, Int32Array, StringArray, StructArray};
+    use arrow::datatypes::DataType;
     use arrow::error::ArrowError;
 
     use super::*;

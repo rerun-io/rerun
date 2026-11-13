@@ -3,8 +3,9 @@
 
 /// A 2D map view to display geospatial primitives.
 ///
-/// \example views/map title="Use a blueprint to create a map view." image="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/1200w.png"
+/// \example views/map title="Use a blueprint to create a map view." image="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/1200w.png" alt="Map view with two large purple points plotted over an OpenStreetMap street map"
 #[rerun::rerun_type]
+#[docs(keywords = "map, geospatial, geographic, latitude, longitude")]
 #[rerun(view_identifier = "Map")]
 #[rerun(state = "unstable")]
 pub struct MapView {

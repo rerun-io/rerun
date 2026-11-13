@@ -5,15 +5,15 @@ use itertools::Itertools as _;
 use pyo3::exceptions::{PyOSError, PyValueError};
 use pyo3::{PyResult, Python};
 
-use re_catalog_client::{CatalogClient, DatasetSelection, RegistrationHandle};
+use re_catalog_client::{CatalogClient, DatasetSelection, RegistrationHandle, StageOpt};
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
-use re_protos::cloud::v1alpha1::EntryFilter;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DatasetDetails, DatasetEntry, EntryDetails, ObjectKey, TableDetails, TableEntry,
-    VersionResponse,
+    ApplyDatasetPolicyResponse, DataSource, DatasetDetails, DatasetEntry, DatasetPolicy,
+    EntryDetails, ObjectKey, StorageLocationAlias, TableDetails, TableEntry, VersionResponse,
 };
+use re_protos::cloud::v1alpha1::{DatasetQueryScope, EntryFilter};
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle, DatasetSchema, TraceId};
@@ -21,7 +21,18 @@ use re_types_core::LayerName;
 
 use crate::catalog::table_entry::PyTableInsertModeInternal;
 use crate::catalog::to_py_err;
-use crate::utils::wait_for_future;
+use crate::utils::{get_tokio_runtime, wait_for_future};
+
+fn stage_options(method: &str) -> PyResult<StageOpt> {
+    match method {
+        "auto" => Ok(StageOpt::default()),
+        "single" => Ok(StageOpt::single()),
+        "multipart" => Ok(StageOpt::multipart()),
+        _ => Err(PyValueError::new_err(
+            "upload_method must be 'auto', 'single', or 'multipart'",
+        )),
+    }
+}
 
 /// Connection handle to a catalog service.
 #[derive(Clone)]
@@ -32,7 +43,10 @@ pub(crate) struct PyConnectionHandle {
 impl PyConnectionHandle {
     pub fn new(connection_registry: ConnectionRegistryHandle, origin: re_uri::Origin) -> Self {
         Self {
-            inner: CatalogClient::new(connection_registry.connection_handle(origin)),
+            inner: CatalogClient::new(
+                connection_registry.connection_handle(origin),
+                re_async::AsyncRuntimeHandle::new_native(get_tokio_runtime().handle().clone()),
+            ),
         }
     }
 
@@ -49,6 +63,7 @@ impl PyConnectionHandle {
     }
 }
 
+// TODO(RR-6055): Negotiate server support before forwarding storage_location to StageOpt.
 impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn stage_file(
@@ -56,8 +71,10 @@ impl PyConnectionHandle {
         py: Python<'_>,
         path: std::path::PathBuf,
         key: String,
+        upload_method: &str,
     ) -> PyResult<String> {
         let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let opt = stage_options(upload_method)?;
 
         wait_for_future(py, async move {
             let file = std::fs::File::open(&path).map_err(|err| {
@@ -66,18 +83,29 @@ impl PyConnectionHandle {
                     path.display()
                 ))
             })?;
-            let url = self.inner.stage(key, file).await.map_err(to_py_err)?;
+            let url = Box::pin(self.inner.stage_opt(key, file, opt))
+                .await
+                .map_err(to_py_err)?;
             Ok(url.to_string())
         })
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn stage_bytes(&self, py: Python<'_>, bytes: &[u8], key: String) -> PyResult<String> {
+    pub fn stage_bytes(
+        &self,
+        py: Python<'_>,
+        bytes: &[u8],
+        key: String,
+        upload_method: &str,
+    ) -> PyResult<String> {
         let key = ObjectKey::try_new(key).map_err(|err| PyValueError::new_err(err.to_string()))?;
+        let opt = stage_options(upload_method)?;
         let bytes = bytes::Bytes::copy_from_slice(bytes);
 
         wait_for_future(py, async move {
-            let url = self.inner.stage(key, bytes).await.map_err(to_py_err)?;
+            let url = Box::pin(self.inner.stage_opt(key, bytes, opt))
+                .await
+                .map_err(to_py_err)?;
             Ok(url.to_string())
         })
     }
@@ -113,6 +141,13 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    pub fn get_storage_locations(&self, py: Python<'_>) -> PyResult<cloud_ext::StorageLocations> {
+        wait_for_future(py, async {
+            self.inner.get_storage_locations().await.map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn find_entries(&self, py: Python<'_>, filter: EntryFilter) -> PyResult<Vec<EntryDetails>> {
         wait_for_future(py, async {
             self.inner.find_entries(filter).await.map_err(to_py_err)
@@ -142,10 +177,18 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
+    pub fn create_dataset(
+        &self,
+        py: Python<'_>,
+        name: String,
+        policy: Option<re_protos::cloud::v1alpha1::ext::DatasetPolicy>,
+    ) -> PyResult<DatasetEntry> {
         let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
         wait_for_future(py, async {
-            self.inner.create_dataset(name).await.map_err(to_py_err)
+            self.inner
+                .create_dataset(name, policy)
+                .await
+                .map_err(to_py_err)
         })
     }
 
@@ -166,6 +209,21 @@ impl PyConnectionHandle {
         wait_for_future(py, async {
             self.inner
                 .update_dataset(entry_id, dataset_details)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn apply_dataset_policy(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        policy: DatasetPolicy,
+    ) -> PyResult<ApplyDatasetPolicyResponse> {
+        wait_for_future(py, async {
+            self.inner
+                .apply_dataset_policy(entry_id, policy)
                 .await
                 .map_err(to_py_err)
         })
@@ -356,10 +414,15 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetSchema> {
+    pub fn get_dataset_schema(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        scope: DatasetQueryScope,
+    ) -> PyResult<DatasetSchema> {
         wait_for_future(py, async {
             self.inner
-                .get_dataset_schema(entry_id)
+                .get_dataset_schema(entry_id, scope)
                 .await
                 .map_err(to_py_err)
         })
@@ -384,7 +447,7 @@ impl PyConnectionHandle {
         recording_uris: Vec<String>,
         recording_layers: Vec<LayerName>,
         on_duplicate: IfDuplicateBehavior,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> PyResult<RegistrationHandle> {
         let last_layer = recording_layers
             .last()
@@ -398,7 +461,7 @@ impl PyConnectionHandle {
                 std::iter::repeat_with(|| last_layer.clone()),
             ),
         )
-        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url, object_store_config.clone()))
+        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url, storage_location.clone()))
         .try_collect()
         .map_err(to_py_err)?;
 
@@ -454,14 +517,11 @@ impl PyConnectionHandle {
         recordings_prefix: String,
         recordings_layer: LayerName,
         on_duplicate: IfDuplicateBehavior,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> PyResult<RegistrationHandle> {
-        let data_source = DataSource::new_rrd_layer_prefix(
-            recordings_layer,
-            recordings_prefix,
-            object_store_config,
-        )
-        .map_err(to_py_err)?;
+        let data_source =
+            DataSource::new_rrd_layer_prefix(recordings_layer, recordings_prefix, storage_location)
+                .map_err(to_py_err)?;
         let data_sources = vec![data_source];
 
         wait_for_future(py, async {

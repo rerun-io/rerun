@@ -1,32 +1,13 @@
-use re_chunk::EntityPath;
 use re_log_types::example_components::MyPoint;
 use re_sdk_types::Archetype as _;
 use re_ui::Help;
-use re_viewer_context::external::re_chunk_store::external::re_chunk;
 use re_viewer_context::{
-    IdentifiedViewSystem, ViewClass, ViewSpawnHeuristics, ViewState, ViewerContext,
+    IdentifiedViewSystem, ViewClass, ViewSpawnContext, ViewSpawnHeuristics, ViewerContext,
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, suggest_view_for_each_entity,
 };
 
 #[derive(Default)]
 pub struct TestView;
-
-#[derive(re_byte_size::SizeBytes)]
-pub struct TestViewState;
-
-impl ViewState for TestViewState {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn as_any_mut(&mut self) -> &mut dyn std::any::Any {
-        self
-    }
-
-    fn heap_size_bytes(&self) -> u64 {
-        re_viewer_context::SizeBytes::heap_size_bytes(self)
-    }
-}
 
 #[derive(Default)]
 pub struct TestSystem;
@@ -98,10 +79,6 @@ impl ViewClass for TestView {
         Ok(())
     }
 
-    fn new_state(&self) -> Box<dyn re_viewer_context::ViewState> {
-        Box::new(TestViewState {})
-    }
-
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
         re_viewer_context::ViewClassLayoutPriority::Low
     }
@@ -109,9 +86,9 @@ impl ViewClass for TestView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
-        suggest_view_for_each_entity::<TestSystem>(ctx, include_entity)
+        suggest_view_for_each_entity::<TestSystem>(ctx, spawn_context)
     }
 
     fn ui(

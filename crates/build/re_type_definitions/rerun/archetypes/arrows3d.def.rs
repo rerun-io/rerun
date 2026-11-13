@@ -3,7 +3,7 @@
 
 /// 3D arrows with optional colors, radii, labels, etc.
 ///
-/// \example archetypes/arrows3d_simple title="Simple batch of 3D arrows" image="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1200w.png"
+/// \example archetypes/arrows3d_simple title="Simple batch of 3D arrows" image="https://static.rerun.io/arrow3d_simple/55e2f794a520bbf7527d7b828b0264732146c5d0/1200w.png" alt="3D view of arrows fanning out from a shared origin in a spiral, growing longer and shifting from pink to green"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Spatial 3D")]

@@ -369,7 +369,7 @@ def test_register_unregister_batch(
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                         │
-│ * version: 0.1.3                                                                                                  │
+│ * version: 0.1.4                                                                                                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────────────────────┬──────────────────────┬─────────────────────────────────────────────────┐ │
 │ │ rerun_segment_id                     ┆ log_tick             ┆ /points:Points2D:positions                      │ │
@@ -402,7 +402,7 @@ def test_register_unregister_batch(
     assert str(df) == inline_snapshot("""\
 ┌───────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
 │ METADATA:                                                                                                         │
-│ * version: 0.1.3                                                                                                  │
+│ * version: 0.1.4                                                                                                  │
 ├╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌╌┤
 │ ┌──────────────────────────────────────┬──────────────────────┬─────────────────────────────────────────────────┐ │
 │ │ rerun_segment_id                     ┆ log_tick             ┆ /points:Points2D:positions                      │ │
@@ -647,6 +647,17 @@ def test_failed_layer_registration_not_in_segment_table(entry_factory: EntryFact
 
     assert dataset.segment_ids() == ["segment1"]
     assert dataset.segment("segment1").layers() == {"base"}
+
+
+def test_manifest_diagnostic_data(readonly_test_dataset: DatasetEntry) -> None:
+    assert "rerun_registration_status" not in readonly_test_dataset._manifest().schema().names
+
+    manifest = readonly_test_dataset._manifest(include_diagnostic_data=True)
+    statuses = pa.table(manifest.select("rerun_registration_status")).column(0).to_pylist()
+
+    assert statuses
+    assert set(statuses) == {"done"}
+    assert readonly_test_dataset._manifest().count() == len(statuses)
 
 
 @pytest.mark.local_only

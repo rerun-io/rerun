@@ -3,7 +3,8 @@ use std::ops::RangeInclusive;
 use re_chunk_store::ChunkStore;
 use re_log_types::{AbsoluteTimeRange, EntityPath, TimeInt, Timeline, TimestampFormat};
 use re_types_core::ComponentIdentifier;
-use re_ui::{TimeDragValue, UiExt as _};
+use re_ui::UiExt as _;
+use re_viewer_context::TimeDragValue;
 
 #[derive(Debug)]
 pub(crate) enum ChunkListQueryMode {

@@ -17,6 +17,7 @@ An N-dimensional array of numbers.
 * [TensorView](../views/tensor_view.md)
 * [BarChartView](../views/bar_chart_view.md) (for 1D tensors)
 * [DataframeView](../views/dataframe_view.md)
+* [RawDataView](../views/raw_data_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Tensor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Tensor.html)
@@ -34,6 +35,6 @@ snippet: archetypes/tensor_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png">
-  <img src="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png">
+  <img src="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png" alt="Tensor view showing an 8 by 6 Viridis heatmap slice, with channel and batch sliders and dimension mapping in the selection panel">
 </picture>
 

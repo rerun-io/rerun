@@ -3,7 +3,6 @@ use re_sdk_types::blueprint::archetypes::TextDocumentFormat;
 use re_sdk_types::blueprint::components::Enabled;
 use re_sdk_types::{View as _, ViewClassIdentifier};
 use re_ui::{Help, UiExt as _};
-use re_viewer_context::external::re_log_types::EntityPath;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _, ViewClass,
     ViewClassExt as _, ViewClassRegistryError, ViewQuery, ViewState, ViewStateExt as _,
@@ -108,11 +107,11 @@ impl ViewClass for TextDocumentView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
         // By default spawn a view for every text document.
-        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, include_entity)
+        suggest_view_for_each_entity::<TextDocumentSystem>(ctx, spawn_context)
     }
 
     fn ui(
@@ -209,9 +208,11 @@ fn text_document_ui(
                 .or_insert(egui::FontId::proportional(32.0))
                 .size = 24.0;
 
-            egui_commonmark::CommonMarkViewer::new()
-                .max_image_width(Some(ui.available_width().floor() as _))
-                .show(ui, &mut state.commonmark_cache, body);
+            ui.uncontrolled_external_ui(|ui| {
+                egui_commonmark::CommonMarkViewer::new()
+                    .max_image_width(Some(ui.available_width().floor() as _))
+                    .show(ui, &mut state.commonmark_cache, body);
+            });
         } else {
             let mut text = egui::RichText::new(body.as_str());
 

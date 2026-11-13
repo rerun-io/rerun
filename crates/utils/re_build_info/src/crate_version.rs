@@ -40,7 +40,7 @@ mod meta {
 /// - `11NNNNNN` -> `-alpha.N+dev`
 /// - `01NNNNNN` -> `-rc.N`
 /// - `00000000` -> none of the above
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CrateVersion<'a> {
     pub major: u8,
     pub minor: u8,
@@ -127,7 +127,7 @@ impl CrateVersion<'_> {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize, serde::Serialize)]
 pub enum Meta<'a> {
     Rc(u8),
     Alpha(u8),
@@ -234,9 +234,6 @@ macro_rules! slice {
     ($s:expr, $start:expr, ..) => {
         const_u8_slice_util($s, Some($start), None)
     };
-    ($s:expr, $start:expr, $end:expr) => {
-        const_u8_slice_util($s, Some($start), Some($end))
-    };
 }
 
 const fn equals(a: &[u8], b: &[u8]) -> bool {
@@ -306,11 +303,17 @@ impl CrateVersion<'_> {
 
     /// A compact 32-bit representation. See also [`Self::from_bytes`].
     pub fn to_bytes(self) -> [u8; 4] {
+        let Self {
+            major,
+            minor,
+            patch,
+            meta,
+        } = self;
         [
-            self.major,
-            self.minor,
-            self.patch,
-            self.meta.map(Meta::to_byte).unwrap_or_default(),
+            major,
+            minor,
+            patch,
+            meta.map(Meta::to_byte).unwrap_or_default(),
         ]
     }
 

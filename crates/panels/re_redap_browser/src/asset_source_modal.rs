@@ -2,8 +2,8 @@
 
 use re_catalog_client::AssetLayer;
 use re_log_types::external::re_types_core::SegmentId;
-use re_ui::UiExt as _;
 use re_ui::modal::{ModalHandler, ModalWrapper};
+use re_ui::{ButtonExt as _, UiExt as _};
 
 /// Modal showing the source URIs an asset was registered from.
 ///
@@ -66,7 +66,7 @@ impl AssetSourceModal {
                 ui.add_space(8.0);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     if ui
-                        .add(re_ui::ReButton::new("Copy").small())
+                        .add(egui::Button::new("Copy").size_small())
                         .on_hover_text("Copy every address on this asset")
                         .clicked()
                     {
