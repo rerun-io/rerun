@@ -83,8 +83,8 @@ deprecated_rerun_data_platform = re.compile(r"\bRerun\s+Data\s+Platform\b", re.I
 deprecated_data_platform = re.compile(r"\bData\s+Platform\b", re.IGNORECASE)
 deprecated_dataplatform = re.compile(r"(?<![/\[,])dataplatform(?![/\],])", re.IGNORECASE)
 rerun_hub = re.compile(r"\bRerun\s+Hub\b", re.IGNORECASE)
-recording_stream_app_id = re.compile(r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("([^"]*)')
-script_setup_app_id = re.compile(r'(rr.script_setup)\(args, "(\w*)')
+recording_stream_app_id = re.compile(r'(RecordingStreamBuilder::new|\.init|RecordingStream)\(\s*"([^"]*)')
+script_setup_app_id = re.compile(r'(rr.script_setup)\(\s*args,\s*"(\w*)')
 
 # reStructuredText syntax that we don't want in Python docstrings.
 # Our Python API docs use MkDocs + mkdocstrings (not Sphinx), so rST isn't rendered.
@@ -216,6 +216,19 @@ def lint_docs_redirect_links(filepath: str, content: str, redirects: dict[str, s
         path = match.group(1).strip("/")
         if new_path := redirects.get(path):
             errors.append((match.start(), f"`docs/{path}` is a redirect: link to `docs/{new_path}` instead"))
+    return errors
+
+
+def lint_example_app_ids(content: str) -> list[tuple[int, str]]:
+    """Application ids that don't start with `rerun_example_`, as `(index, error)`."""
+    errors = []
+    for match in [*recording_stream_app_id.finditer(content), *script_setup_app_id.finditer(content)]:
+        app_id = match.group(2)
+        if not app_id.startswith("rerun_example_") and app_id != "<your_app_name>":
+            errors.append((
+                match.start(),
+                f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'",
+            ))
     return errors
 
 
@@ -445,12 +458,6 @@ def lint_line(
         if m.group(0) != "Rerun Hub":
             return "'Rerun Hub' must be properly capitalized."
 
-    if not is_in_docstring:
-        if m := recording_stream_app_id.search(line) or script_setup_app_id.search(line):
-            app_id = m.group(2)
-            if not app_id.startswith("rerun_example_") and app_id != "<your_app_name>":
-                return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
-
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
         if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
@@ -528,8 +535,6 @@ def test_lint_line() -> None:
         "template <typename... Args>",
         'f"repos/{OWNER}/rerun/compare/{sha}...{tag}"',
         '_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])',
-        'rr.init("rerun_example_app")',
-        'rr.script_setup(args, "rerun_example_app")',
         """
         #[inline]
         fn foo(mut self) -> Self {
@@ -682,12 +687,6 @@ def test_lint_line() -> None:
         're_log::trace!("Performing migrations...");',
         'rr.log("/", rr.TextLog("Logging things..."))',
         'logging.info("Detection finished...")',
-        'RecordingStreamBuilder::new("missing_prefix")',
-        'args.rerun.init("missing_prefix")',
-        'RecordingStream("missing_prefix")',
-        'rr.init("missing_prefix")',
-        'rr.script_setup(args, "missing_prefix")',
-        'rr.script_setup(args, "")',
         "I accidentally wrote the same same word twice",
         "fn deref(&self) -> Self::Target {",
         "fn deref_mut(&mut self) -> &mut Self::Target",
@@ -1427,6 +1426,32 @@ def test_lint_docs_redirect_links() -> None:
     assert errors("docs/content/changelog/changeset-0-42.md", "https://rerun.io/docs/old/page") == []
 
 
+def test_lint_example_app_ids() -> None:
+    def app_id_errors(content: str) -> list[str]:
+        return [error for _, error in lint_example_app_ids(content)]
+
+    for content in [
+        'rr.init("rerun_example_app")',
+        'rr.script_setup(args, "rerun_example_app")',
+        'rr.script_setup(\n    args,\n    "rerun_example_app",\n)',
+        'RecordingStreamBuilder::new(\n    "rerun_example_app",\n)',
+        'rr.init("<your_app_name>")',
+    ]:
+        assert app_id_errors(content) == [], content
+
+    for content in [
+        'RecordingStreamBuilder::new("missing_prefix")',
+        'args.rerun.init("missing_prefix")',
+        'RecordingStream("missing_prefix")',
+        'rr.init("missing_prefix")',
+        'rr.script_setup(args, "missing_prefix")',
+        'rr.script_setup(args, "")',
+        'rr.script_setup(\n    args,\n    "missing_prefix",\n)',
+        'rr.RecordingStream(\n    "missing_prefix",\n)',
+    ]:
+        assert len(app_id_errors(content)) == 1, content
+
+
 def test_is_emoji() -> None:
     assert not is_emoji("A")
     assert not is_emoji("Ö")
@@ -1784,6 +1809,7 @@ def lint_file(filepath: str, args: Any) -> int:
     is_in_docstring = False
     is_in_oss_rerun_repo = filepath.startswith(rerun_prefix)
 
+    docstring_lines = set()
     prev_line = None
     for line_nr, line in enumerate(source.lines):
         if source.should_ignore(line_nr):
@@ -1795,6 +1821,8 @@ def lint_file(filepath: str, args: Any) -> int:
             line = line[:-1]
             if line.strip() == '"""':
                 is_in_docstring = not is_in_docstring
+            if is_in_docstring:
+                docstring_lines.add(line_nr)
             error = lint_line(line, prev_line, source.ext, is_in_docstring, is_in_oss_rerun_repo)
             prev_line = line
         if error is not None:
@@ -1889,6 +1917,12 @@ def lint_file(filepath: str, args: Any) -> int:
 
         if error is not None:
             print(source.error(error))
+            num_errors += 1
+
+    for index, error in lint_example_app_ids(source.content):
+        line_nr = _index_to_line_nr(source.content, index)
+        if line_nr not in docstring_lines and not source.should_ignore(line_nr):
+            print(source.error(error, line_nr=line_nr))
             num_errors += 1
 
     for index, error in lint_docs_redirect_links(filepath, source.content, redirected_doc_paths()):
@@ -2025,6 +2059,7 @@ def main() -> None:
     test_lint_pymethods_requirements()
     test_is_emoji()
     test_lint_docs_redirect_links()
+    test_lint_example_app_ids()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
