@@ -15,6 +15,9 @@ include.workspace = true
 [lints]
 workspace = true
 
+[lib]
+test = false
+
 [package.metadata.docs.rs]
 all-features = true
 

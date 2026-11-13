@@ -6,6 +6,10 @@ rust-version = "1.98"
 license = "MIT OR Apache-2.0"
 publish = false
 
+[[bin]]
+name = "ply_stl_tetrahedrons"
+test = false
+
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", features = ["clap", "web_viewer"] }
 

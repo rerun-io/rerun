@@ -32,6 +32,7 @@ ignored = ["re_server"]
 [[bin]]
 name = "rerun"
 path = "src/bin/rerun.rs"
+test = false
 # This binary's name collides with `crates/top/rerun` (the library).
 # https://github.com/rust-lang/cargo/issues/6313
 doc = false

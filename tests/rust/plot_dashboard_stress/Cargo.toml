@@ -13,6 +13,10 @@ version.workspace = true
 [lints]
 workspace = true
 
+[[bin]]
+name = "plot_dashboard_stress"
+test = false
+
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
 rerun = { path = "../../../crates/top/rerun", features = ["clap"] }

@@ -15,34 +15,42 @@ workspace = true
 [[bin]]
 name = "2d" # NOLINT
 path = "2d.rs" # NOLINT
+test = false
 
 [[bin]]
 name = "depth_cloud"
 path = "depth_cloud.rs"
+test = false
 
 [[bin]]
 name = "depth_offset"
 path = "depth_offset.rs"
+test = false
 
 [[bin]]
 name = "point_cloud_bench"
 path = "point_cloud_bench.rs"
+test = false
 
 [[bin]]
 name = "multiview"
 path = "multiview.rs"
+test = false
 
 [[bin]]
 name = "outlines"
 path = "outlines.rs"
+test = false
 
 [[bin]]
 name = "picking"
 path = "picking.rs"
+test = false
 
 [[bin]]
 name = "world_grid"
 path = "world_grid.rs"
+test = false
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }

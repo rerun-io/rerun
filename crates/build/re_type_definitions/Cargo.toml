@@ -16,6 +16,7 @@ version.workspace = true
 # on the definitions.
 [lib]
 path = "rerun/lib.rs"
+test = false
 
 [lints]
 workspace = true

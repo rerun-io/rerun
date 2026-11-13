@@ -433,6 +433,8 @@ py-third-party-notices = { cmd = "cargo -Zscript scripts/ci/third_party_notices.
 # Check that each crate has at most one integration test binary (opt-out via `[package.metadata.rerun] test-binaries`).
 check-test-binaries = "python scripts/ci/check_test_binaries.py"
 
+check-test-targets = "python scripts/ci/check_test_targets.py"
+
 # Download a specific artifact from gcloud.
 #
 # Requires that gcloud authentication has already been set up in your shell.

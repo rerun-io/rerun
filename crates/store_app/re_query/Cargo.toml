@@ -72,11 +72,13 @@ bench = false
 name = "clamped_zip"
 required-features = ["codegen"]
 bench = false
+test = false
 
 [[bin]]
 name = "range_zip"
 required-features = ["codegen"]
 bench = false
+test = false
 
 
 [[bench]]

@@ -6,13 +6,18 @@ rust-version = "1.98"
 license = "MIT OR Apache-2.0"
 publish = false
 
+[lib]
+test = false
+
 [[bin]]
 name = "custom_callback_viewer"
 path = "src/viewer.rs"
+test = false
 
 [[bin]]
 name = "custom_callback_app"
 path = "src/app.rs"
+test = false
 
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [

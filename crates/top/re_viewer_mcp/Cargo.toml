@@ -26,6 +26,7 @@ workspace = true
 [[bin]]
 name = "re-viewer-mcp"
 path = "src/main.rs"
+test = false
 
 [dependencies]
 egui_inspection.workspace = true
