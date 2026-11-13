@@ -296,7 +296,7 @@ Nothing Rerun-specific in here.
 
 | Crate               | Description                                                                                                                                                                |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| re_agent            | Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol, or run an agent loop against a model API                                                    |
+| re_agent            | Talk to a coding agent (Claude Code, Codex, вЂ¦) over the Agent Client Protocol, or run an agent loop against a model API                                                  |
 | re_analytics        | Rerun's analytics SDK                                                                                                                                                      |
 | re_arrow_util       | Helpers for working with arrow.                                                                                                                                            |
 | re_async            | Async runtime abstractions for native and WebAssembly targets.                                                                                                             |
@@ -309,6 +309,7 @@ Nothing Rerun-specific in here.
 | re_capabilities     | Capability tokens for the Rerun code base.                                                                                                                                 |
 | re_case             | Case conversions, the way Rerun likes them                                                                                                                                 |
 | re_crash_handler    | Detect panics and signals, logging them and optionally sending them to analytics.                                                                                          |
+| re_crypto           | Shared TLS crypto provider initialization for Rerun                                                                                                                        |
 | re_dump_puffin      | Convert puffin profiler recordings (.puffin files) into JSON for analysis                                                                                                  |
 | re_error            | Helpers for handling errors.                                                                                                                                               |
 | re_format           | Miscellaneous tools to format and parse numbers, durations, etc.                                                                                                           |

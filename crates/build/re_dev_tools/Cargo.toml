@@ -19,8 +19,14 @@ workspace = true
 all-features = true
 
 
+[features]
+default = ["crypto-ring"]
+crypto-ring = ["re_crypto/crypto-ring"]
+crypto-aws-lc-rs = ["re_crypto/crypto-aws-lc-rs"]
+
 [dependencies]
 re_build_tools.workspace = true
+re_crypto.workspace = true
 re_format.workspace = true
 
 # External

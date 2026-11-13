@@ -14,6 +14,27 @@ version.workspace = true
 [lints]
 workspace = true
 
+[features]
+default = ["crypto-ring"]
+
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_test_context/crypto-ring",
+  "re_ui/crypto-ring",
+  "re_view/crypto-ring",
+  "re_viewer_context/crypto-ring",
+  "re_viewport_blueprint/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_test_context/crypto-aws-lc-rs",
+  "re_ui/crypto-aws-lc-rs",
+  "re_view/crypto-aws-lc-rs",
+  "re_viewer_context/crypto-aws-lc-rs",
+  "re_viewport_blueprint/crypto-aws-lc-rs",
+]
+
 [dependencies]
 re_log_types.workspace = true
 re_test_context.workspace = true

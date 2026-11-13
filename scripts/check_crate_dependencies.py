@@ -44,6 +44,10 @@ FORBIDDEN_DEPENDENCIES: list[tuple[str, set[str]]] = [
     ("re_sdk", {"datafusion", "egui", "lance"}),
     ("re_sdk --all-features", {"datafusion", "egui", "lance"}),
     ("rerun-cli --no-default-features", {"datafusion", "egui", "lance"}),
+    ("rerun --no-default-features --features sdk,native_viewer,map_view,crypto-aws-lc-rs", {"ring"}),
+    ("re_sdk --no-default-features --features crypto-aws-lc-rs", {"ring"}),
+    ("rerun_py --no-default-features --features extension-module,crypto-aws-lc-rs", {"ring"}),
+    ("rerun --no-default-features --features sdk,native_viewer,map_view,crypto-ring", {"aws-lc-rs"}),
 ]
 
 # (crate, forbidden_dep), both workspace crates. `dev-dependencies` are exempt.
@@ -99,7 +103,7 @@ def layering_errors(metadata: dict[str, Any]) -> list[str]:
     # so they have no layer to violate.
     layer_of_crate = {}
     for package in metadata["packages"]:
-        folder = str(Path(package["manifest_path"]).parent.relative_to(workspace_root).parent)
+        folder = Path(package["manifest_path"]).parent.relative_to(workspace_root).parent.as_posix()
         if folder in FOLDERS:
             layer_of_crate[package["name"]] = folder
 

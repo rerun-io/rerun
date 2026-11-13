@@ -6,6 +6,10 @@
 //!
 //! **Warning!** This approach should only be seen as a stop-gap until we have
 //! integration of _real_ identity-providers, most likely based on `OpenID` Connect.
+//!
+//! Native `OAuth` RS256 verification uses `crypto-ring` by default.
+//! Disable default features and select `crypto-aws-lc-rs` to use AWS-LC instead.
+//! With neither backend enabled, HS256 remains available but RS256 verification fails.
 
 #[cfg(not(target_arch = "wasm32"))]
 mod crypto_provider;

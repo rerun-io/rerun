@@ -42,6 +42,7 @@ pub async fn channel(origin: Origin) -> ApiResult<PoolChannel> {
 
     use tonic::transport::Endpoint;
 
+    re_crypto::init();
     let http_url = origin.as_url();
 
     let tls_config = if let Ok(cert_path) = std::env::var("RERUN_REDAP_LOCAL_CERT_PATH") {

@@ -311,8 +311,13 @@ impl Drop for MockPostHog {
 mod tests {
     use super::*;
 
-    async fn post_json(url: &str, json: serde_json::Value) -> reqwest::Response {
+    fn http_client() -> reqwest::Client {
+        re_crypto::init();
         reqwest::Client::new()
+    }
+
+    async fn post_json(url: &str, json: serde_json::Value) -> reqwest::Response {
+        http_client()
             .post(url)
             .header("Content-Type", "application/json")
             .body(serde_json::to_string(&json).unwrap())
@@ -351,7 +356,7 @@ mod tests {
     #[tokio::test]
     async fn records_request_headers_on_every_flattened_event() {
         let collector = MockPostHog::spawn().await;
-        let resp = reqwest::Client::new()
+        let resp = http_client()
             .post(collector.endpoint())
             .header("Content-Type", "application/json")
             .header("X-Custom-Header", "value-123")
@@ -383,7 +388,7 @@ mod tests {
     #[tokio::test]
     async fn records_malformed_json_as_bad_request() {
         let collector = MockPostHog::spawn().await;
-        let resp = reqwest::Client::new()
+        let resp = http_client()
             .post(collector.endpoint())
             .header("Content-Type", "application/json")
             .body("not-json")
@@ -427,7 +432,7 @@ mod tests {
     #[tokio::test]
     async fn rejects_non_post_methods() {
         let collector = MockPostHog::spawn().await;
-        let resp = reqwest::Client::new()
+        let resp = http_client()
             .get(collector.endpoint())
             .send()
             .await
@@ -563,7 +568,7 @@ mod tests {
     #[should_panic(expected = "expected a parsed PostHog batch entry, got BadRequest")]
     async fn expect_parsed_panics_on_bad_request() {
         let collector = MockPostHog::spawn().await;
-        reqwest::Client::new()
+        http_client()
             .post(collector.endpoint())
             .body("not-json")
             .send()

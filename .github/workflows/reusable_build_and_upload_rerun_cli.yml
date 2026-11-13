@@ -159,7 +159,7 @@ jobs:
             --locked \
             -p rerun-cli \
             --no-default-features \
-            --features release_full \
+            --features crypto-ring,release_full \
             --release \
             --target ${{ needs.set-config.outputs.TARGET }}
 

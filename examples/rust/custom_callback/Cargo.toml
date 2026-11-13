@@ -14,6 +14,15 @@ path = "src/viewer.rs"
 name = "custom_callback_app"
 path = "src/app.rs"
 
+[features]
+## Use Ring for native cryptography (the default).
+crypto-ring = ["rerun/crypto-ring"]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = ["rerun/crypto-aws-lc-rs"]
+
+default = ["crypto-ring"]
+
 [dependencies]
 rerun = { path = "../../../crates/top/rerun", default-features = false, features = [
   "native_viewer",

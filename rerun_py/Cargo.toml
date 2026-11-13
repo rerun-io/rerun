@@ -16,14 +16,53 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 
 
 [features]
-default = ["extension-module", "perf_telemetry"]
+## Use Ring for native cryptography (the default).
+crypto-ring = [
+  "re_auth/crypto-ring",
+  "re_catalog_client/crypto-ring",
+  "re_chunk_store/crypto-ring",
+  "re_crypto/crypto-ring",
+  "re_datafusion/crypto-ring",
+  "re_grpc_client/crypto-ring",
+  "re_grpc_server?/crypto-ring",
+  "re_importer/crypto-ring",
+  "re_log_encoding/crypto-ring",
+  "re_perf_telemetry?/crypto-ring",
+  "re_redap_client/crypto-ring",
+  "re_sdk/crypto-ring",
+  "re_server/crypto-ring",
+  "re_web_viewer_server?/crypto-ring",
+]
+
+## Use AWS-LC for native cryptography. Disable default features to avoid Ring.
+crypto-aws-lc-rs = [
+  "re_auth/crypto-aws-lc-rs",
+  "re_catalog_client/crypto-aws-lc-rs",
+  "re_chunk_store/crypto-aws-lc-rs",
+  "re_crypto/crypto-aws-lc-rs",
+  "re_datafusion/crypto-aws-lc-rs",
+  "re_grpc_client/crypto-aws-lc-rs",
+  "re_grpc_server?/crypto-aws-lc-rs",
+  "re_importer/crypto-aws-lc-rs",
+  "re_log_encoding/crypto-aws-lc-rs",
+  "re_perf_telemetry?/crypto-aws-lc-rs",
+  "re_redap_client/crypto-aws-lc-rs",
+  "re_sdk/crypto-aws-lc-rs",
+  "re_server/crypto-aws-lc-rs",
+  "re_web_viewer_server?/crypto-aws-lc-rs",
+]
+
+default = ["crypto-ring", "extension-module", "perf_telemetry", "lance"]
+
+## Enable Lance-backed local tables. Lance currently requires Ring transitively.
+lance = ["re_server/lance"]
 
 ## Extra features that aren't ready to be included in release builds yet.
 extra = []
 
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "nasm", "web_viewer", "server", "perf_telemetry"]
+pypi = ["extension-module", "nasm", "web_viewer", "server", "perf_telemetry", "lance"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -63,6 +102,7 @@ re_build_info.workspace = true
 re_chunk.workspace = true
 re_chunk_index.workspace = true
 re_chunk_optimizer.workspace = true
+re_crypto.workspace = true
 re_lenses_core.workspace = true
 re_lenses.workspace = true
 re_chunk_store.workspace = true
@@ -95,7 +135,7 @@ re_types_core.workspace = true
 re_uri.workspace = true
 re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
-re_server = { workspace = true, features = ["lance"] }
+re_server.workspace = true
 
 anyhow.workspace = true
 arrow = { workspace = true, features = ["pyarrow"] }
@@ -119,7 +159,6 @@ pyo3 = { workspace = true, features = [
   "jiff-02",
 ] }
 rand = { workspace = true, features = ["std", "std_rng"] }
-rustls = { workspace = true, features = ["ring"] }
 strum.workspace = true
 strum_macros.workspace = true
 tracing.workspace = true

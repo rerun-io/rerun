@@ -990,6 +990,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "aws-lc-rs"
+version = "1.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "048006790404103c488e6c5616b3e7e702a71292aadda08e8f7698a9e0d2eb53"
+dependencies = [
+ "aws-lc-sys",
+ "untrusted 0.7.1",
+ "zeroize",
+]
+
+[[package]]
+name = "aws-lc-sys"
+version = "0.47.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8bfbe32ac36b3c428696ce315464181bc4029d689fd58e3f2a4e58c252242f52"
+dependencies = [
+ "cc",
+ "cmake",
+ "dunce",
+ "fs_extra",
+ "pkg-config",
+]
+
+[[package]]
 name = "axum"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1691,6 +1715,15 @@ dependencies = [
  "clap",
  "re_workspace_hack",
  "rerun",
+]
+
+[[package]]
+name = "cmake"
+version = "0.1.58"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0f78a02292a74a88ac736019ab962ece0bc380e3f977bf72e376c5d78ff0678"
+dependencies = [
+ "cc",
 ]
 
 [[package]]
@@ -3419,6 +3452,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6add3b8cff394282be81f3fc1a0605db594ed69890078ca6e2cab1c408bcf04"
 
 [[package]]
+name = "dunce"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "92773504d58c093f6de2459af4af33faa518c13451eb8f2b5698ed3d36e7c813"
+
+[[package]]
 name = "dyn-clone"
 version = "1.0.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3737,20 +3776,20 @@ dependencies = [
 
 [[package]]
 name = "ehttp"
-version = "0.7.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4d1c51126a4e8242c5b3bcd4c5b350ed3540f0c13c10e0c3c840a3833fa3474c"
+version = "0.7.2"
+source = "git+https://github.com/emilk/ehttp.git?branch=main#3286a6fee4e05d20a80388e1058c0d7bee240a42"
 dependencies = [
  "async-channel",
  "document-features",
  "futures-util",
  "js-sys",
+ "rustls",
  "serde",
  "serde_json",
  "ureq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams 0.5.0",
+ "wasm-streams 0.4.2",
  "web-sys",
 ]
 
@@ -4184,6 +4223,12 @@ name = "four-cc"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "795cbfc56d419a7ce47ccbb7504dd9a5b7c484c083c356e797de08bd988d9629"
+
+[[package]]
+name = "fs_extra"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42703706b716c37f96a77aea830392ad231f44c9e9a67872fa5548707e11b11c"
 
 [[package]]
 name = "fsevent-sys"
@@ -9028,13 +9073,13 @@ dependencies = [
  "http",
  "jiff",
  "re_async",
+ "re_crypto",
  "re_error",
  "re_log",
  "re_workspace_hack",
  "reqwest 0.13.5",
  "rig-core",
  "rig-reqwest",
- "rustls",
  "serde",
  "serde_json",
  "shell-words",
@@ -9111,6 +9156,7 @@ dependencies = [
  "ehttp",
  "jiff",
  "re_build_info",
+ "re_crypto",
  "re_error",
  "re_log",
  "re_quota_channel",
@@ -9230,6 +9276,7 @@ name = "re_auth"
 version = "0.44.0-alpha.1+dev"
 dependencies = [
  "async-trait",
+ "aws-lc-rs",
  "base64 0.23.1",
  "directories",
  "ehttp",
@@ -9244,6 +9291,7 @@ dependencies = [
  "rand 0.9.5",
  "re_analytics",
  "re_byte_size",
+ "re_crypto",
  "re_error",
  "re_int",
  "re_log",
@@ -9393,6 +9441,7 @@ dependencies = [
  "re_backoff",
  "re_chunk",
  "re_chunk_index",
+ "re_crypto",
  "re_error",
  "re_format",
  "re_log",
@@ -9657,6 +9706,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_crypto"
+version = "0.44.0-alpha.1+dev"
+dependencies = [
+ "re_workspace_hack",
+ "rustls",
+]
+
+[[package]]
 name = "re_data_source"
 version = "0.44.0-alpha.1+dev"
 dependencies = [
@@ -9664,6 +9721,7 @@ dependencies = [
  "ehttp",
  "rayon",
  "re_async",
+ "re_crypto",
  "re_format",
  "re_grpc_client",
  "re_importer",
@@ -9829,6 +9887,7 @@ dependencies = [
  "re_async",
  "re_backoff",
  "re_byte_size",
+ "re_crypto",
  "re_dataframe",
  "re_error",
  "re_format",
@@ -9867,6 +9926,7 @@ dependencies = [
  "itertools 0.15.0",
  "rayon",
  "re_build_tools",
+ "re_crypto",
  "re_format",
  "re_workspace_hack",
  "roxmltree 0.20.0",
@@ -9976,6 +10036,7 @@ dependencies = [
  "re_async",
  "re_backoff",
  "re_chunk",
+ "re_crypto",
  "re_error",
  "re_log",
  "re_log_channel",
@@ -10085,6 +10146,7 @@ dependencies = [
  "re_arrow_util",
  "re_chunk",
  "re_chunk_store",
+ "re_crypto",
  "re_error",
  "re_format",
  "re_lenses",
@@ -10304,6 +10366,7 @@ dependencies = [
  "re_byte_size",
  "re_chunk",
  "re_chunk_index",
+ "re_crypto",
  "re_log",
  "re_log_msg",
  "re_log_types",
@@ -10794,6 +10857,7 @@ dependencies = [
  "re_byte_size",
  "re_chunk",
  "re_chunk_index",
+ "re_crypto",
  "re_error",
  "re_format",
  "re_log",
@@ -11270,6 +11334,7 @@ dependencies = [
  "axum",
  "opentelemetry-proto",
  "parking_lot",
+ "re_crypto",
  "re_workspace_hack",
  "reqwest 0.12.28",
  "serde_json",
@@ -12047,6 +12112,7 @@ dependencies = [
  "re_chunk_store_ui",
  "re_component_fallbacks",
  "re_component_ui",
+ "re_crypto",
  "re_data_source",
  "re_data_ui",
  "re_dataframe_ui",
@@ -12104,7 +12170,6 @@ dependencies = [
  "re_workspace_hack",
  "rfd",
  "ron",
- "rustls",
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
@@ -12387,7 +12452,6 @@ dependencies = [
  "arrow-schema",
  "axum",
  "axum-core",
- "base64 0.23.1",
  "bit-vec",
  "bitflags 2.13.1",
  "bytemuck",
@@ -12440,11 +12504,6 @@ dependencies = [
  "half",
  "hashbrown 0.16.1",
  "hashbrown 0.17.1",
- "http",
- "httparse",
- "hyper",
- "hyper-rustls",
- "hyper-util",
  "icu_locale_core",
  "icu_provider",
  "image",
@@ -12460,7 +12519,6 @@ dependencies = [
  "lz4_flex",
  "matrixmultiply",
  "memchr",
- "mime_guess",
  "mime_guess2",
  "miniz_oxide",
  "mio",
@@ -12503,16 +12561,11 @@ dependencies = [
  "regex",
  "regex-automata",
  "regex-syntax",
- "reqwest 0.12.28",
- "reqwest 0.13.5",
  "rfd",
  "rig-core",
  "rig-http",
  "rustix 1.1.6",
- "rustls",
- "rustls-webpki",
  "schemars 1.2.2",
- "security-framework-sys",
  "semver",
  "serde",
  "serde_core",
@@ -12527,12 +12580,10 @@ dependencies = [
  "stable_deref_trait",
  "syn 2.0.119",
  "syn 3.0.3",
- "sync_wrapper",
  "tempfile",
  "thiserror 2.0.19",
  "tinystr",
  "tokio",
- "tokio-rustls",
  "tokio-stream",
  "tokio-util",
  "toml",
@@ -12548,7 +12599,6 @@ dependencies = [
  "tungstenite",
  "twox-hash",
  "typenum",
- "ureq",
  "url",
  "uuid",
  "vello_common",
@@ -12925,7 +12975,7 @@ dependencies = [
  "tower-service",
  "wasm-bindgen",
  "wasm-bindgen-futures",
- "wasm-streams 0.5.0",
+ "wasm-streams 0.4.2",
  "web-sys",
 ]
 
@@ -12983,6 +13033,7 @@ dependencies = [
  "re_chunk_index",
  "re_chunk_optimizer",
  "re_chunk_store",
+ "re_crypto",
  "re_datafusion",
  "re_error",
  "re_format",
@@ -13017,7 +13068,6 @@ dependencies = [
  "re_video",
  "re_web_viewer_server",
  "reqwest 0.12.28",
- "rustls",
  "strum 0.26.3",
  "strum_macros 0.26.4",
  "tempfile",
@@ -13165,7 +13215,7 @@ dependencies = [
  "cfg-if",
  "getrandom 0.2.17",
  "libc",
- "untrusted",
+ "untrusted 0.9.0",
  "windows-sys 0.52.0",
 ]
 
@@ -13334,6 +13384,7 @@ version = "0.23.46"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48e13bd8c0e9365c43cfa5c9e8f9ad49d3c8444926c9aac819e0e4dc503c8fdf"
 dependencies = [
+ "aws-lc-rs",
  "log",
  "once_cell",
  "ring",
@@ -13398,9 +13449,10 @@ version = "0.103.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4443b1b6d39d7c663139942cc4558262562d2c84123bb6282ef177009ca8b281"
 dependencies = [
+ "aws-lc-rs",
  "ring",
  "rustls-pki-types",
- "untrusted",
+ "untrusted 0.9.0",
 ]
 
 [[package]]
@@ -15468,6 +15520,12 @@ name = "unit-prefix"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "81e544489bf3d8ef66c953931f56617f423cd4b5494be343d9b9d3dda037b9a3"
+
+[[package]]
+name = "untrusted"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a156c684c91ea7d62626509bce3cb4e1d9ed5c4d978f7b4352658f96a4c26b4a"
 
 [[package]]
 name = "untrusted"
