@@ -55,7 +55,7 @@ We've deprecated the following functions, with the following replacements:
 
 
 ### 🐍 Python: replaced `rr.set_time_*` functions with a single `rr.set_time`
-We've deprecated `rr.set_time_secs`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
+We've deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
 `set_time` takes either a `sequence=`, `duration=` or `timestamp=` argument.
 
 `duration` must be either:
@@ -72,11 +72,11 @@ We've deprecated `rr.set_time_secs`, `rr.set_time_nanos`, as well as `rr.set_tim
 ##### `rr.set_time_sequence("foo", 42)`
 New: `rr.set_time("foo", sequence=42)`
 
-##### `rr.set_time_secs("foo", duration_secs)`
+##### `rr.set_time_seconds("foo", duration_secs)`
 When using relative times (durations/timedeltas): `rr.set_time("foo", duration=duration_secs)`
 You can also pass in a [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta) or [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64) directly.
 
-##### `rr.set_time_secs("foo", seconds_since_epoch)`
+##### `rr.set_time_seconds("foo", seconds_since_epoch)`
 New: `rr.set_time("foo", timestamp=seconds_since_epoch)`
 You can also pass in a [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime) or [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64) directly.
 

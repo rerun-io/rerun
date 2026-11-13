@@ -1,7 +1,7 @@
 // This is a Rerun type definition for the SDK, not executable code.
 // It is parsed by `re_types_builder` to generate the Rust, Python and C++ bindings.
 
-/// A 3x3 transformation matrix Matrix.
+/// A 3x3 transformation matrix.
 ///
 /// 3x3 matrixes are able to represent any affine transformation in 3D space,
 /// i.e. rotation, scaling, shearing, reflection etc.
