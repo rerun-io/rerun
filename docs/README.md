@@ -97,8 +97,9 @@ re_type_definitions                  →  pixi run codegen  →  docs/content/re
 Documentation comes from the doc comments and attributes in `re_type_definitions`:
 - `///` comments become the page description
 - `\example archetypes/points3d_simple title="…" image="…" alt="…"` embeds snippet examples; `alt` describes the screenshot and falls back to the title
-- `"attr.docs.category": "Spatial 3D"` groups types in index pages
-- `"attr.docs.view_types": "Spatial3DView, Spatial2DView"` lists compatible views
+- `#[docs(category = "Spatial 3D")]` groups types in index pages
+- `#[docs(view_types = "Spatial3DView, Spatial2DView")]` lists compatible views
+- `#[docs(keywords = "graph, nodes, tree")]` adds hidden search keywords to the page frontmatter
 
 The generator is at `crates/build/re_types_builder/src/codegen/docs/website.rs`.
 

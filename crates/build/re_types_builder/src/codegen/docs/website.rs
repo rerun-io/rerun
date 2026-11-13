@@ -159,6 +159,7 @@ fn index_page(
         kind.plural_name(),
         Some(order),
         Some("alphabetical"),
+        &[],
     );
     putln!(page);
     putln!(page, "{prelude}");
@@ -247,7 +248,15 @@ fn object_page(
         object.name.clone()
     };
 
-    write_frontmatter(&mut page, &title, None, None);
+    let keywords = object
+        .try_get_attr::<String>(DocsAttr::Keywords)
+        .unwrap_or_default();
+    let keywords = keywords
+        .split(',')
+        .map(str::trim)
+        .filter(|keyword| !keyword.is_empty())
+        .collect::<Vec<_>>();
+    write_frontmatter(&mut page, &title, None, None, &keywords);
     putln!(page);
 
     if let Some(docline_summary) = object.state.docline_summary() {
@@ -373,9 +382,18 @@ fn list_links(page: &mut String, object: &Object) {
     }
 }
 
-fn write_frontmatter(o: &mut String, title: &str, order: Option<u64>, sort_children: Option<&str>) {
+fn write_frontmatter(
+    o: &mut String,
+    title: &str,
+    order: Option<u64>,
+    sort_children: Option<&str>,
+    keywords: &[&str],
+) {
     putln!(o, "---");
     putln!(o, "title: {title:?}");
+    if !keywords.is_empty() {
+        putln!(o, "keywords: {keywords:?}");
+    }
     if let Some(order) = order {
         // The order is used to sort `rerun.io/docs` side navigation
         putln!(o, "order: {order}");
