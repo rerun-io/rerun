@@ -1507,20 +1507,19 @@ fn centered_row<R>(
         ui.ctx().request_discard("centered row without a width yet");
     }
 
-    let mut leading_space = 0.0;
-
     let response = ui.horizontal(|ui| {
         if let Some(row_width) = row_width {
-            leading_space = ((ui.available_width() - row_width) / 2.0).max(0.0);
-            ui.add_space(leading_space);
+            ui.add_space(((ui.available_width() - row_width) / 2.0).max(0.0));
         }
 
-        add_contents(ui)
+        let contents_left = ui.cursor().min.x;
+        (add_contents(ui), contents_left)
     });
 
-    ui.data_mut(|data| data.insert_temp(id, response.response.rect.width() - leading_space));
+    let (inner, contents_left) = response.inner;
+    ui.data_mut(|data| data.insert_temp(id, response.response.rect.max.x - contents_left));
 
-    response.inner
+    inner
 }
 
 /// Button that opens the register modal, disabled while the dataset has no room for another asset.
@@ -1626,7 +1625,48 @@ fn refresh_button_ui(
 
 #[cfg(test)]
 mod tests {
-    use super::source_uri_file_name;
+    use super::{centered_row, source_uri_file_name};
+
+    /// A centered row with a fractional width stays at the same position across frames.
+    #[test]
+    fn centered_row_settles() {
+        for width in [400.0, 601.0] {
+            let ctx = egui::Context::default();
+            let mut previous_rect = None;
+            for frame in 0..4 {
+                let mut rect = egui::Rect::NOTHING;
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(width, 100.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| {
+                        egui::CentralPanel::default().show(ui, |ui| {
+                            rect = centered_row(ui, "row", |ui| {
+                                ui.allocate_exact_size(
+                                    egui::vec2(100.03125, 20.0),
+                                    egui::Sense::hover(),
+                                )
+                                .0
+                            });
+                        });
+                    },
+                );
+                output.textures_delta.clear();
+                if previous_rect.is_some() {
+                    assert_eq!(
+                        Some(rect),
+                        previous_rect,
+                        "the row moved between frames at width {width}, frame {frame}"
+                    );
+                }
+                previous_rect = Some(rect);
+            }
+        }
+    }
 
     /// A registration card is titled with the file name of the uri it registers, whatever scheme
     /// the uri uses and whatever query it carries. A uri with nothing to take a file name from
