@@ -10,12 +10,11 @@ use re_viewer_context::{
     VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
-use super::utilities::{LabeledBatch, process_labels};
+use super::utilities::{LabeledBatch, process_labels_2d};
 use super::{SpatialViewVisualizerData, process_radius_slice};
 use crate::SpatialViewState;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::ui::ScreenSpace2D;
-use crate::visualizers::UiLabelTarget;
 
 // ---
 
@@ -225,23 +224,21 @@ impl Ellipses2DVisualizer {
                 world_from_obj,
             );
 
-            view_data.ui_labels.extend(process_labels(
+            view_data.ui_labels.extend(process_labels_2d(
                 LabeledBatch {
                     entity_path,
                     visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
-                    overall_position: UiLabelTarget::Point2D(
-                        <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
-                    ),
+                    overall_position: obj_space_bounding_box.center().truncate(),
                     instance_positions: clamped_or(data.centers, &Position2D::ZERO)
-                        .map(|center| UiLabelTarget::Point2D(egui::pos2(center.x(), center.y()))),
+                        .map(|center| glam::vec2(center.x(), center.y())),
                     labels: &data.labels,
                     colors: &colors,
                     show_labels: data.show_labels.unwrap_or_else(|| {
                         typed_fallback_for(ctx, Ellipses2D::descriptor_show_labels().component)
                     }),
                 },
-                std::convert::identity,
+                world_from_obj,
             ));
         }
     }
