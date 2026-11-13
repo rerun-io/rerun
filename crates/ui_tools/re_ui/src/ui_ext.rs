@@ -12,6 +12,10 @@ use crate::list_item::{self, LabelContent};
 use crate::{ContextExt as _, DesignTokens, Icon, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
+
+/// Extra space between the rows of a loading screen.
+const LOADING_SCREEN_ROW_SPACING: f32 = 8.0;
+
 pub static RESIZABLE_CONTAINER_TAG: &str = "rerun_resizable_container";
 
 fn error_label_bg_color(fg_color: Color32) -> Color32 {
@@ -751,6 +755,9 @@ pub trait UiExt {
         response.response
     }
 
+    /// Centers the given contents with a loading indicator below them.
+    ///
+    /// `reason` labels the indicator for screen readers and tests.
     fn loading_screen_ui<R>(
         &mut self,
         reason: &str,
@@ -761,8 +768,14 @@ pub trait UiExt {
         let reason = reason.to_owned();
         ui.center("loading indicator", |ui| {
             ui.vertical_centered(|ui| {
-                ui.loading_indicator(&reason);
-                add_contents(ui)
+                let inner = add_contents(ui);
+                ui.add_space(LOADING_SCREEN_ROW_SPACING);
+                // `center` lays us out in a single-row horizontal ui, so there is no height
+                // left for the indicator to size itself after.
+                ui.allocate_ui(crate::loading_indicator::DEFAULT_SIZE, |ui| {
+                    ui.loading_indicator(&reason);
+                });
+                inner
             })
             .inner
         })
@@ -799,10 +812,11 @@ pub trait UiExt {
             })
         } else {
             // Names the indicator (and is shown on hover in debug builds). Includes the source
-            // so it does not collide with the header label right below it.
+            // so it does not collide with the header label right above it.
             let reason = format!("{} {}", header.text(), source.text());
             self.loading_screen_ui(&reason, |ui| {
                 ui.label(header.heading().color(ui.style().visuals.weak_text_color()));
+                ui.add_space(LOADING_SCREEN_ROW_SPACING);
                 ui.strong(source);
             });
 

@@ -234,6 +234,7 @@ impl Server {
                 entry_id: dataset.id(),
             },
         )
+        .loading_header("Loading dataset")
         .toolbar_summary(|ui| self.segment_count_ui(ui, dataset))
         .additional_column_heuristics(|layout, desc, mut column| {
             // TODO(andreas): we should not operate on display name as much since this can be very brittle.
