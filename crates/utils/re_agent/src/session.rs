@@ -241,6 +241,7 @@ struct AgentInfo {
     session_id: Option<SessionId>,
 
     name: Option<String>,
+    implementation_id: Option<String>,
 
     /// The version the agent reported, which is ours for a model-API agent.
     version: Option<String>,
@@ -515,6 +516,16 @@ impl AgentSession {
     /// What the agent calls itself, once it has told us.
     pub fn agent_name(&self) -> Option<&str> {
         self.agent.name.as_deref()
+    }
+
+    /// The implementation identifier from the ACP handshake, independent of its display title.
+    pub fn agent_implementation_id(&self) -> Option<&str> {
+        self.agent.implementation_id.as_deref()
+    }
+
+    /// The running agent's self-reported version, rather than a separately installed CLI's version.
+    pub fn agent_version(&self) -> Option<&str> {
+        self.agent.version.as_deref()
     }
 
     pub fn transcript(&self) -> &Transcript {
@@ -1078,6 +1089,7 @@ impl AgentSession {
                 ..
             } => {
                 self.agent.version = agent_info.as_ref().map(|info| info.version.clone());
+                self.agent.implementation_id = agent_info.as_ref().map(|info| info.name.clone());
                 self.agent.name = agent_info.map(|info| info.title.unwrap_or(info.name));
                 self.agent.prompt_capabilities = capabilities.prompt_capabilities;
             }

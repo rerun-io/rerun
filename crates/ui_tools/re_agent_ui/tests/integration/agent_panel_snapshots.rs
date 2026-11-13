@@ -429,6 +429,27 @@ fn chat_finished_turn() {
     snapshot("chat_finished_turn", panel);
 }
 
+#[test]
+fn chat_opencode_upgrade_recommendation() {
+    let mut panel = panel();
+    panel.show_chat();
+    let session = panel.session_mut();
+    open_session(session);
+    session.handle_event(AgentEvent::Initialized {
+        agent_info: Some(Implementation::new("opencode", "1.19.5").title("OpenCode")),
+        capabilities: Box::default(),
+        auth_methods: Vec::new(),
+    });
+
+    let mut harness = harness(panel);
+    harness.run_steps(4);
+    harness.snapshot("chat_opencode_upgrade_recommendation");
+
+    harness.get_by_label("Dismiss").click();
+    harness.run_steps(4);
+    assert!(harness.query_by_label("OpenCode v2 recommended").is_none());
+}
+
 /// A failed turn shows the error summary, with its details folded away until asked for.
 #[test]
 fn chat_turn_error() {

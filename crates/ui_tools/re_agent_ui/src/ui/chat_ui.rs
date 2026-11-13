@@ -79,6 +79,9 @@ pub struct ChatInput {
     /// Whether the agent log at the bottom is expanded.
     log_open: bool,
 
+    /// Whether the user dismissed an upgrade recommendation.
+    upgrade_notice_dismissed: bool,
+
     /// Whether the slash command popup was open last frame, so the arrow keys go to it
     /// instead of the prompt history.
     completion_open: bool,
@@ -250,8 +253,14 @@ pub fn chat_ui(
             bottom: 0,
         }))
         .show(ui, |ui| {
-            if let Some(home_ui) = home_ui {
+            if session.transcript().items.is_empty() {
                 ui.add_space(CONVERSATION_TOP_SPACE);
+                update_recommendation_ui(ui, session, &mut input.upgrade_notice_dismissed);
+            }
+            if let Some(home_ui) = home_ui {
+                if !session.transcript().items.is_empty() {
+                    ui.add_space(CONVERSATION_TOP_SPACE);
+                }
                 home_ui(ui);
                 if session.transcript().items.is_empty() {
                     empty_state_ui(ui, input, example_prompts);
@@ -261,7 +270,6 @@ pub fn chat_ui(
             if session.transcript().items.is_empty()
                 && !matches!(session.phase(), Phase::Connecting { .. })
             {
-                ui.add_space(CONVERSATION_TOP_SPACE);
                 empty_state_ui(ui, input, example_prompts);
                 return;
             }
@@ -289,6 +297,36 @@ pub fn chat_ui(
                     ui.add_space(CONVERSATION_BOTTOM_SPACE);
                 });
         });
+}
+
+/// Shows an upgrade recommendation for old agent versions known to work poorly with the agent panel.
+fn update_recommendation_ui(ui: &mut egui::Ui, session: &AgentSession, dismissed: &mut bool) {
+    if *dismissed {
+        return;
+    }
+    let (Some(implementation_id), Some(version)) =
+        (session.agent_implementation_id(), session.agent_version())
+    else {
+        return;
+    };
+
+    let (title, message) = match implementation_id.to_ascii_lowercase().as_str() {
+        "opencode" if version.starts_with("1.") => (
+            "OpenCode v2 recommended",
+            format!(
+                "You are running OpenCode {version}. Upgrade to v2 for a better agent panel experience."
+            ),
+        ),
+        _ => return,
+    };
+
+    Alert::info().show_with_title(ui, title, |ui| {
+        ui.label(message);
+        if ui.add(egui::Button::new("Dismiss").size_small()).clicked() {
+            *dismissed = true;
+        }
+    });
+    ui.add_space(8.0);
 }
 
 fn empty_state_ui(ui: &mut egui::Ui, input: &mut ChatInput, example_prompts: &[String]) {
