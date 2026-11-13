@@ -314,13 +314,14 @@ println!("{:-}, value"); // The `-` option stands for redaction.
 Look for `f.sign_minus()` in the code for where we handle this.
 
 ## Python
-Prefer kw-args (key-word arguments) for non-obvious parameters, especially when there are many of them.
+Arguments that every caller passes are positional; all others are keyword-only (kw-args).
 
 * Bad: `def serve(ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
-* Better: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
-* Best: `def serve(*, ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Bad: `def serve(*, ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Good: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
 
-This forces the use of kw-args for everything following the `*`.
+The `*` forces the use of kw-args for everything following it.
+Flags and modes (`bool`, `Literal[…]`) always go after the `*`, so call sites read `overwrite=True` instead of a bare `True`.
 
 kw-args have two big benefits:
 
@@ -328,7 +329,9 @@ First, they make future API changes a lot easier. We can add or remove arguments
 
 Secondly, named arguments makes the caller code a lot more readable.
 
-Usually, we do NOT use kw-args for single-parameter functions, nor for functions where the first (or all) parameters are obvious from the caller. For instance, `def load_file(path: str) -> bytes`
+Do not make a required argument keyword-only, unless a positional call would be ambiguous: several required arguments a caller could swap (`set_default_size(*, width, height)`, `stage(source, *, key)`), or a choice between keyword alternatives (`set_time(timeline, sequence=…)`).
+Otherwise every caller pays for it.
+The argument nearly every caller passes may stay positional even with a default, as in `get_dataset(name: str | None = None, *, id: EntryId | str | None = None)`.
 
 ## C++
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
