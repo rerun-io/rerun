@@ -21,6 +21,7 @@ pub struct SpatialViewBounds {
     /// smaller or larger than the bounding box.
     pub bounds: RobustBounds,
 
+    /// Largest point radii in the data
     pub max_point_radii: MaxRadii,
 
     /// Whether these bounds are defined in a 2D or 3D subspace.
