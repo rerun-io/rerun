@@ -66,6 +66,7 @@ redirect: <url>    # Optional: redirect to this URL
 hidden: true       # Optional: hide from navigation
 expand: true       # Optional: expand sub-items in nav
 ogImageUrl: <url>  # Optional: open-graph thumbnail
+keywords: a, b     # Optional: search terms (comma-separated or a list), not shown on the page
 ---
 ```
 
