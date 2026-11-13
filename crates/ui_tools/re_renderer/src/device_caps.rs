@@ -513,12 +513,22 @@ pub fn default_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
-    } else if browser::is_webkit() || browser::is_firefox() {
-        // TODO(#12788): Safari WebGPU broken on 26.4 (3D content fails to render)
-        // TODO(#11009): Fix videos on WebGPU firefox
+    } else if browser::is_chromium() {
+        // Chromium based browsers (Chrome, Edge, Brave, etc.) work already really well with WebGPU!
+        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
+    } else if browser::is_firefox() {
+        // TODO(#11009): Fix videos on WebGPU Firefox
+        wgpu::Backends::GL
+    } else if browser::is_webkit() {
+        // TODO(#12788): Safari WebGPU broken on 26.4 (3D content fails to render) and 27.2
+        // As per https://github.com/rerun-io/reality/pull/5094 we have a workaround in, but we haven't done sufficient testing yet,
+        // also we'd need to lint against this workaround being applies to all usages of `mat4x3`
+        // At least [the bug in question above](https://bugs.webkit.org/show_bug.cgi?id=320443) has been fixed in the 626 WebKit line (starting with 626.1.1).
+        // However, Safari 27.2 (which is recent as of writing) is on 625.2.8.11.9, a different release branch.
         wgpu::Backends::GL
     } else {
-        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
+        // Unknown browser, WebGL is a safer bet.
+        wgpu::Backends::GL
     }
 }
 
