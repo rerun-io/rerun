@@ -1,7 +1,7 @@
 ---
 title: Troubleshooting
 order: 500
-description: Fix common problems with installing Rerun, starting the Viewer, graphics, rendering, loading .rrd files, and the web Viewer
+description: Fix common problems with installation, graphics, and the web Viewer
 ---
 
 You can set `RUST_LOG=debug` before running to get some verbose logging output.
@@ -9,7 +9,7 @@ You can set `RUST_LOG=debug` before running to get some verbose logging output.
 If you run into any issues don't hesitate to [open a ticket](https://github.com/rerun-io/rerun/issues/new/choose)
 or [join our Discord](https://discord.gg/Gcm8BbTaAj).
 
-If you logged data but can't see it in the Viewer, see [Some of my data is not shown](../../howto/visualization/missing-data.md).
+If you logged data but can't see it in the Viewer, see [Some of my data is not shown](../../viewer/performance/missing-data.md).
 
 ## My code broke after upgrading Rerun
 
@@ -140,7 +140,7 @@ The native Viewer supports these graphics backends:
 DirectX 12 is not supported.
 
 The web Viewer uses WebGPU in Chromium-based browsers, and falls back to WebGL if WebGPU is not available.
-In Safari and Firefox it always uses WebGL.
+In Safari, other WebKit browsers (including every browser on iOS), and Firefox, it always uses WebGL.
 
 The configuration we use for wgpu can be influenced in the following ways:
 
@@ -149,7 +149,7 @@ The configuration we use for wgpu can be influenced in the following ways:
     Naturally, support depends on your OS: `metal` only works on macOS, and `gl` does not work on macOS.
     -   For instance, you can try `rerun --renderer=gl` or for the web viewer respectively `rerun --web-viewer --renderer=webgl`.
     -   Alternatively, for the native viewer you can also use the `WGPU_BACKEND` environment variable with the above values.
-    -   The web viewer is configured by the `renderer=<backend>` url argument, e.g. [https://rerun.io/viewer?renderer=webgl]
+    -   The web viewer is configured by the `renderer=<backend>` url argument, e.g. [https://rerun.io/viewer?renderer=webgl](https://rerun.io/viewer?renderer=webgl)
 -   `WGPU_POWER_PREF`: Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
 
 We recommend setting these only if you're asked to try them or know what you're doing,
@@ -204,9 +204,9 @@ Give overlapping entities different draw orders, for example via the `draw_order
 
 If an entity's transform frame is not connected to the view's origin, the view can't place it.
 The view then reports an error for that entity and doesn't draw it.
-Use the transform debugging panel to look for disconnected frames, see [Debugging transform trees](../../concepts/logging-and-ingestion/transforms.md#debugging-transform-trees).
+Use the transform debugging panel to look for disconnected frames, see [Debugging transform trees](../../logging-and-ingestion/data-model/transforms.md#debugging-transform-trees).
 
-For more reasons why data may be missing, see [Some of my data is not shown](../../howto/visualization/missing-data.md).
+For more reasons why data may be missing, see [Some of my data is not shown](../../viewer/performance/missing-data.md).
 
 ## Loading `.rrd` files fails
 
@@ -240,7 +240,7 @@ rerun rrd merge --continue-on-error my_recording.rrd -o my_recording_fixed.rrd
 ```
 
 Use `rerun rrd verify` to check a file.
-See [Work with `.rrd` files](../../howto/logging-and-ingestion/manipulate-rrd-files.md) for more ways to inspect and change `.rrd` files.
+See [Work with `.rrd` files](../../logging-and-ingestion/chunks-and-rrd/manipulate-rrd-files.md) for more ways to inspect and change `.rrd` files.
 
 ## The web Viewer only shows the welcome page
 
@@ -256,7 +256,7 @@ If you use `rr.serve_grpc()` together with `rr.serve_web_viewer()`, and the web 
 * `connect_to` is only used for the browser tab that `serve_web_viewer` opens.
   With `open_browser=False`, or if you open the page yourself, add the gRPC server to the page URL as the `url` parameter:
   `http://localhost:9090/?url=rerun%2Bhttp%3A%2F%2Flocalhost%3A9876%2Fproxy`.
-  See [Viewer URLs](../../reference/viewer/urls.md#in-the-web-viewer).
+  See [Viewer URLs](../../viewer/extend/urls.md#in-the-web-viewer).
 * If the browser runs on another machine, use the host name of the machine that runs your program instead of `localhost`, and make sure that both the web Viewer port (9090) and the gRPC port (9876) are reachable from the browser.
 * Keep your program running.
   Both servers stop when the Python process exits.
@@ -271,4 +271,4 @@ This can be configured from the viewer's option menu. Alternatively, you can als
 * for the web viewer pass `&video_decoder=prefer_software` as a url parameter
 * for the native viewer & for starting the web viewer via command line (`--web-viewer` argument), pass `--video-decoder=prefer_software`
 
-For more information about video decoding, see also the reference page on [video](../../concepts/logging-and-ingestion/video.md).
+For more information about video decoding, see also the reference page on [video](../../logging-and-ingestion/media/video.md).

@@ -215,10 +215,6 @@ fn command_palette_agent_mode_preserves_query_and_resets_on_reopen() {
     struct ModeProvider;
 
     impl re_ui::CommandPaletteProvider<String> for ModeProvider {
-        fn agent_enabled(&self) -> bool {
-            true
-        }
-
         fn submit_agent_prompt(&mut self, query: &str) -> Option<String> {
             (!query.trim().is_empty()).then(|| query.to_owned())
         }

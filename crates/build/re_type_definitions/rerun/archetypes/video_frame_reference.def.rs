@@ -7,10 +7,10 @@
 /// To show an entire video, a video frame reference for each frame of the video should be logged.
 /// References to a [`rerun::archetypes::VideoStream`] use the active Viewer timeline.
 ///
-/// See <https://rerun.io/docs/concepts/logging-and-ingestion/video> for details of what is and isn't supported.
+/// See <https://rerun.io/docs/logging-and-ingestion/media/video> for details of what is and isn't supported.
 ///
-/// \example archetypes/video_auto_frames title="Video with automatically determined frames" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png"
-/// \example archetypes/video_manual_frames title="Demonstrates manual use of video frame references" image="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png"
+/// \example archetypes/video_auto_frames title="Video with automatically determined frames" image="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png" alt="Rerun Viewer playing a video in a 2D view, an animated forest scene with a large tree above a burrow in a grassy mound"
+/// \example archetypes/video_manual_frames title="Demonstrates manual use of video frame references" image="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png" alt="Two side-by-side 2D views named frame_at_one_second and frame_at_two_second, each showing a different frame of the same video"
 #[rerun::rerun_type]
 #[docs(category = "Video")]
 #[docs(view_types = "Spatial2DView, Spatial3DView: if logged under a projection")]

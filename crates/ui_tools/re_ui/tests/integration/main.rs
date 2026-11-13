@@ -3,6 +3,7 @@ mod command_palette_test;
 mod filter_widget_test;
 mod help_ui_test;
 mod list_item_tests;
+mod loading_screen_test;
 mod markdown_test;
 mod modal_tests;
 mod notification_test;

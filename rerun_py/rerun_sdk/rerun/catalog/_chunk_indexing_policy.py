@@ -26,6 +26,8 @@ class ChunkIndexingPolicy:
     `"all"` does cover entity paths logged later.
 
     Only Rerun Hub applies the policy. The OSS server always indexes everything.
+    In the indexed scope, a query over every entity path returns only the indexed ones.
+    See [`DatasetQueryScope`][rerun.catalog.DatasetQueryScope] for reading data the policy excludes.
 
     Examples
     --------

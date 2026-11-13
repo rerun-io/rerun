@@ -1,6 +1,6 @@
 //! Shows how to configure micro-batching directly from code.
 //!
-//! Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more information.
+//! Check out <https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching> for more information.
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Equivalent to configuring the following environment:

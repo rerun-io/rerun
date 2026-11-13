@@ -24,7 +24,7 @@ use ::std::borrow::Cow;
 
 /// **Component**: A buffer that is known to store image data.
 ///
-/// To interpret the contents of this buffer, see, [`components::ImageFormat`][crate::components::ImageFormat].
+/// To interpret the contents of this buffer, see [`components::ImageFormat`][crate::components::ImageFormat].
 #[derive(Clone, Debug, PartialEq, Eq, ::re_byte_size::SizeBytes)]
 #[repr(transparent)]
 pub struct ImageBuffer(pub crate::encodings::Blob);

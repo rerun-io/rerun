@@ -45,10 +45,10 @@ viewer.stop();
 
 The `rrd` in the snippet above should be a URL pointing to either:
 - A hosted `.rrd` file, such as <https://app.rerun.io/version/0.38.1/examples/dna.rrd>
-- A gRPC connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API
+- A gRPC connection to the SDK opened via the [`serve`](https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/operating-modes#serve) API
 
 If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.
-This can be disabled by setting `hide_welcome_screen` to `true` in the options object of `viewer.start`.
+This can be disabled by setting `hideWelcomeScreen` to `true` in the options object of `viewer.start`.
 
 ⚠ It's important to set the viewer's width and height, as without it the viewer may not display correctly.
 Setting the values to empty strings is valid, as long as you style the canvas through other means.
@@ -62,5 +62,5 @@ This package only targets recent versions of browsers.
 If your target browser does not support Wasm imports or top-level await, you may need to install additional plugins for your bundler.
 
 For more information about using the package, visit:
-- [Integration docs](https://rerun.io/docs/howto/integrations/embed-web#using-the-javascript-package).
+- [Integration docs](https://rerun.io/docs/integrations/embed-web#using-the-javascript-package).
 - [Package docs](https://ref.rerun.io/docs/js/0.26.0/web-viewer/index.html).

@@ -279,8 +279,6 @@ mod tests {
     use super::*;
     use opentelemetry_proto::tonic::collector::trace::v1::trace_service_client::TraceServiceClient;
     use opentelemetry_proto::tonic::common::v1::{AnyValue, KeyValue, any_value::Value};
-    use opentelemetry_proto::tonic::resource::v1::Resource;
-    use opentelemetry_proto::tonic::trace::v1::{ResourceSpans, ScopeSpans, Span};
 
     /// Build a request carrying `names.len()` spans in a single
     /// `ScopeSpans`, so a single `Export` produces N `ReceivedSpan`s in

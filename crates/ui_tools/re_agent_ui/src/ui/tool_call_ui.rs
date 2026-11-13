@@ -19,18 +19,44 @@ pub fn tool_call_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallSt
         default_open,
     );
     let is_open = state.is_open();
-    let mut header_clicked = false;
-    let mut header = state.show_header(ui, |ui| {
-        header_clicked = ui
-            .scope(|ui| header_ui(ui, session, call, is_open))
-            .response
-            .interact(egui::Sense::click())
-            .clicked();
+    subdued_collapsing_ui(
+        ui,
+        state,
+        |ui| {
+            ui.scope(|ui| header_ui(ui, session, call, is_open))
+                .response
+                .interact(egui::Sense::click())
+        },
+        |ui| body_ui(ui, call),
+    );
+}
+
+pub fn subdued_collapsing_ui(
+    ui: &mut egui::Ui,
+    mut state: egui::collapsing_header::CollapsingState,
+    add_header: impl FnOnce(&mut egui::Ui) -> egui::Response,
+    add_body: impl FnOnce(&mut egui::Ui),
+) -> egui::Response {
+    let header = ui.horizontal(|ui| {
+        let item_spacing = ui.spacing().item_spacing;
+        ui.spacing_mut().item_spacing.x = 0.0;
+        state.show_toggle_button(ui, subdued_triangle);
+        ui.spacing_mut().item_spacing = item_spacing;
+        add_header(ui).clicked()
     });
-    if header_clicked {
-        header.toggle();
+    if header.inner {
+        state.toggle(ui);
     }
-    header.body(|ui| body_ui(ui, call));
+    state.show_body_indented(&header.response, ui, add_body);
+    header.response
+}
+
+pub fn subdued_triangle(ui: &mut egui::Ui, openness: f32, response: &egui::Response) {
+    let subdued = ui.tokens().text_subdued;
+    let inactive = &mut ui.visuals_mut().widgets.inactive.fg_stroke.color;
+    let default = std::mem::replace(inactive, subdued);
+    egui::collapsing_header::paint_default_icon(ui, openness, response);
+    ui.visuals_mut().widgets.inactive.fg_stroke.color = default;
 }
 
 /// The title is truncated while collapsed and wraps when expanded, so no tooltip is needed.

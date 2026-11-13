@@ -248,8 +248,13 @@ fn rebatch_video_entity(
         .ok_or_else(|| anyhow::anyhow!("no timeline found"))?
         .name();
 
-    let codec = extract_codec(store, entity_path, timeline_name)
-        .ok_or_else(|| anyhow::anyhow!("couldn't resolve video codec"))?;
+    let codec = extract_codec(
+        store,
+        ChunkTrackingMode::PanicOnMissing,
+        entity_path,
+        timeline_name,
+    )
+    .ok_or_else(|| anyhow::anyhow!("couldn't resolve video codec"))?;
 
     let sample_index = build_sample_index(is_start_of_gop, sample_chunks, timeline_name, codec)?;
 
@@ -527,15 +532,17 @@ fn choose_timeline(sample_chunks: &HashMap<ChunkId, ChunkShared>) -> Option<Time
     }))
 }
 
-fn extract_codec(
+/// The codec of the `VideoStream` on `entity_path`, if any.
+pub fn extract_codec(
     store: &ChunkStore,
+    tracking: ChunkTrackingMode,
     entity_path: &EntityPath,
     timeline_name: TimelineName,
 ) -> Option<VideoCodec> {
     let codec_component = VideoStream::descriptor_codec().component;
 
     let results = store.latest_at_relevant_chunks(
-        ChunkTrackingMode::PanicOnMissing,
+        tracking,
         &crate::LatestAtQuery::new(timeline_name, TimeInt::MAX),
         entity_path,
         codec_component,

@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
+use re_agent::acp::schema::v1::{SessionConfigId, SessionConfigOption, SessionConfigOptionValue};
 use re_agent::{AgentToolbox, ModelApiProvider};
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_error::StructuredError;
@@ -413,17 +413,23 @@ impl AgentPanel {
         self.session().is_ready()
     }
 
-    /// The permission modes the shown conversation's agent offers, if it offers any.
-    pub fn modes(&self) -> Option<&SessionModeState> {
-        self.session().modes()
+    /// The settings currently offered by the shown conversation's agent.
+    pub fn config_options(&self) -> &[SessionConfigOption] {
+        &self.session().transcript().config_options
     }
 
-    /// Switches the shown conversation's permission mode, and makes it the default for new
-    /// conversations with the same agent.
-    pub fn set_mode(&mut self, mode_id: SessionModeId) {
+    /// Changes a setting and remembers the selection for conversations with the same profile.
+    pub fn set_config_option(
+        &mut self,
+        config_id: SessionConfigId,
+        value: impl Into<SessionConfigOptionValue>,
+    ) {
+        let value = value.into();
         let profile_id = self.active_conversation().profile_id.clone();
-        self.settings.preferences_mut(profile_id).mode = Some(mode_id.clone());
-        self.session_mut().set_mode(mode_id);
+        self.settings
+            .preferences_mut(profile_id)
+            .set(config_id.clone(), value.clone());
+        self.session().set_config_option(config_id, value);
     }
 
     /// Sends a prompt in the shown conversation as if the user had typed it.
@@ -558,6 +564,11 @@ impl AgentPanel {
     /// another agent than the selected one, unless the selected agent cannot be launched or the
     /// draft's own setup is open. What the user typed into it carries over.
     fn refresh_draft(&mut self) {
+        // Leaving setup by any way, including Escape, ends the user's own setup of the draft.
+        if self.draft.screen == Screen::Chat {
+            self.user_opened_draft_setup = false;
+        }
+
         // A draft whose start failed keeps its setup screen, with the error in the transcript.
         let draft = &mut self.draft;
         if draft.screen == Screen::Setup
@@ -697,6 +708,10 @@ impl AgentPanel {
         if new_conversation_shortcut_pressed(ui, panel_rect) {
             action = Some(PanelAction::NewConversation);
         }
+        let shown = self.active_conversation_mut();
+        if std::mem::take(&mut shown.input.open_setup_requested) {
+            action = Some(PanelAction::OpenSetup(shown.id));
+        }
         self.handle_action(ui.ctx(), action);
         self.promote_started_draft();
     }
@@ -730,7 +745,7 @@ impl AgentPanel {
             .frame(
                 egui::Frame::new()
                     .fill(tokens.tab_bar_color)
-                    .inner_margin(egui::Margin::symmetric(8, 0)),
+                    .inner_margin(egui::Margin::symmetric(tokens.view_padding(), 0)),
             )
             .show(ui, |ui| {
                 let (left, right) = egui::containers::Sides::new()
@@ -926,7 +941,6 @@ fn experimental_tag_ui(ui: &mut egui::Ui) -> egui::Response {
 mod tests {
     use re_agent::AgentProfileId;
 
-    use super::super::conversation_list::ConversationStatus;
     use super::*;
 
     #[test]
@@ -975,7 +989,6 @@ mod tests {
         ));
         session.handle_event(re_agent::AgentEvent::SessionStarted {
             session_id: saved.session_id.clone(),
-            modes: None,
             config_options: Vec::new(),
             origin: re_agent::SessionOrigin::Loaded,
         });
@@ -1011,7 +1024,6 @@ mod tests {
             .session
             .handle_event(re_agent::AgentEvent::SessionStarted {
                 session_id: re_agent::acp::schema::v1::SessionId::new("api"),
-                modes: None,
                 config_options: Vec::new(),
                 origin: re_agent::SessionOrigin::New,
             });
@@ -1053,7 +1065,6 @@ mod tests {
         let session = panel.session_mut();
         session.handle_event(re_agent::AgentEvent::SessionStarted {
             session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
-            modes: None,
             config_options: Vec::new(),
             origin: re_agent::SessionOrigin::New,
         });
@@ -1129,7 +1140,6 @@ mod tests {
             .session
             .handle_event(re_agent::AgentEvent::SessionStarted {
                 session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
-                modes: None,
                 config_options: Vec::new(),
                 origin: re_agent::SessionOrigin::New,
             });
@@ -1142,10 +1152,12 @@ mod tests {
 
         panel.settings.profile_id = AgentProfileId::new("codex");
         panel.user_opened_draft_setup = true;
+        panel.draft.screen = Screen::Setup;
         panel.refresh_draft();
         assert_eq!(panel.draft.id, first, "the draft's own setup starts codex");
 
-        panel.user_opened_draft_setup = false;
+        // Leaving setup with Escape goes straight back to the chat, without a panel action.
+        panel.draft.screen = Screen::Chat;
         panel.refresh_draft();
         assert_ne!(panel.draft.id, first, "codex is installed");
         assert_eq!(panel.draft.input.prompt.text, "Half-written");

@@ -1,7 +1,7 @@
 ---
 title: Set up a C++ project
 order: 200
-description: Bootstrap a CMake project that links the C++ SDK
+description: Bootstrap a CMake project that links against the Rerun C++ SDK
 ---
 
 You should have already [installed the C++ SDK](../install-rerun/cpp.md).
@@ -48,7 +48,7 @@ cmake --build build -j
 ./build/example_project
 ```
 
-You're now ready to follow the [Log and Ingest](../data-in.md) tutorial.
+You're now ready to follow the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.
 
 ## Build options and troubleshooting
 

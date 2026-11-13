@@ -94,6 +94,10 @@ impl Preamble<'_> {
              The panel hands the `rerun` server to this session directly, so it never shows up in your own MCP \
              configuration, with tools as `rerun_*`.\n",
         );
+        text.push_str(
+            "- If your harness defers `rerun_*` tool schemas (e.g. `ToolSearch` in Claude Code), \
+             load them before the first call.\n",
+        );
 
         if let Some(agent_dir) = *agent_dir {
             writeln!(
@@ -133,8 +137,12 @@ impl Preamble<'_> {
              against that project, not a scratch directory; do not guess environment paths. \
              Reuse the chosen environment, check required imports, and discuss missing dependencies \
              before changing it. For a temporary environment, use \
-             `uv run --with rerun-sdk --with <other packages> python …` when available. \
-             The SDK installs as `rerun-sdk` and imports as `rerun`.\n",
+             `uv run --with 'rerun-sdk[catalog]' --with <other packages> python …` when available. \
+             The SDK installs as `rerun-sdk` and imports as `rerun`. \
+             Give users that same install line. \
+             Pin the SDK to the viewer's minor version: read `viewer_version` from \
+             `rerun_get_state`, and use `rerun-sdk[catalog]~=0.X.0`. Check `rerun.__version__` in your first run, \
+             and do not trust an unpinned resolve or an inherited `VIRTUAL_ENV`.\n",
         );
 
         text.push_str(
@@ -191,7 +199,8 @@ pub fn model_api_text() -> String {
         "- Your `rerun_*` tools act on this viewer directly and are ready to use. Start with \
          `rerun_get_state` to see the loaded recordings, timelines, and views. Use \
          `rerun_list_commands` and `rerun_run_command` for anything the command palette can do.\n\
-         - Use `rerun_save_screenshot` to inspect appearance and framing. The result is an image.\n\
+         - Use `rerun_save_screenshot` to inspect appearance and framing. The result is an image. \
+         Check state with `rerun_get_state` or `rerun_get_blueprint` first. A full-window screenshot is large.\n\
          - Ask for clarification in chat when needed. Provide code for the user to run when a \
          task needs their local files or Python environment.\n",
     );

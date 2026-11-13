@@ -55,6 +55,7 @@ from ._viewer_client import (
     View as View,
     ViewerClient as ViewerClient,
     ViewerState as ViewerState,
+    ViewerViewType as ViewerViewType,
     ViewReport as ViewReport,
 )
 

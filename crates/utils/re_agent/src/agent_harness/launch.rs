@@ -12,7 +12,7 @@ impl AgentSettings {
         agents: &[AgentEntry],
         context: &SessionContext,
     ) -> Result<AgentHarnessConfig, AgentLaunchError> {
-        let (command, args, env, default_mode) = if self.profile_id == AgentProfileId::CUSTOM {
+        let (command, args, env, mut preferences) = if self.profile_id == AgentProfileId::CUSTOM {
             let mut parts = shell_words::split(&self.custom_command_line)
                 .map_err(|err| AgentLaunchError::InvalidCommandLine { err })?;
             let env = take_leading_env_vars(&mut parts);
@@ -20,7 +20,7 @@ impl AgentSettings {
                 return Err(AgentLaunchError::EmptyCommandLine);
             }
             let command = parts.remove(0);
-            (command, parts, env, None)
+            (command, parts, env, crate::AgentPreferences::default())
         } else {
             let agent = agents
                 .iter()
@@ -33,7 +33,7 @@ impl AgentSettings {
                 profile.command.clone(),
                 profile.args.clone(),
                 profile.env.clone(),
-                profile.default_mode.clone(),
+                profile.default_config.clone(),
             )
         };
 
@@ -74,7 +74,11 @@ impl AgentSettings {
             });
         }
 
-        let preferences = self.preferences(&self.profile_id);
+        if let Some(saved) = self.preferences(&self.profile_id) {
+            preferences
+                .config_options
+                .extend(saved.config_options.clone());
+        }
         Ok(AgentHarnessConfig {
             command,
             args,
@@ -89,13 +93,7 @@ impl AgentSettings {
                 .iter()
                 .map(|&model| model.to_owned())
                 .collect(),
-            preferred_model: preferences.and_then(|preferences| preferences.model.clone()),
-            preferred_speed: preferences.and_then(|preferences| preferences.speed.clone()),
-            mode_preferences: std::iter::chain(
-                preferences.and_then(|preferences| preferences.mode.clone()),
-                default_mode,
-            )
-            .collect(),
+            preferences,
             session_to_load: None,
         })
     }

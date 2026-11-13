@@ -25,11 +25,20 @@ use crate::data::{
 #[derive(Debug, Clone, Default)]
 pub struct RecordingPanel {
     commands: Vec<RecordingPanelCommand>,
+
+    /// Selected items waiting to be revealed when the panel is shown.
+    /// Entries whose parent folders need an unloaded dataset list remain here for retry.
+    pending_expansion: Vec<Item>,
 }
 
 impl RecordingPanel {
     pub fn send_command(&mut self, command: RecordingPanelCommand) {
         self.commands.push(command);
+    }
+
+    /// Notify the panel even when hidden, so the latest selection is revealed when shown.
+    pub fn on_selection_changed(&mut self, selection: &re_viewer_context::ItemCollection) {
+        self.pending_expansion = selection.iter_items().cloned().collect();
     }
 
     pub fn show_panel(
@@ -53,9 +62,9 @@ impl RecordingPanel {
             }
         }
 
-        for item in ctx.selection().iter_items() {
-            expand_parents_for_item(ui.ctx(), &recording_panel_data, item);
-        }
+        // Consume resolved requests so subsequent frames preserve manual collapses.
+        self.pending_expansion
+            .retain(|item| !expand_parents_for_item(ctx, &recording_panel_data, item));
 
         ui.name_panel("Sources panel");
 
@@ -556,7 +565,7 @@ fn dataset_entry_ui(ctx: &AppContext<'_>, ui: &mut egui::Ui, dataset_entry_data:
         re_ui::list_item::LabelContent::new(dataset_hierarchy_leaf_name(name.as_str()))
             .with_icon(icon);
 
-    let id = ui.make_persistent_id(dataset_entry_data.entry_data.id());
+    let id = dataset_item_id(origin, *entry_id);
 
     if !displayed_segments.is_empty() {
         list_item_content = list_item_content.with_buttons(|ui| {
@@ -897,48 +906,73 @@ fn receiver_ui(
 
 /// Force the server item and all ancestor folder nodes for `item` to be expanded.
 ///
-/// Returns `true` once expansion completed (or the item doesn't need any), `false` if a
-/// dependent lookup (entry name) failed because the dataset list isn't loaded yet — in
-/// which case the caller should retry next frame.
+/// Returns `true` once expansion completes or the item needs no expansion.
+/// Returns `false` while the server or catalog entry is unavailable;
+/// the caller should retry next frame.
 fn expand_parents_for_item(
-    egui_ctx: &egui::Context,
+    ctx: &AppContext<'_>,
     recording_panel_data: &RecordingPanelData<'_>,
     item: &Item,
 ) -> bool {
-    let force_open = |id| {
-        let mut state = CollapsingState::load_with_default_open(egui_ctx, id, true);
-        state.set_open(true);
-        state.store(egui_ctx);
-    };
-
-    let expand_folder_path = |path: &str| {
-        for ancestor in ancestor_folder_paths(path) {
-            force_open(dataset_group_id(ancestor));
-        }
-    };
-
     match item {
         Item::RedapServer(origin) => {
-            force_open(server_item_id(origin));
+            expand_node(ctx.egui_ctx, server_item_id(origin));
             true
         }
-        Item::RedapEntry { origin, kind } => {
-            force_open(server_item_id(origin));
-            match kind {
-                RedapEntryKind::Folder(path) => {
-                    expand_folder_path(path);
-                    true
+
+        Item::RedapEntry { origin, kind } => match kind {
+            RedapEntryKind::Folder(path) => {
+                expand_node(ctx.egui_ctx, server_item_id(origin));
+                for ancestor in ancestor_folder_paths(path) {
+                    expand_node(ctx.egui_ctx, dataset_group_id(ancestor));
                 }
-                RedapEntryKind::Entry(entry_id) => expand_parent_folders_for_entry(
-                    egui_ctx,
-                    recording_panel_data,
-                    origin,
-                    *entry_id,
-                ),
+                true
             }
+            RedapEntryKind::Entry(entry_id) => expand_parent_folders_for_entry(
+                ctx.egui_ctx,
+                recording_panel_data,
+                origin,
+                *entry_id,
+            ),
+        },
+
+        Item::StoreId(store_id) => {
+            // Segment URLs select the recording, not its dataset entry. The recording can
+            // already be loaded while its Sources ancestors are collapsed or its catalog
+            // metadata is still loading.
+            let Some(recording) = ctx.store_hub().entity_db(store_id) else {
+                return true;
+            };
+            let re_entity_db::entity_db::EntityDbClass::DatasetSegment(uri) =
+                recording.store_class()
+            else {
+                return true;
+            };
+            let entry_id = uri.dataset_id.into();
+            if !expand_parent_folders_for_entry(
+                ctx.egui_ctx,
+                recording_panel_data,
+                &uri.origin,
+                entry_id,
+            ) {
+                return false;
+            }
+            expand_node(ctx.egui_ctx, dataset_item_id(&uri.origin, entry_id));
+            true
         }
         _ => true,
     }
+}
+
+fn expand_node(egui_ctx: &egui::Context, id: egui::Id) {
+    let mut state = CollapsingState::load_with_default_open(egui_ctx, id, true);
+    state.set_open(true);
+    state.store(egui_ctx);
+}
+
+/// The reveal pass needs this ID even when collapsed ancestors prevent creation of the dataset UI.
+fn dataset_item_id(origin: &re_uri::Origin, entry_id: re_log_types::EntryId) -> egui::Id {
+    egui::Id::unique((origin, entry_id, "dataset_item"))
 }
 
 fn server_item_id(origin: &re_uri::Origin) -> egui::Id {
@@ -963,11 +997,13 @@ fn expand_parent_folders_for_entry(
             return false;
         };
 
-        expand_folder_nodes_containing_entry(egui_ctx, entry_tree, entry_id);
-        return true;
+        if expand_folder_nodes_containing_entry(egui_ctx, entry_tree, entry_id) {
+            expand_node(egui_ctx, server_item_id(origin));
+            return true;
+        }
     }
 
-    true
+    false
 }
 
 fn expand_folder_nodes_containing_entry(
@@ -988,13 +1024,7 @@ fn expand_folder_nodes_containing_entry(
                 ..
             } => {
                 if expand_folder_nodes_containing_entry(egui_ctx, children, entry_id) {
-                    let mut state = CollapsingState::load_with_default_open(
-                        egui_ctx,
-                        dataset_group_id(path_prefix),
-                        true,
-                    );
-                    state.set_open(true);
-                    state.store(egui_ctx);
+                    expand_node(egui_ctx, dataset_group_id(path_prefix));
                     return true;
                 }
             }

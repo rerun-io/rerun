@@ -1,5 +1,4 @@
 use re_span::Span;
-use std::mem::size_of;
 
 use ecolor::Rgba;
 use smallvec::{SmallVec, smallvec};

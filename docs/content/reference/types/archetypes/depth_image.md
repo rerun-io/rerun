@@ -43,7 +43,7 @@ snippet: archetypes/depth_image_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/1200w.png">
-  <img src="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/full.png">
+  <img src="https://static.rerun.io/depth_image_simple/77a6fa4f938a742bdc7c5350f668c4f31eed4d01/full.png" alt="2D view of a depth image with a dark square and a yellow-green rectangle on red, with a hover tooltip showing the depth value">
 </picture>
 
 ### Depth to 3D example
@@ -55,6 +55,6 @@ snippet: archetypes/depth_image_3d
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/1200w.png">
-  <img src="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png">
+  <img src="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png" alt="Depth image shown twice: back-projected as layered points with a camera frustum in a 3D view, and flat in a 2D view">
 </picture>
 

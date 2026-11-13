@@ -15,7 +15,7 @@ void (async function () {
     ].join("");
   }
 
-  async function url_exists(url) {
+  async function urlExists(url) {
     try {
       const res = await fetch(url, { method: "HEAD" });
       return res.status >= 200 && res.status < 300;
@@ -25,7 +25,7 @@ void (async function () {
     }
   }
 
-  function set_url_filename(url, filename) {
+  function setUrlFilename(url, filename) {
     url = new window.URL(url);
     const parts = url.pathname.split("/");
     parts[parts.length - 1] = filename;
@@ -33,21 +33,21 @@ void (async function () {
     return url;
   }
 
-  async function check_if_widgets_exist() {
-    const widget_url = new window.URL("{{widget_url}}");
+  async function checkIfWidgetsExist() {
+    const widgetUrl = new window.URL("{{widget_url}}");
 
-    let urls = [widget_url, set_url_filename(widget_url, "re_viewer_bg.wasm")].map(async (url) => [
+    let urls = [widgetUrl, setUrlFilename(widgetUrl, "re_viewer_bg.wasm")].map(async (url) => [
       url,
-      await url_exists(url),
+      await urlExists(url),
     ]);
 
-    let bad_urls = (await Promise.all(urls)).filter(([, exists]) => !exists).map(([url]) => url);
+    let badUrls = (await Promise.all(urls)).filter(([, exists]) => !exists).map(([url]) => url);
 
-    if (bad_urls.length > 0) {
+    if (badUrls.length > 0) {
       const container = document.getElementById("{{widget_id}}");
-      container.innerHTML = template(bad_urls);
+      container.innerHTML = template(badUrls);
     }
   }
 
-  return check_if_widgets_exist();
+  return checkIfWidgetsExist();
 })();

@@ -58,6 +58,40 @@ def test_dataset_selection_filter_segments_unknown_and_empty(readonly_test_datas
         assert reader.schema() == full_reader.schema()
 
 
+# Unknown segment IDs match no rows instead of raising, whichever way they reach the server: `filter_segments`,
+# `using_index_values`, or a `rerun_segment_id` filter pushed down by DataFusion.
+# All three end up in the same `QueryDatasetRequest.segment_ids` field, so the server cannot treat them differently.
+# Rejecting unknown IDs would cost a round trip and turn a typo in a SQL `WHERE` into an error,
+# so callers who want typo detection must validate IDs client-side.
+
+
+def test_reader_filter_unknown_segment_id(readonly_test_dataset: DatasetEntry) -> None:
+    known = min(readonly_test_dataset.segment_ids())
+    index = readonly_test_dataset.schema().index_columns()[0].name
+    reader = readonly_test_dataset.reader(index=index)
+    segment_id = dfn.col("rerun_segment_id")
+
+    assert reader.filter(segment_id == dfn.lit("does-not-exist")).count() == 0
+
+    known_only = reader.filter(segment_id == dfn.lit(known))
+    mixed = reader.filter(dfn.functions.in_list(segment_id, [dfn.lit(known), dfn.lit("does-not-exist")]))
+    assert known_only.count() > 0
+    assert mixed.count() == known_only.count()
+    assert set(pa.table(mixed.select("rerun_segment_id")).column(0).to_pylist()) == {known}
+
+
+def test_using_index_values_mixed_known_unknown(readonly_test_dataset: DatasetEntry) -> None:
+    known = "3ee345b2e801448cace33a1097b9b49b"
+    index_values = np.array([np.datetime64("2024-01-15T10:34:45.123456789", "ns")], dtype=np.datetime64)
+
+    df = readonly_test_dataset.reader(
+        index="time_1",
+        using_index_values={known: index_values, "does-not-exist": index_values},
+    )
+
+    assert pa.table(df).column("rerun_segment_id").to_pylist() == [known]
+
+
 @pytest.mark.local_only
 def test_dataset_selection_filter_segments_with_dataframe(
     readonly_test_dataset: DatasetEntry, entry_factory: EntryFactory, tmp_path: Path

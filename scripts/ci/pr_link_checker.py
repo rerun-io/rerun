@@ -212,11 +212,6 @@ def create_temp_files(lines_by_file: dict[str, list[str]]) -> list[TempLinkFile]
                 for line in lines:
                     f.write(line + "\n")
 
-            # TODO(lycheeverse/lychee#972): Windows absolute paths don't work.
-            # But looks like UNC paths work!
-            if sys.platform == "win32":
-                temp_path = "\\\\.\\" + temp_path
-
             temp_files.append(TempLinkFile(temp_path, file))
         except Exception:
             os.unlink(temp_path)

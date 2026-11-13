@@ -822,8 +822,8 @@ mod tests {
     use smallvec::SmallVec;
 
     use super::*;
-    use crate::mesh::{CpuMesh, GpuMesh, Material};
-    use crate::{Color32, DrawPhaseManager, PickingLayerId, RenderContext, Rgba32Unmul};
+    use crate::mesh::{CpuMesh, Material};
+    use crate::{DrawPhaseManager, Rgba32Unmul};
 
     fn test_view_info() -> DrawableCollectionViewInfo {
         DrawableCollectionViewInfo {

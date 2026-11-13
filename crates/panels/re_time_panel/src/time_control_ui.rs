@@ -49,7 +49,7 @@ You can also define your own timelines, e.g. for sensor time or camera frame num
 
                     ui.re_hyperlink(
                         "Full documentation",
-                        "https://rerun.io/docs/concepts/logging-and-ingestion/timelines",
+                        "https://rerun.io/docs/logging-and-ingestion/data-model/timelines",
                         // Always open in a new tab
                         true,
                     );

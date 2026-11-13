@@ -101,6 +101,33 @@ fn python_environment_choice_and_follow_up() {
     );
 }
 
+/// Claude sends no schema `default`, and marks its recommended option with a "(Recommended)" label suffix instead.
+#[test]
+fn recommended_choice_is_preselected() {
+    let mut harness = harness(question(
+        "Which Python environment should I use?",
+        &json!({
+            "type": "object",
+            "properties": {
+                "environment": { "type": "string", "title": "Python environment", "oneOf": [
+                    {"const": "Use a fresh, temporary environment", "title": "Use a fresh, temporary environment"},
+                    {"const": "Use an existing environment (Recommended)", "title": "Use an existing environment (Recommended)"}
+                ]}
+            },
+            "required": ["environment"]
+        }),
+    ));
+    harness.run_steps(4);
+    harness.get_by_label("Send").click();
+    harness.run_steps(2);
+    let session = harness.state_mut().session_mut();
+    assert!(session.pending_elicitations().is_empty());
+    assert_eq!(
+        last_answer_note(session),
+        "Which Python environment should I use?\nPython environment: Use an existing environment (Recommended)"
+    );
+}
+
 #[test]
 fn multi_select_and_custom_answer() {
     let mut harness = harness(question(

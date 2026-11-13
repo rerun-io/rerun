@@ -5,14 +5,14 @@ use agent_client_protocol::{
 };
 use agent_client_protocol_schema::ProtocolVersion;
 use agent_client_protocol_schema::v1::{
-    AuthMethod, AuthenticateRequest, CancelNotification, ClientCapabilities, ConfigOptionUpdate,
-    CreateElicitationRequest, CurrentModeUpdate, ElicitationCapabilities,
-    ElicitationFormCapabilities, Implementation, InitializeRequest, InitializeResponse,
-    LoadSessionRequest, McpServer, McpServerStdio, NewSessionRequest, PromptRequest,
-    RequestPermissionRequest, SessionConfigId, SessionConfigKind, SessionConfigOption,
-    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigSelectOptions,
-    SessionConfigValueId, SessionId, SessionModeId, SessionModeState, SessionNotification,
-    SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest, StopReason,
+    AuthMethod, AuthenticateRequest, BooleanConfigOptionCapabilities, CancelNotification,
+    ClientCapabilities, ClientSessionCapabilities, ConfigOptionUpdate, CreateElicitationRequest,
+    ElicitationCapabilities, ElicitationFormCapabilities, Implementation, InitializeRequest,
+    InitializeResponse, LoadSessionRequest, McpServer, McpServerStdio, NewSessionRequest,
+    PromptRequest, RequestPermissionRequest, SessionConfigId, SessionConfigKind,
+    SessionConfigOption, SessionConfigOptionCategory, SessionConfigOptionValue,
+    SessionConfigOptionsCapabilities, SessionConfigValueId, SessionId, SessionNotification,
+    SessionUpdate, SetSessionConfigOptionRequest, StopReason,
 };
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
@@ -176,9 +176,18 @@ async fn drive(
         .send_request(
             InitializeRequest::new(ProtocolVersion::V1)
                 .client_info(client_info)
-                .client_capabilities(ClientCapabilities::new().elicitation(
-                    ElicitationCapabilities::new().form(ElicitationFormCapabilities::new()),
-                )),
+                .client_capabilities(
+                    ClientCapabilities::new()
+                        .session(
+                            ClientSessionCapabilities::new().config_options(
+                                SessionConfigOptionsCapabilities::new()
+                                    .boolean(BooleanConfigOptionCapabilities::new()),
+                            ),
+                        )
+                        .elicitation(
+                            ElicitationCapabilities::new().form(ElicitationFormCapabilities::new()),
+                        ),
+                ),
         )
         .block_task()
         .await?;
@@ -222,29 +231,6 @@ async fn drive(
                 if let Some(session_id) = &session_id {
                     cx.send_notification(CancelNotification::new(session_id.clone()))?;
                 }
-            }
-
-            AgentCommand::SetMode(mode_id) => {
-                let Some(session_id) = &session_id else {
-                    continue;
-                };
-                let events = events.clone();
-                let request = SetSessionModeRequest::new(session_id.clone(), mode_id.clone());
-                cx.send_request(request)
-                    .on_receiving_result(move |result| async move {
-                        match result {
-                            // Agents need not announce the mode they were just told to use,
-                            // so report it ourselves once they have accepted it.
-                            Ok(_) => events.send(AgentEvent::Update(
-                                SessionUpdate::CurrentModeUpdate(CurrentModeUpdate::new(mode_id)),
-                            )),
-                            Err(err) => events.send(AgentEvent::Error(format!(
-                                "Failed to set mode: {}",
-                                describe_error(&err)
-                            ))),
-                        }
-                        Ok(())
-                    })?;
             }
 
             AgentCommand::SetConfigOption { config_id, value } => {
@@ -301,10 +287,9 @@ async fn drive(
     Ok(())
 }
 
-/// A session the agent has opened, before the preferred model and mode are applied.
+/// A session the agent has opened, before saved configuration is applied.
 struct OpenedSession {
     session_id: SessionId,
-    modes: Option<SessionModeState>,
     config_options: Option<Vec<SessionConfigOption>>,
 
     origin: SessionOrigin,
@@ -345,7 +330,6 @@ async fn start_session(
             match cx.send_request(request).block_task().await {
                 Ok(response) => Ok(OpenedSession {
                     session_id: session_id.clone(),
-                    modes: response.modes,
                     config_options: response.config_options,
                     origin: SessionOrigin::Loaded,
                 }),
@@ -364,48 +348,46 @@ async fn start_session(
 
     match opened {
         Ok(mut opened) => {
-            if let Some(config_options) = select_model(
-                cx,
-                &opened.session_id,
+            let saved_model = opened
+                .config_options
+                .as_deref()
+                .unwrap_or_default()
+                .iter()
+                .find(|option| option.category == Some(SessionConfigOptionCategory::Model))
+                .and_then(|option| config.preferences.get(option.id.clone()))
+                .and_then(SessionConfigOptionValue::as_value_id);
+            let mut preferences = config.preferences.clone();
+            if let Some((config_id, value)) = pick_model(
                 opened.config_options.as_deref().unwrap_or_default(),
-                config.preferred_model.as_ref(),
+                saved_model,
                 &config.model_preferences,
-            )
-            .await
-            {
-                opened.config_options = Some(config_options);
-            }
-            if let Some((config_id, speed)) = pick_speed(
-                opened.config_options.as_deref().unwrap_or_default(),
-                config.preferred_speed.as_ref(),
             ) {
+                preferences.set(config_id, value);
+            }
+            let mut attempted = std::collections::HashSet::new();
+            while let Some((config_id, value)) = next_preference(
+                opened.config_options.as_deref().unwrap_or_default(),
+                &preferences,
+                &attempted,
+            ) {
+                attempted.insert(config_id.clone());
                 let request =
-                    SetSessionConfigOptionRequest::new(opened.session_id.clone(), config_id, speed);
+                    SetSessionConfigOptionRequest::new(opened.session_id.clone(), config_id, value);
                 match cx.send_request(request).block_task().await {
                     Ok(updated) => opened.config_options = Some(updated.config_options),
-                    Err(err) => re_log::debug!("Failed to select speed: {}", describe_error(&err)),
+                    Err(err) => re_log::debug!(
+                        "Failed to restore session configuration: {}",
+                        describe_error(&err)
+                    ),
                 }
-            }
-            if let Some(selected_mode) = select_mode(
-                cx,
-                &opened.session_id,
-                opened.modes.as_ref(),
-                &config.mode_preferences,
-            )
-            .await
-                && let Some(modes) = &mut opened.modes
-            {
-                modes.current_mode_id = selected_mode;
             }
             let OpenedSession {
                 session_id,
-                modes,
                 config_options,
                 origin,
             } = opened;
             events.send(AgentEvent::SessionStarted {
                 session_id: session_id.clone(),
-                modes,
                 config_options: config_options.unwrap_or_default(),
                 origin,
             });
@@ -441,80 +423,44 @@ async fn new_session(
     let response = cx.send_request(request).block_task().await?;
     Ok(OpenedSession {
         session_id: response.session_id,
-        modes: response.modes,
         config_options: response.config_options,
         origin: SessionOrigin::New,
     })
 }
 
-/// Selects the preferred mode before the session can receive its first prompt.
-async fn select_mode(
-    cx: &ConnectionTo<Agent>,
-    session_id: &SessionId,
-    modes: Option<&SessionModeState>,
-    preferences: &[SessionModeId],
-) -> Option<SessionModeId> {
-    let mode = pick_mode(modes, preferences)?;
-    let request = SetSessionModeRequest::new(session_id.clone(), mode.clone());
-    match cx.send_request(request).block_task().await {
-        Ok(_) => Some(mode),
-        Err(err) => {
-            re_log::debug!("Failed to select session mode: {}", describe_error(&err));
-            None
+/// Re-read options after each accepted change: it can add or change dependent choices.
+/// Each setting is attempted at most once so rejected or interdependent settings cannot loop.
+fn next_preference(
+    options: &[SessionConfigOption],
+    preferences: &crate::AgentPreferences,
+    attempted: &std::collections::HashSet<SessionConfigId>,
+) -> Option<(SessionConfigId, SessionConfigOptionValue)> {
+    // Model changes can reset other settings, regardless of their advertised order.
+    let is_model =
+        |option: &&SessionConfigOption| option.category == Some(SessionConfigOptionCategory::Model);
+    std::iter::chain(
+        options.iter().filter(is_model),
+        options.iter().filter(|option| !is_model(option)),
+    )
+    .find_map(|option| {
+        if attempted.contains(&option.id) {
+            return None;
         }
-    }
-}
-
-/// Returns the first preferred mode the agent offers, when it differs from the agent's default.
-fn pick_mode(
-    modes: Option<&SessionModeState>,
-    preferences: &[SessionModeId],
-) -> Option<SessionModeId> {
-    let modes = modes?;
-    let preference = preferences.iter().find(|preference| {
-        modes
-            .available_modes
-            .iter()
-            .any(|mode| &mode.id == *preference)
-    })?;
-    (&modes.current_mode_id != preference).then(|| preference.clone())
-}
-
-/// Restores an offered saved model, otherwise selects the first offered model preference.
-///
-/// Awaited before the session is announced, so that the first prompt already runs on the chosen
-/// model. A failure is not fatal: the session then runs on the agent's own default model.
-async fn select_model(
-    cx: &ConnectionTo<Agent>,
-    session_id: &SessionId,
-    config_options: &[SessionConfigOption],
-    preferred_model: Option<&SessionConfigValueId>,
-    preferences: &[String],
-) -> Option<Vec<SessionConfigOption>> {
-    let (config_id, model) = pick_model(config_options, preferred_model, preferences)?;
-    let request = SetSessionConfigOptionRequest::new(session_id.clone(), config_id, model);
-    match cx.send_request(request).block_task().await {
-        Ok(response) => Some(response.config_options),
-        Err(err) => {
-            re_log::debug!("Failed to select a model: {}", describe_error(&err));
-            None
-        }
-    }
-}
-
-/// The speed to restore at startup, as a `session/set_config_option` request.
-///
-/// `None` when the agent does not offer the preferred speed, or already uses it.
-fn pick_speed(
-    config_options: &[SessionConfigOption],
-    preferred_speed: Option<&SessionConfigValueId>,
-) -> Option<(SessionConfigId, SessionConfigValueId)> {
-    let speed = preferred_speed?;
-    let (config_id, select) = crate::transcript::speed_selector(config_options)?;
-    let offered = crate::transcript::select_options(select)
-        .iter()
-        .any(|option| option.value == *speed);
-    (select.current_value != *speed && offered).then(|| (config_id.clone(), speed.clone()))
+        let value = preferences.get(option.id.clone())?;
+        let applicable = match (&option.kind, value) {
+            (SessionConfigKind::Select(select), SessionConfigOptionValue::ValueId { value }) => {
+                select.current_value != *value
+                    && crate::select_options(select)
+                        .iter()
+                        .any(|choice| choice.value == *value)
+            }
+            (SessionConfigKind::Boolean(boolean), SessionConfigOptionValue::Boolean { value }) => {
+                boolean.current_value != *value
+            }
+            _ => false,
+        };
+        applicable.then(|| (option.id.clone(), value.clone()))
+    })
 }
 
 /// The model selector and the model to set it to, or `None` when there is nothing to do.
@@ -536,25 +482,16 @@ fn pick_model(
     let SessionConfigKind::Select(select) = &selector.kind else {
         return None;
     };
-    let models: Vec<&SessionConfigSelectOption> = match &select.options {
-        SessionConfigSelectOptions::Ungrouped(models) => models.iter().collect(),
-        SessionConfigSelectOptions::Grouped(groups) => {
-            groups.iter().flat_map(|group| &group.options).collect()
-        }
-        _ => return None,
-    };
+    let models = crate::transcript::select_options(select);
 
     let model = preferred_model
-        .and_then(|preferred| models.iter().find(|model| &model.value == preferred))
-        .or_else(|| {
-            preferences.iter().find_map(|preference| {
-                let preference = preference.to_lowercase();
-                models.iter().find(|model| {
-                    model.value.0.to_lowercase().contains(&preference)
-                        || model.name.to_lowercase().contains(&preference)
-                })
-            })
-        })?;
+        .and_then(|preferred| {
+            models
+                .iter()
+                .copied()
+                .find(|model| &model.value == preferred)
+        })
+        .or_else(|| crate::transcript::preferred_model(&models, preferences))?;
 
     (model.value != select.current_value).then(|| (selector.id.clone(), model.value.clone()))
 }
@@ -563,7 +500,7 @@ fn pick_model(
 mod tests {
     use agent_client_protocol::Channel;
     use agent_client_protocol_schema::v1::{
-        NewSessionResponse, SessionConfigSelectGroup, SessionConfigSelectOption, SessionMode,
+        NewSessionResponse, SessionConfigSelectGroup, SessionConfigSelectOption,
         SetSessionConfigOptionResponse,
     };
 
@@ -597,6 +534,50 @@ mod tests {
         assert!(rx.try_recv().is_err());
     }
 
+    fn pick_saved(
+        options: &[SessionConfigOption],
+        id: &str,
+        value: &str,
+    ) -> Option<(SessionConfigId, SessionConfigValueId)> {
+        let (id, value) = next_preference(
+            options,
+            &crate::AgentPreferences {
+                config_options: [(id.to_owned().into(), value.into())].into(),
+            },
+            &Default::default(),
+        )?;
+        Some((id, value.as_value_id()?.clone()))
+    }
+
+    /// Checks that boolean restoration preserves its wire type and rejects select values.
+    #[test]
+    fn restores_boolean_preferences() {
+        let options = vec![SessionConfigOption::boolean(
+            "auto_compact",
+            "Auto compact",
+            true,
+        )];
+        let mut preferences = crate::AgentPreferences {
+            config_options: [("auto_compact".into(), false.into())].into(),
+        };
+        let (id, value) =
+            next_preference(&options, &preferences, &Default::default()).expect("boolean change");
+        let request = SetSessionConfigOptionRequest::new("session", id, value);
+        let json = serde_json::to_value(request).expect("serialize request");
+        assert_eq!(json["type"], "boolean");
+        assert_eq!(json["value"], false);
+        preferences.set("auto_compact", true);
+        assert_eq!(
+            next_preference(&options, &preferences, &Default::default()),
+            None
+        );
+        preferences.set("auto_compact", "off");
+        assert_eq!(
+            next_preference(&options, &preferences, &Default::default()),
+            None
+        );
+    }
+
     fn claude_models(current: &str) -> Vec<SessionConfigOption> {
         let models = vec![
             SessionConfigSelectOption::new("default", "Default"),
@@ -615,33 +596,32 @@ mod tests {
         models.iter().map(|model| (*model).to_owned()).collect()
     }
 
+    fn claude_effort(current: &str) -> Vec<SessionConfigOption> {
+        let levels = vec![
+            SessionConfigSelectOption::new("default", "Default"),
+            SessionConfigSelectOption::new("low", "Low"),
+            SessionConfigSelectOption::new("high", "High"),
+        ];
+        vec![
+            SessionConfigOption::select("effort", "Effort", current.to_owned(), levels)
+                .category(SessionConfigOptionCategory::ThoughtLevel),
+        ]
+    }
+
     #[test]
-    fn picks_the_first_preferred_mode_that_is_offered() {
-        let modes = SessionModeState::new(
-            "manual",
-            vec![
-                SessionMode::new("manual", "Manual"),
-                SessionMode::new("plan", "Plan"),
-                SessionMode::new("auto", "Auto"),
-            ],
-        );
-        let pick = |preferences: &[&str]| {
-            let preferences: Vec<_> = preferences
-                .iter()
-                .map(|id| SessionModeId::new(*id))
-                .collect();
-            pick_mode(Some(&modes), &preferences).map(|mode| mode.0.to_string())
-        };
+    fn restores_an_offered_effort() {
+        let (config_id, level) =
+            pick_saved(&claude_effort("default"), "effort", "high").expect("the effort selector");
+        assert_eq!(config_id.0.as_ref(), "effort");
+        assert_eq!(level.0.as_ref(), "high");
+    }
 
-        assert_eq!(pick(&["plan", "auto"]).as_deref(), Some("plan"));
-        assert_eq!(pick(&["yolo", "auto"]).as_deref(), Some("auto"));
-
-        // Nothing to change when the agent already is in the preferred mode.
-        assert_eq!(pick(&["manual", "auto"]), None);
-
-        assert_eq!(pick(&[]), None);
-        assert_eq!(pick(&["yolo"]), None);
-        assert_eq!(pick_mode(None, &[SessionModeId::new("plan")]), None);
+    #[test]
+    fn leaves_the_effort_when_the_saved_one_does_not_apply() {
+        let options = claude_effort("high");
+        assert_eq!(pick_saved(&options, "effort", "high"), None);
+        assert_eq!(pick_saved(&options, "effort", "max"), None);
+        assert_eq!(pick_saved(&claude_models("opus"), "effort", "high"), None);
     }
 
     #[test]
@@ -740,7 +720,7 @@ mod tests {
         )];
         let on = SessionConfigValueId::new("on");
         assert_eq!(
-            pick_speed(&options, Some(&on)),
+            pick_saved(&options, "fast", "on"),
             Some((SessionConfigId::new("fast"), on))
         );
     }
@@ -755,6 +735,18 @@ mod tests {
             }),
             SpeedRequest::Accepted,
         );
+    }
+
+    /// Checks that model selection precedes an earlier-listed setting that it resets.
+    #[test]
+    fn restores_settings_after_model_regardless_of_option_order() {
+        let speed = Some(OfferedSpeed {
+            current: "off",
+            values: &["off", "on"],
+        });
+        let mut initial = startup_options("initial", speed);
+        initial.reverse();
+        check_startup_with_options(initial, speed, SpeedRequest::Accepted);
     }
 
     /// Missing, unsupported, and already-selected speeds cause no speed request.
@@ -834,6 +826,14 @@ mod tests {
     ///
     /// Checks the request order and the confirmed options reported in `SessionStarted`.
     fn check_startup(speed: Option<OfferedSpeed>, speed_request: SpeedRequest) {
+        check_startup_with_options(startup_options("initial", None), speed, speed_request);
+    }
+
+    fn check_startup_with_options(
+        initial: Vec<SessionConfigOption>,
+        speed: Option<OfferedSpeed>,
+        speed_request: SpeedRequest,
+    ) {
         let config = AgentHarnessConfig {
             command: "unused".into(),
             args: Vec::new(),
@@ -845,9 +845,13 @@ mod tests {
             log_protocol: false,
             preamble: None,
             model_preferences: Vec::new(),
-            preferred_model: Some(SessionConfigValueId::new("chosen")),
-            preferred_speed: Some(SessionConfigValueId::new("on")),
-            mode_preferences: Vec::new(),
+            preferences: crate::AgentPreferences {
+                config_options: [
+                    ("model".into(), "chosen".into()),
+                    ("fast".into(), "on".into()),
+                ]
+                .into(),
+            },
             session_to_load: None,
         };
         let init = InitializeResponse::new(ProtocolVersion::V1);
@@ -872,10 +876,9 @@ mod tests {
             let agent = Agent
                 .builder()
                 .on_receive_request(
-                    async |_request: NewSessionRequest, responder, _cx| {
+                    async move |_request: NewSessionRequest, responder, _cx| {
                         responder.respond(
-                            NewSessionResponse::new("test-session")
-                                .config_options(startup_options("initial", None)),
+                            NewSessionResponse::new("test-session").config_options(initial.clone()),
                         )
                     },
                     agent_client_protocol::on_receive_request!(),

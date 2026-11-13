@@ -51,7 +51,7 @@ snippet: archetypes/transform3d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png">
-  <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png">
+  <img src="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/full.png" alt="3D view named base showing three arrows in yellow, purple, and pink, each placed with a different 3D transform">
 </picture>
 
 ### Transform hierarchy
@@ -59,7 +59,7 @@ snippet: archetypes/transform3d_simple
 snippet: archetypes/transform3d_hierarchy
 
 <picture data-inline-viewer="snippets/archetypes/transform3d_hierarchy">
-  <img src="https://static.rerun.io/transform_hierarchy/c2a22bff0b5ebfb6cd7742069f096f1de984f7b1/full.png">
+  <img src="https://static.rerun.io/transform_hierarchy/c2a22bff0b5ebfb6cd7742069f096f1de984f7b1/full.png" alt="3D view of a yellow sun, a blue planet, and a small moon with circular orbit paths, with the entity hierarchy in the blueprint panel">
 </picture>
 
 ### Transform hierarchy with explicit frames
@@ -67,7 +67,7 @@ snippet: archetypes/transform3d_hierarchy
 snippet: archetypes/transform3d_hierarchy_frames
 
 <picture data-inline-viewer="snippets/archetypes/transform3d_hierarchy_frames">
-  <img src="https://static.rerun.io/transform_hierarchy_frames/9ffb0079828f46c22e22ca55737b8a903889b412/full.png">
+  <img src="https://static.rerun.io/transform_hierarchy_frames/9ffb0079828f46c22e22ca55737b8a903889b412/full.png" alt="3D view of a yellow sun, a blue planet, and a gray moon, with circular orbit paths drawn around the sun and the planet">
 </picture>
 
 ### Update a transform over time
@@ -79,7 +79,7 @@ snippet: archetypes/transform3d_row_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
-  <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png">
+  <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" alt="3D view of a rotated magenta box with red, green and blue axis arrows at its origin, at tick 79 of the timeline">
 </picture>
 
 ### Update a transform over time, in a single operation
@@ -91,7 +91,7 @@ snippet: archetypes/transform3d_column_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png">
-  <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png">
+  <img src="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/full.png" alt="3D view of a rotated magenta box with red, green and blue axis arrows at its origin, at tick 79 of the timeline">
 </picture>
 
 ### Update specific properties of a transform over time
@@ -103,6 +103,6 @@ snippet: archetypes/transform3d_partial_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png">
-  <img src="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png">
+  <img src="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/full.png" alt="3D view of a tilted magenta box with red, green and blue axis arrows through it, paused midway on the log_time timeline">
 </picture>
 

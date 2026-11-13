@@ -2,6 +2,7 @@
 
 use re_log_channel::LogSource;
 use re_redap_client::ConnectionRegistryHandle;
+use re_viewer_context::AuthContext;
 use re_viewer_context::viewer_url::ViewerUrl;
 
 use crate::latency_tracker::ServerLatencyTrackers;
@@ -23,6 +24,9 @@ pub struct ServerConnections {
     /// The dataset segments each local file was registered as.
     #[cfg(not(target_arch = "wasm32"))]
     pub registered_files: RegisteredFiles,
+
+    /// The signed-in user, if any.
+    pub auth: Option<AuthContext>,
 }
 
 impl ServerConnections {
@@ -34,6 +38,7 @@ impl ServerConnections {
             registrations_in_flight: RegistrationsInFlight::default(),
             #[cfg(not(target_arch = "wasm32"))]
             registered_files: RegisteredFiles::default(),
+            auth: None,
         }
     }
 

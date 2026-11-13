@@ -70,7 +70,7 @@ pub struct FromUriOptions {
     ///
     /// This should be `true` at external entry points (CLI, explicit user URL input),
     /// but `false` when parsing URLs from viewer-internal links, where extensionless
-    /// URLs (e.g. `https://rerun.io/docs/getting-started/data-in`) should fall through to be opened in
+    /// URLs (e.g. `https://rerun.io/docs/logging-and-ingestion/tutorial`) should fall through to be opened in
     /// the browser.
     pub accept_extensionless_http: bool,
 }

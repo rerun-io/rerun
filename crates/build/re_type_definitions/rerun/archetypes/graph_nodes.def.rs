@@ -3,8 +3,8 @@
 
 /// A list of nodes in a graph with optional labels, colors, etc.
 ///
-/// \example archetypes/graph_undirected !api title="Simple undirected graph" image="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1200w.png"
-/// \example archetypes/graph_directed title="Simple directed graph" image="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png"
+/// \example archetypes/graph_undirected !api title="Simple undirected graph" image="https://static.rerun.io/graph_undirected/15f46bec77452a8c6220558e4403b99cac188e2e/1200w.png" alt="Graph view with three nodes labeled A, B, and C connected in a triangle by plain undirected edges"
+/// \example archetypes/graph_directed title="Simple directed graph" image="https://static.rerun.io/graph_directed/ca29a37b65e1e0b6482251dce401982a0bc568fa/1200w.png" alt="Graph view with three nodes labeled A, B, and C connected in a cycle by arrows showing edge direction"
 #[rerun::rerun_type]
 #[docs(category = "Graph")]
 #[docs(view_types = "GraphView")]

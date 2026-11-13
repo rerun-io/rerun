@@ -6,6 +6,7 @@ from typing import Any, Self
 import numpy as np
 import pyarrow as pa
 import pytest
+from rerun.encodings import TimeInt
 from rerun.time import to_nanos, to_nanos_since_epoch
 
 VALID_TO_NANOS_CASES = [
@@ -26,6 +27,8 @@ VALID_TO_NANOS_CASES = [
     (np.float64(-1.5), -1_500_000_000),
     (timedelta(seconds=-4, microseconds=-500_000), -4_500_000_000),
     (np.timedelta64(-7, "s"), -7_000_000_000),
+    (timedelta(days=20_000, microseconds=123_457), 1_728_000_000_123_457_000),
+    (timedelta(days=-20_000, microseconds=-123_457), -1_728_000_000_123_457_000),
 ]
 
 
@@ -87,6 +90,19 @@ VALID_TO_NANOS_SINCE_EPOCH_CASES = [
 @pytest.mark.parametrize("timestamp,expected", VALID_TO_NANOS_SINCE_EPOCH_CASES)
 def test_to_nanos_since_epoch_valid(timestamp: int | float | datetime | np.datetime64, expected: int) -> None:
     assert to_nanos_since_epoch(timestamp) == expected
+
+
+@pytest.mark.parametrize("microsecond", [1, 123_457, 999_999])
+def test_to_nanos_since_epoch_datetime_present_day_is_exact(microsecond: int) -> None:
+    timestamp = datetime(2026, 11, 12, 12, 34, 56, microsecond, tzinfo=UTC)
+    expected = 1_794_486_896_000_000_000 + microsecond * 1_000
+    assert to_nanos_since_epoch(timestamp) == expected
+    assert to_nanos_since_epoch(timestamp.replace(tzinfo=None)) == expected
+
+
+@pytest.mark.parametrize("seconds,expected", [(1.001, 1_001_000_000), (-1.001, -1_001_000_000)])
+def test_time_int_seconds_rounds_to_nearest_nano(seconds: float, expected: int) -> None:
+    assert TimeInt(seconds=seconds).value == expected
 
 
 INVALID_TO_NANOS_SINCE_EPOCH_CASES = [

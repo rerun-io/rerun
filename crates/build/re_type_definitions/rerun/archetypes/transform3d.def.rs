@@ -15,12 +15,12 @@
 ///
 /// For transforms that affect only a single entity and do not propagate along the entity tree refer to [`rerun::archetypes::InstancePoses3D`].
 ///
-/// \example archetypes/transform3d_simple title="Variety of 3D transforms" image="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png"
-/// \example archetypes/transform3d_hierarchy title="Transform hierarchy" !api image="https://static.rerun.io/transform_hierarchy/c2a22bff0b5ebfb6cd7742069f096f1de984f7b1/full.png"
-/// \example archetypes/transform3d_hierarchy_frames title="Transform hierarchy with explicit frames" !api image="https://static.rerun.io/transform_hierarchy_frames/9ffb0079828f46c22e22ca55737b8a903889b412/full.png"
-/// \example archetypes/transform3d_row_updates title="Update a transform over time" image="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png"
-/// \example archetypes/transform3d_column_updates title="Update a transform over time, in a single operation" image="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png"
-/// \example archetypes/transform3d_partial_updates title="Update specific properties of a transform over time" image="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png"
+/// \example archetypes/transform3d_simple title="Variety of 3D transforms" image="https://static.rerun.io/transform3d_simple/141368b07360ce3fcb1553079258ae3f42bdb9ac/1200w.png" alt="3D view named base showing three arrows in yellow, purple, and pink, each placed with a different 3D transform"
+/// \example archetypes/transform3d_hierarchy title="Transform hierarchy" !api image="https://static.rerun.io/transform_hierarchy/c2a22bff0b5ebfb6cd7742069f096f1de984f7b1/full.png" alt="3D view of a yellow sun, a blue planet, and a small moon with circular orbit paths, with the entity hierarchy in the blueprint panel"
+/// \example archetypes/transform3d_hierarchy_frames title="Transform hierarchy with explicit frames" !api image="https://static.rerun.io/transform_hierarchy_frames/9ffb0079828f46c22e22ca55737b8a903889b412/full.png" alt="3D view of a yellow sun, a blue planet, and a gray moon, with circular orbit paths drawn around the sun and the planet"
+/// \example archetypes/transform3d_row_updates title="Update a transform over time" image="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png" alt="3D view of a rotated magenta box with red, green and blue axis arrows at its origin, at tick 79 of the timeline"
+/// \example archetypes/transform3d_column_updates title="Update a transform over time, in a single operation" image="https://static.rerun.io/transform3d_column_updates/80634e1c7c7a505387e975f25ea8b6bc1d4eb9db/1200w.png" alt="3D view of a rotated magenta box with red, green and blue axis arrows at its origin, at tick 79 of the timeline"
+/// \example archetypes/transform3d_partial_updates title="Update specific properties of a transform over time" image="https://static.rerun.io/transform3d_partial_updates/11815bebc69ae400847896372b496cdd3e9b19fb/1200w.png" alt="3D view of a tilted magenta box with red, green and blue axis arrows through it, paused midway on the log_time timeline"
 #[rerun::rerun_type]
 #[docs(category = "Transforms")]
 #[docs(view_types = "Spatial3DView, Spatial2DView: if logged above active projection")]

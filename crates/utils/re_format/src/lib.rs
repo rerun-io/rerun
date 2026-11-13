@@ -7,7 +7,6 @@ mod plural;
 pub mod time;
 mod timestamp_format;
 
-use std::cmp::PartialOrd;
 use std::fmt::Display;
 
 use re_int::UnsignedAbs;

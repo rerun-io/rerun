@@ -232,7 +232,7 @@ impl PyDatasetSelectionInternal {
     /// using_index_values : IndexValuesLike | None
     ///     If provided, the specific index values to sample from all segments.
     /// scope : str
-    ///     Which schema the reader uses: `"full"` or `"indexed"`.
+    ///     Which data the reader covers: `"full"` or `"indexed"`.
     #[expect(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,

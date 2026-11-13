@@ -3,8 +3,8 @@ use std::sync::mpsc;
 use agent_client_protocol_schema::v1::{
     AgentCapabilities, AuthMethod, AuthMethodId, ContentBlock, CreateElicitationRequest,
     CreateElicitationResponse, Implementation, RequestPermissionRequest, RequestPermissionResponse,
-    SessionConfigId, SessionConfigOption, SessionConfigValueId, SessionId, SessionModeId,
-    SessionModeState, SessionUpdate, StopReason,
+    SessionConfigId, SessionConfigOption, SessionConfigOptionValue, SessionId, SessionUpdate,
+    StopReason,
 };
 
 use futures::channel::mpsc::{UnboundedReceiver, UnboundedSender};
@@ -59,10 +59,9 @@ impl Drop for AgentConnection {
 pub enum AgentCommand {
     Prompt(Vec<ContentBlock>),
     Cancel,
-    SetMode(SessionModeId),
     SetConfigOption {
         config_id: SessionConfigId,
-        value: SessionConfigValueId,
+        value: SessionConfigOptionValue,
     },
     Authenticate(AuthMethodId),
     Shutdown,
@@ -86,7 +85,6 @@ pub enum AgentEvent {
 
     SessionStarted {
         session_id: SessionId,
-        modes: Option<SessionModeState>,
 
         /// The agent's initial configuration, e.g. which model it is about to use.
         config_options: Vec<SessionConfigOption>,

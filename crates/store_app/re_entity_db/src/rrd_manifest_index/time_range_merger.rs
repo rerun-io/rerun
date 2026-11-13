@@ -465,7 +465,6 @@ pub fn merge_ranges(ranges: impl Iterator<Item = TimeRange>) -> Vec<TimeRange> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use re_chunk::TimeInt;
 
     fn chunk_id(n: u128) -> ChunkId {
         ChunkId::from_u128(n)
@@ -658,8 +657,6 @@ mod tests {
             ],
         );
     }
-
-    use super::super::chunk_prioritizer::ComponentPathKey;
 
     /// Helper to build dummy data needed by `MergedRanges`.
     ///

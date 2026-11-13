@@ -89,10 +89,10 @@ def test_unregister_asset_keeps_its_properties_until_deleted(
     assert asset_dataset is not None
 
     ds.unregister_asset(asset_id)
-    assert asset_dataset._internal._get_segment_properties(asset_id) is not None
+    assert asset_dataset._internal.get_segment_properties(asset_id) is not None
 
     asset_dataset.delete_segment_properties(asset_id)
-    assert asset_dataset._internal._get_segment_properties(asset_id) is None
+    assert asset_dataset._internal.get_segment_properties(asset_id) is None
 
 
 @pytest.mark.local_only

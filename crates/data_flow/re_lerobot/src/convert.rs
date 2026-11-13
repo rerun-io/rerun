@@ -450,8 +450,6 @@ pub fn build_text_chunk(
 mod tests {
     use std::assert_matches;
 
-    use std::sync::Arc;
-
     use arrow::array::Int64Array;
     use arrow::datatypes::Field;
     use re_chunk::ChunkId;

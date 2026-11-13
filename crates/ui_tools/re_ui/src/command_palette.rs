@@ -157,11 +157,6 @@ enum Mode {
 ///
 /// For instance: match file names, and return a `Cmd::OpenFile(Path)`.
 pub trait CommandPaletteProvider<Cmd> {
-    /// Enables switching between search and agent modes with Tab.
-    fn agent_enabled(&self) -> bool {
-        false
-    }
-
     /// Action for opening agent setup, if setup is required before submitting prompts.
     fn agent_setup_action(&self) -> Option<Cmd> {
         None
@@ -298,13 +293,7 @@ impl CommandPalette {
         ui: &mut egui::Ui,
         provider: &mut dyn CommandPaletteProvider<Cmd>,
     ) -> Option<Cmd> {
-        // Allow switching to agent mode via Tab, if possible.
-        let agent_enabled = provider.agent_enabled();
-        if !agent_enabled {
-            self.mode = Mode::Search;
-        }
-        let mode_changed = agent_enabled
-            && ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Tab));
+        let mode_changed = ui.input_mut(|input| input.consume_key(egui::Modifiers::NONE, Key::Tab));
         if mode_changed {
             self.mode = match self.mode {
                 Mode::Search => Mode::Agent,
@@ -364,20 +353,18 @@ impl CommandPalette {
             self.expanded_groups.clear();
         }
 
-        if agent_enabled {
-            let (hint, icon) = match self.mode {
-                Mode::Search => ("Press Tab to switch to agent mode", &crate::icons::AGENT),
-                Mode::Agent => ("Press Tab to switch to search mode", &crate::icons::SEARCH),
-            };
-            ui.horizontal_wrapped(|ui| {
-                ui.weak(hint);
-                ui.add(
-                    icon.as_image()
-                        .fit_to_exact_size(ui.tokens().small_icon_size)
-                        .tint(ui.visuals().weak_text_color()),
-                );
-            });
-        }
+        let (hint, icon) = match self.mode {
+            Mode::Search => ("Press Tab to switch to agent mode", &crate::icons::AGENT),
+            Mode::Agent => ("Press Tab to switch to search mode", &crate::icons::SEARCH),
+        };
+        ui.horizontal_wrapped(|ui| {
+            ui.weak(hint);
+            ui.add(
+                icon.as_image()
+                    .fit_to_exact_size(ui.tokens().small_icon_size)
+                    .tint(ui.visuals().weak_text_color()),
+            );
+        });
 
         let selected_command = if self.mode == Mode::Agent {
             // Check first if an agent is configured, otherwise guide the user to setup.

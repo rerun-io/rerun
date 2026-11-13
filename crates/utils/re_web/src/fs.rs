@@ -330,8 +330,6 @@ fn err_from_dom_exception(exception: &DomException) -> io::Error {
 mod test {
     use super::*;
 
-    use std::io;
-
     use re_async::AsyncReadAt as _;
     use wasm_bindgen_test::wasm_bindgen_test;
 

@@ -9,6 +9,7 @@
 //! Give this crate the same API design and review scrutiny as the crates in `crates/top`, since it may move there in the future.
 
 mod asset;
+mod blueprint;
 mod dataset;
 mod dataset_info;
 mod dataset_selection;
@@ -24,16 +25,22 @@ mod write_operation;
 use re_async::AsyncRuntimeHandle;
 use re_redap_client::{ApiResult, ConnectionClient, ConnectionHandle};
 
+pub use re_protos::cloud::v1alpha1::ext::{
+    StorageBucketName, StorageLocation, StorageLocations, StoragePrefix, StorageRegion,
+};
+
 pub use self::asset::{
     Asset, AssetCoverage, AssetLayer, AssetRegistrationError, DEFAULT_ASSET_TASK_TIMEOUT,
     RegisteredAssets, asset_data_source,
 };
+pub use self::blueprint::{BlueprintName, InvalidBlueprintNameError, RegisteredBlueprint};
 pub use self::dataset_info::{DatasetInfo, LayerInfo, TimelineInfo};
 pub use self::dataset_selection::{DatasetSelection, SegmentSelection};
 pub use self::registration::{RegistrationError, RegistrationHandle, SegmentRegistrationResult};
 pub use self::staging::{StageOpt, StagingError};
 pub use self::write::{WriteError, WriteHandle};
 pub use self::write_operation::{WriteOperation, WriteOperationError, WriteResult, WriteStatus};
+pub use re_protos::cloud::v1alpha1::ext::BlueprintKind;
 
 /// High-level catalog operations backed by a short-lived protocol client per request.
 #[derive(Clone, Debug)]
@@ -67,6 +74,13 @@ impl CatalogClient {
     /// The server this client talks to.
     pub fn origin(&self) -> &re_uri::Origin {
         self.connection.origin()
+    }
+
+    /// Lists storage locations, sorted by alias.
+    ///
+    /// Does not verify reachability or upload support.
+    pub async fn get_storage_locations(&self) -> ApiResult<StorageLocations> {
+        self.client().await?.get_storage_locations().await
     }
 
     /// A short-lived [`ConnectionClient`] for low-level RPCs against this catalog's origin.

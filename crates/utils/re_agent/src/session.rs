@@ -13,8 +13,8 @@ use agent_client_protocol_schema::v1::{
     ElicitationAction, ElicitationMode, ElicitationScope, ImageContent, PermissionOption,
     PermissionOptionId, PermissionOptionKind, PromptCapabilities, RequestPermissionOutcome,
     RequestPermissionRequest, RequestPermissionResponse, SelectedPermissionOutcome,
-    SessionConfigId, SessionConfigValueId, SessionId, SessionModeId, SessionModeState,
-    SessionUpdate, StopReason, TextContent, ToolCallId, ToolCallStatus, ToolKind,
+    SessionConfigId, SessionConfigOptionValue, SessionId, SessionUpdate, StopReason, TextContent,
+    ToolCallId, ToolCallStatus, ToolKind,
 };
 
 use re_async::{AsyncRuntimeHandle, UiWaker};
@@ -29,10 +29,16 @@ use crate::reports::{McpStartupReport, SessionReports};
 use crate::responder::{AgentStoppedWaiting, Responder};
 use crate::settings::AgentLaunch;
 use crate::startup::{AgentBackendKind, StartupOutcome, StartupStart};
-use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text};
+use crate::transcript::{ToolCallState, Transcript, TranscriptItem, message_text, truncate_bytes};
 use crate::turn::{TurnOutcome, TurnReport, TurnStart, describe_failed_tool_call};
 
 const MAX_LOG_LINES: usize = 500;
+
+/// How many of the last stderr lines may explain why the agent exited.
+const EXIT_REASON_STDERR_LINES: usize = 10;
+
+/// A stderr line can be huge (e.g. minified JSON), but the exit reason is shown in a narrow panel.
+const MAX_EXIT_REASON_DETAIL_BYTES: usize = 300;
 
 /// Why [`AgentSession::start`] could not start an agent.
 #[derive(Debug, thiserror::Error)]
@@ -235,13 +241,10 @@ struct AgentInfo {
     session_id: Option<SessionId>,
 
     name: Option<String>,
+    implementation_id: Option<String>,
 
     /// The version the agent reported, which is ours for a model-API agent.
     version: Option<String>,
-    modes: Option<SessionModeState>,
-
-    /// Set by [`AgentSession::set_mode`] until the agent confirms a mode.
-    requested_mode: Option<SessionModeId>,
 
     auth: Option<AuthPrompt>,
 
@@ -515,17 +518,14 @@ impl AgentSession {
         self.agent.name.as_deref()
     }
 
-    pub fn modes(&self) -> Option<&SessionModeState> {
-        self.agent.modes.as_ref()
+    /// The implementation identifier from the ACP handshake, independent of its display title.
+    pub fn agent_implementation_id(&self) -> Option<&str> {
+        self.agent.implementation_id.as_deref()
     }
 
-    pub fn current_mode_id(&self) -> Option<&SessionModeId> {
-        self.transcript.current_mode.as_ref().or_else(|| {
-            self.agent
-                .modes
-                .as_ref()
-                .map(|modes| &modes.current_mode_id)
-        })
+    /// The running agent's self-reported version, rather than a separately installed CLI's version.
+    pub fn agent_version(&self) -> Option<&str> {
+        self.agent.version.as_deref()
     }
 
     pub fn transcript(&self) -> &Transcript {
@@ -591,6 +591,33 @@ impl AgentSession {
 
     pub fn log(&self) -> &VecDeque<LogLine> {
         &self.log
+    }
+
+    /// Why the agent exited.
+    ///
+    /// The agent usually explains it on stderr, so that is quoted as a detail.
+    fn exit_reason(&self) -> re_error::StructuredError {
+        let last_lines: Vec<String> = self
+            .log
+            .iter()
+            .rev()
+            .filter(|log_line| log_line.direction == LineDirection::Stderr)
+            .map(|log_line| strip_ansi_escapes(&log_line.line).trim().to_owned())
+            .filter(|line| !line.is_empty())
+            .take(EXIT_REASON_STDERR_LINES)
+            .collect();
+        // Agents often print warnings after the error, e.g. Node's deprecation warnings.
+        // Errors from long before the exit are not why it exited, hence only the last few lines.
+        let explanation = last_lines
+            .iter()
+            .find(|line| reports_failure(line))
+            .or_else(|| last_lines.first());
+
+        let mut reason = re_error::StructuredError::from_summary("The agent exited");
+        if let Some(explanation) = explanation {
+            reason.add_detail(truncate_bytes(explanation, MAX_EXIT_REASON_DETAIL_BYTES));
+        }
+        reason
     }
 
     /// Shows an error inline in the transcript.
@@ -906,25 +933,18 @@ impl AgentSession {
         self.requests.elicitations.clear();
     }
 
-    pub fn set_mode(&mut self, mode_id: SessionModeId) {
-        self.agent.requested_mode = Some(mode_id.clone());
-        if let Some(connection) = &self.connection {
-            connection.send(AgentCommand::SetMode(mode_id));
-        }
-    }
-
     /// Asks the agent to change a session setting; its confirmed value arrives in a config update.
-    pub fn set_config_option(&self, config_id: SessionConfigId, value: SessionConfigValueId) {
+    pub fn set_config_option(
+        &self,
+        config_id: SessionConfigId,
+        value: impl Into<SessionConfigOptionValue>,
+    ) {
         if let Some(connection) = &self.connection {
-            connection.send(AgentCommand::SetConfigOption { config_id, value });
+            connection.send(AgentCommand::SetConfigOption {
+                config_id,
+                value: value.into(),
+            });
         }
-    }
-
-    /// The mode last asked for with [`Self::set_mode`], for tests: nothing confirms it
-    /// without a connected agent.
-    #[cfg(feature = "testing")]
-    pub fn requested_mode(&self) -> Option<&SessionModeId> {
-        self.agent.requested_mode.as_ref()
     }
 
     pub fn authenticate(&mut self, method_id: AuthMethodId) {
@@ -1069,6 +1089,7 @@ impl AgentSession {
                 ..
             } => {
                 self.agent.version = agent_info.as_ref().map(|info| info.version.clone());
+                self.agent.implementation_id = agent_info.as_ref().map(|info| info.name.clone());
                 self.agent.name = agent_info.map(|info| info.title.unwrap_or(info.name));
                 self.agent.prompt_capabilities = capabilities.prompt_capabilities;
             }
@@ -1084,7 +1105,6 @@ impl AgentSession {
             }
             AgentEvent::SessionStarted {
                 session_id,
-                modes,
                 config_options,
                 origin,
             } => {
@@ -1103,7 +1123,6 @@ impl AgentSession {
                     );
                 }
                 self.agent.session_id = Some(session_id);
-                self.agent.modes = modes;
                 self.transcript.config_options = config_options;
                 self.agent.auth = None;
                 self.phase = Phase::Ready;
@@ -1120,9 +1139,6 @@ impl AgentSession {
                 }
             }
             AgentEvent::Update(update) => {
-                if let SessionUpdate::CurrentModeUpdate(_) = &update {
-                    self.agent.requested_mode = None;
-                }
                 if let Some(failure) =
                     McpStartupFailure::from_update(&update, &self.launch.mcp_servers)
                 {
@@ -1243,7 +1259,7 @@ impl AgentSession {
                 self.finish_turn(TurnOutcome::Aborted, "The agent exited before finishing");
                 self.finish_startup(StartupOutcome::Exited);
                 self.phase = Phase::Disconnected {
-                    reason: "The agent exited".to_owned(),
+                    reason: self.exit_reason().to_string(),
                 };
                 self.connection = None;
                 self.requests.permissions.clear();
@@ -1464,14 +1480,62 @@ fn elicitation_tool_call(request: &CreateElicitationRequest) -> Option<&ToolCall
     }
 }
 
+/// Whether a stderr line reports a failure, e.g. `error: …`, `TypeError: …`, or a Rust panic.
+///
+/// Matches whole words, so that `0 errors` or `errorHandler.js` do not count.
+fn reports_failure(line: &str) -> bool {
+    line.split(|c: char| !c.is_alphanumeric())
+        .map(str::to_lowercase)
+        .any(|word| {
+            word.ends_with("error")
+                || word.ends_with("exception")
+                || matches!(word.as_str(), "fatal" | "panic" | "panicked")
+        })
+}
+
+/// Removes terminal escape sequences, e.g. the colors of a CLI's error message.
+fn strip_ansi_escapes(text: &str) -> String {
+    let mut out = String::with_capacity(text.len());
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '\u{1b}' {
+            out.push(c);
+            continue;
+        }
+        match chars.next() {
+            // CSI, e.g. colors: ends at its first char in `@`..=`~`.
+            Some('[') => {
+                for c in chars.by_ref() {
+                    if ('@'..='~').contains(&c) {
+                        break;
+                    }
+                }
+            }
+            // OSC, e.g. hyperlinks and window titles: ends at BEL or `ESC \`.
+            Some(']') => {
+                while let Some(c) = chars.next() {
+                    if c == '\u{7}' || (c == '\u{1b}' && chars.next_if_eq(&'\\').is_some()) {
+                        break;
+                    }
+                }
+            }
+            // Character set selection, e.g. `ESC ( B` from `tput sgr0`.
+            Some('(' | ')' | '*' | '+') => {
+                chars.next();
+            }
+            _ => {}
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
 
     use agent_client_protocol_schema::v1::{
         ContentChunk, SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption,
-        SessionUpdate, ToolCall, ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus,
-        ToolCallUpdate, ToolCallUpdateFields,
+        ToolCall, ToolCallContent, ToolCallLocation, ToolCallUpdate, ToolCallUpdateFields,
     };
 
     use super::*;
@@ -1485,7 +1549,6 @@ mod tests {
     fn session_started(origin: SessionOrigin) -> AgentEvent {
         AgentEvent::SessionStarted {
             session_id: SessionId::new("earlier"),
-            modes: None,
             config_options: Vec::new(),
             origin,
         }
@@ -1584,6 +1647,77 @@ mod tests {
     }
 
     #[test]
+    fn strips_terminal_escapes() {
+        for (input, expected) in [
+            ("plain", "plain"),
+            ("\u{1b}[1;31merror\u{1b}(B\u{1b}[m: x", "error: x"),
+            (
+                "\u{1b}]8;;https://x.y\u{1b}\\link\u{1b}]8;;\u{1b}\\ text",
+                "link text",
+            ),
+            ("\u{1b}]0;title\u{7}after", "after"),
+            ("cut off \u{1b}[31", "cut off "),
+        ] {
+            assert_eq!(strip_ansi_escapes(input), expected, "input: {input:?}");
+        }
+    }
+
+    #[test]
+    fn the_disconnect_reason_quotes_the_stderr_line_that_explains_it() {
+        use LineDirection::{Stderr, Stdout};
+
+        let disconnect_reason = |lines: &[(LineDirection, &str)]| {
+            let mut session = AgentSession::default();
+            for &(direction, line) in lines {
+                session.handle_event(AgentEvent::Log {
+                    direction,
+                    line: line.to_owned(),
+                });
+            }
+            session.handle_event(AgentEvent::Disconnected);
+            match session.phase() {
+                Phase::Disconnected { reason } => reason.clone(),
+                phase => panic!("Expected a disconnect, got {phase:?}"),
+            }
+        };
+
+        assert_eq!(disconnect_reason(&[]), "The agent exited");
+        assert_eq!(disconnect_reason(&[(Stdout, "{}")]), "The agent exited");
+        assert_eq!(
+            disconnect_reason(&[(Stderr, "starting"), (Stderr, "stopped"), (Stderr, "  ")]),
+            "The agent exited\n- stopped",
+            "Without an error, the last non-empty line explains the exit"
+        );
+        assert_eq!(
+            disconnect_reason(&[
+                (Stderr, "\u{1b}[31merror\u{1b}[0m: unknown option '--acp'"),
+                (Stderr, "(node:42) DeprecationWarning: punycode"),
+                (Stdout, "{}"),
+            ]),
+            "The agent exited\n- error: unknown option '--acp'",
+            "A warning after the error must not hide it"
+        );
+
+        let mut stale_error = vec![(Stderr, "error: retrying the MCP server")];
+        stale_error.extend([(Stderr, "0 errors"); EXIT_REASON_STDERR_LINES]);
+        assert_eq!(
+            disconnect_reason(&stale_error),
+            "The agent exited\n- 0 errors",
+            "An error long before the exit does not explain it"
+        );
+
+        let long_line = format!("Error: {}", "ü".repeat(MAX_EXIT_REASON_DETAIL_BYTES));
+        assert_eq!(
+            disconnect_reason(&[(Stderr, &long_line)]),
+            format!(
+                "The agent exited\n- {}",
+                truncate_bytes(&long_line, MAX_EXIT_REASON_DETAIL_BYTES)
+            ),
+            "Long lines are cut"
+        );
+    }
+
+    #[test]
     fn a_login_during_a_load_replays_the_history_only_once() {
         let mut session = AgentSession::default();
         session.handle_event(AgentEvent::LoadingSession);
@@ -1625,7 +1759,6 @@ mod tests {
         };
         let session_started = || AgentEvent::SessionStarted {
             session_id: "session".into(),
-            modes: None,
             config_options: vec![
                 SessionConfigOption::select(
                     "model",
@@ -1779,7 +1912,6 @@ mod tests {
         let mut session = AgentSession::default();
         session.handle_event(AgentEvent::SessionStarted {
             session_id: agent_client_protocol_schema::v1::SessionId::new("test-session"),
-            modes: None,
             config_options: Vec::new(),
             origin: SessionOrigin::New,
         });

@@ -1,7 +1,6 @@
 //! Human-readable formatting shared with the viewer, so Python reprs read the same as the UI.
 
 use pyo3::prelude::*;
-use pyo3::types::PyModule;
 use re_log_types::{DateVisibility, TimeInt, TimestampFormat};
 
 use crate::timeline_type::parse_timeline_type;

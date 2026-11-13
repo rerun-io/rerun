@@ -113,7 +113,7 @@ def register_table(catalog_url: str) -> None:
 
     client = rr.catalog.CatalogClient(catalog_url)
     # Register a file the server can access.
-    client.get_table("my_table").register_blueprint(path.as_uri())
+    client.get_table("my_table").register_blueprint(path.as_uri(), name="table")
     # endregion: register_table
 
 
@@ -140,10 +140,8 @@ def register_segments(client: rr.catalog.CatalogClient) -> None:
     path = Path("segments.rbl").resolve()
     blueprint.save("my_app", path)
 
-    client.get_dataset("my_dataset").register_blueprint(
-        path.as_uri(),
-        # Apply to the segment table, not individual recordings.
-        segment_table=True,
+    client.get_dataset("my_dataset").register_table_blueprint(
+        path.as_uri(), name="segments"
     )
     # endregion: register_segments
 
@@ -153,7 +151,7 @@ def register_remote(client: rr.catalog.CatalogClient) -> None:
     # region: register_remote
     # Upload the .rbl to this URI first.
     client.get_table("my_table").register_blueprint(
-        "s3://my-bucket/blueprints/table.rbl"
+        "s3://my-bucket/blueprints/table.rbl", name="table"
     )
     # endregion: register_remote
 
@@ -175,7 +173,7 @@ def save_screenshots(
             name = f"{layout}{suffix}"
             path = Path(f"screenshot_{name}.rbl").resolve()
             replace(config, default_layout=layout).save("my_app", path)
-            table.register_blueprint(path.as_uri())
+            table.register_blueprint(path.as_uri(), name=f"screenshot_{name}")
 
             # An open viewer does not pick up default table blueprint changes,
             # so we have to re-open it each time.
@@ -233,15 +231,21 @@ def run(
 
         flag_path = Path("flags.rbl").resolve()
         flag_blueprint.save("my_app", flag_path)
-        table.register_blueprint(flag_path.as_uri(), set_default=False)
+        table.register_blueprint(
+            flag_path.as_uri(), set_default=False, name="flags"
+        )
 
         notes_path = Path("notes.rbl").resolve()
         notes_blueprint.save("my_app", notes_path)
-        table.register_blueprint(notes_path.as_uri(), set_default=False)
+        table.register_blueprint(
+            notes_path.as_uri(), set_default=False, name="notes"
+        )
 
         filter_path = Path("filters.rbl").resolve()
         filter_blueprint.save("my_app", filter_path)
-        table.register_blueprint(filter_path.as_uri(), set_default=False)
+        table.register_blueprint(
+            filter_path.as_uri(), set_default=False, name="filters"
+        )
 
         if screenshots is not None:
             save_screenshots(server.url(), table, screenshots)

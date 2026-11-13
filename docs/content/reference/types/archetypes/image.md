@@ -51,7 +51,7 @@ snippet: archetypes/image_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
-  <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png">
+  <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" alt="2D view of a red image with a green square, with a hover tooltip showing the pixel position and RGB value">
 </picture>
 
 ### Logging images with various formats
@@ -63,7 +63,7 @@ snippet: archetypes/image_formats
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/1200w.png">
-  <img src="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png">
+  <img src="https://static.rerun.io/image_formats/182a233fb4d0680eb31912a82f328ddaaa66324e/full.png" alt="Four 2D views named image_bgr, image_green_only, image_rgb, and image_yuv422, each showing a color gradient image">
 </picture>
 
 ### Image from file, PIL & OpenCV
@@ -75,7 +75,7 @@ snippet: archetypes/image_advanced
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/1200w.png">
-  <img src="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/full.png">
+  <img src="https://static.rerun.io/image_advanced/7ea3e3876858879bf16d6efe6de313f7b2403881/full.png" alt="Four 2D views named from_file, from_opencv, from_pillow_rgb, and from_pillow_rgba, all showing the same green rounded square in a red frame">
 </picture>
 
 ### Update an image over time
@@ -87,7 +87,7 @@ snippet: archetypes/image_row_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
-  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png">
+  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png" alt="2D view of a solid blue image with a cyan square on its right side, at the last step of the timeline">
 </picture>
 
 ### Update an image over time, in a single operation
@@ -99,6 +99,6 @@ snippet: archetypes/image_column_updates
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/1200w.png">
-  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png">
+  <img src="https://static.rerun.io/image_column_updates/8edcdc512f7b97402f03c24d7dcbe01b3651f86d/full.png" alt="2D view of a solid blue image with a cyan square on its right side, at the last step of the timeline">
 </picture>
 

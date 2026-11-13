@@ -1,9 +1,11 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 #[cfg(agent_harness_backend)]
 use std::path::Path;
 use std::path::PathBuf;
 
-use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionId, SessionModeId};
+use agent_client_protocol_schema::v1::{
+    SessionConfigId, SessionConfigOptionValue, SessionConfigValueId, SessionId,
+};
 
 use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
 use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProvider};
@@ -11,7 +13,6 @@ use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProv
 /// Fast models to select, best first, unless the user has picked a model for the profile.
 ///
 /// The agent panel should feel fast, and flagship models are often too slow for that.
-#[cfg(agent_harness_backend)]
 pub const DEFAULT_MODEL_PREFERENCES: &[&str] = &[
     "sonnet", // Anthropic: Claude
     "flash",  // Google: Gemini
@@ -152,9 +153,6 @@ pub struct AgentSettings {
     /// Conversations to list again after a restart, most recent first.
     pub saved_conversations: Vec<SavedConversation>,
 
-    /// Set once the agent panel has been open, however it was opened.
-    pub panel_ever_opened: bool,
-
     /// API keys as the user typed them, by model-API profile.
     ///
     /// Only the web viewer uses these, since on native we want to implement a more secure storage
@@ -171,14 +169,65 @@ pub struct AgentSettings {
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct AgentPreferences {
-    /// Session mode, e.g. `acceptEdits` for Claude or `read-only` for Codex.
-    pub mode: Option<SessionModeId>,
+    /// Only selections are persisted: the agent supplies the available options on connection.
+    pub config_options: HashMap<SessionConfigId, SessionConfigOptionValue>,
+}
 
-    /// Model, e.g. `sonnet` for Claude or `gpt-5-codex` for Codex.
-    pub model: Option<SessionConfigValueId>,
+impl AgentPreferences {
+    /// Returns the saved value for an option id, which is scoped to this profile.
+    pub fn get(&self, id: impl Into<SessionConfigId>) -> Option<&SessionConfigOptionValue> {
+        self.config_options.get(&id.into())
+    }
 
-    /// Speed, e.g. `on` for the fast mode of both Claude and Codex.
-    pub speed: Option<SessionConfigValueId>,
+    /// Remembers a selection; the agent validates whether it is offered when restored.
+    pub fn set(
+        &mut self,
+        id: impl Into<SessionConfigId>,
+        value: impl Into<SessionConfigOptionValue>,
+    ) {
+        self.config_options.insert(id.into(), value.into());
+    }
+
+    /// The saved selection for backends that use `model` as their model option id.
+    pub fn model(&self) -> Option<&SessionConfigValueId> {
+        self.get("model")
+            .and_then(SessionConfigOptionValue::as_value_id)
+    }
+}
+
+/// How much the model thinks before it answers, as the id of one of the levels the agent offers.
+///
+/// The id belongs to the agent, e.g. `high` or `xhigh`, and the levels differ per agent and per
+/// model. Compare ids exactly, never rank them.
+///
+/// The same setting has many names: ACP calls its category `thought_level`, Claude Code shows it
+/// as "Effort", Codex and Copilot as "Reasoning effort", the Anthropic API takes
+/// `output_config.effort`, and the `OpenAI` API takes `reasoning.effort`. We call it effort because
+/// most of them do, including `rig_core`.
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
+pub struct Effort(pub String);
+
+impl Effort {
+    /// The effort that leaves the level to the model, offered by the model APIs as "Default".
+    pub const DEFAULT: &'static str = "default";
+
+    /// Whether this leaves the level to the model.
+    pub fn is_default(&self) -> bool {
+        self.0 == Self::DEFAULT
+    }
+}
+
+impl From<&SessionConfigValueId> for Effort {
+    fn from(value: &SessionConfigValueId) -> Self {
+        Self(value.0.to_string())
+    }
+}
+
+impl From<&Effort> for SessionConfigValueId {
+    fn from(effort: &Effort) -> Self {
+        Self::new(effort.0.clone())
+    }
 }
 
 /// Why [`AgentSettings`] could not be resolved into an agent to start.
@@ -279,7 +328,7 @@ impl AgentSettings {
             .ok_or_else(|| AgentLaunchError::missing_api_key(provider))?;
         let model = self
             .preferences(&self.profile_id)
-            .and_then(|preferences| preferences.model.as_ref())
+            .and_then(|preferences| preferences.model())
             .map_or_else(
                 || provider.default_model().to_owned(),
                 |model| model.0.to_string(),
@@ -288,6 +337,11 @@ impl AgentSettings {
             provider,
             api_key,
             model,
+            effort: self
+                .preferences(&self.profile_id)
+                .and_then(|preferences| preferences.get("effort"))
+                .and_then(SessionConfigOptionValue::as_value_id)
+                .map(Effort::from),
             system_prompt: context.model_api_preamble.clone(),
             hosted_tools: self.model_api_hosted_tools,
             toolbox: None,
@@ -335,7 +389,6 @@ impl Default for AgentSettings {
             share_redacted_prompts: false,
             setup_done: false,
             saved_conversations: Vec::new(),
-            panel_ever_opened: false,
             #[cfg(target_arch = "wasm32")]
             api_keys: BTreeMap::new(),
         }
@@ -367,15 +420,18 @@ mod tests {
         settings.preferences.insert(
             AgentProfileId::new("claude"),
             AgentPreferences {
-                model: Some(SessionConfigValueId::new("sonnet")),
-                ..Default::default()
+                config_options: [("model".into(), SessionConfigValueId::new("sonnet").into())]
+                    .into(),
             },
         );
         let Ok(json) = serde_json::to_value(&settings) else {
             panic!("settings should serialize");
         };
         assert_eq!(json["profile_id"], "codex");
-        assert_eq!(json["preferences"]["claude"]["model"], "sonnet");
+        assert_eq!(
+            json["preferences"]["claude"]["config_options"]["model"]["value"],
+            "sonnet"
+        );
         assert_eq!(
             serde_json::from_value::<AgentSettings>(json).ok(),
             Some(settings)

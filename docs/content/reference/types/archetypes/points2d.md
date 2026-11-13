@@ -43,7 +43,7 @@ snippet: archetypes/points2d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/1200w.png">
-  <img src="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/full.png">
+  <img src="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/full.png" alt="2D view showing two tiny points on a black background, logged as a simple Points2D batch">
 </picture>
 
 ### Randomly distributed 2D points with varying color and radius
@@ -55,7 +55,7 @@ snippet: archetypes/points2d_random
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png">
-  <img src="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png">
+  <img src="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/full.png" alt="2D view showing ten randomly placed circles with varying colors and radii on a black background">
 </picture>
 
 ### Log points with radii given in UI points
@@ -67,6 +67,6 @@ snippet: archetypes/points2d_ui_radius
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1200w.png">
-  <img src="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/full.png">
+  <img src="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/full.png" alt="Rerun Viewer 2D view with two blue and two red circles of different sizes, comparing point radii in scene units and UI points">
 </picture>
 

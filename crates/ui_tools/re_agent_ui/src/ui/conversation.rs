@@ -17,7 +17,7 @@ use super::Screen;
 use super::agent_panel::ConversationId;
 use super::chat_ui::{ChatInput, chat_ui};
 use super::conversation_list::ConversationStatus;
-use super::setup_ui::{selected_agent_name, setup_ui};
+use super::setup_ui::{agent_name, selected_agent_name, setup_ui};
 
 /// One chat with one agent: a row in the conversation list.
 pub struct Conversation {
@@ -336,11 +336,15 @@ impl Conversation {
             .preferences(&self.profile_id)
             .cloned()
             .unwrap_or_default();
+        let agent_name = agent_name(&self.profile_id, agents)
+            .or_else(|| self.session.agent_name().map(ToOwned::to_owned))
+            .unwrap_or_else(|| "Custom agent".to_owned());
         chat_ui(
             ui,
             &mut self.session,
             &mut self.input,
             &mut preferences,
+            Some(&agent_name),
             settings.show_thoughts,
             login_hint,
             example_prompts,

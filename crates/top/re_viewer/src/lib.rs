@@ -43,6 +43,7 @@ mod konami;
 mod latency_tracker;
 #[cfg(target_os = "linux")]
 mod linux_desktop_entry;
+mod loading_errors;
 #[cfg(target_os = "macos")]
 mod native_menu;
 mod navigation;
@@ -53,6 +54,7 @@ mod screen_highlight;
 mod screenshotter;
 mod server_connections;
 mod startup_options;
+mod store_states;
 mod texture_readback;
 mod ui;
 mod version_check;

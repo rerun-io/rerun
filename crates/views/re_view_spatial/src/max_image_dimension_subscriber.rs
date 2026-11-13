@@ -4,7 +4,6 @@ use nohash_hasher::IntMap;
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriberHandle, PerStoreChunkSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_sdk_types::components::MediaType;
-use re_sdk_types::external::image;
 use re_sdk_types::{
     Archetype as _, ArchetypeName, Component as _, FromArrow as _, SerializedComponentColumn,
     archetypes, components,

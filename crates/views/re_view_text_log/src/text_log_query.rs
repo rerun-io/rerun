@@ -145,10 +145,9 @@ pub fn text_levels<'a>(
 #[cfg(test)]
 mod tests {
     use std::borrow::Cow;
-    use std::collections::BTreeSet;
 
     use re_chunk_store::{Chunk, Span};
-    use re_log_types::{EntityPath, Timeline};
+    use re_log_types::Timeline;
     use re_sdk_types::archetypes::TextLog;
     use re_sdk_types::components::TextLogLevel;
 

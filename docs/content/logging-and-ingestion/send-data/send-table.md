@@ -1,0 +1,134 @@
+---
+title: Send tables to Rerun
+order: 400
+description: Send tables as Arrow record batches and explore them in the Viewer
+---
+
+> [!NOTE]
+> The `send_table` API is currently experimental and may change in future releases.
+
+Rerun now supports sending tabular data to the Rerun Viewer! This feature allows you to visualize and interact with dataframes (encoded as Arrow record batches) directly in the Rerun Viewer environment.
+These tables are listed in the Sources panel, next to your recordings.
+To persist a table on a catalog server instead, see [Storing query results in catalog tables](../../query-and-transform/catalog/catalog-tables.md).
+To log a table as part of a recording, use [`rr.send_dataframe`](send-dataframe.md).
+
+## Overview
+
+The `send_table` API provides a straightforward way to send tabular data to the Rerun Viewer. This is particularly useful for:
+
+- Debugging data processing pipelines
+- Presenting structured data in a readable format
+- Sorting and filtering tables interactively
+
+## References
+
+For complete examples of using `send_table`, please refer to:
+
+- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/send_table.ipynb)
+- [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)
+
+## Prerequisites
+
+- Rerun SDK (Python)
+- PyArrow library
+- Pandas
+- NumPy
+
+Which can be installed via:
+
+```sh
+pip install rerun-sdk[notebook] pyarrow pandas numpy
+```
+
+## Basic usage
+
+### Connecting to the Viewer
+
+```python
+from rerun.experimental import ViewerClient
+
+# Connect to a running Rerun Viewer
+client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
+```
+
+### Sending a simple table
+
+```python
+import pyarrow as pa
+
+# Create a record batch from a Python dictionary
+record_batch = pa.RecordBatch.from_pydict({
+    "id": [1, 2, 3],
+    "url": ["https://www.rerun.io", "https://github.com/rerun-io/rerun", "https://crates.io/crates/rerun"],
+})
+
+# Send the table to the viewer with an identifier
+client.send_table("My Table", record_batch)
+```
+
+### Using with Pandas dataframes
+
+You can also send Pandas dataframes by converting them to a record batch:
+
+```python
+import pandas as pd
+import numpy as np
+import pyarrow as pa
+
+# Create a sample DataFrame
+dates = pd.date_range("20230101", periods=6)
+df = pd.DataFrame(np.random.default_rng(0).standard_normal((6, 4)), index=dates, columns=list("ABCD"))
+
+# Convert to record batch and send to the viewer.
+client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))
+```
+
+## Using in Jupyter notebooks
+
+Rerun provides special support for Jupyter notebooks, see [Embed Rerun in notebooks](../../integrations/embed-notebooks.md).
+Note that this API makes use of `rr.notebook.Viewer`:
+
+```python
+import os
+
+import pyarrow as pa
+import rerun as rr
+
+# Embed the widget JavaScript directly in the notebook instead of fetching it from app.rerun.io
+os.environ["RERUN_NOTEBOOK_ASSET"] = "inline"
+
+# Create and display the viewer
+viewer = rr.notebook.Viewer(width="auto", height="auto")
+viewer.display()
+
+# Send table directly to the inline viewer
+viewer.send_table(
+    "My Table",
+    pa.RecordBatch.from_pydict({"Column A": [1, 2, 3], "Column B": ["https://www.rerun.io", "Hello", "World"]}),
+)
+```
+
+You can also send tables to a native Viewer instead of the notebook widget:
+
+```python
+from rerun.experimental import ViewerClient
+
+# Connect to a running Rerun Viewer
+client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
+```
+
+## Current limitations
+
+As this is an experimental API, there are several limitations to be aware of:
+
+- Multiple record batches (or a DataFusion DataFrame) can be passed, but they are merged into a single record batch before sending
+- Tables can't be saved/loaded from files yet (unlike `.rrd` files for recordings)
+- Integration with the rest of the Rerun API is still in progress
+- Rust and C++ support will be added after the API stabilizes
+- The API may undergo significant changes as we iterate based on user feedback
+
+## What's next
+
+The `send_table` API is still evolving and we plan to tackle all of the limitations mentioned above.
+
+We welcome your [feedback and suggestions](https://rerun.io/feedback) as we continue to improve this feature!

@@ -1433,7 +1433,6 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
-    use std::net::SocketAddr;
     use std::sync::Arc;
     use std::time::Duration;
 
@@ -1444,9 +1443,7 @@ mod tests {
     use re_log_types::{StoreId, StoreKind};
     use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
     use similar_asserts::assert_eq;
-    use tokio::net::TcpListener;
     use tokio_util::sync::CancellationToken;
-    use tonic::transport::server::TcpIncoming;
     use tonic::transport::{Channel, Endpoint};
 
     use super::*;

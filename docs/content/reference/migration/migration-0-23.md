@@ -2,6 +2,7 @@
 title: Migrating from 0.22 to 0.23
 order: 987
 hidden: true
+description: Breaking changes in Rerun 0.23 and how to update code written for 0.22
 ---
 
 ## Reserved namespaces
@@ -22,17 +23,17 @@ We have been wildly inconsistent with how we name our time units, and it is time
 * `nanos` instead of `ns` or `nanoseconds`
 * `millis` instead of `ms` or `milliseconds`
 
-All function and parameters using the old names have been deprecated, and will be removed in a future version.
+All functions and parameters using the old names have been deprecated, and will be removed in a future version.
 
-##### Why these names?
+### Why these names?
 * They are short without being cryptic
 * They are the ones the Rust standard library (mostly) use: https://doc.rust-lang.org/stable/std/time/struct.Duration.html
 * Anything is better than being inconsistent :)
 
 ## Differentiate between timestamps and durations
-We've added a explicit API for setting time, where you need to explicitly specify if a time is either a timestamp (e.g. `2025-03-03T14:34:56.123456789`) or a duration (e.g. `123s`).
+We've added an explicit API for setting time, where you need to explicitly specify if a time is either a timestamp (e.g. `2025-03-03T14:34:56.123456789`) or a duration (e.g. `123s`).
 
-Before, Rerun would try to guess what you meant (small values were assumed to be durations, and large values were assumes to be durations since the Unix epoch, i.e. timestamps).
+Before, Rerun would try to guess what you meant (small values were assumed to be durations, and large values were assumed to be durations since the Unix epoch, i.e. timestamps).
 Now you need to be explicit.
 
 
@@ -54,7 +55,7 @@ We've deprecated the following functions, with the following replacements:
 
 
 ### 🐍 Python: replaced `rr.set_time_*` functions with a single `rr.set_time`
-We've deprecated `rr.set_time_secs`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
+We've deprecated `rr.set_time_seconds`, `rr.set_time_nanos`, as well as `rr.set_time_sequence` and replaced them with `rr.set_time`.
 `set_time` takes either a `sequence=`, `duration=` or `timestamp=` argument.
 
 `duration` must be either:
@@ -68,14 +69,14 @@ We've deprecated `rr.set_time_secs`, `rr.set_time_nanos`, as well as `rr.set_tim
 * [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64)
 
 #### Migrating
-##### `rr.set_sequence("foo", 42)`
+##### `rr.set_time_sequence("foo", 42)`
 New: `rr.set_time("foo", sequence=42)`
 
-##### `rr.set_time_secs("foo", duration_secs)`
+##### `rr.set_time_seconds("foo", duration_secs)`
 When using relative times (durations/timedeltas): `rr.set_time("foo", duration=duration_secs)`
 You can also pass in a [`datetime.timedelta`](https://docs.python.org/3/library/datetime.html#datetime.timedelta) or [`numpy.timedelta64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.timedelta64) directly.
 
-##### `rr.set_time_secs("foo", seconds_since_epoch)`
+##### `rr.set_time_seconds("foo", seconds_since_epoch)`
 New: `rr.set_time("foo", timestamp=seconds_since_epoch)`
 You can also pass in a [`datetime.datetime`](https://docs.python.org/3/library/datetime.html#datetime.datetime) or [`numpy.datetime64`](https://numpy.org/doc/stable/reference/arrays.scalars.html#numpy.datetime64) directly.
 
@@ -84,7 +85,7 @@ Either:
 * `rr.set_time("foo", duration=1e-9 * duration_nanos)`
 * `rr.set_time("foo", duration=np.timedelta64(duration_nanos, 'ns'))`
 
-The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas below less than 100 days in duration), while the latter is lossless.
+The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas less than 100 days in duration), while the latter is lossless.
 
 ##### `rr.set_time_nanos("foo", nanos_since_epoch)`
 Either:
@@ -113,12 +114,12 @@ Either:
 * `rr.TimeColumn("foo", duration=1e-9 * duration_nanos)`
 * `rr.TimeColumn("foo", duration=np.timedelta64(duration_nanos, 'ns'))`
 
-The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas below less than 100 days in duration), while the latter is lossless.
+The former is subject to (double-precision) floating point precision loss (but still nanosecond precision for timedeltas less than 100 days in duration), while the latter is lossless.
 
 ##### `rr.TimeNanosColumn("foo", nanos_since_epoch)`
 Either:
-* `rr.TimeColumn("foo", duration=1e-9 * nanos_since_epoch)`
-* `rr.TimeColumn("foo", duration=np.timedelta64(nanos_since_epoch, 'ns'))`
+* `rr.TimeColumn("foo", timestamp=1e-9 * nanos_since_epoch)`
+* `rr.TimeColumn("foo", timestamp=np.datetime64(nanos_since_epoch, 'ns'))`
 
 The former is subject to (double-precision) floating point precision loss (still microsecond precision for the next century), while the latter is lossless.
 
@@ -132,7 +133,7 @@ The CLI API for external dataloaders has changed the following argument names:
 
 ## 🐍 Python: `rr.new_recording` is now deprecated in favor of `rr.RecordingStream`
 
-Previously, `RecordingStream` instances could be created with the `rr.new_recording()` function. This method is now deprecated in favor of directly using the [`RecordingStream`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.RecordingStream) constructor. The `RecordingStream` constructor is mostly backward compatible, so in most case it is matter of using `RecordingStream` instead of `new_recording`:
+Previously, `RecordingStream` instances could be created with the `rr.new_recording()` function. This method is now deprecated in favor of directly using the [`RecordingStream`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.RecordingStream) constructor. The `RecordingStream` constructor is mostly backward compatible, so in most cases it is a matter of using `RecordingStream` instead of `new_recording`:
 
 <!-- NOLINT_START -->
 
@@ -161,7 +162,7 @@ rec.spawn()
 
 These functions were [deprecated](migration-0-22.md#python-api-changes) in 0.22 and are no longer available.
 
-Calls to `rr.log_components()` API are now superseded by the new partial update API. See the [documentation](../../concepts/logging-and-ingestion/latest-at.md#partial-updates) and the [migration instructions](migration-0-22.md#partial-updates).
+Calls to `rr.log_components()` API are now superseded by the new partial update API. See the [documentation](../../logging-and-ingestion/data-model/latest-at.md#partial-updates) and the [migration instructions](migration-0-22.md#partial-updates).
 
 Calls to `rr.connect()` and `rr.connect_tcp()` must be changed to [`rr.connect_grpc()`](https://ref.rerun.io/docs/python/0.23.0/common/initialization_functions/#rerun.connect_grpc).
 
@@ -318,7 +319,7 @@ rr.send_blueprint(
 
 ### Visible time range overrides have to specify the underlying archetype
 
-(Note that this functionality broken in at least Rerun 0.21 and 0.22 but is fixed now. See [#8557](https://github.com/rerun-io/rerun/issues/8557))
+(Note that this functionality was broken in at least Rerun 0.21 and 0.22 but is fixed now. See [#8557](https://github.com/rerun-io/rerun/issues/8557))
 
 Before:
 ```python
@@ -369,8 +370,8 @@ overrides = {
 
 ## Types for time series plots are now plural
 
-The `Scalar`/`SeriesPoints`/`SeriesLines` archetypess have been deprecated in favor of
-`Scalars`/`SeriesPoints`/`SeriesLines` since you can now have a multiple
+The `Scalar`/`SeriesPoint`/`SeriesLine` archetypes have been deprecated in favor of
+`Scalars`/`SeriesPoints`/`SeriesLines` since you can now have multiple
 scatter plots or lines on the same archetype.
 
 

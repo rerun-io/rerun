@@ -185,3 +185,23 @@ def test_readonly_dataset_schema_comparison_self_consistent(readonly_test_datase
 
     assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
     assert schema_0 == schema_1, "Schema is not self-consistent"
+
+
+def test_schema_column_for_selector(readonly_test_dataset: DatasetEntry) -> None:
+    schema = readonly_test_dataset.schema()
+
+    column = schema.column_for_selector("/obj1:Points3D:positions")
+    assert column.entity_path == "/obj1"
+    assert column.component == "Points3D:positions"
+
+    column = schema.column_for_selector(rr.catalog.ComponentColumnSelector("/text1", "TextDocument:text"))
+    assert column.entity_path == "/text1"
+    assert column.component == "TextDocument:text"
+
+    assert schema.column_for_selector(column) == column
+
+    with pytest.raises(LookupError):
+        schema.column_for_selector("/nonexistent:Foo:bar")
+
+    with pytest.raises(ValueError):
+        schema.column_for_selector("invalid-format-no-colon")

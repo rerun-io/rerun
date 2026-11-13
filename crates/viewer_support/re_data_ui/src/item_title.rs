@@ -295,7 +295,7 @@ impl ItemTitle {
 pub fn part_separator_image(tint: egui::Color32) -> egui::Image<'static> {
     icons::CHEVRON
         .as_image()
-        .fit_to_exact_size(egui::Vec2::splat(8.0))
+        .fit_to_original_size(1.0)
         .tint(tint)
 }
 

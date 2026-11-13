@@ -10,7 +10,6 @@ use arrow::{
 };
 use itertools::Itertools as _;
 use re_chunk::external::nohash_hasher::IntMap;
-use re_chunk::external::re_byte_size;
 use re_chunk::{ArchetypeName, ChunkError, ChunkId, ComponentIdentifier, ComponentType, Timeline};
 use re_log_types::{AbsoluteTimeRange, EntityPath, StoreId, TimeType, TimelineName};
 use re_sorbet::SchemaId;

@@ -250,6 +250,10 @@
     "card_link_color": {
       "color": "{Blue.500}"
     },
+    // A link inside running text, e.g. in a notification.
+    "inline_link_color": {
+      "color": "{Blue.600}"
+    },
 
     "drag_pill_droppable_fill": {
       "color": "{Blue.325}"
@@ -288,6 +292,9 @@
     },
     "extreme_fg_color": {
       "color": "{Gray.1000}"
+    },
+    "code_bg_color": {
+      "color": "{Gray.300}"
     },
     "widget_hovered_color": {
       "color": "{Gray.250}"
@@ -369,16 +376,16 @@
       "color": "{Gray.500}"
     },
     "list_item_hovered_bg": {
-      "color": "{Gray.150}"
+      "color": "{Gray.250}"
     },
     "list_item_active_bg": {
       "color": "{Gray.150}"
     },
     "list_item_button_hovered_bg": {
-      "color": "{Gray.200}"
+      "color": "{Gray.350}"
     },
     "list_item_button_pressed_bg": {
-      "color": "{Gray.250}"
+      "color": "{Gray.375}"
     },
     "list_item_collapse_default": {
       "color": "{Gray.500}"
@@ -538,14 +545,14 @@
   },
   "button_ghost": {
     "fill": { "color": "{Gray.300}", "alpha": 0 },
-    "fill_hovered": { "color": "{Gray.150}" },
-    "fill_pressed": { "color": "{Gray.200}" },
+    "fill_hovered": { "color": "{Gray.250}" },
+    "fill_pressed": { "color": "{Gray.350}" },
     "text": { "color": "{Gray.725}" },
   },
   "button_outlined": {
     "fill": { "color": "{Gray.300}", "alpha": 0 },
-    "fill_hovered": { "color": "{Gray.150}" },
-    "fill_pressed": { "color": "{Gray.200}" },
+    "fill_hovered": { "color": "{Gray.250}" },
+    "fill_pressed": { "color": "{Gray.350}" },
     "text": { "color": "{Gray.725}" },
   },
   "button_blue": {

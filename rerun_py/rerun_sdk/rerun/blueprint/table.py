@@ -223,8 +223,8 @@ class TableBlueprint:
 
     This configures a table, not a Viewer viewport [`Blueprint`][rerun.blueprint.Blueprint].
     Save it as an `.rbl` file and register its server-accessible URI with
-    `TableEntry.register_blueprint(uri)` or `DatasetEntry.register_blueprint(uri, segment_table=True)`.
-    See [Configure table layouts and segment previews](https://rerun.io/docs/howto/visualization/configure-table-blueprints) for the full workflow.
+    `TableEntry.register_blueprint(uri, name=…)` or `DatasetEntry.register_table_blueprint(uri, name=…)`.
+    See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints) for the full workflow.
 
     Parameters
     ----------

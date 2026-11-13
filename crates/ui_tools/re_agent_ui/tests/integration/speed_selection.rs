@@ -42,6 +42,16 @@ fn speed_selection_is_saved_for_the_conversations_agent_profile() {
                     ],
                 )
                 .category(SessionConfigOptionCategory::ModelConfig),
+                SessionConfigOption::select(
+                    "mode",
+                    "Mode",
+                    "default",
+                    vec![
+                        SessionConfigSelectOption::new("default", "Manual"),
+                        SessionConfigSelectOption::new("acceptEdits", "Accept edits"),
+                    ],
+                )
+                .category(SessionConfigOptionCategory::Mode),
             ]),
         )));
     panel.settings_mut().profile_id = AgentProfileId::new("codex");
@@ -51,14 +61,16 @@ fn speed_selection_is_saved_for_the_conversations_agent_profile() {
     )
     .build_ui_state(|ui, panel| panel.ui(ui), panel);
     harness.run_steps(3);
-    harness.get_by_value("Standard").click();
-    harness.run_steps(2);
+    super::open_settings_submenu(&mut harness, "GPT-6.1 Sol", "Speed");
     harness.snapshot("chat_speed_menu");
     harness.get_by_label("Ultrafast").click();
     harness.run_steps(2);
 
     let saved = serde_json::to_value(harness.state().settings()).expect("save settings");
-    assert_eq!(saved["preferences"]["claude"]["speed"], "ultrafast");
+    assert_eq!(
+        saved["preferences"]["claude"]["config_options"]["fast-mode"]["value"],
+        "ultrafast"
+    );
     assert!(saved["preferences"]["codex"].is_null());
     let mut restored: AgentSettings = serde_json::from_value(saved).expect("reload settings");
     restored.profile_id = AgentProfileId::new("claude");
@@ -76,16 +88,17 @@ fn speed_selection_is_saved_for_the_conversations_agent_profile() {
     };
     assert_eq!(
         config
-            .preferred_speed
-            .as_ref()
+            .preferences
+            .get("fast-mode")
+            .and_then(|value| value.as_value_id())
             .map(|value| value.0.as_ref()),
         Some("ultrafast")
     );
 }
 
-/// Claude's on/off values appear as Fast/Standard and preserve their protocol values.
+/// On/off choices use a checkbox while preserving their select-valued protocol representation.
 #[test]
-fn claude_fast_toggle_is_shown_as_standard_and_fast() {
+fn on_off_choices_use_a_checkbox() {
     let mut panel = ready_panel();
     panel
         .session_mut()
@@ -109,16 +122,17 @@ fn claude_fast_toggle_is_shown_as_standard_and_fast() {
     )
     .build_ui_state(|ui, panel| panel.ui(ui), panel);
     harness.run_steps(3);
-    harness.get_by_value("Standard").click();
+    harness.get_by_label("Settings").click();
     harness.run_steps(2);
-    harness.get_by_label("Fast").click();
+    harness.get_by_label("Fast mode").click();
     harness.run_steps(2);
     assert_eq!(
         harness
             .state()
             .settings()
             .preferences(&AgentProfileId::new("claude"))
-            .and_then(|preferences| preferences.speed.as_ref())
+            .and_then(|preferences| preferences.get("fast"))
+            .and_then(|value| value.as_value_id())
             .map(|speed| speed.0.as_ref()),
         Some("on")
     );

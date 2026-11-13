@@ -5,8 +5,8 @@
 //! ```
 
 use rerun::RecordingStream;
+use rerun::external::re_chunk_store;
 use rerun::external::re_log_types::NonMinI64;
-use rerun::external::{re_chunk_store, re_log};
 use rerun::time::TimeInt;
 
 fn main() -> anyhow::Result<()> {

@@ -222,8 +222,7 @@ impl SerializedComponentColumn {
 impl From<SerializedComponentBatch> for SerializedComponentColumn {
     #[inline]
     fn from(batch: SerializedComponentBatch) -> Self {
-        use arrow::array::{Array as _, ListArray};
-        use arrow::buffer::OffsetBuffer;
+        use arrow::array::Array as _;
         use arrow::datatypes::Field;
 
         let list_array = {

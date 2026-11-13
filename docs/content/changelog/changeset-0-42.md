@@ -12,7 +12,7 @@ The view allows you to pick which components to show, switch between compact and
 Configure it in the Viewer or [with a Python blueprint](../reference/types/views/raw_data_view.md#example).
 
 <picture>
-  <img src="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/full.png" alt="">
+  <img src="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/full.png" alt="Three Raw Data views showing a nested Localization message, compact Robot health values, and selected Landmarks components">
   <source media="(max-width: 480px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/480w.png">
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/raw-data-view/a5701c844bfba884f8897b112f0e2589d1bb164a/1024w.png">
@@ -20,7 +20,7 @@ Configure it in the Viewer or [with a Python blueprint](../reference/types/views
 
 ### Schema tab for datasets
 
-The dataset page in the redap browser has a new "Schema" tab, showing the combined [schema](../concepts/query-and-transform/catalog-object-model.md#schema) of all [layers](../concepts/query-and-transform/catalog-object-model.md#managing-segment-layers-with-the-python-catalog-api) in the dataset.
+The dataset page in the redap browser has a new "Schema" tab, showing the combined [schema](../query-and-transform/catalog/catalog-object-model.md#schema) of all [layers](../query-and-transform/catalog/catalog-object-model.md#managing-segment-layers-with-the-python-catalog-api) in the dataset.
 
 Entities are listed as a searchable tree, and the components at the selected entity are shown next to it.
 The archetype and data type of each component can be shown as extra columns.
@@ -38,7 +38,7 @@ The archetype and data type of each component can be shown as extra columns.
 - **Hovering a tensor shows a zoomed preview and element values**: Hovering a tensor in the [tensor view](../reference/types/views/tensor_view.md) now shows a magnified view of the surrounding elements, along with the index and value of the element under the cursor, like hovering an image in the 2D view does.
 
   <img src="https://static.rerun.io/tensor-view-hover/9e0adf6a485257e0e0721130bd28f3c557e7d005/full.png" alt="Display tooltip hovering over tensor index and showing matching value.">
-- **Give table columns semantic meaning**: `rr.components.Flag.table_field("reviewed", editable=True)` returns a catalog table schema field with a Rerun component type, which gives the column semantic meaning. The Viewer uses it to pick the UI for the column. With `editable=True`, the column can be edited without a table blueprint. See [Give columns semantic meaning](../howto/query-and-transform/catalog-tables.md#give-columns-semantic-meaning).
+- **Give table columns semantic meaning**: `rr.components.Flag.table_field("reviewed", editable=True)` returns a catalog table schema field with a Rerun component type, which gives the column semantic meaning. The Viewer uses it to pick the UI for the column. With `editable=True`, the column can be edited without a table blueprint. See [Give columns semantic meaning](../query-and-transform/catalog/catalog-tables.md#give-columns-semantic-meaning).
 
   ```python
   schema = pa.schema([

@@ -55,6 +55,7 @@ fn is_chunk_not_indexed(err: &re_redap_client::ApiError) -> bool {
                 && [
                     re_protos::error::CHUNK_NOT_INDEXED,
                     re_protos::error::UNINDEXED_DATA_NEEDS_SEGMENTS,
+                    re_protos::error::UNINDEXED_DATA_TOO_LARGE,
                 ]
                 .contains(&info.reason.as_str())
         })
@@ -119,6 +120,9 @@ enum ExternalError {
 
     #[error(transparent)]
     InvalidLayerNameError(#[from] re_types_core::InvalidLayerNameError),
+
+    #[error(transparent)]
+    InvalidBlueprintNameError(#[from] re_catalog_client::InvalidBlueprintNameError),
 }
 
 const _: () = assert!(
@@ -278,6 +282,8 @@ impl From<ExternalError> for PyErr {
             }
 
             ExternalError::InvalidLayerNameError(err) => PyValueError::new_err(err.to_string()),
+
+            ExternalError::InvalidBlueprintNameError(err) => PyValueError::new_err(err.to_string()),
         }
     }
 }
@@ -294,7 +300,7 @@ pub fn to_py_err(err: impl Into<ExternalError>) -> PyErr {
 mod tests {
     use super::*;
     use datafusion::error::DataFusionError;
-    use re_redap_client::{ApiError, ApiErrorKind, TraceId};
+    use re_redap_client::{ApiError, TraceId};
 
     /// A `DataFusionError::External` wrapping an `ApiError` must be recovered
     /// as `ExternalError::ApiError`, with the trace-id and kind preserved.

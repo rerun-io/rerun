@@ -1007,8 +1007,6 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use arrow::array::{
         BooleanArray, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions, StringArray,
         UInt64Array,

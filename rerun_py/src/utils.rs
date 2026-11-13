@@ -1,8 +1,6 @@
 use std::ffi::CString;
-use std::future::Future;
 use std::sync::OnceLock;
 
-use pyo3::Python;
 use pyo3::prelude::*;
 use tokio::runtime::Runtime;
 

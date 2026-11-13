@@ -563,7 +563,6 @@ fn resolve_parent_frame(
 /// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.
 ///
 /// Gives precedence to the `Pinhole` archetype.
-// TODO(#2663): This is confusing and should be cleaned up.
 pub fn query_view_coordinates(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -616,10 +615,9 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk_store::Chunk;
-    use re_entity_db::{EntityDb, EntityPath};
     use re_log_types::Timeline;
     use re_sdk_types::{
-        archetypes::{self, InstancePoses3D, Pinhole, Transform3D},
+        archetypes::{self, Pinhole, Transform3D},
         components::{PinholeProjection, RotationQuat, ViewCoordinates},
     };
 

@@ -300,7 +300,6 @@ impl Drop for CurrentStores {
     }
 }
 
-// TODO(#10781) - support for sending intermediate results/chunks
 #[instrument(level = "info", skip_all)]
 pub(super) async fn chunk_store_cpu_worker_thread(
     origin: re_uri::Origin,
@@ -753,7 +752,6 @@ async fn maybe_emit_head(
 #[cfg(test)]
 mod tests {
     use re_dataframe::TimelineName;
-    use re_dataframe::external::re_chunk::Chunk;
 
     use super::*;
     use crate::dataframe_query_provider::test_utils::temporal_chunk;

@@ -11,10 +11,14 @@ use re_datafusion::TableEntryTableProvider;
 use re_protos::cloud::v1alpha1::ext::{
     EntryDetails, ProviderDetails, TableDetails, TableEntry, TableInsertMode,
 };
+use re_protos::common::v1alpha1::ext::SegmentId;
 
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::table_provider_adapter::ffi_logical_codec_from_pycapsule;
-use crate::catalog::{PyCatalogClientInternal, PyDatasetEntryInternal, PyEntryDetails, to_py_err};
+use crate::catalog::{
+    BlueprintFields, PyCatalogClientInternal, PyDatasetEntryInternal, PyEntryDetails,
+    blueprint_fields, to_py_err,
+};
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
 
@@ -86,41 +90,52 @@ impl PyTableEntryInternal {
         Py::new(py, PyDatasetEntryInternal::new(client, dataset_entry))
     }
 
-    /// The default blueprint segment ID for this table, if any.
+    /// The default blueprint of this table, if any.
     ///
     /// ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
     /// TODO(#12746): Stabilize table blueprint APIs.
-    fn default_blueprint_segment_id(self_: PyRef<'_, Self>) -> Option<String> {
-        self_
-            .table_details
-            .default_blueprint_segment
-            .as_ref()
-            .map(ToString::to_string)
+    fn default_blueprint(
+        self_: PyRef<'_, Self>,
+        py: Python<'_>,
+    ) -> PyResult<Option<BlueprintFields>> {
+        let _span = read_trace_context_from_python(py, "TableEntry.default_blueprint").entered();
+        let connection = self_.client.borrow(py).connection().clone();
+        let table_id = self_.entry_details.id;
+
+        let blueprint = wait_for_future(py, async {
+            connection
+                .inner()
+                .get_table_default_blueprint(table_id)
+                .await
+                .map_err(to_py_err)
+        })?;
+        Ok(blueprint.map(blueprint_fields))
     }
 
-    /// Set the default blueprint segment ID for this table.
-    ///
-    /// Pass `None` to clear the blueprint. This fails if the change cannot be made to the remote server.
+    /// Set the default blueprint of this table to the blueprint with this segment ID, or clear it
+    /// with `None`.
     ///
     /// ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
     /// TODO(#12746): Stabilize table blueprint APIs.
     #[pyo3(signature = (segment_id))]
-    fn set_default_blueprint_segment_id(
+    fn set_default_blueprint(
         mut self_: PyRefMut<'_, Self>,
         py: Python<'_>,
         segment_id: Option<String>,
     ) -> PyResult<()> {
         let _span =
-            read_trace_context_from_python(py, "TableEntry.set_default_blueprint_segment_id")
-                .entered();
+            read_trace_context_from_python(py, "TableEntry.set_default_blueprint").entered();
         let connection = self_.client.borrow(py).connection().clone();
+        let table_id = self_.entry_details.id;
 
-        let mut table_details = self_.table_details.clone();
-        table_details.default_blueprint_segment = segment_id.map(Into::into);
-
-        let result = connection.update_table(py, self_.entry_details.id, table_details)?;
-
-        self_.table_details = result.table_details;
+        let table_entry = wait_for_future(py, async {
+            connection
+                .inner()
+                .set_table_default_blueprint(table_id, segment_id.map(SegmentId::from))
+                .await
+                .map_err(to_py_err)
+        })?;
+        self_.table_details = table_entry.table_details;
 
         Ok(())
     }

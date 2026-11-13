@@ -136,7 +136,6 @@ mod tests {
     use std::borrow::Cow;
     use std::io;
 
-    use re_chunk::Chunk;
     use re_chunk::EntityPath;
     use re_chunk::external::arrow::array::Array as _;
 

@@ -73,12 +73,12 @@ pub use session::{
     Prompt, PromptImage,
 };
 pub use settings::{
-    AgentLaunch, AgentLaunchError, AgentPreferences, AgentSettings, McpServerConfig,
-    SavedConversation, SessionContext,
+    AgentLaunch, AgentLaunchError, AgentPreferences, AgentSettings, DEFAULT_MODEL_PREFERENCES,
+    Effort, McpServerConfig, SavedConversation, SessionContext,
 };
 pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};
 pub use transcript::{
     ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,
-    select_options, truncate_bytes,
+    preferred_model, select_options, truncate_bytes,
 };
 pub use turn::{TurnOutcome, TurnReport};

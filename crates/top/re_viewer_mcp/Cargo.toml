@@ -30,6 +30,8 @@ path = "src/main.rs"
 [dependencies]
 egui_inspection.workspace = true
 egui_mcp.workspace = true
+re_analytics.workspace = true
+re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_protos.workspace = true
 re_viewer_control_tools.workspace = true
