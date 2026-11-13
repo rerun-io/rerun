@@ -334,10 +334,9 @@ where
                                 re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                                     segment_id: Some(request_segment_id.clone().into()),
                                     generate_direct_urls,
-                                    client_capabilities: vec![
-                                        re_protos::capabilities::DATASET_RRD_MANIFEST_KEY_STORE_ID
-                                            .to_owned(),
-                                    ],
+                                    client_meta: Some(
+                                        re_protos::cloud::v1alpha1::ClientMeta::current(),
+                                    ),
                                 },
                             )
                             .with_entry_id(dataset_id),

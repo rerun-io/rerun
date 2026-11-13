@@ -8,6 +8,7 @@ mod fetch_chunks;
 mod find_chunks;
 mod find_entries_filters;
 mod get_schemas;
+mod protocol_level;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
@@ -135,6 +136,7 @@ define_redap_tests! {
     get_schemas::get_schemas_invalid_id,
     get_schemas::get_schemas_other_dataset_id,
     get_schemas::get_schemas_too_many_ids,
+    protocol_level::new_dataset_serves_clients_without_protocol_level,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_has_uncompressed_sizes,
     query_dataset::query_dataset_matches_find_chunks,

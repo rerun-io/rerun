@@ -416,6 +416,9 @@ message VersionResponse {
   // and stay safe against rolling deployments where the server may be older
   // than the client.
   //
+  // New flags do not go here: what a build understands is a protocol level, see
+  // `ClientMeta.protocol_level`.
+  //
   // The format is a list of opaque feature strings. Known features:
   //
   // * `per_segment_index_values` — the server consumes
@@ -429,7 +432,11 @@ message VersionResponse {
   repeated string features = 5;
 }
 
-// Capability names describing what a server implements and supports.
+// Capability names describing what this server is configured to offer.
+//
+// Two servers of the same build can advertise different capabilities, because the names follow
+// the server's configuration. What a build understands, on either side, is a protocol level
+// instead: see `ClientMeta.protocol_level`.
 //
 // A capability does not depend on the caller. Whether the caller is allowed to
 // use one is answered by `can_read` and `can_write`.
@@ -439,8 +446,33 @@ message VersionResponse {
 // only, never a prefix and never a `*`. Clients ignore names they do not know,
 // so a new name never breaks an older client.
 message ServerCapabilities {
-  // Every capability this server implements and supports.
+  // Every capability this server is configured to offer.
   repeated string capabilities = 1;
+}
+
+// What a client understands, sent on the requests whose handling depends on it.
+message ClientMeta {
+  // The protocol level the client implements.
+  //
+  // Protocol levels are protocol revisions shared by clients and servers: a level says what a
+  // build understands and can handle. They count revisions within this package version. Each
+  // level has a client part and a server part, and a level implies all the levels below it. A
+  // side claims a level only once it implements its part of that level and of every level below.
+  // The level is fixed by the build: it never depends on configuration, on the caller, or on the
+  // platform.
+  //
+  // What can differ between two servers of the same build, such as their configuration, is
+  // advertised by name in `ServerCapabilities` instead.
+  //
+  // A server can refuse a request from a client below the level it takes to handle the response
+  // correctly, with `FailedPrecondition`. A dataset requires a level this way, in
+  // `DatasetEntry.required_client_protocol_level`.
+  //
+  // Levels, detailed on `ProtocolLevel` in `re_protos`:
+  //
+  // * 0, `baseline`: also when `ClientMeta` is unset.
+  // * 1, `manifest_key_store_id`.
+  uint32 protocol_level = 1;
 }
 
 // Request for `WhoAmI`. Empty: the caller is identified by their credentials.
@@ -1110,16 +1142,16 @@ message GetRrdManifestRequest {
   // It is not guaranteed that the server will honor this.
   bool generate_direct_urls = 2;
 
-  // What this client implements, as capability names.
+  // What the client implements.
   //
-  // Names follow the rules of `ServerCapabilities`. Servers ignore names they do not know.
-  // Known names:
+  // Below the protocol level the dataset requires, the request fails with `FailedPrecondition`.
   //
-  // * `dataset:rrd_manifest_key:store_id` — the client picks the manifest out of a fetched
-  //   `RrdFooter` by `RrdManifestKey.store_id`, rather than by segment id.
-  //   Without it, the server sends no direct URL for a segment whose segment id is not its
-  //   store's recording id, and returns that segment's manifests in the response instead.
-  repeated string client_capabilities = 3;
+  // Below protocol level 1, the server sends no manifest key for a segment whose segment id is
+  // not its store's recording id, and returns that segment's manifests in the response instead.
+  ClientMeta client_meta = 200;
+
+  reserved 3;
+  reserved "client_capabilities";
 }
 
 // One part of an RRD manifest, yielded by `GetRrdManifest`.
@@ -1300,6 +1332,11 @@ message QueryDatasetRequest {
   // The Rerun-native query to run. Leave unset to match on the other filters alone: an unset
   // `query` applies no temporal narrowing.
   Query query = 6;
+
+  // What the client implements.
+  //
+  // Below the protocol level the dataset requires, the request fails with `FailedPrecondition`.
+  ClientMeta client_meta = 200;
 
   reserved 1;
   reserved "dataset_id";
@@ -1505,6 +1542,11 @@ message FindChunksRequest {
   //   Unindexed data is read from the recordings themselves, so it needs explicit segments.
   //   Without them, a request that touches unindexed data fails with `FailedPrecondition`.
   DatasetQueryScope scope = 6;
+
+  // What the client implements.
+  //
+  // Below the protocol level the dataset requires, the request fails with `FailedPrecondition`.
+  ClientMeta client_meta = 200;
 }
 
 // One batch of chunk candidates yielded by `FindChunks`.
@@ -2213,6 +2255,12 @@ message DatasetEntry {
 
   // Read-only
   rerun.common.v1alpha1.DatasetHandle dataset_handle = 2;
+
+  // The lowest `ClientMeta.protocol_level` a client needs to read this dataset. Read-only.
+  //
+  // The server raises it when the dataset comes to hold data that clients below that level
+  // misread, and never lowers it. 0 means every client can read the dataset.
+  uint32 required_client_protocol_level = 5;
 }
 
 // The table-specific part of a `TableEntry`. Updatable with `UpdateTableEntry`.

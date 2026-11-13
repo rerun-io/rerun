@@ -75,6 +75,7 @@ impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
             query: value.query.map(Into::into),
             generate_direct_urls: value.generate_direct_urls,
             unsigned_direct_urls: value.unsigned_direct_urls,
+            client_meta: Some(crate::cloud::v1alpha1::ClientMeta::current()),
         }
     }
 }
@@ -841,6 +842,7 @@ impl From<FindChunksRequest> for crate::cloud::v1alpha1::FindChunksRequest {
             },
             mode: Some(value.mode.into()),
             scope: value.scope as i32,
+            client_meta: Some(crate::cloud::v1alpha1::ClientMeta::current()),
         }
     }
 }
@@ -1299,6 +1301,7 @@ mod tests {
             direct_url_mode: cloud_proto::DirectUrlMode::Unspecified as i32,
             mode,
             scope: cloud_proto::DatasetQueryScope::Unspecified as i32,
+            client_meta: None,
         }
     }
 
@@ -1895,6 +1898,7 @@ mod tests {
             contents: Some(fcr_all_contents()),
             mode: Some(fcr_static_mode(Some(fcr_explicit_segments(&[])))),
             scope: cloud_proto::DatasetQueryScope::Unspecified as i32,
+            client_meta: None,
         })
         .expect_err("unknown direct URL mode must be rejected before empty-selection handling");
         assert_eq!(err.code(), tonic::Code::InvalidArgument);

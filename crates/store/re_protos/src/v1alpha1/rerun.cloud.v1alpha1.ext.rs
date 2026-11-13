@@ -23,6 +23,7 @@ use crate::cloud::v1alpha1::{
 use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
+use crate::protocol_level::ProtocolLevel;
 pub use crate::storage_location::{
     InvalidStorageStringValue, StorageBucketName, StoragePrefix, StorageRegion,
 };
@@ -935,6 +936,9 @@ pub struct DatasetEntry {
     pub details: EntryDetails,
     pub dataset_details: DatasetDetails,
     pub handle: DatasetHandle,
+
+    /// The lowest protocol level a client needs to read this dataset. Server-managed.
+    pub required_client_protocol_level: ProtocolLevel,
 }
 
 impl TryFrom<crate::cloud::v1alpha1::DatasetEntry> for DatasetEntry {
@@ -963,6 +967,7 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetEntry> for DatasetEntry {
                     "handle"
                 ))?
                 .try_into()?,
+            required_client_protocol_level: value.required_client_protocol_level.into(),
         })
     }
 }
@@ -973,6 +978,7 @@ impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
             details: Some(value.details.into()),
             dataset_details: Some(value.dataset_details.into()),
             dataset_handle: Some(value.handle.into()),
+            required_client_protocol_level: value.required_client_protocol_level.as_u32(),
         }
     }
 }
@@ -2015,6 +2021,17 @@ impl GetDatasetSchemaResponse {
                 TypeConversionError::missing_field::<GetDatasetSchemaResponse>("schema")
             })?
             .try_into()?)
+    }
+}
+
+// --- ClientMeta ---
+
+impl crate::cloud::v1alpha1::ClientMeta {
+    /// The metadata of this build, as a client.
+    pub fn current() -> Self {
+        Self {
+            protocol_level: ProtocolLevel::CURRENT.as_u32(),
+        }
     }
 }
 
