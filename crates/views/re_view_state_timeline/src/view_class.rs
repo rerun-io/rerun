@@ -3,7 +3,7 @@ use re_log_types::{
     AbsoluteTimeRange, DateVisibility, EntityPath, TimeInt, TimeReal, TimeType, TimestampFormat,
 };
 use re_sdk_types::blueprint::archetypes::TimeAxis;
-use re_sdk_types::blueprint::components::{LinkAxis, LockRangeDuringZoom};
+use re_sdk_types::blueprint::components::{LinkAxis, LockRangeDuringZoom, LoopMode};
 use re_sdk_types::encodings::{TimeRange, TimeRangeBoundary};
 use re_time_ruler::{MAX_ZIG_WIDTH, TimeRangesUi};
 use re_ui::{DesignTokens, Help, IconText, MouseButtonText, UiExt as _, icons, list_item};
@@ -101,6 +101,7 @@ impl ViewClass for StateTimelineView {
         Help::new("State timeline view")
             .markdown("Shows state transitions as horizontal colored lanes over time.")
             .control("Move time cursor", icons::RIGHT_MOUSE_CLICK)
+            .control("State actions", (icons::RIGHT_MOUSE_CLICK, "state"))
             .control(
                 "Pan",
                 (MouseButtonText(egui::PointerButton::Primary), "+", "drag"),
@@ -415,7 +416,10 @@ impl ViewClass for StateTimelineView {
         let mut hovered_phase: Option<HoveredPhase> = None;
         let mut group_label_anchors: Vec<(egui::Pos2, &StateLaneGroup)> =
             Vec::with_capacity(all_groups.len());
-        let interact_pos = (response.contains_pointer() && !response.dragged())
+        // No hovering lanes while a state's context menu is open, so its tooltip doesn't cover the menu.
+        let menu_id = ui.make_persistent_id("state_timeline_phase_menu");
+        let menu_is_open = ui.memory(|mem| mem.data.get_temp::<PhaseMenuTarget>(menu_id).is_some());
+        let interact_pos = (response.contains_pointer() && !response.dragged() && !menu_is_open)
             .then(|| ui.input(|i| i.pointer.interact_pos()))
             .flatten();
         ui.scope_builder(egui::UiBuilder::new().max_rect(lanes_rect), |ui| {
@@ -482,24 +486,56 @@ impl ViewClass for StateTimelineView {
             None
         };
 
-        // Secondary (right) click anywhere in the view jumps the time cursor.
-        let clicked_time = if response.clicked_by(egui::PointerButton::Secondary)
+        // Secondary (right) click on a state phase opens its context menu,
+        // anywhere else in the view it jumps the time cursor.
+        let secondary_clicked_time = if response.clicked_by(egui::PointerButton::Secondary)
             && let Some(pos) = response.interact_pointer_pos()
         {
             time_ranges_ui.time_from_x_f32(pos.x)
         } else {
             None
         };
+        if let Some(time) = secondary_clicked_time {
+            let target = hovered_phase.as_ref().map(|phase| PhaseMenuTarget {
+                clicked_time: time,
+                start_time: phase.start_time,
+                end_time: phase.end_time,
+            });
+            ui.memory_mut(|mem| {
+                if let Some(target) = target {
+                    mem.data.insert_temp(menu_id, target);
+                } else {
+                    mem.data.remove::<PhaseMenuTarget>(menu_id);
+                }
+            });
+        }
+        let menu_target: Option<PhaseMenuTarget> = ui.memory(|mem| mem.data.get_temp(menu_id));
+        let clicked_time = secondary_clicked_time.filter(|_| menu_target.is_none());
+
+        let mut menu_time = None;
+        if let Some(target) = menu_target {
+            let menu_is_open = egui::Popup::context_menu(&response)
+                .show(|ui| {
+                    menu_time = phase_context_menu_ui(ctx, ui, target);
+                })
+                .is_some();
+            if !menu_is_open {
+                ui.memory_mut(|mem| mem.data.remove::<PhaseMenuTarget>(menu_id));
+            }
+        }
 
         // The window to store at the end of the frame, if moving the cursor changed it.
-        let new_view_range = dragged_time.or(clicked_time).and_then(|time| {
-            re_view::set_time_cursor(
-                ctx,
-                Some(query.latest_at.as_i64()),
-                Some(&view_range.0),
-                time,
-            )
-        });
+        let new_view_range = dragged_time
+            .or(clicked_time)
+            .or(menu_time)
+            .and_then(|time| {
+                re_view::set_time_cursor(
+                    ctx,
+                    Some(query.latest_at.as_i64()),
+                    Some(&view_range.0),
+                    time,
+                )
+            });
 
         // Pan: primary- or middle-click drag, plus two-finger touchpad horizontal scroll.
         // Cmd+scroll is routed to `zoom_delta` by egui, so it won't double-fire here.
@@ -900,6 +936,56 @@ fn save_view_range(ctx: &ViewerContext<'_>, time_axis: &ViewProperty, view_range
         &TimeAxis::descriptor_view_range(),
         &re_sdk_types::blueprint::components::TimeRange(view_range),
     );
+}
+
+/// The state phase a context menu was opened on.
+#[derive(Clone, Copy)]
+struct PhaseMenuTarget {
+    /// Where the user right-clicked.
+    clicked_time: TimeReal,
+
+    start_time: i64,
+
+    /// `None` for an open-ended last phase.
+    end_time: Option<i64>,
+}
+
+/// Context menu for a right-clicked state phase.
+///
+/// Returns the time to move the time cursor to, if any.
+fn phase_context_menu_ui(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    target: PhaseMenuTarget,
+) -> Option<TimeReal> {
+    // Right-click outside a state moves the time cursor; keep that one click away on a state.
+    let move_here = ui.button("Move time cursor here").clicked();
+    let jump_to_start = ui.button("Jump to start of state").clicked();
+
+    if ui
+        .button("Set time selection to state")
+        .on_hover_text("Select the time range of this state and loop playback over it")
+        .clicked()
+    {
+        let range = AbsoluteTimeRange::new(
+            TimeInt::saturated_temporal_i64(target.start_time),
+            target
+                .end_time
+                .map_or(TimeInt::MAX, TimeInt::saturated_temporal_i64),
+        );
+        ctx.send_time_commands([
+            TimeControlCommand::SetTimeSelectionClamped(range),
+            TimeControlCommand::SetLoopMode(LoopMode::Selection),
+        ]);
+    }
+
+    if move_here {
+        Some(target.clicked_time)
+    } else if jump_to_start {
+        Some(TimeReal::from(target.start_time as f64))
+    } else {
+        None
+    }
 }
 
 /// What the lane-group widgets found under the pointer this frame.
