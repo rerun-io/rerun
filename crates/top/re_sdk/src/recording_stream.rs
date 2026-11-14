@@ -1602,6 +1602,19 @@ impl RecordingStream {
         }
         drop(tx);
 
+        // Join the importer threads that are already done before spawning a new one, so that their
+        // resources are released now rather than on the next flush.
+        self.with(|inner| {
+            let finished = inner
+                .importer_handles
+                .lock()
+                .extract_if(.., |handle| handle.is_finished())
+                .collect::<Vec<_>>();
+            for handle in finished {
+                handle.join().ok();
+            }
+        });
+
         // We can safely ignore the error on `recv()` as we're in complete control of both ends of
         // the channel.
         let thread_name = if has_contents {
@@ -3541,6 +3554,46 @@ mod tests {
             std::env::remove_var("RERUN_FLUSH_TICK_SECS");
             std::env::remove_var("RERUN_MAX_CHUNK_ROWS_IF_UNSORTED");
         }
+    }
+
+    #[cfg(feature = "importers")]
+    #[test]
+    fn finished_importer_threads_are_joined() {
+        let (rec, _storage) = RecordingStreamBuilder::new("rerun_example_finished_importers")
+            .memory()
+            .unwrap();
+
+        for _ in 0..20 {
+            rec.log_file_from_contents("hello.txt", b"hello".into(), None, false)
+                .unwrap();
+        }
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            let all_finished = rec
+                .with(|inner| {
+                    let importer_handles = inner.importer_handles.lock();
+                    importer_handles.iter().all(|handle| handle.is_finished())
+                })
+                .unwrap();
+            if all_finished {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "importer threads did not finish"
+            );
+            std::thread::yield_now();
+        }
+
+        // The next import joins all the finished threads, so only its own handle is left.
+        rec.log_file_from_contents("hello.txt", b"hello".into(), None, false)
+            .unwrap();
+
+        let pending_importers = rec
+            .with(|inner| inner.importer_handles.lock().len())
+            .unwrap();
+        assert_eq!(pending_importers, 1);
     }
 
     #[test]
