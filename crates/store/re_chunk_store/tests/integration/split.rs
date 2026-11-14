@@ -5,10 +5,12 @@ use std::sync::Arc;
 
 use re_chunk::{Chunk, RowId, TimeInt};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkTrackingMode, IsStartOfGop};
-use re_log_types::example_components::{MyPoint, MyPoints};
+use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
 use re_log_types::{AbsoluteTimeRange, TimePoint, Timeline};
-use re_sdk_types::archetypes::{Transform3D, VideoStream};
-use re_sdk_types::components::{TransformFrameId, Translation3D, VideoCodec, VideoSample};
+use re_sdk_types::archetypes::{Pinhole, Transform3D, VideoStream};
+use re_sdk_types::components::{
+    IsKeyframe, PinholeProjection, TransformFrameId, Translation3D, VideoCodec, VideoSample,
+};
 use re_types_core::ComponentBatch;
 
 fn frame() -> Timeline {
@@ -258,5 +260,297 @@ fn splits_multiple_ranges() {
     assert_eq!(
         times[2]["/video:VideoStream:sample"],
         some(&[5, 6, 7, 8, 9, 10, 11, 12, 13, 14])
+    );
+}
+
+#[test]
+fn keeps_static_data() {
+    let mut store = new_store();
+    let projection = PinholeProjection::from([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
+    let translation = Translation3D::new(1.0, 2.0, 3.0);
+    insert_chunk(
+        &mut store,
+        "/camera",
+        vec![(
+            None,
+            vec![(Pinhole::descriptor_image_from_camera(), &projection as _)],
+        )],
+    );
+    insert_chunk(
+        &mut store,
+        "/static_tf",
+        vec![(
+            None,
+            vec![(Transform3D::descriptor_translation(), &translation as _)],
+        )],
+    );
+    insert_chunk(&mut store, "/static_points", vec![(None, vec![points()])]);
+    insert_chunk(
+        &mut store,
+        "/points",
+        [5].map(|t| (Some(t), vec![points()])).into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    assert_no_duplicate_rows(&chunks);
+    assert_eq!(
+        times_per_component(&chunks),
+        BTreeMap::from([
+            ("/camera:Pinhole:image_from_camera".to_owned(), vec![None]),
+            ("/points:example.MyPoints:points".to_owned(), some(&[5])),
+            (
+                "/static_points:example.MyPoints:points".to_owned(),
+                vec![None]
+            ),
+            ("/static_tf:Transform3D:translation".to_owned(), vec![None]),
+        ])
+    );
+}
+
+/// A chunk can hold both special (pinhole, transform, video) and regular components, e.g. after compaction.
+#[test]
+fn mixed_chunks_are_not_duplicated() {
+    let mut store = new_store();
+    let projection = PinholeProjection::from([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
+    insert_chunk(
+        &mut store,
+        "/camera",
+        (1..=10)
+            .map(|t| {
+                (
+                    Some(t),
+                    vec![
+                        (Pinhole::descriptor_image_from_camera(), &projection as _),
+                        points(),
+                    ],
+                )
+            })
+            .collect(),
+    );
+
+    let child = TransformFrameId::new("child");
+    insert_chunk(
+        &mut store,
+        "/tf",
+        (1..=10)
+            .map(|t| {
+                (
+                    Some(t),
+                    vec![
+                        (
+                            Transform3D::descriptor_child_frame(),
+                            &child as &dyn ComponentBatch,
+                        ),
+                        points(),
+                    ],
+                )
+            })
+            .collect(),
+    );
+
+    let chunks = split(&store, (4, 6), None);
+
+    assert_no_duplicate_rows(&chunks);
+    let times = times_per_component(&chunks);
+    assert_eq!(times["/camera:Pinhole:image_from_camera"], some(&[4, 5, 6]));
+    assert_eq!(times["/camera:example.MyPoints:points"], some(&[4, 5, 6]));
+    // All transforms before the range are kept, but not the other data logged next to them.
+    assert_eq!(
+        times["/tf:Transform3D:child_frame"],
+        some(&[1, 2, 3, 4, 5, 6])
+    );
+    assert_eq!(times["/tf:example.MyPoints:points"], some(&[4, 5, 6]));
+}
+
+#[test]
+fn unsorted_chunks_are_not_duplicated() {
+    let mut store = new_store();
+    let color = MyColor(0xFF0000FF);
+    insert_chunk(
+        &mut store,
+        "/unsorted",
+        [10, 4, 2, 6]
+            .map(|t| {
+                (
+                    Some(t),
+                    vec![
+                        points(),
+                        (MyPoints::descriptor_colors(), &color as &dyn ComponentBatch),
+                    ],
+                )
+            })
+            .into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    assert_no_duplicate_rows(&chunks);
+    let times = times_per_component(&chunks);
+    assert_eq!(times["/unsorted:example.MyPoints:points"], some(&[4, 6]));
+    assert_eq!(times["/unsorted:example.MyPoints:colors"], some(&[4, 6]));
+}
+
+#[test]
+fn unsorted_chunks_keep_row_id_order() {
+    let mut store = new_store();
+    // Rows inside the range are logged out of time order: 6 before 4.
+    insert_chunk(
+        &mut store,
+        "/unsorted",
+        [10, 6, 4, 2].map(|t| (Some(t), vec![points()])).into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    assert_eq!(
+        times_per_component(&chunks)["/unsorted:example.MyPoints:points"],
+        some(&[4, 6])
+    );
+    for chunk in &chunks {
+        assert!(
+            chunk.is_row_ids_sorted_uncached(),
+            "rows of {} are not in RowId order",
+            chunk.entity_path()
+        );
+    }
+
+    // The split must load back.
+    let mut loaded = new_store();
+    for chunk in chunks {
+        loaded
+            .insert_chunk(&Arc::new(chunk))
+            .expect("insert split chunk");
+    }
+}
+
+#[test]
+fn video_starts_on_previous_keyframe() {
+    let mut store = new_store();
+    let codec = VideoCodec::H264;
+    insert_chunk(
+        &mut store,
+        "/video",
+        vec![(None, vec![(VideoStream::descriptor_codec(), &codec as _)])],
+    );
+    let samples: Vec<VideoSample> = (0..20u8).map(|i| VideoSample::from(vec![i])).collect();
+    let is_keyframe: Vec<IsKeyframe> = (0..20).map(|i| IsKeyframe::from(i % 5 == 0)).collect();
+    insert_chunk(
+        &mut store,
+        "/video",
+        itertools::izip!(&samples, &is_keyframe, 0..)
+            .map(|(sample, is_keyframe, i)| {
+                (
+                    Some(i),
+                    vec![
+                        (
+                            VideoStream::descriptor_sample(),
+                            sample as &dyn ComponentBatch,
+                        ),
+                        (VideoStream::descriptor_is_keyframe(), is_keyframe as _),
+                    ],
+                )
+            })
+            .collect(),
+    );
+
+    // Every 5th sample is a keyframe.
+    let is_start_of_gop: IsStartOfGop =
+        Arc::new(|data, _codec| Ok(data.first().is_some_and(|i| i % 5 == 0)));
+
+    let chunks = split(&store, (7, 12), Some(&is_start_of_gop));
+    assert_no_duplicate_rows(&chunks);
+    let times = times_per_component(&chunks);
+    assert_eq!(
+        times["/video:VideoStream:sample"],
+        some(&[5, 6, 7, 8, 9, 10, 11, 12])
+    );
+    // The keyframe markers go along with the samples.
+    assert_eq!(
+        times["/video:VideoStream:is_keyframe"],
+        some(&[5, 6, 7, 8, 9, 10, 11, 12])
+    );
+    assert_eq!(times["/video:VideoStream:codec"], vec![None]);
+
+    // Without keyframe detection, the stream starts at the range.
+    let chunks = split(&store, (7, 12), None);
+    let times = times_per_component(&chunks);
+    assert_eq!(
+        times["/video:VideoStream:sample"],
+        some(&[7, 8, 9, 10, 11, 12])
+    );
+}
+
+#[test]
+fn keeps_latest_transform_and_pinhole_before_range() {
+    let mut store = new_store();
+    let translation = Translation3D::new(1.0, 2.0, 3.0);
+    let projection = PinholeProjection::from([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]]);
+    insert_chunk(
+        &mut store,
+        "/tf",
+        [0, 1]
+            .map(|t| {
+                (
+                    Some(t),
+                    vec![(
+                        Transform3D::descriptor_translation(),
+                        &translation as &dyn ComponentBatch,
+                    )],
+                )
+            })
+            .into(),
+    );
+    insert_chunk(
+        &mut store,
+        "/camera",
+        vec![(
+            Some(0),
+            vec![(Pinhole::descriptor_image_from_camera(), &projection as _)],
+        )],
+    );
+
+    let chunks = split(&store, (5, 8), None);
+
+    assert_no_duplicate_rows(&chunks);
+    let times = times_per_component(&chunks);
+    // Without multiplexed coordinate frames, these are regular latest-at data.
+    assert_eq!(times["/tf:Transform3D:translation"], some(&[1]));
+    assert_eq!(times["/camera:Pinhole:image_from_camera"], some(&[0]));
+}
+
+#[test]
+fn keeps_logging_order() {
+    let mut store = new_store();
+    insert_chunk(&mut store, "/a", vec![(Some(1), vec![points()])]);
+    insert_chunk(&mut store, "/b", vec![(Some(5), vec![points()])]);
+    insert_chunk(
+        &mut store,
+        "/c",
+        [1, 3, 5, 9].map(|t| (Some(t), vec![points()])).into(),
+    );
+
+    let chunks = split(&store, (4, 8), None);
+
+    // Chunks follow the first row they keep: `/a` and `/b` were logged before `/c`, and the latest
+    // `/c` before the range before the one inside it.
+    let order = chunks
+        .iter()
+        .map(|chunk| {
+            let times = chunk
+                .iter_indices(frame().name())
+                .map(|(time, _row_id)| time.as_i64())
+                .collect::<Vec<_>>();
+            (chunk.entity_path().to_string(), times)
+        })
+        .collect::<Vec<_>>();
+    assert_eq!(
+        order,
+        [
+            ("/a".to_owned(), vec![1]),
+            ("/b".to_owned(), vec![5]),
+            ("/c".to_owned(), vec![3]),
+            ("/c".to_owned(), vec![5]),
+        ]
     );
 }
