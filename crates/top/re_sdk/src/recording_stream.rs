@@ -1602,6 +1602,19 @@ impl RecordingStream {
         }
         drop(tx);
 
+        // Join the importer threads that are already done before spawning a new one, so that their
+        // resources are released now rather than on the next flush.
+        self.with(|inner| {
+            let finished = inner
+                .importer_handles
+                .lock()
+                .extract_if(.., |handle| handle.is_finished())
+                .collect::<Vec<_>>();
+            for handle in finished {
+                handle.join().ok();
+            }
+        });
+
         // We can safely ignore the error on `recv()` as we're in complete control of both ends of
         // the channel.
         let thread_name = if has_contents {
@@ -1634,22 +1647,7 @@ impl RecordingStream {
                 err,
             })?;
 
-        self.with(|inner| {
-            let finished = {
-                let mut importer_handles = inner.importer_handles.lock();
-                let finished = importer_handles
-                    .extract_if(.., |handle| handle.is_finished())
-                    .collect::<Vec<_>>();
-                importer_handles.push(handle);
-                finished
-            };
-
-            // Join the importer threads that are already done, so that their resources are
-            // released now rather than on the next flush.
-            for handle in finished {
-                handle.join().ok();
-            }
-        });
+        self.with(|inner| inner.importer_handles.lock().push(handle));
 
         Ok(())
     }
@@ -3568,17 +3566,34 @@ mod tests {
         for _ in 0..20 {
             rec.log_file_from_contents("hello.txt", b"hello".into(), None, false)
                 .unwrap();
-            // Give the importer thread time to finish before the next import.
-            std::thread::sleep(std::time::Duration::from_millis(50));
         }
+
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+        loop {
+            let all_finished = rec
+                .with(|inner| {
+                    let importer_handles = inner.importer_handles.lock();
+                    importer_handles.iter().all(|handle| handle.is_finished())
+                })
+                .unwrap();
+            if all_finished {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "importer threads did not finish"
+            );
+            std::thread::yield_now();
+        }
+
+        // The next import joins all the finished threads, so only its own handle is left.
+        rec.log_file_from_contents("hello.txt", b"hello".into(), None, false)
+            .unwrap();
 
         let pending_importers = rec
             .with(|inner| inner.importer_handles.lock().len())
             .unwrap();
-        assert!(
-            pending_importers < 20,
-            "finished importer threads should not pile up until a flush, got {pending_importers}"
-        );
+        assert_eq!(pending_importers, 1);
     }
 
     #[test]
