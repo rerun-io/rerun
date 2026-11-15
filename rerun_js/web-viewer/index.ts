@@ -1310,6 +1310,20 @@ export interface WebViewerOptions {
   theme?: "dark" | "light" | "system";
 
   /**
+   * Whether the viewer sends usage data to Rerun.
+   *
+   * - `"on"`: send usage data, and show a one-time notice about it in this browser.
+   *   Nothing is sent during the first visit, so users can turn it off first.
+   * - `"off"`: send nothing.
+   *
+   * Users can always turn usage data off in the viewer's settings, which overrides `"on"`.
+   * If you leave it on, consider mentioning Rerun in your privacy policy.
+   *
+   * Defaults to `"on"`.
+   */
+  analytics?: "on" | "off";
+
+  /**
    * Enable OAuth login in the viewer.
    *
    * When set, the viewer shows login UI and uses the provided URLs for OAuth redirects.

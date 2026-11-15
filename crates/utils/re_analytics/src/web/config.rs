@@ -1,5 +1,3 @@
-#![expect(clippy::unused_self)]
-
 use std::collections::HashMap;
 
 use uuid::Uuid;
@@ -34,6 +32,23 @@ pub struct Config {
 
     #[serde(rename = "metadata", default)]
     pub opt_in_metadata: HashMap<String, Property>,
+
+    /// The user's opt-out, set from the viewer's settings.
+    ///
+    /// Defaults to `true` so that configs saved before this field existed stay enabled.
+    #[serde(rename = "analytics_enabled", default = "default_analytics_enabled")]
+    pub analytics_enabled: bool,
+
+    /// Is this the first visit to this website in this browser?
+    ///
+    /// True when no config was saved yet. Nothing is sent during a first visit,
+    /// so users can opt out before any data leaves the browser.
+    #[serde(skip)]
+    is_first_run: bool,
+}
+
+fn default_analytics_enabled() -> bool {
+    true
 }
 
 fn get_local_storage() -> Result<Storage, ConfigError> {
@@ -81,9 +96,7 @@ impl Config {
     }
 
     pub fn is_first_run(&self) -> bool {
-        // no first-run opt-out for web
-
-        false
+        self.is_first_run
     }
 }
 
@@ -93,6 +106,8 @@ impl Default for Config {
             analytics_id: Uuid::new_v4().simple().to_string(),
             session_id: Uuid::new_v4(),
             opt_in_metadata: HashMap::new(),
+            analytics_enabled: true,
+            is_first_run: true,
         }
     }
 }

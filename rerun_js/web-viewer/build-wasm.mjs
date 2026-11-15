@@ -31,7 +31,6 @@ function buildWebViewer(mode) {
       "python ../../scripts/build_web_viewer.py",
       modeFlags,
       "--target no-modules-base",
-      "--features default_web", // no `analytics`
       "-o rerun_js/web-viewer",
     ].join(" "),
   );

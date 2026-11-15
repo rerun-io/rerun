@@ -41,6 +41,36 @@ pub fn settings_screen_ui(
     });
 }
 
+/// The user's analytics opt-out.
+///
+/// On native, this is the same setting as `rerun analytics enable|disable`; on the web, it is
+/// saved for this website in this browser.
+fn analytics_checkbox_ui(ui: &mut egui::Ui) {
+    let mut enabled = re_analytics::user_switch() == re_analytics::AnalyticsSwitch::Enabled;
+    let hover_text = if cfg!(target_arch = "wasm32") {
+        "Send high-level events about the Viewer features you use. \
+         The data you view is never collected."
+    } else {
+        "Send high-level events about the Viewer features you use. \
+         The data you view is never collected. \
+         Turning this on takes effect after a restart."
+    };
+    if ui
+        .checkbox(&mut enabled, "Send usage data to Rerun")
+        .on_hover_text(hover_text)
+        .changed()
+    {
+        let switch = if enabled {
+            re_analytics::AnalyticsSwitch::Enabled
+        } else {
+            re_analytics::AnalyticsSwitch::Disabled
+        };
+        if let Err(err) = re_analytics::set_user_switch(switch) {
+            re_log::warn!("Failed to save the analytics setting: {err}");
+        }
+    }
+}
+
 fn settings_screen_ui_impl(
     ui: &mut egui::Ui,
     app_options: &mut AppOptions,
@@ -190,6 +220,10 @@ fn settings_screen_ui_impl(
         .on_hover_text("Show toasts for log messages and other notifications");
 
     ui.checkbox(check_for_updates_on_startup, "Check for updates on startup");
+
+    if cfg!(feature = "analytics") && startup_options.analytics_mode.allows_analytics() {
+        analytics_checkbox_ui(ui);
+    }
 
     separator_with_some_space(ui);
     ui.strong("Map view");

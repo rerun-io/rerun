@@ -200,6 +200,8 @@ class Viewer:
             url=url,
             fallback_token=fallback_token,
             theme=theme,
+            # Follow `rerun analytics disable` on the machine running the kernel.
+            analytics=None if bindings.analytics_allowed() else "off",
         )
 
         # Set full credentials if we have them so the UI can show who's logged in

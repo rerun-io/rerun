@@ -598,6 +598,7 @@ pub struct AppOptions {
     fallback_token: Option<String>,
     theme: Option<String>,
     login: Option<crate::LoginOptions>,
+    analytics: Option<String>,
 
     // Hidden `WebViewerOptions`
     // ------------
@@ -610,6 +611,55 @@ pub struct AppOptions {
     #[serde(alias = "on_viewer_event")]
     on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,
+}
+
+/// The web counterpart of the native viewer's first-run analytics disclaimer.
+///
+/// Shown until the user has had the chance to read it once in this browser.
+fn show_analytics_notice(command_sender: &crate::CommandSender) {
+    use re_ui::notifications::{Notification, NotificationAction, NotificationLevel};
+
+    let turn_off_sender = command_sender.clone();
+    let is_first_run = re_analytics::Analytics::global_or_init()
+        .is_some_and(|analytics| analytics.config().is_first_run());
+    let text = if is_first_run {
+        "We collect usage data to improve our products, never the data you view. \
+         Nothing is sent during this first visit, so you can turn it off first. \
+         [Privacy policy](https://rerun.io/privacy). Change anytime in Settings."
+    } else {
+        "We collect usage data to improve our products, never the data you view. \
+         [Privacy policy](https://rerun.io/privacy). Change anytime in Settings."
+    };
+    let notification = Notification::new(NotificationLevel::Info, text)
+        .with_action(NotificationAction::new("Turn off analytics", move || {
+            match re_analytics::set_user_switch(re_analytics::AnalyticsSwitch::Disabled) {
+                Ok(()) => {
+                    turn_off_sender.send_system(SystemCommand::ShowNotification(
+                        Notification::new(
+                            NotificationLevel::Success,
+                            "Analytics turned off. You can turn them back on in Settings.",
+                        ),
+                    ));
+                }
+                Err(err) => re_log::warn!("Failed to save the analytics setting: {err}"),
+            }
+        }))
+        .show_once(egui::Id::unique("web_analytics_notice"));
+    command_sender.send_system(SystemCommand::ShowNotification(notification));
+}
+
+/// The embedder's `analytics` option; unset means [`re_analytics::AnalyticsMode::On`].
+///
+/// An unknown value turns analytics off, so a typo never turns tracking on.
+fn parse_analytics_mode(value: Option<&str>) -> re_analytics::AnalyticsMode {
+    match value.map(str::parse) {
+        None => re_analytics::AnalyticsMode::default(),
+        Some(Ok(mode)) => mode,
+        Some(Err(err)) => {
+            re_log::warn_once!("{err}; turning analytics off");
+            re_analytics::AnalyticsMode::Off
+        }
+    }
 }
 
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
@@ -683,7 +733,10 @@ fn create_app(
         fallback_token,
         theme,
         login,
+        analytics,
     } = app_options;
+
+    let analytics_mode = parse_analytics_mode(analytics.as_deref());
 
     if let Some(fallback_token) = fallback_token {
         match re_auth::Jwt::try_from(fallback_token) {
@@ -730,6 +783,7 @@ fn create_app(
         enable_history,
         viewer_base_url,
         login,
+        analytics_mode,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
@@ -742,6 +796,11 @@ fn create_app(
         Some(connection_registry),
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
     );
+
+    // `App::new` has enabled analytics for this mode, so `is_enabled` is now meaningful.
+    if analytics_mode.allows_analytics() && re_analytics::is_enabled() {
+        show_analytics_notice(&app.command_sender);
+    }
 
     // An explicit web option takes precedence over the restored theme preference.
     if let Some(theme) = theme {

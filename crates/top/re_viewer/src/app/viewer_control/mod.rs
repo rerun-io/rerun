@@ -771,6 +771,12 @@ fn check_feedback(request: &SubmitFeedbackRequest) -> Result<(), ViewerControlEr
             "Analytics is turned off in this viewer, so feedback cannot be sent",
         ));
     }
+    if !re_analytics::can_send() {
+        return Err(ViewerControlError::failed_precondition(
+            "This is the user's first session with Rerun, when nothing is sent, \
+             so feedback cannot be sent until their next session",
+        ));
+    }
     Ok(())
 }
 

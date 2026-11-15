@@ -1504,43 +1504,45 @@ fn hyperlink(
     always_new_tab: bool,
     placement: HyperlinkPlacement,
 ) -> egui::Response {
-    ui.scope(|ui| {
-        let tokens = ui.tokens();
-        let style = ui.style_mut();
-        style.visuals.button_frame = false;
+    let tokens = ui.tokens();
 
-        // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
-        // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
-        let button = match placement {
-            HyperlinkPlacement::OnItsOwn => {
-                crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text)
-            }
-            HyperlinkPlacement::InText => {
-                let color = tokens.inline_link_color;
-                egui::Button::new((
-                    text.into().color(color),
-                    crate::icons::EXTERNAL_LINK.as_image().tint(color),
-                ))
-                // As tall as the text around it, so it stays on the line of text.
-                .size(Size::custom(0.0))
-            }
-        };
-        let response = ui
-            .add(button)
-            .on_hover_cursor(egui::CursorIcon::PointingHand);
-
-        if response.clicked_with_open_in_background() {
-            ui.open_url(egui::OpenUrl::new_tab(url.into()));
-        } else if response.clicked() {
-            ui.open_url(egui::OpenUrl {
-                url: url.into(),
-                new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
-            });
+    // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
+    // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
+    let button = match placement {
+        HyperlinkPlacement::OnItsOwn => {
+            crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text)
         }
+        HyperlinkPlacement::InText => {
+            let color = tokens.inline_link_color;
+            egui::Button::new((
+                text.into().color(color),
+                crate::icons::EXTERNAL_LINK.as_image().tint(color),
+            ))
+            // As tall as the text around it, so it stays on the line of text.
+            .size(Size::custom(0.0))
+            // A link wrapping inside itself would cover two rows, cutting off the text after it.
+            // Unwrapped, a wrapping layout moves it to the next row whole.
+            .wrap_mode(egui::TextWrapMode::Extend)
+        }
+    };
 
-        response
-    })
-    .inner
+    // Set on `ui` itself, not in a child scope: a scope is laid out before its size is known, so a
+    // wrapping layout could not move the link to the next row.
+    let button_frame = std::mem::replace(&mut ui.visuals_mut().button_frame, false);
+    let response = ui.add(button);
+    ui.visuals_mut().button_frame = button_frame;
+    let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+    if response.clicked_with_open_in_background() {
+        ui.open_url(egui::OpenUrl::new_tab(url.into()));
+    } else if response.clicked() {
+        ui.open_url(egui::OpenUrl {
+            url: url.into(),
+            new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
+        });
+    }
+
+    response
 }
 
 /// Paints a gradient rectangle that transitions from `color_from` to `color_to`

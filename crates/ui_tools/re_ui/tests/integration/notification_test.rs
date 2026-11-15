@@ -394,3 +394,34 @@ fn test_one_time_notice_remembered_on_toast_close() {
         "closing the toast should remember the notice"
     );
 }
+
+/// Shows a notice whose text has an inline link, followed by an action button.
+fn inline_link_snapshot(name: &str, text: &str) {
+    let mut harness = notification_harness(
+        Notification::new(NotificationLevel::Info, text)
+            .with_action(NotificationAction::new("Turn off analytics", || {})),
+    );
+    harness.run();
+    harness.snapshot(name);
+}
+
+/// The text after an inline link continues on the link's line, and the button lines up with the text.
+#[test]
+fn test_inline_link_mid_line() {
+    inline_link_snapshot(
+        "notification_inline_link_mid_line",
+        "We collect usage data to improve our products, never the data you view. \
+         Nothing is sent during this first visit, so you can turn it off first. \
+         [Privacy policy](https://rerun.invalid/privacy). Change anytime in Settings.",
+    );
+}
+
+/// An inline link that does not fit at the end of a line moves to the next line whole.
+#[test]
+fn test_inline_link_at_line_break() {
+    inline_link_snapshot(
+        "notification_inline_link_at_line_break",
+        "We collect usage data to improve our products, never the data you view. \
+         [Privacy policy](https://rerun.invalid/privacy). Change anytime in Settings.",
+    );
+}

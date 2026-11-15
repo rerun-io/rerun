@@ -50,6 +50,11 @@ The `rrd` in the snippet above should be a URL pointing to either:
 If `rrd` is not set, the Viewer will display the same welcome screen as <https://app.rerun.io>.
 This can be disabled by setting `hideWelcomeScreen` to `true` in the options object of `viewer.start`.
 
+The Viewer sends usage data to Rerun, and shows a one-time notice about it.
+Nothing is sent during a browser's first visit, so users can turn it off first.
+Set `analytics` to `"off"` in the options object to send nothing.
+Users can always turn usage data off in the Viewer's settings.
+
 ⚠ It's important to set the viewer's width and height, as without it the viewer may not display correctly.
 Setting the values to empty strings is valid, as long as you style the canvas through other means.
 

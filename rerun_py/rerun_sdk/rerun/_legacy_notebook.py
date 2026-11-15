@@ -21,6 +21,8 @@ DEFAULT_TIMEOUT = 2000
 def render_html_template(*, base64_data: str, app_url: str, timeout_ms: int, width: int, height: int) -> str:
     # Use a random presentation ID to avoid collisions when multiple recordings are shown in the same notebook.
     presentation_id = "_" + uuid.uuid4().hex
+    # Follow `rerun analytics disable` on the machine running the kernel.
+    analytics_param = "" if bindings.analytics_allowed() else "&analytics=off"
 
     return f"""<div id="{presentation_id}_rrd" style="display: none;" data-rrd="{base64_data}"></div>
 <div id="{presentation_id}_error" style="display: none;"><p>Timed out waiting for {app_url} to load.</p>
@@ -54,7 +56,7 @@ def render_html_template(*, base64_data: str, app_url: str, timeout_ms: int, wid
     }}()));
 </script>
 <iframe id="{presentation_id}_iframe" width="{width}" height="{height}"
-    src="{app_url}?url=web_event://&persist=0&notebook=1"
+    src="{app_url}?url=web_event://&persist=0&notebook=1{analytics_param}"
     frameborder="0" style="display: none;" allowfullscreen=""></iframe>
 """
 

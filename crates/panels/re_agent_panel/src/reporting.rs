@@ -63,7 +63,7 @@ impl Reporting {
         // Redaction spawns an agent session per turn, so it must not run when the
         // event it prepares would be dropped anyway.
         let share_redacted_prompts =
-            panel.settings().share_redacted_prompts && re_analytics::is_enabled();
+            panel.settings().share_redacted_prompts && re_analytics::can_send();
         for turn in turns {
             crate::agent_analytics::record_usage(&turn);
             if share_redacted_prompts {

@@ -1663,6 +1663,9 @@ class Credentials:
 def get_credentials() -> Credentials | None:
     """Returns the credentials for the current user."""
 
+def analytics_allowed() -> bool:
+    """Whether this machine's analytics config allows analytics, as set by `rerun analytics`."""
+
 def logout() -> str | None:
     """
     Log out by clearing stored credentials.

@@ -342,7 +342,7 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
-        if cfg!(feature = "analytics") {
+        if cfg!(feature = "analytics") && startup_options.analytics_mode.allows_analytics() {
             re_analytics::enable_in_this_process();
         }
 

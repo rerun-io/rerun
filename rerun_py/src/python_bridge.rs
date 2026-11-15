@@ -229,6 +229,7 @@ fn rerun_bindings(py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     }
 
     m.add_function(wrap_pyfunction!(get_credentials, m)?)?;
+    m.add_function(wrap_pyfunction!(analytics_allowed, m)?)?;
     m.add_function(wrap_pyfunction!(init_login_flow, m)?)?;
     m.add_function(wrap_pyfunction!(logout, m)?)?;
 
@@ -2843,6 +2844,12 @@ impl std::cmp::PartialEq for PyCredentials {
     fn eq(&self, other: &Self) -> bool {
         self.access_token() == other.access_token()
     }
+}
+
+#[pyfunction]
+/// Whether this machine's analytics config allows analytics, as set by `rerun analytics`.
+fn analytics_allowed() -> bool {
+    re_analytics::user_switch() == re_analytics::AnalyticsSwitch::Enabled
 }
 
 #[pyfunction]
