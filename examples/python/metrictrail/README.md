@@ -134,7 +134,7 @@ Frame 345 is one frame of the 23 s cut, scaled from the 1920 × 1080 phone video
 
 ### 2. One focal length for the clip
 
-MoGe-2's depth and every camera pose need the focal length that step 1 lacks, so before tracking SharedK fits one camera matrix for the whole clip. MoGe-2 guesses fx and fy on each of the first 32 frames (gray dots: fx, 355.2 to 395.0 px), and SharedK starts from their medians, fx = 375.75 px and fy = 369.33 px. A DROID-style keyframe SLAM on 43 calibration keyframes (left) then moves fx and fy by one shared offset: first down to fx = 374.08 px, then up to fx = 378.60 px (cyan dots: three solves near step 165, two final solves at step 689). The x axis is the calibration step, one per frame of the clip.
+MoGe-2's depth and every camera pose need the focal length that step 1 lacks, so before tracking SharedK fits one camera matrix for the whole clip. MoGe-2 guesses fx and fy on each of the first 32 frames (gray dots: fx, 355.2 to 395.0 px), and SharedK starts from their medians, fx = 375.75 px and fy = 369.33 px. A DROID-style keyframe SLAM on 43 calibration keyframes (left) then moves fx and fy by one shared offset: first down to fx = 374.08 px, then up to fx = 378.60 px (cyan dots: three solves near step 165, two final solves at step 689). The x axis is the calibration step, one per frame of the clip. The Live preview holds only the first 17 s of the run, so its Calibration tab stops before the final solves, at fx = 374.08 px instead of 378.60 px.
 
 The pixels are those of the 504 × 280 tracking image: on the 1280 px frame, fx is about 961.5 px.
 
