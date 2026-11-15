@@ -1109,9 +1109,7 @@ fn read_samples_from_known_chunk(
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
-    let split_idx = keyframe_indices
-        .binary_search(&load_range.first_sample)
-        .unwrap_or_else(|e| e);
+    let split_idx = keyframe_indices.partition_point(|&idx| idx < load_range.first_sample);
 
     let end_keyframes = keyframe_indices.drain(split_idx..).collect::<Vec<_>>();
 
