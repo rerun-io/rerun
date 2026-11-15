@@ -470,7 +470,7 @@ fn next_preference(
 fn pick_model(
     config_options: &[SessionConfigOption],
     preferred_model: Option<&SessionConfigValueId>,
-    preferences: &[String],
+    preferences: &[crate::ModelPreference],
 ) -> Option<(SessionConfigId, SessionConfigValueId)> {
     if preferred_model.is_none() && preferences.is_empty() {
         return None;
@@ -491,7 +491,7 @@ fn pick_model(
                 .copied()
                 .find(|model| &model.value == preferred)
         })
-        .or_else(|| crate::transcript::preferred_model(&models, preferences))?;
+        .or_else(|| crate::preferred_model(&models, preferences))?;
 
     (model.value != select.current_value).then(|| (selector.id.clone(), model.value.clone()))
 }
@@ -592,8 +592,11 @@ mod tests {
         ]
     }
 
-    fn preferences(models: &[&str]) -> Vec<String> {
-        models.iter().map(|model| (*model).to_owned()).collect()
+    fn preferences(models: &[&str]) -> Vec<crate::ModelPreference> {
+        models
+            .iter()
+            .map(|model| crate::ModelPreference::new(&[model]))
+            .collect()
     }
 
     fn claude_effort(current: &str) -> Vec<SessionConfigOption> {

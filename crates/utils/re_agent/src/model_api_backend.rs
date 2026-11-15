@@ -237,15 +237,8 @@ impl ModelApiProvider {
     /// harnesses, because the agent panel should feel fast.
     pub fn default_model(self) -> &'static str {
         let models = self.models();
-        crate::DEFAULT_MODEL_PREFERENCES
-            .iter()
-            .find_map(|preference| {
-                models
-                    .iter()
-                    .find(|model| crate::transcript::matches_model_preference(model, preference))
-            })
-            .or_else(|| models.first())
-            .copied()
+        crate::model_recommendation::preferred_model_id(models, &crate::DEFAULT_MODEL_PREFERENCES)
+            .or_else(|| models.first().copied())
             .unwrap_or_default()
     }
 
@@ -310,7 +303,7 @@ impl ModelApiProvider {
     }
 
     /// Models offered in the model selector, best first. Includes [`Self::default_model`].
-    fn models(self) -> &'static [&'static str] {
+    pub fn models(self) -> &'static [&'static str] {
         match self {
             Self::Anthropic => &[
                 rig_core::providers::anthropic::CLAUDE_OPUS_5_5,

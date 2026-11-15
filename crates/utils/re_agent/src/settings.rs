@@ -13,12 +13,15 @@ use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProv
 /// Fast models to select, best first, unless the user has picked a model for the profile.
 ///
 /// The agent panel should feel fast, and flagship models are often too slow for that.
-pub const DEFAULT_MODEL_PREFERENCES: &[&str] = &[
-    "sonnet", // Anthropic: Claude
-    "flash",  // Google: Gemini
-    "luna",   // OpenAI: Codex
-    "mini",   // OpenAI: older GPT models
-];
+pub static DEFAULT_MODEL_PREFERENCES: std::sync::LazyLock<Vec<crate::ModelPreference>> =
+    std::sync::LazyLock::new(|| {
+        vec![
+            crate::ModelPreference::new(&["sonnet"]), // Anthropic: Claude
+            crate::ModelPreference::new(&["terra"]),  // OpenAI: Codex
+            crate::ModelPreference::new(&["gemini", "flash"]), // Google: Gemini
+            crate::ModelPreference::new(&["gpt", "mini"]), // OpenAI: older GPT models
+        ]
+    });
 
 /// An MCP server the agent should connect to, spawned by the agent over stdio.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

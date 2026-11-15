@@ -89,10 +89,7 @@ impl AgentSettings {
             mcp_servers,
             log_protocol: self.log_protocol,
             preamble: context.agent_harness_preamble.clone(),
-            model_preferences: DEFAULT_MODEL_PREFERENCES
-                .iter()
-                .map(|&model| model.to_owned())
-                .collect(),
+            model_preferences: DEFAULT_MODEL_PREFERENCES.clone(),
             preferences,
             session_to_load: None,
         })

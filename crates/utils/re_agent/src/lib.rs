@@ -36,6 +36,7 @@ mod backend;
 mod elicitation;
 mod error;
 mod model_api_backend;
+mod model_recommendation;
 mod redactor;
 mod reports;
 mod responder;
@@ -65,6 +66,7 @@ pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin};
 pub use error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
+pub use model_recommendation::{ModelPreference, preferred_model};
 pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
 pub use reports::{McpStartupReport, SessionReports};
 pub use responder::{AgentStoppedWaiting, Responder};
@@ -79,6 +81,6 @@ pub use settings::{
 pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};
 pub use transcript::{
     ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,
-    preferred_model, select_options, truncate_bytes,
+    select_options, truncate_bytes,
 };
 pub use turn::{TurnOutcome, TurnReport};
