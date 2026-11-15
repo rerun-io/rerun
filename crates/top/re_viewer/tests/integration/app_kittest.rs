@@ -106,7 +106,7 @@ fn about_rerun() {
 
     let build_info = re_build_info::BuildInfo {
         crate_name: "rerun-cli".into(),
-        features: "default analytics map_view nasm".into(),
+        features: "audio base lance map_view nasm native_viewer oss_server perf_telemetry re_server release_full release_no_web_viewer web_viewer".into(),
         version: re_build_info::CrateVersion {
             major: 0,
             minor: 33,

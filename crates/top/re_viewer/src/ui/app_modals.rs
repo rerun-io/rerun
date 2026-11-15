@@ -158,7 +158,7 @@ pub fn about_rerun_ui(
         // For the web-viewer (`crate_name: "re_viewer"`) it is much less interesting.
         if crate_name == "rerun-cli" && !features.is_empty() {
             ui.label("Features");
-            ui.label(features.as_ref());
+            ui.add(egui::Label::new(features.as_ref()).wrap());
             ui.end_row();
         }
 
@@ -172,7 +172,7 @@ pub fn about_rerun_ui(
             if !llvm_version.is_empty() {
                 write!(compiler, ", LLVM {llvm_version}").ok();
             }
-            ui.label(compiler);
+            ui.add(egui::Label::new(compiler).wrap());
             ui.end_row();
         }
     });
