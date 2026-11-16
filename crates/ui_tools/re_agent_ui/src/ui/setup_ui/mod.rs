@@ -107,10 +107,10 @@ fn setup_ui_inner(
         next_screen = Screen::Chat;
     }
     // A missing key is already shown next to the provider toggle.
-    if let Err(problem) = ready
+    if let Err(err) = ready
         && settings.profile_id.model_api_provider().is_none()
     {
-        ui.error_label(problem);
+        ui.error_label(err);
     }
 
     ui.add_space(4.0);
