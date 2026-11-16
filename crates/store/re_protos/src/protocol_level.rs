@@ -25,8 +25,16 @@ impl ProtocolLevel {
     ///   recording id only to clients at this level or above.
     pub const MANIFEST_KEY_STORE_ID: Self = Self(1);
 
+    /// Level 2, `chunk_segment_from_request`.
+    ///
+    /// * Client: attributes each fetched chunk to the segment of the row it was requested for,
+    ///   rather than to the recording id of the chunk's `store_id`. One chunk id may be requested
+    ///   for several segments: it is then the same chunk.
+    /// * Server: nothing.
+    pub const CHUNK_SEGMENT_FROM_REQUEST: Self = Self(2);
+
     /// The level this build implements, sent in `ClientMeta.protocol_level`.
-    pub const CURRENT: Self = Self::MANIFEST_KEY_STORE_ID;
+    pub const CURRENT: Self = Self::CHUNK_SEGMENT_FROM_REQUEST;
 
     /// The level of the client that sent a request. A request without `ClientMeta` comes from a
     /// client at [`Self::BASELINE`].
@@ -46,7 +54,7 @@ impl ProtocolLevel {
     /// upgrade to.
     pub fn first_client_release(self) -> Option<&'static str> {
         match self.0 {
-            1 => Some("0.44"),
+            1 | 2 => Some("0.44"),
             _ => None,
         }
     }

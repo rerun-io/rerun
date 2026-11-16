@@ -109,6 +109,7 @@ pub struct ClientMeta {
     ///
     /// * 0, `baseline`: also when `ClientMeta` is unset.
     /// * 1, `manifest_key_store_id`.
+    /// * 2, `chunk_segment_from_request`.
     #[prost(uint32, tag = "1")]
     pub protocol_level: u32,
 }

@@ -37,10 +37,9 @@ pub use self::connection_registry::{
 };
 pub use self::dataset_revisions::{DatasetRevisions, dataset_revisions};
 pub use self::grpc::{
-    ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions,
-    blueprint_store_id_for_segment, channel, fetch_chunks_response_to_chunk_and_segment_id,
-    stream_blueprint_and_segment_from_server, stream_table_blueprint_segment_from_server,
-    table_blueprint_log_channel,
+    RedapClientStack, SegmentDownload, StreamingOptions, blueprint_store_id_for_segment, channel,
+    fetch_chunks_response_to_chunks, stream_blueprint_and_segment_from_server,
+    stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
 };
 pub use self::tasks::TaskCompletion;
 
