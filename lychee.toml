@@ -65,6 +65,7 @@ exclude = [
   '\$pr_number', # Shell variable in release workflow.
   '\$$', # URL ending in `$`: stripped template variable (e.g. `${{ inputs.X }}`).
   '/GIT_HASH/', # Replacement variable GIT_HASH.
+  '^https://app\.rerun\.io/version/$', # `https://app.rerun.io/version/<VERSION>/…`, truncated at the `<`.
   '\{\}', # Ignore links with string interpolation.
   '\$relpath\^', # Relative paths as used by rerun_cpp's doc header.
   '%7B.+%7D', # Ignore strings that look like ready to use links but contain a replacement strings. The URL escaping is for '{.+}' (this seems to be needed for html embedded urls since lychee assumes they use this encoding).
@@ -113,6 +114,7 @@ exclude = [
   'file://server/share.*', # Example UNC path in re_data_source's `file://` URL docs and tests.
   'file://somehost/file/path.rrd',
   'http://foo.*',
+  'http://remote-host:9090.*', # Placeholder host in docs/content/logging-and-ingestion/sinks-and-modes/remote-viewing.md.
   'http://x/',
   'https://foo.*',
   'https://github\.com/rerun-io/rerun/n',
