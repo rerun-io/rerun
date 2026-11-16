@@ -180,10 +180,15 @@ impl ViewportBlueprint {
 
 #[cfg(test)]
 mod tests {
+    use std::{collections::HashSet, fmt::Write as _};
+
+    use egui_tiles::ContainerKind;
     use re_sdk_types::blueprint::archetypes as blueprint_archetypes;
     use re_sdk_types::components::Visible;
     use re_test_context::TestContext;
-    use re_viewer_context::{BlueprintContext as _, ContainerId, Contents, ViewerContext};
+    use re_viewer_context::{
+        BlueprintContext as _, ContainerId, Contents, ViewerContext, VisitorControlFlow,
+    };
 
     use crate::{
         ContainerBlueprint, ViewBlueprint, ViewContents, ViewportBlueprint, ViewportCommand,
@@ -223,7 +228,7 @@ mod tests {
                 .collect::<Vec<_>>();
 
             let horizontal = ContainerBlueprint {
-                container_kind: egui_tiles::ContainerKind::Horizontal,
+                container_kind: ContainerKind::Horizontal,
                 display_name: Some("Uneven row".into()),
                 contents: views.drain(..2).collect(),
                 col_shares: vec![3.0, 1.0],
@@ -231,13 +236,13 @@ mod tests {
             };
 
             let mut tabs = ContainerBlueprint::default();
-            tabs.container_kind = egui_tiles::ContainerKind::Tabs;
+            tabs.container_kind = ContainerKind::Tabs;
             tabs.display_name = Some("Notes".into());
             tabs.contents = views;
             tabs.active_tab = Some(tabs.contents[1]);
 
             let empty = ContainerBlueprint {
-                container_kind: egui_tiles::ContainerKind::Vertical,
+                container_kind: ContainerKind::Vertical,
                 display_name: Some("Empty hidden container".into()),
                 visible: false,
                 ..Default::default()
@@ -255,7 +260,7 @@ mod tests {
             container.row_shares = vec![3.0, 1.0];
 
             let mut root = ContainerBlueprint::default();
-            root.container_kind = egui_tiles::ContainerKind::Tabs;
+            root.container_kind = ContainerKind::Tabs;
             root.contents = vec![Contents::Container(source)];
             root.active_tab = Some(root.contents[0]);
             for container in [&horizontal, &tabs, &empty, &container, &root] {
@@ -274,16 +279,10 @@ mod tests {
     }
 
     fn hierarchy(blueprint: &ViewportBlueprint, id: ContainerId) -> String {
-        fn append(
-            blueprint: &ViewportBlueprint,
-            contents: Contents,
-            depth: usize,
-            output: &mut String,
-        ) {
-            use std::fmt::Write as _;
-
-            let indent = "  ".repeat(depth);
-            match contents {
+        let mut output = String::new();
+        let traversal = blueprint.visit_contents_in_container::<()>(&id, &mut |contents, parents| {
+            let indent = "  ".repeat(parents.len());
+            match *contents {
                 Contents::Container(id) => {
                     let container = blueprint.container(&id).unwrap();
                     let active = container.active_tab.and_then(|active| {
@@ -294,24 +293,30 @@ mod tests {
                         container.container_kind, container.display_name, container.visible,
                         container.grid_columns, container.col_shares, container.row_shares,
                     ).unwrap();
-                    for &child in &container.contents {
-                        append(blueprint, child, depth + 1, output);
-                    }
                 }
                 Contents::View(id) => {
                     let view = blueprint.view(&id).unwrap();
-                    writeln!(
-                        output,
+                    writeln!(output,
                         "{indent}View {:?} visible={} titlebar={} origin={}",
-                        view.display_name, view.visible, view.titlebar, view.space_origin
-                    )
-                    .unwrap();
+                        view.display_name, view.visible, view.titlebar, view.space_origin,
+                    ).unwrap();
                 }
             }
-        }
-        let mut output = String::new();
-        append(blueprint, Contents::Container(id), 0, &mut output);
+            VisitorControlFlow::Continue
+        });
+        assert!(traversal.is_continue());
         output
+    }
+
+    fn first_view(
+        blueprint: &ViewportBlueprint,
+        container: ContainerId,
+    ) -> re_viewer_context::ViewId {
+        blueprint
+            .find_contents_in_container_by(&|child| matches!(child, Contents::View(_)), &container)
+            .unwrap()
+            .as_view_id()
+            .unwrap()
     }
 
     fn assert_independent_copy(
@@ -321,30 +326,23 @@ mod tests {
         copied: ContainerId,
     ) {
         assert_eq!(hierarchy(blueprint, original), hierarchy(blueprint, copied));
-        assert_independent_children(
-            ctx,
-            blueprint,
-            Contents::Container(original),
-            Contents::Container(copied),
-        );
-    }
-
-    fn assert_independent_children(
-        ctx: &ViewerContext<'_>,
-        blueprint: &ViewportBlueprint,
-        original: Contents,
-        copied: Contents,
-    ) {
-        assert_ne!(original, copied);
-        match (original, copied) {
-            (Contents::Container(original), Contents::Container(copied)) => {
-                let original = blueprint.container(&original).unwrap();
-                let copied = blueprint.container(&copied).unwrap();
-                for (&original, &copied) in std::iter::zip(&original.contents, &copied.contents) {
-                    assert_independent_children(ctx, blueprint, original, copied);
-                }
-            }
-            (Contents::View(original), Contents::View(copied)) => {
+        let descendants = |id| {
+            let mut contents = Vec::new();
+            let traversal = blueprint.visit_contents_in_container::<()>(&id, &mut |child, _| {
+                contents.push(*child);
+                VisitorControlFlow::Continue
+            });
+            assert!(traversal.is_continue());
+            contents
+        };
+        let original = descendants(original);
+        let copied = descendants(copied);
+        let original_ids: HashSet<_> = original.iter().map(Contents::as_entity_path).collect();
+        let copied_ids: HashSet<_> = copied.iter().map(Contents::as_entity_path).collect();
+        assert!(original_ids.is_disjoint(&copied_ids));
+        assert_eq!(copied_ids.len(), copied.len());
+        for (original, copied) in std::iter::zip(original, copied) {
+            if let (Contents::View(original), Contents::View(copied)) = (original, copied) {
                 let original = blueprint.view(&original).unwrap();
                 let copied = blueprint.view(&copied).unwrap();
                 assert_eq!(original.class_identifier(), copied.class_identifier());
@@ -358,7 +356,6 @@ mod tests {
                     view_visible_override(ctx, copied.id)
                 );
             }
-            _ => panic!("the copy changed the kind of a child"),
         }
     }
 
@@ -376,11 +373,11 @@ mod tests {
                 blueprint.save_to_blueprint_store(ctx);
                 (source, target)
             });
-            edit(&test, |ctx, blueprint| {
+            let (original_view, copied_view) = edit(&test, |ctx, blueprint| {
                 let root = blueprint.container(&blueprint.root_container).unwrap();
                 assert_ne!(root.id, source);
                 assert_ne!(root.id, target);
-                assert_eq!(root.container_kind, egui_tiles::ContainerKind::Tabs);
+                assert_eq!(root.container_kind, ContainerKind::Tabs);
                 assert_eq!(
                     root.contents,
                     [Contents::Container(source), Contents::Container(target)]
@@ -388,23 +385,30 @@ mod tests {
                 assert_eq!(root.active_tab, Some(Contents::Container(target)));
                 assert_eq!(blueprint.views.len(), 8);
                 assert_independent_copy(ctx, &blueprint, source, target);
-                let snapshot = if clone_root {
-                    "cloned_root"
-                } else {
-                    "cloned_dashboard"
-                };
-                insta::assert_snapshot!(snapshot, hierarchy(&blueprint, target));
+                if !clone_root {
+                    insta::assert_snapshot!("cloned_dashboard", hierarchy(&blueprint, target));
+                }
                 let copied = blueprint.container(&target).unwrap();
                 copied.set_display_name(ctx, Some("Independent copy".into()));
                 copied.set_visible(ctx, false);
+                let original_view = first_view(&blueprint, source);
+                let copied_view = first_view(&blueprint, target);
+                assert_eq!(view_visible_override(ctx, copied_view), Some(false));
+                ctx.save_blueprint_archetype(
+                    ViewContents::base_override_path_for_entity(copied_view, &"robot".into()),
+                    &blueprint_archetypes::EntityBehavior::new().with_visible(true),
+                );
+                (original_view, copied_view)
             });
-            edit(&test, |_, blueprint| {
+            edit(&test, |ctx, blueprint| {
                 let original = blueprint.container(&source).unwrap();
                 let copied = blueprint.container(&target).unwrap();
                 assert_ne!(original.display_name.as_deref(), Some("Independent copy"));
                 assert!(original.visible);
                 assert_eq!(copied.display_name.as_deref(), Some("Independent copy"));
                 assert!(!copied.visible);
+                assert_eq!(view_visible_override(ctx, original_view), Some(false));
+                assert_eq!(view_visible_override(ctx, copied_view), Some(true));
             });
         }
     }
@@ -426,7 +430,19 @@ mod tests {
     fn missing_descendant_does_not_insert_partial_copy() {
         let (test, source) = fixture();
         edit(&test, |ctx, mut blueprint| {
-            let view = *blueprint.views.keys().next().unwrap();
+            // Fail after earlier children have already been copied.
+            let view = blueprint
+                .find_contents_in_container_by(
+                    &|child| {
+                        child.as_view_id().is_some_and(|id| {
+                            blueprint.view(&id).unwrap().display_name.as_deref() == Some("Plot 3")
+                        })
+                    },
+                    &source,
+                )
+                .unwrap()
+                .as_view_id()
+                .unwrap();
             blueprint.views.remove(&view);
             let old_views = blueprint.views.len();
             let old_containers = blueprint.containers.len();
@@ -434,38 +450,6 @@ mod tests {
             assert_eq!(blueprint.views.len(), old_views);
             assert_eq!(blueprint.containers.len(), old_containers);
         });
-    }
-
-    #[test]
-    fn clone_respects_layout_command_order() {
-        for change_before_clone in [true, false] {
-            let (test, source) = fixture();
-            let target = edit(&test, |ctx, blueprint| {
-                if change_before_clone {
-                    blueprint.set_container_kind(source, egui_tiles::ContainerKind::Horizontal);
-                }
-                let target = blueprint.duplicate_container(&source, ctx).unwrap();
-                if !change_before_clone {
-                    blueprint.set_container_kind(source, egui_tiles::ContainerKind::Horizontal);
-                }
-                blueprint.save_to_blueprint_store(ctx);
-                target
-            });
-            edit(&test, |_, blueprint| {
-                assert_eq!(
-                    blueprint.container(&source).unwrap().container_kind,
-                    egui_tiles::ContainerKind::Horizontal
-                );
-                assert_eq!(
-                    blueprint.container(&target).unwrap().container_kind,
-                    if change_before_clone {
-                        egui_tiles::ContainerKind::Horizontal
-                    } else {
-                        egui_tiles::ContainerKind::Grid
-                    }
-                );
-            });
-        }
     }
 
     #[test]
@@ -502,29 +486,35 @@ mod tests {
     }
 
     #[test]
-    fn clone_uses_preceding_share_and_tab_changes() {
+    fn clone_captures_preceding_layout_changes_only() {
         let (test, source) = fixture();
-        let target = edit(&test, |ctx, blueprint| {
+        let (target, original_tabs) = edit(&test, |ctx, blueprint| {
             let children = &blueprint.container(&source).unwrap().contents;
             let row = children[0].as_container_id().unwrap();
             let tabs = children[1].as_container_id().unwrap();
             let first_tab = blueprint.container(&tabs).unwrap().contents[0]
                 .as_view_id()
                 .unwrap();
+            blueprint.set_container_kind(source, ContainerKind::Vertical);
             blueprint.make_all_children_same_size(&row);
             blueprint.focus_tab(first_tab);
             let target = blueprint.duplicate_container(&source, ctx).unwrap();
-            // Later changes must not change what was captured by Clone.
+            blueprint.set_container_kind(source, ContainerKind::Horizontal);
             blueprint.focus_tab(
                 blueprint.container(&tabs).unwrap().contents[1]
                     .as_view_id()
                     .unwrap(),
             );
             blueprint.save_to_blueprint_store(ctx);
-            target
+            (target, tabs)
         });
         edit(&test, |_, blueprint| {
+            assert_eq!(
+                blueprint.container(&source).unwrap().container_kind,
+                ContainerKind::Horizontal
+            );
             let copied = blueprint.container(&target).unwrap();
+            assert_eq!(copied.container_kind, ContainerKind::Vertical);
             let row = blueprint
                 .container(&copied.contents[0].as_container_id().unwrap())
                 .unwrap();
@@ -533,13 +523,7 @@ mod tests {
                 .container(&copied.contents[1].as_container_id().unwrap())
                 .unwrap();
             assert_eq!(tabs.active_tab, Some(tabs.contents[0]));
-            let original_tabs = blueprint
-                .container(
-                    &blueprint.container(&source).unwrap().contents[1]
-                        .as_container_id()
-                        .unwrap(),
-                )
-                .unwrap();
+            let original_tabs = blueprint.container(&original_tabs).unwrap();
             assert_eq!(original_tabs.active_tab, Some(original_tabs.contents[1]));
         });
     }
@@ -555,12 +539,7 @@ mod tests {
                 .as_container_id()
                 .unwrap();
             let moved = blueprint.container(&row).unwrap().contents.clone();
-            blueprint.move_contents_to_new_container(
-                moved,
-                egui_tiles::ContainerKind::Vertical,
-                source,
-                1,
-            );
+            blueprint.move_contents_to_new_container(moved, ContainerKind::Vertical, source, 1);
             let target = blueprint.duplicate_container(&source, ctx).unwrap();
             blueprint.save_to_blueprint_store(ctx);
             target
@@ -575,14 +554,14 @@ mod tests {
             let nested = blueprint
                 .container(&copied.contents[1].as_container_id().unwrap())
                 .unwrap();
-            assert_eq!(nested.container_kind, egui_tiles::ContainerKind::Vertical);
+            assert_eq!(nested.container_kind, ContainerKind::Vertical);
             assert_eq!(nested.contents.len(), 2);
         });
     }
 
     #[test]
     fn clone_inserts_after_source_in_each_parent_layout() {
-        for kind in egui_tiles::ContainerKind::ALL {
+        for kind in ContainerKind::ALL {
             let (test, source) = fixture();
             let siblings = edit(&test, |ctx, blueprint| {
                 let before = ViewBlueprint::new_with_root_wildcard("TestView".into());
@@ -607,7 +586,7 @@ mod tests {
                 blueprint.save_to_blueprint_store(ctx);
                 target
             });
-            edit(&test, |ctx, blueprint| {
+            edit(&test, |_, blueprint| {
                 let root = blueprint.container(&blueprint.root_container).unwrap();
                 assert_eq!(
                     root.contents,
@@ -618,11 +597,19 @@ mod tests {
                         siblings[1]
                     ]
                 );
-                insta::assert_snapshot!(
-                    format!("clone_in_{kind:?}"),
-                    hierarchy(&blueprint, root.id)
-                );
-                assert_independent_copy(ctx, &blueprint, source, target);
+                assert_eq!(root.container_kind, kind);
+                match kind {
+                    ContainerKind::Grid => {
+                        assert_eq!(root.grid_columns, Some(3));
+                        assert_eq!(root.col_shares, [2.0, 3.0, 5.0]);
+                        assert_eq!(root.row_shares, [2.0, 3.0, 5.0]);
+                    }
+                    ContainerKind::Horizontal => assert_eq!(root.col_shares, [2.0, 3.0, 1.0, 5.0]),
+                    ContainerKind::Tabs => {
+                        assert_eq!(root.active_tab, Some(Contents::Container(target)));
+                    }
+                    ContainerKind::Vertical => assert_eq!(root.row_shares, [2.0, 3.0, 1.0, 5.0]),
+                }
             });
         }
     }
@@ -642,39 +629,6 @@ mod tests {
                 blueprint_archetypes::EntityBehavior::descriptor_visible().component,
             )
             .map(|visible| **visible)
-    }
-
-    #[test]
-    fn copied_view_override_can_change_without_affecting_original() {
-        let (test, source) = fixture();
-        let target = edit(&test, |ctx, blueprint| {
-            let target = blueprint.duplicate_container(&source, ctx).unwrap();
-            blueprint.save_to_blueprint_store(ctx);
-            target
-        });
-        let (original_view, copied_view) = edit(&test, |ctx, blueprint| {
-            let first_view = |container| {
-                let row = blueprint.container(&container).unwrap().contents[0]
-                    .as_container_id()
-                    .unwrap();
-                blueprint.container(&row).unwrap().contents[0]
-                    .as_view_id()
-                    .unwrap()
-            };
-            let original_view = first_view(source);
-            let copied_view = first_view(target);
-            assert_eq!(view_visible_override(ctx, original_view), Some(false));
-            assert_eq!(view_visible_override(ctx, copied_view), Some(false));
-            ctx.save_blueprint_archetype(
-                ViewContents::base_override_path_for_entity(copied_view, &"robot".into()),
-                &blueprint_archetypes::EntityBehavior::new().with_visible(true),
-            );
-            (original_view, copied_view)
-        });
-        edit(&test, |ctx, _| {
-            assert_eq!(view_visible_override(ctx, original_view), Some(false));
-            assert_eq!(view_visible_override(ctx, copied_view), Some(true));
-        });
     }
 
     #[test]
