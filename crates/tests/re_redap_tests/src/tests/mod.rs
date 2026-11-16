@@ -21,6 +21,15 @@ mod update_entry;
 mod watch_events;
 mod write_table;
 
+/// Runs a test body with snapshots resolved from this crate's directory.
+async fn with_snapshot_dir<F: std::future::Future>(test: F) -> F::Output {
+    let mut settings = insta::Settings::clone_current();
+    if std::path::Path::new(file!()).is_absolute() {
+        settings.set_snapshot_path(concat!(env!("CARGO_MANIFEST_DIR"), "/src/tests/snapshots"));
+    }
+    settings.bind_async(test).await
+}
+
 /// Generate wrappers and the `generate_redap_tests!`/`generate_oss_only_redap_tests!`
 /// instantiation macros.
 ///
@@ -44,7 +53,7 @@ macro_rules! define_redap_tests {
             where
                 T: re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
             {
-                $mod::$test(service).await;
+                with_snapshot_dir($mod::$test(service)).await;
             }
         )*
 
@@ -53,7 +62,7 @@ macro_rules! define_redap_tests {
             where
                 T: re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
             {
-                $rmod::$rtest(service).await.expect(stringify!($rtest));
+                with_snapshot_dir($rmod::$rtest(service)).await.expect(stringify!($rtest));
             }
         )*
 
@@ -62,7 +71,7 @@ macro_rules! define_redap_tests {
             where
                 T: re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
             {
-                $omod::$otest(service).await.expect(stringify!($otest));
+                with_snapshot_dir($omod::$otest(service)).await.expect(stringify!($otest));
             }
         )*
 
