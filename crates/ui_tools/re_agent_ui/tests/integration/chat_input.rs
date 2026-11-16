@@ -79,6 +79,15 @@ pub fn ready_panel_for_profile(profile_id: AgentProfileId) -> AgentPanel {
     };
     let mut panel = AgentPanel::with_agents(settings, None, agents, Vec::new());
     panel.set_example_prompts(crate::example_prompts());
+    connect_shown_conversation(&mut panel);
+    panel
+}
+
+/// Puts the shown conversation in the chat, with an open session, without launching an agent.
+///
+/// A chat without a session launches the agent's real command on a background thread, and what
+/// that process reports arrives at a frame no test can predict.
+pub fn connect_shown_conversation(panel: &mut AgentPanel) {
     panel.show_chat();
 
     let session = panel.session_mut();
@@ -106,7 +115,6 @@ pub fn ready_panel_for_profile(profile_id: AgentProfileId) -> AgentPanel {
     session.handle_event(AgentEvent::Update(SessionUpdate::AvailableCommandsUpdate(
         AvailableCommandsUpdate::new(vec![AvailableCommand::new("help", "Show help")]),
     )));
-    panel
 }
 
 /// Typing `/` opens the command list above the input. The input must keep keyboard focus.
