@@ -20,8 +20,10 @@ use crate::catalog::{PyComponentColumnDescriptor, PyComponentColumnSelector};
 pub enum AnyComponentColumn {
     #[pyo3(transparent, annotation = "name")]
     Name(String),
+
     #[pyo3(transparent, annotation = "component_descriptor")]
     ComponentDescriptor(PyComponentColumnDescriptor),
+
     #[pyo3(transparent, annotation = "component_selector")]
     ComponentSelector(PyComponentColumnSelector),
 }

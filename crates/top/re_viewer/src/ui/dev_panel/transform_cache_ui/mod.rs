@@ -23,6 +23,7 @@ const SCENE_MIN_ZOOM: f32 = 0.05;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum FrameVisibilityFilter {
     Implicit,
+
     #[default]
     Named,
     Unlinked,
@@ -33,6 +34,7 @@ enum FrameVisibilityFilter {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum LayoutDirection {
     Horizontal,
+
     #[default]
     Vertical,
 }

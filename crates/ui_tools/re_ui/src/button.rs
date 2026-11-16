@@ -13,6 +13,7 @@ use crate::{ButtonVisuals, DesignTokens, icons};
 pub enum Variant {
     Primary,
     Secondary,
+
     #[default]
     Ghost,
     Outlined,
@@ -104,6 +105,7 @@ impl Variant {
 pub enum Size {
     Normal,
     Small,
+
     #[default]
     Tiny,
     Custom {

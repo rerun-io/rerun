@@ -87,8 +87,10 @@ pub enum RecordingCommandKind {
     // Dev-tools:
     #[cfg(not(target_arch = "wasm32"))]
     PrintChunkStore,
+
     #[cfg(not(target_arch = "wasm32"))]
     PrintBlueprintStore,
+
     #[cfg(not(target_arch = "wasm32"))]
     PrintPrimaryCache,
 }

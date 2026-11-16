@@ -18,8 +18,10 @@ pub struct PyRerunHtmlTable {
 
     #[pyo3(get, set)]
     max_memory_bytes: u64,
+
     #[pyo3(get, set)]
     min_rows_display: usize,
+
     #[pyo3(get, set)]
     repr_rows: usize,
 }

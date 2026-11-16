@@ -1110,6 +1110,7 @@ enum Command {
     SwapSink {
         #[size_bytes(ignore)]
         new_sink: Box<dyn LogSink>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },
@@ -1118,6 +1119,7 @@ enum Command {
     Flush {
         #[size_bytes(ignore)]
         on_done: Sender<FlushResult>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },
@@ -1129,6 +1131,7 @@ enum Command {
     FinalizeDeferredSinks {
         #[size_bytes(ignore)]
         on_done: Sender<()>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },

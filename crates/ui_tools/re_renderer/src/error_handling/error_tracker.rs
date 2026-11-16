@@ -6,6 +6,7 @@ use super::wgpu_core_error::WgpuCoreWrappedContextError;
 #[derive(Debug, Hash, PartialEq, Eq)]
 pub enum ContextError {
     WgpuCoreError(WgpuCoreWrappedContextError),
+
     #[cfg(web)]
     WebGpuError(String),
 }

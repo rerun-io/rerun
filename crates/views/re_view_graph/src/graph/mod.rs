@@ -72,6 +72,7 @@ pub struct Graph {
     entity: EntityPath,
     nodes: Vec<Node>,
     edges: Vec<EdgeTemplate>,
+
     #[expect(unused)]
     kind: GraphType,
 }

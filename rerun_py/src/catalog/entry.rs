@@ -88,10 +88,13 @@ impl PyEntryKind {
     // This allows for EntryType.DATASET syntax in Python
     #[classattr]
     pub const DATASET: Self = Self::Dataset;
+
     #[classattr]
     pub const DATASET_VIEW: Self = Self::DatasetView;
+
     #[classattr]
     pub const TABLE: Self = Self::Table;
+
     #[classattr]
     pub const TABLE_VIEW: Self = Self::TableView;
 }

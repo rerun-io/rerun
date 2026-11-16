@@ -517,6 +517,7 @@ fn debug_menu_options_ui(
             /// crash may not occur
             #[cfg(target_pointer_width = "64")]
             pub const SEGFAULT_ADDRESS: u64 = u32::MAX as u64 + 0x42;
+
             #[cfg(target_pointer_width = "32")]
             pub const SEGFAULT_ADDRESS: u32 = 0x42;
 

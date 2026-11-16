@@ -13,6 +13,7 @@ use web::State;
 
 pub struct LoginFlow {
     state: State,
+
     #[cfg(target_arch = "wasm32")]
     started: bool,
 }

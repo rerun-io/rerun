@@ -192,6 +192,7 @@ fn load_and_stream(
     }
     diagnostics.log_summaries();
 }
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;

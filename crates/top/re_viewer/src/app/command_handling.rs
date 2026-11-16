@@ -23,6 +23,7 @@ use crate::{app_blueprint::AppBlueprint, event::ViewerEventDispatcher};
 
 #[cfg(not(target_arch = "wasm32"))]
 const MIN_ZOOM_FACTOR: f32 = 0.2;
+
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
 

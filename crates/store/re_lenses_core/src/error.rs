@@ -84,6 +84,7 @@ pub enum LensRuntimeError {
         target_entity: EntityPath,
         input_component: ComponentIdentifier,
         component: ComponentIdentifier,
+
         #[source]
         source: Box<crate::SelectorError>,
     },
@@ -95,6 +96,7 @@ pub enum LensRuntimeError {
         target_entity: EntityPath,
         input_component: ComponentIdentifier,
         timeline_name: TimelineName,
+
         #[source]
         source: Box<crate::SelectorError>,
     },
@@ -126,6 +128,7 @@ pub enum LensRuntimeError {
     #[error("Failed to scatter existing timeline '{timeline_name}' across output rows")]
     ScatterExistingTimeFailed {
         timeline_name: TimelineName,
+
         #[source]
         source: arrow::error::ArrowError,
     },
@@ -145,6 +148,7 @@ pub enum LensRuntimeError {
     ComponentCastFailed {
         target_entity: EntityPath,
         component: ComponentIdentifier,
+
         #[source]
         source: arrow::error::ArrowError,
     },

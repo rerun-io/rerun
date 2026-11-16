@@ -43,31 +43,44 @@ enum ImageEncoding {
     Mono8,
     Mono16,
     Yuyv,
+
     #[strum(serialize = "yuv422_yuy2")]
     Yuv422Yuy2,
     Nv12,
+
     #[strum(serialize = "bayer_rggb8")]
     BayerRggb8,
+
     #[strum(serialize = "bayer_bggr8")]
     BayerBggr8,
+
     #[strum(serialize = "bayer_gbrg8")]
     BayerGbrg8,
+
     #[strum(serialize = "bayer_grbg8")]
     BayerGrbg8,
+
     #[strum(serialize = "8UC1")]
     Cv8UC1,
+
     #[strum(serialize = "8UC3")]
     Cv8UC3,
+
     #[strum(serialize = "8SC1")]
     Cv8SC1,
+
     #[strum(serialize = "16UC1")]
     Cv16UC1,
+
     #[strum(serialize = "16SC1")]
     Cv16SC1,
+
     #[strum(serialize = "32SC1")]
     Cv32SC1,
+
     #[strum(serialize = "32FC1")]
     Cv32FC1,
+
     #[strum(serialize = "64FC1")]
     Cv64FC1,
 }

@@ -579,14 +579,19 @@ impl From<PanelState> for re_sdk_types::blueprint::components::PanelState {
 pub struct AppOptions {
     #[serde(alias = "manifest_url")]
     manifest_url: Option<String>,
+
     #[serde(alias = "render_backend")]
     render_backend: Option<String>,
+
     #[serde(alias = "video_decoder")]
     video_decoder: Option<String>,
+
     #[serde(alias = "memory_limit")]
     memory_limit: Option<String>,
+
     #[serde(alias = "hide_welcome_screen")]
     hide_welcome_screen: Option<bool>,
+
     #[serde(alias = "check_for_updates_on_startup")]
     check_for_updates_on_startup: Option<bool>,
     // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
@@ -606,8 +611,10 @@ pub struct AppOptions {
     viewer_base_url: Option<String>,
     notebook: Option<bool>,
     url: Option<StringOrStringArray>,
+
     #[serde(alias = "panel_state_overrides")]
     panel_state_overrides: Option<PanelStateOverrides>,
+
     #[serde(alias = "on_viewer_event")]
     on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,

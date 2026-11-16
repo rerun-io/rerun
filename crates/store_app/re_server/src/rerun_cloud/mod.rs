@@ -274,6 +274,7 @@ impl RerunCloudHandlerBuilder {
 pub struct RerunCloudHandler {
     #[cfg(not(target_arch = "wasm32"))]
     settings: RerunCloudHandlerSettings,
+
     #[cfg(not(target_arch = "wasm32"))]
     write_access_grants: Option<crate::routes::WriteAccessGrants>,
     build_info: re_build_info::BuildInfo,

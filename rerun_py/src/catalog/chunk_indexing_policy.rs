@@ -18,6 +18,7 @@ use super::PySchemaInternal;
 pub enum PyNameSelection {
     #[pyo3(transparent, annotation = "list[str]")]
     Explicit(Vec<String>),
+
     #[pyo3(transparent, annotation = "str")]
     Literal(String),
 }

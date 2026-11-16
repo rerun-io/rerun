@@ -76,11 +76,14 @@ The redacted JSON object only, on one line or pretty-printed, starting with `{` 
 pub enum RedactionError {
     #[cfg(agent_harness_backend)]
     NoScratchDirectory,
+
     #[cfg(not(agent_harness_backend))]
     NoHarness,
+
     #[cfg(not(target_arch = "wasm32"))]
     NoThread,
     QueueFull,
+
     #[cfg(not(target_arch = "wasm32"))]
     ThreadGone,
     TimedOut,

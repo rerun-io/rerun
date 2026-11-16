@@ -66,6 +66,7 @@ pub enum WriteError {
     Register {
         dataset_id: EntryId,
         storage_url: url::Url,
+
         #[source]
         source: Box<ApiError>,
     },
@@ -74,6 +75,7 @@ pub enum WriteError {
     ResolveDataset {
         dataset_id: EntryId,
         kind: &'static str,
+
         #[source]
         source: Box<ApiError>,
     },
