@@ -80,7 +80,7 @@ pub use settings::{
 };
 pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};
 pub use transcript::{
-    ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,
+    ToolCallState, Transcript, TranscriptEntry, TranscriptItem, TurnId, message_text, model_name,
     select_options, truncate_bytes,
 };
 pub use turn::{TurnOutcome, TurnReport};

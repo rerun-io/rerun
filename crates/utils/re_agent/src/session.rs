@@ -829,13 +829,14 @@ impl AgentSession {
     fn begin_turn(&mut self, prompt: Prompt) {
         let text = prompt.text.clone();
         self.transcript.push_user(prompt);
-        self.turns.current = Some(TurnStart {
-            prompt: text,
-            started: Instant::now(),
-            transcript_start: self.transcript.items.len(),
-            permissions_requested: 0,
-            permissions_rejected: 0,
-        });
+        self.turns.current = Some(TurnStart::new(text, self.transcript.items.len()));
+    }
+
+    fn note_waiting(&mut self) {
+        let waiting = self.is_waiting_on_user();
+        if let Some(turn) = &mut self.turns.current {
+            turn.set_waiting(waiting, Instant::now());
+        }
     }
 
     /// Closes the current turn, if any, and queues its report.
@@ -848,12 +849,14 @@ impl AgentSession {
         };
         self.transcript
             .fail_unfinished_tool_calls(unfinished_reason);
+        let working_time = turn.working_time(Instant::now());
         let TurnStart {
             prompt,
             started,
             transcript_start,
             permissions_requested,
             permissions_rejected,
+            ..
         } = turn;
 
         let items = self
@@ -894,6 +897,12 @@ impl AgentSession {
             }
         }
         let off_limits_paths: Vec<PathBuf> = off_limits_paths.into_iter().collect();
+        if let Some(turn_id) = transcript_start
+            .checked_sub(1)
+            .and_then(|index| self.transcript.turn_id(index))
+        {
+            self.transcript.set_turn_duration(turn_id, working_time);
+        }
 
         if !off_limits_paths.is_empty() {
             re_log::warn!(
@@ -931,6 +940,7 @@ impl AgentSession {
             pending.answer(None).ok();
         }
         self.requests.elicitations.clear();
+        self.note_waiting();
     }
 
     /// Asks the agent to change a session setting; its confirmed value arrives in a config update.
@@ -952,6 +962,7 @@ impl AgentSession {
             connection.send(AgentCommand::Authenticate(method_id));
             self.agent.auth = None;
         }
+        self.note_waiting();
     }
 
     /// Answers the pending permission request at `index` with the given option,
@@ -973,6 +984,7 @@ impl AgentSession {
                 self.report_error(format!("Failed to answer permission request: {err}"));
             }
         }
+        self.note_waiting();
     }
 
     /// Responds to a pending question and records its answer in the transcript.
@@ -993,6 +1005,7 @@ impl AgentSession {
                 Err(err) => self.report_error(format!("Failed to answer question: {err}")),
             }
         }
+        self.note_waiting();
     }
 
     fn push_elicitation(
@@ -1034,6 +1047,7 @@ impl AgentSession {
                 .as_ref()
                 .is_none_or(|responder| !responder.is_cancelled())
         });
+        self.note_waiting();
         let Some(connection) = &self.connection else {
             return;
         };
@@ -1041,6 +1055,7 @@ impl AgentSession {
         for event in events {
             self.handle_event(event);
         }
+        self.note_waiting();
     }
 
     /// Direct access to the transcript, for tests that script a conversation.
@@ -2052,6 +2067,20 @@ mod tests {
             }
             assert!(session.pending_elicitations().is_empty());
         }
+    }
+
+    #[test]
+    fn a_finished_turn_records_its_duration_on_its_prompt() {
+        let mut session = AgentSession::default();
+        session.begin_turn("first".into());
+        let turn_id = session
+            .transcript
+            .turn_id(0)
+            .expect("the prompt starts a turn");
+        assert_eq!(session.transcript.turn_duration(turn_id), None);
+
+        session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
+        assert!(session.transcript.turn_duration(turn_id).is_some());
     }
 
     #[test]

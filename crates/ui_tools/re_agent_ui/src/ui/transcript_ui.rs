@@ -12,7 +12,7 @@ use super::tool_call_ui::{
 };
 use re_agent::{
     AgentError, AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptEntry,
-    TranscriptItem, message_text,
+    TranscriptItem, TurnId, message_text,
 };
 
 /// Each ended turn with an agent answer gets a footer that offers to copy that answer.
@@ -43,7 +43,7 @@ pub fn transcript_ui(
     let mut turn = TurnState::default();
     let mut index = 0;
     while let Some(entry) = items.get(index) {
-        turn.observe(ui, entry);
+        turn.observe(ui, transcript.turn_id(index), entry);
 
         let turn_ended = last_user_index.is_some_and(|last_user| index < last_user)
             || !session.turn_in_progress();
@@ -82,8 +82,13 @@ pub fn transcript_ui(
         if turn_ends_here
             && let (Some(turn_top), Some((answer, answered_at))) = (turn.top, &turn.last_answer)
         {
+            let worked = turn
+                .turn_id
+                .and_then(|turn_id| transcript.turn_duration(turn_id))
+                .filter(|duration| MIN_SHOWN_TURN_DURATION <= *duration)
+                .map(format_worked_for);
             ui.push_id(("turn_footer", index), |ui| {
-                turn_footer_ui(ui, turn_top, answer, *answered_at);
+                turn_footer_ui(ui, turn_top, answer, *answered_at, worked.as_deref());
             });
         }
 
@@ -125,16 +130,19 @@ struct TurnState {
     /// Where the turn's user message starts, in the same space as `ui.cursor()`.
     top: Option<f32>,
 
+    turn_id: Option<TurnId>,
+
     /// The last agent message with non-blank text, and when it was written.
     last_answer: Option<(String, SystemTime)>,
 }
 
 impl TurnState {
     /// Call for each entry before showing it.
-    fn observe(&mut self, ui: &egui::Ui, entry: &TranscriptEntry) {
+    fn observe(&mut self, ui: &egui::Ui, turn_id: Option<TurnId>, entry: &TranscriptEntry) {
         match &entry.item {
             TranscriptItem::User(_) => {
                 self.top = Some(ui.cursor().top());
+                self.turn_id = turn_id;
                 self.last_answer = None;
             }
             TranscriptItem::Agent { content, .. } => {
@@ -270,7 +278,13 @@ fn tool_call_group_ui(
 ///
 /// `turn_top` is a y position in the same space as `ui.cursor()`.
 /// The footer takes its space even when the button is hidden, so the transcript does not shift on hover.
-fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str, answered_at: SystemTime) {
+fn turn_footer_ui(
+    ui: &mut egui::Ui,
+    turn_top: f32,
+    answer: &str,
+    answered_at: SystemTime,
+    worked: Option<&str>,
+) {
     let turn_bottom = ui.cursor().top() + re_ui::Size::Small.height();
     let turn_rect = egui::Rect::from_x_y_ranges(ui.max_rect().x_range(), turn_top..=turn_bottom);
     let hovered = ui.rect_contains_pointer(turn_rect);
@@ -293,7 +307,13 @@ fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str, answered_at: S
         {
             ui.copy_text(answer.to_owned());
         }
+        if let Some(worked) = worked {
+            ui.weak(worked);
+        }
         if hovered && let Some(answered_at) = to_jiff(answered_at) {
+            if worked.is_some() {
+                ui.weak(" · ");
+            }
             re_ui::time::short_duration_ui(
                 ui,
                 answered_at,
@@ -392,6 +412,18 @@ fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
 fn to_jiff(time: SystemTime) -> Option<jiff::Timestamp> {
     let since_epoch = time.duration_since(web_time::UNIX_EPOCH).ok()?;
     jiff::Timestamp::from_duration(since_epoch.try_into().ok()?).ok()
+}
+
+const MIN_SHOWN_TURN_DURATION: std::time::Duration = std::time::Duration::from_secs(30);
+
+fn format_worked_for(duration: std::time::Duration) -> String {
+    let nanos = i64::try_from(duration.as_nanos()).unwrap_or(i64::MAX);
+    let duration = re_format::DurationFormatOptions::default()
+        .with_only_seconds(false)
+        .with_min_decimals(0)
+        .with_max_decimals(0)
+        .format_nanos(nanos);
+    format!("Worked for {duration}")
 }
 
 /// Local wall-clock time, e.g. `14:03:12`, with the date in front when it isn't today.

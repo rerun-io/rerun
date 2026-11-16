@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use agent_client_protocol_schema::v1::{
     AvailableCommand, ContentBlock, Plan, SessionConfigId, SessionConfigKind, SessionConfigOption,
@@ -199,7 +200,16 @@ pub struct Transcript {
 
     /// Title the agent gave the session, if any.
     pub title: Option<String>,
+
+    /// Working time of each ended turn.
+    turn_durations: HashMap<TurnId, Duration>,
 }
+
+/// A turn, named by the user message that started it.
+///
+/// Only a [`Transcript`] makes one, and only for an item that is a user message.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TurnId(usize);
 
 impl Transcript {
     fn push(&mut self, item: TranscriptItem) {
@@ -209,8 +219,27 @@ impl Transcript {
         });
     }
 
-    pub fn push_user(&mut self, prompt: Prompt) {
+    pub fn push_user(&mut self, prompt: Prompt) -> TurnId {
+        let turn = TurnId(self.items.len());
         self.push(TranscriptItem::User(prompt));
+        turn
+    }
+
+    /// The turn that the item at `index` in [`Self::items`] starts, if that item is a user message.
+    pub fn turn_id(&self, index: usize) -> Option<TurnId> {
+        let entry = self.items.get(index)?;
+        matches!(entry.item, TranscriptItem::User(_)).then_some(TurnId(index))
+    }
+
+    pub fn set_turn_duration(&mut self, turn: TurnId, duration: Duration) {
+        self.turn_durations.insert(turn, duration);
+    }
+
+    /// Working time of `turn`.
+    ///
+    /// `None` while the turn runs, and for turns loaded from an earlier session.
+    pub fn turn_duration(&self, turn: TurnId) -> Option<Duration> {
+        self.turn_durations.get(&turn).copied()
     }
 
     /// Adds one text block of a prompt from a loaded session's history.

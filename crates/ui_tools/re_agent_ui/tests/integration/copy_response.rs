@@ -99,6 +99,33 @@ fn hovering_a_finished_turn_offers_to_copy_its_answer() {
     assert_eq!(copied, [ANSWER]);
 }
 
+fn set_turn_duration(panel: &mut AgentPanel, duration: std::time::Duration) {
+    let transcript = panel.session_mut().transcript_mut();
+    let turn_id = transcript.turn_id(0).expect("the prompt starts a turn");
+    transcript.set_turn_duration(turn_id, duration);
+}
+
+#[test]
+fn a_finished_turn_shows_how_long_it_took() {
+    crate::use_utc();
+    let mut panel = panel(false);
+    set_turn_duration(&mut panel, std::time::Duration::from_secs(65));
+    let mut harness = harness(panel);
+    harness.get_by_label("Worked for 1m 5s");
+
+    harness.get_by_label_contains(ANSWER).hover();
+    harness.run_steps(2);
+    harness.snapshot("turn_duration");
+}
+
+#[test]
+fn a_short_turn_shows_no_duration() {
+    let mut panel = panel(false);
+    set_turn_duration(&mut panel, std::time::Duration::from_secs(29));
+    let harness = harness(panel);
+    assert!(harness.query_by_label_contains("for 29s").is_none());
+}
+
 #[test]
 fn there_is_nothing_to_copy_while_the_turn_runs() {
     let mut harness = harness(panel(true));
