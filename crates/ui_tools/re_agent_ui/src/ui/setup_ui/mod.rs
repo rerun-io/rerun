@@ -54,7 +54,13 @@ pub fn setup_ui(
                             available_model_apis,
                             agent_harness::agent_choice_ui,
                         ),
-                        _ => setup_ui_inner(ui, settings, agents, available_model_apis, web_choice_ui),
+                        _ => setup_ui_inner(
+                            ui,
+                            settings,
+                            agents,
+                            available_model_apis,
+                            web_choice_ui,
+                        ),
                     };
                 });
         });
