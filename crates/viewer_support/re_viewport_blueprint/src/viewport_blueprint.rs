@@ -994,7 +994,7 @@ fn apply_viewport_command(
         }
 
         ViewportCommand::DuplicateContainer { source, target } => {
-            crate::duplicate::apply_duplicate_container(ctx, bp, source, target);
+            bp.apply_duplicate_container(ctx, source, target);
         }
 
         ViewportCommand::AddView {

@@ -1,0 +1,12 @@
+---
+source: crates/viewer_support/re_viewport_blueprint/src/duplicate.rs
+expression: "hierarchy(&blueprint, target)"
+---
+Grid Some("Dashboard") visible=true columns=Some(2) col_shares=[2.0, 1.0] row_shares=[3.0, 1.0] active=None
+  Horizontal Some("Uneven row") visible=true columns=None col_shares=[3.0, 1.0] row_shares=[] active=None
+    View Some("Plot 0") visible=true titlebar=false origin=/robot
+    View Some("Plot 1") visible=true titlebar=false origin=/robot
+  Tabs Some("Notes") visible=true columns=None col_shares=[] row_shares=[] active=Some(1)
+    View Some("Plot 2") visible=true titlebar=false origin=/robot
+    View Some("Plot 3") visible=true titlebar=false origin=/robot
+  Vertical Some("Empty hidden container") visible=false columns=None col_shares=[] row_shares=[] active=None
