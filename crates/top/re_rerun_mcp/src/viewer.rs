@@ -6,9 +6,9 @@
 //! Each call becomes one `egui_inspection` request/response exchange carried inside a single
 //! `egui_inspect` operation instead of `egui_mcp`'s local inspection socket.
 //!
-//! The viewer-control tools (`rerun_get_state`, `rerun_set_time_cursor`, `rerun_close`, …) are
+//! The viewer-control tools (`viewer_get_state`, `viewer_set_time_cursor`, `viewer_close`, …) are
 //! generated from `viewer_control.proto`: one tool per operation in the request envelope's
-//! `oneof`. `rerun_connect` and `rerun_disconnect` are hand-written, since they manage the connection itself
+//! `oneof`. `viewer_connect` and `viewer_disconnect` are hand-written, since they manage the connection itself
 //! rather than driving the viewer.
 //!
 //! The agent never sees gRPC, but it does read the `.proto` documentation: `re_viewer_control_tools`
@@ -47,7 +47,7 @@ const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
 const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::File;
 
 /// Appended to the description of every viewer-control tool, since they share one connection.
-const REQUIRES_CONNECT: &str = "\n\nRequires `rerun_connect`.";
+const REQUIRES_CONNECT: &str = "\n\nRequires `viewer_connect`.";
 
 /// Deadline for one viewer-control operation.
 ///
@@ -65,7 +65,7 @@ const UI_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Operating guidance for the viewer tools, part of the MCP `instructions`. The per-tool
 /// descriptions cover each command in isolation; this establishes the cross-cutting workflow —
-/// `rerun_connect` first, then the observe→act→verify loop the egui tools share — that an agent
+/// `viewer_connect` first, then the observe→act→verify loop the egui tools share — that an agent
 /// otherwise has to infer.
 const INSTRUCTIONS: &str = include_str!("viewer_instructions.md");
 
@@ -121,8 +121,8 @@ impl Transport for GrpcInspector {
                 format!(
                     "The viewer did not paint a frame within {UI_REQUEST_TIMEOUT:?}. \
                      Every UI tool waits on the frame loop, so a long import or an unresponsive \
-                     window stalls all of them. `rerun_get_state` and \
-                     `rerun_get_logs` are answered without a frame and still work: use \
+                     window stalls all of them. `viewer_get_state` and \
+                     `viewer_get_logs` are answered without a frame and still work: use \
                      them to see whether the viewer is busy loading, and retry once it is idle."
                 )
             })?
@@ -211,7 +211,7 @@ async fn connect_grpc(
 
 /// The live connection to the viewer: the egui [`UiServer`] (which tunnels the egui tools over
 /// the `egui_inspect` operation) and the raw gRPC client (used by the rerun-specific tools).
-/// Both are established together on `rerun_connect` and dropped together on `rerun_disconnect`, so they live
+/// Both are established together on `viewer_connect` and dropped together on `viewer_disconnect`, so they live
 /// behind a single lock.
 struct Connection {
     ui: UiServer,
@@ -226,19 +226,19 @@ struct Connection {
     log_cursor: AtomicU64,
 }
 
-/// Prefix on every tool this crate defines, so a `rerun_*` name is a viewer-control operation and
+/// Prefix on every tool this toolset defines, so a `viewer_*` name is a viewer-control operation and
 /// an unprefixed one is an egui widget tool.
 ///
 /// The egui tools keep their upstream names on purpose: they are the same tools the standalone
 /// `egui-mcp` binary serves, and its `batch` tool re-enters its own router by unprefixed name, so
 /// renaming them here would make a name inside `batch` differ from the same name outside it.
-const RERUN_PREFIX: &str = re_viewer_control_tools::TOOL_NAME_PREFIX;
+const VIEWER_PREFIX: &str = re_viewer_control_tools::TOOL_NAME_PREFIX;
 
 /// Tools whose results cannot include viewer log entries.
-const TOOLS_WITHOUT_LOG: &[&str] = &["rerun_disconnect"];
+const TOOLS_WITHOUT_LOG: &[&str] = &["viewer_disconnect"];
 
 /// The viewer toolset: the connection tools, the viewer-control operations, and the reusable
-/// `egui_mcp` [`UiServer`], built on `rerun_connect` and dropped on `rerun_disconnect`, that
+/// `egui_mcp` [`UiServer`], built on `viewer_connect` and dropped on `viewer_disconnect`, that
 /// drives the live viewer.
 pub struct ViewerToolset {
     /// The active connection, `Some` while connected and `None` otherwise. Tool handlers clone
@@ -247,7 +247,7 @@ pub struct ViewerToolset {
     conn: Arc<Mutex<Option<Arc<Connection>>>>,
 
     /// Router over the egui UI/inspection tools. Independent of the connection, so the tools
-    /// stay listed while disconnected; a call before `rerun_connect` returns `no app connected`.
+    /// stay listed while disconnected; a call before `viewer_connect` returns `no app connected`.
     ui_router: ToolRouter<UiServer>,
 
     /// Router for the rerun-specific tools layered on top of the egui ones.
@@ -257,7 +257,7 @@ pub struct ViewerToolset {
     viewer_endpoint: Option<Url>,
 }
 
-/// Arguments for the `rerun_connect` tool.
+/// Arguments for the `viewer_connect` tool.
 #[derive(Debug, Default, Deserialize, schemars::JsonSchema)]
 struct ConnectArgs {
     /// gRPC endpoint of the running viewer's `ViewerControlService`.
@@ -318,7 +318,7 @@ impl ViewerToolset {
 
     /// Connect to the endpoint the toolset was started for, if any.
     ///
-    /// A failure is only logged: the viewer may come up later, and `rerun_connect` still works.
+    /// A failure is only logged: the viewer may come up later, and `viewer_connect` still works.
     pub async fn connect_on_startup(&self) {
         let Some(endpoint) = &self.viewer_endpoint else {
             return;
@@ -331,7 +331,7 @@ impl ViewerToolset {
 
     /// Run one tool of this toolset, appending the viewer's new log entries to its result.
     ///
-    /// Our own tools carry [`RERUN_PREFIX`]. The egui ones keep their upstream names and go to
+    /// Our own tools carry [`VIEWER_PREFIX`]. The egui ones keep their upstream names and go to
     /// the attached UI server, which exists only while connected.
     pub async fn call(
         &self,
@@ -340,7 +340,7 @@ impl ViewerToolset {
     ) -> Result<CallToolResult, McpError> {
         let name = request.name.clone();
         let ours = name
-            .strip_prefix(RERUN_PREFIX)
+            .strip_prefix(VIEWER_PREFIX)
             .map(ToOwned::to_owned)
             .filter(|name| {
                 self.tool_router.has_route(name) || re_viewer_control_tools::is_operation(name)
@@ -364,7 +364,7 @@ impl ViewerToolset {
         } else {
             let conn = self.conn.lock().clone();
             let Some(conn) = conn else {
-                return Ok(text_error("no app connected — call `rerun_connect` first"));
+                return Ok(text_error("no app connected — call `viewer_connect` first"));
             };
             conn.ui.dispatch(&self.ui_router, request, context).await?
         };
@@ -432,7 +432,7 @@ impl ViewerToolset {
                 ),
         );
         for tool in &mut tools {
-            tool.name = std::borrow::Cow::Owned(format!("{RERUN_PREFIX}{}", tool.name));
+            tool.name = std::borrow::Cow::Owned(format!("{VIEWER_PREFIX}{}", tool.name));
         }
 
         // The egui tools keep their upstream names, so they are added after the prefixing.
@@ -472,11 +472,11 @@ impl ViewerToolset {
         match &self.viewer_endpoint {
             Some(endpoint) if self.conn.lock().is_some() => format!(
                 "This server was started for the Rerun viewer at `{endpoint}` and is already connected to it. \
-                 Do not call `rerun_connect`; start using the other tools right away.\n\n{INSTRUCTIONS}"
+                 Do not call `viewer_connect`; start using the other tools right away.\n\n{INSTRUCTIONS}"
             ),
             Some(endpoint) => format!(
                 "This server was started for the Rerun viewer at `{endpoint}`, but it is not connected yet. \
-                 Call `rerun_connect` before using the other tools.\n\n{INSTRUCTIONS}"
+                 Call `viewer_connect` before using the other tools.\n\n{INSTRUCTIONS}"
             ),
             None => INSTRUCTIONS.to_owned(),
         }
@@ -490,7 +490,7 @@ impl ViewerToolset {
             .lock()
             .as_ref()
             .map(|c| c.client.clone())
-            .ok_or_else(|| "not connected — call `rerun_connect` first".to_owned())
+            .ok_or_else(|| "not connected — call `viewer_connect` first".to_owned())
     }
 
     /// Connect to a running Rerun viewer over gRPC.
@@ -499,7 +499,7 @@ impl ViewerToolset {
     /// `endpoint` defaults to the viewer this server was started for, else `http://127.0.0.1:9876`
     /// (the viewer's default gRPC address).
     /// Connecting again to the same endpoint is a no-op. Connecting to a different endpoint
-    /// replaces the old connection once the new connection succeeds. Call `rerun_disconnect` to drop
+    /// replaces the old connection once the new connection succeeds. Call `viewer_disconnect` to drop
     /// the connection without replacing it.
     #[tool(annotations(
         read_only_hint = false,
@@ -528,7 +528,7 @@ impl ViewerToolset {
     }
 
     /// Disconnect from the viewer, dropping the gRPC-backed bridge.
-    /// The tools stop working until `rerun_connect` is called again.
+    /// The tools stop working until `viewer_connect` is called again.
     #[tool(annotations(
         read_only_hint = false,
         destructive_hint = false,
@@ -614,7 +614,7 @@ mod tests {
             .split('`')
             .skip(1)
             .step_by(2)
-            .filter(|name| name.starts_with(RERUN_PREFIX))
+            .filter(|name| name.starts_with(VIEWER_PREFIX))
             .filter(|name| name.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
         for name in names {
             assert!(

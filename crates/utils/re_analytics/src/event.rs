@@ -1341,13 +1341,13 @@ mod tests {
         let event = product_event(ProductFeedback {
             category: Some(FeedbackCategory::DocsMismatch),
             severity: None,
-            surface: Some("rerun_set_blueprint".to_owned()),
+            surface: Some("viewer_set_blueprint".to_owned()),
             content: None,
         });
         assert!(matches!(&event.props["subject"], Property::String(s) if s == "product"));
         assert!(matches!(&event.props["category"], Property::String(s) if s == "docs_mismatch"));
         assert!(
-            matches!(&event.props["surface"], Property::String(s) if s == "rerun_set_blueprint")
+            matches!(&event.props["surface"], Property::String(s) if s == "viewer_set_blueprint")
         );
         assert!(!event.props.contains_key("severity"));
         assert!(!event.props.contains_key("title"));

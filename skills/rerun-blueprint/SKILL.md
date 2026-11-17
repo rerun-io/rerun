@@ -10,8 +10,8 @@ allowed-tools: Read, Grep, Bash, WebFetch
 **To change how the viewer looks, change the blueprint.** This holds for a
 recording's layout, views and their properties, and for a table's columns, row
 filters and cards. Don't click through the viewer's menus to do it. With the
-viewer MCP, read and write the blueprint with `rerun_get_blueprint` and
-`rerun_set_blueprint` rather than the low-level click tools.
+viewer MCP, read and write the blueprint with `viewer_get_blueprint` and
+`viewer_set_blueprint` rather than the low-level click tools.
 
 A blueprint decides how a recording is shown, and the recording decides what exists.
 Read the data, design a first layout, then **verify state before assessing screenshots** until it reads at a glance.
@@ -23,9 +23,9 @@ The constructors are discoverable (`dir(rrb)`,
 
 If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
 
-Without a target, `rerun_get_blueprint` and `rerun_set_blueprint` use what is on screen: the table if one is shown, else the active recording.
+Without a target, `viewer_get_blueprint` and `viewer_set_blueprint` use what is on screen: the table if one is shown, else the active recording.
 Use `{"recording": {}}` to target the active recording even when a table is shown.
-`rerun_set_blueprint` accepts `mode: "full"` (default) or `mode: "partial"`.
+`viewer_set_blueprint` accepts `mode: "full"` (default) or `mode: "partial"`.
 Use partial mode for focused edits: send only changed fields, leaving the layout and all omitted fields untouched.
 Full mode clears omitted fields and entities; use it for a complete layout, reading the existing blueprint first to preserve settings you intend to keep.
 Both modes replace arrays and struct-valued fields as a whole, so preserve other entries when changing lists such as `component_map` or `instruction_ids`.
@@ -39,8 +39,8 @@ A write that would break a reference is rejected, and nothing is written.
 That covers a missing or unreferenced view, container, or visualizer instruction, and a loop of containers.
 So add a new view and the reference to it in the same call, and delete a view with `{"Clear": {"is_recursive": true}}` in the same call that takes it out of `contents`.
 
-After each write, check the views and their `reports` in `rerun_get_state`, plus logs appended to tool results.
-If the structure differs, inspect `rerun_get_blueprint` before retrying.
+After each write, check the views and their `reports` in `viewer_get_state`, plus logs appended to tool results.
+If the structure differs, inspect `viewer_get_blueprint` before retrying.
 Then check a screenshot for framing and readability before reporting completion.
 
 ### Component defaults and overrides
@@ -90,19 +90,19 @@ Double quotes for column names, single quotes for strings, and
 `any_match("column", x -> …)` for list columns.
 
 With the viewer MCP, change the table on screen directly:
-`rerun_get_table_schema` names the columns, `rerun_get_blueprint` with
-`{"table": {}}` reads the table blueprint, and `rerun_set_blueprint` with
+`viewer_get_table_schema` names the columns, `viewer_get_blueprint` with
+`{"table": {}}` reads the table blueprint, and `viewer_set_blueprint` with
 `{"table": {}, "mode": "partial"}` updates only supplied fields.
 Omitting `mode` or choosing `"full"` replaces the table blueprint.
-`rerun_set_blueprint` returns an error for a column name the table lacks, or a filter
+`viewer_set_blueprint` returns an error for a column name the table lacks, or a filter
 that fails. A column's entry sits at `/table/layouts/table/columns/<column name>`,
 with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
 as `\\:` and `\\ `.
 
 For a vague request such as "table with previews", don't ask first.
 Write cards with one 2D preview of the first camera entity, then offer to change it.
-Take the entity from `rerun_get_dataset_schema`.
-Call `rerun_set_blueprint` with `{"table": {}, "mode": "full"}` and this `json`, which shows a 2D preview of `/camera/ext1` on each card.
+Take the entity from `viewer_get_dataset_schema`.
+Call `viewer_set_blueprint` with `{"table": {}, "mode": "full"}` and this `json`, which shows a 2D preview of `/camera/ext1` on each card.
 The view id is any fresh UUID, used identically in the three `/view/…` paths:
 
 ```json
@@ -125,15 +125,15 @@ The view id is any fresh UUID, used identically in the three `/view/…` paths:
 
 `"full"` replaces the whole table blueprint, which suits a table nobody has configured yet.
 Use `"partial"` when the user has already changed the table: it changes only the fields you send, and keeps their column order and filters.
-Every name in `field_order` must be a column from `rerun_get_table_schema`.
-Check the write with `rerun_get_blueprint`, not a full-window screenshot.
+Every name in `field_order` must be a column from `viewer_get_table_schema`.
+Check the write with `viewer_get_blueprint`, not a full-window screenshot.
 The [MCP docs](https://rerun.io/docs/viewer/extend/mcp#table-blueprints) have more examples.
 For the whole Python API, including cards and segment previews, see
 [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints).
 
 ## 1. Read the data
 
-With viewer MCP, start with `rerun_get_recording_schema` for compact entity → archetype lists (the default).
+With viewer MCP, start with `viewer_get_recording_schema` for compact entity → archetype lists (the default).
 Check `omitted_entities`; narrow with `entity_path` or raise `max_entities` to cover the remaining entities.
 Request detailed schema only for entities that need it, by setting `with_components: true` and `entity_path`.
 
@@ -150,8 +150,8 @@ the archetype off each chunk (see `rerun-chunk-processing`).
 
 The dataset schema alone doesn't list every entity a view can show. Assets are
 static data such as URDF robot meshes, which the viewer applies to every segment,
-but they don't appear in the segment entities. When `rerun_get_dataset_schema`
-lists `asset_ids` next to `entities`, call `rerun_get_dataset_assets_schema` to
+but they don't appear in the segment entities. When `viewer_get_dataset_schema`
+lists `asset_ids` next to `entities`, call `viewer_get_dataset_assets_schema` to
 get the entities in each asset, and read it before choosing between a 2D and a
 3D view or preview. For example, `asset_ids: ["urdf-model-left", "urdf-model-right"]`
 means the robot models can go in a `Spatial3DView`.

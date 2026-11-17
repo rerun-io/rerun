@@ -290,7 +290,7 @@ mod tests {
         let schema = toolbox
             .definitions()
             .into_iter()
-            .find(|tool| tool.name == "rerun_save_screenshot")
+            .find(|tool| tool.name == "viewer_save_screenshot")
             .expect("the screenshot tool")
             .input_schema;
         assert!(schema["properties"].get("file_path").is_none());

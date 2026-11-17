@@ -175,9 +175,9 @@ mod tests {
 
     fn request() -> SubmitFeedbackRequest {
         SubmitFeedbackRequest {
-            title: "`rerun_set_blueprint` rejected a valid blueprint.".to_owned(),
+            title: "`viewer_set_blueprint` rejected a valid blueprint.".to_owned(),
             category: ProtoCategory::Bug.into(),
-            surface: Some("rerun_set_blueprint".to_owned()),
+            surface: Some("viewer_set_blueprint".to_owned()),
             summary: Some("It said the JSON was invalid.".to_owned()),
             agent: Some("Test Agent".to_owned()),
             severity: ProtoSeverity::Unspecified.into(),
@@ -194,7 +194,7 @@ mod tests {
         };
         assert_eq!(product.category, Some(FeedbackCategory::Bug));
         assert_eq!(product.severity, None);
-        assert_eq!(product.surface.as_deref(), Some("rerun_set_blueprint"));
+        assert_eq!(product.surface.as_deref(), Some("viewer_set_blueprint"));
         assert!(product.content.is_none());
     }
 
@@ -207,7 +207,7 @@ mod tests {
         let content = product.content.expect("content");
         assert_eq!(
             content.title,
-            "`rerun_set_blueprint` rejected a valid blueprint."
+            "`viewer_set_blueprint` rejected a valid blueprint."
         );
         assert_eq!(
             content.summary.as_deref(),

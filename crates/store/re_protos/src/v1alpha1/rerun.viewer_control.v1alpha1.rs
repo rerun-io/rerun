@@ -174,7 +174,7 @@ pub mod viewer_control_request {
         /// (customize tables, enable card layouts, and add preview cells) with JSON, in the form
         /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
         /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
-        /// Consult `rerun_list_view_types` before selecting a new view type.
+        /// Consult `viewer_list_view_types` before selecting a new view type.
         ///
         /// `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
         /// partial updates write only supplied fields, preserving everything else. Prefer partial
@@ -265,7 +265,7 @@ pub mod viewer_control_request {
         ///
         /// Returns JSON with frames, edges, provenance, query time, effective options, and missing-chunk status.
         /// This is a latest-at snapshot, not transform history. To inspect another time, call
-        /// `rerun_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.
+        /// `viewer_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.
         /// If no cursor is set, queries latest values and explicitly reports query.mode = "latest".
         /// If chunks are missing, the graph is incomplete: missing edges do not prove disconnection.
         ///
@@ -296,7 +296,7 @@ pub mod viewer_control_request {
         /// Inspecting frame assignments is a separate concern from this API, do it only when asked or
         /// necessary for debugging.
         ///
-        /// Use also rerun_get_state to check spatial-view topology errors.
+        /// Use also viewer_get_state to check spatial-view topology errors.
         /// For missing content, check if the blueprint's target frame is set to a meaningful value.
         /// tf#/ is the default root for entity-path frame topologies, but is also a fallback when
         /// there are multiple disconnected trees with named frames.
@@ -2374,7 +2374,7 @@ pub struct SubmitFeedbackRequest {
     /// What kind of problem it is.
     #[prost(enumeration = "FeedbackCategory", tag = "2")]
     pub category: i32,
-    /// The tool, command, or API that let you down, e.g. `rerun_set_blueprint` or `rr.log`.
+    /// The tool, command, or API that let you down, e.g. `viewer_set_blueprint` or `rr.log`.
     #[prost(string, optional, tag = "3")]
     pub surface: ::core::option::Option<::prost::alloc::string::String>,
     /// More detail: the error message, what you expected instead, and how you worked around it.

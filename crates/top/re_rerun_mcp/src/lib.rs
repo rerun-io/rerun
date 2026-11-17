@@ -67,9 +67,9 @@ pub struct ViewerConfig {
     /// gRPC address of a running Rerun viewer's `ViewerControlService`,
     /// e.g. `http://127.0.0.1:9876`, the same port the viewer serves SDK connections on.
     ///
-    /// When given, the server dials it right away, so the agent can skip `rerun_connect`,
-    /// and it becomes the default endpoint for later `rerun_connect` calls.
-    /// When `None`, the agent picks the viewer with `rerun_connect`, which defaults to
+    /// When given, the server dials it right away, so the agent can skip `viewer_connect`,
+    /// and it becomes the default endpoint for later `viewer_connect` calls.
+    /// When `None`, the agent picks the viewer with `viewer_connect`, which defaults to
     /// `http://127.0.0.1:9876`.
     pub endpoint: Option<Url>,
 }
@@ -239,12 +239,12 @@ mod tests {
     fn analytics_names_only_listed_tools() {
         let server = RerunMcpServer::new(Config::default());
         assert_eq!(
-            server.tool_name_for_analytics("rerun_connect"),
-            "rerun_connect"
+            server.tool_name_for_analytics("viewer_connect"),
+            "viewer_connect"
         );
         assert_eq!(
-            server.tool_name_for_analytics("rerun_get_state"),
-            "rerun_get_state"
+            server.tool_name_for_analytics("viewer_get_state"),
+            "viewer_get_state"
         );
         assert_eq!(server.tool_name_for_analytics("click"), "click");
         assert_eq!(server.tool_name_for_analytics("connect"), "unknown");

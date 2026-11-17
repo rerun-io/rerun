@@ -58,11 +58,11 @@ impl ToolEffect {
     }
 }
 
-/// Prefix on the name of every viewer-control tool an agent sees, as in `rerun_get_state`.
+/// Prefix on the name of every viewer-control tool an agent sees, as in `viewer_get_state`.
 ///
 /// The same for every agent, however it reaches the viewer, so instructions and transcripts read
 /// alike, and so these tools stand apart from any others the agent has.
-pub const TOOL_NAME_PREFIX: &str = "rerun_";
+pub const TOOL_NAME_PREFIX: &str = "viewer_";
 
 /// Fully-qualified name of the request envelope whose `oneof` defines the operations.
 ///
