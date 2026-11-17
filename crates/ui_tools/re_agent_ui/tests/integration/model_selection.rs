@@ -210,7 +210,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         .into_iter()
         .map(|profile| AgentEntry {
             profile,
-            executable: None,
+            install: re_agent::AgentInstall::NotInstalled,
         })
         .collect();
     let mut reopened = AgentPanel::with_agents(restored, None, agents, Vec::new());

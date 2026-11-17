@@ -1124,8 +1124,13 @@ mod tests {
             .map(|profile| {
                 let installed = matches!(profile.id.as_str(), "claude" | "codex");
                 AgentEntry {
-                    executable: installed
-                        .then(|| std::path::PathBuf::from("/usr/local/bin").join(&profile.command)),
+                    install: if installed {
+                        re_agent::AgentInstall::Ready(
+                            std::path::PathBuf::from("/usr/local/bin").join(&profile.command),
+                        )
+                    } else {
+                        re_agent::AgentInstall::NotInstalled
+                    },
                     profile,
                 }
             })

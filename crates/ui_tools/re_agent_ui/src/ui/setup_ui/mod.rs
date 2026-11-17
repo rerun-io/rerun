@@ -89,6 +89,8 @@ fn setup_ui_inner(
     // The provider toggle already names a model API.
     let label = if settings.profile_id.model_api_provider().is_some() {
         "Start".to_owned()
+    } else if matches!(ready, Err(AgentNotReady::NotInstalled { .. })) {
+        "Finish setup to start".to_owned()
     } else {
         format!(
             "Start {}",
@@ -106,9 +108,10 @@ fn setup_ui_inner(
     if clicked {
         next_screen = Screen::Chat;
     }
-    // A missing key is already shown next to the provider toggle.
+    // A missing key is already shown next to the provider toggle, and a missing agent under it.
     if let Err(err) = ready
         && settings.profile_id.model_api_provider().is_none()
+        && !matches!(err, AgentNotReady::NotInstalled { .. })
     {
         ui.error_label(err.to_string());
     }
@@ -338,10 +341,12 @@ pub enum AgentNotReady {
     NoAgentSelected,
 
     /// The selected agent's executable was not found.
-    #[error("{name} is not installed. {install_hint}")]
+    #[error("{name} needs {command}, which was not found. {install_hint}")]
     NotInstalled {
         /// Display name of the agent.
         name: String,
+
+        command: String,
 
         /// How to install the agent.
         install_hint: String,
@@ -379,9 +384,10 @@ pub fn selected_agent_ready(
     else {
         return Err(AgentNotReady::NoAgentSelected);
     };
-    if agent.executable.is_none() {
+    if agent.executable().is_none() {
         return Err(AgentNotReady::NotInstalled {
             name: agent.profile.name.clone(),
+            command: agent.profile.command.clone(),
             install_hint: agent.profile.install_hint.clone(),
         });
     }

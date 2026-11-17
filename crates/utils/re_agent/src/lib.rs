@@ -60,7 +60,8 @@ pub mod acp {
 #[cfg(agent_harness_backend)]
 pub use agent_harness::find_executable;
 pub use agent_harness::{
-    AgentEntry, AgentHarnessConfig, AgentKind, AgentProfile, AgentProfileId, McpStdioServer,
+    AgentEntry, AgentHarnessConfig, AgentInstall, AgentKind, AgentProfile, AgentProfileId,
+    McpStdioServer,
 };
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin, TurnError};

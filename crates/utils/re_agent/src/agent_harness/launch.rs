@@ -12,36 +12,38 @@ impl AgentSettings {
         agents: &[AgentEntry],
         context: &SessionContext,
     ) -> Result<AgentHarnessConfig, AgentLaunchError> {
-        let (command, args, env, mut preferences) = if self.profile_id == AgentProfileId::CUSTOM {
-            let mut parts = shell_words::split(&self.custom_command_line)
-                .map_err(|err| AgentLaunchError::InvalidCommandLine { err })?;
-            let env = take_leading_env_vars(&mut parts);
-            if parts.is_empty() {
-                return Err(AgentLaunchError::EmptyCommandLine);
-            }
-            let command = parts.remove(0);
-            (command, parts, env, crate::AgentPreferences::default())
-        } else {
-            let agent = agents
-                .iter()
-                .find(|agent| agent.profile.id == self.profile_id)
-                .ok_or_else(|| AgentLaunchError::UnknownProfile {
-                    profile_id: self.profile_id.clone(),
-                })?;
-            let profile = &agent.profile;
-            (
-                profile.command.clone(),
-                profile.args.clone(),
-                profile.env.clone(),
-                profile.default_config.clone(),
-            )
-        };
-
-        let mut env = env;
-        env.extend(parse_env_vars(&self.env_vars)?);
+        let (command, args, profile_env, mut preferences) =
+            if self.profile_id == AgentProfileId::CUSTOM {
+                let mut parts = shell_words::split(&self.custom_command_line)
+                    .map_err(|err| AgentLaunchError::InvalidCommandLine { err })?;
+                let env = take_leading_env_vars(&mut parts);
+                if parts.is_empty() {
+                    return Err(AgentLaunchError::EmptyCommandLine);
+                }
+                let command = parts.remove(0);
+                (command, parts, env, crate::AgentPreferences::default())
+            } else {
+                let agent = agents
+                    .iter()
+                    .find(|agent| agent.profile.id == self.profile_id)
+                    .ok_or_else(|| AgentLaunchError::UnknownProfile {
+                        profile_id: self.profile_id.clone(),
+                    })?;
+                let profile = &agent.profile;
+                (
+                    profile.command.clone(),
+                    profile.args.clone(),
+                    profile.env.clone(),
+                    profile.default_config.clone(),
+                )
+            };
 
         // Resolve to an absolute path so that agents installed outside the app's PATH still work.
         let command = find_executable(&command).unwrap_or_else(|| PathBuf::from(&command));
+
+        let mut env: Vec<(String, String)> = path_with_dir_of(&command).into_iter().collect();
+        env.extend(profile_env);
+        env.extend(parse_env_vars(&self.env_vars)?);
 
         let cwd = if !self.cwd.trim().is_empty() {
             PathBuf::from(self.cwd.trim())
@@ -145,12 +147,30 @@ fn take_leading_env_vars(parts: &mut Vec<String>) -> Vec<(String, String)> {
     env
 }
 
+fn path_with_dir_of(command: &std::path::Path) -> Option<(String, String)> {
+    let dir = command.parent().filter(|dir| dir.is_absolute())?;
+    let current = std::env::var_os("PATH").unwrap_or_default();
+    let dirs = std::iter::chain([dir.to_path_buf()], std::env::split_paths(&current));
+    let path = std::env::join_paths(dirs).ok()?.into_string().ok()?;
+    Some(("PATH".to_owned(), path))
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
-    use super::{parse_env_vars, take_leading_env_vars};
+    use super::{parse_env_vars, path_with_dir_of, take_leading_env_vars};
     use crate::{AgentProfileId, AgentSettings, SessionContext};
+
+    #[test]
+    fn the_agent_path_starts_with_the_directory_of_its_command() {
+        let node = tempfile::tempdir().expect("a temporary directory");
+        let dir = node.path();
+        let (name, path) = path_with_dir_of(&dir.join("npx")).expect("an absolute command");
+        assert_eq!(name, "PATH");
+        assert_eq!(std::env::split_paths(&path).next().as_deref(), Some(dir));
+        assert_eq!(path_with_dir_of(std::path::Path::new("npx")), None);
+    }
 
     #[test]
     fn the_host_picks_the_working_directory_only_as_a_default() {

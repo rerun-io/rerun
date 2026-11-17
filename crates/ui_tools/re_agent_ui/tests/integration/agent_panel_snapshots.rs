@@ -57,8 +57,13 @@ fn panel() -> AgentPanel {
         .map(|profile| {
             let installed = matches!(profile.id.as_str(), "claude" | "codex");
             AgentEntry {
-                executable: installed
-                    .then(|| PathBuf::from("/usr/local/bin").join(&profile.command)),
+                install: if installed {
+                    re_agent::AgentInstall::Ready(
+                        PathBuf::from("/usr/local/bin").join(&profile.command),
+                    )
+                } else {
+                    re_agent::AgentInstall::NotInstalled
+                },
                 profile,
             }
         })
@@ -128,7 +133,7 @@ fn first_run_without_agents(available_model_apis: Vec<ModelApiProvider>) -> Agen
         .into_iter()
         .map(|profile| AgentEntry {
             profile,
-            executable: None,
+            install: re_agent::AgentInstall::NotInstalled,
         })
         .collect();
     let settings = AgentSettings {
@@ -149,6 +154,115 @@ fn setup_screen_without_agents_or_keys() {
     );
     assert!(harness.get_by_label("Start").accesskit_node().is_disabled());
     harness.snapshot("setup_screen_without_agents_or_keys");
+}
+
+/// With no agent found, picking the local card lists every agent and a custom command.
+#[test]
+fn setup_screen_local_card_without_agents() {
+    let mut harness = harness(first_run_without_agents(Vec::new()));
+    harness.run_steps(2);
+    harness
+        .get_by_label("A coding agent on this machine")
+        .click();
+    harness.run_steps(4);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        AgentProfileId::CUSTOM
+    );
+    harness.snapshot("setup_screen_local_card_without_agents");
+}
+
+/// An agent that is not installed can still be picked, to see how to install it.
+#[test]
+fn picking_an_agent_that_is_not_installed() {
+    let mut harness = harness(first_run_without_agents(Vec::new()));
+    harness.run_steps(2);
+    harness
+        .get_by_label("A coding agent on this machine")
+        .click();
+    harness.run_steps(2);
+    harness.get_by_label("Gemini CLI").click();
+    harness.run_steps(4);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        AgentProfileId::new("gemini")
+    );
+    harness.get_by_label("Gemini CLI is not installed.");
+    harness.get_by_label("npm install -g @google/gemini-cli");
+    assert!(
+        harness
+            .get_by_label("Finish setup to start")
+            .accesskit_node()
+            .is_disabled()
+    );
+}
+
+/// Claude Code installed without Node.js: the local card picks it and says what is missing.
+#[test]
+fn setup_screen_agent_needs_setup() {
+    let agents = AgentProfile::builtin()
+        .into_iter()
+        .map(|profile| AgentEntry {
+            install: if profile.id == AgentProfileId::new("claude") {
+                re_agent::AgentInstall::NeedsCommand {
+                    cli: PathBuf::from("/home/user/.local/bin/claude"),
+                }
+            } else {
+                re_agent::AgentInstall::NotInstalled
+            },
+            profile,
+        })
+        .collect();
+    let settings = AgentSettings {
+        profile_id: AgentProfileId::default(),
+        ..settings()
+    };
+    let mut harness = harness(AgentPanel::with_agents(settings, None, agents, Vec::new()));
+    harness.run_steps(2);
+    harness
+        .get_by_label("A coding agent on this machine")
+        .click();
+    harness.run_steps(4);
+    assert_eq!(
+        harness.state().settings().profile_id,
+        AgentProfileId::new("claude")
+    );
+    harness.get_by_label(
+        "Claude Code is installed, but the panel starts it with npx, which was not found.",
+    );
+    assert!(
+        harness
+            .get_by_label("Finish setup to start")
+            .accesskit_node()
+            .is_disabled()
+    );
+    harness.snapshot("setup_screen_agent_needs_setup");
+}
+
+/// A saved agent that is no longer found shows how to install it again.
+#[test]
+fn saved_agent_no_longer_found() {
+    let agents = AgentProfile::builtin()
+        .into_iter()
+        .map(|profile| AgentEntry {
+            profile,
+            install: re_agent::AgentInstall::NotInstalled,
+        })
+        .collect();
+    let mut harness = harness(AgentPanel::with_agents(
+        settings(),
+        None,
+        agents,
+        Vec::new(),
+    ));
+    harness.run_steps(4);
+    assert!(
+        harness
+            .get_by_label("Finish setup to start")
+            .accesskit_node()
+            .is_disabled()
+    );
+    harness.get_by_label("Claude Code is not installed.");
 }
 
 /// With no agent but a key, the model API with the key is preselected, ready to start.

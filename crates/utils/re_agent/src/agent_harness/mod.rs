@@ -16,4 +16,4 @@ pub use backend::spawn;
 pub use config::{AgentHarnessConfig, McpStdioServer};
 #[cfg(agent_harness_backend)]
 pub use profiles::find_executable;
-pub use profiles::{AgentEntry, AgentKind, AgentProfile, AgentProfileId};
+pub use profiles::{AgentEntry, AgentInstall, AgentKind, AgentProfile, AgentProfileId};
