@@ -331,8 +331,6 @@ extend-select = [
   "S", # flake8-bandit: security lints
 ]
 ignore = [
-  "ANN401", # Explicit `Any`
-
   # flake8-bandit (`S`). This tree is an SDK plus its examples, docs snippets, tests and
   # build scripts, so the rules below cannot produce a security finding anywhere in it.
   # Everything scoped to a subdirectory instead is under `per-file-ignores`.
@@ -371,6 +369,8 @@ ignore = [
 
 [tool.ruff.lint.flake8-annotations]
 mypy-init-return = true
+# `*args: Any, **kwargs: Any` forwards arguments to a callee that checks their types.
+allow-star-arg-any = true
 
 [tool.ruff.lint.per-file-ignores]
 "docs/snippets/all/*" = [
@@ -392,6 +392,7 @@ mypy-init-return = true
 "tests/python/*" = [
   # We don't care about nice APIs in our tests:
   "PLR0917",
+  "ANN401", # Explicit `Any`
 ]
 
 "examples/notebook/*/*_marimo.py" = [
@@ -419,6 +420,7 @@ mypy-init-return = true
 "scripts/*" = [
   # We don't care about nice APIs in our scripts:
   "PLR0917",
+  "ANN401", # Explicit `Any`
   # Build tooling that runs on inputs we control:
   "S314", # parsing SVG that `d2` just produced
   "S405", # importing `xml.etree` to do it

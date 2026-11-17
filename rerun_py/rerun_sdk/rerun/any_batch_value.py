@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Sized
+from collections.abc import Iterable, Sized
 from dataclasses import dataclass
-from typing import Any, Protocol, TypeAlias
+from typing import Any, Protocol, TypeAlias, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -18,7 +18,7 @@ from .error_utils import _send_warning_or_raise, catch_and_log_exceptions, stric
 class _SupportsDLPack(Protocol):
     """Protocol for objects supporting the DLPack data exchange protocol (e.g., GPU tensors)."""
 
-    def __dlpack__(self, *args: Any, **kwargs: Any) -> Any: ...
+    def __dlpack__(self, *args: Any, **kwargs: Any) -> object: ...
 
 
 ComponentValueLike: TypeAlias = ComponentBatchLike | pa.Array | npt.ArrayLike | _SupportsDLPack
@@ -91,7 +91,7 @@ ANY_VALUE_TYPE_REGISTRY = TypeRegistry()
 
 
 def _parse_arrow_array(
-    value: Any,
+    value: ComponentValueLike,
     *,
     cached: TypeRegistryValue | None = None,
 ) -> tuple[pa.Array, TypeRegistryValue]:
@@ -119,7 +119,12 @@ def _parse_arrow_array(
     )
 
 
-def _try_parse_dlpack(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Array, TypeRegistryValue] | None:
+# numpy's `from_dlpack` stub wants its own DLPack protocol, which `hasattr` cannot narrow to.
+def _try_parse_dlpack(
+    value: Any,  # noqa: ANN401
+    *,
+    pa_type: pa.DataType | None = None,
+) -> tuple[pa.Array, TypeRegistryValue] | None:
     # If the value has a __dlpack__ method, we can convert it to numpy without copy
     # then to arrow
     if hasattr(value, "__dlpack__"):
@@ -131,7 +136,11 @@ def _try_parse_dlpack(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Arr
     return None
 
 
-def _try_parse_string(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Array, TypeRegistryValue] | None:
+def _try_parse_string(
+    value: ComponentValueLike,
+    *,
+    pa_type: pa.DataType | None = None,
+) -> tuple[pa.Array, TypeRegistryValue] | None:
     # Special case: strings are iterables so pyarrow will not
     # handle them properly
     if not isinstance(value, (str, bytes)):
@@ -148,7 +157,11 @@ def _try_parse_string(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Arr
     return None
 
 
-def _try_parse_scalar(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Array, TypeRegistryValue] | None:
+def _try_parse_scalar(
+    value: ComponentValueLike,
+    *,
+    pa_type: pa.DataType | None = None,
+) -> tuple[pa.Array, TypeRegistryValue] | None:
     try:
         pa_scalar = pa.scalar(value)
         pa_array = pa.array([pa_scalar], type=pa_type)
@@ -159,10 +172,10 @@ def _try_parse_scalar(value: Any, *, pa_type: Any | None = None) -> tuple[pa.Arr
 
 
 def _fallback_parse(
-    value: Any,
+    value: ComponentValueLike,
     *,
-    pa_type: Any | None = None,
-    np_type: Any | None = None,
+    pa_type: pa.DataType | None = None,
+    np_type: np.dtype[Any] | None = None,
 ) -> tuple[pa.Array, TypeRegistryValue]:
     # Fall back - use numpy which handles a wide variety of lists, tuples,
     # and mixtures of them and will turn into a well formed array
@@ -174,7 +187,7 @@ def _fallback_parse(
     except pa.lib.ArrowNotImplementedError as e:
         if np_type is None:
             raise ValueError(
-                f"Cannot convert value {value} to arrow array of type {pa_type}."
+                f"Cannot convert value {value!r} to arrow array of type {pa_type}."
                 " Inconsistent with previous type provided."
             ) from e
         raise
@@ -194,7 +207,7 @@ class AnyBatchValue(ComponentBatchLike):
     def __init__(
         self,
         descriptor: str | ComponentDescriptor,
-        value: Any,
+        value: ComponentValueLike | None,
         *,
         drop_untyped_nones: bool = True,
         expect_column: bool = False,
@@ -251,7 +264,7 @@ class AnyBatchValue(ComponentBatchLike):
         with catch_and_log_exceptions(f"Converting data for '{descriptor}'"):
             if isinstance(value, pa.Array):
                 self.pa_array = value
-            elif hasattr(value, "as_arrow_array"):
+            elif value is not None and hasattr(value, "as_arrow_array"):
                 self.pa_array = value.as_arrow_array()
             else:
                 cached = ANY_VALUE_TYPE_REGISTRY.get(descriptor, expect_column=expect_column)
@@ -281,7 +294,7 @@ class AnyBatchValue(ComponentBatchLike):
     def column(
         cls,
         descriptor: str | ComponentDescriptor,
-        value: Any,
+        value: ComponentValueLike | None,
         drop_untyped_nones: bool = True,
     ) -> ComponentColumn | None:
         """
@@ -338,7 +351,7 @@ class AnyBatchValue(ComponentBatchLike):
             except ValueError:
                 arr = None  # Ragged lists — already list-of-lists
             if arr is not None and arr.ndim == 1 and arr.dtype.kind != "O":
-                value = [[x] for x in value]
+                value = [[x] for x in cast("Iterable[Any]", value)]
 
         inst = cls(descriptor, value, drop_untyped_nones=drop_untyped_nones, expect_column=True)
 

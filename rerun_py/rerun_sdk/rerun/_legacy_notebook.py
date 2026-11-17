@@ -3,7 +3,7 @@ from __future__ import annotations
 import base64
 import logging
 import uuid
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from rerun import bindings
 
@@ -11,6 +11,8 @@ from ._memory import memory_recording
 from .recording_stream import RecordingStream, get_application_id
 
 if TYPE_CHECKING:
+    from IPython.core.display import HTML
+
     from .blueprint.api import BlueprintLike
 
 DEFAULT_WIDTH = 950
@@ -139,7 +141,7 @@ def legacy_notebook_show(
     timeout_ms: int = DEFAULT_TIMEOUT,
     blueprint: BlueprintLike | None = None,
     recording: RecordingStream | None = None,
-) -> Any:
+) -> HTML | str:
     """
     Output the Rerun viewer in a notebook using IPython [IPython.core.display.HTML][].
 

@@ -12,7 +12,7 @@ class ChannelDatatypeExt:
     """Extension for [ChannelDatatype][rerun.encodings.ChannelDatatype]."""
 
     @staticmethod
-    def from_np_dtype(dtype: Any) -> ChannelDatatype:
+    def from_np_dtype(dtype: np.dtype[Any]) -> ChannelDatatype:
         from . import ChannelDatatype
 
         channel_datatype_from_np_dtype = {

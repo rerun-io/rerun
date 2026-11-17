@@ -21,12 +21,18 @@ import contextlib
 import functools
 import logging
 import os
-from collections.abc import Callable, Iterator
-from typing import Any, TypeVar, cast
+from typing import TYPE_CHECKING, ParamSpec, TypeVar
+
+if TYPE_CHECKING:
+    from collections.abc import Callable, Iterator
+    from contextvars import ContextVar, Token
+
+    _CarrierAttachment = tuple[ContextVar[dict[str, str]], Token[dict[str, str]]]
 
 logger = logging.getLogger(__name__)
 
-F = TypeVar("F", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 _TRUTHY = {"1", "true", "yes", "on"}
 
@@ -120,7 +126,7 @@ def attach_parent_carrier(carrier: dict[str, str] | None) -> None:
     context.attach(get_global_textmap().extract(carrier))
 
 
-def _push_carrier_to_rust() -> tuple[Any, Any] | None:
+def _push_carrier_to_rust() -> _CarrierAttachment | None:
     """
     Write the current OTel context into Rerun's `ContextVar` so Rust can read it.
 
@@ -140,7 +146,7 @@ def _push_carrier_to_rust() -> tuple[Any, Any] | None:
     return trace_ctx, trace_ctx.set(carrier)
 
 
-def _pop_carrier_from_rust(attachment: tuple[Any, Any] | None) -> None:
+def _pop_carrier_from_rust(attachment: _CarrierAttachment | None) -> None:
     if attachment is None:
         return
     trace_ctx, token = attachment
@@ -202,7 +208,7 @@ def set_current_span_attributes(attributes: dict[str, bool | int | float | str])
         span.set_attribute(key, value)
 
 
-def with_tracing(name: str) -> Callable[[F], F]:
+def with_tracing(name: str) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
     """
     Wrap a function in an OpenTelemetry span and propagate trace context into Rerun's Rust SDK.
 
@@ -218,12 +224,12 @@ def with_tracing(name: str) -> Callable[[F], F]:
     (`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT`).
     """
 
-    def decorator(func: F) -> F:
+    def decorator(func: Callable[_P, _R]) -> Callable[_P, _R]:
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             with tracing_scope(name):
                 return func(*args, **kwargs)
 
-        return cast("F", wrapper)
+        return wrapper
 
     return decorator

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import itertools
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pyarrow as pa
 
@@ -259,7 +259,7 @@ class Schema:
         """
         return pa.schema(self)
 
-    def __arrow_c_schema__(self) -> Any:
+    def __arrow_c_schema__(self) -> object:
         return self._internal.__arrow_c_schema__()
 
 

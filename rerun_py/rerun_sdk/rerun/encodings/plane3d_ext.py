@@ -25,7 +25,7 @@ class Plane3DExt:
     XY: ClassVar[Plane3D]
 
     @staticmethod
-    def deferred_patch_class(cls: Any) -> None:
+    def deferred_patch_class(cls: type[Plane3D]) -> None:
         cls.YZ = cls([1.0, 0.0, 0.0])
         cls.ZX = cls([0.0, 1.0, 0.0])
         cls.XY = cls([0.0, 0.0, 1.0])

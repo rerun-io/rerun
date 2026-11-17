@@ -112,7 +112,8 @@ def _property_column(key: str, component: str) -> str:
     return f"property:{key}:{component}"
 
 
-def _first_str(cell: Any) -> str | None:
+# `cell` comes from `pa.Array.to_pylist()`, which is untyped.
+def _first_str(cell: Any) -> str | None:  # noqa: ANN401
     """The first string of a list-wrapped property cell, or the value itself if not wrapped."""
     if cell is None:
         return None
@@ -121,7 +122,8 @@ def _first_str(cell: Any) -> str | None:
     return str(cell)
 
 
-def _str_list(cell: Any) -> list[str]:
+# `cell` comes from `pa.Array.to_pylist()`, which is untyped.
+def _str_list(cell: Any) -> list[str]:  # noqa: ANN401
     """The strings of a list-wrapped property cell, dropping nulls."""
     if cell is None:
         return []
@@ -2204,7 +2206,7 @@ class TableEntry(Entry[TableEntryInternal]):
     Note: this object acts as a table provider for DataFusion.
     """
 
-    def __datafusion_table_provider__(self, session: Any) -> Any:
+    def __datafusion_table_provider__(self, session: object) -> object:
         """Returns a DataFusion table provider capsule."""
 
         return self._internal.__datafusion_table_provider__(session)

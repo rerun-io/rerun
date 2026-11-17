@@ -221,7 +221,8 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         if analytics:
             self._analytics = analytics
 
-        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
+        # anywidget passes untyped message payloads; `content` is narrowed below.
+        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:  # noqa: ANN401
             if isinstance(content, str):
                 if content == "ready":
                     self._on_ready()
