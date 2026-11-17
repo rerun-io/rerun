@@ -3,7 +3,6 @@ use std::io::Cursor;
 use cros_codecs::codec::h265::parser::{
     Nalu as H265Nalu, NaluType as H265NaluType, Parser as H265Parser,
 };
-use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
 use re_int::SaturatingInto as _;
 use re_span::Span;
@@ -13,7 +12,7 @@ use crate::demux::{
     ChromaSubsamplingModes, SampleMetadataState, SamplesStatistics, VideoDeliveryMethod,
     VideoEncodingDetails,
 };
-use crate::h264::encoding_details_from_h264_sps;
+use crate::h264::encoding_details_from_h264_sps_nal;
 use crate::h265::encoding_details_from_h265_sps;
 use crate::nalu::ANNEXB_NAL_START_CODE;
 use crate::{FrameNumber, StableIndexDeque, Time, Timescale};
@@ -277,11 +276,7 @@ fn codec_details_from_stds(
     match &stsd.contents {
         re_mp4::StsdBoxContent::Avc1(avcc_box) => {
             if let Some(sps_nal) = avcc_box.avcc.sequence_parameter_sets.first() {
-                let complete = true;
-                let sps_nal = nal::RefNal::new(sps_nal.bytes.as_slice(), &[], complete);
-
-                return nal::sps::SeqParameterSet::from_bits(sps_nal.rbsp_bits())
-                    .and_then(|sps| encoding_details_from_h264_sps(&sps))
+                return encoding_details_from_h264_sps_nal(&sps_nal.bytes)
                     .map_err(VideoLoadError::SpsParsingError)
                     .map(|details| VideoEncodingDetails {
                         stsd: Some(stsd),

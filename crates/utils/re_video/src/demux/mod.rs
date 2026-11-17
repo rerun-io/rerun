@@ -1772,6 +1772,87 @@ mod tests {
         }
     }
 
+    /// Appends zero bytes to the first SPS of the `avcC` box, growing every box around it.
+    ///
+    /// Sample offsets are only left intact if `moov` comes after `mdat`.
+    fn pad_avcc_sps(mp4: &[u8], num_zeros: usize) -> Vec<u8> {
+        let mut padded = mp4.to_vec();
+        let mut grow = |offset: usize, num_bytes: usize| {
+            let field = &mut padded[offset..offset + num_bytes];
+            let value = field
+                .iter()
+                .fold(0, |value, &byte| (value << 8) | byte as usize);
+            let value = (value + num_zeros).to_be_bytes();
+            field.copy_from_slice(&value[value.len() - num_bytes..]);
+        };
+
+        let mut offset = 0;
+        loop {
+            let size = u32::from_be_bytes(mp4[offset..offset + 4].try_into().unwrap()) as usize;
+            let children_offset = match &mp4[offset + 4..offset + 8] {
+                b"moov" | b"trak" | b"mdia" | b"minf" | b"stbl" => 8,
+                b"stsd" => 16,
+                b"avc1" => 86,
+                b"avcC" => break,
+                _ => {
+                    offset += size;
+                    continue;
+                }
+            };
+            grow(offset, 4);
+            offset += children_offset;
+        }
+
+        grow(offset, 4);
+        let sps_len_offset = offset + 14;
+        let sps_len = u16::from_be_bytes([mp4[sps_len_offset], mp4[sps_len_offset + 1]]) as usize;
+        grow(sps_len_offset, 2);
+
+        let sps_end = sps_len_offset + 2 + sps_len;
+        padded.splice(sps_end..sps_end, std::iter::repeat_n(0x00, num_zeros));
+        padded
+    }
+
+    fn avcc_sps(details: &VideoEncodingDetails) -> &[u8] {
+        match &details.stsd.as_ref().unwrap().contents {
+            re_mp4::StsdBoxContent::Avc1(avc1) => &avc1.avcc.sequence_parameter_sets[0].bytes,
+            _ => panic!("expected an `avc1` sample entry"),
+        }
+    }
+
+    #[test]
+    fn test_load_mp4_with_zero_padded_avcc_sps() {
+        let mp4 = std::fs::read(video_test_file_mp4(&VideoCodec::H264, false)).unwrap();
+
+        let original = VideoDataDescription::load_mp4(&mp4, "original").unwrap();
+        let original_details = original.encoding_details.unwrap();
+
+        for num_zeros in 1..=4 {
+            let padded = VideoDataDescription::load_mp4(&pad_avcc_sps(&mp4, num_zeros), "padded")
+                .unwrap_or_else(|err| panic!("{num_zeros} trailing zero bytes: {err}"));
+            let padded_details = padded.encoding_details.unwrap();
+
+            let mut expected_sps = avcc_sps(&original_details).to_vec();
+            expected_sps.resize(expected_sps.len() + num_zeros, 0x00);
+            assert_eq!(avcc_sps(&padded_details), expected_sps);
+
+            assert_eq!(
+                VideoEncodingDetails {
+                    stsd: None,
+                    ..padded_details
+                },
+                VideoEncodingDetails {
+                    stsd: None,
+                    ..original_details.clone()
+                }
+            );
+            assert_eq!(
+                padded.samples.num_elements(),
+                original.samples.num_elements()
+            );
+        }
+    }
+
     /// Overwrites the size of one sample in the first `stsz` box.
     fn set_sample_size(mp4: &mut [u8], sample_idx: usize, size: u32) {
         let stsz = mp4.windows(4).position(|w| w == b"stsz").unwrap();
