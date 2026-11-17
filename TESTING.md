@@ -17,8 +17,18 @@ This is an overview of our testing infrastructure.
 
 * Test behavior that could plausibly break.
   Don't add tests for deprecated code paths, trivial UI shortcuts, or one case out of many that all work the same way.
+* A bug fix comes with a regression test that fails without the fix.
+  If that is not feasible, the PR description says why.
 * Keep tests readable: one behavior per test, with setup, action, and checks visibly separated.
   Reviewers read tests to understand what the code is supposed to do.
+* Start each test with a one-line docstring saying which behavior it pins, unless the test name already says it all.
+* Wait for a condition, not for a fixed number of frames or a fixed `sleep`.
+  In `egui_kittest`, `harness.run()` runs until the UI settles; for background work, step until the condition holds, with a timeout.
+  A literal step count (`harness.run_steps(4)`) needs a comment saying what it waits for.
+* Put unit tests in a `#[cfg(test)] mod tests` at the bottom of the file they test, and integration tests in the crate's `tests/` folder.
+  Don't add a separate `tests.rs` module next to the code, or test modules in `lib.rs`/`mod.rs`.
+* Don't copy production data or constants into a test: import them, or use values that are obviously dummies.
+* A test that asserts known-wrong behavior links the issue that tracks the fix (`// TODO(RR-1234): should be …`).
 * Test the viewer through its UI (e.g. clicking buttons in an `egui_kittest` harness) rather than by writing to internal state.
 * Give non-obvious `assert!`s a message saying what should hold, and make failure messages print what was actually received.
 * Prefer an exact comparison (`assert_eq!`) over a partial one (`contains`).
