@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 import numpy.typing as npt
@@ -13,6 +13,9 @@ import pytest
 import rerun as rr
 
 from . import Point3DInput, Transform3DInput
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def log_points3d_large_batch(data: Point3DInput) -> None:
@@ -209,6 +212,52 @@ def test_bench_transform3d_translation_mat3x3(
     rr.init("rerun_example_benchmark_transform3d_translation_mat3x3")
     data = Transform3DInput.prepare(42, num_entities, num_time_steps)
     benchmark(log_transform3d_translation_mat3x3, data, static)
+
+
+ARCHETYPES = ["Scalars", "Points3D", "Points2D", "Boxes3D", "Boxes2D", "Arrows3D", "Pinhole", "Tensor", "Image"]
+
+
+def make_archetype_factories(num_entities: int, num_time_steps: int) -> dict[str, Callable[[int, int], Any]]:
+    """Per archetype, a function building a fresh instance from the data of one entity at one time step."""
+    rng = np.random.default_rng(seed=42)
+    vec2 = rng.random((num_time_steps, num_entities, 2), dtype=np.float32)
+    vec3 = rng.random((num_time_steps, num_entities, 3), dtype=np.float32)
+    scalar = rng.random((num_time_steps, num_entities), dtype=np.float32)
+    tensor = rng.random((num_time_steps, num_entities, 16, 16), dtype=np.float32)
+    image = rng.integers(0, 255, (num_time_steps, num_entities, 8, 8, 3), dtype=np.uint8)
+
+    return {
+        "Scalars": lambda t, e: rr.Scalars(float(scalar[t, e])),
+        "Points3D": lambda t, e: rr.Points3D(vec3[t, e], colors=[0xFF0000FF], radii=[0.1]),
+        "Points2D": lambda t, e: rr.Points2D(vec2[t, e], radii=[0.1]),
+        "Boxes3D": lambda t, e: rr.Boxes3D(half_sizes=vec3[t, e], colors=[0xFF0000FF]),
+        "Boxes2D": lambda t, e: rr.Boxes2D(half_sizes=vec2[t, e]),
+        "Arrows3D": lambda t, e: rr.Arrows3D(origins=vec3[t, e], vectors=vec3[t, e]),
+        "Pinhole": lambda t, e: rr.Pinhole(focal_length=float(scalar[t, e]) + 500.0, width=640, height=480),
+        "Tensor": lambda t, e: rr.Tensor(tensor[t, e]),
+        "Image": lambda t, e: rr.Image(image[t, e]),
+    }
+
+
+def log_archetype_over_time(make: Callable[[int, int], Any], num_entities: int, num_time_steps: int) -> None:
+    """Log a freshly built archetype for each entity at each time step."""
+    # create a new, empty memory sink for the current recording
+    rr.memory_recording()
+
+    for time_index in range(num_time_steps):
+        for entity_index in range(num_entities):
+            archetype = make(time_index, entity_index)
+            rr.set_time("frame", sequence=time_index)
+            rr.set_time("sim_time", duration=time_index * 0.01)
+            rr.log(f"entity_{entity_index}", archetype)
+
+
+@pytest.mark.parametrize("archetype", ARCHETYPES)
+def test_bench_archetype_over_time(benchmark: Any, archetype: str) -> None:
+    num_entities, num_time_steps = 10, 2_000
+    rr.init("rerun_example_benchmark_archetype_over_time")
+    make = make_archetype_factories(num_entities, num_time_steps)[archetype]
+    benchmark(log_archetype_over_time, make, num_entities, num_time_steps)
 
 
 # -----------------------------------------------------------------------------
