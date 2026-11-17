@@ -1,6 +1,6 @@
 //! The viewer's own tools for a model-API agent: the viewer-control operations, run in-process.
 //!
-//! An agent harness reaches the same operations through `rerun viewer-mcp` instead, and its
+//! An agent harness reaches the same operations through `rerun mcp` instead, and its
 //! permission requests for them are judged by the same rules.
 
 use std::sync::Arc;

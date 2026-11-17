@@ -1,6 +1,6 @@
 [package]
 authors.workspace = true
-description = "MCP server that allows llm agents to use the Rerun Viewer."
+description = "MCP server that lets LLM agents use Rerun."
 edition.workspace = true
 homepage.workspace = true
 license.workspace = true
@@ -11,9 +11,9 @@ include = [
   "**/*.bin",
   "**/*.rs",
   "Cargo.toml",
-  "src/instructions.md",
+  "src/*.md",
 ]
-name = "re_viewer_mcp"
+name = "re_rerun_mcp"
 publish = true
 readme = "README.md"
 repository.workspace = true
@@ -24,7 +24,7 @@ version.workspace = true
 workspace = true
 
 [[bin]]
-name = "re-viewer-mcp"
+name = "rerun-mcp"
 path = "src/main.rs"
 test = false
 

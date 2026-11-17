@@ -1,5 +1,5 @@
 ---
-source: crates/top/re_viewer_mcp/src/lib.rs
+source: crates/top/re_rerun_mcp/src/lib.rs
 expression: surface
 ---
 # Server instructions

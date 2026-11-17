@@ -10958,6 +10958,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_rerun_mcp"
+version = "0.44.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "egui_inspection",
+ "egui_mcp",
+ "insta",
+ "parking_lot",
+ "re_analytics",
+ "re_error",
+ "re_log",
+ "re_protos",
+ "re_viewer_control_tools",
+ "re_workspace_hack",
+ "rmcp",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tonic",
+ "url",
+]
+
+[[package]]
 name = "re_ros_msg"
 version = "0.44.0-alpha.1+dev"
 dependencies = [
@@ -12225,30 +12249,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "re_viewer_mcp"
-version = "0.44.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "egui_inspection",
- "egui_mcp",
- "insta",
- "parking_lot",
- "re_analytics",
- "re_error",
- "re_log",
- "re_protos",
- "re_viewer_control_tools",
- "re_workspace_hack",
- "rmcp",
- "schemars 1.2.2",
- "serde",
- "serde_json",
- "tokio",
- "tonic",
- "url",
-]
-
-[[package]]
 name = "re_viewport"
 version = "0.44.0-alpha.1+dev"
 dependencies = [
@@ -12862,6 +12862,7 @@ dependencies = [
  "re_protos",
  "re_quota_channel",
  "re_redap_client",
+ "re_rerun_mcp",
  "re_sdk",
  "re_sdk_types",
  "re_server",
@@ -12872,7 +12873,6 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_viewer",
- "re_viewer_mcp",
  "re_web_viewer_server",
  "re_workspace_hack",
  "similar-asserts",

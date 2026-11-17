@@ -2152,7 +2152,7 @@ mod tests {
         let requested = McpStdioServer {
             name: "rerun".to_owned(),
             command: PathBuf::from("/Applications/Rerun.app/Contents/MacOS/rerun"),
-            args: vec!["viewer-mcp".to_owned()],
+            args: vec!["mcp".to_owned()],
         };
         let mut session = AgentSession::default();
         session.launch.mcp_servers = vec![requested.clone()];
@@ -2182,7 +2182,7 @@ mod tests {
         );
         let markdown = session.transcript.to_markdown();
         assert!(markdown.contains("MCP startup failure"));
-        assert!(markdown.contains("viewer-mcp"));
+        assert!(markdown.contains("rerun mcp"));
         assert!(markdown.contains("~/.codex/config.toml"));
 
         let failures = session.take_reports().mcp_startup_failures;
@@ -2262,7 +2262,7 @@ mod tests {
         let requested = McpStdioServer {
             name: "rerun".to_owned(),
             command: PathBuf::from("/Applications/Rerun.app/Contents/MacOS/rerun"),
-            args: vec!["viewer-mcp".to_owned()],
+            args: vec!["mcp".to_owned()],
         };
         let mut session = AgentSession::default();
         session.launch.mcp_servers = vec![requested.clone()];
@@ -2366,7 +2366,7 @@ mod tests {
                 .iter()
                 .map(|name| McpStdioServer {
                     name: (*name).to_owned(),
-                    command: PathBuf::from("viewer-mcp"),
+                    command: PathBuf::from("rerun"),
                     args: Vec::new(),
                 })
                 .collect::<Vec<_>>()

@@ -11,7 +11,7 @@ It works similar to e.g. Claude for Chrome or Codex Computer Use, but tailored t
 Some things it is useful for:
 
 - **Debugging a logging script**: "The left camera doesn't show up in the viewer, investigate and fix via the mcp."
-- **Adding a custom blueprint**: "Create a blueprint with two tabs: The first is a grid of the cameras, the second shows the map and 3D view. Verify with rerun viewer-mcp."
+- **Adding a custom blueprint**: "Create a blueprint with two tabs: The first is a grid of the cameras, the second shows the map and 3D view. Verify with rerun mcp."
 - **Explore recordings**: "Look at each recording in this dataset and find where it rains. Write a report including screenshots."
 
 To change how the Viewer looks, an agent writes a blueprint with `rerun_set_blueprint` instead of clicking through the Viewer's menus.
@@ -20,19 +20,19 @@ See [Reading and writing the blueprint](#reading-and-writing-the-blueprint).
 
 ## Setup
 
-The server is the `viewer-mcp` subcommand of the `rerun` binary, speaking MCP over stdio.
-It connects to a separate, already-running Viewer over gRPC, so an MCP client only needs to know how to launch `rerun viewer-mcp`.
+The server is the `mcp` subcommand of the `rerun` binary, speaking MCP over stdio.
+It connects to a separate, already-running Viewer over gRPC, so an MCP client only needs to know how to launch `rerun mcp`.
 
 Add it to **Claude Code**:
 
 ```sh
-claude mcp add rerun -- rerun viewer-mcp
+claude mcp add rerun -- rerun mcp
 ```
 
 Add it to **Codex**:
 
 ```sh
-codex mcp add rerun -- rerun viewer-mcp
+codex mcp add rerun -- rerun mcp
 ```
 
 Or configure any MCP client manually. Most accept a `mcp.json` config like this:
@@ -42,9 +42,9 @@ Or configure any MCP client manually. Most accept a `mcp.json` config like this:
   "mcpServers": {
     "rerun": {
       "command": "rerun",
-      "args": ["viewer-mcp"],
+      "args": ["mcp"],
       "env": {
-        "RUST_LOG": "re_viewer_mcp=info,warn"
+        "RUST_LOG": "re_rerun_mcp=info,warn"
       }
     }
   }
@@ -55,7 +55,7 @@ These assume `rerun` is installed on your `PATH` (see [install rerun](../../gett
 If it is not, replace `rerun` with the absolute path to the binary.
 
 By default the agent picks the Viewer with the `rerun_connect` tool.
-To bind the server to one Viewer up front, pass its gRPC address: `rerun viewer-mcp --endpoint http://127.0.0.1:9876`.
+To bind the server to one Viewer up front, pass its gRPC address: `rerun mcp --endpoint http://127.0.0.1:9876`.
 The server then connects on startup, so the agent can skip `rerun_connect`.
 If the Viewer is not running yet, the server tells the agent to call `rerun_connect` instead.
 

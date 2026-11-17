@@ -229,13 +229,13 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
             {
                 servers.push(McpServerConfig {
                     name: "rerun".to_owned(),
-                    command_line: "rerun viewer-mcp".to_owned(),
+                    command_line: "rerun mcp".to_owned(),
                     enabled: true,
                 });
             }
         },
     );
-    ui.weak("Given to the agent when the session starts. `rerun viewer-mcp` lets it see and drive a running Rerun Viewer.");
+    ui.weak("Given to the agent when the session starts. `rerun mcp` lets it see and drive a running Rerun Viewer.");
 
     let mut remove = None;
     for (index, server) in servers.iter_mut().enumerate() {

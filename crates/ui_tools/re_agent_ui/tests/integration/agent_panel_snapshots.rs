@@ -43,7 +43,7 @@ fn settings() -> AgentSettings {
         cwd: "/home/user/robot-project".to_owned(),
         mcp_servers: vec![McpServerConfig {
             name: "rerun".to_owned(),
-            command_line: "rerun viewer-mcp".to_owned(),
+            command_line: "rerun mcp".to_owned(),
             enabled: true,
         }],
         ..Default::default()
@@ -698,7 +698,7 @@ fn chat_mcp_startup_failure() {
             error: "missing field `cacheScope`".to_owned(),
             requested_command: Some(PathBuf::from("rerun")),
             requested_args: vec![
-                "viewer-mcp".to_owned(),
+                "mcp".to_owned(),
                 "--endpoint".to_owned(),
                 "rerun+http://127.0.0.1:9876/proxy".to_owned(),
             ],

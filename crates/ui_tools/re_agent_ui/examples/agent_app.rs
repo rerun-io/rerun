@@ -1,7 +1,7 @@
 //! Standalone chat app for iterating on `re_agent_ui` without the full viewer.
 //!
 //! ```sh
-//! cargo run -p re_agent_ui --example agent_app -- --mcp "rerun viewer-mcp"
+//! cargo run -p re_agent_ui --example agent_app -- --mcp "rerun mcp"
 //! ```
 //!
 //! To skip the agent harness and call a model API directly with your own key, pick the
@@ -50,7 +50,7 @@ struct Args {
     #[arg(long)]
     cwd: Option<String>,
 
-    /// MCP server command line to hand to the agent, e.g. `rerun viewer-mcp`. Repeatable.
+    /// MCP server command line to hand to the agent, e.g. `rerun mcp`. Repeatable.
     #[arg(long = "mcp")]
     mcp_servers: Vec<String>,
 
@@ -129,9 +129,9 @@ fn default_settings() -> AgentSettings {
     let dev_rerun =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../target/debug/rerun");
     let command = if dev_rerun.is_file() {
-        format!("{} viewer-mcp", dev_rerun.display())
+        format!("{} mcp", dev_rerun.display())
     } else {
-        "rerun viewer-mcp".to_owned()
+        "rerun mcp".to_owned()
     };
 
     AgentSettings {

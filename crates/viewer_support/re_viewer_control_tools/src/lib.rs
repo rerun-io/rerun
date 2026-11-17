@@ -1,6 +1,6 @@
 //! The agent tool surface for `ViewerControlService`, derived from the protobuf descriptors.
 //!
-//! Independent of how the tools reach the agent, e.g. over MCP (`re_viewer_mcp`).
+//! Independent of how the tools reach the agent, e.g. over MCP (`re_rerun_mcp`).
 //!
 //! Every operation of the service is a variant of `ViewerControlRequest.kind`, so the tool list,
 //! the input schemas, and the descriptions an agent reads can all come from the descriptor set
@@ -137,7 +137,7 @@ const SCREENSHOT_FILE_PATH: &str = "file_path";
 pub enum ScreenshotDelivery {
     /// The agent must pass a `file_path`, and the viewer writes the image there.
     ///
-    /// For coding agents that reach the viewer over MCP (`re_viewer_mcp`). That server returns
+    /// For coding agents that reach the viewer over MCP (`re_rerun_mcp`). That server returns
     /// every response as JSON text, where a PNG would be a base64 string that fills the context
     /// window. With a path, the agent opens the file only if it needs to, with its own
     /// file-reading tool, which shows the model an image.

@@ -1556,7 +1556,7 @@ pub struct GetStateResponse {
     pub recordings: ::prost::alloc::vec::Vec<ViewerRecording>,
     /// Origin of the catalog server the viewer hosts, e.g. `rerun+<http://127.0.0.1:9876`.>
     ///
-    /// Clients (notably `re_viewer_mcp`) hand this to the Python `CatalogClient` to read the data
+    /// Clients (notably `re_rerun_mcp`) hand this to the Python `CatalogClient` to read the data
     /// behind the open recordings, which this service deliberately does not serve itself.
     /// Unset if the viewer has no catalog, which on native is only the case before it starts up.
     #[prost(string, optional, tag = "4")]
@@ -2583,7 +2583,7 @@ pub mod viewer_control_service_client {
     use tonic::codegen::*;
     /// Remote control of a running viewer.
     ///
-    /// The viewer serves this alongside its SDK comms endpoint. `re_viewer_mcp` is the main client:
+    /// The viewer serves this alongside its SDK comms endpoint. `re_rerun_mcp` is the main client:
     /// it drives the viewer on behalf of an agent.
     ///
     /// `ViewerControl` carries every viewer-control operation in one `oneof`, rather than one RPC per
@@ -2744,7 +2744,7 @@ pub mod viewer_control_service_server {
     }
     /// Remote control of a running viewer.
     ///
-    /// The viewer serves this alongside its SDK comms endpoint. `re_viewer_mcp` is the main client:
+    /// The viewer serves this alongside its SDK comms endpoint. `re_rerun_mcp` is the main client:
     /// it drives the viewer on behalf of an agent.
     ///
     /// `ViewerControl` carries every viewer-control operation in one `oneof`, rather than one RPC per

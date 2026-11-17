@@ -562,7 +562,7 @@ mod tests {
             mcp_servers: vec![crate::McpStdioServer {
                 name: "rerun".to_owned(),
                 command: std::path::PathBuf::from("rerun"),
-                args: vec!["viewer-mcp".to_owned()],
+                args: vec!["mcp".to_owned()],
             }],
             log_protocol: false,
             preamble: None,

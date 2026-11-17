@@ -99,7 +99,7 @@ pub struct ViewerControlState {
     /// Answers held back until the commands they queued have run.
     pending_replies: Vec<PendingReply>,
 
-    /// Recent log messages, served to agents through `re_viewer_mcp`.
+    /// Recent log messages, served to agents through `re_rerun_mcp`.
     pub log: crate::viewer_log::ViewerLog,
 
     /// A rectangle an agent asked the viewer to point the user at, painted on top of everything
@@ -1933,7 +1933,7 @@ impl AppCore {
             .collect()
     }
 
-    /// Resolve and apply a time-cursor move for `re_viewer_mcp`'s `SetTimeCursor`.
+    /// Resolve and apply a time-cursor move for `re_rerun_mcp`'s `SetTimeCursor`.
     ///
     /// Returns what was applied, or an error string if the recording or timeline could not
     /// be resolved.
@@ -2259,7 +2259,7 @@ fn describe_schema_entities(
 /// This is the viewer-side half of the [`egui_inspection`] protocol: read the accessibility tree,
 /// take a screenshot, inject pointer or keyboard events, and so on.
 ///
-/// `re_viewer_mcp` is one client of it: that server turns each of its egui UI tool calls
+/// `re_rerun_mcp` is one client of it: that server turns each of its egui UI tool calls
 /// (`click`, `widget_tree`, `screenshot`, …) into such requests and sends them over the
 /// `egui_inspect` gRPC operation. Its Rerun-specific tools (`viewer_state`, `set_time`, …) use
 /// their own operations and never come here. Any other tool speaking the protocol works too.

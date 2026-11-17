@@ -29,7 +29,7 @@ pub struct McpServerConfig {
     /// The name the agent sees the server under. Tools show up as `mcp__<name>__<tool>`.
     pub name: String,
 
-    /// Full command line, e.g. `rerun viewer-mcp`.
+    /// Full command line, e.g. `rerun mcp`.
     pub command_line: String,
 
     /// Disabled servers stay in the list but are not handed to the agent.

@@ -1,5 +1,5 @@
 //! Feedback that an agent sends about Rerun, through the `submit_feedback` viewer control
-//! operation, which `re_viewer_mcp` offers agents as an MCP tool.
+//! operation, which `re_rerun_mcp` offers agents as an MCP tool.
 
 use re_analytics::event::{
     Feedback, FeedbackAbout, FeedbackAuthor, FeedbackCategory, FeedbackSeverity,
