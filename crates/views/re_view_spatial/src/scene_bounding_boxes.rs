@@ -61,6 +61,7 @@ impl SceneBoundingBoxes {
         self.per_entity.clear();
         self.region_of_interest_current = re_math::BoundingBox::nothing();
         self.region_of_interest_per_entity.clear();
+        self.max_point_radii = MaxRadii::new();
 
         for data in iter_spatial_data(system_output) {
             for entity_bounds in data.iter_bounds() {
