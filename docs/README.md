@@ -38,10 +38,11 @@ docs/content/
   index.md                        # Entry point, redirects to getting-started
   getting-started/                # Quick start, install, project setup, how Rerun works
   logging-and-ingestion/          # Product area: tutorial, data model, sending data, sinks, video and audio, chunks and RRD files, importing
-  viewer/                         # Product area: tutorial, Viewer UI, blueprints and views, 2D and 3D scenes, plots and maps, performance, extending
+  viewer/                         # Product area: Viewer UI, blueprints, view types, shared view concepts, performance, extending
   query-and-transform/            # Product area: tutorial, catalog, dataframes, images and video, lenses
   train/                          # Product area: tutorial, dataloader, dataset export
-  integrations/                   # Notebooks, web embedding, ROS, native loggers
+  viewer/integrations/            # Notebooks, web embedding, and sharing recordings
+  logging-and-ingestion/integrations/ # ROS 2 and native loggers
   hub/                            # Rerun Hub
   reference/
     cli.md                        # Auto-generated (pixi run man)

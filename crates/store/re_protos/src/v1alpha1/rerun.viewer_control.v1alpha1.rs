@@ -139,7 +139,7 @@ pub mod viewer_control_request {
         /// A recording's blueprint has the layout, views, their properties and overrides. A table's
         /// blueprint only has what it sets, such as row filters, the layout, and column settings.
         /// `GetTableSchema` names all columns of a table.
-        /// See <https://rerun.io/docs/viewer/blueprints-and-views/blueprints.>
+        /// See <https://rerun.io/docs/viewer/blueprints.>
         ///
         /// Set at most one of `recording` and `table`, such as `{"recording": {}}` or
         /// `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
@@ -2124,7 +2124,7 @@ pub mod set_blueprint_request {
         ///
         /// The entity paths and archetypes of a table blueprint are described by
         /// `rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in
-        /// <<https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints>.>
+        /// <<https://rerun.io/docs/viewer/blueprints/configure-table-blueprints>.>
         ///
         /// `TableBlueprint` at `/table` has these fields:
         /// * `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a

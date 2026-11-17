@@ -1064,7 +1064,7 @@ impl AppCore {
             }
             UICommand::OpenDocsWebsite => {
                 egui_ctx.open_url(egui::output::OpenUrl {
-                    url: "https://rerun.io/docs/viewer/tutorial/navigating-the-viewer".to_owned(),
+                    url: "https://rerun.io/docs/viewer/ui/overview".to_owned(),
                     new_tab: true,
                 });
             }

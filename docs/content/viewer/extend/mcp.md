@@ -379,7 +379,7 @@ This shows a 3D view of `/my_scene` as a preview of the recording link on each c
 The user can undo and redo a table blueprint write, as with a recording's blueprint.
 To go back to the table's default blueprint, run the `table.reset_blueprint_to_default` command, **Reset to default blueprint** in the command palette, with `rerun_run_command`.
 
-To make a layout the default for everyone who opens the table, build it in Python and register it on the server, as described in [Configure table layouts and segment previews](../blueprints-and-views/configure-table-blueprints.md).
+To make a layout the default for everyone who opens the table, build it in Python and register it on the server, as described in [Configure table layouts and segment previews](../blueprints/configure-table-blueprints.md).
 The [`rerun-blueprint` skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-blueprint/SKILL.md) gives agents the same steps.
 
 ## Closing recordings

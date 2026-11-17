@@ -67,9 +67,9 @@ viewer_url = "https://rerun.io/viewer?url=" + quote(presigned, safe="")
 The web Viewer downloads the file from your browser, so the file host must allow cross-origin requests from the page that runs the Viewer.
 Set `Access-Control-Allow-Origin` on the file host to that origin:
 - `https://rerun.io` for `https://rerun.io/viewer`.
-- `https://app.rerun.io` if you [embed](../../integrations/embed-web.md) `app.rerun.io` in an `<iframe>`, whatever the origin of the surrounding page.
-- The origin of your own page if you [host the Viewer yourself](../../integrations/host-web-viewer.md).
+- `https://app.rerun.io` if you [embed](../integrations/embed-web.md) `app.rerun.io` in an `<iframe>`, whatever the origin of the surrounding page.
+- The origin of your own page if you [host the Viewer yourself](../integrations/host-web-viewer.md).
 For S3 and GCS, this is the bucket's CORS configuration.
 The native Viewer does not need CORS.
 
-This is for files. For a `rerun+http://` connection to a gRPC server, see [Connecting to a gRPC server from another origin](../../integrations/embed-web.md#connecting-to-a-grpc-server-from-another-origin-cors).
+This is for files. For a `rerun+http://` connection to a gRPC server, see [Connecting to a gRPC server from another origin](../integrations/embed-web.md#connecting-to-a-grpc-server-from-another-origin-cors).

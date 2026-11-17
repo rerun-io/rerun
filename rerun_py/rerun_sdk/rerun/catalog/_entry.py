@@ -414,7 +414,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         See [`RegisteredBlueprint.name`][rerun.catalog.RegisteredBlueprint.name] for how names work.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints)
         for examples of saving and registering table blueprints with local or remote storage.
 
         The associated blueprint dataset is owned by this dataset for lifecycle purposes.
@@ -2274,7 +2274,7 @@ class TableEntry(Entry[TableEntryInternal]):
         See [`RegisteredBlueprint.name`][rerun.catalog.RegisteredBlueprint.name] for how names work.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints)
         for examples of configuring columns, cards, and previews, then saving and registering the result.
 
         The associated blueprint dataset is owned by this table for lifecycle purposes.

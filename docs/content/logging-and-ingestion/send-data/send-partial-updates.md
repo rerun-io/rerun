@@ -6,7 +6,7 @@ description: Log only the components that change from one frame to the next
 
 Rerun allows you to log only the data that has changed in-between frames (or whatever atomic unit [your timeline](../data-model/timelines.md) is using), i.e. you can think of this as a sort of diffs or delta encodings.
 
-This is a natural consequence of how Rerun [ingests, stores](../chunks-and-rrd/chunks.md) and finally [queries](../../viewer/blueprints-and-views/entity-queries.md) data: Rerun *always* operates that way, whether you're aware of it or not. Consider this simple snippet:
+This is a natural consequence of how Rerun [ingests, stores](../chunks-and-rrd/chunks.md) and finally [queries](../../viewer/view-concepts/entity-path-filter.md) data: Rerun *always* operates that way, whether you're aware of it or not. Consider this simple snippet:
 
 snippet: archetypes/points3d_simple
 

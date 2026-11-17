@@ -22,7 +22,7 @@ The source of <https://rerun.io/docs> and every code snippet it shows are plain 
 | `docs/content/reference/types/` | One page per archetype, component, view, and blueprint type. |
 | `docs/content/reference/cli.md` | CLI reference. |
 | `docs/content/getting-started/` | Install, project setup, and how Rerun works. |
-| `docs/content/logging-and-ingestion/`, `viewer/`, `query-and-transform/`, `train/`, `hub/`, `integrations/` | One folder per product area, most with a `tutorial.md` and a few topic groups. The Viewer UI and `mcp` server docs are under `viewer/`; SDK operating modes and batching are under `logging-and-ingestion/sinks-and-modes/`. |
+| `docs/content/logging-and-ingestion/`, `viewer/`, `query-and-transform/`, `train/`, `hub/` | One folder per product area, most with a `tutorial.md` and a few topic groups. The Viewer UI and `mcp` server docs are under `viewer/`; SDK operating modes and batching are under `logging-and-ingestion/sinks-and-modes/`. Integrations are under `viewer/integrations/` and `logging-and-ingestion/integrations/`. |
 | `docs/content/changelog/` | Release notes, oldest to newest. |
 | `docs/snippets/INDEX.md` | Table of every snippet: feature, name, one-line description, and which languages exist. Start here. |
 | `docs/snippets/all/<category>/<name>.{py,rs,cpp}` | The snippets themselves. `archetypes/`, `views/`, `howto/`, `concepts/`, `tutorials/`, `quick_start/`. Same name in each language means the same example. |

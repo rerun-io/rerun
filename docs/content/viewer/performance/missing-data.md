@@ -24,12 +24,12 @@ Move the time cursor forward, or press play.
 
 ## The entity is not part of any view
 
-Views only show the entities that their [entity query](../blueprints-and-views/entity-queries.md) includes.
+Views only show the entities that their [entity path filter](../view-concepts/entity-path-filter.md) includes.
 If you changed the query, or set up the layout with a blueprint, new entities may not match it.
-Select the view and check its entity query in the selection panel, or right-click the entity in the streams panel and pick **Add to new view**.
+Select the view and check its entity path filter in the selection panel, or right-click the entity in the streams panel and pick **Add to new view**.
 
 When the Viewer creates views automatically, it creates at most 8 views of each kind (for example 8 time series views).
-If your data needs more, add the views yourself in the UI or with a [blueprint](../blueprints-and-views/build-a-blueprint-programmatically.md).
+If your data needs more, add the views yourself in the UI or with a [blueprint](../blueprints/build-a-blueprint-programmatically.md).
 
 ## The entity is hidden
 
@@ -56,7 +56,7 @@ rr.log("points", rr.Points3D(positions, labels=names, show_labels=True))
 
 ## Some plot series are missing
 
-When you plot a component that isn't logged as `Scalars` (see [Plot any scalar](../plots-and-maps/plot-any-scalar.md)), a time series view shows at most 100 series per entity.
+When you plot a component that isn't logged as `Scalars` (see [Plot any scalar](../view-types/time-series.md#plot-any-scalar)), a time series view shows at most 100 series per entity.
 Log the values as `Scalars` to plot more.
 
 ## Old data disappeared

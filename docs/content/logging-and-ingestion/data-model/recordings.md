@@ -29,7 +29,7 @@ This implicit merging semantics also implies that, from the perspective of the V
 This enables the [distributed logging workflows](#distributed-recordings) described below.
 
 In its UI, the Viewer presents (logical) recordings sharing the same application ID as related.
-In particular, they share the same [blueprint](../../viewer/blueprints-and-views/blueprints.md).
+In particular, they share the same [blueprint](../../viewer/blueprints.md).
 
 
 ### Recordings on a catalog server
@@ -92,7 +92,7 @@ To log several recordings from one process, see [Log to several recordings from 
 
 ### Storage formats
 
-Rerun recordings are stored in `.rrd` files. [Blueprints](../../viewer/blueprints-and-views/blueprints.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.
+Rerun recordings are stored in `.rrd` files. [Blueprints](../../viewer/blueprints.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.
 
 
 ## Application IDs

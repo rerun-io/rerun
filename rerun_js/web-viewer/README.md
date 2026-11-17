@@ -67,5 +67,5 @@ This package only targets recent versions of browsers.
 If your target browser does not support Wasm imports or top-level await, you may need to install additional plugins for your bundler.
 
 For more information about using the package, visit:
-- [Integration docs](https://rerun.io/docs/integrations/embed-web#using-the-javascript-package).
+- [Integration docs](https://rerun.io/docs/viewer/integrations/embed-web#using-the-javascript-package).
 - [Package docs](https://ref.rerun.io/docs/js/0.26.0/web-viewer/index.html).

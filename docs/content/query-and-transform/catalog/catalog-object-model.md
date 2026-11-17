@@ -147,7 +147,7 @@ A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blue
 In that case, the blueprint is applied to all segments of the dataset when visualized in the Rerun Viewer.
 
 A separate **table blueprint** can be used to configure the segment table itself: columns, card layouts, and embedded segment previews.
-See [Configure table layouts and segment previews](../../viewer/blueprints-and-views/configure-table-blueprints.md) for the complete save-and-register workflow.
+See [Configure table layouts and segment previews](../../viewer/blueprints/configure-table-blueprints.md) for the complete save-and-register workflow.
 
 
 ### Assets

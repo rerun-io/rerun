@@ -93,6 +93,6 @@ If `static=True` is used instead, the data logged becomes *static*. Static data 
 This is useful for data that isn't part of normal data capture, but sets the scene for how it should be shown.
 For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be static.
 
-Similarly, [coordinate systems](transforms.md) or [annotation context](../../viewer/blueprints-and-views/annotation-context.md) are typically static.
+Similarly, [coordinate systems](transforms.md) or [annotation context](../../viewer/view-concepts/annotation-context.md) are typically static.
 
 You can read more about static data in the [dedicated section](static.md).
