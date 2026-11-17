@@ -323,7 +323,7 @@ impl PyLazyChunkStreamInternal {
 // ---------------------------------------------------------------------------
 
 /// Python iterator over chunks from a compiled stream.
-#[pyclass( // NOLINT: ignore[py-cls-eq]
+#[pyclass( // relint: allow(pyclass_eq): an iterator has no meaningful equality
     name = "LazyChunkStreamIterator",
     module = "rerun_bindings.rerun_bindings"
 )]

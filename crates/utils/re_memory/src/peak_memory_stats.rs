@@ -51,7 +51,7 @@ impl PeakMemoryStats {
 
         match handle.join() {
             Err(err) => {
-                re_log::warn_once!("Failed to collect PeakMemoryStates: {err:?}"); // NOLINT: err does not implement Display
+                re_log::warn_once!("Failed to collect PeakMemoryStates: {err:?}"); // relint: allow(debug_formatted_error): a thread panic payload (`Box<dyn Any + Send>`) has no `Display`
                 None
             }
             Ok(result) => result,

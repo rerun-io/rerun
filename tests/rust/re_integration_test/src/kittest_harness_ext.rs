@@ -551,7 +551,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn save_recording_to_file(&mut self, path: impl AsRef<std::path::Path>) {
         let mut file = std::fs::File::create(&path)
-            .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
+            .unwrap_or_else(|err| panic!("Failed to create file at {:?}: {err}", path.as_ref()));
 
         let app = self.state_mut();
         let recording_id = app
@@ -576,7 +576,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn save_blueprint_to_file(&mut self, path: impl AsRef<std::path::Path>) {
         let mut file = std::fs::File::create(&path)
-            .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
+            .unwrap_or_else(|err| panic!("Failed to create file at {:?}: {err}", path.as_ref()));
 
         let app = self.state_mut();
         let route = app.route().clone();

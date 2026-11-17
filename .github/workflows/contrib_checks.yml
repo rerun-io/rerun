@@ -168,6 +168,12 @@ jobs:
       - name: Rerun lints
         run: pixi run lint-rerun
 
+      - name: relint
+        run: pixi run relint
+
+      - name: relint self-check
+        run: pixi run relint-self-check
+
   toml-format-check:
     name: Toml format check
     timeout-minutes: 60

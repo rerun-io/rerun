@@ -82,8 +82,7 @@ pub enum PyEntryKind {
     AssetDataset = 6,
 }
 
-// Enums don't need str
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyEntryKind {
     // This allows for EntryType.DATASET syntax in Python
     #[classattr]
@@ -136,7 +135,7 @@ impl From<PyEntryKind> for EntryKind {
 )]
 pub struct PyEntryDetails(pub EntryDetails);
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods]
 impl PyEntryDetails {
     #[getter]
     fn id(&self) -> PyEntryId {

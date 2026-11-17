@@ -144,7 +144,8 @@ pub fn detect_h264_annexb_gop(
             }
         }
         Some(Err(sps_err)) => Err(DetectGopStartError::FailedToExtractEncodingDetails(
-            format!("Failed reading SPS: {sps_err:?}"), // NOLINT: h264 errors don't implement display
+            // relint: allow(debug_formatted_error): `h264_reader::nal::sps::SpsError` only implements `Debug`
+            format!("Failed reading SPS: {sps_err:?}"),
         )),
         None => Ok(GopStartDetection::NotStartOfGop),
     }

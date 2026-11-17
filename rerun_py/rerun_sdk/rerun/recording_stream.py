@@ -426,7 +426,7 @@ class RecordingStream:
 
             # At this point if there aren't other references to this recording, it's considered
             # orphaned. Do a sweep to clean up any orphaned recordings.
-            self._disconnect_orphaned_recordings()  # NOLINT
+            self._disconnect_orphaned_recordings()
 
     # any free function taking a `RecordingStream` as the first argument can also be a method
     binary_stream = binary_stream

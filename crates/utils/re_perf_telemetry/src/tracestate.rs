@@ -278,7 +278,7 @@ mod tests {
     #[test]
     fn processor_active_session_root_sets_attribute() {
         use opentelemetry::trace::Tracer as _;
-        let rt = tokio::runtime::Builder::new_current_thread() // NOLINT: the synchronous test owns this runtime
+        let rt = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
             .unwrap();

@@ -348,6 +348,7 @@ impl ETag {
         if exp_weak != act_weak {
             return false;
         }
+
         fn strip(s: &str) -> &str {
             let s = s.strip_prefix("W/").unwrap_or(s);
             s.trim_start_matches('"').trim_end_matches('"')

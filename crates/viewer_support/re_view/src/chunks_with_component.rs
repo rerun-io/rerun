@@ -123,7 +123,6 @@ impl<'a> MaybeChunksWithComponent<'a> {
         &self,
         mut reporter: impl FnMut(&ComponentMappingError),
     ) -> Either<
-        // NOLINT
         impl Iterator<Item = ChunkWithComponent<'_>>,
         impl Iterator<Item = ChunkWithComponent<'_>>,
     > {

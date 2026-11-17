@@ -805,7 +805,7 @@ fn shutdown(py: Python<'_>) {
 
 // --- Recordings ---
 
-#[pyclass(frozen, from_py_object, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(frozen, from_py_object, module = "rerun_bindings.rerun_bindings")] // relint: allow(pyclass_eq): non-trivial implementation
 #[derive(Clone)]
 pub(crate) struct PyRecordingStream(RecordingStream);
 
@@ -1194,11 +1194,11 @@ impl PyGrpcServerSink {
 }
 
 #[cfg(not(feature = "server"))]
-#[pyclass(name = "GrpcServerSink", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] stub that always fails to construct
+#[pyclass(name = "GrpcServerSink", module = "rerun_bindings.rerun_bindings")] // relint: allow(pyclass_eq): stub that always fails to construct
 struct PyGrpcServerSink;
 
 #[cfg(not(feature = "server"))]
-#[pymethods] // NOLINT: ignore[py-mthd-str] stub that always fails to construct
+#[pymethods]
 impl PyGrpcServerSink {
     /// Create a hosted gRPC server sink.
     #[new]
@@ -1668,7 +1668,7 @@ fn binary_stream(
     Some(PyBinarySinkStorage { inner })
 }
 
-#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // relint: allow(pyclass_eq): non-trivial implementation
 struct PyMemorySinkStorage {
     // So we can flush when needed!
     inner: MemorySinkStorage,
@@ -1738,13 +1738,13 @@ impl PyMemorySinkStorage {
     }
 }
 
-#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")] // relint: allow(pyclass_eq): non-trivial implementation
 struct PyBinarySinkStorage {
     /// The underlying binary sink storage.
     inner: BinaryStreamStorage,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods] // relint: allow(pymethods_str): wrapped by the Python `BinaryStream` class
 impl PyBinarySinkStorage {
     /// Read the bytes from the binary sink.
     ///
@@ -2756,12 +2756,12 @@ authkey = multiprocessing.current_process().authkey
     .map(|authkey: Bound<'_, PyBytes>| authkey.as_bytes().to_vec())
 }
 
-#[pyclass(name = "DeviceCodeFlow", module = "rerun_bindings.rerun_bindings")] // NOLINT: ignore[py-cls-eq] non-trivial implementation
+#[pyclass(name = "DeviceCodeFlow", module = "rerun_bindings.rerun_bindings")] // relint: allow(pyclass_eq): non-trivial implementation
 struct PyDeviceCodeFlow {
     login_flow: DeviceCodeFlow,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods] // relint: allow(pymethods_str): only used by `rerun.auth.login()`
 impl PyDeviceCodeFlow {
     /// Get the URL for the OAuth login flow.
     fn login_url(&self) -> String {

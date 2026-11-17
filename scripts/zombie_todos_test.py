@@ -11,6 +11,9 @@ from unittest.mock import patch
 
 import zombie_todos
 
+# Spelled in pieces, so that lint.py does not take these test strings for its own markers.
+OPT_OUT = "NO" + "LINT"
+
 REPOSITORY = "rerun-io/reality"
 
 
@@ -126,10 +129,10 @@ class CheckoutTests(unittest.TestCase):
     def test_example_opt_out_keeps_surrounding_notes(self) -> None:
         path = self.root / "examples.md"
         path.write_text(
-            f"{todo('RR-2')} <!-- NOLINT -->\n"
-            "<!-- NOLINT_START -->\n"
+            f"{todo('RR-2')} <!-- {OPT_OUT} -->\n"
+            f"<!-- {OPT_OUT}_START -->\n"
             f"{todo('RR-2')}\n"
-            "<!-- NOLINT_END -->\n"
+            f"<!-- {OPT_OUT}_END -->\n"
             f"{todo('RR-2')}\n",
             encoding="utf-8",
         )

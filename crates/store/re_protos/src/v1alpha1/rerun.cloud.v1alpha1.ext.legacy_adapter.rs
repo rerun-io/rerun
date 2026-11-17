@@ -50,7 +50,7 @@ pub enum LegacyPlan {
 /// `Status::internal`.
 ///
 /// TODO(RR-5817): remove with the rest of the `QueryDataset` compatibility code.
-pub fn adapt_legacy(request: QueryDatasetRequest) -> Result<LegacyPlan, tonic::Status> {
+pub fn adapt_legacy(request: QueryDatasetRequest) -> tonic::Result<LegacyPlan> {
     let QueryDatasetRequest {
         segment_ids,
         generate_direct_urls,
@@ -396,7 +396,7 @@ pub fn list_entities_for_component_selection(
 pub fn encode_legacy_candidates(
     batch: RecordBatch,
     timeline: Option<&TimelineName>,
-) -> Result<RecordBatch, tonic::Status> {
+) -> tonic::Result<RecordBatch> {
     let base_schema = QueryDatasetDataframe::min_schema();
 
     let mut fields: Vec<FieldRef> = Vec::with_capacity(base_schema.fields().len() + 1);

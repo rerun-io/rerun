@@ -289,7 +289,7 @@ where
         match stream.next().await {
             Some(Ok(first)) => Ok(ApiResponseStream::new(
                 self.origin.clone(),
-                futures::stream::iter([Ok(first)]).chain(stream), // NOLINT: Stream::chain, not Iterator::chain
+                futures::stream::iter([Ok(first)]).chain(stream),
                 trace_id,
             )),
             // Browsers report a CORS block as an opaque network failure, so `Connection` is

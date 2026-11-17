@@ -1931,7 +1931,7 @@ mod tests {
                 calls: Arc::clone(&calls),
             };
 
-            let rt = tokio::runtime::Builder::new_multi_thread() // NOLINT: test needs to create a runtime explicitly
+            let rt = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .expect("test runtime builds");

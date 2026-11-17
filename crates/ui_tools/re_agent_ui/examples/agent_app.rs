@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     // Runs the model-API agents (`--agent anthropic-api`).
-    let runtime = tokio::runtime::Runtime::new()?; // NOLINT: the example process owns this runtime
+    let runtime = tokio::runtime::Runtime::new()?;
     let async_runtime = re_async::AsyncRuntimeHandle::new_native(runtime.handle().clone());
 
     if args.headless {

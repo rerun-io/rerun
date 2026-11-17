@@ -140,10 +140,10 @@ async fn fetch_example_manifest(client: &reqwest::Client, version: &str) -> Vec<
         .send()
         .await
         .and_then(|r| r.error_for_status())
-        .unwrap_or_else(|e| panic!("Failed to fetch example manifest at {url}: {e}"));
+        .unwrap_or_else(|err| panic!("Failed to fetch example manifest at {url}: {err}"));
     resp.json()
         .await
-        .unwrap_or_else(|e| panic!("Failed to parse example manifest: {e}"))
+        .unwrap_or_else(|err| panic!("Failed to parse example manifest: {err}"))
 }
 
 /// Download a URL to a local path, streaming chunks to disk.
@@ -156,7 +156,7 @@ async fn download(client: &reqwest::Client, url: &str, path: &Path) {
         .send()
         .await
         .and_then(|r| r.error_for_status())
-        .unwrap_or_else(|e| panic!("Failed to download {url}: {e}"));
+        .unwrap_or_else(|err| panic!("Failed to download {url}: {err}"));
     // NOTE: We currently store `gzip`-ed versions on GCS, so this will always be `None`.
     // If we ever decide to store and serve them unzipped, we'd benefit from additional
     // checks, so I think it is worth leaving in.
@@ -167,20 +167,20 @@ async fn download(client: &reqwest::Client, url: &str, path: &Path) {
     let mut tmp = tempfile::Builder::new()
         .prefix(DOWNLOAD_TEMP_PREFIX)
         .tempfile_in(parent_dir)
-        .unwrap_or_else(|e| panic!("Failed to create temp file in {parent_dir:?}: {e}"));
+        .unwrap_or_else(|err| panic!("Failed to create temp file in {parent_dir:?}: {err}"));
     let mut written: u64 = 0;
     while let Some(chunk) = resp
         .chunk()
         .await
-        .unwrap_or_else(|e| panic!("Failed to read from {url}: {e}"))
+        .unwrap_or_else(|err| panic!("Failed to read from {url}: {err}"))
     {
         tmp.write_all(&chunk)
-            .unwrap_or_else(|e| panic!("Failed to write to temp file for {path:?}: {e}"));
+            .unwrap_or_else(|err| panic!("Failed to write to temp file for {path:?}: {err}"));
         written += chunk.len() as u64;
     }
     tmp.as_file()
         .sync_all()
-        .unwrap_or_else(|e| panic!("Failed to sync temp file for {path:?}: {e}"));
+        .unwrap_or_else(|err| panic!("Failed to sync temp file for {path:?}: {err}"));
     if let Some(expected) = expected_len {
         assert_eq!(
             written, expected,
@@ -188,7 +188,7 @@ async fn download(client: &reqwest::Client, url: &str, path: &Path) {
         );
     }
     tmp.persist(path)
-        .unwrap_or_else(|e| panic!("Failed to persist download to {path:?}: {e}"));
+        .unwrap_or_else(|err| panic!("Failed to persist download to {path:?}: {err}"));
 }
 
 /// Ensure a single example is cached at `path`, downloading it if missing.
@@ -236,7 +236,7 @@ async fn test_old_rrds_in_current_viewer() {
         {
             let path = entry.path();
             std::fs::remove_file(&path)
-                .unwrap_or_else(|e| panic!("Failed to remove stale temp file {path:?}: {e}"));
+                .unwrap_or_else(|err| panic!("Failed to remove stale temp file {path:?}: {err}"));
         }
     }
 

@@ -55,8 +55,7 @@ criterion_main!(benches);
 // ---
 
 fn viewer_frame_many_views(c: &mut Criterion) {
-    let runtime = tokio::runtime::Runtime::new() // NOLINT: the benchmark binary owns this runtime
-        .expect("Failed to create tokio runtime");
+    let runtime = tokio::runtime::Runtime::new().expect("Failed to create tokio runtime");
     let _guard = runtime.enter();
 
     let mut group = c.benchmark_group("viewer_frame");

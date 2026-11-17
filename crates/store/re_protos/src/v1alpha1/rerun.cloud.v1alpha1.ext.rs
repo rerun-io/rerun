@@ -1073,6 +1073,7 @@ pub struct CreateTableEntryRequest {
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(value: CreateTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name.to_string(),
@@ -1087,6 +1088,7 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
 
 impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(
         value: &crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
@@ -1112,6 +1114,7 @@ impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEn
 
 impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(
         value: crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
@@ -1128,6 +1131,7 @@ pub struct CreateTableEntryResponse {
 
 impl TryFrom<CreateTableEntryResponse> for crate::cloud::v1alpha1::CreateTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: CreateTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table.try_into()?),
@@ -1469,6 +1473,7 @@ pub struct ReadTableEntryResponse {
 
 impl TryFrom<ReadTableEntryResponse> for crate::cloud::v1alpha1::ReadTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: ReadTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table_entry.try_into()?),
@@ -1542,6 +1547,7 @@ pub struct UpdateTableEntryResponse {
 
 impl TryFrom<UpdateTableEntryResponse> for crate::cloud::v1alpha1::UpdateTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: UpdateTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table_entry.try_into()?),
@@ -1577,6 +1583,7 @@ pub struct RegisterTableRequest {
 
 impl TryFrom<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {
     type Error = TypeConversionError;
+
     fn try_from(value: RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name.to_string(),
@@ -1635,6 +1642,7 @@ pub struct TableEntry {
 
 impl TryFrom<TableEntry> for crate::cloud::v1alpha1::TableEntry {
     type Error = TypeConversionError;
+
     fn try_from(value: TableEntry) -> Result<Self, Self::Error> {
         Ok(Self {
             details: Some(value.details.into()),
@@ -1680,6 +1688,7 @@ pub enum ProviderDetails {
 
 impl TryFrom<&prost_types::Any> for ProviderDetails {
     type Error = TypeConversionError;
+
     fn try_from(value: &prost_types::Any) -> Result<Self, Self::Error> {
         if value.type_url == crate::cloud::v1alpha1::LanceTable::type_url() {
             let as_proto = value.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
@@ -1702,6 +1711,7 @@ impl TryFrom<&prost_types::Any> for ProviderDetails {
 
 impl TryFrom<&ProviderDetails> for prost_types::Any {
     type Error = TypeConversionError;
+
     fn try_from(value: &ProviderDetails) -> Result<Self, Self::Error> {
         match value {
             ProviderDetails::SystemTable(table) => {
@@ -2376,6 +2386,7 @@ pub struct StorageLocation {
     pub alias: StorageLocationAlias,
     pub display_name: Option<String>,
     pub region: StorageRegion,
+
     /// Bucket name, without a URI scheme or object path.
     pub bucket_name: StorageBucketName,
     pub prefix: Option<StoragePrefix>,
@@ -2542,6 +2553,7 @@ impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccess
 pub enum UrlSigning {
     /// Server-signed URLs, usable without client-managed object-store credentials.
     Signed,
+
     /// Unsigned URLs that the client authorizes with its own object-store credentials.
     Unsigned,
 }
@@ -2626,8 +2638,10 @@ pub struct AccessGrant {
     /// Storage may reject HTTP requests earlier. Confirming publication and abort remain valid
     /// after the session deadline; publishing an unfinished upload does not.
     pub expires_at: jiff::Timestamp,
+
     /// The server-selected mechanism; clients must support it before consuming the source.
     pub redemption: Redemption,
+
     /// Effective signing mode, including for renewed part requests. Must match the request.
     pub signing: UrlSigning,
 }
@@ -2637,6 +2651,7 @@ pub struct AccessGrant {
 pub enum Redemption {
     /// An HTTP request the caller performs directly.
     HttpRequest(HttpRequest),
+
     /// A multipart session whose bytes are uploaded directly to storage.
     MultipartSession(MultipartSession),
 }
@@ -2646,10 +2661,13 @@ pub enum Redemption {
 pub struct MultipartSession {
     /// Bearer token for part grants, completion, and abort. Return unchanged; do not log it.
     pub upload_token: prost::bytes::Bytes,
+
     /// Size of each part except the last, which may be smaller.
     pub part_size_bytes: std::num::NonZeroU64,
+
     /// Requests for consecutive parts starting at 1, in part-number order.
     pub part_requests: Vec<HttpRequest>,
+
     /// Maximum part count, including the final part. Absence selects the legacy 10,000-part limit.
     pub max_part_count: Option<NonZeroU32>,
 }
@@ -3543,6 +3561,7 @@ pub struct VersionResponse {
     pub version: String,
     pub cloud_provider: Option<String>,
     pub cloud_region: Option<String>,
+
     /// Server-supported feature flags. See `crate::cloud::v1alpha1::features`
     /// for known feature names. An empty list means the server is older than
     /// the client and feature-gated paths must fall back.

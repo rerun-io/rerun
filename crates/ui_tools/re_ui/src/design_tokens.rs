@@ -1501,7 +1501,7 @@ fn color_from_value(color_table: &ColorTable, color_alias: &ron::Value) -> anyho
 
     let mut color = if color.starts_with('#') {
         Color32::from_hex(color)
-            .map_err(|color_err| anyhow::anyhow!("Invalid hex color: {color_err:?}"))? // NOLINT: error doesn't implement Display
+            .map_err(|color_err| anyhow::anyhow!("Invalid hex color: {color_err:?}"))? // relint: allow(debug_formatted_error): `ecolor::ParseHexColorError` only implements `Debug`
     } else if color.starts_with('{') {
         let color = color
             .strip_prefix('{')

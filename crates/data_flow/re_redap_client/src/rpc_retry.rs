@@ -129,17 +129,15 @@ pub async fn open_stream<T: Send + 'static>(
     response: tonic::Response<tonic::Streaming<T>>,
 ) -> tonic::Result<tonic::Response<impl futures::Stream<Item = tonic::Result<T>> + Send>> {
     let (metadata, mut stream, extensions) = response.into_parts();
-    let first = stream.message().await.map_err(|mut status| {
-        if crate::extract_trace_id(status.metadata()).is_none()
+    let first = stream.message().await.map_err(|mut err| {
+        if crate::extract_trace_id(err.metadata()).is_none()
             && let Some(trace_id) = metadata.get(crate::GRPC_RESPONSE_TRACEID_HEADER)
         {
-            status
-                .metadata_mut()
+            err.metadata_mut()
                 .insert(crate::GRPC_RESPONSE_TRACEID_HEADER, trace_id.clone());
         }
-        status
+        err
     })?;
-    // NOLINT: futures Stream::chain, not Iterator::chain
     let stream = futures::stream::iter(first.map(Ok)).chain(stream);
     Ok(tonic::Response::from_parts(metadata, stream, extensions))
 }

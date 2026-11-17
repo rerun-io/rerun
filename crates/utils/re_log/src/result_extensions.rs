@@ -23,7 +23,7 @@ where
             Err(err) => {
                 let loc = std::panic::Location::caller();
                 let (file, line) = (loc.file(), loc.line());
-                log::error!("{file}:{line} {err}");
+                log::error!("{file}:{line} {err}"); // relint: allow(log_sensitive_inline): a Rust source location, not user data
                 None
             }
         }

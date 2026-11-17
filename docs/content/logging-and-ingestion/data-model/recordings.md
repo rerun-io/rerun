@@ -32,7 +32,6 @@ In its UI, the Viewer presents (logical) recordings sharing the same application
 In particular, they share the same [blueprint](../../viewer/blueprints-and-views/blueprints.md).
 
 
-<!-- NOLINT -->
 ### Recordings on a catalog server
 
 A catalog server has a slightly different object model, so the terminology changes once recordings are registered into a Rerun catalog.
@@ -106,7 +105,6 @@ Unsupported characters and dots in application IDs are normalized to hyphens, an
 
 snippet: tutorials/custom-application-id
 
-<!-- NOLINT -->
 ### When application IDs matter
 
 Application IDs are used by the Viewer when loading recordings directly (not via a catalog server):

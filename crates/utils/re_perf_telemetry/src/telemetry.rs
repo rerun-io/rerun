@@ -1166,12 +1166,14 @@ mod tests {
             standard: None,
         }
     }
+
     const fn standard_only(url: &'static str) -> Want {
         Want::Endpoints {
             rerun_authed: None,
             standard: Some(url),
         }
     }
+
     const fn both(rerun_authed: &'static str, standard: &'static str) -> Want {
         Want::Endpoints {
             rerun_authed: Some(rerun_authed),

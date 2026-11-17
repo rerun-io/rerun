@@ -19,7 +19,7 @@ impl AnyObjectStoreAuthenticator {
 }
 
 /// Authenticates object store fetches with an `Authorization: Bearer` header.
-#[pyclass( // NOLINT: ignore[py-cls-eq]
+#[pyclass( // relint: allow(pyclass_eq): an auth provider has no meaningful equality
     name = "BearerTokenObjectStoreAuth",
     module = "rerun_bindings.rerun_bindings",
     frozen

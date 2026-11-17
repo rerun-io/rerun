@@ -110,7 +110,7 @@ impl PyRerunHtmlTable {
     }
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods] // relint: allow(pymethods_str): not in the Python API stubs
 impl PyRerunHtmlTable {
     #[new]
     #[pyo3(signature = (max_width=None, max_height=None))]

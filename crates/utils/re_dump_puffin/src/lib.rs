@@ -74,11 +74,11 @@ fn resolve_name(id: ScopeId, scopes: &BTreeMap<u32, ScopeOut>) -> String {
 
 fn walk(stream: &Stream, offset: u64, scopes: &BTreeMap<u32, ScopeOut>) -> Result<Vec<ScopeNode>> {
     let reader = Reader::with_offset(stream, offset)
-        .map_err(|err| anyhow::anyhow!("invalid stream offset: {err:?}"))?; // NOLINT: puffin::Error only implements Debug
+        .map_err(|err| anyhow::anyhow!("invalid stream offset: {err:?}"))?; // relint: allow(debug_formatted_error): `puffin::Error` only implements `Debug`
     let mut out = Vec::new();
     for scope in reader {
         let scope: Scope<'_> =
-            scope.map_err(|err| anyhow::anyhow!("stream parse error: {err:?}"))?; // NOLINT: puffin::Error only implements Debug
+            scope.map_err(|err| anyhow::anyhow!("stream parse error: {err:?}"))?; // relint: allow(debug_formatted_error): `puffin::Error` only implements `Debug`
         let children = walk(stream, scope.child_begin_position, scopes)?;
         out.push(ScopeNode {
             id: scope.id.0.get(),

@@ -101,6 +101,7 @@ To add custom functionality to generated types, create `_ext` files:
 
 - use `…` instead of `...` <!-- NOLINT -->
 - validate various custom conventions via `pixi run lint-rerun <file>` (not passing any file will check everything)
+- validate Rust conventions via `pixi run relint <file>` (see [`scripts/relint/README.md`](scripts/relint/README.md))
 - lint JS and TS code with `pixi run js-lint` (oxlint, needs a built web-viewer)
 - Use `format!("{x}")` over `format!("{}, x)` (same in log calls etc)
 - Don't write trivial comments that add nothing new
