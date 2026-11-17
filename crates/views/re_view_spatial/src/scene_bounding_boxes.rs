@@ -65,13 +65,13 @@ impl SceneBoundingBoxes {
 
         for data in iter_spatial_data(system_output) {
             for entity_bounds in data.iter_bounds() {
-                self.max_point_radii.merge(entity_bounds.max_point_radii);
-
                 // 2D objects under a pinhole are placed on its image plane. Since the image plane
                 // distance may depend on the scene bounds, including them could create a feedback loop.
                 if space_kind == SpaceKind::ThreeD && entity_bounds.subspace == SpaceKind::TwoD {
                     continue;
                 }
+
+                self.max_point_radii.merge(entity_bounds.max_point_radii);
 
                 let RobustBounds {
                     exact,
