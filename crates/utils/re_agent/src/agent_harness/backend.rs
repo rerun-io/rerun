@@ -20,7 +20,9 @@ use re_async::UiWaker;
 
 use crate::agent_harness::acp_error::describe_error;
 use crate::agent_harness::{AgentHarnessConfig, McpStdioServer};
-use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin};
+use crate::backend::{
+    AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin, TurnError,
+};
 use crate::{LineDirection, Responder};
 
 /// Spawns an agent subprocess and connects to it over ACP.
@@ -53,9 +55,11 @@ fn finish_turn(
         .filter(|err| err.code == Error::auth_required().code)
         .map(describe_error);
     // Finish the turn before entering the login state: finishing resets the session phase.
-    events.send(AgentEvent::TurnFinished(
-        result.map_err(|err| describe_error(&err)),
-    ));
+    events.send(AgentEvent::TurnFinished(result.map_err(|err| {
+        TurnError::Agent {
+            message: describe_error(&err),
+        }
+    })));
     if let Some(message) = auth_error {
         events.send(AgentEvent::AuthRequired {
             methods: auth_methods,

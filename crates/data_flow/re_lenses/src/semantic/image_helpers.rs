@@ -285,10 +285,12 @@ pub(super) fn is_single_channel_encoding(s: &str) -> Result<bool, Error> {
 }
 
 fn parse_encoding(s: &str) -> Result<ImageEncoding, Error> {
-    s.parse().map_err(|_err| Error::UnexpectedValue {
-        expected: ImageEncoding::VARIANTS,
-        actual: s.to_owned(),
-    })
+    s.parse().map_err(
+        |strum::ParseError::VariantNotFound| Error::UnexpectedValue {
+            expected: ImageEncoding::VARIANTS,
+            actual: s.to_owned(),
+        },
+    )
 }
 
 #[cfg(test)]

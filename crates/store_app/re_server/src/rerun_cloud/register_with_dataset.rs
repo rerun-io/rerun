@@ -291,6 +291,7 @@ fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<PathBuf> {
 
                     String::from_utf8(bytes)
                         .map(PathBuf::from)
+                        // relint: allow(map_err_dropped): mirrors `Url::to_file_path`, whose error is `()`
                         .map_err(|_err| ())
                 })
             } else {

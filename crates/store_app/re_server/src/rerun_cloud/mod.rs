@@ -459,7 +459,7 @@ impl RerunCloudHandler {
                             "memory:// URLs cannot be used as prefix data sources",
                         ));
                     }
-                    let path = source.storage_url.to_file_path().map_err(|_err| {
+                    let path = source.storage_url.to_file_path().map_err(|()| {
                         tonic::Status::invalid_argument(format!(
                             "getting file path from {:?}",
                             source.storage_url

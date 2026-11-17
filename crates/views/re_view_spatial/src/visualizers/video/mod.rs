@@ -554,7 +554,7 @@ fn video_stream_processing_issue(
             VideoPlaybackIssueSeverity::Loading,
         ),
         VideoStreamProcessingError::InvalidVideoSampleType(_)
-        | VideoStreamProcessingError::MissingCodec
+        | VideoStreamProcessingError::MissingCodec { .. }
         | VideoStreamProcessingError::FailedReadingCodec(_)
         | VideoStreamProcessingError::OutOfOrderSamples
         | VideoStreamProcessingError::UnexpectedChunkChanges => (

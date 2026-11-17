@@ -114,8 +114,13 @@ impl std::fmt::Display for PortArg {
     }
 }
 
+/// Error returned when parsing a [`PortArg`] from a string.
+#[derive(Debug, thiserror::Error)]
+#[error("invalid port: {0}")]
+struct InvalidPortArgError(#[source] std::num::ParseIntError);
+
 impl std::str::FromStr for PortArg {
-    type Err = String;
+    type Err = InvalidPortArgError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.eq_ignore_ascii_case("auto") {
@@ -123,7 +128,7 @@ impl std::str::FromStr for PortArg {
         } else {
             s.parse::<u16>()
                 .map(Self::Port)
-                .map_err(|err| format!("invalid port: {err}"))
+                .map_err(InvalidPortArgError)
         }
     }
 }

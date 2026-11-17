@@ -33,7 +33,7 @@ use crate::cards_view::CellChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection, SortDirectionUiExt as _};
 use crate::datafusion_adapter::{
     DataFusionAdapter, DataFusionQueryData, DataFusionQueryError, DataFusionQueryResult,
-    EntryLinksSpec, SegmentLinksSpec, check_filter, query_error_message,
+    EntryLinksSpec, InvalidFilter, SegmentLinksSpec, check_filter, query_error_message,
 };
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
@@ -443,13 +443,12 @@ impl<'a> DataFusionTableWidget<'a> {
 
     /// Check that `sql` is a filter the table can run, against the columns it last showed.
     ///
-    /// The error is the message the filter bar shows for the filter. `None` if the table has not
-    /// been shown yet.
+    /// `None` if the table has not been shown yet.
     pub fn check_filter(
         egui_ctx: &egui::Context,
         table_ref: &TableReference,
         sql: &str,
-    ) -> Option<Result<(), String>> {
+    ) -> Option<Result<(), InvalidFilter>> {
         let schema =
             egui_ctx.data(|data| data.get_temp::<ShownTableSchema>(table_schema_id(table_ref)))?;
         Some(check_filter(schema.arrow_schema, sql))

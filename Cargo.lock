@@ -9098,6 +9098,7 @@ dependencies = [
  "re_ui",
  "re_workspace_hack",
  "serde_json",
+ "thiserror 2.0.19",
  "tokio",
  "web-time",
 ]
@@ -10280,6 +10281,7 @@ dependencies = [
  "re_workspace_hack",
  "serde",
  "thiserror 2.0.19",
+ "uuid",
 ]
 
 [[package]]
@@ -10766,6 +10768,7 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
+ "thiserror 2.0.19",
  "tokio",
  "url",
  "uuid",
@@ -10938,6 +10941,7 @@ dependencies = [
  "re_math",
  "re_renderer",
  "re_workspace_hack",
+ "thiserror 2.0.19",
  "web-sys",
  "web-time",
  "wgpu",
@@ -10976,6 +10980,7 @@ dependencies = [
  "schemars 1.2.2",
  "serde",
  "serde_json",
+ "thiserror 2.0.19",
  "tokio",
  "tonic",
  "url",
@@ -11134,6 +11139,7 @@ dependencies = [
  "serde",
  "smallvec",
  "static_assertions",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -12246,6 +12252,7 @@ dependencies = [
  "re_protos",
  "re_workspace_hack",
  "serde_json",
+ "thiserror 2.0.19",
 ]
 
 [[package]]

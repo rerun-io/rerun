@@ -181,8 +181,11 @@ pub enum ViewerControlErrorCode {
 #[derive(thiserror::Error, Debug)]
 pub enum SaveScreenshotError {
     /// The requested view id could not be parsed as a UUID.
-    #[error("Failed to parse view id {view_id:?}, expected a UUID")]
-    InvalidViewId { view_id: String },
+    #[error("Failed to parse view id {view_id:?}, expected a UUID: {source}")]
+    InvalidViewId {
+        view_id: String,
+        source: uuid::Error,
+    },
 
     /// The requested view does not exist (or is not currently visible).
     #[error("View {view_id} not found")]

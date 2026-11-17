@@ -16,7 +16,7 @@ struct Hs256Signer(HmacSha256);
 impl Hs256Signer {
     fn new(key: &EncodingKey) -> Result<Self, Error> {
         let inner = HmacSha256::new_from_slice(key.try_get_hmac_secret()?)
-            .map_err(|_ignored| ErrorKind::InvalidKeyFormat)?;
+            .map_err(|hmac::digest::InvalidLength| ErrorKind::InvalidKeyFormat)?;
         Ok(Self(inner))
     }
 }
@@ -40,7 +40,7 @@ struct Hs256Verifier(HmacSha256);
 impl Hs256Verifier {
     fn new(key: &DecodingKey) -> Result<Self, Error> {
         let inner = HmacSha256::new_from_slice(key.try_get_hmac_secret()?)
-            .map_err(|_ignored| ErrorKind::InvalidKeyFormat)?;
+            .map_err(|hmac::digest::InvalidLength| ErrorKind::InvalidKeyFormat)?;
         Ok(Self(inner))
     }
 }
@@ -89,7 +89,9 @@ impl Verifier<Vec<u8>> for Rs256Verifier {
                 components.verify(&ring_sig::RSA_PKCS1_2048_8192_SHA256, msg, sig)
             }
         }
-        .map_err(|_err| signature::Error::from_source("RSA signature verification failed"))
+        .map_err(|ring::error::Unspecified| {
+            signature::Error::from_source("RSA signature verification failed")
+        })
     }
 }
 

@@ -62,9 +62,9 @@ pub use self::component_descriptor::{
 pub use self::dynamic_archetype::DynamicArchetype;
 pub use self::layer_name::{InvalidLayerNameError, LayerName};
 pub use self::loggable::{
-    ArrowDataType, Component, ComponentSet, ComponentType, FromArrow, FromArrowOpt, ToArrow,
-    ToArrowOpt, UnorderedComponentSet, from_arrow_opt_via_from_arrow,
-    from_arrow_via_from_arrow_opt, to_arrow_via_to_arrow_opt,
+    ArrowDataType, Component, ComponentSet, ComponentType, FromArrow, FromArrowOpt,
+    InvalidComponentTypeError, ToArrow, ToArrowOpt, UnorderedComponentSet,
+    from_arrow_opt_via_from_arrow, from_arrow_via_from_arrow_opt, to_arrow_via_to_arrow_opt,
 };
 pub use self::result::{
     _Backtrace, DeserializationError, DeserializationResult, ResultExt, SerializationError,

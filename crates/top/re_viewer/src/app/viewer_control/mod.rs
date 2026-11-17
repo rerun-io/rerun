@@ -363,10 +363,7 @@ impl AppCore {
 
             Kind::Close(request) => {
                 let result = close_recordings_target(request)
-                    .and_then(|target| {
-                        self.apply_close_recordings(store_hub, target)
-                            .map_err(ViewerControlError::not_found)
-                    })
+                    .and_then(|target| self.apply_close_recordings(store_hub, target))
                     .map(ViewerControlResponse::from);
                 self.reply_after_commands(on_done, result, egui_ctx);
             }
@@ -657,7 +654,6 @@ impl AppCore {
                             play_state,
                             egui_ctx,
                         )
-                        .map_err(ViewerControlError::invalid_argument)
                     })
                     .map(ViewerControlResponse::from);
                 self.reply_after_commands(on_done, result, egui_ctx);
@@ -682,7 +678,7 @@ impl AppCore {
 
         let view_id = match view_id.map(|view_id| {
             uuid::Uuid::parse_str(&view_id)
-                .map_err(|_err| SaveScreenshotError::InvalidViewId { view_id })
+                .map_err(|source| SaveScreenshotError::InvalidViewId { view_id, source })
         }) {
             None => None,
             Some(Ok(uuid)) => Some(uuid.into()),
@@ -1811,7 +1807,7 @@ impl AppCore {
         &self,
         store_hub: &StoreHub,
         target: re_log_channel::CloseRecordingTarget,
-    ) -> Result<CloseResponse, String> {
+    ) -> Result<CloseResponse, ViewerControlError> {
         let to_close = match target {
             re_log_channel::CloseRecordingTarget::All => store_hub
                 .store_bundle()
@@ -1821,7 +1817,7 @@ impl AppCore {
             re_log_channel::CloseRecordingTarget::Current => vec![
                 self.active_recording_id()
                     .cloned()
-                    .ok_or_else(|| "no active recording to close".to_owned())?,
+                    .ok_or_else(|| ViewerControlError::not_found("no active recording to close"))?,
             ],
             re_log_channel::CloseRecordingTarget::Some(store_ids) => store_ids,
             re_log_channel::CloseRecordingTarget::Sources(sources) => {
@@ -1833,7 +1829,9 @@ impl AppCore {
             .iter()
             .find(|store_id| store_hub.entity_db(store_id).is_none())
         {
-            return Err(format!("no such recording: {missing}"));
+            return Err(ViewerControlError::not_found(format!(
+                "no such recording: {missing}"
+            )));
         }
         for store_id in &to_close {
             self.command_sender
@@ -1852,7 +1850,7 @@ impl AppCore {
         &self,
         store_hub: &StoreHub,
         sources: &[LogSource],
-    ) -> Result<CloseResponse, String> {
+    ) -> Result<CloseResponse, ViewerControlError> {
         // Check every source before closing any, so that a failed request closes nothing.
         let receivers = self.rx_log.sources();
         if let Some(missing) = sources.iter().find(|source| {
@@ -1863,7 +1861,9 @@ impl AppCore {
                     .iter()
                     .any(|receiver| receiver.is_same_ignoring_uri_fragments(source))
         }) {
-            return Err(format!("Nothing is loaded from {missing}"));
+            return Err(ViewerControlError::not_found(format!(
+                "Nothing is loaded from {missing}"
+            )));
         }
 
         self.rx_log.retain(|receiver| {
@@ -1935,8 +1935,7 @@ impl AppCore {
 
     /// Resolve and apply a time-cursor move for `re_rerun_mcp`'s `SetTimeCursor`.
     ///
-    /// Returns what was applied, or an error string if the recording or timeline could not
-    /// be resolved.
+    /// Returns what was applied, or an error if the recording or timeline could not be resolved.
     pub(super) fn apply_set_time_cursor(
         &self,
         store_hub: &StoreHub,
@@ -1945,32 +1944,38 @@ impl AppCore {
         time: Option<i64>,
         play_state: Option<PlayState>,
         egui_ctx: &egui::Context,
-    ) -> Result<SetTimeCursorResponse, String> {
+    ) -> Result<SetTimeCursorResponse, ViewerControlError> {
         let store_id = store_id
             .or_else(|| self.active_recording_id().cloned())
-            .ok_or_else(|| "no active recording to set the time for".to_owned())?;
+            .ok_or_else(|| {
+                ViewerControlError::invalid_argument("no active recording to set the time for")
+            })?;
 
-        let db = store_hub
-            .entity_db(&store_id)
-            .ok_or_else(|| format!("recording {} is not open", store_id.recording_id().as_str()))?;
+        let db = store_hub.entity_db(&store_id).ok_or_else(|| {
+            ViewerControlError::invalid_argument(format!(
+                "recording {} is not open",
+                store_id.recording_id().as_str()
+            ))
+        })?;
 
         let timelines = db.timelines();
         if timelines.is_empty() {
-            return Err(format!(
+            return Err(ViewerControlError::invalid_argument(format!(
                 "recording {} has no timelines yet",
                 store_id.recording_id().as_str()
-            ));
+            )));
         }
 
         // Resolve the target timeline: explicit, else the active one, else the first.
         let timeline_name = if let Some(tl) = timeline {
-            let name = TimelineName::try_new(tl).map_err(|err| err.to_string())?;
+            let name = TimelineName::try_new(tl)
+                .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))?;
             if !timelines.contains_key(&name) {
                 let available: Vec<&str> = timelines.keys().map(|n| n.as_str()).collect();
-                return Err(format!(
+                return Err(ViewerControlError::invalid_argument(format!(
                     "recording {} has no timeline {tl:?}; available: {available:?}",
                     store_id.recording_id().as_str()
-                ));
+                )));
             }
             name
         } else {
@@ -1989,10 +1994,9 @@ impl AppCore {
             .map_or(TimeType::Sequence, |t| t.typ());
 
         if time.is_some() && play_state == Some(PlayState::Following) {
-            return Err(
-                "`play_state` following moves the cursor to the latest data, so it cannot be combined with a `time`"
-                    .to_owned(),
-            );
+            return Err(ViewerControlError::invalid_argument(
+                "`play_state` following moves the cursor to the latest data, so it cannot be combined with a `time`",
+            ));
         }
 
         // Only what the request names is sent: a `SetTime` would leave follow mode, and an

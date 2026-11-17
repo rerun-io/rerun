@@ -1248,7 +1248,7 @@ impl AgentSession {
                     }
                     Ok(_) => TurnOutcome::Completed,
                     Err(err) => {
-                        self.push_agent_error(FailedRequest::Prompt, err);
+                        self.push_agent_error(FailedRequest::Prompt, err.to_string());
                         TurnOutcome::Error
                     }
                 };
@@ -1947,7 +1947,9 @@ mod tests {
             "a failed setting change is not a failed prompt"
         );
 
-        session.handle_event(AgentEvent::TurnFinished(Err("boom".to_owned())));
+        session.handle_event(AgentEvent::TurnFinished(Err(crate::TurnError::Agent {
+            message: "boom".to_owned(),
+        })));
         let (error_index, prompt) = session
             .retryable_prompt()
             .expect("the failed prompt can be retried");

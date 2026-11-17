@@ -31,6 +31,49 @@ enum FieldInput {
     Text(String),
 }
 
+/// Why an elicitation form cannot be submitted, shown to the user below the form.
+#[derive(Debug, thiserror::Error)]
+enum FormError {
+    #[error("This field's validation format is not supported yet. Skip to answer in chat.")]
+    UnsupportedFormat,
+
+    #[error("Text length is outside the requested limits.")]
+    TextLengthOutOfRange,
+
+    #[error("Choose one of the available options.")]
+    NotAnOption,
+
+    #[error("Enter a number.")]
+    InvalidNumber { source: std::num::ParseFloatError },
+
+    #[error("Enter a whole number.")]
+    InvalidInteger { source: std::num::ParseIntError },
+
+    #[error("Number is outside the requested limits.")]
+    NumberOutOfRange,
+
+    #[error("Unsupported selection type. Skip to answer in chat.")]
+    UnsupportedSelectionType,
+
+    #[error("Selection is outside the requested limits.")]
+    SelectionOutOfRange,
+
+    #[error("Unsupported field type. Skip to answer in chat.")]
+    UnsupportedFieldType,
+
+    #[error("Missing field: {name}")]
+    MissingField { name: String },
+
+    #[error("{name}: an answer is required.")]
+    AnswerRequired { name: String },
+
+    #[error("The question contains an unsupported required field.")]
+    UnsupportedRequiredField,
+
+    #[error("Choose an option or enter an answer.")]
+    NoAnswer,
+}
+
 impl FieldInput {
     fn new(schema: &ElicitationPropertySchema) -> Self {
         match schema {
@@ -75,7 +118,7 @@ impl FieldInput {
     fn value(
         &self,
         schema: &ElicitationPropertySchema,
-    ) -> Result<Option<ElicitationContentValue>, String> {
+    ) -> Result<Option<ElicitationContentValue>, FormError> {
         match (self, schema) {
             (Self::Text(text), ElicitationPropertySchema::String(schema)) => {
                 // Detect blank answers without normalizing non-empty text sent to the agent.
@@ -83,13 +126,13 @@ impl FieldInput {
                     return Ok(None);
                 }
                 if schema.pattern.is_some() || schema.format.is_some() {
-                    return Err("This field's validation format is not supported yet. Skip to answer in chat.".to_owned());
+                    return Err(FormError::UnsupportedFormat);
                 }
                 let length = text.chars().count() as u32;
                 if schema.min_length.is_some_and(|min| length < min)
                     || schema.max_length.is_some_and(|max| max < length)
                 {
-                    return Err("Text length is outside the requested limits.".to_owned());
+                    return Err(FormError::TextLengthOutOfRange);
                 }
                 if schema
                     .enum_values
@@ -100,7 +143,7 @@ impl FieldInput {
                         .as_ref()
                         .is_some_and(|options| !options.iter().any(|option| option.value == *text))
                 {
-                    return Err("Choose one of the available options.".to_owned());
+                    return Err(FormError::NotAnOption);
                 }
                 Ok(Some(ElicitationContentValue::String(text.clone())))
             }
@@ -108,15 +151,15 @@ impl FieldInput {
                 if text.trim().is_empty() {
                     return Ok(None);
                 }
-                let value: f64 = text.trim().parse().map_err(|err| {
-                    re_log::trace!("Invalid elicitation number: {err}");
-                    "Enter a number.".to_owned()
-                })?;
+                let value: f64 = text
+                    .trim()
+                    .parse()
+                    .map_err(|source| FormError::InvalidNumber { source })?;
                 if !value.is_finite()
                     || schema.minimum.is_some_and(|min| value < min)
                     || schema.maximum.is_some_and(|max| max < value)
                 {
-                    return Err("Number is outside the requested limits.".to_owned());
+                    return Err(FormError::NumberOutOfRange);
                 }
                 Ok(Some(ElicitationContentValue::Number(value)))
             }
@@ -124,14 +167,14 @@ impl FieldInput {
                 if text.trim().is_empty() {
                     return Ok(None);
                 }
-                let value: i64 = text.trim().parse().map_err(|err| {
-                    re_log::trace!("Invalid elicitation integer: {err}");
-                    "Enter a whole number.".to_owned()
-                })?;
+                let value: i64 = text
+                    .trim()
+                    .parse()
+                    .map_err(|source| FormError::InvalidInteger { source })?;
                 if schema.minimum.is_some_and(|min| value < min)
                     || schema.maximum.is_some_and(|max| max < value)
                 {
-                    return Err("Number is outside the requested limits.".to_owned());
+                    return Err(FormError::NumberOutOfRange);
                 }
                 Ok(Some(ElicitationContentValue::Integer(value)))
             }
@@ -139,9 +182,8 @@ impl FieldInput {
                 Ok(Some(ElicitationContentValue::Boolean(*value)))
             }
             (Self::Choices(values), ElicitationPropertySchema::Array(schema)) => {
-                let options = array_options(&schema.items).ok_or_else(|| {
-                    "Unsupported selection type. Skip to answer in chat.".to_owned()
-                })?;
+                let options =
+                    array_options(&schema.items).ok_or(FormError::UnsupportedSelectionType)?;
                 if values.is_empty() {
                     return Ok(None);
                 }
@@ -152,11 +194,11 @@ impl FieldInput {
                         .iter()
                         .any(|value| !options.iter().any(|option| option.value == value))
                 {
-                    return Err("Selection is outside the requested limits.".to_owned());
+                    return Err(FormError::SelectionOutOfRange);
                 }
                 Ok(Some(ElicitationContentValue::StringArray(values.clone())))
             }
-            _ => Err("Unsupported field type. Skip to answer in chat.".to_owned()),
+            _ => Err(FormError::UnsupportedFieldType),
         }
     }
 }
@@ -341,12 +383,12 @@ fn field_ui(
 fn form_content(
     schema: &ElicitationSchema,
     fields: &BTreeMap<String, FieldInput>,
-) -> Result<BTreeMap<String, ElicitationContentValue>, String> {
+) -> Result<BTreeMap<String, ElicitationContentValue>, FormError> {
     let mut content = BTreeMap::new();
     for (name, property) in &schema.properties {
         let input = fields
             .get(name)
-            .ok_or_else(|| format!("Missing field: {name}"))?;
+            .ok_or_else(|| FormError::MissingField { name: name.clone() })?;
         match input.value(property)? {
             Some(value) => {
                 content.insert(name.clone(), value);
@@ -356,7 +398,7 @@ fn form_content(
                 .as_ref()
                 .is_some_and(|required| required.contains(name)) =>
             {
-                return Err(format!("{name}: an answer is required."));
+                return Err(FormError::AnswerRequired { name: name.clone() });
             }
             None => {}
         }
@@ -367,10 +409,10 @@ fn form_content(
         .flatten()
         .any(|name| !schema.properties.contains_key(name))
     {
-        return Err("The question contains an unsupported required field.".to_owned());
+        return Err(FormError::UnsupportedRequiredField);
     }
     if !schema.properties.is_empty() && content.is_empty() {
-        return Err("Choose an option or enter an answer.".to_owned());
+        return Err(FormError::NoAnswer);
     }
     Ok(content)
 }
@@ -404,7 +446,7 @@ fn form_ui(
                 });
             let content = form_content(schema, fields);
             if let Err(err) = &content {
-                ui.weak(err);
+                ui.weak(err.to_string());
             }
             // Bound the row height; horizontal centering uses all allocated vertical space.
             ui.allocate_ui_with_layout(

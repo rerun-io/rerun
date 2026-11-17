@@ -465,9 +465,9 @@ fn chat_turn_error() {
     session
         .transcript_mut()
         .push_user("Help me detect missing frames".into());
-    session.handle_event(AgentEvent::TurnFinished(Err(
-        "tools.12.custom.input_schema: input_schema does not support oneOf, allOf, or anyOf at the top level\n- service: session\n- errorName: APIError".to_owned(),
-    )));
+    session.handle_event(AgentEvent::TurnFinished(Err(re_agent::TurnError::Agent {
+        message: "tools.12.custom.input_schema: input_schema does not support oneOf, allOf, or anyOf at the top level\n- service: session\n- errorName: APIError".to_owned(),
+    })));
 
     let mut harness = harness(panel);
     harness.run_steps(4);

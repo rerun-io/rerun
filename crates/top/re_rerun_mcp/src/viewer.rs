@@ -34,7 +34,7 @@ use url::Url;
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
 use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
 use re_protos::viewer_control::v1alpha1::{
-    EguiInspectRequest, GetLogsRequest, ViewerControlOp, ViewerLogEntry,
+    EguiInspectRequest, GetLogsRequest, UnexpectedResponseKind, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
 use re_viewer_control_tools::ScreenshotDelivery;
@@ -69,21 +69,34 @@ const UI_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 /// otherwise has to infer.
 const INSTRUCTIONS: &str = include_str!("viewer_instructions.md");
 
+/// Why a viewer-control operation got no usable answer.
+#[derive(Debug, thiserror::Error)]
+enum ExecuteError {
+    #[error("The viewer did not answer within {REQUEST_TIMEOUT:?}")]
+    Timeout,
+
+    #[error("ViewerControl rpc failed: {source}")]
+    Rpc { source: tonic::Status },
+
+    #[error("{source}")]
+    UnexpectedResponse { source: UnexpectedResponseKind },
+}
+
 /// Send one viewer-control operation over `ViewerControlService::ViewerControl` and unwrap the
 /// matching response, so callers name a request type rather than the `oneof` variants.
 async fn execute<Op: ViewerControlOp>(
     client: &mut ViewerControlServiceClient<Channel>,
     request: Op,
-) -> Result<Op::Response, String> {
+) -> Result<Op::Response, ExecuteError> {
     let response = tokio::time::timeout(
         REQUEST_TIMEOUT,
         client.viewer_control(request.into_envelope()),
     )
     .await
-    .map_err(|_elapsed| format!("The viewer did not answer within {REQUEST_TIMEOUT:?}"))?
-    .map_err(|err| err.to_string())?
+    .map_err(|_elapsed| ExecuteError::Timeout)?
+    .map_err(|source| ExecuteError::Rpc { source })?
     .into_inner();
-    Op::from_envelope(response).map_err(|err| err.to_string())
+    Op::from_envelope(response).map_err(|source| ExecuteError::UnexpectedResponse { source })
 }
 
 /// An [`egui_mcp::Transport`] that carries each `egui_inspection` request/response over a unary
@@ -94,6 +107,7 @@ struct GrpcInspector {
 }
 
 impl Transport for GrpcInspector {
+    // relint: allow(string_error): the signature of `egui_mcp::Transport::request`
     fn request(&self, req: Request) -> BoxFuture<'_, Result<Response, String>> {
         Box::pin(async move {
             let request = protocol::encode_body(&req).map_err(|err| err.to_string())?;
@@ -119,28 +133,54 @@ impl Transport for GrpcInspector {
     }
 }
 
+/// Why dialing the viewer failed.
+#[derive(Debug, thiserror::Error)]
+enum ConnectError {
+    #[error("Invalid viewer endpoint: {source}")]
+    InvalidEndpoint { source: tonic::transport::Error },
+
+    #[error("{}", unreachable_message(endpoint, source))]
+    Unreachable {
+        endpoint: Url,
+        source: tonic::transport::Error,
+    },
+
+    #[error("{0}")]
+    Inspect(String),
+
+    #[error("{message}")]
+    Peer { message: String },
+
+    #[error("unexpected response to GetInfo")]
+    UnexpectedResponse,
+}
+
+fn unreachable_message(endpoint: &Url, err: &tonic::transport::Error) -> re_error::StructuredError {
+    re_error::StructuredError::from_summary(
+        "Nothing serves ViewerControl at this endpoint. \
+         Is a viewer started with the `rerun` command running there?",
+    )
+    .with_detail(re_error::format_ref(err))
+    .with_detail(format!("Endpoint: {endpoint}"))
+}
+
 /// Dial the viewer once and build both the [`Bridge`] (which tunnels the egui tools over the
 /// unary `egui_inspect` operation) and the gRPC client the rerun-specific tools call through —
 /// sharing the single connection between them.
 async fn connect_grpc(
     endpoint: &Url,
-) -> Result<(Bridge, ViewerControlServiceClient<Channel>), String> {
+) -> Result<(Bridge, ViewerControlServiceClient<Channel>), ConnectError> {
     // No `Endpoint::timeout` here: that is one deadline for every RPC on the channel, and the
     // two kinds of call have very different expectations of how long the viewer may take.
     // Each call site applies its own instead.
     let channel = tonic::transport::Endpoint::from_shared(endpoint.to_string())
-        .map_err(|err| err.to_string())?
+        .map_err(|source| ConnectError::InvalidEndpoint { source })?
         .connect_timeout(REQUEST_TIMEOUT)
         .connect()
         .await
-        .map_err(|err| {
-            re_error::StructuredError::from_summary(
-                "Nothing serves ViewerControl at this endpoint. \
-                 Is a viewer started with the `rerun` command running there?",
-            )
-            .with_detail(re_error::format_ref(&err))
-            .with_detail(format!("Endpoint: {endpoint}"))
-            .to_string()
+        .map_err(|source| ConnectError::Unreachable {
+            endpoint: endpoint.clone(),
+            source,
         })?;
     let client = ViewerControlServiceClient::new(channel);
     let inspector = GrpcInspector {
@@ -148,10 +188,14 @@ async fn connect_grpc(
     };
 
     // Read the peer's label up front (also a liveness check), matching the TCP `attach` path.
-    let label = match inspector.request(Request::GetInfo).await? {
+    let label = match inspector
+        .request(Request::GetInfo)
+        .await
+        .map_err(ConnectError::Inspect)?
+    {
         Response::Info { label, .. } => label,
-        Response::Error { message } => return Err(message),
-        _ => return Err("unexpected response to GetInfo".to_owned()),
+        Response::Error { message } => return Err(ConnectError::Peer { message }),
+        _ => return Err(ConnectError::UnexpectedResponse),
     };
 
     let bridge = Bridge::with_transport(
@@ -406,7 +450,9 @@ impl ViewerToolset {
         name: &str,
         arguments: Option<serde_json::Map<String, serde_json::Value>>,
     ) -> ToolResult<CallToolResult> {
-        let request = re_viewer_control_tools::build_request(name, arguments, SCREENSHOT_DELIVERY)?;
+        let request = re_viewer_control_tools::build_request(name, arguments, SCREENSHOT_DELIVERY)
+            // relint: allow(map_err_to_string): `ToolError` is a `String`, which `rmcp` shows to the agent
+            .map_err(|err| err.to_string())?;
         let mut client = self.client()?;
         let response = client
             .viewer_control(request)
@@ -469,6 +515,7 @@ impl ViewerToolset {
             .endpoint
             .or_else(|| self.viewer_endpoint.clone())
             .map_or_else(
+                // relint: allow(map_err_to_string): `ToolError` is a `String`, which `rmcp` shows to the agent
                 || Url::parse(DEFAULT_VIEWER_ENDPOINT).map_err(|err| err.to_string()),
                 Ok,
             )?;

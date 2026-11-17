@@ -63,7 +63,7 @@ pub use agent_harness::{
     AgentEntry, AgentHarnessConfig, AgentKind, AgentProfile, AgentProfileId, McpStdioServer,
 };
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
-pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin};
+pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin, TurnError};
 pub use error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
 pub use model_recommendation::{ModelPreference, preferred_model};

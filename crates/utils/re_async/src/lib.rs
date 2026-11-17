@@ -223,7 +223,7 @@ where
         }
     });
 
-    receiver.map_err(|_err| TaskCancelled)
+    receiver.map_err(|futures::channel::oneshot::Canceled| TaskCancelled)
 }
 
 #[cfg(test)]

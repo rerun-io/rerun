@@ -475,7 +475,11 @@ impl App {
             crate::version_check::check_for_new_version(
                 build_info.version,
                 &app_env,
-                ehttp::fetch,
+                |request, on_response| {
+                    ehttp::fetch(request, move |response| {
+                        on_response(response.map_err(crate::version_check::FetchError));
+                    });
+                },
                 move |notification| {
                     command_sender.send_system(SystemCommand::ShowNotification(notification));
                     egui_ctx.request_repaint();

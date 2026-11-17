@@ -405,6 +405,7 @@ pub fn request_keyframe_before(
                 video_description
                     .keyframe_indices
                     .binary_search(&from_idx)
+                    // relint: allow(map_err_dropped): `binary_search` returns the insertion index, not an error
                     .map_err(|_idx| {
                         if cfg!(debug_assertions) {
                             re_log::error_once!(

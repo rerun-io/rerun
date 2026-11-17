@@ -1490,6 +1490,9 @@ pub enum VideoLoadError {
 
     #[error("Failed to parse H.264 SPS from mp4: {0:?}")]
     SpsParsingError(#[size_bytes(ignore)] h264_reader::nal::sps::SpsError),
+
+    #[error("Failed to parse H.265 SPS from mp4: {0}")]
+    H265SpsParsingError(#[size_bytes(ignore)] String),
 }
 
 impl std::fmt::Debug for VideoDataDescription {

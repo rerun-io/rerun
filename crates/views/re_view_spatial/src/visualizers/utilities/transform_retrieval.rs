@@ -132,8 +132,12 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     let transform_info = match format_transform_info_result(entity_path, transform_context, result)
     {
         Ok(transform_info) => transform_info,
-        Err(err_msg) => {
-            output.report_unspecified_source(*instruction_id, ViewerReportSeverity::Error, err_msg);
+        Err(err) => {
+            output.report_unspecified_source(
+                *instruction_id,
+                ViewerReportSeverity::Error,
+                err.to_string(),
+            );
             return None;
         }
     };
@@ -167,45 +171,81 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
     .then_some(transform_info)
 }
 
-/// Formats the result of a transform retrieval into a user-friendly message.
+/// Why an entity's transform to the view's target frame is unavailable.
+#[derive(Debug, thiserror::Error)]
+pub enum TransformInfoError {
+    /// The entity's coordinate frame has an empty name.
+    #[error("Transform relation can't be resolved due to empty coordinate frame name.")]
+    EmptyFrameName,
+
+    /// The transform context knows nothing about the entity.
+    #[error("No transform relation known for this entity.")]
+    NoTransformRelation,
+
+    /// The entity's frame is not connected to the view's target frame.
+    #[error(
+        "No transform path from {source_frame} to the view's target frame{}.",
+        .target_frame.as_ref().map_or_else(String::new, |target| format!(" ({target:?})"))
+    )]
+    NoPath {
+        /// The entity's frame, formatted for display.
+        source_frame: String,
+
+        /// The name of the view's target frame, if known.
+        target_frame: Option<String>,
+    },
+
+    /// The view's target frame has an empty name.
+    #[error("View target frame can't be resolved due to empty coordinate frame name.")]
+    EmptyTargetFrameName,
+
+    /// The view's target frame is not in the transform tree.
+    #[error(
+        "The view's {} is unknown.",
+        .target_frame.as_ref().map_or_else(|| "target frame".to_owned(), |target| format!("target frame {target:?}"))
+    )]
+    UnknownTargetFrame {
+        /// The name of the view's target frame, if known.
+        target_frame: Option<String>,
+    },
+
+    /// The entity's coordinate frame is not in the transform tree.
+    #[error("The entity's coordinate frame {source_frame} is unknown.")]
+    UnknownSourceFrame {
+        /// The entity's frame, formatted for display.
+        source_frame: String,
+    },
+}
+
+/// Turns the result of a transform retrieval into a user-friendly error.
 pub fn format_transform_info_result<'a>(
     entity_path: &EntityPath,
     transform_context: &TransformTreeContext,
     result: Option<&'a Result<TransformInfo, re_tf::TransformFromToError>>,
-) -> Result<&'a TransformInfo, String> {
+) -> Result<&'a TransformInfo, TransformInfoError> {
     match result {
         None => {
             if transform_context
                 .is_empty_frame_name(transform_context.transform_frame_id_for(entity_path.hash()))
             {
-                Err(
-                    "Transform relation can't be resolved due to empty coordinate frame name."
-                        .to_owned(),
-                )
+                Err(TransformInfoError::EmptyFrameName)
             } else {
-                Err("No transform relation known for this entity.".to_owned())
+                Err(TransformInfoError::NoTransformRelation)
             }
         }
 
         Some(Err(re_tf::TransformFromToError::NoPathBetweenFrames { src, target, .. })) => {
-            let src = if let Some(frame_id) =
+            let source_frame = if let Some(frame_id) =
                 transform_context.format_frame_or_debug_warn(*src, entity_path)
             {
                 format!("{frame_id:?}")
             } else {
-                format!("{entity_path}:?")
+                format!("{entity_path:?}")
             };
-            let target = if let Some(target) =
-                transform_context.format_frame_or_debug_warn(*target, entity_path)
-            {
-                format!(" ({target:?})")
-            } else {
-                String::new()
-            };
-
-            Err(format!(
-                "No transform path from {src} to the view's target frame{target}."
-            ))
+            Err(TransformInfoError::NoPath {
+                source_frame,
+                target_frame: transform_context.format_frame_or_debug_warn(*target, entity_path),
+            })
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownTargetFrame(target))) => {
@@ -213,39 +253,27 @@ pub fn format_transform_info_result<'a>(
                 .lookup_frame_id(*target)
                 .is_some_and(|frame_id| frame_id.as_str().is_empty())
             {
-                return Err(
-                    "View target frame can't be resolved due to empty coordinate frame name."
-                        .to_owned(),
-                );
+                return Err(TransformInfoError::EmptyTargetFrameName);
             }
 
-            let target = if let Some(target) =
-                transform_context.format_frame_or_debug_warn(*target, entity_path)
-            {
-                format!("target frame {target:?}")
-            } else {
-                "target frame".to_owned()
-            };
-
-            Err(format!("The view's {target} is unknown."))
+            Err(TransformInfoError::UnknownTargetFrame {
+                target_frame: transform_context.format_frame_or_debug_warn(*target, entity_path),
+            })
         }
 
         Some(Err(re_tf::TransformFromToError::UnknownSourceFrame(src))) => {
             if transform_context.is_empty_frame_name(*src) {
-                return Err(
-                    "Transform relation can't be resolved due to empty coordinate frame name."
-                        .to_owned(),
-                );
+                return Err(TransformInfoError::EmptyFrameName);
             }
 
-            let src = if let Some(frame_id) =
+            let source_frame = if let Some(frame_id) =
                 transform_context.format_frame_or_debug_warn(*src, entity_path)
             {
                 format!("{frame_id:?}")
             } else {
                 format!("{entity_path:?}")
             };
-            Err(format!("The entity's coordinate frame {src} is unknown."))
+            Err(TransformInfoError::UnknownSourceFrame { source_frame })
         }
 
         Some(Ok(transform_info)) => Ok(transform_info),

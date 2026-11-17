@@ -200,10 +200,20 @@ fn plan_filter(
     Ok(expr)
 }
 
-/// Check that `sql` is a filter that a table with `schema` can run.
+/// A filter that a table cannot run.
 ///
-/// The error is the message the filter bar shows for the filter.
-pub fn check_filter(schema: SchemaRef, sql: &str) -> Result<(), String> {
+/// Its message is the one the filter bar shows for the filter.
+#[derive(Debug, thiserror::Error)]
+#[error("{}", query_error_message(.error))]
+pub struct InvalidFilter {
+    /// Why the filter could not be planned.
+    ///
+    /// Not a `#[source]`: the message already is this error, formatted for the filter bar.
+    pub error: DataFusionError,
+}
+
+/// Check that `sql` is a filter that a table with `schema` can run.
+pub fn check_filter(schema: SchemaRef, sql: &str) -> Result<(), InvalidFilter> {
     let plan = || -> Result<Expr, DataFusionError> {
         let mut session_state = SessionContext::new().state();
         set_filter_time_zone(&mut session_state);
@@ -217,7 +227,9 @@ pub fn check_filter(schema: SchemaRef, sql: &str) -> Result<(), String> {
             sql,
         )
     };
-    plan().map(|_| ()).map_err(|err| query_error_message(&err))
+    plan()
+        .map(|_| ())
+        .map_err(|err| InvalidFilter { error: err })
 }
 
 /// Relative timestamp filters, such as "today", use the session time zone. With a time zone,
@@ -954,7 +966,10 @@ mod tests {
 
         for filter in filters {
             assert_eq!(
-                check_filter(Arc::clone(&schema), filter).err().as_ref(),
+                check_filter(Arc::clone(&schema), filter)
+                    .err()
+                    .map(|err| err.to_string())
+                    .as_ref(),
                 filter_errors.get(filter),
                 "{filter}"
             );

@@ -63,20 +63,23 @@ impl ProductFeedback {
             json,
             agent,
             Box::new(move |redacted| {
-                let text = match redacted {
-                    Ok(json) => serde_json::from_value::<RedactableContent>(json)
-                        .map_err(|err| err.to_string()),
-                    Err(err) => Err(err.to_string()),
+                let not_redacted = |err: &dyn std::fmt::Display| {
+                    re_log::warn!(
+                        "The text of an agent's feedback on Rerun was not sent: the sensitive data could not be removed ({err})."
+                    );
                 };
-                match text {
-                    Ok(text) => unsent.record(Some(text)),
-                    Err(err) => {
-                        re_log::warn!(
-                            "The text of an agent's feedback on Rerun was not sent: the sensitive data could not be removed ({err})."
-                        );
-                        unsent.record(None);
+                let text = match redacted.map(serde_json::from_value::<RedactableContent>) {
+                    Ok(Ok(text)) => Some(text),
+                    Ok(Err(err)) => {
+                        not_redacted(&err);
+                        None
                     }
-                }
+                    Err(err) => {
+                        not_redacted(&err);
+                        None
+                    }
+                };
+                unsent.record(text);
             }),
         );
     }

@@ -2407,7 +2407,12 @@ fn send_chunks(
     // all of them would inflate peak memory.
     let iter: Py<PyAny> = chunks
         .try_iter()
-        .map_err(|_err| PyTypeError::new_err("send_chunks expected a Chunk or iterable of Chunk"))?
+        .map_err(|err| {
+            let type_err =
+                PyTypeError::new_err("send_chunks expected a Chunk or iterable of Chunk");
+            type_err.set_cause(py, Some(err));
+            type_err
+        })?
         .into_any()
         .unbind();
 

@@ -1,8 +1,10 @@
+#[cfg(feature = "video")]
+use crate::components::ImageSequenceIsNotAVideoCodecError;
 use crate::components::VideoCodec;
 
 #[cfg(feature = "video")]
 impl TryFrom<re_video::VideoCodec> for VideoCodec {
-    type Error = String;
+    type Error = ImageSequenceIsNotAVideoCodecError;
 
     fn try_from(value: re_video::VideoCodec) -> Result<Self, Self::Error> {
         match value {
@@ -11,7 +13,7 @@ impl TryFrom<re_video::VideoCodec> for VideoCodec {
             re_video::VideoCodec::AV1 => Ok(Self::AV1),
             re_video::VideoCodec::VP8 => Ok(Self::VP8),
             re_video::VideoCodec::VP9 => Ok(Self::VP9),
-            re_video::VideoCodec::ImageSequence(_) => Err("Not a real video".to_owned()),
+            re_video::VideoCodec::ImageSequence(_) => Err(ImageSequenceIsNotAVideoCodecError),
         }
     }
 }

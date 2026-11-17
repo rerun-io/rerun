@@ -33,7 +33,9 @@ use rig_core::streaming::{Item, StreamEvent};
 use crate::AgentProfileId;
 use crate::Responder;
 use crate::agent_toolbox::{AgentToolbox, ToolOutput};
-use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin};
+use crate::backend::{
+    AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin, TurnError,
+};
 
 /// The id of the model selector the backend offers as a session config option.
 const MODEL_CONFIG_ID: &str = "model";
@@ -701,7 +703,7 @@ async fn run(
                     }
                 };
                 events.send(AgentEvent::TurnFinished(
-                    result.map_err(|err| err.to_string()),
+                    result.map_err(TurnError::ModelApi),
                 ));
 
                 for (config_id, value) in config_changes {
@@ -1790,7 +1792,7 @@ mod tests {
             .collect()
     }
 
-    fn turn_results(events: &[AgentEvent]) -> Vec<&Result<StopReason, String>> {
+    fn turn_results(events: &[AgentEvent]) -> Vec<&Result<StopReason, TurnError>> {
         events
             .iter()
             .filter_map(|event| match event {
@@ -1885,7 +1887,7 @@ mod tests {
         assert!(
             results[0]
                 .as_ref()
-                .is_err_and(|err| err.contains("overloaded"))
+                .is_err_and(|err| err.to_string().contains("overloaded"))
         );
         assert!(matches!(results[1], Ok(StopReason::EndTurn)));
         assert_eq!(message_text(&events), "ok");

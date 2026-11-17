@@ -40,8 +40,14 @@ enum ViewerToolError {
     #[error("`{name}` failed: {message}")]
     Failed { name: String, message: String },
 
-    #[error("{message}")]
-    InvalidRequest { message: String },
+    #[error(transparent)]
+    InvalidRequest(re_viewer_control_tools::BuildRequestError),
+
+    #[error("`{name}` failed: {source}")]
+    InvalidResponse {
+        name: String,
+        source: re_viewer_control_tools::ResponseJsonError,
+    },
 
     #[error("The viewer is no longer running")]
     Stopped,
@@ -133,7 +139,7 @@ impl ViewerToolbox {
     ) -> Result<futures::channel::oneshot::Receiver<ViewerControlResult>, ViewerToolError> {
         let request =
             re_viewer_control_tools::build_request(operation, Some(arguments), SCREENSHOT_DELIVERY)
-                .map_err(|message| ViewerToolError::InvalidRequest { message })?;
+                .map_err(ViewerToolError::InvalidRequest)?;
 
         let (reply_tx, reply_rx) = futures::channel::oneshot::channel();
         let call = QueuedCall { request, reply_tx };
@@ -201,7 +207,11 @@ impl AgentToolbox for ViewerToolbox {
                 }
             };
             let response = answer
-                .map_err(|_canceled| ViewerToolError::Dropped { name: name.clone() })?
+                .map_err(
+                    |futures::channel::oneshot::Canceled| ViewerToolError::Dropped {
+                        name: name.clone(),
+                    },
+                )?
                 .map_err(|err| ViewerToolError::Failed {
                     name: name.clone(),
                     message: err.message,
@@ -215,7 +225,7 @@ impl AgentToolbox for ViewerToolbox {
                 }]);
             }
             let json = re_viewer_control_tools::response_json(&operation, &response)
-                .map_err(|message| ViewerToolError::Failed { name, message })?;
+                .map_err(|source| ViewerToolError::InvalidResponse { name, source })?;
             Ok(vec![ToolOutput::Text(json.to_string())])
         })
     }

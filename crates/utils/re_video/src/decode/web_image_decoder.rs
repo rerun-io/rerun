@@ -128,6 +128,7 @@ async fn decode_image_with_browser(chunk: &Chunk, mime_type: &str) -> Result<Fra
         )))
     })?;
 
+    // relint: allow(map_err_dropped): `dyn_into` returns the unconverted value, not an error
     let bitmap: web_sys::ImageBitmap = bitmap_js.dyn_into().map_err(|_js_err| {
         DecodeError::WebDecoder(super::webcodecs::WebError::Decoding(
             "createImageBitmap did not return an ImageBitmap".to_owned(),

@@ -1,6 +1,61 @@
-use re_log_types::{DataPath, TimeCell, TimelineName};
+use re_log_types::{DataPath, InvalidTimelineNameError, PathParseError, TimeCell, TimelineName};
 
 use crate::TimeSelection;
+
+/// Error returned when parsing a [`Fragment`] from a string.
+#[derive(thiserror::Error, Debug)]
+pub enum FragmentParseError {
+    /// The `selection` value is not a valid data path.
+    #[error("Bad data path {part:?}: {source}")]
+    InvalidSelection {
+        /// The `key=value` part that failed to parse.
+        part: String,
+
+        /// Why the data path is invalid.
+        #[source]
+        source: PathParseError,
+    },
+
+    /// The timeline in the `when` value is not a valid timeline name.
+    #[error("Bad timeline name {timeline:?}: {source}")]
+    InvalidTimelineName {
+        /// The timeline name that failed to parse.
+        timeline: String,
+
+        /// Why the timeline name is invalid.
+        #[source]
+        source: InvalidTimelineNameError,
+    },
+
+    /// The time in the `when` value is not a valid time.
+    #[error("Bad time value {time:?}: {source}")]
+    InvalidTime {
+        /// The time that failed to parse.
+        time: String,
+
+        /// Why the time is invalid.
+        #[source]
+        source: <TimeCell as std::str::FromStr>::Err,
+    },
+
+    /// The `time_selection` value is not a valid time selection.
+    #[error("Bad time selection {part:?}: {source}")]
+    InvalidTimeSelection {
+        /// The `key=value` part that failed to parse.
+        part: String,
+
+        /// Why the time selection is invalid.
+        #[source]
+        source: crate::Error,
+    },
+
+    /// The key is not one we know.
+    #[error("Unknown key {key:?}. Expected either 'selection' or 'time'")]
+    UnknownKey {
+        /// The unknown key.
+        key: String,
+    },
+}
 
 /// We use the `#fragment` of the URI to point to a specific entity or time.
 ///
@@ -65,7 +120,7 @@ impl std::fmt::Display for Fragment {
 }
 
 impl std::str::FromStr for Fragment {
-    type Err = String;
+    type Err = FragmentParseError;
 
     fn from_str(fragment: &str) -> Result<Self, Self::Err> {
         let mut selection = None;
@@ -82,20 +137,30 @@ impl std::str::FromStr for Fragment {
                             selection = Some(path);
                         }
                         Err(err) => {
-                            return Err(format!("Bad data path {part:?}: {err}"));
+                            return Err(FragmentParseError::InvalidSelection {
+                                part: part.to_owned(),
+                                source: err,
+                            });
                         }
                     },
                     "when" => {
                         if let Some((timeline, time)) = value.split_once('@') {
-                            let timeline = TimelineName::try_new(timeline)
-                                .map_err(|err| format!("Bad timeline name {timeline:?}: {err}"))?;
+                            let timeline = TimelineName::try_new(timeline).map_err(|err| {
+                                FragmentParseError::InvalidTimelineName {
+                                    timeline: timeline.to_owned(),
+                                    source: err,
+                                }
+                            })?;
                             match time.parse::<TimeCell>() {
                                 Ok(time_cell) => {
                                     // If there were when fragments before this we ignore them.
                                     when = Some((timeline, time_cell));
                                 }
                                 Err(err) => {
-                                    return Err(format!("Bad time value {time:?}: {err}"));
+                                    return Err(FragmentParseError::InvalidTime {
+                                        time: time.to_owned(),
+                                        source: err,
+                                    });
                                 }
                             }
                         }
@@ -103,13 +168,16 @@ impl std::str::FromStr for Fragment {
                     "time_selection" => match value.parse() {
                         Ok(selection) => time_selection = Some(selection),
                         Err(err) => {
-                            return Err(format!("Bad time selection {part:?}: {err}"));
+                            return Err(FragmentParseError::InvalidTimeSelection {
+                                part: part.to_owned(),
+                                source: err,
+                            });
                         }
                     },
                     _ => {
-                        return Err(format!(
-                            "Unknown key {key:?}. Expected either 'selection' or 'time'"
-                        ));
+                        return Err(FragmentParseError::UnknownKey {
+                            key: key.to_owned(),
+                        });
                     }
                 }
             }

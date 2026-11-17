@@ -110,7 +110,7 @@ fn setup_ui_inner(
     if let Err(err) = ready
         && settings.profile_id.model_api_provider().is_none()
     {
-        ui.error_label(err);
+        ui.error_label(err.to_string());
     }
 
     ui.add_space(4.0);
@@ -322,6 +322,32 @@ pub fn agent_name(profile_id: &AgentProfileId, agents: &[AgentEntry]) -> Option<
         .map(|agent| agent.profile.name.clone())
 }
 
+/// Why the selected agent cannot be started.
+#[derive(Debug, thiserror::Error)]
+pub enum AgentNotReady {
+    /// The custom agent has no command line.
+    #[error("Enter the command that starts your agent")]
+    EmptyCustomCommand,
+
+    /// The selected model API cannot be launched.
+    #[error(transparent)]
+    Launch(re_agent::AgentLaunchError),
+
+    /// No known agent has the selected profile.
+    #[error("Select an agent")]
+    NoAgentSelected,
+
+    /// The selected agent's executable was not found.
+    #[error("{name} is not installed. {install_hint}")]
+    NotInstalled {
+        /// Display name of the agent.
+        name: String,
+
+        /// How to install the agent.
+        install_hint: String,
+    },
+}
+
 /// Whether the selected agent can be started, or why not.
 ///
 /// `available_model_apis` are the providers whose API key was found.
@@ -329,10 +355,10 @@ pub fn selected_agent_ready(
     settings: &AgentSettings,
     agents: &[AgentEntry],
     available_model_apis: &[ModelApiProvider],
-) -> Result<(), String> {
+) -> Result<(), AgentNotReady> {
     if settings.profile_id == AgentProfileId::CUSTOM {
         if settings.custom_command_line.trim().is_empty() {
-            return Err("Enter the command that starts your agent".to_owned());
+            return Err(AgentNotReady::EmptyCustomCommand);
         }
         return Ok(());
     }
@@ -341,7 +367,9 @@ pub fn selected_agent_ready(
         return if model_apis_with_key(settings, available_model_apis).contains(&provider) {
             Ok(())
         } else {
-            Err(re_agent::AgentLaunchError::missing_api_key(provider).to_string())
+            Err(AgentNotReady::Launch(
+                re_agent::AgentLaunchError::missing_api_key(provider),
+            ))
         };
     }
 
@@ -349,13 +377,13 @@ pub fn selected_agent_ready(
         .iter()
         .find(|agent| agent.profile.id == settings.profile_id)
     else {
-        return Err("Select an agent".to_owned());
+        return Err(AgentNotReady::NoAgentSelected);
     };
     if agent.executable.is_none() {
-        return Err(format!(
-            "{} is not installed. {}",
-            agent.profile.name, agent.profile.install_hint
-        ));
+        return Err(AgentNotReady::NotInstalled {
+            name: agent.profile.name.clone(),
+            install_hint: agent.profile.install_hint.clone(),
+        });
     }
     Ok(())
 }

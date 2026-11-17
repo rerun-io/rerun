@@ -44,6 +44,11 @@ pub enum ViewCoordinatesError {
     InvalidViewDir(#[from] ViewDirError),
 }
 
+/// Failed to parse a [`SignedAxis3`] from a string.
+#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
+#[error("Expected one of: +X -X +Y -Y +Z -Z, got {0:?}")]
+pub struct SignedAxis3ParseError(pub String);
+
 /// One of `X`, `Y`, `Z`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Axis3 {
@@ -152,7 +157,7 @@ impl std::fmt::Display for SignedAxis3 {
 }
 
 impl std::str::FromStr for SignedAxis3 {
-    type Err = String;
+    type Err = SignedAxis3ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -162,7 +167,7 @@ impl std::str::FromStr for SignedAxis3 {
             "-Y" => Ok(Self::new(Sign::Negative, Axis3::Y)),
             "+Z" => Ok(Self::new(Sign::Positive, Axis3::Z)),
             "-Z" => Ok(Self::new(Sign::Negative, Axis3::Z)),
-            _ => Err("Expected one of: +X -X +Y -Y +Z -Z".to_owned()),
+            _ => Err(SignedAxis3ParseError(s.to_owned())),
         }
     }
 }

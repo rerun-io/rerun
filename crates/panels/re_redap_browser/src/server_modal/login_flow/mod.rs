@@ -20,7 +20,74 @@ pub struct LoginFlow {
 
 pub enum LoginFlowResult {
     Success,
-    Failure(String),
+    Failure(LoginError),
+}
+
+/// Why a login flow failed.
+#[derive(Debug, thiserror::Error)]
+pub enum LoginError {
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Failed to start callback server: {source}")]
+    StartCallbackServer {
+        source: re_auth::callback_server::Error,
+    },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Failed to check for browser response: {source}")]
+    CheckBrowserResponse {
+        source: re_auth::callback_server::Error,
+    },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Failed to open the login page in a browser: {source}")]
+    OpenBrowser { source: std::io::Error },
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("signed_in_url is required for web login")]
+    MissingSignedInUrl,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("Failed to open login popup: {source}")]
+    OpenPopup { source: re_web::Error },
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("window.open did not return a handle")]
+    NoPopupHandle,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("Login popup was closed before completing authentication")]
+    PopupClosed,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("auth storage event without new value")]
+    MissingStorageValue,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("Failed to parse auth storage event: {source}")]
+    ParseStorageEvent { source: serde_json::Error },
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("missing code in url")]
+    MissingCode,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("missing state in url")]
+    MissingState,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error("invalid state")]
+    InvalidState,
+
+    #[error("Failed to authenticate: {source}")]
+    Authenticate { source: re_auth::oauth::api::Error },
+
+    #[error("Failed to decode access token: {source}")]
+    DecodeToken { source: re_auth::JwtDecodeError },
+
+    #[error("Failed to store credentials: {source}")]
+    StoreCredentials {
+        source: re_auth::oauth::CredentialsStoreError,
+    },
 }
 
 impl LoginFlow {
@@ -28,14 +95,14 @@ impl LoginFlow {
     ///
     /// `signed_in_url` is only used on web as the `OAuth` redirect URI.
     /// On native, it is ignored (the callback server handles redirects).
-    pub fn open(egui_ctx: &egui::Context, signed_in_url: Option<&str>) -> Result<Self, String> {
+    pub fn open(egui_ctx: &egui::Context, signed_in_url: Option<&str>) -> Result<Self, LoginError> {
         let _ = &signed_in_url; // only used on web
 
         let state = cfg_select! {
             target_arch = "wasm32" => State::open(
                 egui_ctx,
                 signed_in_url
-                    .ok_or("signed_in_url is required for web login")?
+                    .ok_or(LoginError::MissingSignedInUrl)?
                     .to_owned(),
             )?,
             _ => State::open(egui_ctx)?,
@@ -54,7 +121,7 @@ impl LoginFlow {
     pub fn open_and_start(
         egui_ctx: &egui::Context,
         signed_in_url: Option<&str>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, LoginError> {
         let mut flow = Self::open(egui_ctx, signed_in_url)?;
         flow.state.start()?;
         #[cfg(target_arch = "wasm32")]

@@ -157,7 +157,9 @@ impl WebHandle {
 
         reply_rx
             .await
-            .map_err(|_err| JsValue::from_str("Inspection request produced no reply"))?
+            .map_err(|futures::channel::oneshot::Canceled| {
+                JsValue::from_str("Inspection request produced no reply")
+            })?
             .map_err(|err| {
                 JsValue::from_str(&format!("Failed to encode inspection response: {err}"))
             })

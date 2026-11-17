@@ -374,15 +374,19 @@ impl Display for WebViewerServerPort {
     }
 }
 
+/// Error returned when parsing a [`WebViewerServerPort`] from a string.
+#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
+#[error("Failed to parse port: {0}")]
+pub struct InvalidWebViewerServerPortError(#[source] std::num::ParseIntError);
+
 // Needed for clap
 impl FromStr for WebViewerServerPort {
-    type Err = String;
+    type Err = InvalidWebViewerServerPortError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.parse::<u16>() {
-            Ok(port) => Ok(Self(port)),
-            Err(err) => Err(format!("Failed to parse port: {err}")),
-        }
+        s.parse::<u16>()
+            .map(Self)
+            .map_err(InvalidWebViewerServerPortError)
     }
 }
 
