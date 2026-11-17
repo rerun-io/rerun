@@ -1,6 +1,6 @@
 //! Index-based access to list arrays.
 
-use arrow::array::{Array as _, ArrayRef, ListArray, UInt64Array};
+use arrow::array::{Array as _, ArrayRef, ListArray, FixedSizeListArray, UInt64Array};
 use arrow::buffer::NullBuffer;
 
 use super::{error::Error, transform::Transform};
@@ -156,6 +156,142 @@ mod tests {
         assert!(result_i32.is_null(1)); // Null row
         assert!(result_i32.is_null(2)); // Null element at index 1
         assert!(result_i32.is_null(3)); // Out of bounds (empty list)
+
+        Ok(())
+    }
+}
+
+/// Broadcast index operation over inner arrays, and flatten.
+#[derive(Clone, Debug)]
+pub struct GetIndexFixedSizeList {
+    index: u64,
+}
+
+impl GetIndexFixedSizeList {
+    pub fn new(index: impl Into<u64>) -> Self {
+        Self { index: index.into() }
+    }
+}
+
+impl Transform for GetIndexFixedSizeList {
+    type Source = FixedSizeListArray;
+    type Target = ArrayRef;
+
+    fn transform(&self, source: &Self::Source) -> Result<Option<Self::Target>, Error> {
+        let offset = source.value_length() as u64;
+        if source.values().is_empty() || offset <= self.index {
+            return Ok(Some(arrow::array::new_null_array(
+                source.values().data_type(),
+                source.len(),
+            )));
+        }
+
+        let indicies: UInt64Array = (0..source.len() as u64)
+            .into_iter()
+            .map(|x| x * offset + self.index)
+            .collect();
+
+        // We don't want to downcast to fixedSizeListArray again, so we can't use re_arrow::take_array.
+        #[expect(clippy::disallowed_methods)]
+        let res = arrow::compute::take(source.values(), &indicies, Default::default())?;
+
+        if source.null_count() == 0 {
+            return Ok(Some(res));
+        }
+
+        let res = res
+            .to_data()
+            .into_builder()
+            .nulls(NullBuffer::union(source.nulls(), res.nulls()))
+            .build()?;
+
+        Ok(Some(arrow::array::make_array(res)))
+    }
+}
+
+#[cfg(test)]
+mod tests_fixed_size {
+    use super::*;
+    use arrow::array::AsArray as _;
+    use arrow::datatypes::Int32Type;
+
+    #[test]
+    fn index_out_of_bounds() -> Result<(), Box<dyn std::error::Error>> {
+        let data = vec![
+            Some(vec![Some(0), Some(1), Some(2)]),
+            None,
+            Some(vec![Some(6), Some(7), Some(45)]),
+        ];
+        let array = FixedSizeListArray::from_iter_primitive::<Int32Type, _, _>(data, 3);
+
+        let result = GetIndexFixedSizeList::new(5u32).transform(&array)?.unwrap();
+        let result_i32 = result.as_primitive::<Int32Type>();
+
+        assert_eq!(result_i32.len(), 3);
+        assert!(result_i32.is_null(0));
+        assert!(result_i32.is_null(1));
+        assert!(result_i32.is_null(2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn preserves_nulls_of_outer() -> Result<(), Box<dyn std::error::Error>> {
+        let data = vec![
+            Some(vec![Some(0), Some(1), Some(2)]),
+            None,
+            Some(vec![Some(6), Some(7), Some(45)]),
+        ];
+        let array = FixedSizeListArray::from_iter_primitive::<Int32Type, _, _>(data, 3);
+
+        let result = GetIndexFixedSizeList::new(0u32).transform(&array)?.unwrap();
+        let result_i32 = result.as_primitive::<Int32Type>();
+
+        assert_eq!(result_i32.len(), 3);
+        assert!(result_i32.is_null(1));
+        assert!(result_i32.is_valid(0));
+        assert!(result_i32.is_valid(2));
+
+        Ok(())
+    }
+
+    // Preserved inner are poentially subset of returned.
+    #[test]
+    fn preserves_nulls_of_inner() -> Result<(), Box<dyn std::error::Error>> {
+        let data = vec![
+            Some(vec![Some(0), Some(1), Some(2)]),
+            None,
+            Some(vec![Some(3), None, Some(5)]),
+        ];
+        let array = FixedSizeListArray::from_iter_primitive::<Int32Type, _, _>(data, 3);
+
+        let result = GetIndexFixedSizeList::new(0u32).transform(&array)?.unwrap();
+        let result_i32 = result.as_primitive::<Int32Type>();
+
+        assert_eq!(result_i32.len(), 3);
+        assert!(result_i32.is_valid(0));
+        assert!(result_i32.is_null(1));
+        assert!(result_i32.is_valid(2));
+
+        Ok(())
+    }
+
+    #[test]
+    fn preserves_values_under_no_outer_null_or_out_of_bounds() -> Result<(), Box<dyn std::error::Error>> {
+        let data = vec![
+            Some(vec![Some(0), Some(1), Some(2)]),
+            Some(vec![Some(3), None, Some(5)]),
+            Some(vec![Some(6), Some(7), Some(45)]),
+        ];
+        let array = FixedSizeListArray::from_iter_primitive::<Int32Type, _, _>(data, 3);
+
+        let result = GetIndexFixedSizeList::new(1u32).transform(&array)?.unwrap();
+        let result_i32 = result.as_primitive::<Int32Type>();
+
+        assert_eq!(result_i32.len(), 3);
+        assert_eq!(result_i32.value(0), 1);
+        assert!(result_i32.is_null(1));
+        assert_eq!(result_i32.value(2), 7);
 
         Ok(())
     }
