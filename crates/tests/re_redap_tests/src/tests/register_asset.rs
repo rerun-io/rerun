@@ -968,9 +968,9 @@ pub async fn deleting_dataset_deletes_asset_dataset(service: impl RerunCloudServ
     );
 
     service
-        .delete_entry(tonic::Request::new(DeleteEntryRequest {
-            id: Some(dataset.details.id.into()),
-        }))
+        .delete_entry(
+            tonic::Request::new(DeleteEntryRequest::default()).with_entry_id(dataset.details.id),
+        )
         .await
         .expect("failed to delete dataset entry");
 

@@ -76,16 +76,19 @@ pub async fn register_and_attach_table_blueprint_dataset(service: impl RerunClou
             .await;
 
     let updated_table = service
-        .update_table_entry(tonic::Request::new(
-            UpdateTableEntryRequest {
-                id: table_id,
-                table_details: TableDetails {
-                    blueprint_dataset: Some(blueprint_dataset),
-                    default_blueprint_segment: Some(blueprint_segment.clone()),
-                },
-            }
-            .into(),
-        ))
+        .update_table_entry(
+            tonic::Request::new(
+                UpdateTableEntryRequest {
+                    id: table_id,
+                    table_details: TableDetails {
+                        blueprint_dataset: Some(blueprint_dataset),
+                        default_blueprint_segment: Some(blueprint_segment.clone()),
+                    },
+                }
+                .into(),
+            )
+            .with_entry_id(table_id),
+        )
         .await
         .expect("update table blueprint details")
         .into_inner()
@@ -103,9 +106,9 @@ pub async fn register_and_attach_table_blueprint_dataset(service: impl RerunClou
     );
 
     let read_back = service
-        .read_table_entry(tonic::Request::new(ReadTableEntryRequest {
-            id: Some(table_id.into()),
-        }))
+        .read_table_entry(
+            tonic::Request::new(ReadTableEntryRequest::default()).with_entry_id(table_id),
+        )
         .await
         .expect("read table entry")
         .into_inner()

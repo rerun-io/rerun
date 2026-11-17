@@ -1214,11 +1214,13 @@ impl UpdateDatasetEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateDatasetEntryRequest> for crate::cloud::v1alpha1::UpdateDatasetEntryRequest {
     fn from(value: UpdateDatasetEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             dataset_details: Some(value.dataset_details.into()),
+            ..Default::default()
         }
     }
 }
@@ -1330,6 +1332,7 @@ impl TryFrom<crate::cloud::v1alpha1::ApplyDatasetPolicyResponse> for ApplyDatase
 impl TryFrom<crate::cloud::v1alpha1::DeleteEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
+    #[expect(deprecated, reason = "reads the body id that old clients send")]
     fn try_from(value: crate::cloud::v1alpha1::DeleteEntryRequest) -> Result<Self, Self::Error> {
         Ok(value
             .id
@@ -1398,11 +1401,13 @@ impl UpdateEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateEntryRequest> for crate::cloud::v1alpha1::UpdateEntryRequest {
     fn from(value: UpdateEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             entry_details_update: Some(value.entry_details_update.into()),
+            ..Default::default()
         }
     }
 }
@@ -1443,6 +1448,7 @@ impl From<UpdateEntryResponse> for crate::cloud::v1alpha1::UpdateEntryResponse {
 impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
+    #[expect(deprecated, reason = "reads the body id that old clients send")]
     fn try_from(value: crate::cloud::v1alpha1::ReadTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(value
             .id
@@ -1516,11 +1522,13 @@ impl UpdateTableEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateTableEntryRequest> for crate::cloud::v1alpha1::UpdateTableEntryRequest {
     fn from(value: UpdateTableEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             table_details: Some(value.table_details.into()),
+            ..Default::default()
         }
     }
 }

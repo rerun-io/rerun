@@ -17,12 +17,10 @@ use crate::{RecordBatchTestExt as _, SchemaTestExt as _};
 pub async fn list_entries_table(service: impl RerunCloudService) {
     let entries_table_id = entries_table_id(&service).await;
 
-    let schema_request = GetTableSchemaRequest {
-        table_id: Some(entries_table_id.into()),
-    };
-
     let schema: arrow::datatypes::Schema = (&service
-        .get_table_schema(tonic::Request::new(schema_request))
+        .get_table_schema(
+            tonic::Request::new(GetTableSchemaRequest::default()).with_entry_id(entries_table_id),
+        )
         .await
         .expect("Failed to get table schema")
         .into_inner()
@@ -33,12 +31,10 @@ pub async fn list_entries_table(service: impl RerunCloudService) {
 
     insta::assert_snapshot!("entries_table_schema", schema.format_snapshot());
 
-    let scan_request = ScanTableRequest {
-        table_id: Some(entries_table_id.into()),
-    };
-
     let table_resp: Vec<_> = service
-        .scan_table(tonic::Request::new(scan_request))
+        .scan_table(
+            tonic::Request::new(ScanTableRequest::default()).with_entry_id(entries_table_id),
+        )
         .await
         .expect("Failed to scan table")
         .into_inner()
@@ -77,16 +73,14 @@ pub async fn delete_table_deletes_attached_blueprint_dataset(service: impl Rerun
         .expect("tables should get an implicit blueprint dataset");
 
     service
-        .delete_entry(tonic::Request::new(DeleteEntryRequest {
-            id: Some(table_id.into()),
-        }))
+        .delete_entry(tonic::Request::new(DeleteEntryRequest::default()).with_entry_id(table_id))
         .await
         .expect("Failed to delete table entry");
 
     let table_status = service
-        .read_table_entry(tonic::Request::new(ReadTableEntryRequest {
-            id: Some(table_id.into()),
-        }))
+        .read_table_entry(
+            tonic::Request::new(ReadTableEntryRequest::default()).with_entry_id(table_id),
+        )
         .await
         .unwrap_err();
     assert_eq!(
@@ -115,9 +109,10 @@ pub async fn entries_table_with_empty_dataset(service: impl RerunCloudService) {
     snapshot_entries_table(&service, "entries_table_with_empty_dataset").await;
 
     service
-        .delete_entry(tonic::Request::new(DeleteEntryRequest {
-            id: Some(dataset_entry.details.id.into()),
-        }))
+        .delete_entry(
+            tonic::Request::new(DeleteEntryRequest::default())
+                .with_entry_id(dataset_entry.details.id),
+        )
         .await
         .expect("Failed to delete entry");
 
@@ -155,9 +150,9 @@ async fn snapshot_entries_table(service: &impl RerunCloudService, snapshot_name:
     let entries_table_id = entries_table_id(service).await;
 
     let entries_resp: Vec<_> = service
-        .scan_table(tonic::Request::new(ScanTableRequest {
-            table_id: Some(entries_table_id.into()),
-        }))
+        .scan_table(
+            tonic::Request::new(ScanTableRequest::default()).with_entry_id(entries_table_id),
+        )
         .await
         .expect("Failed to scan table")
         .into_inner()

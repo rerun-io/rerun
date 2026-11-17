@@ -993,6 +993,10 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateDatasetEntryResponse>>
     {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
         let request = UpdateDatasetEntryRequest::from_resolved(entry_id, request.into_inner())?;
 
@@ -1069,6 +1073,10 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ReadTableEntryResponse>> {
         let store = self.store.read().await;
 
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
 
         let table = store.table(id).ok_or_else(|| {
@@ -1087,6 +1095,10 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateTableEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateTableEntryResponse>> {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
         let request = UpdateTableEntryRequest::from_resolved(entry_id, request.into_inner())?;
 
@@ -1135,6 +1147,10 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::DeleteEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteEntryResponse>> {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
 
         self.store.write().await.delete_entry(entry_id)?;
@@ -1152,6 +1168,10 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>> {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let resolved_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
         let UpdateEntryRequest {
             id: entry_id,
@@ -2069,6 +2089,10 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>> {
         let store = self.store.read().await;
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().table_id.as_ref())?;
 
         let table = store
@@ -2092,6 +2116,10 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
     ) -> tonic::Result<tonic::Response<Self::ScanTableStream>> {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().table_id.as_ref())?;
 
         let provider = {

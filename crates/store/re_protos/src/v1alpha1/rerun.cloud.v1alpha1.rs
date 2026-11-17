@@ -2150,9 +2150,9 @@ impl ::prost::Name for ComponentIds {
 /// Request for `GetTableSchema`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetTableSchemaRequest {
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -2186,9 +2186,9 @@ impl ::prost::Name for GetTableSchemaResponse {
 /// Request for `ScanTable`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanTableRequest {
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -2510,9 +2510,9 @@ impl ::prost::Name for FindEntriesResponse {
 /// The entry is identified by the `x-rerun-entry-id` header or the deprecated body `id`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteEntryRequest {
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -2546,9 +2546,9 @@ impl ::prost::Name for DeleteEntryResponse {
 pub struct UpdateEntryRequest {
     /// The entry to modify.
     ///
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The new values for updatable fields.
@@ -2716,9 +2716,9 @@ impl ::prost::Name for ReadDatasetEntryResponse {
 pub struct UpdateDatasetEntryRequest {
     /// The dataset to modify.
     ///
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The new values.
@@ -2839,9 +2839,9 @@ impl ::prost::Name for RegisterTableResponse {
 /// The table is identified by the `x-rerun-entry-id` header or the deprecated body `id`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReadTableEntryRequest {
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -2877,8 +2877,9 @@ impl ::prost::Name for ReadTableEntryResponse {
 pub struct UpdateTableEntryRequest {
     /// The table to modify.
     ///
-    /// Deprecated: use the x-rerun-entry-id header instead. This field is only a fallback for
-    /// clients that predate header-based addressing on this endpoint.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.43.x and older, which send no header on this endpoint.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The new values.
@@ -3770,6 +3771,7 @@ pub mod rerun_cloud_service_client {
     /// old clients, and both unset fails with `INVALID_ARGUMENT` (a gRPC status code). If both are set
     /// but disagree, the call fails with `INVALID_ARGUMENT` naming the two ids, rather than silently
     /// picking one. `x-rerun-entry-name-bin` is never resolved on these endpoints.
+    /// OSS servers older than 0.37 ignore the header on these endpoints and only read the body field.
     #[derive(Debug, Clone)]
     pub struct RerunCloudServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -5477,6 +5479,7 @@ pub mod rerun_cloud_service_server {
     /// old clients, and both unset fails with `INVALID_ARGUMENT` (a gRPC status code). If both are set
     /// but disagree, the call fails with `INVALID_ARGUMENT` naming the two ids, rather than silently
     /// picking one. `x-rerun-entry-name-bin` is never resolved on these endpoints.
+    /// OSS servers older than 0.37 ignore the header on these endpoints and only read the body field.
     #[derive(Debug)]
     pub struct RerunCloudServiceServer<T> {
         inner: Arc<T>,

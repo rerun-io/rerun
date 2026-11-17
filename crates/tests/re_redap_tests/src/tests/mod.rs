@@ -4,6 +4,7 @@ mod create_dataset;
 mod create_table;
 mod dataset_schema;
 mod entries_table;
+mod entry_id_header;
 mod fetch_chunks;
 mod find_chunks;
 mod find_entries_filters;
@@ -120,6 +121,8 @@ define_redap_tests! {
     entries_table::delete_table_deletes_attached_blueprint_dataset,
     entries_table::entries_table_with_empty_dataset,
     entries_table::list_entries_table,
+    entry_id_header::deprecated_body_id_endpoints_accept_body_only,
+    entry_id_header::deprecated_body_id_endpoints_accept_header_only,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
     find_chunks::find_chunks_fixed_schema,

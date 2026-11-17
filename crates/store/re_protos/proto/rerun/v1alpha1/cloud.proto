@@ -37,6 +37,7 @@ import "rerun/v1alpha1/log_msg.proto";
 // old clients, and both unset fails with `INVALID_ARGUMENT` (a gRPC status code). If both are set
 // but disagree, the call fails with `INVALID_ARGUMENT` naming the two ids, rather than silently
 // picking one. `x-rerun-entry-name-bin` is never resolved on these endpoints.
+// OSS servers older than 0.37 ignore the header on these endpoints and only read the body field.
 service RerunCloudService {
   // Returns version and build information about the server.
   //
@@ -1685,10 +1686,9 @@ message ComponentIds {
 
 // Request for `GetTableSchema`.
 message GetTableSchemaRequest {
-  // Deprecated: use x-rerun-entry-id header instead.
-  // This field should be dropped once all servers are updated
-  // to 0.14.x or later.
-  rerun.common.v1alpha1.EntryId table_id = 1;
+  // Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+  // 0.32.x and older, which send no header.
+  rerun.common.v1alpha1.EntryId table_id = 1 [deprecated = true];
 }
 
 // Response for `GetTableSchema`.
@@ -1699,10 +1699,9 @@ message GetTableSchemaResponse {
 
 // Request for `ScanTable`.
 message ScanTableRequest {
-  // Deprecated: use x-rerun-entry-id header instead.
-  // This field should be dropped once all servers are updated
-  // to 0.14.x or later.
-  rerun.common.v1alpha1.EntryId table_id = 1;
+  // Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+  // 0.32.x and older, which send no header.
+  rerun.common.v1alpha1.EntryId table_id = 1 [deprecated = true];
 
   // TODO(jleibs): support ScanParameters iff we can plumb them into Datafusion TableProvider
   // Otherwise, just wait for Arrow Flight
@@ -1887,10 +1886,9 @@ message FindEntriesResponse {
 //
 // The entry is identified by the `x-rerun-entry-id` header or the deprecated body `id`.
 message DeleteEntryRequest {
-  // Deprecated: use x-rerun-entry-id header instead.
-  // This field should be dropped once all servers are updated
-  // to 0.14.x or later.
-  rerun.common.v1alpha1.EntryId id = 1;
+  // Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+  // 0.32.x and older, which send no header.
+  rerun.common.v1alpha1.EntryId id = 1 [deprecated = true];
 }
 
 // Response for `DeleteEntry`. Empty: an error is reported as a gRPC status instead.
@@ -1902,10 +1900,9 @@ message DeleteEntryResponse {}
 message UpdateEntryRequest {
   // The entry to modify.
   //
-  // Deprecated: use x-rerun-entry-id header instead.
-  // This field should be dropped once all servers are updated
-  // to 0.14.x or later.
-  rerun.common.v1alpha1.EntryId id = 1;
+  // Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+  // 0.32.x and older, which send no header.
+  rerun.common.v1alpha1.EntryId id = 1 [deprecated = true];
 
   // The new values for updatable fields.
   EntryDetailsUpdate entry_details_update = 2;
@@ -1996,10 +1993,9 @@ message ReadDatasetEntryResponse {
 message UpdateDatasetEntryRequest {
   // The dataset to modify.
   //
-  // Deprecated: use x-rerun-entry-id header instead.
-  // This field should be dropped once all servers are updated
-  // to 0.14.x or later.
-  rerun.common.v1alpha1.EntryId id = 1;
+  // Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+  // 0.32.x and older, which send no header.
+  rerun.common.v1alpha1.EntryId id = 1 [deprecated = true];
 
   // The new values.
   DatasetDetails dataset_details = 2;
@@ -2059,10 +2055,9 @@ message RegisterTableResponse {
 //
 // The table is identified by the `x-rerun-entry-id` header or the deprecated body `id`.
 message ReadTableEntryRequest {
-  // Deprecated: use x-rerun-entry-id header instead.
-  // This field should be dropped once all servers are updated
-  // to 0.14.x or later.
-  rerun.common.v1alpha1.EntryId id = 1;
+  // Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+  // 0.32.x and older, which send no header.
+  rerun.common.v1alpha1.EntryId id = 1 [deprecated = true];
 }
 
 // Response for `ReadTableEntry`.
@@ -2077,9 +2072,9 @@ message ReadTableEntryResponse {
 message UpdateTableEntryRequest {
   // The table to modify.
   //
-  // Deprecated: use the x-rerun-entry-id header instead. This field is only a fallback for
-  // clients that predate header-based addressing on this endpoint.
-  rerun.common.v1alpha1.EntryId id = 1;
+  // Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+  // 0.43.x and older, which send no header on this endpoint.
+  rerun.common.v1alpha1.EntryId id = 1 [deprecated = true];
 
   // The new values.
   TableDetails table_details = 2;

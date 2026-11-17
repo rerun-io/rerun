@@ -85,10 +85,7 @@ where
     pub async fn delete_entry(&mut self, entry_id: EntryId) -> ApiResult {
         self.inner()
             .delete_entry(
-                tonic::Request::new(DeleteEntryRequest {
-                    id: Some(entry_id.into()),
-                })
-                .with_entry_id(entry_id),
+                tonic::Request::new(DeleteEntryRequest::default()).with_entry_id(entry_id),
             )
             .await
             .map_err(|err| ApiError::tonic(&self.origin, err, "/DeleteEntry"))?;
