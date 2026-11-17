@@ -63,8 +63,10 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
         use re_log_encoding::FileFlushError;
 
         Self::flush_blocking(self, timeout).map_err(|err| match err {
-            FileFlushError::Failed { message } => sink::SinkFlushError::Failed { message },
             FileFlushError::Timeout => sink::SinkFlushError::Timeout,
+            err @ (FileFlushError::WriterThreadShutDown | FileFlushError::Encode { .. }) => {
+                sink::SinkFlushError::failed(err.to_string())
+            }
         })
     }
 

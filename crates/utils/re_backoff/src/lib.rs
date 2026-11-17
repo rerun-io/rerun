@@ -30,6 +30,24 @@
 
 use std::time::Duration;
 
+/// Invalid parameters for a [`BackoffGenerator`].
+#[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
+pub enum BackoffError {
+    /// The base duration is larger than the max duration.
+    #[error("base duration ({base:?}) must be less than or equal to max duration ({max:?})")]
+    BaseExceedsMax {
+        /// The requested base duration.
+        base: Duration,
+
+        /// The requested max duration.
+        max: Duration,
+    },
+
+    /// The jitter factor is outside `[0, 1]`.
+    #[error("jitter factor must be between 0 and 1, got {0}")]
+    InvalidJitterFactor(f64),
+}
+
 /// `Backoff` represent an await-able back-off duration.
 ///
 /// It is normally built by a [`BackoffGenerator`].
@@ -83,7 +101,7 @@ impl BackoffGenerator {
     /// Create a new `BackoffGenerator` with the given base and max durations.
     /// A random jitter will be added to the backoff duration with a
     /// [`Self::DEFAULT_JITTER_FACTOR`] jitter factor.
-    pub fn new(base: Duration, max: Duration) -> Result<Self, String> {
+    pub fn new(base: Duration, max: Duration) -> Result<Self, BackoffError> {
         Self::new_with_custom_jitter(base, max, Self::DEFAULT_JITTER_FACTOR)
     }
 
@@ -113,12 +131,12 @@ impl BackoffGenerator {
         base: Duration,
         max: Duration,
         jitter_factor: f64,
-    ) -> Result<Self, String> {
-        if base > max {
-            return Err("base duration must be less than or equal to max duration".to_owned());
+    ) -> Result<Self, BackoffError> {
+        if max < base {
+            return Err(BackoffError::BaseExceedsMax { base, max });
         }
-        if jitter_factor < 0.0 || jitter_factor > 1.0 {
-            return Err("jitter factor must be between 0 and 1".to_owned());
+        if jitter_factor < 0.0 || 1.0 < jitter_factor {
+            return Err(BackoffError::InvalidJitterFactor(jitter_factor));
         }
         Ok(Self {
             base,

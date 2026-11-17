@@ -147,7 +147,11 @@ pub fn transform_info_for_archetype_or_report_error<'a>(
         if let Some(pinhole) = transform_context.pinhole_tree_root_info(frame)
             && let Err(err) = pinhole.pinhole_projection.image_from_camera.sanity_check()
         {
-            output.report_unspecified_source(*instruction_id, ViewerReportSeverity::Error, err);
+            output.report_unspecified_source(
+                *instruction_id,
+                ViewerReportSeverity::Error,
+                err.to_string(),
+            );
         }
     }
 

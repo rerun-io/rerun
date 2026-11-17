@@ -247,7 +247,7 @@ impl VideoDataDescription {
     /// large videos.
     ///
     /// Check implementation for details.
-    pub fn sanity_check(&self) -> Result<(), String> {
+    pub fn sanity_check(&self) -> Result<(), SanityCheckError> {
         self.sanity_check_keyframes()?;
         self.sanity_check_samples()?;
 
@@ -262,53 +262,48 @@ impl VideoDataDescription {
                 re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
                 re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
                 _ => {
-                    return Err(format!(
-                        "STSD box content type {:?} doesn't have a supported codec.",
-                        stsd.contents
-                    ));
+                    return Err(SanityCheckError::UnsupportedStsdCodec {
+                        stsd_contents: format!("{:?}", stsd.contents),
+                    });
                 }
             };
             if stsd_codec != self.codec {
-                return Err(format!(
-                    "STSD box content type {:?} does not match with the internal codec {:?}.",
-                    stsd.contents, self.codec
-                ));
+                return Err(SanityCheckError::StsdCodecMismatch {
+                    stsd_contents: format!("{:?}", stsd.contents),
+                    codec: self.codec.clone(),
+                });
             }
         }
 
         Ok(())
     }
 
-    fn sanity_check_keyframes(&self) -> Result<(), String> {
+    fn sanity_check_keyframes(&self) -> Result<(), SanityCheckError> {
         if !self.keyframe_indices.is_sorted() {
-            return Err("Keyframes aren't sorted".to_owned());
+            return Err(SanityCheckError::UnsortedKeyframes);
         }
 
         for &keyframe in &self.keyframe_indices {
             if keyframe < self.samples.min_index() {
-                return Err(format!(
-                    "Keyframe {keyframe} refers to sample to the left of the list of samples.",
-                ));
+                return Err(SanityCheckError::KeyframeBeforeSamples(keyframe));
             }
 
             if keyframe >= self.samples.next_index() {
-                return Err(format!(
-                    "Keyframe {keyframe} refers to sample to the right of the list of samples.",
-                ));
+                return Err(SanityCheckError::KeyframeAfterSamples(keyframe));
             }
 
             match &self.samples[keyframe] {
                 SampleMetadataState::Present(sample_metadata) => {
                     // All samples at the beginning of a GOP are marked with `is_sync==true`
                     if !sample_metadata.is_sync {
-                        return Err(format!("Keyframe {keyframe} is not marked with `is_sync`."));
+                        return Err(SanityCheckError::KeyframeNotSync(keyframe));
                     }
                 }
                 SampleMetadataState::Clear { .. } => {
-                    return Err(format!("Keyframe {keyframe} refers to a clear"));
+                    return Err(SanityCheckError::KeyframeIsCleared(keyframe));
                 }
                 SampleMetadataState::Unloaded { .. } => {
-                    return Err(format!("Keyframe {keyframe} refers to an unloaded sample"));
+                    return Err(SanityCheckError::KeyframeIsUnloaded(keyframe));
                 }
             }
         }
@@ -321,33 +316,35 @@ impl VideoDataDescription {
             .filter_map(|(idx, s)| Some((idx, s.sample()?)))
         {
             if sample.is_sync && keyframes.next().is_none_or(|idx| idx != sample_idx) {
-                return Err(format!("Not tracking the keyframe {sample_idx}."));
+                return Err(SanityCheckError::UntrackedKeyframe(sample_idx));
             }
         }
         Ok(())
     }
 
-    fn sanity_check_samples(&self) -> Result<(), String> {
+    fn sanity_check_samples(&self) -> Result<(), SanityCheckError> {
         // Decode timestamps are monotonically increasing.
         for ((a_idx, a), (b_idx, b)) in self.samples.iter_indexed().tuple_windows() {
             if let SampleMetadataState::Present(a) = a
                 && let SampleMetadataState::Present(b) = b
                 && a.decode_timestamp > b.decode_timestamp
             {
-                return Err(format!(
-                    "Decode timestamps for {a_idx}..{b_idx} are not monotonically increasing: {:?} {:?}",
-                    a.decode_timestamp, b.decode_timestamp
-                ));
+                return Err(SanityCheckError::NonMonotonicDecodeTimestamps {
+                    a_idx,
+                    b_idx,
+                    a_timestamp: a.decode_timestamp,
+                    b_timestamp: b.decode_timestamp,
+                });
             }
         }
 
         // Sample statistics are consistent with the samples.
         let expected_statistics = SamplesStatistics::new(&self.samples);
         if expected_statistics != self.samples_statistics {
-            return Err(format!(
-                "Sample statistics are not consistent with the samples.\nExpected: {:?}\nActual: {:?}",
-                expected_statistics, self.samples_statistics
-            ));
+            return Err(SanityCheckError::InconsistentStatistics {
+                expected: Box::new(expected_statistics),
+                actual: Box::new(self.samples_statistics.clone()),
+            });
         }
 
         Ok(())
@@ -434,6 +431,87 @@ pub enum SampleConversionError {
 
     #[error("Failed converting sample to Annex-B: {0}")]
     AnnexB(#[from] AnnexBStreamWriteError),
+}
+
+/// A violated invariant of a [`VideoDataDescription`], found by [`VideoDataDescription::sanity_check`].
+#[derive(thiserror::Error, Debug)]
+pub enum SanityCheckError {
+    /// The STSD box has a content type without a supported codec.
+    #[error("STSD box content type {stsd_contents} doesn't have a supported codec.")]
+    UnsupportedStsdCodec {
+        /// Debug-formatted STSD box contents.
+        stsd_contents: String,
+    },
+
+    /// The STSD box content type does not match the codec of the description.
+    #[error(
+        "STSD box content type {stsd_contents} does not match with the internal codec {codec:?}."
+    )]
+    StsdCodecMismatch {
+        /// Debug-formatted STSD box contents.
+        stsd_contents: String,
+
+        /// The codec of the description.
+        codec: VideoCodec,
+    },
+
+    /// The keyframe indices are not sorted.
+    #[error("Keyframes aren't sorted")]
+    UnsortedKeyframes,
+
+    /// A keyframe refers to a sample before the first sample.
+    #[error("Keyframe {0} refers to sample to the left of the list of samples.")]
+    KeyframeBeforeSamples(SampleIndex),
+
+    /// A keyframe refers to a sample after the last sample.
+    #[error("Keyframe {0} refers to sample to the right of the list of samples.")]
+    KeyframeAfterSamples(SampleIndex),
+
+    /// A keyframe refers to a sample that is not marked as sync.
+    #[error("Keyframe {0} is not marked with `is_sync`.")]
+    KeyframeNotSync(SampleIndex),
+
+    /// A keyframe refers to a cleared sample.
+    #[error("Keyframe {0} refers to a clear")]
+    KeyframeIsCleared(SampleIndex),
+
+    /// A keyframe refers to a sample that is not loaded.
+    #[error("Keyframe {0} refers to an unloaded sample")]
+    KeyframeIsUnloaded(SampleIndex),
+
+    /// A sync sample is not tracked as a keyframe.
+    #[error("Not tracking the keyframe {0}.")]
+    UntrackedKeyframe(SampleIndex),
+
+    /// Decode timestamps decrease between two consecutive samples.
+    #[error(
+        "Decode timestamps for {a_idx}..{b_idx} are not monotonically increasing: {a_timestamp:?} {b_timestamp:?}"
+    )]
+    NonMonotonicDecodeTimestamps {
+        /// Index of the first sample.
+        a_idx: SampleIndex,
+
+        /// Index of the second sample.
+        b_idx: SampleIndex,
+
+        /// Decode timestamp of the first sample.
+        a_timestamp: Time,
+
+        /// Decode timestamp of the second sample.
+        b_timestamp: Time,
+    },
+
+    /// The cached sample statistics differ from the ones computed from the samples.
+    #[error(
+        "Sample statistics are not consistent with the samples.\nExpected: {expected:?}\nActual: {actual:?}"
+    )]
+    InconsistentStatistics {
+        /// Statistics computed from the samples.
+        expected: Box<SamplesStatistics>,
+
+        /// Statistics stored in the description.
+        actual: Box<SamplesStatistics>,
+    },
 }
 
 /// Various information about how the video was encoded.

@@ -25,8 +25,8 @@ pub use decode::{
 };
 pub use demux::{
     ChromaSubsamplingModes, FrameNumber, KeyframeIndex, SampleIndex, SampleIndexSpan,
-    SampleMetadata, SampleMetadataState, SamplesStatistics, VideoCodec, VideoDataDescription,
-    VideoDeliveryMethod, VideoEncodingDetails, VideoLoadError, VideoSource,
+    SampleMetadata, SampleMetadataState, SamplesStatistics, SanityCheckError, VideoCodec,
+    VideoDataDescription, VideoDeliveryMethod, VideoEncodingDetails, VideoLoadError, VideoSource,
 };
 pub use gop_detection::{
     DetectGopStartError, GopStartDetection, detect_gop_start, is_start_of_gop,

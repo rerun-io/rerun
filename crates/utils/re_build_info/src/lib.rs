@@ -5,7 +5,7 @@
 mod build_info;
 mod crate_version;
 
-pub use build_info::BuildInfo;
+pub use build_info::{BuildInfo, BuildInfoParseError};
 pub use crate_version::{CrateVersion, Meta};
 
 /// Create a [`BuildInfo`] at compile-time using environment variables exported by

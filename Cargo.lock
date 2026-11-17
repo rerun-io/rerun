@@ -9273,6 +9273,7 @@ dependencies = [
  "rand 0.9.5",
  "re_async",
  "re_workspace_hack",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -9310,6 +9311,7 @@ dependencies = [
  "re_byte_size",
  "re_workspace_hack",
  "serde",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -9953,6 +9955,7 @@ dependencies = [
  "re_log",
  "re_workspace_hack",
  "serde",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -10444,6 +10447,7 @@ dependencies = [
  "serde",
  "smallvec",
  "sysinfo",
+ "thiserror 2.0.19",
  "wasm-bindgen",
  "web-time",
 ]
@@ -11443,6 +11447,7 @@ dependencies = [
  "strum 0.26.3",
  "syn 3.0.3",
  "tempfile",
+ "thiserror 2.0.19",
  "toml",
  "unindent",
  "walkdir",
@@ -12872,6 +12877,7 @@ dependencies = [
  "re_workspace_hack",
  "similar-asserts",
  "tempfile",
+ "thiserror 2.0.19",
  "tokio",
  "unindent",
  "url",

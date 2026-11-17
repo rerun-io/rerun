@@ -65,7 +65,7 @@ pub fn encoding_details_from_h264_sps(
 
 #[derive(Default)]
 struct H264GopDetectionState {
-    coding_details_from_sps: Option<Result<VideoEncodingDetails, String>>,
+    coding_details_from_sps: Option<Result<VideoEncodingDetails, nal::sps::SpsError>>,
     idr_frame_found: bool,
 }
 
@@ -96,7 +96,7 @@ impl h264_reader::push::AccumulatedNalHandler for H264GopDetectionState {
                         }
                         Ok(coding_details)
                     }
-                    Err(sps_err) => Err(format!("Failed reading SPS: {sps_err:?}")), // NOLINT: h264 errors don't implement display
+                    Err(sps_err) => Err(sps_err),
                 },
             );
         } else if nal_unit_type == nal::UnitType::SliceLayerWithoutPartitioningIdr {
@@ -143,8 +143,8 @@ pub fn detect_h264_annexb_gop(
                 Ok(GopStartDetection::NotStartOfGop)
             }
         }
-        Some(Err(error_str)) => Err(DetectGopStartError::FailedToExtractEncodingDetails(
-            error_str,
+        Some(Err(sps_err)) => Err(DetectGopStartError::FailedToExtractEncodingDetails(
+            format!("Failed reading SPS: {sps_err:?}"), // NOLINT: h264 errors don't implement display
         )),
         None => Ok(GopStartDetection::NotStartOfGop),
     }

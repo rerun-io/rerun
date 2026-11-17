@@ -13,6 +13,19 @@ use re_protos::cloud::v1alpha1::ext::{ChunkIndexingPolicy, IndexingPolicySelecti
 
 use super::PySchemaInternal;
 
+/// An invalid chunk indexing policy passed from Python.
+#[derive(Debug, thiserror::Error)]
+enum PolicyError {
+    #[error("expected a list of names or \"all\", got {0:?}")]
+    UnknownLiteral(String),
+
+    #[error(
+        "entity path {0:?} in the chunk indexing policy is a wildcard; resolve it with \
+         `ChunkIndexingPolicy.match(dataset.schema())` first"
+    )]
+    WildcardEntityPath(String),
+}
+
 /// One dimension of a policy as Python passes it: a list of names, or the literal `"all"`.
 #[derive(FromPyObject)]
 pub enum PyNameSelection {
@@ -24,15 +37,13 @@ pub enum PyNameSelection {
 }
 
 impl PyNameSelection {
-    fn into_selection(self) -> Result<IndexingPolicySelection, String> {
+    fn into_selection(self) -> Result<IndexingPolicySelection, PolicyError> {
         match self {
             Self::Explicit(names) => Ok(IndexingPolicySelection::Explicit(
                 names.into_iter().collect(),
             )),
             Self::Literal(literal) if literal == "all" => Ok(IndexingPolicySelection::All),
-            Self::Literal(other) => Err(format!(
-                "expected a list of names or \"all\", got {other:?}"
-            )),
+            Self::Literal(other) => Err(PolicyError::UnknownLiteral(other)),
         }
     }
 
@@ -55,21 +66,19 @@ pub fn to_policy(
     entity_paths: PyNameSelection,
     timelines: PyNameSelection,
 ) -> PyResult<ChunkIndexingPolicy> {
-    policy_from_selections(entity_paths, timelines).map_err(PyValueError::new_err)
+    policy_from_selections(entity_paths, timelines)
+        .map_err(|err| PyValueError::new_err(err.to_string()))
 }
 
 /// [`to_policy`] without the Python error type, so unit tests need no Python library.
 fn policy_from_selections(
     entity_paths: PyNameSelection,
     timelines: PyNameSelection,
-) -> Result<ChunkIndexingPolicy, String> {
+) -> Result<ChunkIndexingPolicy, PolicyError> {
     if let PyNameSelection::Explicit(entity_paths) = &entity_paths
         && let Some(entry) = find_wildcard(entity_paths)
     {
-        return Err(format!(
-            "entity path {entry:?} in the chunk indexing policy is a wildcard; resolve it with \
-             `ChunkIndexingPolicy.match(dataset.schema())` first"
-        ));
+        return Err(PolicyError::WildcardEntityPath(entry.to_owned()));
     }
     Ok(ChunkIndexingPolicy {
         entity_paths: entity_paths.into_selection()?,
