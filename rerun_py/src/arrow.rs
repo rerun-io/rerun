@@ -66,8 +66,7 @@ const MAX_COPIED_ARRAY_BYTES: usize = 4096;
 ///
 /// Imported pyarrow arrays need the GIL to be freed, and that happens on the batcher thread,
 /// which then fights the logging thread for the GIL on every row.
-/// They also point at the caller's memory, so mutating a numpy array after logging it would change what was logged.
-/// Copying fixes both. Large arrays stay zero-copy, since the copy would cost more than it saves.
+/// Large arrays stay zero-copy, since the copy would cost more than it saves.
 fn own_if_small(array: ArrowArrayRef) -> ArrowArrayRef {
     if MAX_COPIED_ARRAY_BYTES < array.get_buffer_memory_size() {
         return array;
