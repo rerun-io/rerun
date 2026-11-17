@@ -64,13 +64,10 @@ const MAX_COPIED_ARRAY_BYTES: usize = 4096;
 
 /// Copy small arrays out of Python-owned memory.
 ///
-/// An array imported from pyarrow keeps its buffers alive through a `release` callback that needs the GIL.
-/// The imported array is dropped on the batcher thread, so for every logged row that thread would have to
-/// wait for the GIL, which the logging thread is busy holding.
-/// It also keeps pointing at the caller's memory (e.g. a numpy array) until then, so changing the array
-/// right after logging it would change what gets logged.
-/// Copying small arrays avoids both, and drops the imported array here, while we hold the GIL.
-/// Large arrays stay zero-copy, where the copy would cost more than it saves.
+/// Imported pyarrow arrays need the GIL to be freed, and that happens on the batcher thread,
+/// which then fights the logging thread for the GIL on every row.
+/// They also point at the caller's memory, so mutating a numpy array after logging it would change what was logged.
+/// Copying fixes both. Large arrays stay zero-copy, since the copy would cost more than it saves.
 fn own_if_small(array: ArrowArrayRef) -> ArrowArrayRef {
     if MAX_COPIED_ARRAY_BYTES < array.get_buffer_memory_size() {
         return array;
