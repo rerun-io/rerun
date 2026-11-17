@@ -1460,6 +1460,16 @@ pub enum VideoLoadError {
     #[error("Video file has invalid sample entries")]
     InvalidSamples,
 
+    /// Not even the first sample of the video track fits within the file.
+    #[error(
+        "Video file is truncated or corrupt: the first sample is {sample_size} bytes at offset {sample_offset}, but the file is only {file_size} bytes"
+    )]
+    SampleOutOfBounds {
+        sample_offset: u64,
+        sample_size: u64,
+        file_size: u64,
+    },
+
     #[error(
         "Video file has no timescale, which is required to determine frame timestamps in time units"
     )]
@@ -1759,6 +1769,130 @@ mod tests {
             }
             Err(other) => panic!("expected UnsupportedCodec, got {other:?}"),
             Ok(_) => panic!("expected loading MPEG-4 Part 2 to fail"),
+        }
+    }
+
+    /// Overwrites the size of one sample in the first `stsz` box.
+    fn set_sample_size(mp4: &mut [u8], sample_idx: usize, size: u32) {
+        let stsz = mp4.windows(4).position(|w| w == b"stsz").unwrap();
+        // Box type, version & flags, uniform sample size, sample count, then the per-sample sizes.
+        assert_eq!(
+            mp4[stsz + 8..stsz + 12],
+            [0; 4],
+            "fixture must use per-sample sizes"
+        );
+        let entry = stsz + 16 + 4 * sample_idx;
+        mp4[entry..entry + 4].copy_from_slice(&size.to_be_bytes());
+    }
+
+    fn fixture(codec: &str) -> Vec<u8> {
+        let path = format!("tests/assets/video/Big_Buck_Bunny_1080_1s_{codec}.mp4");
+        std::fs::read(workspace_dir().join(path)).unwrap()
+    }
+
+    fn assert_all_samples_readable(video: &VideoDataDescription, data: &[u8]) {
+        for (sample_idx, sample) in video.samples.iter_indexed() {
+            let sample = sample.sample().unwrap();
+            assert!(
+                sample.get(&VideoSliceSource(data), sample_idx).is_some(),
+                "sample {sample_idx} is not readable"
+            );
+        }
+    }
+
+    /// The end of the byte span of the given sample.
+    fn sample_end(video: &VideoDataDescription, sample_idx: SampleIndex) -> usize {
+        match video.samples[sample_idx].sample().unwrap().source {
+            VideoSource::Span(span) => span.range_usize().end,
+            VideoSource::Id { .. } => panic!("mp4 samples are spans"),
+        }
+    }
+
+    #[test]
+    fn test_truncated_file_keeps_leading_samples() {
+        // The VP8 fixture has its `moov` box up front, so cutting the file only loses samples.
+        let full = fixture("vp8");
+        let full_video = VideoDataDescription::load_from_bytes(&full, "video/mp4", "vp8").unwrap();
+        let full_duration = full_video.duration().unwrap();
+
+        // Cut one byte short of the end of sample 20.
+        let truncated = &full[..sample_end(&full_video, 20) - 1];
+        let video = VideoDataDescription::load_from_bytes(truncated, "video/mp4", "vp8").unwrap();
+
+        assert_eq!(video.samples.num_elements(), 20);
+        assert!(
+            video.duration().unwrap() < full_duration,
+            "the duration must not cover the dropped samples"
+        );
+        assert_all_samples_readable(&video, truncated);
+    }
+
+    #[test]
+    fn test_truncated_keyframe_is_not_listed_as_keyframe() {
+        let full =
+            std::fs::read(workspace_dir().join("tests/assets/video/Sintel_1080_10s_av1.mp4"))
+                .unwrap();
+        let full_video = VideoDataDescription::load_from_bytes(&full, "video/mp4", "av1").unwrap();
+        let second_keyframe = full_video.keyframe_indices[1];
+
+        let truncated = &full[..sample_end(&full_video, second_keyframe) - 1];
+        let video = VideoDataDescription::load_from_bytes(truncated, "video/mp4", "av1").unwrap();
+
+        assert_eq!(video.samples.num_elements(), second_keyframe);
+        assert_eq!(video.keyframe_indices, vec![full_video.keyframe_indices[0]]);
+        video.sanity_check().unwrap();
+    }
+
+    #[test]
+    fn test_truncated_trailing_box_is_ignored() {
+        let full = fixture("h264");
+        let num_samples = VideoDataDescription::load_from_bytes(&full, "video/mp4", "h264")
+            .unwrap()
+            .samples
+            .num_elements();
+
+        // A `moof` box that declares 112 bytes, cut off at various lengths.
+        let mut moof = 112_u32.to_be_bytes().to_vec();
+        moof.extend_from_slice(b"moof");
+        moof.resize(111, 0);
+
+        for cut in [1, 7, 8, 60, 111] {
+            let mut data = full.clone();
+            data.extend_from_slice(&moof[..cut]);
+
+            let video = VideoDataDescription::load_from_bytes(&data, "video/mp4", "h264").unwrap();
+
+            assert_eq!(video.samples.num_elements(), num_samples, "cut at {cut}");
+        }
+    }
+
+    #[test]
+    fn test_sample_past_end_of_file_drops_the_tail() {
+        // VP9 reads samples while loading, the others only when sampled later.
+        for codec in ["vp9", "h264"] {
+            let mut data = fixture(codec);
+            set_sample_size(&mut data, 10, u32::MAX);
+
+            let video = VideoDataDescription::load_from_bytes(&data, "video/mp4", codec).unwrap();
+
+            assert_eq!(video.samples.num_elements(), 10, "{codec}");
+            assert_all_samples_readable(&video, &data);
+        }
+    }
+
+    #[test]
+    fn test_first_sample_past_end_of_file_is_rejected() {
+        for codec in ["vp9", "h264"] {
+            let mut data = fixture(codec);
+            set_sample_size(&mut data, 0, u32::MAX);
+
+            match VideoDataDescription::load_from_bytes(&data, "video/mp4", codec) {
+                Err(VideoLoadError::SampleOutOfBounds { file_size, .. }) => {
+                    assert_eq!(file_size, data.len() as u64);
+                }
+                Err(other) => panic!("expected SampleOutOfBounds, got {other:?}"),
+                Ok(_) => panic!("expected loading {codec} with an oversized sample to fail"),
+            }
         }
     }
 

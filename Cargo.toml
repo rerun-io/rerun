@@ -1020,6 +1020,9 @@ re_workspace_hack = { path = "crates/utils/re_workspace_hack" }
 
 # kittest = { git = "https://github.com/rerun-io/kittest.git", rev = 'ce7a2f3b12c36021889b50bdff671cec8016b0fb' }
 
+# Until the release after 0.5.1, for https://github.com/rerun-io/re_mp4/pull/40
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4.git", branch = "main" }
+
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
