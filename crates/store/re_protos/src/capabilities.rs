@@ -29,6 +29,11 @@ const SEPARATOR: char = ':';
 /// Prefix for all catalog registering capabilities.
 pub const CATALOG_WRITE_REGISTER: &str = "catalog:write:register";
 
+/// The server registers a data source under the segment id set in its `segment_id` field.
+///
+/// A server without it ignores the field and registers the source under its store's recording id.
+pub const CATALOG_WRITE_SEGMENT_ID_OVERRIDE: &str = "catalog:write:segment_id_override";
+
 /// The capability to write objects to catalog-managed staging storage.
 pub const CATALOG_WRITE_STAGING: &str = "catalog:write:staging";
 

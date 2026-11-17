@@ -38,7 +38,7 @@ use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::common::v1alpha1::ext::{DatasetKind, SegmentId};
 use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
-use re_protos::protocol_level::ClientLevelCheck;
+use re_protos::protocol_level::{ClientLevelCheck, ProtocolLevel};
 use re_protos::{
     EntryName,
     cloud::v1alpha1::ext::{
@@ -1287,6 +1287,18 @@ impl RerunCloudService for RerunCloudHandler {
             return Err(tonic::Status::invalid_argument(
                 "no data sources to register",
             ));
+        }
+
+        // A segment id that differs from its store's recording id is misread by clients that
+        // attribute chunks to recording ids. Raised before registering, since a failed batch can
+        // still have added some of its sources.
+        if data_sources
+            .iter()
+            .any(|data_source| data_source.segment_id_override.is_some())
+        {
+            store
+                .dataset_mut(dataset_id)?
+                .raise_required_client_protocol_level(ProtocolLevel::CHUNK_SEGMENT_FROM_REQUEST);
         }
 
         let RegisterWithDatasetResult {

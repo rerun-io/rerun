@@ -40,7 +40,7 @@ You can read more about it in [Catalog object model](../../query-and-transform/c
 
 Datasets are top-level objects that group semantically related episodes of data, which we call _segments_.
 Populating a dataset happens by registering recordings using the Catalog SDK.
-Its recording ID becomes the segment ID, and its application ID is discarded.
+By default, its recording ID becomes the segment ID, and its application ID is discarded.
 For example, it can be multiple recordings of the same robotic task.
 Blueprints can optionally be assigned to datasets, so all segments in a dataset share the same blueprint.
 
@@ -133,5 +133,4 @@ You can override the default recording ID when initializing the SDK (or the reco
 snippet: tutorials/custom-recording-id
 
 This enables the distributed logging workflow described above, as well as assigning specific segment ID for recordings to be registered to datasets.
-
-<!-- TODO(RR-2168): update this section when segment id override is available -->
+A recording can also be registered under another segment ID without changing its recording ID: see [How can I register a recording under another segment ID?](../../query-and-transform/catalog/layers.md#how-can-i-register-a-recording-under-another-segment-id).

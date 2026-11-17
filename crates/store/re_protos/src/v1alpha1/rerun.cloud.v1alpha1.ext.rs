@@ -3068,10 +3068,28 @@ pub struct DataSource {
     /// Deserializes as `None` when absent, so serialized sources that predate it still load.
     #[serde(default)]
     pub store_id: Option<re_log_types::StoreId>,
+
+    /// The segment to register this source as, instead of the recording id of its store.
+    ///
+    /// Must be `None` when `is_prefix` is `true`.
+    ///
+    /// Servers without the [`crate::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE`] capability
+    /// ignore it.
+    ///
+    /// Deserializes as `None` when absent, so serialized sources that predate it still load.
+    #[serde(default)]
+    pub segment_id_override: Option<SegmentId>,
 }
 
 impl DataSource {
     pub const DEFAULT_LAYER: &str = LayerName::DEFAULT_STR;
+
+    /// Registers this source as `segment_id` instead of its store's recording id.
+    #[must_use]
+    pub fn with_segment_id_override(mut self, segment_id: SegmentId) -> Self {
+        self.segment_id_override = Some(segment_id);
+        self
+    }
 
     pub fn new_rrd(
         storage_url: impl AsRef<str>,
@@ -3084,6 +3102,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         })
     }
 
@@ -3098,6 +3117,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         })
     }
 
@@ -3113,6 +3133,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         })
     }
 
@@ -3128,6 +3149,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         })
     }
 
@@ -3142,6 +3164,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         }
     }
 
@@ -3156,6 +3179,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         }
     }
 }
@@ -3170,6 +3194,7 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
             kind,
             storage_location,
             store_id,
+            segment_id_override,
         } = value;
 
         crate::cloud::v1alpha1::DataSource {
@@ -3180,6 +3205,7 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
             storage_location: storage_location.clone().map(String::from),
             object_store_config: storage_location.map(String::from),
             store_id: store_id.map(Into::into),
+            segment_id: segment_id_override.map(Into::into),
         }
     }
 }
@@ -3242,6 +3268,28 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             ));
         }
 
+        let segment_id_override = data_source
+            .segment_id
+            .map(SegmentId::try_from)
+            .transpose()?;
+        if prefix && segment_id_override.is_some() {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "segment_id",
+                "a prefix data source cannot set a segment id",
+            ));
+        }
+        if segment_id_override
+            .as_ref()
+            .is_some_and(|segment_id| segment_id.as_str().is_empty())
+        {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "segment_id",
+                "the segment id must not be empty",
+            ));
+        }
+
         Ok(Self {
             storage_url,
             is_prefix: prefix,
@@ -3249,6 +3297,7 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             kind,
             storage_location: storage_location.or(object_store_config),
             store_id,
+            segment_id_override,
         })
     }
 }
@@ -3264,6 +3313,7 @@ fn datasource_layer_from_proto() {
         object_store_config: Some("custom".to_owned()),
         storage_location: None,
         store_id: None,
+        segment_id: None,
     };
 
     let data_source = DataSource::try_from(proto(None)).unwrap();
@@ -3303,6 +3353,36 @@ fn datasource_store_id_from_proto() {
     assert!(
         DataSource::try_from(proto(true)).is_err(),
         "a prefix must not select a store"
+    );
+}
+
+#[test]
+fn datasource_segment_id_roundtrip() {
+    let segment_id = SegmentId::from("my_segment");
+    let data_source = DataSource::new_rrd("s3://bucket/file.rrd", None)
+        .unwrap()
+        .with_segment_id_override(segment_id.clone());
+
+    let proto = crate::cloud::v1alpha1::DataSource::from(data_source);
+    let data_source = DataSource::try_from(proto.clone()).unwrap();
+    assert_eq!(data_source.segment_id_override, Some(segment_id));
+
+    let prefix = crate::cloud::v1alpha1::DataSource {
+        prefix: true,
+        ..proto.clone()
+    };
+    assert!(
+        DataSource::try_from(prefix).is_err(),
+        "a prefix must not set a segment id"
+    );
+
+    let empty = crate::cloud::v1alpha1::DataSource {
+        segment_id: Some(String::new().into()),
+        ..proto
+    };
+    assert!(
+        DataSource::try_from(empty).is_err(),
+        "a segment id must not be empty"
     );
 }
 

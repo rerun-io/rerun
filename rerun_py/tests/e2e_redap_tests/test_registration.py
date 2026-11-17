@@ -514,6 +514,44 @@ def test_register_layer_name_length_mismatch(
         ds.register(uris, layer_name=["layer_a", "layer_b"])  # 3 URIs, 2 layers
 
 
+@pytest.mark.local_only
+def test_register_with_segment_id(
+    entry_factory: EntryFactory,
+    recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    """Recordings register under the given segment IDs, and one recording can be a layer of several segments."""
+    recording_ids = [
+        "88888888-8888-8888-8888-888888888888",
+        "99999999-9999-9999-9999-999999999999",
+    ]
+    base_uri, patch_uri = recording_factory(recording_ids)
+
+    ds = entry_factory.create_dataset("test_segment_id")
+
+    result = ds.register([base_uri, base_uri], segment_id=["segment_a", "segment_b"]).wait()
+    assert sorted(result.segment_ids) == ["segment_a", "segment_b"]
+
+    ds.register([patch_uri, patch_uri], layer_name="patch", segment_id=["segment_a", "segment_b"]).wait()
+    assert sorted(ds.segment_ids()) == ["segment_a", "segment_b"]
+    assert ds.segment("segment_a").layers() == {"base", "patch"}
+    assert ds.segment("segment_b").layers() == {"base", "patch"}
+
+
+@pytest.mark.local_only
+def test_register_segment_id_length_mismatch(
+    entry_factory: EntryFactory,
+    recording_factory: Callable[[Sequence[str]], list[str]],
+) -> None:
+    uris = recording_factory(["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"])
+
+    ds = entry_factory.create_dataset("test_segment_id_mismatch")
+
+    with pytest.raises(ValueError, match="must be the same length"):
+        ds.register(uris, segment_id=["segment_a", "segment_b"])
+    with pytest.raises(TypeError, match="must be a list"):
+        ds.register(uris, segment_id="segment_a")  # type: ignore[call-overload]
+
+
 # TODO(RR-3177): we should fix our server implementations such that this test passes
 @pytest.mark.skip
 @pytest.mark.local_only

@@ -26,7 +26,7 @@ Consider a simple scenario:
 
 The outputs from each of these stages can be registered as separate layers — for example, `"base"`, `"tracking_error"`, and `"urdf"`.
 
-A layer is immutable once created, but a segment can be enriched over time by registering additional layers with the same recording ID and a different layer name.
+A layer is immutable once created, but a segment can be enriched over time by registering additional layers under the same segment ID and a different layer name.
 
 Importantly, layers are natively understood by Rerun's visualization and query systems.
 Viewing or querying a segment automatically includes all its layers, making it work as a single logical unit.
@@ -78,6 +78,7 @@ The key steps are:
 5. Register all derived `.rrd` files to the dataset with a `"tracking_error"` layer name
 
 If the `recording_id` does not match an existing segment, registration creates a new segment instead.
+To register a recording under a segment other than its recording ID, see [How can I register a recording under another segment ID?](#how-can-i-register-a-recording-under-another-segment-id).
 
 The `"rerun_layer_names"` column of the segment table confirms the new layer was added:
 
@@ -161,12 +162,30 @@ Layers are immutable.
 
 ### What happens if I register to an existing layer name?
 
-Registering an `.rrd` file with a `recording_id` and `layer_name` that already exists fails that segment's registration, which `wait()` reports as an error.
+Registering an `.rrd` file to a segment and `layer_name` that already exist fails that segment's registration, which `wait()` reports as an error.
 The existing layer is left untouched.
 
 ### How can I replace an existing layer?
 
 You can specify how duplicate segment layers should be handled by passing an [`OnDuplicateSegmentLayer`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.OnDuplicateSegmentLayer) value (ERROR, SKIP, REPLACE) to [`DatasetEntry.register()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register) or [`DatasetEntry.register_prefix()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_prefix). To replace an existing layer, set `on_duplicate = OnDuplicateSegmentLayer.REPLACE`.
+
+### How can I register a recording under another segment ID?
+
+By default, a recording is registered as the segment named after its recording ID.
+To register it as another segment, pass one segment ID per URI:
+
+```python
+dataset.register(
+    [patch_uri, patch_uri, patch_uri],
+    layer_name="calibration_fix",
+    segment_id=["segment_a", "segment_b", "segment_c"],
+)
+```
+
+This adds a layer to existing segments without rewriting the recording ID of the `.rrd` file.
+The same recording can be registered as a layer of several segments, as in the example above.
+Setting `segment_id` requires a server running Rerun 0.44 or Rerun Hub 0.21 or later.
+Once a dataset has such a segment, the server refuses to serve its data to SDKs and viewers older than 0.44.
 
 ### Can I query a single layer with the dataframe query?
 

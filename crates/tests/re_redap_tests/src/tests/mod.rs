@@ -17,6 +17,7 @@ mod register_asset;
 mod register_segment;
 mod rrd_manifest;
 mod scan_filter;
+mod segment_id_override;
 mod unregister_segment;
 mod update_entry;
 mod watch_events;
@@ -148,6 +149,7 @@ define_redap_tests! {
     get_schemas::get_schemas_invalid_id,
     get_schemas::get_schemas_other_dataset_id,
     get_schemas::get_schemas_too_many_ids,
+    protocol_level::dataset_with_segment_id_override_refuses_older_clients,
     protocol_level::new_dataset_serves_clients_without_protocol_level,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_has_uncompressed_sizes,
@@ -213,6 +215,8 @@ define_redap_tests! {
     scan_filter::scan_segment_table_filter,
     scan_filter::scan_dataset_manifest_filter,
     scan_filter::scan_dataset_manifest_layer_filter,
+    segment_id_override::register_with_segment_id_override,
+    segment_id_override::segment_id_override_raises_required_client_protocol_level,
     rrd_manifest::segment_id_not_found,
     rrd_manifest::simple_dataset_rrd_manifest,
     rrd_manifest::unregistered_segment,
@@ -245,6 +249,8 @@ define_redap_tests! {
     register_segment::register_with_dataset_if_duplicate_behavior_error,
     ; // OSS-only tests:
     find_chunks::find_chunks_dispatch_follows_advertised_capabilities,
+    // The cloud server registers only the first store of a file, so it accepts this.
+    segment_id_override::register_multi_store_file_with_segment_id_override,
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
     watch_events::watch_events_entry_created,
     watch_events::watch_events_entry_deleted,

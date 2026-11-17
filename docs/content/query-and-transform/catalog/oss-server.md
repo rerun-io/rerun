@@ -53,7 +53,7 @@ When it stops, everything you created or registered while it ran is gone.
 
 - On restart, the server creates new IDs for its datasets and tables.
   Dataset names stay the same, but URLs that contain a dataset ID (such as the ones from [`segment_url`](../dataframes/segment_url.md)) stop working.
-- Segment IDs are the recording IDs of the `.rrd` files, so they stay the same as long as you load the same files.
+- Segment IDs are the recording IDs of the `.rrd` files, or the `segment_id` passed to `dataset.register()`, so they stay the same as long as you load the same files the same way.
 - Datasets that you create with `client.create_dataset()`, and files that you register with `dataset.register()`, must be created and registered again after a restart.
 
 The `.rrd` files themselves stay on disk.

@@ -40,7 +40,7 @@ for episode in reader.episodes():
     )
 ```
 
-- The `recording_id` becomes the [segment](../../query-and-transform/catalog/catalog-object-model.md#datasets) ID once the file is registered, so pick one that names the episode.
+- The `recording_id` becomes the [segment](../../query-and-transform/catalog/catalog-object-model.md#datasets) ID once the file is registered, unless `register()` is given another `segment_id`, so pick one that names the episode.
 - `collect(optimize=profile)` merges chunks into [larger ones for catalog queries](../chunks-and-rrd/optimize-chunks.md#compacting-chunks-with-the-chunk-processing-api), at the cost of holding the episode in memory.
   Without it, `write_rrd` streams the episode straight to disk.
 - Video without B-frames, such as AV1 (LeRobot's default), is copied as-is.

@@ -102,6 +102,13 @@ impl Dataset {
         self.required_client_protocol_level
     }
 
+    /// Raises the lowest protocol level a client needs to read this dataset to at least `level`.
+    ///
+    /// Never lowers it: whatever made a level necessary stays in the dataset.
+    pub fn raise_required_client_protocol_level(&mut self, level: ProtocolLevel) {
+        self.required_client_protocol_level = self.required_client_protocol_level.max(level);
+    }
+
     #[inline]
     pub fn id(&self) -> EntryId {
         self.id

@@ -1130,6 +1130,7 @@ class DatasetEntryInternal:
         kind: Literal["segment", "blueprint", "asset"],
         layer: str,
         on_duplicate: str,
+        segment_id: str | None = None,
     ) -> WriteOperationInternal: ...
     def write_path(
         self,
@@ -1138,6 +1139,7 @@ class DatasetEntryInternal:
         kind: Literal["segment", "blueprint", "asset"],
         layer: str,
         on_duplicate: str,
+        segment_id: str | None = None,
     ) -> WriteOperationInternal: ...
     def register(
         self,
@@ -1145,6 +1147,7 @@ class DatasetEntryInternal:
         recording_layers: list[str],
         on_duplicate: str,
         *,
+        segment_ids: list[str] | None = None,
         storage_location: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def register_prefix(

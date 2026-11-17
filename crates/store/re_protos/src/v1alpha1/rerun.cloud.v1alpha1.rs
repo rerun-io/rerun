@@ -750,6 +750,15 @@ pub struct DataSource {
     /// TODO(RR-6283): not yet implemented, returns UNIMPLEMENTED when set.
     #[prost(message, optional, tag = "8")]
     pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
+    /// The segment to register this data source as.
+    ///
+    /// When unset, the segment id is the recording id of the registered store.
+    /// Must be unset when `prefix` is true.
+    ///
+    /// Servers that predate this field ignore it, so clients must only set it when the server
+    /// advertises the `catalog:write:segment_id_override` capability.
+    #[prost(message, optional, tag = "9")]
+    pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
