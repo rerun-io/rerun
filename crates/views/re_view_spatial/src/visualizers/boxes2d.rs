@@ -10,7 +10,7 @@ use re_viewer_context::{
     VisualizerSystem, typed_fallback_for,
 };
 
-use super::utilities::{LabeledBatch, process_labels};
+use super::utilities::{LabeledBatch, process_labels, transform_label_target};
 use super::{SpatialViewVisualizerData, process_radius_slice};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::UiLabelTarget;
@@ -126,7 +126,7 @@ impl Boxes2DVisualizer {
                         typed_fallback_for(ctx, Boxes2D::descriptor_show_labels().component)
                     }),
                 },
-                std::convert::identity,
+                move |target| transform_label_target(world_from_obj, target),
             ));
         }
     }

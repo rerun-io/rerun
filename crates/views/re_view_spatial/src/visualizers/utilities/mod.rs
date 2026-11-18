@@ -7,7 +7,7 @@ mod transform_retrieval;
 
 pub use labels::{
     LabeledBatch, UiLabel, UiLabelStyle, UiLabelTarget, process_labels, process_labels_2d,
-    process_labels_3d,
+    process_labels_3d, transform_label_target,
 };
 pub use proc_mesh_vis::{ProcMeshBatch, ProcMeshDrawableBuilder};
 pub use spatial_view_visualizer::{SpatialViewVisualizerData, iter_spatial_data};
