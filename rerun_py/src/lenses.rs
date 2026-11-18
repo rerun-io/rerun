@@ -2,8 +2,6 @@ use arrow::datatypes::DataType;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyModule;
-use pyo3::{Borrowed, FromPyObject};
 
 use re_lenses_core::{CastTo, DynExpr, Lens, OutputMode, Selector};
 use re_types_core::{ComponentDescriptor, ComponentIdentifier, TimelineName};
@@ -102,15 +100,23 @@ impl PyDeriveLensInternal {
 impl PyDeriveLensInternal {
     /// Build the Rust `Lens` from this internal representation.
     pub fn build(&self) -> PyResult<Lens> {
-        let mut builder = if self.scatter {
-            Lens::scatter(self.input_component)
+        let Self {
+            components,
+            times,
+            input_component,
+            output_entity,
+            scatter,
+        } = self;
+
+        let mut builder = if *scatter {
+            Lens::scatter(*input_component)
         } else {
-            Lens::derive(self.input_component)
+            Lens::derive(*input_component)
         };
-        if let Some(ref entity) = self.output_entity {
+        if let Some(entity) = output_entity {
             builder = builder.output_entity(entity.as_str());
         }
-        for (descr, selector, cast) in &self.components {
+        for (descr, selector, cast) in components {
             builder = match cast {
                 Some(cast) => {
                     builder.to_component_with_cast(descr.clone(), selector.clone(), cast.clone())
@@ -118,7 +124,7 @@ impl PyDeriveLensInternal {
                 None => builder.to_component(descr.clone(), selector.clone()),
             };
         }
-        for (name, timeline_type, selector) in &self.times {
+        for (name, timeline_type, selector) in times {
             let timeline_name = TimelineName::try_new(name.as_str())
                 .map_err(|err| PyValueError::new_err(err.to_string()))?;
             builder = builder.to_timeline(timeline_name, *timeline_type, selector.clone());
@@ -165,8 +171,14 @@ impl PyMutateLensInternal {
 impl PyMutateLensInternal {
     /// Build the Rust `Lens` from this internal representation.
     pub fn build(&self) -> Lens {
-        let mut builder = Lens::mutate(self.input_component, self.selector.clone());
-        if self.keep_row_ids {
+        let Self {
+            input_component,
+            selector,
+            keep_row_ids,
+        } = self;
+
+        let mut builder = Lens::mutate(*input_component, selector.clone());
+        if *keep_row_ids {
             builder = builder.keep_row_ids();
         }
         builder.build()

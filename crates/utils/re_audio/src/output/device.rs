@@ -91,7 +91,6 @@ cfg_select! {
                     _device: open_backend(params, fill, status),
                 }
             }
-
         }
     }
     _ => {

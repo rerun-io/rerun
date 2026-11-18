@@ -180,37 +180,7 @@ impl From<&str> for crate::common::v1alpha1::SegmentId {
 
 // --- SchemaId ---
 
-/// Identifies an Arrow schema by the SHA-256 of its canonical form.
-///
-/// See `rerun.common.v1alpha1.SchemaId` for the canonical form.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes)]
-pub struct SchemaId([u8; 32]);
-
-impl SchemaId {
-    #[inline]
-    pub fn from_sha256(sha256: [u8; 32]) -> Self {
-        Self(sha256)
-    }
-
-    #[inline]
-    pub fn sha256(&self) -> &[u8; 32] {
-        &self.0
-    }
-}
-
-impl std::fmt::Display for SchemaId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.iter().try_for_each(|byte| write!(f, "{byte:02x}"))
-    }
-}
-
-impl std::fmt::Debug for SchemaId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "SchemaId({self})")
-    }
-}
-
-impl TryFrom<crate::common::v1alpha1::SchemaId> for SchemaId {
+impl TryFrom<crate::common::v1alpha1::SchemaId> for re_sorbet::SchemaId {
     type Error = TypeConversionError;
 
     fn try_from(value: crate::common::v1alpha1::SchemaId) -> Result<Self, Self::Error> {
@@ -224,14 +194,14 @@ impl TryFrom<crate::common::v1alpha1::SchemaId> for SchemaId {
                 format!("expected 32 bytes, got {}", sha256.len())
             )
         })?;
-        Ok(Self(sha256))
+        Ok(Self::from_sha256(sha256))
     }
 }
 
-impl From<SchemaId> for crate::common::v1alpha1::SchemaId {
-    fn from(value: SchemaId) -> Self {
+impl From<re_sorbet::SchemaId> for crate::common::v1alpha1::SchemaId {
+    fn from(value: re_sorbet::SchemaId) -> Self {
         Self {
-            sha256: Some(value.0.to_vec().into()),
+            sha256: Some(value.sha256().to_vec().into()),
         }
     }
 }
@@ -383,15 +353,20 @@ impl std::fmt::Display for DatasetKind {
     }
 }
 
+/// Error returned when parsing a [`DatasetKind`] from a string.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("unknown DatasetKind: {0:?}")]
+pub struct UnknownDatasetKindError(pub String);
+
 impl std::str::FromStr for DatasetKind {
-    type Err = String;
+    type Err = UnknownDatasetKindError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Recording" => Ok(Self::Recording),
             "Blueprint" => Ok(Self::Blueprint),
             "Asset" => Ok(Self::Asset),
-            other => Err(format!("unknown DatasetKind: {other:?}")),
+            other => Err(UnknownDatasetKindError(other.to_owned())),
         }
     }
 }
@@ -731,7 +706,11 @@ pub struct StoreIdMissingApplicationIdError {
 impl StoreIdMissingApplicationIdError {
     /// Recover the store ID by providing the application ID.
     pub fn recover(self, application_id: re_log_types::ApplicationId) -> re_log_types::StoreId {
-        re_log_types::StoreId::new(self.store_kind, application_id, self.recording_id)
+        let Self {
+            store_kind,
+            recording_id,
+        } = self;
+        re_log_types::StoreId::new(store_kind, application_id, recording_id)
     }
 
     #[inline]

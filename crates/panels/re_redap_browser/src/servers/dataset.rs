@@ -12,7 +12,7 @@ use re_ui::ButtonExt as _;
 use re_ui::egui_ext::card_layout::{CardLayout, CardLayoutItem};
 use re_ui::syntax_highlighting::SyntaxHighlightedBuilder;
 use re_ui::time::{short_duration_text, short_duration_ui};
-use re_ui::{DesignTokens, ServerValue, TabBar, UiExt as _, icons};
+use re_ui::{ContextExt as _, DesignTokens, ServerValue, TabBar, UiExt as _, icons};
 use re_uri::DatasetResource;
 use re_viewer_context::{
     AppContext, SystemCommand, SystemCommandSender as _, TableReference as ViewerTableReference,
@@ -24,8 +24,9 @@ use crate::asset_coverage_modal::{ASSETS_DOCS_URL, AssetTarget, card_frame};
 use crate::asset_registration::{AssetRegistration, RegistrationState};
 use crate::context::Context;
 use crate::entry_meta::{AssetsRef, DatasetSegments, EntryMeta, EntryMetaQuery, StoredCoverage};
-use crate::register_asset_modal::{AssetSlots, AssetSourcesCapabilities};
+use crate::register_asset_modal::{ASSET_FILE, AssetSlots};
 use crate::servers::Command;
+use crate::source_field::SourceCapabilities;
 use crate::{
     Server,
     entries::{Dataset, Entry, EntryInner},
@@ -92,8 +93,7 @@ impl Server {
         view_states: &mut ViewStates,
         kind: Option<re_viewer_context::EntryKind>,
     ) {
-        let asset_sources =
-            AssetSourcesCapabilities::new(app_ctx.connection_registry, &dataset.origin);
+        let asset_sources = SourceCapabilities::new(app_ctx.connection_registry, &dataset.origin);
 
         let resource = match kind {
             Some(re_viewer_context::EntryKind::Dataset(resource)) => resource,
@@ -234,6 +234,7 @@ impl Server {
                 entry_id: dataset.id(),
             },
         )
+        .loading_header("Loading dataset")
         .toolbar_summary(|ui| self.segment_count_ui(ui, dataset))
         .additional_column_heuristics(|layout, desc, mut column| {
             // TODO(andreas): we should not operate on display name as much since this can be very brittle.
@@ -277,7 +278,7 @@ impl Server {
         app_ctx: &AppContext<'_>,
         ctx: &Context<'_>,
         dataset: &Dataset,
-        asset_sources: &AssetSourcesCapabilities,
+        asset_sources: &SourceCapabilities,
     ) {
         let assets = dataset.requests().assets(
             self.entry_meta_query(ui.ctx(), dataset),
@@ -486,7 +487,7 @@ impl Server {
                     let total_bytes = assets
                         .get()
                         .map(|a| a.iter().map(|a| a.size as f64).sum::<f64>())
-                        .map(re_format::format_bytes);
+                        .map(|total| asset_size_text(ui.ctx(), total));
 
                     // There is no total size until the asset list has arrived, so while it is
                     // pending only the count is shown, with its loading indicator.
@@ -762,7 +763,7 @@ impl Server {
                                 ui.spacing_mut().item_spacing.y = 3.0;
                                 ui.label(egui::RichText::new("SIZE").monospace().size(10.0).weak());
                                 ui.label(
-                                    egui::RichText::new(re_format::format_bytes(asset.size as _))
+                                    egui::RichText::new(asset_size_text(ui.ctx(), asset.size as _))
                                         .monospace()
                                         .size(14.0)
                                         .strong(),
@@ -837,6 +838,18 @@ fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool)
 }
 
 const COVERAGE_NOT_EDITABLE: &str = "This server does not support editing coverage";
+
+/// The size of an asset, or of several, as text.
+///
+/// In tests it is always the same placeholder, because the size depends on how the data is
+/// encoded.
+fn asset_size_text(egui_ctx: &egui::Context, size_bytes: f64) -> String {
+    if egui_ctx.is_test() {
+        "* KiB".to_owned()
+    } else {
+        re_format::format_bytes(size_bytes)
+    }
+}
 
 fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &Asset) {
     send_crossbeam(
@@ -1213,7 +1226,7 @@ fn no_assets_ui(
     ctx: &Context<'_>,
     asset_target: &AssetTarget,
     asset_slots: &AssetSlots,
-    asset_sources: &AssetSourcesCapabilities,
+    asset_sources: &SourceCapabilities,
 ) {
     /// The explanation wraps within this width, so it stays readable on a wide screen.
     const EXPLANATION_WIDTH: f32 = 460.0;
@@ -1236,7 +1249,7 @@ fn no_assets_ui(
 
     // A server that takes no asset has nothing to walk the reader through, so the empty list only
     // says that it is empty.
-    if !asset_sources.registers_assets() {
+    if !asset_sources.can_register() {
         ui.add_space(48.0);
         ui.vertical_centered(|ui| {
             ui.label(egui::RichText::new("This dataset has no assets").color(tokens.text_subdued));
@@ -1302,7 +1315,7 @@ fn no_assets_ui(
 
                 ui.add_space(20.0);
 
-                let source_example = asset_sources.source_example();
+                let source_example = asset_sources.source_example(ASSET_FILE);
                 let sdk_label = || egui::RichText::new("or use the SDK").color(tokens.text_subdued);
 
                 // The call shrinks into what the row leaves it. Under `SDK_CALL_MIN_WIDTH` too
@@ -1495,20 +1508,19 @@ fn centered_row<R>(
         ui.ctx().request_discard("centered row without a width yet");
     }
 
-    let mut leading_space = 0.0;
-
     let response = ui.horizontal(|ui| {
         if let Some(row_width) = row_width {
-            leading_space = ((ui.available_width() - row_width) / 2.0).max(0.0);
-            ui.add_space(leading_space);
+            ui.add_space(((ui.available_width() - row_width) / 2.0).max(0.0));
         }
 
-        add_contents(ui)
+        let contents_left = ui.cursor().min.x;
+        (add_contents(ui), contents_left)
     });
 
-    ui.data_mut(|data| data.insert_temp(id, response.response.rect.width() - leading_space));
+    let (inner, contents_left) = response.inner;
+    ui.data_mut(|data| data.insert_temp(id, response.response.rect.max.x - contents_left));
 
-    response.inner
+    inner
 }
 
 /// Button that opens the register modal, disabled while the dataset has no room for another asset.
@@ -1614,7 +1626,48 @@ fn refresh_button_ui(
 
 #[cfg(test)]
 mod tests {
-    use super::source_uri_file_name;
+    use super::{centered_row, source_uri_file_name};
+
+    /// A centered row with a fractional width stays at the same position across frames.
+    #[test]
+    fn centered_row_settles() {
+        for width in [400.0, 601.0] {
+            let ctx = egui::Context::default();
+            let mut previous_rect = None;
+            for frame in 0..4 {
+                let mut rect = egui::Rect::NOTHING;
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(width, 100.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| {
+                        egui::CentralPanel::default().show(ui, |ui| {
+                            rect = centered_row(ui, "row", |ui| {
+                                ui.allocate_exact_size(
+                                    egui::vec2(100.03125, 20.0),
+                                    egui::Sense::hover(),
+                                )
+                                .0
+                            });
+                        });
+                    },
+                );
+                output.textures_delta.clear();
+                if previous_rect.is_some() {
+                    assert_eq!(
+                        Some(rect),
+                        previous_rect,
+                        "the row moved between frames at width {width}, frame {frame}"
+                    );
+                }
+                previous_rect = Some(rect);
+            }
+        }
+    }
 
     /// A registration card is titled with the file name of the uri it registers, whatever scheme
     /// the uri uses and whatever query it carries. A uri with nothing to take a file name from

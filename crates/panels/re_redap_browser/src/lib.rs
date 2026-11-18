@@ -13,12 +13,15 @@ mod folder_card_ui;
 mod register_asset_modal;
 mod server_modal;
 mod servers;
+mod source_field;
 mod unregister_asset_modal;
+mod upload_asset;
 
 pub use re_viewer_context::viewer_url::EXAMPLES_ORIGIN;
 
 pub use self::entries::{Entries, Entry, EntryInner};
 pub use self::servers::{AddServerCommand, Command, RedapServers, Server};
+pub use self::upload_asset::UploadAssetExt;
 
 /// Utility function to switch to the examples screen.
 pub fn switch_to_welcome_screen(command_sender: &re_viewer_context::CommandSender) {

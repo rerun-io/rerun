@@ -243,8 +243,11 @@ fn enum_integers(batch: &ArrayRef) -> Result<Vec<Option<u64>>, DeserializationEr
         safe: false,
         ..Default::default()
     };
-    let integers =
-        cast_with_options(batch, &DataType::UInt64, &options).map_err(|_err| mismatch())?;
+    let integers = cast_with_options(batch, &DataType::UInt64, &options).map_err(|err| {
+        DeserializationError::ValidationError(format!(
+            "Expected non-negative integers that fit in UInt64: {err}"
+        ))
+    })?;
     Ok(integers.as_primitive::<UInt64Type>().iter().collect())
 }
 

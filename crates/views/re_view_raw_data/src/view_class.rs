@@ -125,10 +125,30 @@ skipping events of components that are hidden.",
 
     fn spawn_heuristics(
         &self,
-        _ctx: &ViewerContext<'_>,
-        _include_entity: &dyn Fn(&EntityPath) -> bool,
+        ctx: &ViewerContext<'_>,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
-        ViewSpawnHeuristics::empty()
+        // Never spawns automatically.
+        if re_viewer_context::ViewSpawnContext::Explicit != spawn_context {
+            return ViewSpawnHeuristics::empty();
+        }
+
+        // Select the first entity with active-timeline or static data, including properties,
+        // or the root if none have data. Include only that entity, not its subtree.
+        let engine = ctx.recording_engine();
+        let store = engine.store();
+        ViewSpawnHeuristics::new([re_viewer_context::RecommendedView::new_single_entity(
+            store
+                .entity_tree()
+                .find_first_child_recursive(|path| {
+                    store
+                        .all_components_on_timeline(Some(ctx.time_ctrl.timeline_name()), path)
+                        .is_some_and(|components| !components.is_empty())
+                })
+                .unwrap_or_else(|| store.entity_tree())
+                .path
+                .clone(),
+        )])
     }
 
     fn selection_ui<'a>(

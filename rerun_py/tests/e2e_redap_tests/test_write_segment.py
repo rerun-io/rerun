@@ -123,3 +123,19 @@ def test_write_missing_file(entry_factory: EntryFactory, tmp_path: Path, write_k
         operation.wait(timeout_secs=30)
     assert operation.status() == "failed"
     assert dataset.segment_ids() == []
+
+
+def test_write_with_segment_id(entry_factory: EntryFactory, tmp_path: Path, write_kind: str) -> None:
+    if write_kind != "segments":
+        pytest.skip("only segment writes take a segment ID")
+
+    path = tmp_path / "recording.rrd"
+    with rr.RecordingStream("rerun_example_write", recording_id="01234567-0123-0123-0123-0123456789ab") as recording:
+        recording.save(path)
+        recording.log("points", rr.Points2D([[1, 2]]))
+
+    dataset = entry_factory.create_dataset("write_segment_id")
+    result = dataset._write_segments(path, segment_id="my_segment").wait(timeout_secs=30)
+
+    assert result.segment_ids == ["my_segment"]
+    assert dataset.segment_ids() == ["my_segment"]

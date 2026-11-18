@@ -6,7 +6,7 @@ import os
 import threading
 import warnings
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, Self, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ParamSpec, Self, TypeVar, cast
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -164,7 +164,8 @@ class catch_and_log_exceptions:
         context: str | None = None,
         *,
         depth_to_user_code: int = 1,
-        exception_return_value: Any = None,
+        # Returned in place of the wrapped function's result, so it has that function's (unknown) type.
+        exception_return_value: Any = None,  # noqa: ANN401
         strict: bool | None = None,
     ) -> None:
         self.depth_to_user_code = depth_to_user_code
@@ -189,8 +190,9 @@ class catch_and_log_exceptions:
         if self.context is None:
             self.context = func.__qualname__
 
+        # Cast back to `_TFunc` below, so callers never see this return type.
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
             with self:
                 if "strict" in kwargs:
                     _rerun_exception_ctx.strict_mode = kwargs["strict"]
@@ -239,10 +241,13 @@ class catch_and_log_exceptions:
             _rerun_exception_ctx.strict_mode = self.original_strict
 
 
-T = TypeVar("T", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 
-def deprecated_param(name: str, *, use_instead: str | None = None, since: str | None = None) -> Callable[[T], T]:
+def deprecated_param(
+    name: str, *, use_instead: str | None = None, since: str | None = None
+) -> Callable[[Callable[_P, _R]], Callable[_P, _R]]:
     """
     Marks a parameter as deprecated.
 
@@ -251,11 +256,11 @@ def deprecated_param(name: str, *, use_instead: str | None = None, since: str | 
         ...
     """
 
-    def decorator(func: T) -> T:
+    def decorator(func: Callable[_P, _R]) -> Callable[_P, _R]:
         sig = inspect.signature(func)
 
         @functools.wraps(func)
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+        def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
             if name in kwargs:
                 message = f"The parameter '{name}' in function '{func.__name__}' is deprecated"
                 if since:
@@ -268,7 +273,7 @@ def deprecated_param(name: str, *, use_instead: str | None = None, since: str | 
         # Preserve the original signature
         wrapper.__signature__ = sig  # type: ignore[attr-defined]
 
-        return cast("T", wrapper)
+        return wrapper
 
     return decorator
 

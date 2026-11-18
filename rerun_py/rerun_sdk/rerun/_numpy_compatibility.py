@@ -24,7 +24,8 @@ if not IS_NUMPY_2:
     )
 
 
-def asarray(item: Any, dtype: npt.DTypeLike = None, copy: bool | None = None) -> np.ndarray:
+# Mirrors `np.asarray`, which accepts any object at runtime.
+def asarray(item: Any, dtype: npt.DTypeLike = None, copy: bool | None = None) -> np.ndarray:  # noqa: ANN401
     """A compatibility wrapper around `np.asarray`."""
     if IS_NUMPY_2:
         return np.asarray(item, dtype=dtype, copy=copy)

@@ -84,4 +84,4 @@ pub use self::app_id_injector::{
     ApplicationIdInjector, CachingApplicationIdInjector, DummyApplicationIdInjector,
 };
 pub use self::rrd::*;
-pub use self::transport_to_app::{ToApplication, ToTransport};
+pub use self::transport_to_app::{ToApplication, ToTransport, migrate_rrd_manifest_sorbet_schema};

@@ -213,7 +213,7 @@ mod tests {
                     Chunk::builder(entity_path.clone())
                         .with_sparse_component_batches(
                             RowId::new(),
-                            TimePoint::default().with(timeline, i64::from(i)),
+                            TimePoint::STATIC.with(timeline, i64::from(i)),
                             [(MyPoints::descriptor_points(), Some(&points as _))],
                         )
                         .build()

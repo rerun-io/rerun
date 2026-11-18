@@ -67,6 +67,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "Choices: 'local' (default), 'dpf-docker' (skip local_only), "
         "'dpf-stack' (skip local_only), 'all' (skip nothing).",
     )
+    # TODO(RR-6353): Remove --storage-location-fixture when CustomProviders is deprecated.
+    parser.addoption(
+        "--storage-location-fixture",
+        action="store_true",
+        default=False,
+        help="Test discovery against the services/e2e-tests/storage-keychain fixture mounted on the Hub server.",
+    )
     parser.addoption(
         "--cloud",
         action="store",
@@ -223,7 +230,7 @@ def catalog_client(request: pytest.FixtureRequest) -> Generator[CatalogClient, N
         # No cleanup needed for external server
     else:
         # Create a local OSS server
-        server = Server()
+        server = Server(host="127.0.0.1")
         yield server.client()
         server.shutdown()
 

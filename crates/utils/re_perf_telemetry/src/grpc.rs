@@ -545,6 +545,11 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
         latency: std::time::Duration,
         span: &tracing::Span,
     ) {
+        let Self {
+            histogram,
+            eos_counter,
+        } = self;
+
         let Some(span_metadata) = SpanMetadata::get_opt(span.id().as_ref()) else {
             return;
         };
@@ -591,7 +596,7 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
                 }
             }
 
-            self.histogram.record(
+            histogram.record(
                 latency.as_secs_f64() * 1000.0,
                 &[
                     opentelemetry::KeyValue::new("endpoint", endpoint.clone()),
@@ -620,7 +625,7 @@ impl<B> tower_http::trace::OnResponse<B> for GrpcOnResponse {
                 // For immediate errors, emit grpc_on_eos counter here since on_eos won't be called
                 let grpc_status = format!("{grpc_code:?}"); // NOTE: The debug repr is the enum variant name (e.g. DeadlineExceeded).
 
-                self.eos_counter.add(
+                eos_counter.add(
                     1,
                     &GrpcEosMetadata {
                         endpoint: endpoint.clone(),

@@ -34,7 +34,7 @@ The visualizations in this example were created with the following Rerun code:
 
 ### Timelines
 
- For each processed frame, all data sent to Rerun is associated with specific time using [`timelines`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines).
+ For each processed frame, all data sent to Rerun is associated with specific time using [`timelines`](https://www.rerun.io/docs/logging-and-ingestion/data-model/timelines).
 
 ```python
 rr.set_time("image", sequence=i)

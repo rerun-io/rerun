@@ -182,7 +182,7 @@ def main() -> None:
     )
     # Write also the URDF streams to an RRD.
     # Note how we use the same `recording_id` here to group the two RRD layers into the same logical recording.
-    # https://rerun.io/docs/concepts/logging-and-ingestion/recordings#logical-vs-physical-recordings
+    # https://rerun.io/docs/logging-and-ingestion/data-model/recordings#logical-vs-physical-recordings
     urdf_stream.collect(optimize=OptimizationProfile.OBJECT_STORE).write_rrd(
         OUTPUT_DIR / "urdf.rrd",
         application_id="rerun_example_robot_data_preprocessing",

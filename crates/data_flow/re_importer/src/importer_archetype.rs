@@ -73,7 +73,7 @@ impl Importer for ArchetypeImporter {
             .unwrap_or_else(|| EntityPath::from_file_path(&filepath));
 
         #[cfg_attr(target_arch = "wasm32", expect(unused_mut))]
-        let mut timepoint = TimePoint::default();
+        let mut timepoint = TimePoint::STATIC;
 
         #[cfg(not(target_arch = "wasm32"))]
         if false && let Ok(metadata) = filepath.metadata() {

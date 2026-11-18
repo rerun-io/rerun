@@ -394,14 +394,12 @@ impl RangeCache {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use re_chunk::{Chunk, ChunkId, RowId};
+    use re_chunk::RowId;
     use re_chunk_index::RrdManifest;
-    use re_chunk_store::{ChunkDeletionReason, ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+    use re_chunk_store::{ChunkDeletionReason, ChunkStoreConfig, ChunkStoreHandle};
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
-    use re_log_types::{EntityPath, TimePoint, Timeline};
+    use re_log_types::{TimePoint, Timeline};
 
     use super::*;
 

@@ -7,7 +7,7 @@ title: "VideoCodec"
 The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).
 
 Support of these codecs by the Rerun Viewer is platform dependent.
-For more details see check the [video reference](https://rerun.io/docs/reference/video).
+For more details see check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 
 ## Variants
 #### `AV1` = 0x61763031

@@ -585,7 +585,7 @@ extern void rr_recording_stream_connect_grpc(
 /// `newest_first` controls whether or not to play back the newest data first to clients.
 ///
 /// `cors_allow_origins` is an optional array of origin patterns allowed to make cross-origin requests
-/// to the gRPC server. By default only localhost and rerun.io are allowed.
+/// to the gRPC server. By default only localhost, rerun.io, and its subdomains are allowed.
 /// Patterns are matched against the full Origin header (e.g. "https://example.com:8080"),
 /// using glob-style matching where `*` matches any sequence of characters.
 /// Examples: "https://*.example.com", "https://example.com:8080", "https://example.com:*".
@@ -698,7 +698,7 @@ extern void rr_recording_stream_log(
 /// This method blocks until either at least one `Importer` starts streaming data in
 /// or all of them fail.
 ///
-/// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
+/// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
 extern void rr_recording_stream_log_file_from_path(
     rr_recording_stream stream, rr_string path, rr_string entity_path_prefix, bool static_,
     rr_error* error
@@ -711,7 +711,7 @@ extern void rr_recording_stream_log_file_from_path(
 /// This method blocks until either at least one `Importer` starts streaming data in
 /// or all of them fail.
 ///
-/// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
+/// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
 extern void rr_recording_stream_log_file_from_contents(
     rr_recording_stream stream, rr_string path, rr_bytes contents, rr_string entity_path_prefix,
     bool static_, rr_error* error

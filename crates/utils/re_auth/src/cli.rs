@@ -1,6 +1,7 @@
 use std::time::Duration;
 
 use indicatif::ProgressBar;
+use re_error::try_println;
 
 pub use crate::callback_server::Error;
 use crate::oauth::api::{GenerateToken, send_async};
@@ -31,8 +32,7 @@ struct ExpiredCredentialsError;
 pub async fn token() -> Result<(), Error> {
     match oauth::load_and_refresh_credentials().await {
         Ok(Some(credentials)) => {
-            println!("{}", credentials.access_token().as_str());
-            Ok(())
+            try_println!("{}", credentials.access_token().as_str()).map_err(Error::Stdout)
         }
 
         Ok(None) => Err(Error::Generic(NoCredentialsError.into())),
@@ -55,9 +55,11 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
     let mut credentials = match OauthLoginFlow::init(options.force_login).await? {
         OauthLoginFlowState::AlreadyLoggedIn(credentials) => {
             if options.org_id.is_none() {
-                println!("You're already logged in as: {}", credentials.user().email);
-                println!("Note: We've refreshed your credentials.");
-                println!("Note: Run `rerun auth login --force` to login again.");
+                try_println!("You're already logged in as: {}", credentials.user().email)
+                    .map_err(Error::Stdout)?;
+                try_println!("Note: We've refreshed your credentials.").map_err(Error::Stdout)?;
+                try_println!("Note: Run `rerun auth login --force` to login again.")
+                    .map_err(Error::Stdout)?;
                 return Ok(());
             }
             *credentials
@@ -102,11 +104,13 @@ pub async fn login(options: LoginOptions) -> Result<(), Error> {
             .map_err(|err| Error::Generic(err.into()))?;
     }
 
-    println!(
+    try_println!(
         "Success! You are now logged in as {}",
         credentials.user().email
-    );
-    println!("Rerun will automatically use the credentials stored on your machine.");
+    )
+    .map_err(Error::Stdout)?;
+    try_println!("Rerun will automatically use the credentials stored on your machine.")
+        .map_err(Error::Stdout)?;
 
     Ok(())
 }
@@ -116,13 +120,14 @@ pub fn logout(options: &LogoutOptions) -> Result<(), Error> {
     match crate::oauth::clear_credentials(None) {
         Ok(Some(outcome)) => {
             if options.open_browser {
-                println!("Opening browser to end your session…");
+                try_println!("Opening browser to end your session…").map_err(Error::Stdout)?;
                 webbrowser::open(&outcome.logout_url).ok();
             } else {
-                println!("Open the following URL in your browser to end your session:");
-                println!("{}", outcome.logout_url);
+                try_println!("Open the following URL in your browser to end your session:")
+                    .map_err(Error::Stdout)?;
+                try_println!("{}", outcome.logout_url).map_err(Error::Stdout)?;
             }
-            println!("You have been logged out.");
+            try_println!("You have been logged out.").map_err(Error::Stdout)?;
 
             // Wait for the callback server to serve the "logged out" page
             // before the process exits.
@@ -133,8 +138,7 @@ pub fn logout(options: &LogoutOptions) -> Result<(), Error> {
             Ok(())
         }
         Ok(None) => {
-            println!("No credentials found. You are already logged out.");
-            Ok(())
+            try_println!("No credentials found. You are already logged out.").map_err(Error::Stdout)
         }
         Err(err) => Err(Error::Generic(err.into())),
     }
@@ -147,6 +151,12 @@ pub struct GenerateTokenOptions {
 }
 
 pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> {
+    let GenerateTokenOptions {
+        server,
+        expiration,
+        permission,
+    } = options;
+
     let credentials = match oauth::load_and_refresh_credentials().await {
         Ok(Some(credentials)) => credentials,
 
@@ -159,8 +169,8 @@ pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> 
     };
 
     let jwt = credentials.access_token().jwt();
-    let server_url = url::Url::parse(&options.server.ascii_serialization())
-        .map_err(|err| Error::Generic(err.into()))?;
+    let server_url =
+        url::Url::parse(&server.ascii_serialization()).map_err(|err| Error::Generic(err.into()))?;
     let server_host = server_url
         .host_str()
         .ok_or_else(|| Error::Generic("server URL has no host".into()))?;
@@ -169,15 +179,13 @@ pub async fn generate_token(options: GenerateTokenOptions) -> Result<(), Error> 
         .map_err(|err| Error::Generic(err.into()))?;
 
     let res = send_async(GenerateToken {
-        server: options.server,
+        server,
         token,
-        expiration: options.expiration,
-        permission: options.permission,
+        expiration,
+        permission,
     })
     .await
     .map_err(|err| Error::Generic(err.into()))?;
 
-    println!("{}", res.token);
-
-    Ok(())
+    try_println!("{}", res.token).map_err(Error::Stdout)
 }

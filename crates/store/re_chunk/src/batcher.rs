@@ -1133,9 +1133,9 @@ mod tests {
 
         let timeline1 = Timeline::new_duration("log_time");
 
-        let timepoint1 = TimePoint::default().with(timeline1, 42);
-        let timepoint2 = TimePoint::default().with(timeline1, 43);
-        let timepoint3 = TimePoint::default().with(timeline1, 44);
+        let timepoint1 = TimePoint::STATIC.with(timeline1, 42);
+        let timepoint2 = TimePoint::STATIC.with(timeline1, 43);
+        let timepoint3 = TimePoint::STATIC.with(timeline1, 44);
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
@@ -1242,9 +1242,9 @@ mod tests {
 
         let timeline1 = Timeline::new_duration("log_time");
 
-        let timepoint1 = TimePoint::default().with(timeline1, 42);
-        let timepoint2 = TimePoint::default().with(timeline1, 43);
-        let timepoint3 = TimePoint::default().with(timeline1, 44);
+        let timepoint1 = TimePoint::STATIC.with(timeline1, 42);
+        let timepoint2 = TimePoint::STATIC.with(timeline1, 43);
+        let timepoint3 = TimePoint::STATIC.with(timeline1, 44);
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
@@ -1352,7 +1352,7 @@ mod tests {
     fn simple_static() -> anyhow::Result<()> {
         let batcher = ChunkBatcher::new(ChunkBatcherConfig::NEVER, BatcherHooks::NONE)?;
 
-        let static_ = TimePoint::default();
+        let static_ = TimePoint::STATIC;
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
@@ -1434,9 +1434,9 @@ mod tests {
 
         let timeline1 = Timeline::new_duration("log_time");
 
-        let timepoint1 = TimePoint::default().with(timeline1, 42);
-        let timepoint2 = TimePoint::default().with(timeline1, 43);
-        let timepoint3 = TimePoint::default().with(timeline1, 44);
+        let timepoint1 = TimePoint::STATIC.with(timeline1, 42);
+        let timepoint2 = TimePoint::STATIC.with(timeline1, 43);
+        let timepoint3 = TimePoint::STATIC.with(timeline1, 44);
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
@@ -1547,13 +1547,9 @@ mod tests {
         let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_sequence("frame_nr");
 
-        let timepoint1 = TimePoint::default().with(timeline1, 42);
-        let timepoint2 = TimePoint::default()
-            .with(timeline1, 43)
-            .with(timeline2, 1000);
-        let timepoint3 = TimePoint::default()
-            .with(timeline1, 44)
-            .with(timeline2, 1001);
+        let timepoint1 = TimePoint::STATIC.with(timeline1, 42);
+        let timepoint2 = TimePoint::STATIC.with(timeline1, 43).with(timeline2, 1000);
+        let timepoint3 = TimePoint::STATIC.with(timeline1, 44).with(timeline2, 1001);
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
@@ -1668,9 +1664,9 @@ mod tests {
 
         let timeline1 = Timeline::new_duration("log_time");
 
-        let timepoint1 = TimePoint::default().with(timeline1, 42);
-        let timepoint2 = TimePoint::default().with(timeline1, 43);
-        let timepoint3 = TimePoint::default().with(timeline1, 44);
+        let timepoint1 = TimePoint::STATIC.with(timeline1, 42);
+        let timepoint2 = TimePoint::STATIC.with(timeline1, 43);
+        let timepoint3 = TimePoint::STATIC.with(timeline1, 44);
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 =
@@ -1788,18 +1784,10 @@ mod tests {
         let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_duration("frame_nr");
 
-        let timepoint1 = TimePoint::default()
-            .with(timeline2, 1000)
-            .with(timeline1, 42);
-        let timepoint2 = TimePoint::default()
-            .with(timeline2, 1001)
-            .with(timeline1, 43);
-        let timepoint3 = TimePoint::default()
-            .with(timeline2, 1002)
-            .with(timeline1, 44);
-        let timepoint4 = TimePoint::default()
-            .with(timeline2, 1003)
-            .with(timeline1, 45);
+        let timepoint1 = TimePoint::STATIC.with(timeline2, 1000).with(timeline1, 42);
+        let timepoint2 = TimePoint::STATIC.with(timeline2, 1001).with(timeline1, 43);
+        let timepoint3 = TimePoint::STATIC.with(timeline2, 1002).with(timeline1, 44);
+        let timepoint4 = TimePoint::STATIC.with(timeline2, 1003).with(timeline1, 45);
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
@@ -1907,18 +1895,10 @@ mod tests {
         let timeline1 = Timeline::new_duration("log_time");
         let timeline2 = Timeline::new_duration("frame_nr");
 
-        let timepoint1 = TimePoint::default()
-            .with(timeline2, 1000)
-            .with(timeline1, 42);
-        let timepoint2 = TimePoint::default()
-            .with(timeline2, 1001)
-            .with(timeline1, 43);
-        let timepoint3 = TimePoint::default()
-            .with(timeline2, 1002)
-            .with(timeline1, 44);
-        let timepoint4 = TimePoint::default()
-            .with(timeline2, 1003)
-            .with(timeline1, 45);
+        let timepoint1 = TimePoint::STATIC.with(timeline2, 1000).with(timeline1, 42);
+        let timepoint2 = TimePoint::STATIC.with(timeline2, 1001).with(timeline1, 43);
+        let timepoint3 = TimePoint::STATIC.with(timeline2, 1002).with(timeline1, 44);
+        let timepoint4 = TimePoint::STATIC.with(timeline2, 1003).with(timeline1, 45);
 
         let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;

@@ -286,7 +286,6 @@ mod tests {
     use re_arrow_util::ArrowArrayDowncastRef as _;
     use re_chunk::EntityPath;
     use re_log_types::TimeType;
-    use re_ros_msg::MessageSchema;
 
     use super::*;
 
@@ -440,7 +439,7 @@ float64[] values
                 "unexpected result for message {i}"
             );
             if result.is_ok() {
-                ctx.add_timepoint(re_log_types::TimePoint::default().with(
+                ctx.add_timepoint(re_log_types::TimePoint::STATIC.with(
                     re_log_types::Timeline::new("log_time", TimeType::TimestampNs),
                     i as i64,
                 ));

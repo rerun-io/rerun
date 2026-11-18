@@ -1,5 +1,5 @@
 //! The agent panel: a chat with an agent that runs next to the viewer and drives it, through
-//! `rerun viewer-mcp` for an agent harness, or through the viewer-control tools for a model-API
+//! `rerun mcp` for an agent harness, or through the viewer-control tools for a model-API
 //! agent.
 //!
 //! This crate holds everything that ties the agent to the Rerun Viewer: the preambles, the
@@ -8,6 +8,9 @@
 
 use std::collections::VecDeque;
 use std::path::Path;
+use std::sync::Arc;
+
+use parking_lot::Mutex;
 
 use re_agent::AgentSettings;
 use re_agent_ui::AgentPanel;
@@ -15,6 +18,7 @@ use re_async::AsyncRuntimeHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
 mod agent_analytics;
+mod example_prompts;
 mod feedback;
 #[cfg(agent_harness_backend)]
 mod harness;
@@ -26,6 +30,10 @@ mod self_improve;
 mod viewer_toolbox;
 
 pub use viewer_toolbox::ViewerControlCall;
+
+/// The MCP server name an agent harness sees the viewer under. Tools show up as
+/// `mcp__rerun__<tool>`.
+const MCP_SERVER_NAME: &str = "rerun";
 
 /// Where the skills are unpacked inside the agent directory.
 #[cfg(agent_harness_backend)]
@@ -42,12 +50,73 @@ const RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [
     "Summarize what is in this recording",
 ];
 
-/// Offered in an empty conversation while no recording is open.
-const NO_RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [
+/// Offered in an empty conversation while a dataset is open.
+const DATASET_EXAMPLE_PROMPTS: [&str; 5] = [
+    "Set up a table blueprint with previews",
+    "Find interesting analyses we could do with the query SDK",
+    "Summarize what is in this dataset",
+    "Help me query this dataset from Python",
+    "Find the most interesting segments in this dataset",
+];
+
+/// Offered in an empty conversation while a table is open.
+const TABLE_EXAMPLE_PROMPTS: [&str; 3] = [
+    "Summarize what is in this table",
+    "Explain the columns of this table",
+    "Help me query this table from Python",
+];
+
+/// Offered in an empty conversation while no recording, dataset, or table is open.
+const OTHER_EXAMPLE_PROMPTS: [&str; 3] = [
     "Help me open a dataset in Rerun",
     "Help me log my own data to Rerun",
     "Show me an example recording",
 ];
+
+/// What the viewer is showing, which decides the example prompts in an empty conversation.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ShownContent {
+    /// A dataset entry on a Redap server, on any of its tabs.
+    Dataset,
+
+    /// A loaded, non-empty recording.
+    Recording,
+
+    /// A table entry on a Redap server, or a local table.
+    Table,
+
+    /// Anything else, e.g. the welcome screen or the settings.
+    Other,
+}
+
+/// The contents of an image file, encoded as PNG or JPEG.
+pub struct EncodedImage(pub Vec<u8>);
+
+/// Image files to attach to the prompt being composed.
+///
+/// Shared, because on the web a dropped file can only be read asynchronously.
+#[derive(Clone, Default)]
+pub struct DroppedImages(Arc<Mutex<Vec<EncodedImage>>>);
+
+impl DroppedImages {
+    /// Attaches this image the next time the panel is shown.
+    pub fn push(&self, image: EncodedImage) {
+        self.0.lock().push(image);
+    }
+
+    fn take(&self) -> Vec<EncodedImage> {
+        std::mem::take(&mut *self.0.lock())
+    }
+}
+
+/// The open agent panel, as a place to drop image files onto.
+pub struct ImageDropTarget {
+    /// Where the panel is on screen.
+    pub rect: egui::Rect,
+
+    /// Where to put the contents of image files dropped onto the panel.
+    pub images: DroppedImages,
+}
 
 /// The agent chat, configured for the viewer it lives in.
 #[derive(Default)]
@@ -58,7 +127,7 @@ pub struct ViewerAgentPanel {
     /// Set when the panel is opened, so the prompt input takes focus once there is one.
     focus_input: bool,
 
-    /// The example prompts last handed to [`Self::panel`].
+    /// The list the example prompts last handed to [`Self::panel`] were picked from.
     example_prompts: &'static [&'static str],
 
     /// Prompts waiting for the agent panel to be created — for example, prompts from
@@ -66,6 +135,12 @@ pub struct ViewerAgentPanel {
     ///
     /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
     pending_prompts: VecDeque<String>,
+
+    /// Contents of image files dropped onto the viewer, to attach to the prompt being composed.
+    dropped_images: DroppedImages,
+
+    /// Where the panel was last shown, or `None` if it is closed.
+    rect: Option<egui::Rect>,
 
     #[cfg(agent_harness_backend)]
     harness: harness::Harness,
@@ -118,6 +193,16 @@ impl ViewerAgentPanel {
         }
     }
 
+    /// Where to drop image files to attach them to the prompt being composed.
+    ///
+    /// `None` while the panel is closed.
+    pub fn image_drop_target(&self) -> Option<ImageDropTarget> {
+        Some(ImageDropTarget {
+            rect: self.rect?,
+            images: self.dropped_images.clone(),
+        })
+    }
+
     /// Give the prompt input keyboard focus once there is a panel to give it to.
     pub fn request_input_focus(&mut self) {
         self.focus_input = true;
@@ -135,8 +220,9 @@ impl ViewerAgentPanel {
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
-        recording: Option<&re_entity_db::EntityDb>,
+        shown_content: ShownContent,
     ) {
+        re_tracing::profile_function!();
         let was_open = *open;
         if *open && self.panel.is_none() {
             self.initialize(
@@ -154,20 +240,32 @@ impl ViewerAgentPanel {
             focus_input,
             example_prompts,
             pending_prompts,
+            dropped_images,
             ..
         } = self;
         if let Some(panel) = panel.as_mut() {
-            let prompts: &'static [&'static str] = if recording.is_some() {
-                &RECORDING_EXAMPLE_PROMPTS
-            } else {
-                &NO_RECORDING_EXAMPLE_PROMPTS
+            let prompts: &'static [&'static str] = match shown_content {
+                ShownContent::Dataset => &DATASET_EXAMPLE_PROMPTS,
+                ShownContent::Recording => &RECORDING_EXAMPLE_PROMPTS,
+                ShownContent::Table => &TABLE_EXAMPLE_PROMPTS,
+                ShownContent::Other => &OTHER_EXAMPLE_PROMPTS,
             };
             if *example_prompts != prompts {
-                panel.set_example_prompts(prompts.iter().copied().map(str::to_owned).collect());
+                panel.set_example_prompts(
+                    crate::example_prompts::sample(prompts)
+                        .into_iter()
+                        .map(str::to_owned)
+                        .collect(),
+                );
                 *example_prompts = prompts;
             }
             for prompt in pending_prompts.drain(..) {
                 panel.queue_prompt(prompt);
+            }
+            for EncodedImage(bytes) in dropped_images.take() {
+                if let Err(err) = panel.attach_image_file(&bytes) {
+                    re_log::warn!("Could not attach the dropped image: {err:#}");
+                }
             }
             // A collapsed panel never runs its `ui`, and its agents would otherwise
             // sit on their messages until the user opens it again.
@@ -178,7 +276,7 @@ impl ViewerAgentPanel {
                 *focus_input = false;
             }
         }
-        egui::Panel::right("agent_panel")
+        let response = egui::Panel::right("agent_panel")
             .default_size(re_agent_ui::RECOMMENDED_WIDTH)
             .resizable(true)
             .frame(egui::Frame {
@@ -190,9 +288,12 @@ impl ViewerAgentPanel {
 
                 if let Some(panel) = panel {
                     panel.ui(ui);
-                    settings.clone_from(panel.settings());
                 }
             });
+
+        self.rect = response
+            .filter(|_| *open)
+            .map(|response| response.response.rect);
 
         // Dragging the collapsed panel open does not go through `toggle_agent_panel`:
         self.focus_input |= !was_open && *open;
@@ -200,11 +301,24 @@ impl ViewerAgentPanel {
         let Some(panel) = &mut self.panel else {
             return;
         };
+        // Also while collapsed, since its conversations keep running and are saved as they go.
+        settings.clone_from(panel.settings());
         #[cfg(agent_harness_backend)]
         self.harness.handle_self_improve_request(panel);
         // Before the redactors run, so that turning sharing off drops what is queued before any
         // of it can be sent.
-        let turns = panel.take_finished_turns();
+        let re_agent::SessionReports {
+            turns,
+            startups,
+            mcp_startup_failures,
+        } = panel.take_reports();
+        for startup in &startups {
+            agent_analytics::record_startup(startup);
+        }
+        cfg_select! {
+            agent_harness_backend => harness::record_mcp_startup_failures(&mcp_startup_failures),
+            _ => drop(mcp_startup_failures),
+        }
         self.reporting.record_finished_turns(panel, turns);
         self.reporting.ui(panel, ui);
     }
@@ -226,15 +340,13 @@ impl ViewerAgentPanel {
         re_tracing::profile_function!();
 
         let mut panel = cfg_select! {
-            agent_harness_backend => {
-                self.harness.new_panel(
-                    settings,
-                    async_runtime.clone(),
-                    viewer_endpoint,
-                    cache_dir,
-                    is_in_rerun_workspace,
-                )
-            }
+            agent_harness_backend => self.harness.new_panel(
+                settings,
+                async_runtime.clone(),
+                viewer_endpoint,
+                cache_dir,
+                is_in_rerun_workspace,
+            ),
             _ => {{
                 let _ = (viewer_endpoint, cache_dir, is_in_rerun_workspace);
                 let mut panel = AgentPanel::new(settings, async_runtime.clone());

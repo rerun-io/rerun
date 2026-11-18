@@ -94,7 +94,7 @@ impl Importer for UrdfImporter {
             robot,
             filepath.parent().map(|path| path.to_path_buf()),
             settings.entity_path_prefix.as_ref(),
-            &settings.timepoint.clone().unwrap_or_default(),
+            &settings.timepoint.clone().unwrap_or(TimePoint::STATIC),
             true,
         )
         .with_context(|| "Failed to load URDF file!")?;
@@ -139,7 +139,7 @@ impl Importer for UrdfImporter {
             robot,
             filepath.parent().map(|path| path.to_path_buf()),
             settings.entity_path_prefix.as_ref(),
-            &settings.timepoint.clone().unwrap_or_default(),
+            &settings.timepoint.clone().unwrap_or(TimePoint::STATIC),
             true,
         )
         .with_context(|| "Failed to load URDF file!")?;

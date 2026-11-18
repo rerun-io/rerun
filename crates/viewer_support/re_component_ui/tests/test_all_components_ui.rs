@@ -1,4 +1,5 @@
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stdout)] // This is only a test
 
 use std::collections::HashSet;
 use std::fmt::Formatter;
@@ -74,6 +75,11 @@ fn test_cases(reflection: &Reflection) -> Vec<TestCase> {
         TestCase::from_component(components::Flag::from(false), "not_flagged"),
         TestCase::from_component(components::Bool::from(true), "true"),
         TestCase::from_component(components::Bool::from(false), "false"),
+        TestCase::from_arrow(
+            components::LayerName::name(),
+            arrow::array::StringArray::from(vec!["base", "properties", "annotations"]),
+            "three_layers",
+        ),
         TestCase::from_arrow(
             ComponentType::from("any_value"),
             arrow::array::ListArray::new(
@@ -279,14 +285,15 @@ fn test_single_component_ui_as_list_item(
                         ui,
                         UiLayout::List,
                         &EntityPath::root(),
-                        // As of writing, `ComponentDescriptor` the descriptor part is only used for
-                        // caching and actual lookup of uis is only done via `ComponentType`.
                         &ComponentDescriptor {
                             component: test_case.label.into(),
                             archetype: None,
                             component_type: Some(test_case.component_type),
                         },
                         None,
+                        &re_viewer_context::VisualizerComponentSource::identity(
+                            test_case.label.into(),
+                        ),
                         &*test_case.component_data,
                     );
                 },

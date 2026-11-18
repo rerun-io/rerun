@@ -31,6 +31,8 @@ use re_protos::cloud::v1alpha1::{
     FetchChunksRequest, FetchChunksResponse, FindChunksRequest, FindChunksResponse,
     GetDatasetSchemaRequest, GetDatasetSchemaResponse, QueryDatasetRequest, QueryDatasetResponse,
 };
+use re_sorbet::ComponentColumnSelector;
+use re_types_core::ComponentDescriptor;
 use tonic::codec::DecodeBuf;
 use tonic::{Request, Response, Status};
 
@@ -143,8 +145,8 @@ pub fn chunk_info_batch_sized(
 pub const TEST_ENTITY: &str = "/points";
 
 /// The component every fixture chunk carries.
-pub fn test_component() -> re_types_core::ComponentDescriptor {
-    re_types_core::ComponentDescriptor::partial("value")
+pub fn test_component() -> ComponentDescriptor {
+    ComponentDescriptor::partial("value")
 }
 
 /// One real chunk holding a single scalar row at `time` on `timeline`,
@@ -174,11 +176,11 @@ pub fn scalar_chunk_on_component(
     timeline: &'static str,
     time: Option<i64>,
     value: i64,
-    component: re_types_core::ComponentDescriptor,
+    component: ComponentDescriptor,
 ) -> Chunk {
     let timepoint: TimePoint = match time {
         Some(t) => TimePoint::from([(Timeline::new_sequence(timeline), TimeInt::new_temporal(t))]),
-        None => TimePoint::default(),
+        None => TimePoint::STATIC,
     };
 
     let array: ArrayRef = Arc::new(Int64Array::from(vec![value]));
@@ -193,6 +195,11 @@ pub fn scalar_chunk_on_component(
 pub enum FetchBehavior {
     /// Return these chunks, each tagged with the given segment id.
     Chunks(Vec<(Chunk, String)>),
+
+    /// Return those of these chunks that the call asks for, as a server does.
+    ///
+    /// For fixtures whose calls can arrive in any order.
+    Requested(Vec<(Chunk, String)>),
 
     /// Fail the RPC.
     Fail(Status),
@@ -213,6 +220,7 @@ impl std::fmt::Debug for FetchBehavior {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Chunks(chunks) => write!(f, "Chunks({})", chunks.len()),
+            Self::Requested(chunks) => write!(f, "Requested({})", chunks.len()),
             Self::Fail(err) => write!(f, "Fail({err})"),
         }
     }
@@ -237,8 +245,24 @@ impl MockFetchClient {
     }
 }
 
+/// The ids of the chunks that a `FetchChunks` request asks for.
+fn requested_chunk_ids(request: FetchChunksRequest) -> Vec<ChunkId> {
+    request
+        .chunk_infos
+        .into_iter()
+        .flat_map(|chunk_info| {
+            let batch: RecordBatch = chunk_info.try_into().expect("request rows decode");
+            ChunkCandidatesDataframe::COLUMN_CHUNK_ID
+                .extract(&batch)
+                .expect("request rows have chunk ids")
+                .into_iter_owned()
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
 /// Encodes a chunk the way the server does, so the client-side decode path
-/// in `fetch_chunks_response_to_chunk_and_segment_id` runs for real.
+/// in `fetch_chunks_response_to_chunks` runs for real.
 fn encode_chunk(chunk: &Chunk, segment_id: &str) -> re_protos::log_msg::v1alpha1::ArrowMsg {
     use re_log_encoding::ToTransport as _;
 
@@ -319,7 +343,7 @@ impl DataframeClientAPI for MockFetchClient {
 
     async fn fetch_chunks(
         &mut self,
-        _request: Request<FetchChunksRequest>,
+        request: Request<FetchChunksRequest>,
     ) -> tonic::Result<Response<tonic::codec::Streaming<FetchChunksResponse>>> {
         self.calls
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -328,6 +352,11 @@ impl DataframeClientAPI for MockFetchClient {
         let chunks = match behavior {
             Some(FetchBehavior::Fail(err)) => return Err(err),
             Some(FetchBehavior::Chunks(chunks)) => chunks,
+            Some(FetchBehavior::Requested(mut chunks)) => {
+                let requested = requested_chunk_ids(request.into_inner());
+                chunks.retain(|(chunk, _segment_id)| requested.contains(&chunk.id()));
+                chunks
+            }
             // Drained: the plan asked for more batches than the script
             // covers. An empty response is the honest answer.
             None => Vec::new(),
@@ -469,6 +498,34 @@ pub async fn run_driver_projected(
     Vec<RecordBatch>,
     super::window::OverdraftAudit,
 ) {
+    run_driver_projected_with(
+        super::RowEmitterKind::QueryHandle,
+        chunk_infos,
+        timeline,
+        responses,
+        window_bytes,
+        fetch_concurrency,
+        limit_rows,
+        projected_schema,
+    )
+    .await
+}
+
+/// [`run_driver_projected`] with the caller's choice of row path.
+pub async fn run_driver_projected_with(
+    emitter_kind: super::RowEmitterKind,
+    chunk_infos: Vec<RecordBatch>,
+    timeline: &'static str,
+    responses: impl IntoIterator<Item = FetchBehavior>,
+    window_bytes: u64,
+    fetch_concurrency: usize,
+    limit_rows: Option<usize>,
+    projected_schema: Arc<Schema>,
+) -> (
+    Result<(), re_redap_client::ApiError>,
+    Vec<RecordBatch>,
+    super::window::OverdraftAudit,
+) {
     use re_dataframe::QueryExpression;
 
     use super::driver::PartitionDriver;
@@ -515,6 +572,7 @@ pub async fn run_driver_projected(
         index_values: None,
         projected_schema,
         limit_rows,
+        emitter_kind,
     };
 
     let (tx, mut rx) = tokio::sync::mpsc::channel::<RecordBatch>(64);
@@ -586,6 +644,7 @@ pub async fn run_bridge(
         client: MockFetchClient::new(responses),
         object_store_auth: Arc::new(crate::chunk_fetcher::NoOpObjectStoreAuthenticator {}),
         io_handle: tokio::runtime::Handle::current(),
+        emitter_kind: super::RowEmitterKind::QueryHandle,
         config: FetchConfig {
             fetch_concurrency,
             window_bytes: 64 * 1024 * 1024,
@@ -755,10 +814,176 @@ mod smoke {
         assert_eq!(chunks.len(), 1);
         let (chunk, segment_id) = &chunks[0];
         assert_eq!(chunk.id(), chunk_id_for("seg-a", 0));
-        assert_eq!(
-            segment_id.as_ref().map(ToString::to_string).as_deref(),
-            Some("seg-a")
-        );
+        assert_eq!(segment_id.as_str(), "seg-a");
         assert_eq!(client.call_count(), 1);
     }
+
+    /// A segment registered under an id that is not its store's recording id: the fetched chunk
+    /// carries the recording id, and must still go to the segment of its request row.
+    #[tokio::test]
+    async fn grpc_fetch_attributes_chunks_to_the_request_segment_not_the_recording() {
+        let chunk = scalar_chunk("seg-a", 0, "frame", Some(10), 42);
+        let client = MockFetchClient::returning([(chunk, "some-recording".to_owned())]);
+
+        let request = chunk_info_batch("seg-a", Some("frame"), &[Some(10)], &[false], &[Some(100)]);
+        let counter = AtomicU64::new(0);
+        let mut stats = TaskFetchStats::default();
+
+        let fetched = fetch_batch_group_via_grpc(&[request], &client, &counter, &mut stats)
+            .await
+            .expect("mock fetch succeeds");
+
+        let segment_ids: Vec<_> = fetched
+            .iter()
+            .flatten()
+            .map(|(_chunk, segment_id)| segment_id.as_str())
+            .collect();
+        assert_eq!(segment_ids, ["seg-a"]);
+    }
+}
+
+/// A multi-row chunk of [`test_component`] values on `entity`, one row per
+/// `(time, value)` in the given order, with ascending `RowId`s.
+///
+/// Repeating a time builds an equal-time run inside the chunk.
+pub fn scalar_rows_chunk(entity: &str, timeline: &'static str, rows: &[(i64, i64)]) -> Chunk {
+    let mut builder = Chunk::builder(EntityPath::from(entity));
+    for &(time, value) in rows {
+        let timepoint = TimePoint::from([(
+            Timeline::new_sequence(timeline),
+            TimeInt::new_temporal(time),
+        )]);
+        let array: ArrayRef = Arc::new(Int64Array::from(vec![value]));
+        builder = builder.with_row(RowId::new(), timepoint, [(test_component(), array)]);
+    }
+    builder.build().expect("fixture chunk is well-formed")
+}
+
+/// The frame-naming column of [`transform_rows_chunk`].
+pub fn child_frame_component() -> ComponentDescriptor {
+    ComponentDescriptor::partial("child_frame")
+}
+
+/// The value column of [`transform_rows_chunk`].
+pub fn translation_component() -> ComponentDescriptor {
+    ComponentDescriptor::partial("translation")
+}
+
+/// A `Transform3D`-shaped chunk: `child_frame` plus a `translation` stand-in
+/// carrying one `i64` so values stay easy to assert on.
+pub fn transform_rows_chunk(
+    entity: &str,
+    timeline: &'static str,
+    rows: &[(i64, &str, i64)],
+) -> Chunk {
+    let rows: Vec<_> = rows
+        .iter()
+        .map(|&(time, frame, value)| (time, Some(frame), Some(value)))
+        .collect();
+    sparse_transform_rows_chunk(entity, timeline, &rows)
+}
+
+/// [`transform_rows_chunk`] with either column left unlogged (`None`) per row.
+pub fn sparse_transform_rows_chunk(
+    entity: &str,
+    timeline: &'static str,
+    rows: &[(i64, Option<&str>, Option<i64>)],
+) -> Chunk {
+    let child_frame = child_frame_component();
+    let translation = translation_component();
+
+    let mut builder = Chunk::builder(EntityPath::from(entity));
+    for &(time, frame, value) in rows {
+        let timepoint = TimePoint::from([(
+            Timeline::new_sequence(timeline),
+            TimeInt::new_temporal(time),
+        )]);
+        let frame: Option<ArrayRef> = frame.map(|f| Arc::new(StringArray::from(vec![f])) as _);
+        let value: Option<ArrayRef> = value.map(|v| Arc::new(Int64Array::from(vec![v])) as _);
+        builder = builder.with_sparse_row(
+            RowId::new(),
+            timepoint,
+            [(child_frame.clone(), frame), (translation.clone(), value)],
+        );
+    }
+    builder.build().expect("fixture chunk is well-formed")
+}
+
+/// A one-row flat `Clear` on `entity` at `time`, or static for `None`.
+pub fn clear_chunk(entity: &str, timeline: &'static str, time: Option<i64>) -> Chunk {
+    clear_chunk_with_flag(entity, timeline, time, false)
+}
+
+/// Like [`clear_chunk`], with the deprecated recursive flag set.
+pub fn recursive_clear_chunk(entity: &str, timeline: &'static str, time: Option<i64>) -> Chunk {
+    clear_chunk_with_flag(entity, timeline, time, true)
+}
+
+fn clear_chunk_with_flag(
+    entity: &str,
+    timeline: &'static str,
+    time: Option<i64>,
+    recursive: bool,
+) -> Chunk {
+    let timepoint: TimePoint = match time {
+        Some(t) => TimePoint::from([(Timeline::new_sequence(timeline), TimeInt::new_temporal(t))]),
+        None => TimePoint::STATIC,
+    };
+    let flag: ArrayRef = Arc::new(BooleanArray::from(vec![recursive]));
+    Chunk::builder(EntityPath::from(entity))
+        .with_row(
+            RowId::new(),
+            timepoint,
+            [(
+                re_types_core::archetypes::Clear::descriptor_is_recursive(),
+                flag,
+            )],
+        )
+        .build()
+        .expect("fixture chunk is well-formed")
+}
+
+/// A column's header in a rendered table: `` `entity:component` ``.
+pub fn column_header(column: &ComponentColumnSelector) -> String {
+    format!("`{}:{}`", column.entity_path, column.component)
+}
+
+/// One cell's list element: `null`, `[]`, one value bare, several in brackets.
+pub fn render_value(value: Option<ArrayRef>) -> String {
+    let Some(array) = value else {
+        return "null".to_owned();
+    };
+    let quote = matches!(array.data_type(), DataType::Utf8 | DataType::LargeUtf8);
+    let values: Vec<String> = (0..array.len())
+        .map(|i| {
+            let text = arrow::util::display::array_value_to_string(&array, i).unwrap();
+            if quote { format!("`{text}`") } else { text }
+        })
+        .collect();
+    match values.as_slice() {
+        [one] => one.clone(),
+        _ => format!("[{}]", values.join(", ")),
+    }
+}
+
+/// A markdown table with every column padded to its widest cell.
+pub fn markdown(header: &[String], body: &[Vec<String>]) -> String {
+    let widths: Vec<usize> = (0..header.len())
+        .map(|c| {
+            std::iter::chain(std::iter::once(&header[c]), body.iter().map(|row| &row[c]))
+                .map(|cell| cell.chars().count())
+                .max()
+                .unwrap_or(0)
+        })
+        .collect();
+    let line = |cells: &[String]| {
+        let padded: Vec<String> = std::iter::zip(cells, &widths)
+            .map(|(cell, &w)| format!(" {cell:<w$} "))
+            .collect();
+        format!("|{}|", padded.join("|"))
+    };
+    let separator: Vec<String> = widths.iter().map(|&w| "-".repeat(w + 2)).collect();
+    let mut lines = vec![line(header), format!("|{}|", separator.join("|"))];
+    lines.extend(body.iter().map(|row| line(row)));
+    lines.join("\n")
 }

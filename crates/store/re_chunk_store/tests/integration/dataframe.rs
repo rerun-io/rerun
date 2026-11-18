@@ -154,7 +154,7 @@ fn schema_static_columns() -> anyhow::Result<()> {
     let chunk0 = Chunk::builder(entity_path.clone())
         .with_serialized_batches(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             any_values.as_serialized_batches(),
         )
         .build()?;

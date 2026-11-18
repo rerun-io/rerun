@@ -2,7 +2,6 @@ use arrow::array::{Array as _, ArrayData, ArrayRef, ListArray, make_array};
 use arrow::pyarrow::{PyArrowType, ToPyArrow as _};
 use pyo3::exceptions::{PyRuntimeError, PyTypeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::types::PyModule;
 
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_lenses_core::{DynExpr, Selector};

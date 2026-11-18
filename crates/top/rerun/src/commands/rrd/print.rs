@@ -2,6 +2,7 @@ use arrow::array::RecordBatch;
 use itertools::Itertools as _;
 use re_arrow_util::RecordBatchExt as _;
 use re_byte_size::SizeBytes as _;
+use re_error::{try_print, try_println};
 use re_log_msg::{LogMsg, SetStoreInfo};
 use re_sdk::EntityPath;
 
@@ -95,7 +96,7 @@ impl PrintCommand {
         };
 
         if migrate {
-            println!("Showing data after migration to latest Rerun version");
+            try_println!("Showing data after migration to latest Rerun version")?;
         } else {
             // TODO(RR-5737): `ArrowMsg` only carries the migrated `ChunkBatch`, so the unmigrated
             // data is gone by the time it reaches this command. Printing it means reading through
@@ -109,7 +110,7 @@ impl PrintCommand {
             let mut is_success = true;
 
             match res {
-                Ok(msg) => print_msg(&options, msg),
+                Ok(msg) => print_msg(&options, msg)?,
 
                 Err(err) => {
                     re_log::error_once!("{}", re_error::format(err));
@@ -138,7 +139,7 @@ impl PrintCommand {
                     // Just to be nice: this will display the sorbet schema hash in the header.
                     rrd_manifest.data.schema_metadata_mut().insert(
                         "schema_sha_256".to_owned(),
-                        re_chunk_index::sha256_to_hex(&rrd_manifest.sorbet_schema_sha256),
+                        rrd_manifest.sorbet_schema_sha256.to_string(),
                     );
 
                     let filter_lod_0 = |f: &arrow::datatypes::Field| f.name().starts_with("chunk_");
@@ -162,7 +163,7 @@ impl PrintCommand {
                         },
                     );
 
-                    println!("{formatted}");
+                    try_println!("{formatted}")?;
                 }
             }
         }
@@ -199,11 +200,11 @@ impl Options {
     }
 }
 
-fn print_msg(options: &Options, msg: LogMsg) {
+fn print_msg(options: &Options, msg: LogMsg) -> std::io::Result<()> {
     match msg {
         LogMsg::SetStoreInfo(msg) => {
             let SetStoreInfo { row_id: _, info } = msg;
-            println!("{info:#?}");
+            try_println!("{info:#?}")?;
         }
 
         LogMsg::ArrowMsg(_store_id, arrow_msg) => {
@@ -215,16 +216,16 @@ fn print_msg(options: &Options, msg: LogMsg) {
                 if let Some(only_this_entity) = &options.entity
                     && migrared_chunk.entity_path() != only_this_entity
                 {
-                    return; // not interested in this entity
+                    return Ok(()); // not interested in this entity
                 }
 
-                print!(
+                try_print!(
                     "Chunk({}) with {} rows ({}) - {:?} - ",
                     migrared_chunk.chunk_id(),
                     migrared_chunk.num_rows(),
                     re_format::format_bytes(migrared_chunk.total_size_bytes() as _),
                     migrared_chunk.entity_path(),
-                );
+                )?;
 
                 match options.verbose {
                     0 => {
@@ -232,7 +233,7 @@ fn print_msg(options: &Options, msg: LogMsg) {
                             .component_columns()
                             .map(|(descr, _)| descr.column_name(re_sorbet::BatchType::Chunk)) // short column name without entity-path prefix
                             .join(" ");
-                        println!("data columns: [{column_names}]");
+                        try_println!("data columns: [{column_names}]")?;
                     }
                     1 => {
                         let column_descriptors = migrared_chunk
@@ -240,10 +241,10 @@ fn print_msg(options: &Options, msg: LogMsg) {
                             .map(|(descr, _)| descr.to_string())
                             .collect_vec()
                             .join(" ");
-                        println!("data columns: [{column_descriptors}]");
+                        try_println!("data columns: [{column_descriptors}]")?;
                     }
                     _ => {
-                        println!("\n{}\n", options.format_record_batch(migrared_chunk));
+                        try_println!("\n{}\n", options.format_record_batch(migrared_chunk))?;
                     }
                 }
             } else {
@@ -254,14 +255,14 @@ fn print_msg(options: &Options, msg: LogMsg) {
                         .or_else(|| metadata.get("rerun.entity_path"))
                     && only_this_entity != &EntityPath::parse_forgiving(chunk_entity_path)
                 {
-                    return; // not interested in this entity
+                    return Ok(()); // not interested in this entity
                 }
 
-                print!(
+                try_print!(
                     "Chunk with {} rows ({})",
                     original_batch.num_rows(),
                     re_format::format_bytes(original_batch.total_size_bytes() as _),
-                );
+                )?;
 
                 match options.verbose {
                     0 | 1 => {
@@ -271,10 +272,10 @@ fn print_msg(options: &Options, msg: LogMsg) {
                             .iter()
                             .map(|f| f.name())
                             .join(" ");
-                        println!("columns: [{column_names}]");
+                        try_println!("columns: [{column_names}]")?;
                     }
                     _ => {
-                        println!("\n{}\n", options.format_record_batch(original_batch));
+                        try_println!("\n{}\n", options.format_record_batch(original_batch))?;
                     }
                 }
             }
@@ -285,9 +286,11 @@ fn print_msg(options: &Options, msg: LogMsg) {
             make_active,
             make_default,
         }) => {
-            println!(
+            try_println!(
                 "BlueprintActivationCommand({blueprint_id:?}, make_active: {make_active}, make_default: {make_default})"
-            );
+            )?;
         }
     }
+
+    Ok(())
 }

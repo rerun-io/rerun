@@ -1,3 +1,5 @@
+#![expect(clippy::print_stderr)] // This is only a test
+
 mod earliest_at;
 mod formatting;
 mod latest_at;

@@ -763,7 +763,11 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
             return Ok(Box::pin(stream));
         }
 
-        if let DataframePipeline::V2(config) = self.pipeline {
+        if let DataframePipeline::V2 {
+            fetch,
+            emitter_kind,
+        } = self.pipeline
+        {
             return crate::pipeline::execute_partition(crate::pipeline::V2PartitionCtx {
                 chunk_infos,
                 query_expression: self.query_expression.clone(),
@@ -774,7 +778,8 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
                 client: self.client.clone(),
                 object_store_auth: Arc::clone(&self.object_store_auth),
                 io_handle: self.io_handle.clone(),
-                config,
+                config: fetch,
+                emitter_kind,
                 trace_headers: self.trace_headers.clone(),
                 server_trace_id: self.server_trace_id,
                 pending_analytics: self.pending_analytics.clone(),
@@ -965,7 +970,7 @@ impl CpuRuntime {
     // Deliberately not `pub`, because CpuRuntime should be a singleton
     #[tracing::instrument(level = "trace", skip_all)]
     fn try_new(num_threads: usize) -> Result<Self, DataFusionError> {
-        let runtime = tokio::runtime::Builder::new_multi_thread() // NOLINT: CPU-bound query work requires one isolated process-wide executor
+        let runtime = tokio::runtime::Builder::new_multi_thread() // relint: allow(tokio_runtime): CPU-bound query work requires one isolated process-wide executor
             .worker_threads(num_threads)
             .thread_name("datafusion_cpu_worker")
             .build()?;

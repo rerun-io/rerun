@@ -1385,16 +1385,12 @@ pub struct ChunkFetchResult {
 
 #[cfg(test)]
 mod tests {
-
     use std::collections::HashSet;
     use std::sync::Arc;
 
-    use arrow::array::RecordBatch;
-    use re_chunk::{Chunk, EntityPath, RowId, TimeInt, Timeline};
-    use re_chunk_store::ChunkStore;
+    use re_chunk::{EntityPath, RowId};
     use re_log_types::example_components::{MyPoint, MyPoints};
-    use re_log_types::{AbsoluteTimeRange, StoreId, StoreKind, TimePoint};
-    use re_types_core::ChunkId;
+    use re_log_types::{StoreId, StoreKind, TimePoint};
 
     use crate::ChunkPromise;
     use crate::rrd_manifest_index::RrdManifestIndex;

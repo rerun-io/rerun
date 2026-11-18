@@ -4,13 +4,12 @@ import functools
 import random
 import sys
 import warnings
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.42.0-alpha.1+dev"
-__version_info__ = (0, 42, 0, "alpha.1")
+__version__ = "0.44.0-alpha.1+dev"
+__version_info__ = (0, 44, 0, "alpha.1")
 
 if sys.version_info < (3, 11):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.11 or later.")
@@ -239,6 +238,7 @@ from .time import (
 from .web import serve_web_viewer as serve_web_viewer
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from uuid import UUID
 
     from .blueprint.api import (
@@ -257,7 +257,8 @@ should exit with this exit code.
 """
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
     if name == "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE":
         import warnings
@@ -453,10 +454,11 @@ def _register_on_fork() -> None:
 
 _register_on_fork()
 
-_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 
-def shutdown_at_exit(func: _TFunc) -> _TFunc:
+def shutdown_at_exit(func: Callable[_P, _R]) -> Callable[_P, _R]:
     """
     Decorator to shutdown Rerun cleanly when this function exits.
 
@@ -468,13 +470,13 @@ def shutdown_at_exit(func: _TFunc) -> _TFunc:
     """
 
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         try:
             return func(*args, **kwargs)
         finally:
             rerun_shutdown()
 
-    return cast("_TFunc", wrapper)
+    return wrapper
 
 
 # ---

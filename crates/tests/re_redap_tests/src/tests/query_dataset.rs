@@ -176,8 +176,8 @@ pub async fn query_dataset_unknown_segment_id_returns_empty(service: impl RerunC
 //TODO(RR-2613): this recording needs fleshing out in order to test more interesting queries.
 fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
     use re_chunk::{Chunk, TimePoint};
+    use re_log_types::build_frame_nr;
     use re_log_types::example_components::{MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
     use re_sdk::RecordingStreamBuilder;
 
     use crate::utils::rerun::{next_chunk_id_generator, next_row_id_generator};
@@ -206,7 +206,7 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
         Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/static_only"))
             .with_sparse_component_batches(
                 next_row_id(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [(MyPoints::descriptor_points(), Some(&points as _))],
             )
             .build()?;
@@ -217,7 +217,7 @@ fn create_recording_for_query_testing() -> anyhow::Result<TempPath> {
     let both_static_chunk = Chunk::builder_with_id(next_chunk_id(), EntityPath::from("/both"))
         .with_sparse_component_batches(
             next_row_id(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             [(MyPoints::descriptor_points(), Some(&points as _))],
         )
         .build()?;
@@ -663,6 +663,7 @@ fn find_static(
         } else {
             DirectUrlMode::Signed
         },
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 
@@ -691,6 +692,7 @@ fn find_range(
         } else {
             DirectUrlMode::Signed
         },
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 
@@ -712,6 +714,7 @@ fn find_samples(
         } else {
             DirectUrlMode::Signed
         },
+        scope: re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
     }
 }
 

@@ -25,6 +25,9 @@ version = "0.0.0" # Must match the stub on crates.io, which never changes.
 [lints]
 workspace = true
 
+[lib]
+test = false
+
 # The parts of the file between the BEGIN HAKARI SECTION and END HAKARI SECTION comments
 # are managed by hakari.
 
@@ -66,7 +69,7 @@ eframe = { version = "0.37", default-features = false, features = ["clipboard", 
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", features = ["native-async", "platform-verifier", "streaming"] }
+ehttp = { version = "0.7", features = ["native-async", "platform-verifier", "streaming"] }
 either = { version = "1", features = ["use_std"] }
 emath = { version = "0.37", features = ["bytemuck", "serde"] }
 epaint = { version = "0.37", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
@@ -156,7 +159,7 @@ sync_wrapper = { version = "1", default-features = false, features = ["futures"]
 tempfile = { version = "3" }
 thiserror = { version = "2" }
 tinystr = { version = "0.8", default-features = false, features = ["alloc", "zerovec"] }
-tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "test-util"] }
 tokio-stream = { version = "0.1", features = ["net", "sync"] }
 tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
 toml = { version = "1", default-features = false, features = ["parse", "preserve_order", "serde"] }
@@ -229,7 +232,7 @@ eframe = { version = "0.37", default-features = false, features = ["clipboard", 
 egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
 egui-wgpu = { version = "0.37" }
 egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", features = ["native-async", "platform-verifier", "streaming"] }
+ehttp = { version = "0.7", features = ["native-async", "platform-verifier", "streaming"] }
 either = { version = "1", features = ["use_std"] }
 emath = { version = "0.37", features = ["bytemuck", "serde"] }
 epaint = { version = "0.37", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
@@ -320,7 +323,7 @@ sync_wrapper = { version = "1", default-features = false, features = ["futures"]
 tempfile = { version = "3" }
 thiserror = { version = "2" }
 tinystr = { version = "0.8", default-features = false, features = ["alloc", "zerovec"] }
-tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "sync", "time"] }
+tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "rt-multi-thread", "signal", "test-util"] }
 tokio-stream = { version = "0.1", features = ["net", "sync"] }
 tokio-util = { version = "0.7", features = ["codec", "compat", "io"] }
 toml = { version = "1", default-features = false, features = ["parse", "preserve_order", "serde"] }
@@ -360,7 +363,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
@@ -407,7 +410,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
@@ -454,7 +457,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
@@ -472,7 +475,6 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
@@ -499,7 +501,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
@@ -517,7 +519,6 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
@@ -544,7 +545,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
@@ -591,7 +592,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
@@ -638,7 +639,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
@@ -685,7 +686,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
@@ -732,7 +733,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
@@ -750,7 +751,6 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
@@ -777,7 +777,7 @@ bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
 egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
-ehttp = { git = "https://github.com/emilk/ehttp.git", branch = "main", default-features = false, features = ["json"] }
+ehttp = { version = "0.7", default-features = false, features = ["json"] }
 epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
@@ -795,7 +795,6 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
 syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }

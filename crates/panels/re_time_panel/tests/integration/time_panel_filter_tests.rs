@@ -110,7 +110,7 @@ fn add_point_to_chunk_builder(builder: ChunkBuilder) -> ChunkBuilder {
     // log as static to minimize "noise" in the snapshot
     builder.with_archetype(
         RowId::new(),
-        TimePoint::default(),
+        TimePoint::STATIC,
         &Points3D::new([[0.0, 0.0, 0.0]]),
     )
 }

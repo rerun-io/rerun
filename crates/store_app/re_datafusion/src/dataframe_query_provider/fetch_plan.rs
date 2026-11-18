@@ -248,7 +248,7 @@ pub fn create_request_batches_with_segment_limit(
                 let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
                     .map_err(|err| merge_err(err, "merging segment-wave boundary batch"))?;
                 request_batches.push(merged_batch);
-                current_batch = Vec::new();
+                current_batch.clear();
                 current_batch_size = 0;
                 current_batch_segments.clear();
             }
@@ -280,7 +280,7 @@ pub fn create_request_batches_with_segment_limit(
             let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
                 .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
             request_batches.push(merged_batch);
-            current_batch = Vec::new();
+            current_batch.clear();
             current_batch_size = 0;
             current_batch_segments.clear();
         }
@@ -293,7 +293,7 @@ pub fn create_request_batches_with_segment_limit(
                 let merged_batch = re_arrow_util::concat_polymorphic_batches(&current_batch)
                     .map_err(|err| merge_err(err, "merging chunk-info batches"))?;
                 request_batches.push(merged_batch);
-                current_batch = Vec::new();
+                current_batch.clear();
                 current_batch_size = 0;
                 current_batch_segments.clear();
             }

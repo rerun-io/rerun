@@ -7,14 +7,14 @@ use re_auth::oauth::Credentials;
 use re_auth::oauth::api::{AuthenticateWithCode, Pkce, send_native};
 use re_ui::{ContextExt as _, UiExt as _, Variant, icons};
 
-use super::ActionButton;
+use super::{ActionButton, LoginError};
 
 pub struct State {
     callback_server: OauthCallbackServer,
 
     pkce: Pkce,
     pending_authentication: bool,
-    credentials: Arc<Mutex<Option<Result<Credentials, String>>>>,
+    credentials: Arc<Mutex<Option<Result<Credentials, LoginError>>>>,
 
     show_open_feedback: bool,
     show_copy_feedback: bool,
@@ -55,7 +55,7 @@ impl State {
         ui.request_repaint_after(Duration::from_millis(300));
     }
 
-    pub fn done(&mut self) -> Result<Option<Credentials>, String> {
+    pub fn done(&mut self) -> Result<Option<Credentials>, LoginError> {
         if self.pending_authentication {
             if let Some(credentials) = (*self.credentials.lock()).take() {
                 self.pending_authentication = false;
@@ -69,28 +69,22 @@ impl State {
         match self.callback_server.check_for_browser_response() {
             Ok(Some(code)) => {
                 let credentials = self.credentials.clone();
-                let on_done = move |res: Result<Credentials, String>| {
+                let on_done = move |res: Result<Credentials, LoginError>| {
                     *credentials.lock() = Some(res);
                 };
                 send_native(
                     AuthenticateWithCode::new(&code, &self.pkce),
                     move |res| match res {
-                        Ok(res) => {
-                            let credentials = match Credentials::from_auth_response(res.into())
-                                .map_err(|err| err.to_string())
-                            {
-                                Ok(c) => c,
-                                Err(err) => return on_done(Err(err)),
-                            };
-                            let credentials =
-                                match credentials.ensure_stored().map_err(|err| err.to_string()) {
-                                    Ok(c) => c,
-                                    Err(err) => return on_done(Err(err)),
-                                };
-
-                            on_done(Ok(credentials));
-                        }
-                        Err(err) => on_done(Err(err.to_string())),
+                        Ok(res) => on_done(
+                            Credentials::from_auth_response(res.into())
+                                .map_err(|source| LoginError::DecodeToken { source })
+                                .and_then(|credentials| {
+                                    credentials
+                                        .ensure_stored()
+                                        .map_err(|source| LoginError::StoreCredentials { source })
+                                }),
+                        ),
+                        Err(source) => on_done(Err(LoginError::Authenticate { source })),
                     },
                 );
                 self.pending_authentication = true;
@@ -98,22 +92,22 @@ impl State {
                 Ok(None)
             }
             Ok(None) => Ok(None),
-            Err(err) => Err(format!("Failed to check for browser response: {err}")),
+            Err(source) => Err(LoginError::CheckBrowserResponse { source }),
         }
     }
 
     #[expect(clippy::needless_pass_by_ref_mut)] // compat with web api
-    pub fn start(&mut self) -> Result<(), String> {
-        webbrowser::open(self.callback_server.get_login_url()).map_err(|err| err.to_string())?;
-        Ok(())
+    pub fn start(&mut self) -> Result<(), LoginError> {
+        webbrowser::open(self.callback_server.get_login_url())
+            .map_err(|source| LoginError::OpenBrowser { source })
     }
 
-    pub fn open(_egui_ctx: &egui::Context) -> Result<Self, String> {
+    pub fn open(_egui_ctx: &egui::Context) -> Result<Self, LoginError> {
         let pkce = Pkce::new();
 
         // Whenever the modal is open, we always keep the callback server running:
         let callback_server = OauthCallbackServer::new(&pkce)
-            .map_err(|err| format!("Failed to start callback server: {err}"))?;
+            .map_err(|source| LoginError::StartCallbackServer { source })?;
 
         Ok(Self {
             callback_server,

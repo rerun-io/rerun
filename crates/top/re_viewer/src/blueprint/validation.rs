@@ -107,7 +107,7 @@ mod tests {
             let chunk = Chunk::builder(format!("/view/some-view/overrides/entity-{i}").as_str())
                 .with_row(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [(Points3D::descriptor_radii(), array)],
                 )
                 .build()

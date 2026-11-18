@@ -8,7 +8,7 @@ from rerun.server import Server
 
 
 def test_catalog_client_accepts_http_url(caplog: pytest.LogCaptureFixture) -> None:
-    with Server() as server:
+    with Server(host="127.0.0.1") as server:
         http_url = server.url().replace("rerun+http://", "http://", 1)
 
         client = CatalogClient(http_url)

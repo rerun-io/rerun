@@ -29,7 +29,7 @@ pub fn generate_reflection(
         &mut imports,
     );
     let archetype_reflection = generate_archetype_reflection(reporter, objects);
-    let view_reflection = generate_view_reflection(objects);
+    let view_reflection = generate_view_reflection(reporter, objects);
 
     let mut code = format!("// {}\n\n", autogen_warning!());
     code.push_str("#![allow(clippy::allow_attributes)]\n");
@@ -379,13 +379,46 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
 }
 
 /// Generate reflection about views.
-fn generate_view_reflection(objects: &Objects) -> TokenStream {
+fn generate_view_reflection(reporter: &Reporter, objects: &Objects) -> TokenStream {
     let quoted_pairs = objects
         .objects_of_kind(ObjectKind::View)
         .filter(|view| !view.is_testing())
-        .map(|view| {
+        .filter_map(|view| {
             let identifier = view.get_attr::<String>(RerunAttr::ViewIdentifier);
             let quoted_identifier = quote!(ViewClassIdentifier::from_static_str(#identifier));
+            let Some(description) = view
+                .docs
+                .first_line(reporter, objects, Target::WebDocsMarkdown)
+                .filter(|description| !description.trim().is_empty())
+            else {
+                reporter.error(
+                    &view.virtpath,
+                    &view.fqname,
+                    "A view should have a non-empty description",
+                );
+                return None;
+            };
+            let Some(keywords) = view.try_get_attr::<String>(DocsAttr::Keywords) else {
+                reporter.error(
+                    &view.virtpath,
+                    &view.fqname,
+                    "A view should have discovery keywords",
+                );
+                return None;
+            };
+            let keywords = keywords
+                .split(',')
+                .map(str::trim)
+                .filter(|keyword| !keyword.is_empty())
+                .collect::<Vec<_>>();
+            if keywords.is_empty() {
+                reporter.error(
+                    &view.virtpath,
+                    &view.fqname,
+                    "A view should have at least one non-empty discovery keyword",
+                );
+                return None;
+            }
 
             let applicability = if view.is_attr_set(DocsAttr::ArchetypeAgnostic) {
                 quote!(ViewApplicability::AllArchetypes)
@@ -412,15 +445,17 @@ fn generate_view_reflection(objects: &Objects) -> TokenStream {
                 Some(quote!(ArchetypeName::from(#fqname)))
             });
 
-            quote! {
+            Some(quote! {
                 (
                     #quoted_identifier,
                     ViewReflection {
+                        description: #description.to_owned(),
+                        keywords: vec![#(#keywords.to_owned()),*],
                         applicability: #applicability,
                         property_archetypes: vec![#(#property_archetypes),*],
                     },
                 )
-            }
+            })
         });
 
     quote! {

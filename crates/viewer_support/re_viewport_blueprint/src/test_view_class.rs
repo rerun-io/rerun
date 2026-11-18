@@ -1,6 +1,5 @@
 //! A minimal view class for testing.
 
-use re_chunk::EntityPath;
 use re_sdk_types::ViewClassIdentifier;
 use re_viewer_context::{
     IdentifiedViewSystem, SystemExecutionOutput, ViewClass, ViewClassLayoutPriority,
@@ -75,7 +74,7 @@ impl ViewClass for TestViewClass {
     fn spawn_heuristics(
         &self,
         _ctx: &ViewerContext<'_>,
-        _include_entity: &dyn Fn(&EntityPath) -> bool,
+        _spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> ViewSpawnHeuristics {
         ViewSpawnHeuristics::root()
     }

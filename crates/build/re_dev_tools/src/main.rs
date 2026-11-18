@@ -1,6 +1,9 @@
 //! Crate that combines several development utilities.
 //!
 //! To get an overview over all tools run `pixi run dev-tools --help`.
+
+#![expect(clippy::print_stdout, clippy::print_stderr)] // Dev tool
+
 use argh::FromArgs;
 
 mod build_examples;

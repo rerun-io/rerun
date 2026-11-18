@@ -157,7 +157,9 @@ impl WebHandle {
 
         reply_rx
             .await
-            .map_err(|_err| JsValue::from_str("Inspection request produced no reply"))?
+            .map_err(|futures::channel::oneshot::Canceled| {
+                JsValue::from_str("Inspection request produced no reply")
+            })?
             .map_err(|err| {
                 JsValue::from_str(&format!("Failed to encode inspection response: {err}"))
             })
@@ -323,7 +325,7 @@ impl WebHandle {
             .store_hub
             .active_blueprint_for_app(recording_id.application_id())
             .ok_or_else(|| JsValue::from_str("No active blueprint to save"))?;
-        let undo_state = app.state.blueprint_undo_state.get(blueprint.store_id());
+        let undo_state = app.stores.blueprint_undo_state.get(blueprint.store_id());
 
         RrdSnapshot::blueprint(blueprint, undo_state)
             .and_then(RrdSnapshot::encode)
@@ -570,38 +572,116 @@ impl From<PanelState> for re_sdk_types::blueprint::components::PanelState {
 
 // Keep in sync with the `AppOptions` interface in `rerun_js/web-viewer/index.ts`.
 #[derive(Clone, Default, Deserialize)]
+// `WebViewer.start` passes its camelCase options through without converting the keys,
+// and `web_viewer/index.html` uses the same keys.
+// JavaScript built against older `@rerun-io/web-viewer` releases passes snake_case keys,
+// so every renamed field needs a snake_case alias.
+// Callers must pass one spelling per key: passing both is a deserialization error.
+#[serde(rename_all = "camelCase")]
 pub struct AppOptions {
+    #[serde(alias = "manifest_url")]
     manifest_url: Option<String>,
+
+    #[serde(alias = "render_backend")]
     render_backend: Option<String>,
+
+    #[serde(alias = "video_decoder")]
     video_decoder: Option<String>,
+
+    #[serde(alias = "memory_limit")]
     memory_limit: Option<String>,
+
+    #[serde(alias = "hide_welcome_screen")]
     hide_welcome_screen: Option<bool>,
+
+    #[serde(alias = "check_for_updates_on_startup")]
     check_for_updates_on_startup: Option<bool>,
     // allow_fullscreen: Option<bool>, // Not serialized from js as it governs how the `fullscreen` option is used.
+    #[serde(alias = "enable_history")]
     enable_history: Option<bool>,
     // width: Option<String>, // Width & height aren't serialized and only used to configure the canvas.
     // height: Option<String>,
+    #[serde(alias = "fallback_token")]
     fallback_token: Option<String>,
     theme: Option<String>,
     login: Option<crate::LoginOptions>,
+    analytics: Option<String>,
 
     // Hidden `WebViewerOptions`
     // ------------
+    #[serde(alias = "viewer_base_url")]
     viewer_base_url: Option<String>,
     notebook: Option<bool>,
     url: Option<StringOrStringArray>,
+
+    #[serde(alias = "panel_state_overrides")]
     panel_state_overrides: Option<PanelStateOverrides>,
+
+    #[serde(alias = "on_viewer_event")]
     on_viewer_event: Option<Callback>,
     fullscreen: Option<FullscreenOptions>,
 }
 
+/// The web counterpart of the native viewer's first-run analytics disclaimer.
+///
+/// Shown until the user has had the chance to read it once in this browser.
+fn show_analytics_notice(command_sender: &crate::CommandSender) {
+    use re_ui::notifications::{Notification, NotificationAction, NotificationLevel};
+
+    let turn_off_sender = command_sender.clone();
+    let is_first_run = re_analytics::Analytics::global_or_init()
+        .is_some_and(|analytics| analytics.config().is_first_run());
+    let text = if is_first_run {
+        "We collect usage data to improve our products, never the data you view. \
+         Nothing is sent during this first visit, so you can turn it off first. \
+         [Privacy policy](https://rerun.io/privacy). Change anytime in Settings."
+    } else {
+        "We collect usage data to improve our products, never the data you view. \
+         [Privacy policy](https://rerun.io/privacy). Change anytime in Settings."
+    };
+    let notification = Notification::new(NotificationLevel::Info, text)
+        .with_action(NotificationAction::new("Turn off analytics", move || {
+            match re_analytics::set_user_switch(re_analytics::AnalyticsSwitch::Disabled) {
+                Ok(()) => {
+                    turn_off_sender.send_system(SystemCommand::ShowNotification(
+                        Notification::new(
+                            NotificationLevel::Success,
+                            "Analytics turned off. You can turn them back on in Settings.",
+                        ),
+                    ));
+                }
+                Err(err) => re_log::warn!("Failed to save the analytics setting: {err}"),
+            }
+        }))
+        .show_once(egui::Id::unique("web_analytics_notice"));
+    command_sender.send_system(SystemCommand::ShowNotification(notification));
+}
+
+/// The embedder's `analytics` option; unset means [`re_analytics::AnalyticsMode::On`].
+///
+/// An unknown value turns analytics off, so a typo never turns tracking on.
+fn parse_analytics_mode(value: Option<&str>) -> re_analytics::AnalyticsMode {
+    match value.map(str::parse) {
+        None => re_analytics::AnalyticsMode::default(),
+        Some(Ok(mode)) => mode,
+        Some(Err(err)) => {
+            re_log::warn_once!("{err}; turning analytics off");
+            re_analytics::AnalyticsMode::Off
+        }
+    }
+}
+
 // Keep in sync with the `FullscreenOptions` interface in `rerun_js/web-viewer/index.ts`
 #[derive(Clone, Deserialize)]
+// JavaScript callers pass camelCase or snake_case keys, like for `AppOptions`.
+#[serde(rename_all = "camelCase")]
 pub struct FullscreenOptions {
     /// This returns the current fullscreen state, which is a boolean representing on/off.
+    #[serde(alias = "get_state")]
     pub get_state: Callback,
 
     /// This calls the JS version of "toggle fullscreen".
+    #[serde(alias = "on_toggle")]
     pub on_toggle: Callback,
 }
 
@@ -662,7 +742,10 @@ fn create_app(
         fallback_token,
         theme,
         login,
+        analytics,
     } = app_options;
+
+    let analytics_mode = parse_analytics_mode(analytics.as_deref());
 
     if let Some(fallback_token) = fallback_token {
         match re_auth::Jwt::try_from(fallback_token) {
@@ -709,6 +792,7 @@ fn create_app(
         enable_history,
         viewer_base_url,
         login,
+        analytics_mode,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
 
@@ -721,6 +805,11 @@ fn create_app(
         Some(connection_registry),
         AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("Infallible on web"),
     );
+
+    // `App::new` has enabled analytics for this mode, so `is_enabled` is now meaningful.
+    if analytics_mode.allows_analytics() && re_analytics::is_enabled() {
+        show_analytics_notice(&app.command_sender);
+    }
 
     // An explicit web option takes precedence over the restored theme preference.
     if let Some(theme) = theme {

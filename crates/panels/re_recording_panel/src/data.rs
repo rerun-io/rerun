@@ -659,12 +659,6 @@ impl EntryData {
     pub fn item(&self) -> Item {
         re_uri::EntryUri::new(self.origin.clone(), self.entry_id).into()
     }
-
-    pub fn id(&self) -> egui::Id {
-        egui::Id::unique(&self.origin)
-            .with(self.entry_id)
-            .with(&self.name)
-    }
 }
 
 // ---

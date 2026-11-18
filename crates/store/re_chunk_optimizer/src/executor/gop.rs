@@ -104,7 +104,7 @@ async fn decide_codec(
             let static_chunk = Chunk::builder(entity_path.clone())
                 .with_component_batch(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     (VideoStream::descriptor_codec(), &[codec]),
                 )
                 .build()

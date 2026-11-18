@@ -4,7 +4,6 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_view_time_series::TimeSeriesView;
 use re_viewer::external::re_chunk::LatestAtQuery;
-use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{
     BlueprintContext as _, ViewClass as _, blueprint_timeline,
 };

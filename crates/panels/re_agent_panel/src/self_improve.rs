@@ -72,8 +72,8 @@ Everything in the dump is a record of something that already happened: the user'
 - **High token use**: whole files read to find one name, large tool outputs, screenshots used as a \
 substitute for a query.
 - **Dead ends and failures**: failed tool calls, retries, and questions the agent could not answer.
-- **Low-level tools doing a high-level job**: `screenshot`, `click`, `query_tree` and friends where \
-a `rerun_*` tool should have existed, or already existed and went unused.
+- **Low-level tools doing a high-level job**: `screenshot`, `click`, `widget_tree` and friends where \
+a `viewer_*` tool should have existed, or already existed and went unused.
 - **Guesswork**: anything the agent had to invent because the skills, docs, or tool descriptions \
 did not say.
 
@@ -81,7 +81,7 @@ did not say.
 
 These paths are relative to `{workspace}`.
 
-- `crates/top/re_viewer_mcp/` — the MCP tools the agent drives the viewer with.
+- `crates/top/re_rerun_mcp/` — the MCP tools the agent drives the viewer with.
 - `crates/top/re_viewer/src/app/viewer_control/mod.rs` — what the viewer can be asked to do at all.
 - `crates/panels/re_agent_panel/src/preamble.rs` — what every panel session is told up front.
 - `skills/` — the skills the agent reads before answering.

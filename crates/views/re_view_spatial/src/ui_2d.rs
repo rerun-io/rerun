@@ -1,5 +1,5 @@
 use egui::emath::RectTransform;
-use egui::{Align2, Pos2, Rect, Shape, Vec2, pos2, vec2};
+use egui::{Align2, Pos2, Rect, Shape, pos2, vec2};
 use re_chunk_store::MissingChunkReporter;
 use re_log::ResultExt as _;
 use re_math::IsoTransform;
@@ -23,10 +23,26 @@ use super::eye::Eye;
 use super::ui::{create_labels, draw_bounding_boxes, draw_origin_axes};
 use crate::SpaceKind;
 use crate::contexts::TransformTreeContext;
-use crate::ui::SpatialViewState;
+use crate::ui::{ScreenSpace2D, SpatialViewState};
 use crate::visualizers::{Axes, collect_ui_labels};
 use crate::{Pinhole, SpatialView2D};
 // ---
+
+/// Stores what the view shows for next frame's visualizers. Returns whether it changed.
+fn store_screen_space_2d(state: &mut SpatialViewState, screen_space: ScreenSpace2D) -> bool {
+    let ScreenSpace2D {
+        pixels_per_scene_unit,
+        visible_scene_rect,
+    } = screen_space;
+    // Degenerate visual bounds give NaN, which never equals itself and would repaint forever.
+    let screen_space = (pixels_per_scene_unit.is_finite() && visible_scene_rect.is_finite())
+        .then_some(screen_space);
+    if state.screen_space_2d == screen_space {
+        return false;
+    }
+    state.screen_space_2d = screen_space;
+    true
+}
 
 /// Pan and zoom, and return the current transform.
 fn ui_from_scene(
@@ -39,143 +55,23 @@ fn ui_from_scene(
         .component_or_fallback(ctx, VisualBounds2D::descriptor_range().component)
         .ok_or_log_error()
         .unwrap_or_default();
-    view_state.visual_bounds_2d = Some(bounds);
-    let mut bounds_rect: egui::Rect = bounds.into();
-
-    // --------------------------------------------------------------------------
-    // Expand bounds for uniform scaling (letterboxing):
-
-    let mut letterboxed_bounds = bounds_rect;
-
-    // Temporary before applying letterboxing:
-    let ui_from_scene = RectTransform::from_to(bounds_rect, response.rect);
-
-    let scale_aspect = ui_from_scene.scale().x / ui_from_scene.scale().y;
-    if scale_aspect < 1.0 {
-        // Letterbox top/bottom:
-        let add = bounds_rect.height() * (1.0 / scale_aspect - 1.0);
-        letterboxed_bounds.min.y -= 0.5 * add;
-        letterboxed_bounds.max.y += 0.5 * add;
-    } else {
-        // Letterbox sides:
-        let add = bounds_rect.width() * (scale_aspect - 1.0);
-        letterboxed_bounds.min.x -= 0.5 * add;
-        letterboxed_bounds.max.x += 0.5 * add;
-    }
-
-    // --------------------------------------------------------------------------
-
-    // Temporary before applying panning/zooming delta:
-    let ui_from_scene = RectTransform::from_to(letterboxed_bounds, response.rect);
-
-    // --------------------------------------------------------------------------
-
-    let mut pan_delta_in_ui = response.drag_delta();
-    if response.hovered() {
-        pan_delta_in_ui += response.ctx.input(|i| i.smooth_scroll_delta);
-    }
-    if pan_delta_in_ui != Vec2::ZERO {
-        bounds_rect = bounds_rect.translate(-pan_delta_in_ui / ui_from_scene.scale());
-    }
-
-    if response.hovered() {
-        let zoom_delta = response.ctx.input(|i| i.zoom_delta_2d());
-
-        if zoom_delta != Vec2::splat(1.0) {
-            let zoom_center_in_ui = response
-                .hover_pos()
-                .unwrap_or_else(|| response.rect.center());
-            let zoom_center_in_scene = ui_from_scene
-                .inverse()
-                .transform_pos(zoom_center_in_ui)
-                .to_vec2();
-            let candidate = scale_rect(
-                bounds_rect.translate(-zoom_center_in_scene),
-                Vec2::splat(1.0) / zoom_delta,
-            )
-            .translate(zoom_center_in_scene);
-
-            bounds_rect = clamp_zoom_out(
-                bounds_rect,
-                candidate,
-                zoom_center_in_scene,
-                &view_state.bounding_boxes.current,
-            );
-        }
-    }
-
-    // Update blueprint if changed
-    let updated_bounds: blueprint_components::VisualBounds2D = bounds_rect.into();
-    if response.double_clicked() {
-        bounds_property
-            .reset_blueprint_component(ctx.viewer_ctx, VisualBounds2D::descriptor_range());
-    } else if bounds != updated_bounds {
-        bounds_property.save_blueprint_component(
-            ctx.viewer_ctx,
-            &VisualBounds2D::descriptor_range(),
-            &updated_bounds,
-        );
-    }
     // Update stored bounds on the state, so visualizers see an up-to-date value.
     view_state.visual_bounds_2d = Some(bounds);
 
-    RectTransform::from_to(letterboxed_bounds, response.rect)
-}
+    let scene_bbox = &view_state.bounding_boxes.current;
+    let content_size = (scene_bbox.is_finite() && !scene_bbox.is_nothing()).then(|| {
+        let size = scene_bbox.size();
+        vec2(size.x, size.y)
+    });
 
-fn scale_rect(rect: Rect, factor: Vec2) -> Rect {
-    Rect::from_min_max(
-        (factor * rect.min.to_vec2()).to_pos2(),
-        (factor * rect.max.to_vec2()).to_pos2(),
+    re_view::pan_zoom_visual_bounds_2d(
+        ctx.viewer_ctx,
+        response,
+        bounds_property,
+        bounds,
+        re_view::VisualBoundsFit::Letterbox,
+        content_size,
     )
-}
-
-/// Cap on how large the 2D visible area is allowed to grow, measured per-axis as a multiple
-/// of the matching scene bounding box extent.
-///
-/// Applied to zoom-out only: width is clamped against `scene_size.x * factor` and height
-/// against `scene_size.y * factor`. An axis that is already past the limit is pinned at its
-/// current size, never pulled back in; zoom-in is never restricted.
-const MAX_ZOOM_OUT_FACTOR: f32 = 5.0;
-
-/// Cap zoom-out against the scene bounding box.
-///
-/// If we're already past the cap (e.g. right after loading) use the current size instead — no
-/// snap-back. Zooming in is never restricted.
-fn clamp_zoom_out(
-    current: Rect,
-    candidate: Rect,
-    zoom_center: Vec2,
-    scene_bbox: &re_math::BoundingBox,
-) -> Rect {
-    // `1.0e17` fallback is chosen with generous margin of an observed crash due to infinity.
-    let fallback = Vec2::splat(1.0e17);
-
-    let max_size = if scene_bbox.is_finite() && !scene_bbox.is_nothing() {
-        let scene_size = scene_bbox.size();
-        let max_size = vec2(scene_size.x, scene_size.y) * MAX_ZOOM_OUT_FACTOR;
-        if max_size.x.is_finite() && max_size.x > 0.0 && max_size.y.is_finite() && max_size.y > 0.0
-        {
-            max_size
-        } else {
-            fallback
-        }
-    } else {
-        fallback
-    }
-    .max(current.size());
-
-    let candidate_size = candidate.size();
-    let clamped_size = candidate_size.min(max_size);
-
-    if clamped_size == candidate_size {
-        candidate
-    } else {
-        scale_rect(
-            current.translate(-zoom_center),
-            clamped_size / current.size(),
-        )
-        .translate(zoom_center)
-    }
 }
 
 pub fn help(os: egui::os::OperatingSystem) -> Help {
@@ -261,6 +157,15 @@ impl SpatialView2D {
             ui_from_scene
         };
         let scene_from_ui = ui_from_scene.inverse();
+
+        // Visualizers already ran this frame, so a change needs another frame.
+        let screen_space = ScreenSpace2D {
+            pixels_per_scene_unit: ui.ctx().pixels_per_point() * ui_from_scene.scale().max_elem(),
+            visible_scene_rect: scene_from_ui.transform_rect(response.rect),
+        };
+        if store_screen_space_2d(state, screen_space) {
+            ui.request_repaint();
+        }
 
         let view_ctx = self.view_context(ctx, query.view_id, state, query.space_origin);
         let near_clip_plane: blueprint_components::NearClipPlane = clip_property

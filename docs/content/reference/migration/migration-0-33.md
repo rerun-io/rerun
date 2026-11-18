@@ -2,6 +2,7 @@
 title: Migrating from 0.32 to 0.33
 order: 977
 hidden: true
+description: Breaking changes in Rerun 0.33 and how to update code written for 0.32
 ---
 
 ## `rerun-sdk[dataplatform]` and `rerun-sdk[datafusion]` renamed to `rerun-sdk[catalog]`

@@ -95,7 +95,7 @@ impl MediaType {
     /// <https://www.iana.org/assignments/media-types/audio/mpeg>
     pub const MP3: &'static str = "audio/mpeg";
 
-    /// [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis or Opus): `audio/ogg`.
+    /// [Ogg audio](https://en.wikipedia.org/wiki/Ogg) (Vorbis; Opus is not supported): `audio/ogg`.
     ///
     /// <https://www.iana.org/assignments/media-types/audio/ogg>
     pub const OGG: &'static str = "audio/ogg";

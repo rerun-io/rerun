@@ -6,8 +6,8 @@
 /// If there's more instance poses than half sizes, the last box's orientation will be repeated for the remaining poses.
 /// Orienting and placing boxes forms a separate transform that is applied prior to [`rerun::archetypes::InstancePoses3D`] and [`rerun::archetypes::Transform3D`].
 ///
-/// \example archetypes/boxes3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png"
-/// \example archetypes/boxes3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png"
+/// \example archetypes/boxes3d_simple !api title="Simple 3D boxes" image="https://static.rerun.io/box3d_simple/d6a3f38d2e3360fbacac52bb43e44762635be9c8/1200w.png" alt="3D view with a single box drawn as a green wireframe, seen from above at an angle"
+/// \example archetypes/boxes3d_batch title="Batch of 3D boxes" image="https://static.rerun.io/box3d_batch/5aac5b5d29c9f2ecd572c93f6970fcec17f4984b/1200w.png" alt="3D view with three solid boxes in red, green, and blue, each labeled and with a different size and rotation"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Spatial 3D")]

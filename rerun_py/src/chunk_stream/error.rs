@@ -19,7 +19,8 @@ impl PythonException {
     }
 
     pub fn into_py_err(self) -> pyo3::PyErr {
-        self.inner
+        let Self { reason: _, inner } = self;
+        inner
     }
 }
 

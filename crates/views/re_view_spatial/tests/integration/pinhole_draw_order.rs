@@ -213,11 +213,11 @@ fn setup_scene(test_context: &mut TestContext, image_planes: &[PinholeImageSpec<
             builder
                 .with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &Transform3D::from_translation(image_plane.translation),
                 )
-                .with_archetype(RowId::new(), TimePoint::default(), &pinhole)
-                .with_archetype(RowId::new(), TimePoint::default(), &image)
+                .with_archetype(RowId::new(), TimePoint::STATIC, &pinhole)
+                .with_archetype(RowId::new(), TimePoint::STATIC, &image)
         });
     }
 }

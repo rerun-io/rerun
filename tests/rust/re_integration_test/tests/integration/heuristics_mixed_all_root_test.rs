@@ -2,7 +2,6 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
-use re_viewer::external::re_sdk_types;
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 
 fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::App> {
@@ -49,7 +48,7 @@ fn make_multi_view_test_harness<'a>() -> egui_kittest::Harness<'a, re_viewer::Ap
     harness.log_entity("points2d", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Points2D::new([(1.0, 1.0), (1.2, -0.3), (0.0, -0.3)])
                 .with_radii([0.1, 0.1, 0.1])
                 .with_colors([0xFF9001FF, 0x9001FFFF, 0x90FF01FF])

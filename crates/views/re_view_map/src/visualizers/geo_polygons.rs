@@ -95,6 +95,7 @@ pub struct GeoPolygonsOutput {
 #[derive(Default)]
 pub struct GeoPolygonsDrawCache {
     meshes: HashMap<Hash64, Arc<GpuMesh>>,
+
     #[cfg(test)]
     uploads: usize,
 }

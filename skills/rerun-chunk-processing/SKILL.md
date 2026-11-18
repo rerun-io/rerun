@@ -294,12 +294,13 @@ Rerun catalog or Hub, unless explicitly asked otherwise.
 - Scope lenses with `content=`; the same component name often exists under
   many entities.
 - Preserve Arrow array type and length in `MutateLens` transforms.
-- For catalog layers, the layer `recording_id` must equal the segment id.
+- For catalog layers, the layer `recording_id` must equal the segment id,
+  unless the layer is registered with `register(…, segment_id=[…])`.
 - This is `rerun.chunk`; pin-check signatures when upgrading.
 
 ## References
 
 - End-to-end example (MCAP + URDF + JSON sidecar, lenses, merge, optimize):
   `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing`
-- Docs: `https://rerun.io/docs/concepts/logging-and-ingestion/chunk-processing-api`,
-  `https://rerun.io/docs/concepts/query-and-transform/lenses`
+- Docs: `https://rerun.io/docs/logging-and-ingestion/import/chunk-processing-api`,
+  `https://rerun.io/docs/query-and-transform/lenses`

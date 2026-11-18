@@ -406,6 +406,10 @@ impl ApiError {
         Self::new(origin, ApiErrorKind::NotFound, message)
     }
 
+    pub fn already_exists(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
+        Self::new(origin, ApiErrorKind::AlreadyExists, message)
+    }
+
     pub fn invalid_arguments(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
         Self::new(origin, ApiErrorKind::InvalidArguments, message)
     }

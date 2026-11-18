@@ -25,9 +25,15 @@ pub struct Build {
 
 impl Build {
     pub fn run(self) -> anyhow::Result<()> {
-        let client = meili::connect(&self.meilisearch_url, &self.meilisearch_master_key)?;
-        let documents = ingest::run(self.release_version)?;
-        client.index(&self.index_name, &documents)?;
+        let Self {
+            index_name,
+            meilisearch_url,
+            meilisearch_master_key,
+            release_version,
+        } = self;
+        let client = meili::connect(&meilisearch_url, &meilisearch_master_key)?;
+        let documents = ingest::run(release_version)?;
+        client.index(&index_name, &documents)?;
         Ok(())
     }
 }

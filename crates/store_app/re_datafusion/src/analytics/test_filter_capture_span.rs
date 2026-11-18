@@ -23,7 +23,6 @@ fn attribute_keys(span: &opentelemetry_proto::tonic::trace::v1::Span) -> HashSet
 }
 
 fn find_int(span: &opentelemetry_proto::tonic::trace::v1::Span, key: &str) -> Option<i64> {
-    use opentelemetry_proto::tonic::common::v1::any_value::Value;
     span.attributes
         .iter()
         .find(|kv| kv.key == key)
@@ -37,7 +36,6 @@ fn find_string<'a>(
     span: &'a opentelemetry_proto::tonic::trace::v1::Span,
     key: &str,
 ) -> Option<&'a str> {
-    use opentelemetry_proto::tonic::common::v1::any_value::Value;
     span.attributes
         .iter()
         .find(|kv| kv.key == key)

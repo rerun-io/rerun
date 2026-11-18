@@ -246,10 +246,7 @@ mod tests {
     fn static_values_hide_temporal_events() {
         let mut store = test_store();
         let chunk = Chunk::builder("points")
-            .with_archetype_auto_row(
-                TimePoint::default(),
-                &MyPoints::new([MyPoint::new(2.0, 0.0)]),
-            )
+            .with_archetype_auto_row(TimePoint::STATIC, &MyPoints::new([MyPoint::new(2.0, 0.0)]))
             .build()
             .unwrap();
         insert(&mut store, chunk);

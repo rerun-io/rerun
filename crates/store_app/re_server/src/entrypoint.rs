@@ -54,17 +54,22 @@ pub struct Args {
     /// Additional origin patterns allowed to make cross-origin requests to the server
     /// (can be specified multiple times).
     ///
-    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    /// By default, only `localhost`, `127.0.0.1`, `rerun.io`, and its subdomains are allowed.
     /// Patterns are matched against the full `Origin` header value,
     /// using glob-style matching where `*` matches any sequence of characters.
     #[clap(long = "cors-allow-origin")]
     pub cors_allow_origin: Vec<String>,
 }
 
-fn parse_bandwidth_limit(s: &str) -> Result<u64, String> {
+/// The `--bandwidth-limit` argument is not a valid bandwidth.
+#[derive(Debug, thiserror::Error)]
+#[error("expected a bandwidth like '10MB' or '1GiB', got {0:?}")]
+struct InvalidBandwidthLimit(String);
+
+fn parse_bandwidth_limit(s: &str) -> Result<u64, InvalidBandwidthLimit> {
     re_format::parse_bytes(s)
         .and_then(|b| u64::try_from(b).ok())
-        .ok_or_else(|| format!("expected a bandwidth like '10MB' or '1GiB', got {s:?}"))
+        .ok_or_else(|| InvalidBandwidthLimit(s.to_owned()))
 }
 
 impl Default for Args {

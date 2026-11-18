@@ -443,8 +443,8 @@ SCENARIO("RecordingStream can connect over grpc", TEST_TAG) {
 SCENARIO("RecordingStream can set a grpc server sink", TEST_TAG) {
     rerun::RecordingStream stream("test-local");
     rerun::GrpcServerSink sink{
-        "0.0.0.0",
-        21522,
+        "127.0.0.1",
+        0,
         "64MiB",
         rerun::PlaybackBehavior::NewestFirst,
         {"https://*.example.com"}
@@ -460,8 +460,8 @@ SCENARIO("RecordingStream can serve grpc", TEST_TAG) {
         rerun::RecordingStream stream("test-local");
         THEN("serve_grpc call succeeds") {
             CHECK(
-                stream.serve_grpc("0.0.0.0", 21521).value_or_throw() ==
-                "rerun+http://0.0.0.0:21521/proxy"
+                stream.serve_grpc("127.0.0.1", 21521).value_or_throw() ==
+                "rerun+http://127.0.0.1:21521/proxy"
             );
         }
     }

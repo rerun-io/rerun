@@ -26,7 +26,7 @@ use ::std::borrow::Cow;
 
 /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
 ///
-/// If [`archetypes::Transform3D`][crate::archetypes::Transform3D] is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over [`archetypes::Pinhole`][crate::archetypes::Pinhole].
+/// A [`archetypes::Transform3D`][crate::archetypes::Transform3D] logged for the same child/parent relationship (e.g. for the camera extrinsics) is applied first, then the pinhole projection.
 ///
 /// If you use named transform frames via the `child_frame` and `parent_frame` fields, you don't have to use [`archetypes::CoordinateFrame`][crate::archetypes::CoordinateFrame]
 /// as it is the case with other visualizations: for any entity with an [`archetypes::Pinhole`][crate::archetypes::Pinhole] the viewer will always visualize it

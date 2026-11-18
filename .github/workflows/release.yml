@@ -17,6 +17,11 @@ on:
         type: boolean
         required: false
         default: true
+      increase-rc:
+        description: "Increase the rc number (rc only; untick to publish the current -rc.N again)"
+        type: boolean
+        required: false
+        default: true
 
 concurrency:
   group: ${{ github.ref_name }}
@@ -36,7 +41,8 @@ permissions:
 jobs:
   # Re-entrancy:
   # - `version` is re-entrant because it doesn't commit/create PR if the version doesn't change,
-  #   and the version doesn't change if we're already on the final version specified by the branch name.
+  #   and the version doesn't change if we're already on the final version specified by the branch name,
+  #   or on an rc version with `increase-rc` turned off.
   # - `update-docs` is re-entrant because it overwrites history of the `gh-pages` branch, so any
   #   previous partial update will just be overwritten by the next successful run.
   # - `publish-crates` is re-entrant because the `crates.py` script correctly handles publish failures
@@ -87,7 +93,13 @@ jobs:
         env:
           GIT_REF: ${{ github.ref }}
           RELEASE_TYPE: ${{ inputs.release-type }}
+          INCREASE_RC: ${{ inputs.increase-rc }}
         run: |
+          if [[ "$INCREASE_RC" == "false" && "$RELEASE_TYPE" != "rc" ]]; then
+            echo "::error::Turning off 'increase-rc' only applies to 'rc' releases, not '$RELEASE_TYPE'."
+            exit 1
+          fi
+
           if [[ ! "$GIT_REF" =~ ^refs/heads/prepare-release-[0-9]+\.[0-9]+\.[0-9]+(-alpha\.[0-9]+)?$ ]]; then
             echo "::error::Releases must run from a 'prepare-release-x.y.z' or 'prepare-release-x.y.z-alpha.N' branch. Current ref: $GIT_REF"
             exit 1
@@ -145,9 +157,17 @@ jobs:
             pixi run python scripts/ci/crates.py version --exact $release_version
           fi
 
-          echo If this is an 'rc', additionally set add '-rc.N'. This will also bump the 'N' if '-rc.N' is already set…
+          echo If this is an 'rc', additionally set add '-rc.N'. This will also bump the 'N' if '-rc.N' is already set, unless 'increase-rc' is off…
           if [ ${{ inputs.release-type }} = "rc" ]; then
-            pixi run python scripts/ci/crates.py version --bump prerelease --pre-id=rc
+            if [ ${{ inputs.increase-rc }} = "false" ]; then
+              # The tag check below rejects an rc that already published everything.
+              if [[ "$previous" != *-rc.* ]]; then
+                echo "::error::Turning off 'increase-rc' needs a branch that is already at an rc version, not $previous."
+                exit 1
+              fi
+            else
+              pixi run python scripts/ci/crates.py version --bump prerelease --pre-id=rc
+            fi
           fi
 
           echo If this is an 'alpha', set the version to whatever is in the git branch name.…

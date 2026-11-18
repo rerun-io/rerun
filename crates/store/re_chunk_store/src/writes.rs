@@ -779,8 +779,6 @@ impl ChunkStore {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
-
     use re_chunk::{TimeInt, TimePoint, Timeline};
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use re_log_types::{build_frame_nr, build_log_time};
@@ -1184,7 +1182,7 @@ mod tests {
 
         let entity_path = EntityPath::from("this/that");
 
-        let timepoint = TimePoint::default().with(Timeline::log_tick(), 42);
+        let timepoint = TimePoint::STATIC.with(Timeline::log_tick(), 42);
 
         let row_id1_1 = RowId::new();
         let row_id2_1 = RowId::new();

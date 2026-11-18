@@ -111,7 +111,7 @@ fn codec_chunk(id: u128, entity: &str, codec: VideoCodec) -> Arc<Chunk> {
         Chunk::builder_with_id(ChunkId::from_u128(id), entity)
             .with_serialized_batches(
                 RowId::from_u128(id << 32),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [vec![codec]
                     .try_serialized(VideoStream::descriptor_codec())
                     .unwrap()],

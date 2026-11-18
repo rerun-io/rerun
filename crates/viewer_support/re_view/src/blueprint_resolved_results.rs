@@ -770,7 +770,6 @@ impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedResults<'_> {
 // ---
 
 use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, TimelineName};
-use re_chunk_store::external::re_chunk;
 
 /// The iterator type backing [`BlueprintResolvedResultsExt::iter_required`] and [`BlueprintResolvedResultsExt::iter_optional`].
 pub struct HybridResultsChunkIter<'a> {

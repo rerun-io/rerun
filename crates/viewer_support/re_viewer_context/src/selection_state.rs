@@ -110,7 +110,7 @@ impl ApplicationSelectionState {
             && let Some(fallback_selection) = fallback_selection
         {
             re_log::trace!("Current selection invalid in this context; switching to fallback");
-            self.selection = ItemCollection::from(fallback_selection);
+            self.set_selection(fallback_selection);
         }
 
         // Hovering needs to be refreshed every frame: If it wasn't hovered last frame, it's no longer hovered!
@@ -259,4 +259,29 @@ impl ApplicationSelectionState {
 
 fn either_none_or_same<T: PartialEq>(a: Option<&T>, b: Option<&T>) -> bool {
     a.is_none() || b.is_none() || a == b
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn route_fallback_notifies_selection_change_once() {
+        let mut state = ApplicationSelectionState::default();
+        let item = Item::RedapServer(re_uri::Origin::test());
+
+        let change = state.on_frame_start(|item| Some(item.clone()), Some(item.clone()));
+
+        assert!(
+            matches!(change, SelectionChange::SelectionChanged(selection) if selection == &ItemCollection::from(item.clone())),
+            "Selecting the route fallback must notify consumers of the new selection"
+        );
+
+        state.on_frame_end();
+        let change = state.on_frame_start(|item| Some(item.clone()), Some(item));
+        assert!(
+            matches!(change, SelectionChange::NoChange),
+            "An unchanged route fallback must not trigger another reveal"
+        );
+    }
 }

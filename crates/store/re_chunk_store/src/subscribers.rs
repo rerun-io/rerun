@@ -348,10 +348,10 @@ mod tests {
     use ahash::HashSet;
     use re_chunk::{Chunk, RowId};
     use re_log_types::example_components::{MyColor, MyIndex, MyPoint, MyPoints};
-    use re_log_types::{StoreId, TimePoint, Timeline};
+    use re_log_types::{TimePoint, Timeline};
 
     use super::*;
-    use crate::{ChunkStore, ChunkStoreSubscriber, GarbageCollectionOptions};
+    use crate::GarbageCollectionOptions;
 
     /// A simple [`ChunkStoreSubscriber`] for test purposes that just accumulates [`ChunkStoreEvent`]s.
     #[derive(Debug)]
@@ -462,7 +462,7 @@ mod tests {
             Chunk::builder("entity_b")
                 .with_component_batches(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [
                         (
                             MyIndex::partial_descriptor(),

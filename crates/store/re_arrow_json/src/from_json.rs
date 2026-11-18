@@ -54,6 +54,7 @@ pub enum ValueFromJsonError {
     #[error("could not decode as Arrow type {datatype}: {err}")]
     Decode {
         datatype: DataType,
+
         #[source]
         err: ArrowError,
     },
@@ -62,6 +63,7 @@ pub enum ValueFromJsonError {
     #[error("could not build an Arrow array of type {datatype}: {err}")]
     BuildArray {
         datatype: DataType,
+
         #[source]
         err: ArrowError,
     },
@@ -69,6 +71,7 @@ pub enum ValueFromJsonError {
     #[error("could not encode as a batch of {component_type}: {err}")]
     ToArrow {
         component_type: ComponentType,
+
         #[source]
         err: re_sdk_types::SerializationError,
     },
@@ -76,6 +79,7 @@ pub enum ValueFromJsonError {
     #[error("not a valid batch of {component_type}: {err}")]
     Invalid {
         component_type: ComponentType,
+
         #[source]
         err: re_sdk_types::DeserializationError,
     },
@@ -462,7 +466,7 @@ mod tests {
         });
         for chunk in partial_chunks_from_json(
             &update,
-            &TimePoint::default(),
+            &TimePoint::STATIC,
             re_sdk_types::reflection::reflection(),
         )
         .unwrap()
@@ -481,7 +485,7 @@ mod tests {
         assert!(
             partial_chunks_from_json(
                 &json!({}),
-                &TimePoint::default(),
+                &TimePoint::STATIC,
                 re_sdk_types::reflection::reflection(),
             )
             .unwrap()
@@ -650,7 +654,7 @@ mod tests {
                 Some((field.component_descriptor(*name), placeholder))
             });
             let chunk = Chunk::builder(format!("archetypes/{}", name.short_name()))
-                .with_row(RowId::new(), TimePoint::default(), components)
+                .with_row(RowId::new(), TimePoint::STATIC, components)
                 .build()
                 .unwrap();
             original.add_chunk(&Arc::new(chunk)).unwrap();
@@ -737,7 +741,7 @@ mod tests {
         let chunks = chunks_from_json(
             &json,
             blueprint.storage_engine().store(),
-            &TimePoint::default(),
+            &TimePoint::STATIC,
             &reflection,
         )
         .unwrap();
@@ -752,7 +756,7 @@ mod tests {
         let error = chunks_from_json(
             &json!({ "/a": { "ViewBlueprint": {} } }),
             empty_blueprint().storage_engine().store(),
-            &TimePoint::default(),
+            &TimePoint::STATIC,
             &reflection,
         )
         .unwrap_err()
@@ -825,7 +829,7 @@ mod tests {
             chunks_from_json(
                 &json,
                 empty_blueprint().storage_engine().store(),
-                &TimePoint::default(),
+                &TimePoint::STATIC,
                 re_sdk_types::reflection::reflection(),
             )
             .unwrap_err()

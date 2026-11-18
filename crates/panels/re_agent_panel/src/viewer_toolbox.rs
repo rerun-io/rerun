@@ -1,4 +1,7 @@
 //! The viewer's own tools for a model-API agent: the viewer-control operations, run in-process.
+//!
+//! An agent harness reaches the same operations through `rerun mcp` instead, and its
+//! permission requests for them are judged by the same rules.
 
 use std::sync::Arc;
 
@@ -9,6 +12,7 @@ use re_log_channel::{UiCallback, ViewerControlError};
 use re_protos::viewer_control::v1alpha1::{
     ViewerControlRequest, ViewerControlResponse, viewer_control_response,
 };
+use re_viewer_context::CommandKind;
 use re_viewer_control_tools::{ScreenshotDelivery, TOOL_NAME_PREFIX};
 use serde_json::{Map, Value};
 
@@ -19,6 +23,10 @@ const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::Inline;
 /// time, so more than one waiting means the viewer has stopped serving them.
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_WAITING_CALLS: usize = 4;
+
+/// The operation that runs a UI command, which needs approval only for commands the user cannot
+/// easily undo. See [`CommandKind::is_easily_undone`].
+const RUN_COMMAND_OPERATION: &str = "run_command";
 
 /// Why a viewer-control tool call failed. The message is sent back to the model.
 #[derive(Debug, thiserror::Error)]
@@ -32,8 +40,14 @@ enum ViewerToolError {
     #[error("`{name}` failed: {message}")]
     Failed { name: String, message: String },
 
-    #[error("{message}")]
-    InvalidRequest { message: String },
+    #[error(transparent)]
+    InvalidRequest(re_viewer_control_tools::BuildRequestError),
+
+    #[error("`{name}` failed: {source}")]
+    InvalidResponse {
+        name: String,
+        source: re_viewer_control_tools::ResponseJsonError,
+    },
 
     #[error("The viewer is no longer running")]
     Stopped,
@@ -125,7 +139,7 @@ impl ViewerToolbox {
     ) -> Result<futures::channel::oneshot::Receiver<ViewerControlResult>, ViewerToolError> {
         let request =
             re_viewer_control_tools::build_request(operation, Some(arguments), SCREENSHOT_DELIVERY)
-                .map_err(|message| ViewerToolError::InvalidRequest { message })?;
+                .map_err(ViewerToolError::InvalidRequest)?;
 
         let (reply_tx, reply_rx) = futures::channel::oneshot::channel();
         let call = QueuedCall { request, reply_tx };
@@ -150,12 +164,23 @@ impl AgentToolbox for ViewerToolbox {
             .collect()
     }
 
-    fn requires_approval(&self, name: &str) -> bool {
+    fn requires_approval(&self, name: &str, arguments: &Map<String, Value>) -> bool {
         let operation = name.strip_prefix(TOOL_NAME_PREFIX);
-        self.tools
-            .iter()
-            .find(|tool| Some(tool.name.as_str()) == operation)
-            .is_none_or(|tool| tool.requires_approval)
+        if operation == Some(RUN_COMMAND_OPERATION) {
+            // An unknown command fails in the viewer anyway, but asking costs nothing.
+            return arguments
+                .get("id")
+                .and_then(Value::as_str)
+                .and_then(CommandKind::from_id)
+                .is_none_or(|command| !command.is_easily_undone());
+        }
+        operation.is_none_or(|operation| {
+            re_viewer_control_tools::call_effect(operation, arguments).requires_approval()
+        })
+    }
+
+    fn mcp_server_name(&self) -> Option<&str> {
+        Some(crate::MCP_SERVER_NAME)
     }
 
     fn call(
@@ -182,7 +207,11 @@ impl AgentToolbox for ViewerToolbox {
                 }
             };
             let response = answer
-                .map_err(|_canceled| ViewerToolError::Dropped { name: name.clone() })?
+                .map_err(
+                    |futures::channel::oneshot::Canceled| ViewerToolError::Dropped {
+                        name: name.clone(),
+                    },
+                )?
                 .map_err(|err| ViewerToolError::Failed {
                     name: name.clone(),
                     message: err.message,
@@ -196,7 +225,7 @@ impl AgentToolbox for ViewerToolbox {
                 }]);
             }
             let json = re_viewer_control_tools::response_json(&operation, &response)
-                .map_err(|message| ViewerToolError::Failed { name, message })?;
+                .map_err(|source| ViewerToolError::InvalidResponse { name, source })?;
             Ok(vec![ToolOutput::Text(json.to_string())])
         })
     }
@@ -204,7 +233,38 @@ impl AgentToolbox for ViewerToolbox {
 
 #[cfg(test)]
 mod tests {
+    use re_ui::UICommand;
+    use re_viewer_context::RecordingCommandKind;
+
     use super::*;
+
+    #[test]
+    fn only_commands_the_user_cannot_easily_undo_need_approval() {
+        let (calls_tx, _calls_rx) = crossbeam::channel::bounded(MAX_WAITING_CALLS);
+        let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
+        let needs_approval = |id: String| {
+            let arguments = Map::from_iter([("id".to_owned(), Value::from(id))]);
+            toolbox.requires_approval(
+                &format!("{TOOL_NAME_PREFIX}{RUN_COMMAND_OPERATION}"),
+                &arguments,
+            )
+        };
+
+        assert!(!needs_approval(
+            CommandKind::Ui(UICommand::ToggleBlueprintPanel).id()
+        ));
+        assert!(needs_approval(
+            CommandKind::Recording(RecordingCommandKind::Close).id()
+        ));
+        assert!(needs_approval(
+            CommandKind::Ui(UICommand::ImportFileIntoCurrentRecording).id()
+        ));
+        assert!(needs_approval("ui.no_such_command".to_owned()));
+
+        assert!(
+            !toolbox.requires_approval(&format!("{TOOL_NAME_PREFIX}set_location"), &Map::new())
+        );
+    }
 
     #[test]
     fn calls_the_agent_stopped_waiting_for_do_not_run() {
@@ -230,7 +290,7 @@ mod tests {
         let schema = toolbox
             .definitions()
             .into_iter()
-            .find(|tool| tool.name == "rerun_save_screenshot")
+            .find(|tool| tool.name == "viewer_save_screenshot")
             .expect("the screenshot tool")
             .input_schema;
         assert!(schema["properties"].get("file_path").is_none());

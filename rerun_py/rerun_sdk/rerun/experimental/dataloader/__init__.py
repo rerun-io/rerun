@@ -17,6 +17,7 @@ from ._shuffle import BlockShuffle, NoShuffle, SampleShuffle, ShuffleStrategy
 if TYPE_CHECKING:
     from ._iterable_dataset import RerunIterableDataset
     from ._map_dataset import RerunMapDataset
+    from ._metrics import DataloaderMetrics
     from ._pooled_batches import PooledBatchCollator
     from ._yuv import Yuv420Collator, Yuv420Frame
     from .decoders import (
@@ -33,6 +34,7 @@ __all__ = [
     "BlockShuffle",
     "ColumnDecoder",
     "DataSource",
+    "DataloaderMetrics",
     "DecodeRequest",
     "Field",
     "FieldBatch",
@@ -66,6 +68,7 @@ _LAZY_SUBMODULES = {
     "FieldBatch": ".decoders",
     "ImageDecoder": ".decoders",
     "NumericDecoder": ".decoders",
+    "DataloaderMetrics": "._metrics",
     "PooledBatchCollator": "._pooled_batches",
     "VideoFrameDecoder": ".decoders",
     "Yuv420Collator": "._yuv",
@@ -76,7 +79,8 @@ _LAZY_SUBMODULES = {
 }
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     submodule = _LAZY_SUBMODULES.get(name)
     if submodule is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

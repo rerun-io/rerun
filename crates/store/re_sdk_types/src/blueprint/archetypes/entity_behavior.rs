@@ -26,7 +26,8 @@ use ::std::borrow::Cow;
 
 /// **Archetype**: General visualization behavior of an entity.
 ///
-/// TODO(#6541): Fields of this archetype currently only have an effect when logged in the blueprint store.
+/// Its fields currently only have an effect when sent as part of a blueprint (e.g. as a view override), not when logged together with the data.
+/// See <https://github.com/rerun-io/rerun/issues/6541>.
 #[derive(Clone, Debug, Default, ::re_byte_size::SizeBytes)]
 pub struct EntityBehavior {
     /// Whether the entity can be interacted with.

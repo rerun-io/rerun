@@ -1,6 +1,6 @@
 use anyhow::Context as _;
 use arrow::array::{FixedSizeListBuilder, Float64Builder};
-use re_chunk::{Chunk, ChunkId, ChunkResult, EntityPath, RowId, TimePoint};
+use re_chunk::{Chunk, ChunkId, ChunkResult, EntityPath, TimePoint};
 use re_sdk_types::archetypes::{Scalars, SeriesLines};
 
 use crate::parsers::cdr;
@@ -54,9 +54,8 @@ impl<T: ScalarExtractor> ScalarMessageParser<T> {
     /// Helper function to create a metadata chunk containing the scalar field names.
     fn metadata_chunk(entity_path: EntityPath, field_names: &[String]) -> ChunkResult<Chunk> {
         Chunk::builder(entity_path)
-            .with_archetype(
-                RowId::new(),
-                TimePoint::default(), // static chunk
+            .with_archetype_auto_row(
+                TimePoint::STATIC,
                 &SeriesLines::new().with_names(field_names.to_vec()),
             )
             .build()

@@ -17,13 +17,34 @@ that catch teams off guard.
 
 ---
 
+## Install and version
+
+Always install with the `catalog` extra.
+Plain `rerun-sdk` fails at `CatalogClient(…)` with a missing `datafusion` dependency error.
+
+```sh
+uv run --with 'rerun-sdk[catalog]' python script.py
+```
+
+Match the SDK to the viewer or server.
+Pin `rerun-sdk[catalog]~=0.X.0`, using the minor version of the viewer's `viewer_version`.
+An inherited `VIRTUAL_ENV` or a cached resolve can pick an old release, such as 0.32, so print `rerun.__version__` first.
+
+Only if the user asks for the latest unreleased SDK, install it from the `main` build index:
+
+```sh
+uv pip install --index https://build.rerun.io/version/main/simple --reinstall-package rerun-sdk 'rerun-sdk[catalog]'
+```
+
+---
+
 ## Connect with a `rerun://` URL
 
 ```python
 from rerun.catalog import CatalogClient
 
 client = CatalogClient("rerun+https://api.example.cloud.rerun.io:443")
-dataset = client.get_dataset(id=dataset_id)
+dataset = client.get_dataset(name=dataset_name)  # or: client.get_dataset(id=dataset_id)
 ```
 
 `CatalogClient` takes a `rerun://` or `rerun+https://` URL, or

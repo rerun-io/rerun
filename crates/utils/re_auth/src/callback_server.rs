@@ -47,7 +47,7 @@ pub fn start_logout_server(
             // Wait up to 30 seconds for the redirect from WorkOS.
             let timeout = std::time::Duration::from_secs(30);
             if let Ok(Some(req)) = server.recv_timeout(timeout) {
-                eprintln!("{req:?}");
+                re_log::debug!("{req:?}");
                 let data = include_str!("./status_page.html").replace(
                     "$MESSAGE$",
                     "Successfully logged out. You can close this page now.",
@@ -139,6 +139,9 @@ pub enum Error {
 
     #[error("HTTP server error: {0}")]
     Http(std::io::Error),
+
+    #[error("failed to write to stdout")]
+    Stdout(#[source] std::io::Error),
 
     #[error(transparent)]
     Generic(#[from] Box<dyn std::error::Error + Send + Sync + 'static>),

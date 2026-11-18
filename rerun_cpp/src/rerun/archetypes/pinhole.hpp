@@ -26,7 +26,7 @@
 namespace rerun::archetypes {
     /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
     ///
-    /// If `archetypes::Transform3D` is logged for the same child/parent relationship (e.g. for the camera extrinsics), it takes precedence over `archetypes::Pinhole`.
+    /// A `archetypes::Transform3D` logged for the same child/parent relationship (e.g. for the camera extrinsics) is applied first, then the pinhole projection.
     ///
     /// If you use named transform frames via the `child_frame` and `parent_frame` fields, you don't have to use `archetypes::CoordinateFrame`
     /// as it is the case with other visualizations: for any entity with an `archetypes::Pinhole` the viewer will always visualize it

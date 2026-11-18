@@ -5,9 +5,9 @@ use std::str::FromStr as _;
 
 use re_integration_test::{TEST_DATASET_ID, TestServer};
 use re_protos::cloud::v1alpha1::ext::{GetSchemasRequest, ScanDatasetManifestDataframe};
-use re_protos::common::v1alpha1::ext::SchemaId;
 use re_sdk::external::re_log_types::EntryId;
 use re_sdk::external::re_tuid::Tuid;
+use re_sorbet::SchemaId;
 
 /// More IDs than one request may carry are split across several requests.
 #[tokio::test(flavor = "multi_thread")]
@@ -37,7 +37,7 @@ async fn get_schemas_splits_ids_over_the_request_limit() {
                 .iter_owned()
                 .collect::<Vec<_>>()
         })
-        .map(|sha256| SchemaId::from_sha256(sha256.expect("registered layers have a schema hash")))
+        .map(|sha256| sha256.expect("registered layers have a schema hash"))
         .collect();
 
     let unknown = (0..GetSchemasRequest::MAX_SCHEMA_IDS as u32).map(|index| {

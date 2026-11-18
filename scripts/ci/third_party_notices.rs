@@ -4,6 +4,7 @@
 edition = "2024"
 
 [dependencies]
+anyhow = "1"
 serde_json = "1"
 sha2 = "0.10"
 similar = "2.7"
@@ -21,13 +22,14 @@ use std::sync::OnceLock;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
+use anyhow::Context as _;
 use serde_json::Value;
 use sha2::{Digest as _, Sha256};
 use similar::{Algorithm, DiffOp};
 use spdx::detection::{LicenseType, Store, TextData};
 use spdx::{Expression, LicenseId, LicenseItem, Licensee, ParseMode};
 
-type Result<T, E = String> = std::result::Result<T, E>;
+use anyhow::Result;
 
 const USAGE: &str = "usage: third_party_notices.rs <output> [--locked] [--frozen] [--offline] [--all-features] [--no-default-features] [--features F]… [--target T]… [-m <Cargo.toml>] [-c <about.toml>]";
 
@@ -138,7 +140,7 @@ struct Stats {
 
 fn main() {
     if let Err(err) = run() {
-        eprintln!("error: {err}");
+        eprintln!("error: {err:#}");
         std::process::exit(1);
     }
 }
@@ -146,12 +148,10 @@ fn main() {
 fn run() -> Result<()> {
     let started = Instant::now();
     let args = parse_args()?;
-    let output = args.output.clone().ok_or(USAGE)?;
+    let output = args.output.clone().context(USAGE)?;
     let manifest_path = match args.manifest_path.clone() {
         Some(path) => path,
-        None => std::env::current_dir()
-            .map_err(|err| err.to_string())?
-            .join("Cargo.toml"),
+        None => std::env::current_dir()?.join("Cargo.toml"),
     };
     let config = load_config(args.config.as_deref(), &manifest_path)?;
 
@@ -165,7 +165,7 @@ fn run() -> Result<()> {
 
     let packages: Vec<&Value> = metadata["packages"]
         .as_array()
-        .ok_or("cargo metadata output has no packages")?
+        .context("cargo metadata output has no packages")?
         .iter()
         .filter(|p| {
             closure.contains(&(
@@ -182,12 +182,12 @@ fn run() -> Result<()> {
     for result in results {
         match result {
             Ok(krate) => crates.push(krate),
-            Err(err) => errors.push(err),
+            Err(err) => errors.push(format!("{err:#}")),
         }
     }
     if !errors.is_empty() {
         errors.sort();
-        return Err(errors.join("\n"));
+        anyhow::bail!("{}", errors.join("\n"));
     }
     crates.sort_by(|a, b| {
         let key = |c: &Crate<'_>| {
@@ -200,7 +200,7 @@ fn run() -> Result<()> {
     });
 
     let markdown = render(&crates);
-    std::fs::write(&output, markdown).map_err(|err| format!("{}: {err}", output.display()))?;
+    std::fs::write(&output, markdown).with_context(|| output.display().to_string())?;
 
     eprintln!(
         "{} crates, {} candidate files ({} identified by name, {} by content); cargo took {:.2?}, total {:.2?}",
@@ -218,7 +218,7 @@ fn parse_args() -> Result<Args> {
     let mut args = Args::default();
     let mut it = std::env::args().skip(1);
     while let Some(arg) = it.next() {
-        let mut value = |flag: &str| it.next().ok_or_else(|| format!("{flag} needs a value"));
+        let mut value = |flag: &str| it.next().with_context(|| format!("{flag} needs a value"));
         match arg.as_str() {
             "--locked" | "--frozen" | "--offline" | "--all-features" | "--no-default-features" => {
                 args.cargo.push(arg);
@@ -233,7 +233,7 @@ fn parse_args() -> Result<Args> {
             output if !output.starts_with('-') && args.output.is_none() => {
                 args.output = Some(output.into())
             }
-            other => return Err(format!("unknown argument '{other}'\n{USAGE}")),
+            other => anyhow::bail!("unknown argument '{other}'\n{USAGE}"),
         }
     }
     Ok(args)
@@ -254,11 +254,10 @@ fn load_config(explicit: Option<&Path>, manifest_path: &Path) -> Result<Config> 
             crates: HashMap::new(),
         });
     };
-    let contents =
-        std::fs::read_to_string(&path).map_err(|err| format!("{}: {err}", path.display()))?;
+    let contents = std::fs::read_to_string(&path).with_context(|| path.display().to_string())?;
     let table: toml::Table = contents
         .parse()
-        .map_err(|err| format!("{}: {err}", path.display()))?;
+        .with_context(|| path.display().to_string())?;
 
     let mut config = Config {
         accepted: Vec::new(),
@@ -269,13 +268,13 @@ fn load_config(explicit: Option<&Path>, manifest_path: &Path) -> Result<Config> 
             "accepted" => config.accepted = parse_licensees(value)?,
             "ignore-dev-dependencies" | "ignore-build-dependencies" => {
                 if value.as_bool() != Some(true) {
-                    return Err(format!("`{key} = false` is not supported"));
+                    anyhow::bail!("`{key} = false` is not supported");
                 }
             }
             _ => {
                 let table = value
                     .as_table()
-                    .ok_or_else(|| format!("unsupported config key `{key}`"))?;
+                    .with_context(|| format!("unsupported config key `{key}`"))?;
                 config
                     .crates
                     .insert(key.clone(), parse_crate_config(key, table)?);
@@ -288,12 +287,11 @@ fn load_config(explicit: Option<&Path>, manifest_path: &Path) -> Result<Config> 
 fn parse_licensees(value: &toml::Value) -> Result<Vec<Licensee>> {
     value
         .as_array()
-        .ok_or("`accepted` must be an array")?
+        .context("`accepted` must be an array")?
         .iter()
         .map(|v| {
-            let s = v.as_str().ok_or("`accepted` entries must be strings")?;
-            Licensee::parse_mode(s, CONFIG_MODE)
-                .map_err(|err| format!("invalid licensee `{s}`: {err}"))
+            let s = v.as_str().context("`accepted` entries must be strings")?;
+            Licensee::parse_mode(s, CONFIG_MODE).with_context(|| format!("invalid licensee `{s}`"))
         })
         .collect()
 }
@@ -306,7 +304,7 @@ fn parse_crate_config(name: &str, table: &toml::Table) -> Result<CrateConfig> {
             "clarify" => {
                 let clarify = value
                     .as_table()
-                    .ok_or_else(|| format!("{name}.clarify must be a table"))?;
+                    .with_context(|| format!("{name}.clarify must be a table"))?;
                 let license =
                     parse_config_expr(clarify.get("license"), &format!("{name}.clarify.license"))?;
                 let mut files = Vec::new();
@@ -316,17 +314,17 @@ fn parse_crate_config(name: &str, table: &toml::Table) -> Result<CrateConfig> {
                         "files" => {
                             for file in v
                                 .as_array()
-                                .ok_or_else(|| format!("{name}.clarify.files must be an array"))?
+                                .with_context(|| format!("{name}.clarify.files must be an array"))?
                             {
                                 files.push(parse_clarify_file(name, file)?);
                             }
                         }
-                        other => return Err(format!("unsupported key `{name}.clarify.{other}`")),
+                        other => anyhow::bail!("unsupported key `{name}.clarify.{other}`"),
                     }
                 }
                 config.clarify = Some(Clarify { license, files });
             }
-            other => return Err(format!("unsupported key `{name}.{other}`")),
+            other => anyhow::bail!("unsupported key `{name}.{other}`"),
         }
     }
     Ok(config)
@@ -335,7 +333,7 @@ fn parse_crate_config(name: &str, table: &toml::Table) -> Result<CrateConfig> {
 fn parse_clarify_file(name: &str, value: &toml::Value) -> Result<ClarifyFile> {
     let table = value
         .as_table()
-        .ok_or_else(|| format!("{name}.clarify.files entries must be tables"))?;
+        .with_context(|| format!("{name}.clarify.files entries must be tables"))?;
     let string = |key: &str| {
         table
             .get(key)
@@ -344,7 +342,7 @@ fn parse_clarify_file(name: &str, value: &toml::Value) -> Result<ClarifyFile> {
     };
     Ok(ClarifyFile {
         path: string("path")
-            .ok_or_else(|| format!("{name}.clarify.files entry is missing `path`"))?
+            .with_context(|| format!("{name}.clarify.files entry is missing `path`"))?
             .into(),
         license: match table.get("license") {
             Some(v) => Some(parse_config_expr(
@@ -356,15 +354,15 @@ fn parse_clarify_file(name: &str, value: &toml::Value) -> Result<ClarifyFile> {
         start: string("start"),
         end: string("end"),
         checksum: string("checksum")
-            .ok_or_else(|| format!("{name}.clarify.files entry is missing `checksum`"))?,
+            .with_context(|| format!("{name}.clarify.files entry is missing `checksum`"))?,
     })
 }
 
 fn parse_config_expr(value: Option<&toml::Value>, what: &str) -> Result<Expression> {
     let s = value
         .and_then(toml::Value::as_str)
-        .ok_or_else(|| format!("{what} must be a string"))?;
-    Expression::parse_mode(s, CONFIG_MODE).map_err(|err| format!("{what}: {err}"))
+        .with_context(|| format!("{what} must be a string"))?;
+    Expression::parse_mode(s, CONFIG_MODE).context(what.to_owned())
 }
 
 fn cargo(args: &[&str], extra: &[String]) -> Result<String> {
@@ -372,19 +370,21 @@ fn cargo(args: &[&str], extra: &[String]) -> Result<String> {
         .args(args)
         .args(extra)
         .output()
-        .map_err(|err| format!("failed to run cargo: {err}"))?;
+        .context("failed to run cargo")?;
     if !output.status.success() {
-        return Err(format!(
+        anyhow::bail!(
             "`cargo {}` failed:\n{}",
             args.join(" "),
             String::from_utf8_lossy(&output.stderr)
-        ));
+        );
     }
-    String::from_utf8(output.stdout).map_err(|err| err.to_string())
+    Ok(String::from_utf8(output.stdout)?)
 }
 
 fn cargo_metadata(args: &Args, manifest_path: &Path) -> Result<Value> {
-    let manifest_path = manifest_path.to_str().ok_or("manifest path is not utf-8")?;
+    let manifest_path = manifest_path
+        .to_str()
+        .context("manifest path is not utf-8")?;
     let stdout = cargo(
         &[
             "metadata",
@@ -395,11 +395,13 @@ fn cargo_metadata(args: &Args, manifest_path: &Path) -> Result<Value> {
         ],
         &args.cargo,
     )?;
-    serde_json::from_str(&stdout).map_err(|err| err.to_string())
+    Ok(serde_json::from_str(&stdout)?)
 }
 
 fn cargo_tree(args: &Args, manifest_path: &Path) -> Result<HashSet<(String, String)>> {
-    let manifest_path = manifest_path.to_str().ok_or("manifest path is not utf-8")?;
+    let manifest_path = manifest_path
+        .to_str()
+        .context("manifest path is not utf-8")?;
     let mut tree_args = vec![
         "tree",
         "--edges",
@@ -482,7 +484,7 @@ fn process_crate<'a>(package: &'a Value, config: &Config, stats: &Stats) -> Resu
     let label = format!("{name} {version}");
     let root = Path::new(str_field(package, "manifest_path"))
         .parent()
-        .ok_or_else(|| format!("{label}: manifest path has no parent"))?;
+        .with_context(|| format!("{label}: manifest path has no parent"))?;
     let crate_config = config.crates.get(name);
 
     let clarify = crate_config.and_then(|c| c.clarify.as_ref());
@@ -490,11 +492,9 @@ fn process_crate<'a>(package: &'a Value, config: &Config, stats: &Stats) -> Resu
         (Some(clarify), _) => clarify.license.clone(),
         (None, Some(license)) => {
             Expression::parse_mode(&license.replace('/', " OR "), EXPR_MODE)
-                .map_err(|err| format!("{label}: invalid license expression `{license}`: {err}"))?
+                .with_context(|| format!("{label}: invalid license expression `{license}`"))?
         }
-        (None, None) => {
-            license_file_expression(root, package).map_err(|err| format!("{label}: {err}"))?
-        }
+        (None, None) => license_file_expression(root, package).context(label.clone())?,
     };
 
     let accepted: Vec<&Licensee> = std::iter::chain(
@@ -506,14 +506,14 @@ fn process_crate<'a>(package: &'a Value, config: &Config, stats: &Stats) -> Resu
         expression.evaluate_with_failures(|req| accepted.iter().any(|l| l.satisfies(req)))
     {
         let failed: Vec<_> = failed.iter().map(|r| r.req.to_string()).collect();
-        return Err(format!(
+        anyhow::bail!(
             "{label}: `{expression}` is not accepted (rejected: {})",
             failed.join(", ")
-        ));
+        );
     }
     let requirements = expression
         .minimized_requirements(accepted.iter().copied())
-        .map_err(|err| format!("{label}: {err}"))?;
+        .context(label.clone())?;
     let requirements: Vec<LicenseId> = requirements
         .into_iter()
         .filter_map(|req| match req.license {
@@ -529,7 +529,7 @@ fn process_crate<'a>(package: &'a Value, config: &Config, stats: &Stats) -> Resu
     walk(root, &mut paths);
     let notices = read_notices(root, &paths);
     let files = match clarify {
-        Some(clarify) => clarified_files(root, clarify).map_err(|err| format!("{label}: {err}"))?,
+        Some(clarify) => clarified_files(root, clarify).context(label.clone())?,
         None => scan_license_files(paths, &expr_ids(&expression), &requirements, stats),
     };
 
@@ -544,12 +544,11 @@ fn process_crate<'a>(package: &'a Value, config: &Config, stats: &Stats) -> Resu
 fn license_file_expression(root: &Path, package: &Value) -> Result<Expression> {
     let license_file = package["license_file"]
         .as_str()
-        .ok_or("neither `license` nor `license-file` is set")?;
-    let text = std::fs::read_to_string(root.join(license_file))
-        .map_err(|err| format!("{license_file}: {err}"))?;
+        .context("neither `license` nor `license-file` is set")?;
+    let text = std::fs::read_to_string(root.join(license_file)).context(license_file.to_owned())?;
     let id = classify_text(&text)
-        .ok_or_else(|| format!("could not identify the license in `{license_file}`"))?;
-    Expression::parse(id.name).map_err(|err| err.to_string())
+        .with_context(|| format!("could not identify the license in `{license_file}`"))?;
+    Ok(Expression::parse(id.name)?)
 }
 
 fn clarified_files(root: &Path, clarify: &Clarify) -> Result<Vec<LicenseFile>> {
@@ -558,19 +557,19 @@ fn clarified_files(root: &Path, clarify: &Clarify) -> Result<Vec<LicenseFile>> {
         .iter()
         .map(|file| {
             let path = root.join(&file.path);
-            let contents = std::fs::read_to_string(&path)
-                .map_err(|err| format!("{}: {err}", path.display()))?;
+            let contents =
+                std::fs::read_to_string(&path).with_context(|| path.display().to_string())?;
             let start = match &file.start {
                 Some(start) => contents
                     .find(start.as_str())
-                    .ok_or_else(|| format!("`{start}` not found in {}", path.display()))?,
+                    .with_context(|| format!("`{start}` not found in {}", path.display()))?,
                 None => 0,
             };
             let end = match &file.end {
                 Some(end) => {
                     contents[start..]
                         .find(end.as_str())
-                        .ok_or_else(|| format!("`{end}` not found in {}", path.display()))?
+                        .with_context(|| format!("`{end}` not found in {}", path.display()))?
                         + start
                         + end.len()
                 }
@@ -579,11 +578,11 @@ fn clarified_files(root: &Path, clarify: &Clarify) -> Result<Vec<LicenseFile>> {
             let text = &contents[start..end];
             let checksum = format!("{:x}", Sha256::digest(text.as_bytes()));
             if checksum != file.checksum {
-                return Err(format!(
+                anyhow::bail!(
                     "checksum mismatch for {}: expected {}, got {checksum}",
                     path.display(),
                     file.checksum
-                ));
+                );
             }
             Ok(LicenseFile {
                 ids: expr_ids(file.license.as_ref().unwrap_or(&clarify.license)),

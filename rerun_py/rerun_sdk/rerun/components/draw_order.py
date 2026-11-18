@@ -22,6 +22,17 @@ class DrawOrder(encodings.Float32, ComponentMixin):
     Within an entity draw order is governed by the order of the components.
 
     Draw order for entities with the same draw order is generally undefined.
+
+    If no draw order is set, the viewer uses these defaults:
+    * -20: [`archetypes.DepthImage`][rerun.archetypes.DepthImage], [`archetypes.EncodedDepthImage`][rerun.archetypes.EncodedDepthImage]
+    * -15: [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference], [`archetypes.VideoStream`][rerun.archetypes.VideoStream]
+    * -10: [`archetypes.Image`][rerun.archetypes.Image], [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage], [`archetypes.GridMap`][rerun.archetypes.GridMap]
+    * 0: [`archetypes.SegmentationImage`][rerun.archetypes.SegmentationImage]
+    * 10: [`archetypes.Boxes2D`][rerun.archetypes.Boxes2D], [`archetypes.Ellipses2D`][rerun.archetypes.Ellipses2D]
+    * 20: [`archetypes.Arrows2D`][rerun.archetypes.Arrows2D], [`archetypes.LineStrips2D`][rerun.archetypes.LineStrips2D]
+    * 30: [`archetypes.Points2D`][rerun.archetypes.Points2D]
+
+    For example, to draw an image on top of a segmentation image, give the image a draw order above 0.
     """
 
     _BATCH_TYPE = None

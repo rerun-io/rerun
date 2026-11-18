@@ -10,7 +10,7 @@ Checks:
 - website: rerun.io/docs and rerun.io/viewer serve the release, rerun.io/docs/changelog redirects to its changeset,
   and app.rerun.io, the changeset page, and the Python reference docs exist for it.
 - landing: rerun-io/landing embeds the released @rerun-io/web-viewer.
-  Dependabot opens that bump PR some time after the npm publish and it needs a manual merge,
+  Dependabot opens that bump PR some time after the npm publish and it merges itself once its CI is green,
   so an outdated or unreadable (private repo) version is only a warning.
 - docs-latest: the `docs-latest` branch contains the release tag.
 - gradio: rerun-io/gradio-rerun-viewer has a published release with the same version tag.
@@ -228,7 +228,7 @@ def check_landing(version: str) -> str:
     if embedded != version:
         raise CheckWarning(
             f"{LANDING_REPO} embeds @rerun-io/web-viewer {embedded}: "
-            f"merge the Dependabot bump at https://github.com/{LANDING_REPO}/pulls"
+            f"check the CI of the Dependabot bump at https://github.com/{LANDING_REPO}/pulls"
         )
     return f"embeds @rerun-io/web-viewer {version}"
 

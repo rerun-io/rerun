@@ -3,11 +3,11 @@
 
 /// 3D line strips with positions and optional colors, radii, labels, etc.
 ///
-/// \example archetypes/line_strips3d_simple !api title="Simple example" image="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1200w.png"
-/// \example archetypes/line_strips3d_segments_simple !api title="Many individual segments" image="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1200w.png"
-/// \example archetypes/line_strips3d_batch title="Many strips" image="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/1200w.png"
-/// \example archetypes/line_strips3d_ui_radius title="Lines with scene & UI radius each" image="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1200w.png"
-/// \example archetypes/line_strips3d_time_window missing="cpp,rs" title="Time-windowed trails (e.g. Trajectories)" image="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png"
+/// \example archetypes/line_strips3d_simple !api title="Simple example" image="https://static.rerun.io/line_strip3d_simple/13036c0e71f78d3cec37d5724f97b47c4cf3c429/1200w.png" alt="3D view showing one continuous green line strip zigzagging through space"
+/// \example archetypes/line_strips3d_segments_simple !api title="Many individual segments" image="https://static.rerun.io/line_segment3d_simple/aa800b2a6e6a7b8e32e762b42861bae36f5014bb/1200w.png" alt="3D view showing four separate green line segments, each drawn between its own pair of points"
+/// \example archetypes/line_strips3d_batch title="Many strips" image="https://static.rerun.io/line_strip3d_batch/15e8ff18a6c95a3191acb0eae6eb04adea3b4874/1200w.png" alt="3D view with a thick red line strip labeled one strip here and a thin green zigzag strip labeled and one strip there"
+/// \example archetypes/line_strips3d_ui_radius title="Lines with scene & UI radius each" image="https://static.rerun.io/line_strip3d_ui_radius/36b98f47e45747b5a3601511ff39b8d74c61d120/1200w.png" alt="3D view with a blue and a thicker red zigzag line strip, comparing radii given in scene units and in UI points"
+/// \example archetypes/line_strips3d_time_window missing="cpp,rs" title="Time-windowed trails (e.g. Trajectories)" image="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png" alt="3D view with a ground grid showing a thick blue curved trail and a thinner orange one, trajectories limited to a time window"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]
 #[docs(view_types = "Spatial3DView, Spatial2DView: if logged above active projection")]

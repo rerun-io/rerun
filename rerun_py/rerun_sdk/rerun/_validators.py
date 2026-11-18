@@ -47,35 +47,40 @@ def find_non_empty_dim_indices(shape: list[int]) -> list[int]:
     return list(range(min, max + 1))
 
 
-def flat_np_float32_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.float32]:
+# `data` may be a sequence of our own classes (e.g. `[Vec3D(…), …]`), which `npt.ArrayLike` does not cover.
+def flat_np_float32_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.float32]:  # noqa: ANN401
     """Converts to a flat float numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
     array = to_np_float32(data)
     return flat_np_array_from_array_like(array, dimension)
 
 
-def flat_np_float64_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.float64]:
+# `data` may be a sequence of our own classes (e.g. `[Vec3D(…), …]`), which `npt.ArrayLike` does not cover.
+def flat_np_float64_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.float64]:  # noqa: ANN401
     """Converts to a flat float numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
     array = to_np_float64(data)
     return flat_np_array_from_array_like(array, dimension)
 
 
-def flat_np_int32_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.int32]:
+# `data` may be a sequence of our own classes (e.g. `[Vec3D(…), …]`), which `npt.ArrayLike` does not cover.
+def flat_np_int32_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.int32]:  # noqa: ANN401
     """Converts to a flat int numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
     array = to_np_int32(data)
     return flat_np_array_from_array_like(array, dimension)
 
 
-def flat_np_uint32_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.uint32]:
+# `data` may be a sequence of our own classes (e.g. `[Vec3D(…), …]`), which `npt.ArrayLike` does not cover.
+def flat_np_uint32_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.uint32]:  # noqa: ANN401
     """Converts to a flat uint numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
     array = to_np_uint32(data)
     return flat_np_array_from_array_like(array, dimension)
 
 
-def flat_np_uint64_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.uint64]:
+# `data` may be a sequence of our own classes (e.g. `[Vec3D(…), …]`), which `npt.ArrayLike` does not cover.
+def flat_np_uint64_array_from_array_like(data: Any, dimension: int) -> npt.NDArray[np.uint64]:  # noqa: ANN401
     """Converts to a flat uint numpy array from an arbitrary vector, validating for an expected dimensionality."""
 
     array = to_np_uint64(data)

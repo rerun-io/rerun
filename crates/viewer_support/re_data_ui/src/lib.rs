@@ -118,8 +118,9 @@ pub trait EntityDataUi {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        component_descriptor: &ComponentDescriptor,
-        row_id: Option<RowId>,
+        target_component_descriptor: &ComponentDescriptor,
+        source_row_id: Option<RowId>,
+        source: &re_viewer_context::VisualizerComponentSource,
     );
 }
 
@@ -133,8 +134,9 @@ where
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        _component_descriptor: &ComponentDescriptor,
-        _row_id: Option<RowId>,
+        _target_component_descriptor: &ComponentDescriptor,
+        _source_row_id: Option<RowId>,
+        _source: &re_viewer_context::VisualizerComponentSource,
     ) {
         // This ensures that UI state is maintained per entity. For example, the collapsed state for
         // `AnnotationContext` component is not saved by all instances of the component.

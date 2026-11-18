@@ -76,6 +76,7 @@ pub struct PostHogIdentifyEvent<'a> {
     event: &'a str,
     distinct_id: &'a str,
     properties: HashMap<&'a str, serde_json::Value>,
+
     #[serde(rename = "$set")]
     set: HashMap<&'a str, serde_json::Value>,
 }

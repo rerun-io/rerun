@@ -11,7 +11,7 @@
 /// If there's more instance poses than lengths & radii, the last capsule's orientation will be repeated for the remaining poses.
 /// Orienting and placing capsules forms a separate transform that is applied prior to [`rerun::archetypes::InstancePoses3D`] and [`rerun::archetypes::Transform3D`].
 ///
-/// \example archetypes/capsules3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png"
+/// \example archetypes/capsules3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png" alt="3D view with five solid capsules from red to blue, growing longer and tilting further from left to right"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Spatial 3D")]

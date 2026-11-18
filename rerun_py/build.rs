@@ -1,3 +1,5 @@
+#![expect(clippy::print_stderr)] // Output of a `build.rs` script
+
 fn main() {
     // Required for `cargo build` to work on mac: https://pyo3.rs/main/building-and-distribution#macos
     pyo3_build_config::add_extension_module_link_args();

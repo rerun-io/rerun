@@ -104,7 +104,8 @@ everything else is generic stream mechanics (`rerun-chunk-processing`).
 
 Merge the model stream and the FK stream, `collect(optimize=OBJECT_STORE)`, and
 `write_rrd(..., recording_id=<segment_id>)`. The `recording_id` must equal the
-base segment id or the layer never attaches; `application_id` is discarded on
+base segment id or the layer never attaches, unless it is registered with
+`register(…, segment_id=[<segment_id>])`; `application_id` is discarded on
 registration.
 
 ## Mapping joint state to URDF joints (you supply this; the data will not)
@@ -318,6 +319,8 @@ urdf.stream().collect(optimize=OptimizationProfile.OBJECT_STORE).write_rrd(
 asset_id = dataset.register_asset("s3://bucket/so100_model.rrd")  # uri must be readable by the server
 ```
 
+For a bucket on an S3-compatible provider outside AWS (Cloudflare R2, MinIO, …), also pass `object_store_config=` with the store's name on the Hub deployment.
+
 The split is along static vs temporal: the **model** is an asset, and the **FK transforms** stay a per-segment layer keyed by `recording_id`.
 Keeping `include_joint_transforms=True` in the asset costs nothing and gives the rest pose for segments or time ranges the FK layer does not cover.
 
@@ -331,7 +334,7 @@ Without a catalog, the same split still pays: write the model RRD once and open 
 
 1. Empty layer, no error: dead joint-state source (decoded to zero rows; see the importer skill for your format) or wrong `JOINT_SOURCE_PATH`/component name.
 2. Confident wrong pose: joint count, order, or units wrong.
-3. Layer writes but never attaches: `recording_id != segment_id`.
+3. Layer writes but never attaches: `recording_id != segment_id`, and `register()` got no `segment_id`.
 4. Frames collide: two robots sharing a `frame_prefix`.
 5. Scene looks merged at the origin: unconnected roots logged as identity without a calibration edge.
 6. Catalog ingest rejects or misorders chunks: `OBJECT_STORE` optimization skipped.
@@ -344,7 +347,7 @@ Without a catalog, the same split still pays: write the model RRD once and open 
 
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing` (FK two-lens pattern, two robots + scene URDFs, prefixes, recoloring, calibration offsets)
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf` (classic logging API: `log_urdf_to_recording`, per-joint `compute_transform`)
-- [Catalog object model: assets](https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets) (`register_asset`, the limits, and how assets are read back)
+- [Catalog object model: assets](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets) (`register_asset`, the limits, and how assets are read back)
 - `rerun-data-model` (the mapping table this skill consumes)
 - the importer skill for your joint-state source format (making the source readable)
 - `rerun-chunk-processing` (lens/stream, write/optimize mechanics)

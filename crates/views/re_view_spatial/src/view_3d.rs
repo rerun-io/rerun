@@ -20,7 +20,7 @@ use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, IndicatedEntities, PerVisualizerType, QueryContext, RecommendedView,
     RecommendedVisualizers, ViewClass, ViewClassRegistryError, ViewContext, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSpawnContext, ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
     ViewSystemIdentifier, ViewerContext, VisualizableReason,
 };
 use re_viewport_blueprint::ViewProperty;
@@ -371,7 +371,7 @@ impl ViewClass for SpatialView3D {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: ViewSpawnContext,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
@@ -381,7 +381,7 @@ impl ViewClass for SpatialView3D {
         } = IndicatedVisualizableEntities::new(
             ctx,
             Self::identifier(),
-            include_entity,
+            spawn_context,
             |indicated_entities| {
                 // ViewCoordinates is a strong indicator that a 3D view is needed.
                 // Note that if the root has `ViewCoordinates`, this will stop the root splitting heuristic
@@ -392,18 +392,22 @@ impl ViewClass for SpatialView3D {
                 // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
                 // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
                 let engine = ctx.recording_engine();
-                engine.store().entity_tree().visit_children_recursively(|path| {
-                    if let Some(components) = engine.schema().all_components_for_entity(path)
-                        && components.iter().any(|&component| {
-                            archetypes::Pinhole::all_components().iter().any(|c| c.component == component)
-                            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
-                                || component
-                                    == archetypes::ViewCoordinates::descriptor_xyz().component
-                        })
-                    {
-                        indicated_entities.insert(path.clone());
-                    }
-                });
+                engine
+                    .store()
+                    .entity_tree()
+                    .visit_children_recursively(|path| {
+                        if let Some(components) = engine.schema().all_components_for_entity(path)
+                            && components.iter().any(|&component| {
+                                archetypes::Pinhole::all_components()
+                                    .iter()
+                                    .any(|c| c.component == component)
+                                    || component
+                                        == archetypes::ViewCoordinates::descriptor_xyz().component
+                            })
+                        {
+                            indicated_entities.insert(path.clone());
+                        }
+                    });
             },
         );
 
@@ -414,13 +418,19 @@ impl ViewClass for SpatialView3D {
             ViewSpawnHeuristics::new(
                 topo.iter_subspaces()
                     .filter_map(|subspace| {
-                        if !subspace.supports_3d_content() {
+                        if !subspace.supports_3d_content()
+                            || (spawn_context == ViewSpawnContext::Automatic
+                                && subspace.origin.is_property())
+                        {
                             return None;
                         }
 
                         let mut pinhole_child_spaces = subspace
                             .child_spaces
                             .iter()
+                            .filter(|child| {
+                                spawn_context == ViewSpawnContext::Explicit || !child.is_property()
+                            })
                             .filter(|child| {
                                 topo.subspace_for_subspace_origin(child.hash()).is_some_and(
                                     |child_space| {
@@ -448,6 +458,8 @@ impl ViewClass for SpatialView3D {
                             .filter(|(path, hint)| {
                                 hint.contains(HeuristicHints::ViewCoordinates3d)
                                     && !subspace.child_spaces.contains(path)
+                                    && (spawn_context == ViewSpawnContext::Explicit
+                                        || !path.is_property())
                             })
                             .map(|(path, _)| path.clone())
                             .collect::<Vec<_>>();

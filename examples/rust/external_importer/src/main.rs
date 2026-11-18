@@ -112,7 +112,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn timepoint_from_args(args: &Args) -> anyhow::Result<rerun::TimePoint> {
-    let mut timepoint = rerun::TimePoint::default();
+    let mut timepoint = rerun::TimePoint::STATIC;
 
     for seq_str in &args.time_sequence {
         let Some((seqline_name, seq)) = seq_str.split_once('=') else {

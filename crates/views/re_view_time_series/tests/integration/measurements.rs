@@ -27,7 +27,7 @@ fn test_measurements_band_rendering() {
 
     test_context.log_entity("pressure", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &Measurements::update_fields()
                 .with_widths([3.0, 3.0])
                 .with_colors([
@@ -79,7 +79,7 @@ fn test_measurements_band_aggregation() {
 
     test_context.log_entity("pressure", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &Measurements::update_fields()
                 .with_colors([Color::from_rgb(120, 180, 255)])
                 .with_aggregation_policy(re_sdk_types::components::AggregationPolicy::MinMax),
@@ -122,7 +122,7 @@ fn test_measurements_stepped_band() {
 
     test_context.log_entity("pressure", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &Measurements::update_fields()
                 .with_colors([Color::from_rgb(120, 180, 255)])
                 .with_widths([2.0])
@@ -162,7 +162,7 @@ fn test_measurements_cleared_series_has_no_band() {
 
     test_context.log_entity("pressure", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &Measurements::update_fields()
                 .with_widths([2.0, 2.0])
                 .with_colors([

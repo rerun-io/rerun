@@ -7,6 +7,7 @@
 //! offsets used while streaming are correct.
 
 #![expect(clippy::unwrap_used)] // Okay to use unwrap in tests
+#![expect(clippy::print_stderr)] // This is only a test
 
 use std::path::PathBuf;
 use std::time::Duration;
@@ -854,4 +855,32 @@ fn windowed_transcode_emits_only_the_window() {
         times.len() < sample_times(&full).len(),
         "a windowed transcode must emit fewer samples than the full file"
     );
+}
+
+fn num_sample_rows(chunks: &[Chunk]) -> usize {
+    sample_chunks(chunks).iter().map(|c| c.num_rows()).sum()
+}
+
+#[test]
+fn truncated_file_streams_the_leading_samples() {
+    // The VP8 fixture has its `moov` box up front, so cutting the file only loses samples.
+    let file_name = "Big_Buck_Bunny_1080_1s_vp8.mp4";
+    let entity_path = EntityPath::from("video");
+    let full = std::fs::read(fixture_path(file_name)).unwrap();
+
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join(file_name);
+    std::fs::write(&path, &full[..full.len() / 4 * 3]).unwrap();
+
+    let full_rows = num_sample_rows(&collect_chunks(
+        load_mp4(&fixture_path(file_name), &stream_config(), &entity_path).unwrap(),
+        "full",
+    ));
+    let truncated_rows = num_sample_rows(&collect_chunks(
+        load_mp4(&path, &stream_config(), &entity_path).unwrap(),
+        "truncated",
+    ));
+
+    assert_eq!(full_rows, 30);
+    assert_eq!(truncated_rows, 13);
 }

@@ -31,7 +31,7 @@ fn test_transparent_geometry<A: AsComponents>(
             test_context.log_entity(format!("geom_{i}"), |builder| {
                 builder.with_archetype(
                     RowId::new(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &archetype_builder(y, color),
                 )
             });
@@ -190,7 +190,7 @@ pub fn test_transparent_points3d() {
         test_context.log_entity("points", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &archetypes::Points3D::new(positions)
                     .with_colors(colors)
                     .with_radii([0.8]),

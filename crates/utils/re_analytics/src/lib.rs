@@ -1,7 +1,7 @@
 //! Rerun's analytics SDK.
 //!
 //! We never collect any personal identifiable information.
-//! You can always opt-out with `rerun analytics disable`.
+//! You can always opt-out with `rerun analytics disable`, or in the viewer's settings.
 //!
 //! No analytics will be collected the first time you start the Rerun viewer,
 //! giving you an opportunity to opt-out first if you wish.
@@ -33,6 +33,12 @@ use posthog::{PostHogBatch, PostHogEvent};
 
 pub mod event;
 
+mod mode;
+pub use mode::{AnalyticsMode, UnknownAnalyticsMode};
+
+mod user_switch;
+pub use user_switch::{AnalyticsSwitch, set_user_switch, user_switch};
+
 // ----------------------------------------------------------------------------
 
 use std::borrow::Cow;
@@ -53,6 +59,11 @@ static ENABLED_IN_THIS_PROCESS: AtomicBool = AtomicBool::new(false);
 ///
 /// This does not apply in tests, which never initialize analytics whatever the environment says.
 const ENV_FORCE_ANALYTICS: &str = "FORCE_RERUN_ANALYTICS";
+
+/// Whether [`ENV_FORCE_ANALYTICS`] is set, which only applies on native.
+fn analytics_forced() -> bool {
+    !cfg!(target_arch = "wasm32") && re_log::env_var_is_truthy(ENV_FORCE_ANALYTICS)
+}
 
 /// Allow analytics for the rest of this process.
 ///
@@ -307,7 +318,7 @@ fn load_config(_user_logged_in: bool) -> Result<Config, ConfigError> {
                 if config.is_first_run() {
                     if !_user_logged_in {
                         // Only print the disclaimer if the user is not logged in.
-                        eprintln!("{DISCLAIMER}");
+                        let _err = re_error::try_eprintln!("{DISCLAIMER}");
                     }
 
                     config.save()?;
@@ -332,7 +343,7 @@ fn disabled_reason() -> Option<&'static str> {
         // Checked before `ENV_FORCE_ANALYTICS`: a test must never touch the shared config,
         // not even in an environment that forces analytics on.
         Some("in tests")
-    } else if is_native && re_log::env_var_is_truthy(ENV_FORCE_ANALYTICS) {
+    } else if analytics_forced() {
         None
     } else if is_native && std::env::var("CI").is_ok() {
         Some("on CI")
@@ -401,6 +412,7 @@ impl Analytics {
     /// e.g. for testing purposes, or when you want to use a different tick duration.
     fn new(tick: Duration, user_logged_in: bool) -> Result<Self, AnalyticsError> {
         let config = load_config(user_logged_in)?;
+        user_switch::init_from_config(&config);
         let pipeline = Pipeline::new(&config, tick)?;
         re_log::trace!("initialized analytics pipeline");
 
@@ -450,6 +462,9 @@ impl Analytics {
     ///
     /// It will be extended with an `event_id`.
     fn record_raw(&self, mut event: AnalyticsEvent) {
+        if user_switch() == AnalyticsSwitch::Disabled {
+            return;
+        }
         if let Some(pipeline) = self.pipeline.as_ref() {
             if event.kind == EventKind::Append {
                 // Insert default props
@@ -473,12 +488,26 @@ pub fn record<E: Event>(cb: impl FnOnce() -> E) {
     }
 }
 
-/// Whether [`record`] sends anything at all.
+/// Whether [`record`] records anything at all.
 ///
-/// `false` when the user has opted out with `rerun analytics disable`, or when the pipeline
-/// failed to start. Callers that do expensive work to produce an event should check this first.
+/// `false` when the user has opted out, with `rerun analytics disable` or in the viewer's
+/// settings, or when the pipeline failed to start.
+/// Events recorded during the first run are never sent, see [`can_send`].
 pub fn is_enabled() -> bool {
-    Analytics::global_or_init().is_some()
+    // Check the process first, so that a process with analytics off never reads the config.
+    Analytics::global_or_init().is_some_and(|analytics| analytics.pipeline.is_some())
+        && user_switch() == AnalyticsSwitch::Enabled
+}
+
+/// Whether events passed to [`record`] now are sent to Rerun.
+///
+/// Like [`is_enabled`], but also `false` during the first run, when nothing is sent so that
+/// users can opt out first.
+/// Check this before telling the user that something will be sent, or before doing expensive
+/// work to produce an event.
+pub fn can_send() -> bool {
+    is_enabled()
+        && Analytics::global_or_init().is_some_and(|analytics| !analytics.config.is_first_run())
 }
 
 /// Update whether the user is currently logged in.
@@ -495,7 +524,7 @@ pub fn record_and_flush_blocking<E: Event>(cb: impl FnOnce() -> E) {
         if let Err(err) = analytics.flush_blocking(std::time::Duration::MAX)
             && cfg!(debug_assertions)
         {
-            eprintln!("Failed to flush analytics: {err}");
+            let _err = re_error::try_eprintln!("Failed to flush analytics: {err}");
         }
     }
 }
@@ -583,6 +612,17 @@ mod tests {
         record(|| event::HelpButtonFirstClicked {});
         set_logged_in(true);
         assert!(Analytics::global_get().is_none());
+        assert!(!Analytics::global_init_was_attempted());
+    }
+
+    /// The user's switch can be read and set in tests without touching the shared config.
+    #[test]
+    fn user_switch_never_touches_the_config_in_tests() {
+        assert_eq!(user_switch(), AnalyticsSwitch::Enabled);
+        set_user_switch(AnalyticsSwitch::Disabled).unwrap();
+        assert_eq!(user_switch(), AnalyticsSwitch::Disabled);
+        assert!(!is_enabled());
+        set_user_switch(AnalyticsSwitch::Enabled).unwrap();
         assert!(!Analytics::global_init_was_attempted());
     }
 

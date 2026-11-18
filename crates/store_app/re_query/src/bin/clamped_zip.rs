@@ -1,5 +1,7 @@
 //! CLI tool to generate `ClampedZip` implementations of different arities.
 
+#![expect(clippy::print_stdout)] // Prints the generated code
+
 use itertools::{Itertools as _, chain, izip};
 
 struct Params {

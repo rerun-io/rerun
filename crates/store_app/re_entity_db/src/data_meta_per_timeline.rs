@@ -137,15 +137,14 @@ impl DataMetaPerTimeline {
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk::{Chunk, RowId, TimelineName};
+    use re_chunk::{Chunk, RowId};
     use re_chunk_index::RrdManifest;
-    use re_chunk_store::{ChunkStore, ChunkStoreConfig};
+    use re_chunk_store::ChunkStoreConfig;
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::{EntityPath, StoreId, TimePoint, Timeline};
     use re_types_core::ComponentBatch;
 
     use super::*;
-    use crate::RrdManifestIndex;
 
     /// Insert a single-row chunk and feed the resulting events into `meta`.
     fn insert_and_update(

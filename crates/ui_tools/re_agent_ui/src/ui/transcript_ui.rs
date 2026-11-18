@@ -1,14 +1,18 @@
 use egui::RichText;
 use re_agent::acp::schema::v1::{Plan, PlanEntryStatus, ToolCallStatus};
+use re_error::StructuredError;
 use re_format::{DateVisibility, TimestampFormat};
+use re_ui::alert::Alert;
 use re_ui::{ButtonExt as _, UiExt as _, icons};
 use web_time::SystemTime;
 
 use super::conversation_list::status_dot_ui;
-use super::tool_call_ui::{content_block_ui, tool_call_ui};
+use super::tool_call_ui::{
+    content_block_ui, subdued_collapsing_ui, subdued_triangle, tool_call_ui,
+};
 use re_agent::{
-    AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptEntry, TranscriptItem,
-    message_text,
+    AgentError, AgentSession, McpStartupFailure, Prompt, PromptImage, TranscriptEntry,
+    TranscriptItem, TurnId, message_text,
 };
 
 /// Each ended turn with an agent answer gets a footer that offers to copy that answer.
@@ -17,7 +21,13 @@ use re_agent::{
 ///
 /// The copied text is the last agent message of the turn with non-blank text, not the whole turn.
 /// The last turn counts as ended only when no turn is in progress.
-pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: bool) {
+///
+/// Returns the prompt to send again, if the user asked to retry the last one after it failed.
+pub fn transcript_ui(
+    ui: &mut egui::Ui,
+    session: &AgentSession,
+    show_thoughts: bool,
+) -> Option<Prompt> {
     let transcript = session.transcript();
     ui.spacing_mut().item_spacing.y = 10.0;
 
@@ -27,10 +37,13 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
         .iter()
         .rposition(|entry| matches!(entry.item, TranscriptItem::User(_)));
 
+    let retryable = session.retryable_prompt();
+    let mut retry = None;
+
     let mut turn = TurnState::default();
     let mut index = 0;
     while let Some(entry) = items.get(index) {
-        turn.observe(ui, entry);
+        turn.observe(ui, transcript.turn_id(index), entry);
 
         let turn_ended = last_user_index.is_some_and(|last_user| index < last_user)
             || !session.turn_in_progress();
@@ -45,6 +58,14 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
             if 2 <= folded_calls {
                 let run = items.get(index..next_index).unwrap_or_default();
                 Some(tool_call_group_ui(ui, session, run, transcript_id))
+            } else if let TranscriptItem::AgentError(error) = &entry.item {
+                let prompt = retryable
+                    .filter(|(error_index, _)| *error_index == index)
+                    .map(|(_, prompt)| prompt);
+                if agent_error_ui(ui, error, prompt.is_some()) {
+                    retry = prompt.cloned();
+                }
+                None
             } else {
                 entry_ui(ui, session, entry, show_thoughts, transcript_id)
             }
@@ -61,8 +82,13 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
         if turn_ends_here
             && let (Some(turn_top), Some((answer, answered_at))) = (turn.top, &turn.last_answer)
         {
+            let worked = turn
+                .turn_id
+                .and_then(|turn_id| transcript.turn_duration(turn_id))
+                .filter(|duration| MIN_SHOWN_TURN_DURATION <= *duration)
+                .map(format_worked_for);
             ui.push_id(("turn_footer", index), |ui| {
-                turn_footer_ui(ui, turn_top, answer, *answered_at);
+                turn_footer_ui(ui, turn_top, answer, *answered_at, worked.as_deref());
             });
         }
 
@@ -80,6 +106,22 @@ pub fn transcript_ui(ui: &mut egui::Ui, session: &AgentSession, show_thoughts: b
     if session.turn_in_progress() && !session.is_waiting_on_user() && !tool_call_running {
         ui.inline_loading_indicator("The agent is working");
     }
+
+    retry
+}
+
+/// An error the agent reported, saying who reported it and what to do about it.
+///
+/// Returns `true` if the user clicked "Retry".
+fn agent_error_ui(ui: &mut egui::Ui, error: &AgentError, can_retry: bool) -> bool {
+    let title = format!("Error from {}", error.reporter());
+    Alert::error()
+        .show_with_title(ui, title, |ui| {
+            ui.structured_error_ui(&StructuredError::parse(&error.message));
+            ui.add(egui::Label::new(error.hint()).wrap());
+            can_retry && ui.button("Retry").clicked()
+        })
+        .inner
 }
 
 /// What the turn footer needs to know about the turn shown so far.
@@ -88,16 +130,19 @@ struct TurnState {
     /// Where the turn's user message starts, in the same space as `ui.cursor()`.
     top: Option<f32>,
 
+    turn_id: Option<TurnId>,
+
     /// The last agent message with non-blank text, and when it was written.
     last_answer: Option<(String, SystemTime)>,
 }
 
 impl TurnState {
     /// Call for each entry before showing it.
-    fn observe(&mut self, ui: &egui::Ui, entry: &TranscriptEntry) {
+    fn observe(&mut self, ui: &egui::Ui, turn_id: Option<TurnId>, entry: &TranscriptEntry) {
         match &entry.item {
             TranscriptItem::User(_) => {
                 self.top = Some(ui.cursor().top());
+                self.turn_id = turn_id;
                 self.last_answer = None;
             }
             TranscriptItem::Agent { content, .. } => {
@@ -106,7 +151,8 @@ impl TurnState {
                     self.last_answer = Some((text, entry.created_at));
                 }
             }
-            TranscriptItem::McpStartupFailure(_)
+            TranscriptItem::AgentError(_)
+            | TranscriptItem::McpStartupFailure(_)
             | TranscriptItem::Note { .. }
             | TranscriptItem::ToolCall(_) => {}
         }
@@ -152,9 +198,13 @@ fn entry_ui(
             mcp_startup_failure_ui(ui, failure);
             None
         }
+        TranscriptItem::AgentError(error) => {
+            agent_error_ui(ui, error, false);
+            None
+        }
         TranscriptItem::Note { text, is_error } => {
             if *is_error {
-                ui.error_label(text.clone());
+                Alert::error().show_structured_error(ui, &StructuredError::parse(text), |_| {});
             } else {
                 ui.weak(text);
             }
@@ -187,67 +237,83 @@ fn tool_call_group_ui(
     let tokens = ui.tokens();
     // Keyed by its first call, not its position, so it never inherits another group's open state.
     let first_call_id = calls.first().map(|(_, call)| &call.id.0);
-    let mut label_clicked = false;
-    let mut header = egui::collapsing_header::CollapsingState::load_with_default_open(
+    let state = egui::collapsing_header::CollapsingState::load_with_default_open(
         ui.ctx(),
         transcript_id.with(("tool_call_group", first_call_id)),
         false,
-    )
-    .show_header(ui, |ui| {
-        if last_failed {
-            status_dot_ui(ui, tokens.error_fg_color);
-        }
-        label_clicked = ui
-            .add(
+    );
+    subdued_collapsing_ui(
+        ui,
+        state,
+        |ui| {
+            if last_failed {
+                status_dot_ui(ui, tokens.error_fg_color);
+            }
+            ui.add(
                 egui::Label::new(
                     RichText::new(format!("Used {} tools", calls.len())).color(tokens.text_subdued),
                 )
                 .selectable(false)
                 .sense(egui::Sense::click()),
             )
-            .clicked();
-    });
-    if label_clicked {
-        header.toggle();
-    }
-    let (_, header_response, _) = header.body(|ui| {
-        for (entry, call) in &calls {
-            let rect = ui
-                .scope(|ui| {
-                    tool_call_ui(ui, session, call, transcript_id.with(&call.id.0));
-                })
-                .response
-                .rect;
-            if ui.rect_contains_pointer(rect) {
-                timestamp_overlay(ui, rect, entry);
+        },
+        |ui| {
+            for (entry, call) in &calls {
+                let rect = ui
+                    .scope(|ui| {
+                        tool_call_ui(ui, session, call, transcript_id.with(&call.id.0));
+                    })
+                    .response
+                    .rect;
+                if ui.rect_contains_pointer(rect) {
+                    timestamp_overlay(ui, rect, entry);
+                }
             }
-        }
-    });
-    header_response.response.rect
+        },
+    )
+    .rect
 }
 
 /// The copy button and the answer time show only while the pointer is over the turn, from `turn_top` down to the footer itself.
 ///
 /// `turn_top` is a y position in the same space as `ui.cursor()`.
 /// The footer takes its space even when the button is hidden, so the transcript does not shift on hover.
-fn turn_footer_ui(ui: &mut egui::Ui, turn_top: f32, answer: &str, answered_at: SystemTime) {
+fn turn_footer_ui(
+    ui: &mut egui::Ui,
+    turn_top: f32,
+    answer: &str,
+    answered_at: SystemTime,
+    worked: Option<&str>,
+) {
     let turn_bottom = ui.cursor().top() + re_ui::Size::Small.height();
     let turn_rect = egui::Rect::from_x_y_ranges(ui.max_rect().x_range(), turn_top..=turn_bottom);
     let hovered = ui.rect_contains_pointer(turn_rect);
     ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = 0.0;
         if ui
             .add_visible(
                 hovered,
-                egui::Button::icon(icons::COPY, "Copy response")
-                    .ghost()
-                    .size_small(),
+                ui.image_button_widget(
+                    icons::COPY.as_image().tint(ui.visuals().weak_text_color()),
+                    "Copy response",
+                )
+                .ghost()
+                .size_small()
+                .icon_button()
+                .image_tint_follows_text_color(false),
             )
             .on_hover_text("Copy response")
             .clicked()
         {
             ui.copy_text(answer.to_owned());
         }
+        if let Some(worked) = worked {
+            ui.weak(worked);
+        }
         if hovered && let Some(answered_at) = to_jiff(answered_at) {
+            if worked.is_some() {
+                ui.weak(" · ");
+            }
             re_ui::time::short_duration_ui(
                 ui,
                 answered_at,
@@ -346,6 +412,18 @@ fn mcp_startup_failure_ui(ui: &mut egui::Ui, failure: &McpStartupFailure) {
 fn to_jiff(time: SystemTime) -> Option<jiff::Timestamp> {
     let since_epoch = time.duration_since(web_time::UNIX_EPOCH).ok()?;
     jiff::Timestamp::from_duration(since_epoch.try_into().ok()?).ok()
+}
+
+const MIN_SHOWN_TURN_DURATION: std::time::Duration = std::time::Duration::from_secs(30);
+
+fn format_worked_for(duration: std::time::Duration) -> String {
+    let nanos = i64::try_from(duration.as_nanos()).unwrap_or(i64::MAX);
+    let duration = re_format::DurationFormatOptions::default()
+        .with_only_seconds(false)
+        .with_min_decimals(0)
+        .with_max_decimals(0)
+        .format_nanos(nanos);
+    format!("Worked for {duration}")
 }
 
 /// Local wall-clock time, e.g. `14:03:12`, with the date in front when it isn't today.
@@ -452,6 +530,7 @@ fn thoughts_ui(ui: &mut egui::Ui, thoughts: &str) {
     )
     .id_salt("thoughts")
     .default_open(false)
+    .icon(subdued_triangle)
     .show(ui, |ui| {
         ui.label(RichText::new(thoughts).italics().color(tokens.text_subdued));
     });

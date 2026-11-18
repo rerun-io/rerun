@@ -154,15 +154,21 @@ fn parse_entity_filter(rules: Option<String>) -> PyResult<Option<EntityPathFilte
 impl MergeSplitSettingsArgs {
     /// `field` names the kwarg in error messages, and `instead` the named choice to suggest.
     fn into_settings(self, field: &str, instead: &str) -> PyResult<MergeSplitSettings> {
-        let Some(max_bytes) = std::num::NonZeroU64::new(self.max_bytes) else {
+        let Self {
+            max_bytes,
+            max_rows,
+            max_rows_if_unsorted,
+        } = self;
+
+        let Some(max_bytes) = std::num::NonZeroU64::new(max_bytes) else {
             return Err(PyValueError::new_err(format!(
                 "a {field} merge/split target needs max_bytes > 0; use {instead}"
             )));
         };
         Ok(MergeSplitSettings {
             max_bytes,
-            max_rows: std::num::NonZeroU64::new(self.max_rows),
-            max_rows_if_unsorted: std::num::NonZeroU64::new(self.max_rows_if_unsorted),
+            max_rows: std::num::NonZeroU64::new(max_rows),
+            max_rows_if_unsorted: std::num::NonZeroU64::new(max_rows_if_unsorted),
         })
     }
 }
@@ -210,7 +216,14 @@ impl NamedOrSettingsArgs {
 
 impl OwnChunkRuleArgs {
     fn into_rule(self) -> PyResult<OwnChunkRule> {
-        let column = match (self.component_type, self.component) {
+        let Self {
+            component_type,
+            component,
+            entity_filter,
+            merge_split,
+        } = self;
+
+        let column = match (component_type, component) {
             (Some(component_type), None) => ColumnSelector::Type(
                 ComponentType::try_new(component_type)
                     .map_err(|err| PyValueError::new_err(err.to_string()))?,
@@ -227,19 +240,25 @@ impl OwnChunkRuleArgs {
         };
 
         Ok(OwnChunkRule {
-            entity_filter: parse_entity_filter(self.entity_filter)?,
+            entity_filter: parse_entity_filter(entity_filter)?,
             column,
-            merge_split: self.merge_split.into_override("merge_split")?,
+            merge_split: merge_split.into_override("merge_split")?,
         })
     }
 }
 
 impl GopBatchingRuleArgs {
     fn into_rule(self) -> PyResult<GopBatchingRule> {
+        let Self {
+            entity_filter,
+            samples,
+            keyframes,
+        } = self;
+
         Ok(GopBatchingRule {
-            entity_filter: parse_entity_filter(self.entity_filter)?,
-            samples: self.samples.into_override("samples")?,
-            keyframes: self.keyframes.into_placement()?,
+            entity_filter: parse_entity_filter(entity_filter)?,
+            samples: samples.into_override("samples")?,
+            keyframes: keyframes.into_placement()?,
         })
     }
 }

@@ -122,10 +122,10 @@ impl ViewClass for BarChartView {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
-        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, include_entity)
+        suggest_view_for_each_entity::<BarChartVisualizerSystem>(ctx, spawn_context)
     }
 
     fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {

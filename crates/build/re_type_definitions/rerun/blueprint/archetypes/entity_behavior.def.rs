@@ -3,7 +3,8 @@
 
 /// General visualization behavior of an entity.
 ///
-/// TODO(#6541): Fields of this archetype currently only have an effect when logged in the blueprint store.
+/// Its fields currently only have an effect when sent as part of a blueprint (e.g. as a view override), not when logged together with the data.
+/// See <https://github.com/rerun-io/rerun/issues/6541>.
 ///
 /// \example archetypes/entity_behavior missing="cpp,rs" image="https://static.rerun.io/entity_behavior/831ccdaba769608408edb5edbfaaecf604b53d69/1200w.png"
 #[rerun::rerun_type]

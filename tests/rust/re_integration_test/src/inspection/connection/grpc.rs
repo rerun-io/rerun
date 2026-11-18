@@ -125,7 +125,7 @@ fn grpc_worker(
 ) {
     // This thread is the runtime's owner. It exists so that the blocking test API can talk to a
     // `tonic` client without an ambient runtime, so it cannot take an `AsyncRuntimeHandle`.
-    let runtime = tokio::runtime::Builder::new_multi_thread() // NOLINT: owned by this worker thread
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(1)
         .enable_all()
         .build()

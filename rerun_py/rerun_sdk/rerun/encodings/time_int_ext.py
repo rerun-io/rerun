@@ -44,6 +44,6 @@ class TimeIntExt:
         if seq is not None:
             self.__attrs_init__(value=seq)
         elif seconds is not None:
-            self.__attrs_init__(value=int(seconds * 1e9))
+            self.__attrs_init__(value=round(seconds * 1e9))
         elif nanos is not None:
             self.__attrs_init__(value=int(nanos))

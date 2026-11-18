@@ -31,6 +31,8 @@ setup = ["dep:tracing-log", "dep:tracing-subscriber", "dep:tracing-web"]
 
 
 [dependencies]
+re_error.workspace = true
+
 log = { workspace = true, features = ["std"] }
 crossbeam.workspace = true
 parking_lot.workspace = true

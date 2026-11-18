@@ -60,6 +60,7 @@ session_id_reader = []
 
 # Rerun
 re_auth = { workspace = true, features = ["oauth"] }
+re_error.workspace = true
 re_grpc_headers.workspace = true
 re_log.workspace = true
 

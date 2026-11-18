@@ -55,10 +55,10 @@ pub(crate) fn task_completion_stream(
                 };
                 let task_ids = QueryTasksDataframe::COLUMN_TASK_ID
                     .extract(&response.data)
-                    .map_err(&on_err)?;
+                    .map_err(on_err)?;
                 let statuses = QueryTasksDataframe::COLUMN_EXEC_STATUS
                     .extract(&response.data)
-                    .map_err(&on_err)?;
+                    .map_err(on_err)?;
                 let messages = QueryTasksDataframe::COLUMN_MSGS
                     .extract(&response.data)
                     .map_err(on_err)?;

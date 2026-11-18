@@ -65,7 +65,7 @@ fn log_checkerboard(test_context: &mut TestContext) {
     test_context.log_entity("checkerboard", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
                 re_sdk_types::encodings::ColorModel::RGB,
                 image,

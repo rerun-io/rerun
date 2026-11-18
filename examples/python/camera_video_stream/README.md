@@ -21,7 +21,7 @@ python -m camera_video_stream
 
 ## Details
 
-To learn more about video support in general check [the docs page on the topic](https://rerun.io/docs/concepts/logging-and-ingestion/video).
+To learn more about video support in general check [the docs page on the topic](https://rerun.io/docs/logging-and-ingestion/media/video).
 
 The example first sets up a video stream on an entity called `"video_stream"` with the H264 codec.
 ```py
@@ -33,7 +33,7 @@ Note that in `setup_output_stream` we specicifially configure `pyAV` to use low 
 ⚠️ Latency is expected to be well below a second, but as of writing Rerun is not well
 optimized for low latency video transmission as used for teleoperations.
 If you need lower latency you should consider tweaking the encoding settings further and
-configure Rerun's [Micro Batching](https://rerun.io/docs/reference/sdk/micro-batching).
+configure Rerun's [Micro Batching](https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching).
 
 For each frame we have to set a new timestamp.
 ```py

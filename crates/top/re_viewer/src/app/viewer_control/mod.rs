@@ -22,8 +22,8 @@ use re_protos::viewer_control::v1alpha1::{
     GetBlueprintResponse, GetDatasetAssetsSchemaRequest, GetDatasetAssetsSchemaResponse,
     GetDatasetSchemaRequest, GetDatasetSchemaResponse, GetLocationRequest, GetLocationResponse,
     GetLogsRequest, GetLogsResponse, GetRecordingSchemaRequest, GetRecordingSchemaResponse,
-    GetStateRequest, GetStateResponse, GetTableSchemaRequest, GetTableSchemaResponse,
-    HighlightRectRequest, HighlightRectResponse, OpenRequest, OpenResponse,
+    GetSelectionRequest, GetStateRequest, GetStateResponse, GetTableSchemaRequest,
+    GetTableSchemaResponse, HighlightRectRequest, HighlightRectResponse, OpenRequest, OpenResponse,
     RecordingComponentSchema, RecordingEntitySchema, SaveScreenshotRequest, SaveScreenshotResponse,
     ScreenRect, SetBlueprintRequest, SetBlueprintResponse, SetLocationRequest, SetLocationResponse,
     SetTimeCursorRequest, SetTimeCursorResponse, TableColumnSchema, TimeCursor,
@@ -34,7 +34,6 @@ use re_protos::viewer_control::v1alpha1::{
 #[cfg(feature = "analytics")]
 use re_protos::viewer_control::v1alpha1::{SubmitFeedbackRequest, SubmitFeedbackResponse};
 use re_sdk_types::blueprint::components::PlayState;
-use re_sdk_types::external::uuid;
 use re_types_core::SegmentId;
 use re_viewer_context::{
     Route, StoreHub, SystemCommand, SystemCommandSender as _, TimeControl, TimeControlCommand,
@@ -46,7 +45,9 @@ use crate::registrations_in_flight::{InFlightRegistration, RegistrationId};
 
 mod blueprint;
 mod commands;
+mod selection;
 mod transform_graph;
+mod view_types;
 
 /// How many entities `get_recording_schema` describes when the request does not say.
 ///
@@ -98,7 +99,7 @@ pub struct ViewerControlState {
     /// Answers held back until the commands they queued have run.
     pending_replies: Vec<PendingReply>,
 
-    /// Recent log messages, served to agents through `re_viewer_mcp`.
+    /// Recent log messages, served to agents through `re_rerun_mcp`.
     pub log: crate::viewer_log::ViewerLog,
 
     /// A rectangle an agent asked the viewer to point the user at, painted on top of everything
@@ -362,10 +363,7 @@ impl AppCore {
 
             Kind::Close(request) => {
                 let result = close_recordings_target(request)
-                    .and_then(|target| {
-                        self.apply_close_recordings(store_hub, target)
-                            .map_err(ViewerControlError::not_found)
-                    })
+                    .and_then(|target| self.apply_close_recordings(store_hub, target))
                     .map(ViewerControlResponse::from);
                 self.reply_after_commands(on_done, result, egui_ctx);
             }
@@ -376,9 +374,9 @@ impl AppCore {
                 );
             }
             Kind::GetBlueprint(GetBlueprintRequest { target }) => {
-                let requested =
-                    target.map_or_else(|| self.blueprint_on_screen(), RequestedBlueprint::from);
-                match self.requested_blueprint_target(store_hub, Some(requested)) {
+                match self
+                    .requested_blueprint_target(store_hub, target.map(RequestedBlueprint::from))
+                {
                     Ok(target) => self.answer_after_blueprint(
                         on_done,
                         target.ensure_blueprint_command(),
@@ -456,8 +454,18 @@ impl AppCore {
                     }
                 }
             }
+            Kind::GetSelection(GetSelectionRequest {}) => {
+                on_done.call(Ok(self.collect_selection(store_hub).into()));
+            }
             Kind::GetState(GetStateRequest {}) => {
                 on_done.call(Ok(self.collect_viewer_state(store_hub).into()));
+            }
+            Kind::ListViewTypes(_) => {
+                on_done.call(Ok(view_types::list_view_types(
+                    &self.registries.view_classes,
+                    &self.registries.reflection.read(),
+                )
+                .into()));
             }
             Kind::HighlightRect(request) => {
                 let result = self.apply_highlight_rect(request, egui_ctx);
@@ -604,7 +612,8 @@ impl AppCore {
                             // The text is only sent with "Share redacted prompts with Rerun",
                             // after the panel's agent has redacted it.
                             let share_text = self.state.agent_settings.share_redacted_prompts;
-                            self.agent_panel.submit_product_feedback(request, share_text);
+                            self.agent_panel
+                                .submit_product_feedback(request, share_text);
                             on_done.call(Ok(SubmitFeedbackResponse {}.into()));
                         }
                     }
@@ -645,7 +654,6 @@ impl AppCore {
                             play_state,
                             egui_ctx,
                         )
-                        .map_err(ViewerControlError::invalid_argument)
                     })
                     .map(ViewerControlResponse::from);
                 self.reply_after_commands(on_done, result, egui_ctx);
@@ -670,7 +678,7 @@ impl AppCore {
 
         let view_id = match view_id.map(|view_id| {
             uuid::Uuid::parse_str(&view_id)
-                .map_err(|_err| SaveScreenshotError::InvalidViewId { view_id })
+                .map_err(|source| SaveScreenshotError::InvalidViewId { view_id, source })
         }) {
             None => None,
             Some(Ok(uuid)) => Some(uuid.into()),
@@ -759,6 +767,12 @@ fn check_feedback(request: &SubmitFeedbackRequest) -> Result<(), ViewerControlEr
             "Analytics is turned off in this viewer, so feedback cannot be sent",
         ));
     }
+    if !re_analytics::can_send() {
+        return Err(ViewerControlError::failed_precondition(
+            "This is the user's first session with Rerun, when nothing is sent, \
+             so feedback cannot be sent until their next session",
+        ));
+    }
     Ok(())
 }
 
@@ -840,7 +854,7 @@ impl AppCore {
     ///
     /// A recording is named by its store id, since it may not have been loaded from a URL.
     fn current_viewer_url(&self, store_hub: &StoreHub) -> Result<ViewerUrl, ViewerControlError> {
-        Ok(match self.state.navigation.current() {
+        Ok(match self.navigation.routes.current() {
             Route::LocalRecording { recording_id } => {
                 ViewerUrl::LocalRecording(recording_id.clone())
             }
@@ -883,7 +897,7 @@ impl AppCore {
                 || self.state.redap_servers.has_server(origin)
         };
 
-        let Some(mut route) = url.to_route(self.state.navigation.current()) else {
+        let Some(mut route) = url.to_route(self.navigation.routes.current()) else {
             return Ok(None);
         };
         match &mut route {
@@ -960,8 +974,8 @@ impl AppCore {
     /// the active recording, the current page as a Viewer URL, the catalog the viewer hosts,
     /// and every open recording's timelines with their time ranges and current time cursor.
     pub(super) fn collect_viewer_state(&mut self, store_hub: &StoreHub) -> GetStateResponse {
-        let active_id = self.state.active_recording_id().cloned();
-        let route = self.state.navigation.current().clone();
+        let active_id = self.active_recording_id().cloned();
+        let route = self.navigation.routes.current().clone();
         let views = self.collect_views(store_hub, &route, active_id.as_ref());
 
         // Empty when what is shown has no URL, like a local table.
@@ -976,7 +990,7 @@ impl AppCore {
             .recordings()
             .map(|db| {
                 let store_id = db.store_id();
-                let time_ctrl = self.state.time_control(store_id);
+                let time_ctrl = self.stores.time_control(store_id);
                 let timelines = recording_timelines(db, time_ctrl);
 
                 let current_time = time_ctrl.map(|time_ctrl| TimeCursor {
@@ -1079,7 +1093,9 @@ impl AppCore {
         re_tracing::profile_function!();
 
         let blueprint_db = self.active_blueprint(store_hub, target)?;
-        let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
+        let query = self
+            .stores
+            .blueprint_query_for_viewer(&self.state.app_options, Some(blueprint_db));
         let mut json = re_arrow_json::json_from_store(
             blueprint_db.storage_engine().store(),
             &query,
@@ -1124,10 +1140,13 @@ impl AppCore {
         )?;
         if let BlueprintTarget::Table(table) = target {
             self.check_table_filters(table, &chunks)?;
+            self.check_table_columns(table, &chunks)?;
         }
         blueprint::check_references(
             blueprint_db,
-            self.state.blueprint_undo_state.get(blueprint_db.store_id()),
+            self.stores
+                .blueprint_undo_state
+                .get(blueprint_db.store_id()),
             &chunks,
         )?;
         let created_entities = blueprint::created_entities(blueprint_db, &chunks);
@@ -1142,31 +1161,25 @@ impl AppCore {
         })
     }
 
-    /// The blueprint a `get_blueprint` or `set_blueprint` request names, with the active
-    /// recording or the table on screen filled in for a missing id.
+    /// The blueprint a `get_blueprint` or `set_blueprint` request names, with what is on screen
+    /// filled in for a missing target, and the active recording or the table on screen filled in
+    /// for a missing id.
     fn requested_blueprint_target(
         &self,
         store_hub: &StoreHub,
         requested: Option<RequestedBlueprint>,
     ) -> Result<BlueprintTarget, ViewerControlError> {
-        let store_id = match requested {
-            // A `oneof` is an enum: an unset target names neither a recording nor a table.
-            None => {
-                return Err(ViewerControlError::invalid_argument(
-                    "set exactly one of `recording` and `table`: `{\"recording\": {}}` for the \
-                     active recording, or `{\"table\": {}}` for the table on screen",
-                ));
-            }
-            Some(RequestedBlueprint::Table(table_url)) => {
+        let store_id = match requested.unwrap_or_else(|| self.blueprint_on_screen()) {
+            RequestedBlueprint::Table(table_url) => {
                 return Ok(BlueprintTarget::Table(self.requested_table(table_url)?));
             }
-            Some(RequestedBlueprint::Recording(Some(store_id))) => {
+            RequestedBlueprint::Recording(Some(store_id)) => {
                 store_id.parse::<StoreId>().map_err(|err| {
                     ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
                 })?
             }
-            Some(RequestedBlueprint::Recording(None)) => {
-                self.state.active_recording_id().cloned().ok_or_else(|| {
+            RequestedBlueprint::Recording(None) => {
+                self.active_recording_id().cloned().ok_or_else(|| {
                     ViewerControlError::failed_precondition(
                         "no active recording, and no `store_id`",
                     )
@@ -1184,7 +1197,7 @@ impl AppCore {
 
     /// The blueprint of what is on screen: the table if one is shown, else the active recording.
     fn blueprint_on_screen(&self) -> RequestedBlueprint {
-        if self.state.navigation.current().table_reference().is_some() {
+        if self.navigation.routes.current().table_reference().is_some() {
             RequestedBlueprint::Table(None)
         } else {
             RequestedBlueprint::Recording(None)
@@ -1201,7 +1214,7 @@ impl AppCore {
         store_hub: &StoreHub,
         target: &BlueprintTarget,
     ) -> bool {
-        let route = self.state.navigation.current().clone();
+        let route = self.navigation.routes.current().clone();
         match target {
             BlueprintTarget::Recording(store_id) => {
                 let on_screen = route
@@ -1215,7 +1228,9 @@ impl AppCore {
                 else {
                     return false;
                 };
-                let query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
+                let query = self
+                    .stores
+                    .blueprint_query_for_viewer(&self.state.app_options, Some(blueprint_db));
                 let viewport =
                     re_viewport_blueprint::ViewportBlueprint::from_db(blueprint_db, &query);
                 viewport.auto_views() && viewport.views.is_empty()
@@ -1269,8 +1284,8 @@ impl AppCore {
     ) -> Result<re_uri::TableReference, ViewerControlError> {
         let Some(url) = table_url else {
             return self
-                .state
                 .navigation
+                .routes
                 .current()
                 .table_reference()
                 .ok_or_else(|| {
@@ -1318,7 +1333,7 @@ impl AppCore {
         dataset_url: Option<String>,
     ) -> Result<re_uri::EntryUri, ViewerControlError> {
         let Some(url) = dataset_url else {
-            return self.dataset_on_screen(store_hub, self.state.navigation.current());
+            return self.dataset_on_screen(store_hub, self.navigation.routes.current());
         };
 
         let uri = url.parse::<re_uri::RedapUri>().map_err(|err| {
@@ -1430,7 +1445,10 @@ impl AppCore {
 
         self.async_runtime.spawn_future(async move {
             let (schema, assets) = futures::join!(
-                catalog.get_dataset_schema(entry.entry_id),
+                catalog.get_dataset_schema(
+                    entry.entry_id,
+                    re_protos::cloud::v1alpha1::DatasetQueryScope::Full
+                ),
                 catalog.registered_assets(entry.entry_id)
             );
 
@@ -1623,6 +1641,23 @@ impl AppCore {
         Ok(())
     }
 
+    /// Check that the column names a table blueprint refers to exist in the columns the table
+    /// last showed.
+    ///
+    /// Nothing is checked if the table has not been shown yet.
+    fn check_table_columns(
+        &self,
+        table: &re_uri::TableReference,
+        chunks: &[re_chunk::Chunk],
+    ) -> Result<(), ViewerControlError> {
+        let Some(columns) =
+            re_dataframe_ui::DataFusionTableWidget::table_schema(&self.egui_ctx, table)
+        else {
+            return Ok(());
+        };
+        check_column_names(&columns, chunks)
+    }
+
     /// Queue a write of `chunks` to `blueprint_db`.
     fn queue_blueprint_write(
         &self,
@@ -1689,7 +1724,7 @@ impl AppCore {
             .map_err(|err| {
                 ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
             })?
-            .or_else(|| self.state.active_recording_id().cloned())
+            .or_else(|| self.active_recording_id().cloned())
             .ok_or_else(|| {
                 ViewerControlError::failed_precondition("no active recording to describe")
             })?;
@@ -1761,7 +1796,7 @@ impl AppCore {
 
         Ok(GetRecordingSchemaResponse {
             store_id: store_id.to_string(),
-            timelines: recording_timelines(db, self.state.time_control(&store_id)),
+            timelines: recording_timelines(db, self.stores.time_control(&store_id)),
             entities,
             omitted_entities,
         })
@@ -1772,7 +1807,7 @@ impl AppCore {
         &self,
         store_hub: &StoreHub,
         target: re_log_channel::CloseRecordingTarget,
-    ) -> Result<CloseResponse, String> {
+    ) -> Result<CloseResponse, ViewerControlError> {
         let to_close = match target {
             re_log_channel::CloseRecordingTarget::All => store_hub
                 .store_bundle()
@@ -1780,10 +1815,9 @@ impl AppCore {
                 .map(|db| db.store_id().clone())
                 .collect(),
             re_log_channel::CloseRecordingTarget::Current => vec![
-                self.state
-                    .active_recording_id()
+                self.active_recording_id()
                     .cloned()
-                    .ok_or_else(|| "no active recording to close".to_owned())?,
+                    .ok_or_else(|| ViewerControlError::not_found("no active recording to close"))?,
             ],
             re_log_channel::CloseRecordingTarget::Some(store_ids) => store_ids,
             re_log_channel::CloseRecordingTarget::Sources(sources) => {
@@ -1795,7 +1829,9 @@ impl AppCore {
             .iter()
             .find(|store_id| store_hub.entity_db(store_id).is_none())
         {
-            return Err(format!("no such recording: {missing}"));
+            return Err(ViewerControlError::not_found(format!(
+                "no such recording: {missing}"
+            )));
         }
         for store_id in &to_close {
             self.command_sender
@@ -1814,7 +1850,7 @@ impl AppCore {
         &self,
         store_hub: &StoreHub,
         sources: &[LogSource],
-    ) -> Result<CloseResponse, String> {
+    ) -> Result<CloseResponse, ViewerControlError> {
         // Check every source before closing any, so that a failed request closes nothing.
         let receivers = self.rx_log.sources();
         if let Some(missing) = sources.iter().find(|source| {
@@ -1825,7 +1861,9 @@ impl AppCore {
                     .iter()
                     .any(|receiver| receiver.is_same_ignoring_uri_fragments(source))
         }) {
-            return Err(format!("Nothing is loaded from {missing}"));
+            return Err(ViewerControlError::not_found(format!(
+                "Nothing is loaded from {missing}"
+            )));
         }
 
         self.rx_log.retain(|receiver| {
@@ -1857,7 +1895,9 @@ impl AppCore {
         let Some(blueprint_db) = store_hub.active_blueprint_for_route(route) else {
             return Vec::new();
         };
-        let blueprint_query = self.state.blueprint_query_for_viewer(Some(blueprint_db));
+        let blueprint_query = self
+            .stores
+            .blueprint_query_for_viewer(&self.state.app_options, Some(blueprint_db));
         let blueprint =
             re_viewport_blueprint::ViewportBlueprint::from_db(blueprint_db, &blueprint_query);
 
@@ -1867,9 +1907,7 @@ impl AppCore {
             .map(|view| {
                 let reports = recording_id
                     .into_iter()
-                    .flat_map(|recording_id| {
-                        self.state.view_states.all_reports(recording_id, view.id)
-                    })
+                    .flat_map(|recording_id| self.view_states.all_reports(recording_id, view.id))
                     .filter_map(|diagnostic| {
                         let severity = match diagnostic.severity {
                             re_viewer_context::ViewerReportSeverity::Info => return None,
@@ -1895,10 +1933,9 @@ impl AppCore {
             .collect()
     }
 
-    /// Resolve and apply a time-cursor move for `re_viewer_mcp`'s `SetTimeCursor`.
+    /// Resolve and apply a time-cursor move for `re_rerun_mcp`'s `SetTimeCursor`.
     ///
-    /// Returns what was applied, or an error string if the recording or timeline could not
-    /// be resolved.
+    /// Returns what was applied, or an error if the recording or timeline could not be resolved.
     pub(super) fn apply_set_time_cursor(
         &self,
         store_hub: &StoreHub,
@@ -1907,37 +1944,43 @@ impl AppCore {
         time: Option<i64>,
         play_state: Option<PlayState>,
         egui_ctx: &egui::Context,
-    ) -> Result<SetTimeCursorResponse, String> {
+    ) -> Result<SetTimeCursorResponse, ViewerControlError> {
         let store_id = store_id
-            .or_else(|| self.state.active_recording_id().cloned())
-            .ok_or_else(|| "no active recording to set the time for".to_owned())?;
+            .or_else(|| self.active_recording_id().cloned())
+            .ok_or_else(|| {
+                ViewerControlError::invalid_argument("no active recording to set the time for")
+            })?;
 
-        let db = store_hub
-            .entity_db(&store_id)
-            .ok_or_else(|| format!("recording {} is not open", store_id.recording_id().as_str()))?;
+        let db = store_hub.entity_db(&store_id).ok_or_else(|| {
+            ViewerControlError::invalid_argument(format!(
+                "recording {} is not open",
+                store_id.recording_id().as_str()
+            ))
+        })?;
 
         let timelines = db.timelines();
         if timelines.is_empty() {
-            return Err(format!(
+            return Err(ViewerControlError::invalid_argument(format!(
                 "recording {} has no timelines yet",
                 store_id.recording_id().as_str()
-            ));
+            )));
         }
 
         // Resolve the target timeline: explicit, else the active one, else the first.
         let timeline_name = if let Some(tl) = timeline {
-            let name = TimelineName::try_new(tl).map_err(|err| err.to_string())?;
+            let name = TimelineName::try_new(tl)
+                .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))?;
             if !timelines.contains_key(&name) {
                 let available: Vec<&str> = timelines.keys().map(|n| n.as_str()).collect();
-                return Err(format!(
+                return Err(ViewerControlError::invalid_argument(format!(
                     "recording {} has no timeline {tl:?}; available: {available:?}",
                     store_id.recording_id().as_str()
-                ));
+                )));
             }
             name
         } else {
             let active = self
-                .state
+                .stores
                 .time_control(&store_id)
                 .map(|tc| *tc.timeline_name());
             match active {
@@ -1951,10 +1994,9 @@ impl AppCore {
             .map_or(TimeType::Sequence, |t| t.typ());
 
         if time.is_some() && play_state == Some(PlayState::Following) {
-            return Err(
-                "`play_state` following moves the cursor to the latest data, so it cannot be combined with a `time`"
-                    .to_owned(),
-            );
+            return Err(ViewerControlError::invalid_argument(
+                "`play_state` following moves the cursor to the latest data, so it cannot be combined with a `time`",
+            ));
         }
 
         // Only what the request names is sent: a `SetTime` would leave follow mode, and an
@@ -1981,7 +2023,7 @@ impl AppCore {
         }
 
         let time = time.or_else(|| {
-            self.state
+            self.stores
                 .time_control(&store_id)
                 .and_then(|time_ctrl| time_ctrl.time_for_timeline(timeline_name))
                 .map(|time| time.floor().as_i64())
@@ -2221,7 +2263,7 @@ fn describe_schema_entities(
 /// This is the viewer-side half of the [`egui_inspection`] protocol: read the accessibility tree,
 /// take a screenshot, inject pointer or keyboard events, and so on.
 ///
-/// `re_viewer_mcp` is one client of it: that server turns each of its egui UI tool calls
+/// `re_rerun_mcp` is one client of it: that server turns each of its egui UI tool calls
 /// (`click`, `widget_tree`, `screenshot`, …) into such requests and sends them over the
 /// `egui_inspect` gRPC operation. Its Rerun-specific tools (`viewer_state`, `set_time`, …) use
 /// their own operations and never come here. Any other tool speaking the protocol works too.
@@ -2308,12 +2350,94 @@ fn is_loading(
     receiver_loading || file_registering
 }
 
+/// Check that every [`ColumnName`](re_sdk_types::blueprint::components::ColumnName) in
+/// `chunks` names one of `columns`.
+fn check_column_names(
+    columns: &[re_dataframe_ui::TableSchemaColumn],
+    chunks: &[re_chunk::Chunk],
+) -> Result<(), ViewerControlError> {
+    use re_sdk_types::blueprint::components::ColumnName;
+    use re_types_core::Component as _;
+
+    for chunk in chunks {
+        let column_name_fields = chunk
+            .component_descriptors()
+            .filter(|descriptor| descriptor.component_type == Some(ColumnName::name()));
+        for descriptor in column_name_fields {
+            let names = chunk
+                .component_batch::<ColumnName>(descriptor.component, 0)
+                .into_iter()
+                .flatten()
+                .flatten();
+            for name in names {
+                let name = name.as_str();
+                if columns
+                    .iter()
+                    .all(|column| column.physical_name.as_str() != name)
+                {
+                    return Err(ViewerControlError::invalid_argument(format!(
+                        "{} → {}: the table has no column {name:?}. \
+                         Use a `name` from `get_table_schema`",
+                        chunk.entity_path(),
+                        descriptor.display_name(),
+                    )));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use re_log_channel::ViewerControlErrorCode;
     use re_protos::viewer_control::v1alpha1::close_request::Target;
 
     use super::*;
+
+    #[test]
+    fn check_column_names_rejects_unknown_columns() {
+        use re_sdk_types::blueprint::archetypes::{CardLayout, TableLayout};
+
+        let columns =
+            ["episode", "recording link"].map(|name| re_dataframe_ui::TableSchemaColumn {
+                physical_name: name.into(),
+                display_name: name.to_owned(),
+                datatype: arrow::datatypes::DataType::Utf8,
+                visible: true,
+            });
+        let chunk = |entity_path: &str, archetype: &dyn re_sdk_types::AsComponents| {
+            re_chunk::Chunk::builder(entity_path)
+                .with_archetype(
+                    re_chunk::RowId::new(),
+                    re_log_types::TimePoint::STATIC,
+                    archetype,
+                )
+                .build()
+                .expect("valid chunk")
+        };
+
+        let known = [
+            chunk(
+                "/table/layouts/table",
+                &TableLayout::new().with_column_order(["recording link", "episode"]),
+            ),
+            chunk(
+                "/table/layouts/cards",
+                &CardLayout::new(["episode"]).with_link("recording link"),
+            ),
+        ];
+        assert!(check_column_names(&columns, &known).is_ok());
+
+        let unknown = [chunk(
+            "/table/layouts/cards",
+            &CardLayout::new(["episode"]).with_title("task"),
+        )];
+        let err = check_column_names(&columns, &unknown).expect_err("unknown column");
+        assert_eq!(err.code, ViewerControlErrorCode::InvalidArgument);
+        assert!(err.message.contains("CardLayout:title"), "{}", err.message);
+        assert!(err.message.contains("\"task\""), "{}", err.message);
+    }
 
     #[cfg(feature = "testing")]
     mod close_recordings_waits {
@@ -2576,7 +2700,7 @@ mod tests {
 
             let recording = StoreId::random(StoreKind::Recording, "test_app");
             store_hub.entity_db_entry(&recording);
-            let welcome = app.state.navigation.current().clone();
+            let welcome = app.navigation.routes.current().clone();
 
             let answer = serve(
                 app,
@@ -2586,7 +2710,7 @@ mod tests {
             );
             app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
-            assert_eq!(app.state.navigation.current(), &welcome);
+            assert_eq!(app.navigation.routes.current(), &welcome);
 
             let answer = serve(
                 app,
@@ -2612,7 +2736,7 @@ mod tests {
             let answer = serve(app, store_hub, &egui_ctx, set_location(welcome));
             app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
-            assert_eq!(app.state.navigation.current(), &Route::welcome_page());
+            assert_eq!(app.navigation.routes.current(), &Route::welcome_page());
         }
 
         #[tokio::test]
@@ -2639,7 +2763,7 @@ mod tests {
             app.run_pending_system_commands(store_hub, &egui_ctx);
             assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
 
-            let Route::Settings { return_route } = app.state.navigation.current() else {
+            let Route::Settings { return_route } = app.navigation.routes.current() else {
                 panic!("expected the settings");
             };
             assert!(
@@ -2782,10 +2906,7 @@ mod tests {
 
     #[cfg(feature = "testing")]
     mod set_time_cursor {
-        use std::sync::Arc;
-
         use re_chunk::{Chunk, RowId, TimePoint, Timeline};
-        use re_log_types::StoreKind;
 
         use super::locations::{error_code, serve};
         use super::*;
@@ -2798,7 +2919,7 @@ mod tests {
                 let chunk = Chunk::builder("points")
                     .with_archetype(
                         RowId::new(),
-                        TimePoint::default().with(Timeline::new_sequence("frame"), frame),
+                        TimePoint::STATIC.with(Timeline::new_sequence("frame"), frame),
                         &re_sdk_types::archetypes::Points3D::new([(0.0, 0.0, 0.0)]),
                     )
                     .build()
@@ -2839,7 +2960,7 @@ mod tests {
                 app.run_pending_system_commands(store_hub, &egui_ctx);
                 assert!(answer.lock().take().is_some_and(|result| result.is_ok()));
                 assert_eq!(
-                    app.state
+                    app.stores
                         .time_control(&store_id)
                         .map(TimeControl::play_state),
                     Some(PlayState::Following)

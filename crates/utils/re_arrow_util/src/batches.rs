@@ -333,12 +333,9 @@ mod tests {
     use std::assert_matches;
 
     use std::collections::HashMap;
-    use std::sync::Arc;
 
-    use arrow::array::{
-        BooleanArray, Float64Array, Int32Array, RecordBatch, StringArray, StructArray, UInt64Array,
-    };
-    use arrow::datatypes::{DataType, Field, Schema};
+    use arrow::array::{BooleanArray, Float64Array, Int32Array, StringArray, StructArray};
+    use arrow::datatypes::DataType;
     use arrow::error::ArrowError;
 
     use super::*;
@@ -369,7 +366,7 @@ mod tests {
         );
 
         // `Debug` must defer to `Display`, so `.unwrap()` panics with the readable message:
-        assert_eq!(format!("{err:?}"), err.to_string()); // NOLINT: this test asserts `Debug` defers to `Display`
+        assert_eq!(format!("{err:?}"), err.to_string());
 
         assert!(batch.try_get_column_as::<Int32Array>("count").is_ok());
     }

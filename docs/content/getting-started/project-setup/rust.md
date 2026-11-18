@@ -1,7 +1,7 @@
 ---
 title: Set up a Rust project
 order: 300
-description: Bootstrap a Cargo project with the rerun crate
+description: Bootstrap a Cargo project that depends on the rerun crate
 ---
 
 You should have already [installed the Rust SDK](../install-rerun/rust.md).
@@ -14,4 +14,4 @@ cd my_project
 cargo add rerun
 ```
 
-You're now ready to follow the [Log and Ingest](../data-in.md) tutorial.
+You're now ready to follow the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.

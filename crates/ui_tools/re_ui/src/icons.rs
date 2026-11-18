@@ -188,6 +188,7 @@ pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.svg");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.svg");
 pub const COMBO_ARROW: Icon = icon_from_path!("../data/icons/combo_arrow.svg");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
+pub const FAST_MODE: Icon = icon_from_path!("../data/icons/fast_mode.svg");
 pub const FILTER: Icon = icon_from_path!("../data/icons/filter.svg");
 
 pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.svg");
@@ -257,6 +258,7 @@ pub const VIEW_TENSOR: Icon = icon_from_path!("../data/icons/view_tensor.svg");
 pub const VIEW_TEXT: Icon = icon_from_path!("../data/icons/view_text.svg");
 pub const VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/view_timeseries.svg");
 pub const VIEW_UNKNOWN: Icon = icon_from_path!("../data/icons/view_unknown.svg");
+pub const TERMINAL: Icon = icon_from_path!("../data/icons/terminal.svg");
 
 //pub const GROUP: Icon = icon_from_path!("../data/icons/group.svg");
 pub const ENTITY: Icon = icon_from_path!("../data/icons/entity.svg");

@@ -111,7 +111,7 @@ fn add_data(
         // points
         chunk = chunk.with_archetype(
             re_chunk_store::RowId::new(),
-            re_log_types::TimePoint::default().with(
+            re_log_types::TimePoint::STATIC.with(
                 timeline,
                 re_log_types::TimeInt::from_millis(re_log_types::NonMinI64::ZERO),
             ),
@@ -122,7 +122,7 @@ fn add_data(
         for (time, component) in std::iter::zip(&log_times, components) {
             chunk = chunk.with_archetype(
                 re_chunk_store::RowId::new(),
-                re_log_types::TimePoint::default().with(
+                re_log_types::TimePoint::STATIC.with(
                     timeline,
                     re_log_types::TimeInt::from_millis((*time).try_into().unwrap_or_default()),
                 ),

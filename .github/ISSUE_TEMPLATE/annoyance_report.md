@@ -2,7 +2,7 @@
 name: Annoyance report
 about: Create a report to help us make Rerun easier to use
 title: ''
-labels: 😤 annoying, 👀 needs triage
+labels: 😤 annoying
 assignees: ''
 
 ---

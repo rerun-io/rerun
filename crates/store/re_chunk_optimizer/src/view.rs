@@ -42,8 +42,7 @@ pub struct ChunkMeta {
     pub byte_size_uncompressed: u64,
 
     /// Component columns with data in this chunk — a non-null range on some timeline, or the
-    /// static flag — with the type each carries when it has one. An all-null temporal column is
-    /// absent.
+    /// static flag — with the type each carries when it has one. An all-null column is absent.
     pub components: ComponentSet,
 }
 
@@ -319,14 +318,18 @@ fn components_per_chunk(
         let Some(component) = RawRrdManifest::get_component(field) else {
             continue;
         };
-        let component = ComponentIdentifier::try_new(component).map_err(|_err| {
-            Error::malformed_component_column(field.name(), "empty component identifier")
+        let component = ComponentIdentifier::try_new(component).map_err(|source| {
+            Error::InvalidComponentIdentifier {
+                column: field.name().clone(),
+                source,
+            }
         })?;
         let component_type = RawRrdManifest::get_component_type(field)
             .map(ComponentType::try_new)
             .transpose()
-            .map_err(|_err| {
-                Error::malformed_component_column(field.name(), "empty component type")
+            .map_err(|source| Error::InvalidComponentType {
+                column: field.name().clone(),
+                source,
             })?;
 
         // Only the rows with data are visited: for a `:start` column those are its valid rows, for a
@@ -444,7 +447,7 @@ mod tests {
         let static_chunk = Chunk::builder_with_id(ChunkId::from_u128(1), "static_entity")
             .with_serialized_batches(
                 RowId::from_u128(1 << 32),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [MyColor::from_iter(0..=0).try_serialized(MyPoints::descriptor_colors())?],
             )
             .build()?;

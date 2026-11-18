@@ -26,11 +26,13 @@ testing = []
 
 [dependencies]
 re_async.workspace = true
+re_error.workspace = true
 re_log.workspace = true
 
 agent-client-protocol-schema.workspace = true
 base64.workspace = true
 futures.workspace = true
+jiff = { workspace = true, features = ["serde"] }
 reqwest013.workspace = true
 rig-core.workspace = true
 rig-reqwest.workspace = true

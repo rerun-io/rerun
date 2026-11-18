@@ -1,4 +1,5 @@
 #![expect(clippy::unwrap_used)]
+#![expect(clippy::print_stderr)] // Example
 
 use itertools::Itertools as _;
 use re_arrow_util::format_record_batch;

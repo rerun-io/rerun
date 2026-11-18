@@ -18,6 +18,32 @@ pub struct MemoryLimit {
     max_bytes: Option<u64>,
 }
 
+/// Failed to parse a [`MemoryLimit`] with [`MemoryLimit::parse`].
+#[derive(Clone, Debug, PartialEq, thiserror::Error)]
+pub enum MemoryLimitParseError {
+    /// A percentage limit has an invalid number.
+    #[error("expected e.g. '50%', got {limit:?}: {source}")]
+    InvalidPercentage {
+        /// The limit that was parsed.
+        limit: String,
+
+        /// Why the number is invalid.
+        source: std::num::ParseFloatError,
+    },
+
+    /// A percentage limit is outside `[0, 100]`.
+    #[error("percentage must be between 0 and 100, got {0}")]
+    PercentageOutOfRange(f32),
+
+    /// An absolute limit is not a valid byte size.
+    #[error("expected e.g. '16GB', got {0:?}")]
+    InvalidSize(String),
+
+    /// An absolute limit is negative.
+    #[error("memory limit must be non-negative, got {0}")]
+    Negative(i64),
+}
+
 impl std::fmt::Display for MemoryLimit {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self.max_bytes {
@@ -80,7 +106,7 @@ impl MemoryLimit {
     }
 
     /// The limit can either be absolute (e.g. "16GB") or relative (e.g. "50%").
-    pub fn parse(limit: &str) -> Result<Self, String> {
+    pub fn parse(limit: &str) -> Result<Self, MemoryLimitParseError> {
         if limit == "0" {
             // Let's be explicit: zero means zero,
             // not "unlimited" or any such shenanigans.
@@ -88,26 +114,25 @@ impl MemoryLimit {
         } else if matches!(limit, "unlimited" | "none" | "max" | "∞") {
             Ok(Self::UNLIMITED)
         } else if let Some(percentage) = limit.strip_suffix('%') {
-            let percentage = percentage
-                .parse::<f32>()
-                .map_err(|_err| format!("expected e.g. '50%', got {limit:?}"))?;
+            let percentage = percentage.parse::<f32>().map_err(|source| {
+                MemoryLimitParseError::InvalidPercentage {
+                    limit: limit.to_owned(),
+                    source,
+                }
+            })?;
 
             if percentage < 0.0 || 100.0 < percentage {
-                return Err(format!(
-                    "percentage must be between 0 and 100, got {percentage}"
-                ));
+                return Err(MemoryLimitParseError::PercentageOutOfRange(percentage));
             }
 
             let fraction = percentage / 100.0;
             Ok(Self::from_fraction_of_total(fraction))
         } else {
             let num_bytes = re_format::parse_bytes(limit)
-                .ok_or_else(|| format!("expected e.g. '16GB', got {limit:?}"))?;
+                .ok_or_else(|| MemoryLimitParseError::InvalidSize(limit.to_owned()))?;
 
             if num_bytes < 0 {
-                return Err(format!(
-                    "memory limit must be non-negative, got {num_bytes}"
-                ));
+                return Err(MemoryLimitParseError::Negative(num_bytes));
             }
 
             Ok(Self {
@@ -216,7 +241,7 @@ impl MemoryLimit {
 }
 
 impl std::str::FromStr for MemoryLimit {
-    type Err = String;
+    type Err = MemoryLimitParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Self::parse(s)

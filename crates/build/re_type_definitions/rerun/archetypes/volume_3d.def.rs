@@ -46,7 +46,6 @@ pub struct Volume3D {
     /// Each dimension must be finite and positive.
     ///
     /// Defaults to `[1.0, 1.0, 1.0]`.
-    #[rerun(no_ui_edit)]
     #[rerun(recommended)]
     pub voxel_size: Option<rerun::components::VoxelSize>,
 
@@ -56,7 +55,6 @@ pub struct Volume3D {
     /// relative to the entity's coordinate frame.
     ///
     /// If not set, the minimum corner is placed at the origin of the entity's coordinate frame.
-    #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub translation: Option<rerun::components::Translation3D>,
 
@@ -66,7 +64,6 @@ pub struct Volume3D {
     /// relative to the entity's coordinate frame.
     /// The rotation is around the minimum corner of voxel `[0, 0, 0]`, and is applied before the
     /// translation.
-    #[rerun(no_ui_edit)]
     #[rerun(optional)]
     pub quaternion: Option<rerun::components::RotationQuat>,
 

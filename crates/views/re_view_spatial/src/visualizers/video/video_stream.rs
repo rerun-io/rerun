@@ -68,9 +68,11 @@ impl VisualizerSystem for VideoStreamVisualizer {
                     output.set_missing_chunks();
                 }
 
-                let codec = results
-                    .get_mono::<VideoCodec>(codec_component)
-                    .ok_or(VideoStreamProcessingError::MissingCodec)?;
+                let codec = results.get_mono::<VideoCodec>(codec_component).ok_or(
+                    VideoStreamProcessingError::MissingCodec {
+                        component: codec_component,
+                    },
+                )?;
                 Ok(codec.into())
             },
         )

@@ -1,7 +1,9 @@
 //! Helpers for error handling.
 
+mod output;
 mod structured_error;
 
+pub use self::output::{is_output_closed_error, tag_output_closed};
 pub use self::structured_error::{StructuredError, format_with_details};
 
 /// Walk the source chain of `error` (starting from `error` itself) and return the

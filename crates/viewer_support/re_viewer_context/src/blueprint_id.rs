@@ -13,6 +13,7 @@ pub trait BlueprintIdRegistry {
 )]
 pub struct BlueprintId<T: BlueprintIdRegistry> {
     id: uuid::Uuid,
+
     #[serde(skip)]
     _registry: std::marker::PhantomData<T>,
 }

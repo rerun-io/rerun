@@ -1146,9 +1146,7 @@ impl CodecMeta {
                 } else {
                     *b"VP90"
                 };
-                let (width, height) = encoding_details
-                    .map(|e| (e.coded_dimensions[0], e.coded_dimensions[1]))
-                    .unwrap_or((0, 0));
+                let [width, height] = encoding_details.map_or([0, 0], |e| e.coded_dimensions);
                 Self::Ivf {
                     fourcc,
                     width,

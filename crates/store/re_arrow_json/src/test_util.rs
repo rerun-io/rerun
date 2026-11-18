@@ -168,7 +168,7 @@ pub fn example_blueprint() -> EntityDb {
     let mut db = empty_blueprint();
     for (entity_path, archetype) in rows {
         let chunk = Chunk::builder(entity_path.as_str())
-            .with_archetype(RowId::new(), TimePoint::default(), archetype.as_ref())
+            .with_archetype(RowId::new(), TimePoint::STATIC, archetype.as_ref())
             .build()
             .unwrap();
         db.add_chunk(&Arc::new(chunk)).unwrap();
@@ -180,7 +180,7 @@ pub fn example_blueprint() -> EntityDb {
     let chunk = Chunk::builder(readme_path.as_str())
         .with_row(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             [(ComponentDescriptor::partial("OldIndicator"), indicator)],
         )
         .build()
@@ -203,7 +203,7 @@ pub fn write(blueprint: &mut EntityDb, json: &Value) {
     let chunks = chunks_from_json(
         json,
         blueprint.storage_engine().store(),
-        &TimePoint::default(),
+        &TimePoint::STATIC,
         re_sdk_types::reflection::reflection(),
     )
     .unwrap();

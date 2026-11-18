@@ -2,6 +2,7 @@
 title: Migrating from 0.23 to 0.24
 order: 986
 hidden: true
+description: Breaking changes in Rerun 0.24 and how to update code written for 0.23
 ---
 <!--   ^^^ this number must be _decremented_ when you copy/paste this file -->
 
@@ -23,12 +24,12 @@ Have been removed in favor of `Scalars`, `SeriesLines`, `SeriesPoints` respectiv
 `RERUN_FLUSH_TICK_SECS` previously always defaulted to 8ms when left unspecified.
 This now only applies to recording streams that use a GRPC connection, all others default to 200ms.
 
-You can learn more about micro-batching in our [dedicated documentation page](../sdk/micro-batching.md).
+You can learn more about micro-batching in our [dedicated documentation page](../../logging-and-ingestion/sinks-and-modes/micro-batching.md).
 
 ## Combining `InstancePoses3D` with orientations in `Boxes3D`/`Ellipsoids3D`/`Capsules3D` behaves differently in some cases now
 
 Previously, `Boxes3D`/`Ellipsoids3D`/`Capsules3D` all mirrored some transform components from `InstancePoses3D`.
-However, now that all components have distinct archetype-tags from the transform components in `InstancePoses3D`, form a separate transform
+However, now that all components have distinct archetype-tags from the transform components in `InstancePoses3D`, they form a separate transform
 that is applied prior to `InstancePoses3D`.
 
 I.e. transform resolve order was previously:
@@ -55,8 +56,8 @@ Rust's even older `serve` (deprecated since 0.20) has been removed entirely now.
 ## Component descriptors
 
 One limitation that we previously had with our data model was that it was only possible to use any `Component` once per entity path.
-This severely effected the design and flexibility of our archetypes.
-The underlying reason for this was that the our internal datastructures used the component's type names (previously also referred to as `ComponentName`) to index into the data.
+This severely affected the design and flexibility of our archetypes.
+The underlying reason for this was that our internal datastructures used the component's type names (previously also referred to as `ComponentName`) to index into the data.
 This release changes how components are identified within the viewer and within our APIs:
 Instead of specifying the component's type name, components are now referenced by a new syntax that consists of the (short) archetype name + the archetype field name separated by a colon (`:`).
 
@@ -66,7 +67,7 @@ For custom data, such as `AnyValues`, it is possible to omit the archetype part 
 
 To `View.select` columns in dataframe queries, we additionally need to specify the entity that a component belongs to.
 Starting with this release, this is achieved by adding the `entity_path` as a prefix to the component identifier, for example: `/helix/structure/left:Points3D:positions`.
-In general, the syntax for uniquely identifying a component in recording then becomes:
+In general, the syntax for uniquely identifying a component in a recording then becomes:
 
 ```
 <entity_path>:[<archetype>:]<field>
@@ -105,12 +106,12 @@ These changes are reflected in various parts of the Rerun viewer:
 #### Blueprint component defaults
 
 Blueprint component defaults were previously applied to component _types_.
-They are now instead, applies to archetype fields, i.e. what is now just called _component_ (e.g. `GraphNodes:positions`).
+They are now instead applied to archetype fields, i.e. what is now just called _component_ (e.g. `GraphNodes:positions`).
 
 In practice this means that component defaults are now limited to a single archetype, making them a lot more useful!
 
 <picture>
-  <img src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png" alt="">
+  <img src="https://static.rerun.io/visualizer-default-context-menu/9622eae67d9bb17e428fda7242b45b8029639a99/full.png" alt="Component defaults menu with GraphEdges and GraphNodes, the latter expanded to positions, colors, labels, show_labels, and radii">
 </picture>
 
 ### Limitations & breaking changes

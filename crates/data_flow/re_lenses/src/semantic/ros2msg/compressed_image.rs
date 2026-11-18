@@ -158,7 +158,6 @@ fn is_rvl(format: &str) -> bool {
 mod tests {
     use std::sync::Arc;
 
-    use arrow::array::StringArray;
     use arrow::datatypes::{DataType, Field, Fields};
 
     use super::*;

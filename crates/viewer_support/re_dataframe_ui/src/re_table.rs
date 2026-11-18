@@ -16,8 +16,7 @@ use crate::table_selection::TableSelectionState;
 
 pub struct PreviewColumn {
     pub data_column_index: usize,
-    pub num_views: usize,
-    pub preview_height: f32,
+    pub content_width: f32,
 }
 
 /// Wrapper around [`egui_table::TableDelegate`] that handles styling, selection, column visibility, row numbers, etc.
@@ -35,7 +34,7 @@ pub struct ReTable<'a> {
     /// We remember the original so it doesn't affect the cell contents.
     original_style: Arc<egui::Style>,
 
-    /// Data-column indices rendered as previews and the number of views in each column.
+    /// Preview widths exclude the cell margins added by the table.
     preview_columns: Vec<PreviewColumn>,
 
     /// Whether the table starts with a row number column. Rows can only be selected through it.
@@ -162,8 +161,8 @@ impl<'a> ReTable<'a> {
                             .iter()
                             .find(|preview_column| preview_column.data_column_index == *index)
                         {
-                            let width = preview_column.preview_height
-                                * preview_column.num_views.max(1) as f32;
+                            let width = preview_column.content_width
+                                + ui.tokens().table_cell_margin(self.table_style).sum().x;
                             egui_table::Column::new(width)
                                 .resizable(false)
                                 .range(Rangef::new(width, width))

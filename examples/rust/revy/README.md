@@ -30,7 +30,7 @@ For more information, check out the [Revy repository](https://github.com/rerun-i
   <thead>
     <tr>
       <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/games/breakout.rs">Breakout</a></th>
-      <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/3d/3d_shapes.rs">3D shapes</a></th> <!-- NOLINT -->
+      <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/3d/3d_shapes.rs">3D shapes</a></th>
       <th><a href="https://github.com/bevyengine/bevy/blob/v0.13.0/examples/games/alien_cake_addict.rs">Alien Cake Addict</a></th>
     </tr>
   </thead>
@@ -72,7 +72,7 @@ For more information, check out the [Revy repository](https://github.com/rerun-i
 
 ## Usage
 
-1. [Install the Rerun Viewer](https://www.rerun.io/docs/overview/installing-rerun/viewer) (`0.15`).
+1. [Install the Rerun Viewer](https://www.rerun.io/docs/getting-started/install-rerun/viewer) (`0.15`).
 
 2. Add `revy` to your dependencies:
     ```toml

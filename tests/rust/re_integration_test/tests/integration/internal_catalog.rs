@@ -194,6 +194,7 @@ async fn internal_catalog_revealed_by_catalog_api() {
         .create_dataset_entry(
             EntryName::new(DATASET_NAME).expect("valid entry name"),
             None,
+            Default::default(),
         )
         .await
         .expect("failed to create dataset");

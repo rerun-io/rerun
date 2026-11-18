@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from uuid import uuid4
 
 import pyarrow as pa
@@ -63,9 +63,46 @@ def test_stage_and_register(
     assert values.column(0).to_pylist() == [[42.0]]
 
 
-# TODO(RR-5715): Enable multipart coverage and replace local_only with requires_write_access_grants.
-@pytest.mark.local_only
-@pytest.mark.parametrize("known_size", [True, False], ids=["known-size", "unknown-size"])
+@pytest.mark.requires_write_access_grants
+@pytest.mark.parametrize("upload_method", ["single", pytest.param("multipart", marks=pytest.mark.aws_only)])
+def test_stage_with_forced_upload_method(
+    catalog_client: CatalogClient,
+    entry_factory: EntryFactory,
+    tmp_path: Path,
+    upload_method: Literal["single", "multipart"],
+) -> None:
+    path = tmp_path / "recording.rrd"
+    recording_id = str(uuid4())
+    with rr.RecordingStream("rerun_example_forced_upload", recording_id=recording_id) as recording:
+        recording.save(path)
+        recording.set_time("step", sequence=0)
+        recording.log("value", rr.Scalars(42.0))
+
+    payload = path.read_bytes()
+    key = f"staging/{uuid4().hex}/recording.rrd"
+    uri = catalog_client._internal.stage_file(str(path), key=key, upload_method=upload_method)
+    with pytest.raises(AlreadyExistsError):
+        catalog_client._internal.stage_bytes(payload, key=key, upload_method=upload_method)
+
+    bytes_uri = catalog_client._internal.stage_bytes(
+        payload, key=f"staging/{uuid4().hex}/recording.rrd", upload_method=upload_method
+    )
+    path.unlink()
+    for storage_url in (uri, bytes_uri):
+        dataset = entry_factory.create_dataset(f"forced_upload_{uuid4().hex}")
+        result = dataset.register([storage_url]).wait(timeout_secs=30)
+        assert result.segment_ids == [recording_id]
+        values = pa.Table.from_batches(dataset.reader(index="step").select("/value:Scalars:scalars").collect())
+        assert values.column(0).to_pylist() == [[42.0]]
+
+
+@pytest.mark.requires_write_access_grants
+@pytest.mark.parametrize(
+    "known_size",
+    # S3 rejects chunked PUT bodies; only the OSS server accepts unknown-size single requests.
+    [True, pytest.param(False, marks=pytest.mark.local_only)],
+    ids=["known-size", "unknown-size"],
+)
 def test_upload_known_and_unknown_size(
     entry_factory: EntryFactory, recording_file: tuple[Path, str], known_size: bool
 ) -> None:

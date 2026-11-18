@@ -1,5 +1,5 @@
-//! Per-segment state: the plan cursor (watermark) plus the [`SegmentStore`]
-//! and the segment's issuance-window ledger.
+//! Per-segment state: the plan cursor (watermark) plus the segment's
+//! [`SegmentRowEmitter`] and issuance-window ledger.
 //!
 //! Because the plan is immutable shared data available before anything runs,
 //! each segment's safe horizon is a pure function of which planned chunks
@@ -13,10 +13,11 @@ use re_dataframe::QueryExpression;
 use re_dataframe::external::re_chunk::ChunkId;
 use re_log_types::TimeInt;
 
+use super::RowEmitterKind;
+use super::emitter::SegmentRowEmitter;
 use super::plan::{CursorKey, PlannedSegment, SegmentEmitMode};
 use super::window::SegmentLedger;
 use crate::dataframe_query_common::IndexValuesMap;
-use crate::dataframe_query_provider::segment_store::SegmentStore;
 
 /// Watermark over the planned chunk multiset of one segment.
 ///
@@ -106,8 +107,8 @@ impl PlanCursor {
 
 /// Everything the driver tracks for one in-flight segment.
 pub(crate) struct SegmentState {
-    /// The store/emit/GC core.
-    pub store: SegmentStore,
+    /// The insert/emit/GC core.
+    pub emitter: SegmentRowEmitter,
     pub cursor: PlanCursor,
 
     /// Window bytes held on behalf of this segment's delivered,
@@ -118,14 +119,14 @@ pub(crate) struct SegmentState {
     /// the source for delivery routing (`chunk_meta`) and the emit mode.
     pub planned: Arc<PlannedSegment>,
 
-    /// Chunk ids already routed into the store, for rejecting repeated
+    /// Chunk ids already routed into the emitter, for rejecting repeated
     /// deliveries.
     ///
-    /// `chunk_meta` proves a chunk was *planned*, not that a
-    /// delivery is its *first*: the store makes a duplicate insert a no-op,
-    /// but the cursor counts per [`CursorKey`], so an uncaught repeat would
-    /// stand in for a different planned chunk sharing its key — completing
-    /// the cursor while that chunk never arrived.
+    /// `chunk_meta` proves a chunk was *planned*, not that a delivery is its
+    /// *first*: the store makes a duplicate insert a no-op, but the cursor
+    /// counts per [`CursorKey`], so an uncaught repeat would stand in for a
+    /// different planned chunk sharing its key — completing the cursor while
+    /// that chunk never arrived.
     delivered: HashSet<ChunkId>,
 }
 
@@ -137,13 +138,15 @@ impl SegmentState {
         planned: Arc<PlannedSegment>,
         base_query_expression: &QueryExpression,
         index_values: &IndexValuesMap,
+        emitter_kind: RowEmitterKind,
     ) -> Self {
         Self {
-            store: SegmentStore::new(
+            emitter: SegmentRowEmitter::new(
                 origin,
                 planned.segment_id.clone(),
                 base_query_expression,
                 index_values,
+                emitter_kind,
             ),
             cursor: PlanCursor::new(planned.cursor_keys()),
             ledger: SegmentLedger::default(),
@@ -166,9 +169,9 @@ impl SegmentState {
 
     /// Plan-estimate bytes for the chunks a GC pass removed, resolved via
     /// the plan's `chunk_meta` (single-currency rule: releases are in
-    /// estimate space, never measured store bytes).
+    /// estimate space, never measured emitter bytes).
     ///
-    /// The router drops unplanned deliveries, so every chunk in the store is
+    /// The router drops unplanned deliveries, so every chunk in the emitter is
     /// planned. A `chunk_id` absent from `chunk_meta` fires `debug_panic!`
     /// rather than silently undercounting, matching
     /// [`PlanCursor::mark_delivered`].

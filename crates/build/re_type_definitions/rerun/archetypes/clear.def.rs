@@ -13,7 +13,7 @@
 /// Scalar plots are an exception: they track clears and use them to represent holes in the
 /// data (i.e. discontinuous lines).
 ///
-/// \example archetypes/clear_simple title="Flat" image="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png"
+/// \example archetypes/clear_simple title="Flat" image="https://static.rerun.io/clear_simple/2f5df95fcc53e9f0552f65670aef7f94830c5c1a/1200w.png" alt="3D view with red, green, and blue arrows, with the streams panel listing a ClearIsRecursive component on entity 3"
 /// \example archetypes/clear_recursive !api "Recursive"
 #[rerun::rerun_type]
 #[cpp(no_default_ctor)]

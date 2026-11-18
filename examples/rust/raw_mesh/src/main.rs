@@ -60,11 +60,11 @@ impl From<GltfPrimitive> for Mesh3D {
 
 // Declare how to turn a glTF transform into a Rerun component (`Transform`).
 impl From<GltfTransform> for rerun::Transform3D {
-    fn from(transform: GltfTransform) -> Self {
+    fn from(GltfTransform { t, r, s }: GltfTransform) -> Self {
         rerun::Transform3D::from_translation_rotation_scale(
-            transform.t,
-            rerun::encodings::Quaternion::from_xyzw(transform.r),
-            transform.s,
+            t,
+            rerun::encodings::Quaternion::from_xyzw(r),
+            s,
         )
     }
 }
@@ -97,6 +97,7 @@ fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum Scene {
     Buggy,
+
     #[value(name("brain_stem"))]
     BrainStem,
     Lantern,

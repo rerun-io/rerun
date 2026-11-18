@@ -213,7 +213,7 @@ impl CompactionOptions {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::{Chunk, RowId};
+    use re_chunk::RowId;
     use re_log_types::{EntityPath, StoreId, StoreKind, Timeline, example_components::MyPoint};
     use re_sdk_types::components::Blob;
     use re_types_core::{ArchetypeName, ComponentDescriptor};

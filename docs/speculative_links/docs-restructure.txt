@@ -1,0 +1,3 @@
+# The docs restructure moves most pages; their new URLs go live with the next docs release.
+^https://(www\.)?rerun\.io/docs/(logging-and-ingestion|viewer|query-and-transform|train|integrations)(/|#|$)
+^https://(www\.)?rerun\.io/docs/getting-started/how-does-rerun-work

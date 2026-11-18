@@ -676,7 +676,7 @@ fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_ms
             Chunk::builder_with_id(next_chunk_id(), entity_path1)
                 .with_sparse_component_batches(
                     next_row_id(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [
                         (MyPoints::descriptor_labels(), Some(&labels_static as _)), //
                         (MyPoints::descriptor_colors(), Some(&colors_static as _)), //
@@ -696,7 +696,7 @@ fn generate_recording_chunks(tuid_prefix: u64) -> impl Iterator<Item = re_log_ms
             Chunk::builder_with_id(next_chunk_id(), entity_path2)
                 .with_sparse_component_batches(
                     next_row_id(),
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     [
                         (MyPoints::descriptor_points(), Some(&points_static as _)), //
                         (MyPoints::descriptor_colors(), Some(&colors_static as _)), //
@@ -1057,7 +1057,7 @@ fn concat_raw_then_validate_vs_validate_then_merge() {
         let colors = MyColor::from_iter(0..1);
         let timepoint = match frame {
             Some(f) => TimePoint::from([build_frame_nr(TimeInt::new_temporal(f))]),
-            None => TimePoint::default(),
+            None => TimePoint::STATIC,
         };
         Chunk::builder_with_id(next_chunk_id(), entity)
             .with_sparse_component_batches(

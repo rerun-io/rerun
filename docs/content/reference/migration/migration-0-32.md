@@ -2,6 +2,7 @@
 title: Migrating from 0.31 to 0.32
 order: 978
 hidden: true
+description: Breaking changes in Rerun 0.32 and how to update code written for 0.31
 ---
 
 ## "Data loaders" renamed to "importers"
@@ -106,9 +107,9 @@ To output columns to multiple entities from a single component, multiple lenses 
 `rerun rrd compact` is now `rerun rrd optimize`.
 
 A new `--profile` argument has been added to opt to known good values.
-Two profiles are available: `live` (optimized for the live Viewer workflow, same as previous defaults) and `object-store` (optimized for querying and streaming from object-store-backed storage, e.g. a catalog server). <!-- NOLINT -->
+Two profiles are available: `live` (optimized for the live Viewer workflow, same as previous defaults) and `object-store` (optimized for querying and streaming from object-store-backed storage, e.g. a catalog server).
 
-By default, the `object-store` profile is now used. Use `--profile live` to keep the previous behavior. <!-- NOLINT -->
+By default, the `object-store` profile is now used. Use `--profile live` to keep the previous behavior.
 
 ## `DatasetEntry.register` requires a sequence of URIs (Python)
 
@@ -126,14 +127,14 @@ Old single-string invocations still work at runtime but emit a `DeprecationWarni
 
 ## URDF importer transform entity
 
-The [URDF importer](../../howto/logging-and-ingestion/urdf.md) now loads the static transforms of the model to the `/tf_static` entity by default.
+The [URDF importer](../../logging-and-ingestion/import/urdf.md) now loads the static transforms of the model to the `/tf_static` entity by default.
 This replaces the model-dependent entity path of previous versions, and improves consistency with ROS data.
 
 A custom entity path can be now also configured in the `UrdfTree` API in Python and Rust, if desired.
 
 ## MCAP metadata and statistics
 
-In MCAP to RRD conversion, metadata records, statistics, and recording info are now saved at dedicated [reserved entity paths](../../concepts/logging-and-ingestion/entity-path.md#reserved-paths) instead of RRD properties (`__properties`).
+In MCAP to RRD conversion, metadata records, statistics, and recording info are now saved at dedicated [reserved entity paths](../../logging-and-ingestion/data-model/entity-path.md#reserved-paths) instead of RRD properties (`__properties`).
 
 Metadata records are saved under `__mcap_metadata`, and MCAP statistics and recording info are saved under `__mcap_properties`.
 

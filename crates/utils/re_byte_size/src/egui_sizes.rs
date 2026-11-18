@@ -1,5 +1,3 @@
-use egui::emath;
-
 use crate::SizeBytes;
 
 impl<T: SizeBytes + Copy> SizeBytes for emath::History<T> {

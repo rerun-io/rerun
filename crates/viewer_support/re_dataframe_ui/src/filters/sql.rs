@@ -319,7 +319,7 @@ pub fn function_args(expr: &SqlExpr) -> Option<Vec<&SqlExpr>> {
 mod tests {
     use std::sync::Arc;
 
-    use arrow::datatypes::{DataType, Field, Schema, TimeUnit};
+    use arrow::datatypes::TimeUnit;
     use strum::VariantArray as _;
 
     use super::*;

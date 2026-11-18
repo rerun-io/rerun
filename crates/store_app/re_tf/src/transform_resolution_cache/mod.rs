@@ -22,7 +22,6 @@ use arrow::array::Array as _;
 use itertools::{Either, izip};
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk_store::Chunk;
-use re_chunk_store::external::arrow;
 use re_log_types::{TimeInt, TimelineName};
 use re_sdk_types::{ComponentIdentifier, RowId};
 

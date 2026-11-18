@@ -87,16 +87,23 @@ impl LatestAllResults {
     ///
     /// Components with no rows are omitted from the result.
     pub fn into_latest_at(self) -> LatestAtResults {
+        let Self {
+            entity_path,
+            query,
+            missing_virtual,
+            components,
+        } = self;
+
         let mut results = LatestAtResults {
-            entity_path: self.entity_path.clone(),
-            query: self.query.clone(),
-            missing_virtual: self.missing_virtual.clone(),
+            entity_path,
+            query,
+            missing_virtual,
             min_index: (TimeInt::MAX, RowId::MAX),
             max_index: (TimeInt::STATIC, RowId::ZERO),
             components: Default::default(),
         };
 
-        for (component, component_results) in self.components {
+        for (component, component_results) in components {
             if let Some(unit) = component_results.latest_row()
                 && let Some(row_id) = unit.row_id()
             {

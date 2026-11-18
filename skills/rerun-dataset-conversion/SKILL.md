@@ -211,7 +211,7 @@ catalog column splits.
 
 ### Splitting into layers
 
-See [Why Use Layers](https://rerun.io/docs/howto/logging-and-ingestion/layers#why-use-layers) to get a sense first.
+See [Why Use Layers](https://rerun.io/docs/query-and-transform/catalog/layers#why-use-layers) to get a sense first.
 
 - One base layer for one episode conversion is enough.
 - If not part of the raw conversion, write as separate layers.

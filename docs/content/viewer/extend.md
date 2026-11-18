@@ -1,0 +1,8 @@
+---
+title: Extend and control
+order: 500
+description: Callbacks, playback control, screenshots, and the MCP server
+index: true
+---
+
+Callbacks, playback control, screenshots, custom visualizations, Viewer URLs, and the MCP server.

@@ -27,11 +27,11 @@ use tokio::sync::oneshot;
 use tokio_util::task::AbortOnDropHandle;
 use tracing::Instrument as _;
 
-use super::FetchConfig;
 use super::driver::PartitionDriver;
 use super::executor::FetchExecutor;
 use super::plan::build_fetch_plan;
 use super::window::IssuanceWindow;
+use super::{FetchConfig, RowEmitterKind};
 use crate::IntoDfError as _;
 use crate::analytics::QueryErrorKind;
 use crate::chunk_fetcher::{DIRECT_FETCH_HTTP_CLIENT, ObjectStoreAuthenticator};
@@ -62,6 +62,7 @@ pub struct V2PartitionCtx<T> {
     /// has no reactor. See `SegmentStreamExec::io_handle`.
     pub io_handle: tokio::runtime::Handle,
     pub config: FetchConfig,
+    pub emitter_kind: RowEmitterKind,
 
     pub trace_headers: Option<crate::TraceHeaders>,
     pub server_trace_id: Option<re_redap_client::TraceId>,
@@ -87,6 +88,7 @@ pub fn execute_partition<T: DataframeClientAPI>(
         object_store_auth,
         io_handle,
         config,
+        emitter_kind,
         trace_headers,
         server_trace_id,
         pending_analytics,
@@ -158,6 +160,7 @@ pub fn execute_partition<T: DataframeClientAPI>(
         index_values,
         projected_schema: Arc::clone(&projected_schema),
         limit_rows,
+        emitter_kind,
     };
 
     let (tx, rx) = mpsc::channel::<RecordBatch>(OUTPUT_CHANNEL_SIZE);

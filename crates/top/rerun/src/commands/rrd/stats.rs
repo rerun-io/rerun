@@ -6,6 +6,7 @@ use itertools::Itertools as _;
 use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::Chunk;
 use re_chunk_index::RawRrdManifest;
+use re_error::try_println;
 use re_log_encoding::ToApplication as _;
 use re_log_types::{EntityPath, TimelineName};
 use re_protos::common::v1alpha1::Compression;
@@ -211,91 +212,92 @@ impl StatsCommand {
 
         re_log::info!("computing stats…");
 
-        println!("Overview");
-        println!("----------");
+        try_println!("Overview")?;
+        try_println!("----------")?;
 
-        println!("num_chunks = {}", re_format::format_uint(num_chunks));
+        try_println!("num_chunks = {}", re_format::format_uint(num_chunks))?;
 
         if !*no_decode {
-            println!(
+            try_println!(
                 "num_entity_paths = {}",
                 re_format::format_uint(num_chunks_per_entity.len())
-            );
+            )?;
 
             let num_chunks_without_components = num_components.iter().filter(|v| **v == 0).count();
-            println!(
+            try_println!(
                 "num_chunks_without_components = {} ({:.3}%)",
                 re_format::format_uint(num_chunks_without_components),
                 num_chunks_without_components as f64 / num_chunks as f64 * 100.0,
-            );
+            )?;
 
             let num_rows_total = num_rows.iter().copied().sum::<u64>();
             let num_rows_min = num_rows.iter().copied().min().unwrap_or_default();
             let num_rows_max = num_rows.iter().copied().max().unwrap_or_default();
             let num_rows_avg = num_rows_total as f64 / num_rows.len() as f64;
 
-            println!("num_rows = {}", re_format::format_uint(num_rows_total));
-            println!("num_rows_min = {}", re_format::format_uint(num_rows_min));
-            println!("num_rows_max = {}", re_format::format_uint(num_rows_max));
-            println!("num_rows_avg = {num_rows_avg:.3}");
+            try_println!("num_rows = {}", re_format::format_uint(num_rows_total))?;
+            try_println!("num_rows_min = {}", re_format::format_uint(num_rows_min))?;
+            try_println!("num_rows_max = {}", re_format::format_uint(num_rows_max))?;
+            try_println!("num_rows_avg = {num_rows_avg:.3}")?;
 
             let num_indexes_min = num_indexes.iter().copied().min().unwrap_or_default();
             let num_indexes_max = num_indexes.iter().copied().max().unwrap_or_default();
             let num_indexes_avg =
                 num_indexes.iter().copied().sum::<u64>() as f64 / num_indexes.len() as f64;
 
-            println!("num_static = {}", re_format::format_uint(num_static));
-            println!(
+            try_println!("num_static = {}", re_format::format_uint(num_static))?;
+            try_println!(
                 "num_indexes_min = {}",
                 re_format::format_uint(num_indexes_min)
-            );
-            println!(
+            )?;
+            try_println!(
                 "num_indexes_max = {}",
                 re_format::format_uint(num_indexes_max)
-            );
-            println!("num_indexes_avg = {num_indexes_avg:.3}");
+            )?;
+            try_println!("num_indexes_avg = {num_indexes_avg:.3}")?;
 
             let num_components_min = num_components.iter().copied().min().unwrap_or_default();
             let num_components_max = num_components.iter().copied().max().unwrap_or_default();
             let num_components_avg =
                 num_components.iter().copied().sum::<u64>() as f64 / num_components.len() as f64;
 
-            println!(
+            try_println!(
                 "num_components_min = {}",
                 re_format::format_uint(num_components_min)
-            );
-            println!(
+            )?;
+            try_println!(
                 "num_components_max = {}",
                 re_format::format_uint(num_components_max)
-            );
-            println!("num_components_avg = {num_components_avg:.3}");
+            )?;
+            try_println!("num_components_avg = {num_components_avg:.3}")?;
 
-            let print_details = |num_chunks_per_xxx: HashMap<String, u64>| {
+            let print_details = |num_chunks_per_xxx: HashMap<String, u64>| -> std::io::Result<()> {
                 let mut num_chunks_per_xxx = num_chunks_per_xxx.into_iter().collect_vec();
                 num_chunks_per_xxx.sort_by(|(kl, _), (kr, _)| kl.cmp(kr));
 
                 for (xxx, num_chunks) in num_chunks_per_xxx {
-                    println!("{xxx}: {}", re_format::format_uint(num_chunks));
+                    try_println!("{xxx}: {}", re_format::format_uint(num_chunks))?;
                 }
+                Ok(())
             };
 
-            println!();
-            println!("Num chunks per entity");
-            println!("---------------------");
-            print_details(num_chunks_per_entity);
+            try_println!()?;
+            try_println!("Num chunks per entity")?;
+            try_println!("---------------------")?;
+            print_details(num_chunks_per_entity)?;
 
-            println!();
-            println!("Num chunks per index");
-            println!("--------------------");
-            print_details(num_chunks_per_index);
+            try_println!()?;
+            try_println!("Num chunks per index")?;
+            try_println!("--------------------")?;
+            print_details(num_chunks_per_index)?;
 
-            println!();
-            println!("Num chunks per component");
-            println!("------------------------");
-            print_details(num_chunks_per_component);
+            try_println!()?;
+            try_println!("Num chunks per component")?;
+            try_println!("------------------------")?;
+            print_details(num_chunks_per_component)?;
         }
 
-        let print_ipc_size_bytes_stats = |mut ipc_size_bytes: Vec<u64>| {
+        let print_ipc_size_bytes_stats = |mut ipc_size_bytes: Vec<u64>| -> std::io::Result<()> {
             ipc_size_bytes.sort_unstable();
 
             let ipc_size_bytes_total = ipc_size_bytes.iter().copied().sum::<u64>() as f64;
@@ -306,64 +308,64 @@ impl StatsCommand {
             let ipc_size_bytes_max =
                 ipc_size_bytes.iter().copied().max().unwrap_or_default() as f64;
 
-            println!(
+            try_println!(
                 "ipc_size_bytes_total = {}",
                 re_format::format_bytes(ipc_size_bytes_total)
-            );
-            println!(
+            )?;
+            try_println!(
                 "ipc_size_bytes_min = {}",
                 re_format::format_bytes(ipc_size_bytes_min)
-            );
-            println!(
+            )?;
+            try_println!(
                 "ipc_size_bytes_max = {}",
                 re_format::format_bytes(ipc_size_bytes_max)
-            );
-            println!(
+            )?;
+            try_println!(
                 "ipc_size_bytes_avg = {}",
                 re_format::format_bytes(ipc_size_bytes_avg)
-            );
+            )?;
 
             let print_percentile = |pxx_name: &str, p: f64| {
                 let pxx = ipc_size_bytes
                     .get((ipc_size_bytes.len() as f64 * p) as usize)
                     .map_or(0.0, |&v| v as f64);
 
-                println!(
+                try_println!(
                     "ipc_size_bytes_{pxx_name} = {}",
                     re_format::format_bytes(pxx)
-                );
+                )
             };
 
-            print_percentile("p50", 0.5);
-            print_percentile("p90", 0.9);
-            print_percentile("p95", 0.95);
-            print_percentile("p99", 0.99);
-            print_percentile("p999", 0.999);
+            print_percentile("p50", 0.5)?;
+            print_percentile("p90", 0.9)?;
+            print_percentile("p95", 0.95)?;
+            print_percentile("p99", 0.99)?;
+            print_percentile("p999", 0.999)
         };
 
-        println!();
-        println!("Size (schema + data, compressed)");
-        println!("--------------------------------");
-        print_ipc_size_bytes_stats(ipc_size_bytes_compressed);
+        try_println!()?;
+        try_println!("Size (schema + data, compressed)")?;
+        try_println!("--------------------------------")?;
+        print_ipc_size_bytes_stats(ipc_size_bytes_compressed)?;
 
-        println!();
-        println!("Size (schema + data, uncompressed)");
-        println!("----------------------------------");
-        print_ipc_size_bytes_stats(ipc_size_bytes_uncompressed);
+        try_println!()?;
+        try_println!("Size (schema + data, uncompressed)")?;
+        try_println!("----------------------------------")?;
+        print_ipc_size_bytes_stats(ipc_size_bytes_uncompressed)?;
 
-        println!();
-        println!("Size (schema only, uncompressed)");
-        println!("--------------------------------");
-        print_ipc_size_bytes_stats(ipc_schema_size_bytes_uncompressed);
+        try_println!()?;
+        try_println!("Size (schema only, uncompressed)")?;
+        try_println!("--------------------------------")?;
+        print_ipc_size_bytes_stats(ipc_schema_size_bytes_uncompressed)?;
 
-        println!();
-        println!("Size (data only, uncompressed)");
-        println!("------------------------------");
-        print_ipc_size_bytes_stats(ipc_data_size_bytes_uncompressed);
+        try_println!()?;
+        try_println!("Size (data only, uncompressed)")?;
+        try_println!("------------------------------")?;
+        print_ipc_size_bytes_stats(ipc_data_size_bytes_uncompressed)?;
 
-        println!();
-        println!("Compression");
-        println!("-----------");
+        try_println!()?;
+        try_println!("Compression")?;
+        try_println!("-----------")?;
         let stored_total: u64 = per_codec.values().map(|c| c.stored_bytes).sum();
         let ipc_total: u64 = per_codec.values().map(|c| c.ipc_bytes).sum();
         for (codec, stats) in &per_codec {
@@ -371,26 +373,26 @@ impl StatsCommand {
                 Compression::Unspecified | Compression::None => "none",
                 Compression::Lz4 => "lz4",
             };
-            println!(
+            try_println!(
                 "{codec}: num_chunks = {} ({:.3}%), stored = {}, uncompressed = {} ({:.3}% of uncompressed)",
                 re_format::format_uint(stats.num_chunks),
                 stats.num_chunks as f64 / num_chunks.max(1) as f64 * 100.0,
                 re_format::format_bytes(stats.stored_bytes as f64),
                 re_format::format_bytes(stats.ipc_bytes as f64),
                 stats.stored_bytes as f64 / stats.ipc_bytes.max(1) as f64 * 100.0,
-            );
+            )?;
         }
-        println!(
+        try_println!(
             "total: stored = {}, uncompressed = {} ({:.3}% of uncompressed)",
             re_format::format_bytes(stored_total as f64),
             re_format::format_bytes(ipc_total as f64),
             stored_total as f64 / ipc_total.max(1) as f64 * 100.0,
-        );
+        )?;
 
         if !*no_decode {
-            println!();
-            println!("Unsorted timelines");
-            println!("------------------");
+            try_println!()?;
+            try_println!("Unsorted timelines")?;
+            try_println!("------------------")?;
             let entities_with_unsorted: Vec<&EntityPath> = timeline_is_sorted
                 .iter()
                 .filter(|(_, timelines)| timelines.values().any(|sorted| !*sorted))
@@ -398,18 +400,18 @@ impl StatsCommand {
                 .collect();
 
             if entities_with_unsorted.is_empty() {
-                println!("(none — every timeline on every chunk is sorted)");
+                try_println!("(none — every timeline on every chunk is sorted)")?;
             } else {
-                println!(
+                try_println!(
                     "{} entity(ies) had at least one chunk with an unsorted timeline. \
                      For each such entity, all of its timelines are listed below:",
                     re_format::format_uint(entities_with_unsorted.len())
-                );
+                )?;
                 for entity in entities_with_unsorted {
-                    println!("  {entity}");
+                    try_println!("  {entity}")?;
                     for (timeline, sorted) in &timeline_is_sorted[entity] {
                         let status = if *sorted { "sorted" } else { "UNSORTED" };
-                        println!("    {timeline}: {status}");
+                        try_println!("    {timeline}: {status}")?;
                     }
                 }
             }
@@ -417,19 +419,19 @@ impl StatsCommand {
 
         // The chunk index is parsed straight from the raw bytes, so these stats are available
         // even with `--no-decode`.
-        println!();
-        println!("Chunk index");
-        println!("-----------");
+        try_println!()?;
+        try_println!("Chunk index")?;
+        try_println!("-----------")?;
         let chunk_indexes = if let Ok((_size_bytes, footers)) = rx_footers.recv() {
             print_chunk_index_stats(footers, *continue_on_error)?
         } else {
-            println!("(none — the input stream did not contain any chunk index)");
+            try_println!("(none — the input stream did not contain any chunk index)")?;
             Vec::new()
         };
 
-        println!();
-        println!("Chunk index analysis");
-        println!("--------------------");
+        try_println!()?;
+        try_println!("Chunk index analysis")?;
+        try_println!("--------------------")?;
 
         let recording_chunk_indexes: Vec<_> = chunk_indexes
             .iter()
@@ -437,12 +439,12 @@ impl StatsCommand {
             .collect();
 
         if recording_chunk_indexes.is_empty() {
-            println!(
+            try_println!(
                 "(not available — the input stream did not contain any chunk index; run `rerun rrd migrate` to migrate older files)"
-            );
+            )?;
         } else {
             for chunk_index in recording_chunk_indexes {
-                print_chunk_index_analysis(chunk_index);
+                print_chunk_index_analysis(chunk_index)?;
             }
         }
 
@@ -460,15 +462,15 @@ fn print_chunk_index_stats(
     continue_on_error: bool,
 ) -> anyhow::Result<Vec<RawRrdManifest>> {
     if footers.is_empty() {
-        println!("(none — no chunk index was found)");
+        try_println!("(none — no chunk index was found)")?;
         return Ok(Vec::new());
     }
 
     let num_chunk_indexes = footers.iter().filter(|(_, res)| res.is_ok()).count();
-    println!(
+    try_println!(
         "num_chunk_indexes = {} (one per recording)",
         re_format::format_uint(num_chunk_indexes)
-    );
+    )?;
 
     let mut chunk_indexes = Vec::new();
 
@@ -499,39 +501,39 @@ fn print_chunk_index_stats(
         let byte_size_uncompressed_total: u64 =
             chunk_index.col_chunk_byte_size_uncompressed_iter()?.sum();
 
-        let sha256 = re_chunk_index::sha256_to_hex(&chunk_index.sorbet_schema_sha256);
+        let sha256 = chunk_index.sorbet_schema_sha256;
 
-        println!();
-        println!("Chunk index for {:?}", chunk_index.store_id);
-        println!(
+        try_println!()?;
+        try_println!("Chunk index for {:?}", chunk_index.store_id)?;
+        try_println!(
             "  num_chunks_indexed = {}",
             re_format::format_uint(num_chunks)
-        );
-        println!(
+        )?;
+        try_println!(
             "  num_static_chunks = {}",
             re_format::format_uint(num_static_chunks)
-        );
-        println!(
+        )?;
+        try_println!(
             "  num_entity_paths = {}",
             re_format::format_uint(num_entity_paths)
-        );
-        println!(
+        )?;
+        try_println!(
             "  num_columns = {}",
             re_format::format_uint(chunk_index.data.num_columns())
-        );
-        println!(
+        )?;
+        try_println!(
             "  sorbet_schema_num_fields = {}",
             re_format::format_uint(chunk_index.sorbet_schema.fields.len())
-        );
-        println!("  sorbet_schema_sha256 = {sha256}");
-        println!(
+        )?;
+        try_println!("  sorbet_schema_sha256 = {sha256}")?;
+        try_println!(
             "  chunk_byte_size_total (native) = {}",
             re_format::format_bytes(byte_size_total as f64)
-        );
-        println!(
+        )?;
+        try_println!(
             "  chunk_byte_size_uncompressed_total = {}",
             re_format::format_bytes(byte_size_uncompressed_total as f64)
-        );
+        )?;
 
         chunk_indexes.push(chunk_index);
     }
@@ -539,7 +541,7 @@ fn print_chunk_index_stats(
     Ok(chunk_indexes)
 }
 
-fn print_chunk_index_analysis(chunk_index: &RawRrdManifest) {
+fn print_chunk_index_analysis(chunk_index: &RawRrdManifest) -> std::io::Result<()> {
     use re_chunk_optimizer::analyze_chunk_index;
 
     let chunk_max_bytes = re_chunk_store::OptimizationProfile::OBJECT_STORE.chunk_max_bytes;
@@ -550,27 +552,27 @@ fn print_chunk_index_analysis(chunk_index: &RawRrdManifest) {
                 "failed to analyze chunk index for {:?}: {err}",
                 chunk_index.store_id
             );
-            return;
+            return Ok(());
         }
     };
     let merge = &analysis.merge;
 
-    println!();
-    println!("Store {:?}", chunk_index.store_id);
-    println!(
+    try_println!()?;
+    try_println!("Store {:?}", chunk_index.store_id)?;
+    try_println!(
         "chunk index columns: {}",
         re_format::format_uint(analysis.num_columns),
-    );
+    )?;
 
-    println!();
-    println!(
+    try_println!()?;
+    try_println!(
         "Optimization check based on a {} chunk size target (`--profile object-store`)",
         re_format::format_bytes(chunk_max_bytes as f64),
-    );
+    )?;
 
     if merge.actual_chunks == 0 {
-        println!("(nothing to check — this recording has no temporal chunks)");
-        return;
+        try_println!("(nothing to check — this recording has no temporal chunks)")?;
+        return Ok(());
     }
 
     // Label, value, and an optional trailing annotation. Values are right-aligned against each
@@ -606,15 +608,16 @@ fn print_chunk_index_analysis(chunk_index: &RawRrdManifest) {
 
     for (label, value, annotation) in &rows {
         let label = format!("{label}:");
-        println!("  - {label:<label_width$} {value:>value_width$} chunks{annotation}");
+        try_println!("  - {label:<label_width$} {value:>value_width$} chunks{annotation}")?;
     }
 
-    println!();
+    try_println!()?;
     if merge.looks_unoptimized() {
-        println!(
+        try_println!(
             "\u{26a0}\u{fe0f} This recording may be unoptimized — consider running `rerun rrd optimize`"
-        );
+        )?;
     }
+    Ok(())
 }
 
 /// How a chunk's payload was found in the stream, before `rrd stats` decompresses it.

@@ -251,7 +251,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         row_index,
         entity_path,
     )? {
-        let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|_err| {
+        let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|()| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
                 component: identifier_rotation_axis_angles,
@@ -265,7 +265,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         row_index,
         entity_path,
     )? {
-        let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|_err| {
+        let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|()| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
                 component: identifier_quaternions,
@@ -563,7 +563,6 @@ fn resolve_parent_frame(
 /// Queries view coordinates from either the [`archetypes::Pinhole`] or [`archetypes::ViewCoordinates`] archetype.
 ///
 /// Gives precedence to the `Pinhole` archetype.
-// TODO(#2663): This is confusing and should be cleaned up.
 pub fn query_view_coordinates(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
@@ -616,10 +615,9 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk_store::Chunk;
-    use re_entity_db::{EntityDb, EntityPath};
     use re_log_types::Timeline;
     use re_sdk_types::{
-        archetypes::{self, InstancePoses3D, Pinhole, Transform3D},
+        archetypes::{self, Pinhole, Transform3D},
         components::{PinholeProjection, RotationQuat, ViewCoordinates},
     };
 

@@ -230,13 +230,11 @@ impl<T> RowMerge<T> {
 
 #[cfg(test)]
 mod tests {
-    use re_chunk::RowId;
     use re_chunk_index::InMemoryChunkProvider;
     use re_log_types::example_components::{MyPoint, MyPoints};
-    use re_log_types::{StoreId, StoreKind, Timeline};
+    use re_log_types::{StoreId, StoreKind};
 
     use super::*;
-    use crate::plan::ChunkSlice;
 
     fn frame() -> Timeline {
         Timeline::new_sequence("frame")

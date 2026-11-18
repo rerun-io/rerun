@@ -5,7 +5,7 @@ use re_log_types::Instance;
 use re_renderer::ViewPickingConfiguration;
 use re_ui::UiExt as _;
 use re_ui::list_item::{PropertyContent, list_item_scope};
-use re_view::AnnotationMapCache;
+use re_view::{AnnotationMapCache, TextureInteractionId};
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, ItemCollection, ItemContext,
     UiLayout, ViewQuery, ViewSystemExecutionError, ViewerContext,
@@ -16,9 +16,7 @@ use crate::visualizers::DepthImageProcessResult;
 use crate::{
     PickableRectSourceData, PickableTexturedRect, SpaceKind,
     picking::{PickableUiRect, PickingContext, PickingHitType},
-    picking_ui_pixel::{
-        PickedPixelInfo, TextureInteractionId, depth_value_from_gpu_texture, textured_rect_hover_ui,
-    },
+    picking_ui_pixel::{PickedPixelInfo, depth_value_from_gpu_texture, textured_rect_hover_ui},
     ui::SpatialViewState,
     visualizers::{
         CamerasVisualizer, CamerasVisualizerOutput, DepthImageVisualizer,

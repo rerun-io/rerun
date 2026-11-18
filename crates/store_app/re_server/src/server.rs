@@ -299,7 +299,7 @@ impl ServerBuilder {
 
     /// Set additional origin patterns allowed to make cross-origin requests.
     ///
-    /// By default, only `localhost`, `127.0.0.1`, and `rerun.io` are allowed.
+    /// By default, only `localhost`, `127.0.0.1`, `rerun.io`, and its subdomains are allowed.
     pub fn with_cors_allowed_origins(mut self, origins: Vec<String>) -> Self {
         self.cors_allowed_origins = origins;
         self

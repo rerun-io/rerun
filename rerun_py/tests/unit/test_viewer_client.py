@@ -7,14 +7,25 @@ import subprocess
 from datetime import UTC, datetime
 from typing import Any
 from unittest.mock import Mock, call
+from uuid import UUID
 
 import datafusion
 import numpy as np
 import pyarrow as pa
 import pytest
 from rerun._arrow import to_record_batch
-from rerun.experimental import OpenResult, ViewerClient, _viewer_client
-from rerun.experimental._viewer_client import _viewer_state_from_json
+from rerun.experimental import (
+    OpenResult,
+    SelectedComponent,
+    SelectedContainer,
+    SelectedEntity,
+    SelectedRecording,
+    SelectedView,
+    Selection,
+    ViewerClient,
+    _viewer_client,
+)
+from rerun.experimental._viewer_client import _selection_from_json, _viewer_state_from_json
 
 import rerun_bindings  # noqa: TID251
 
@@ -375,7 +386,7 @@ def test_viewer_state_reads_nested_recording_and_view_fields() -> None:
         ],
         "views": [
             {
-                "view_id": "id",
+                "view_id": "67e55044-10b1-426f-9247-bb680e5fe0c8",
                 "class": "Spatial3D",
                 "name": "world",
                 "origin": "/world",
@@ -392,6 +403,7 @@ def test_viewer_state_reads_nested_recording_and_view_fields() -> None:
     (timeline,) = state.recordings[0].timelines
     assert (timeline.start, timeline.end) == (3, 9)
     (view,) = state.views
+    assert view.view_id == UUID("67e55044-10b1-426f-9247-bb680e5fe0c8")
     assert (view.view_class, view.name, view.origin, view.visible) == ("Spatial3D", "world", "/world", True)
     (report,) = view.reports
     assert (report.severity, report.summary, report.details) == ("warning", "no data", "nothing logged")
@@ -427,3 +439,44 @@ def test_viewer_state_reports_a_load_in_flight() -> None:
     assert state.recordings[0].timelines == []
     (source,) = state.loading
     assert (source.name, source.status) == ("/tmp/dataset", "Loading /tmp/dataset…")
+
+
+def test_get_selection_reads_every_kind_in_order(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Canonical protobuf JSON writes a `uint64` as a string, and keeps an explicitly set zero."""
+    view_id = UUID("67e55044-10b1-426f-9247-bb680e5fe0c8")
+    container_id = UUID("0e5fe0c8-10b1-426f-9247-bb680e5f67e5")
+    viewer, requests = _controlling_viewer(
+        monkeypatch,
+        {
+            "get_selection": {
+                "store_id": "Recording:app:rec",
+                "items": [
+                    {"entity": {"entity_path": "/points", "instance": "0", "view_id": {"uuid": str(view_id)}}},
+                    {"entity": {"entity_path": "/points"}},
+                    {"component": {"entity_path": "/points", "component": "Points3D:positions"}},
+                    {"view": {"view_id": {"uuid": str(view_id)}}},
+                    {"container": {"container_id": {"uuid": str(container_id)}}},
+                    {"recording": {"store_id": "Recording:app:rec"}},
+                ],
+            }
+        },
+    )
+
+    assert viewer.get_selection() == Selection(
+        store_id="Recording:app:rec",
+        items=[
+            SelectedEntity(entity_path="/points", instance=0, view_id=view_id),
+            SelectedEntity(entity_path="/points", instance=None, view_id=None),
+            SelectedComponent(entity_path="/points", component="Points3D:positions"),
+            SelectedView(view_id=view_id),
+            SelectedContainer(container_id=container_id),
+            SelectedRecording(store_id="Recording:app:rec"),
+        ],
+    )
+    assert requests == [{"get_selection": {}}]
+
+
+def test_selection_skips_unknown_kinds_and_reads_empty_as_nothing() -> None:
+    """A newer viewer may report kinds this client does not know."""
+    assert _selection_from_json({}) == Selection(store_id=None, items=[])
+    assert _selection_from_json({"items": [{"server": {"origin": "rerun+http://localhost"}}]}).items == []

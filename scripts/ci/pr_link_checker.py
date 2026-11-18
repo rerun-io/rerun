@@ -124,7 +124,7 @@ def get_added_lines_with_links(
 
     try:
         result = subprocess.run(
-            ["git", "diff", "--no-ext-diff", "--no-merges", "--diff-filter=AM", f"{base_ref}...HEAD"],  # NOLINT
+            ["git", "diff", "--no-ext-diff", "--no-merges", "--diff-filter=AM", f"{base_ref}...HEAD"],
             capture_output=True,
             text=True,
             check=True,
@@ -211,11 +211,6 @@ def create_temp_files(lines_by_file: dict[str, list[str]]) -> list[TempLinkFile]
             with os.fdopen(fd, "w") as f:
                 for line in lines:
                     f.write(line + "\n")
-
-            # TODO(lycheeverse/lychee#972): Windows absolute paths don't work.
-            # But looks like UNC paths work!
-            if sys.platform == "win32":
-                temp_path = "\\\\.\\" + temp_path
 
             temp_files.append(TempLinkFile(temp_path, file))
         except Exception:

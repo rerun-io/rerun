@@ -4,6 +4,7 @@ use arrow::array::AsArray as _;
 use itertools::Itertools as _;
 
 use re_chunk_index::RawRrdManifest;
+use re_error::try_eprintln;
 use re_log_encoding::{Decodable as _, RrdFooter};
 use re_log_msg::LogMsg;
 use re_sdk_types::reflection::{ComponentDescriptorExt as _, Reflection};
@@ -91,14 +92,14 @@ impl VerifyCommand {
 
         if verifier.errors.is_empty() {
             if seen_files.len() == 1 {
-                eprintln!("1 file verified without error.");
+                try_eprintln!("1 file verified without error.")?;
             } else {
-                eprintln!("{} files verified without error.", seen_files.len());
+                try_eprintln!("{} files verified without error.", seen_files.len())?;
             }
             Ok(())
         } else {
             for err in verifier.errors.iter().sorted() {
-                eprintln!("{err}");
+                let _err = try_eprintln!("{err}");
             }
             Err(anyhow::anyhow!(
                 "Verification failed with {} errors",

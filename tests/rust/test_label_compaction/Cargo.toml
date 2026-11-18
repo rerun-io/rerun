@@ -9,6 +9,10 @@ publish = false
 [lints]
 workspace = true
 
+[[bin]]
+name = "test_label_compaction"
+test = false
+
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
 rerun = { path = "../../../crates/top/rerun", features = ["clap"] }

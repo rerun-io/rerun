@@ -10,6 +10,17 @@ Within an entity draw order is governed by the order of the components.
 
 Draw order for entities with the same draw order is generally undefined.
 
+If no draw order is set, the viewer uses these defaults:
+* -20: [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image), [`archetypes.EncodedDepthImage`](https://rerun.io/docs/reference/types/archetypes/encoded_depth_image)
+* -15: [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference), [`archetypes.VideoStream`](https://rerun.io/docs/reference/types/archetypes/video_stream)
+* -10: [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image), [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image), [`archetypes.GridMap`](https://rerun.io/docs/reference/types/archetypes/grid_map)
+* 0: [`archetypes.SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image)
+* 10: [`archetypes.Boxes2D`](https://rerun.io/docs/reference/types/archetypes/boxes2d), [`archetypes.Ellipses2D`](https://rerun.io/docs/reference/types/archetypes/ellipses2d)
+* 20: [`archetypes.Arrows2D`](https://rerun.io/docs/reference/types/archetypes/arrows2d), [`archetypes.LineStrips2D`](https://rerun.io/docs/reference/types/archetypes/line_strips2d)
+* 30: [`archetypes.Points2D`](https://rerun.io/docs/reference/types/archetypes/points2d)
+
+For example, to draw an image on top of a segmentation image, give the image a draw order above 0.
+
 ## Rerun encoding
 [`Float32`](../encodings/float32.md)
 

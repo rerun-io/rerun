@@ -364,6 +364,56 @@ impl Server {
     }
 }
 
+fn alert_with_action_ui(
+    ui: &mut egui::Ui,
+    alert: Alert,
+    title: &str,
+    details_ui: impl FnOnce(&mut egui::Ui),
+    action_label: &str,
+) -> egui::Response {
+    alert
+        .show(ui, |ui| {
+            ui.vertical(|ui| {
+                ui.strong(title);
+                details_ui(ui);
+                ui.add_space(8.0);
+                ui.add(egui::Button::new(action_label).size_small())
+            })
+            .inner
+        })
+        .inner
+}
+
+fn entry_error_ui(
+    ctx: &AppContext<'_>,
+    ui: &mut egui::Ui,
+    origin: &re_uri::Origin,
+    title: &str,
+    details: egui::WidgetText,
+) {
+    Frame::new().inner_margin(16.0).show(ui, |ui| {
+        if alert_with_action_ui(
+            ui,
+            Alert::error(),
+            title,
+            |ui| {
+                ui.add(egui::Label::new(details).wrap());
+            },
+            "Back to server",
+        )
+        .clicked()
+        {
+            let route = re_viewer_context::Route::RedapServer(origin.clone());
+            if let Some(item) = route.item() {
+                ctx.command_sender()
+                    .send_system(SystemCommand::set_selection(item));
+            }
+            ctx.command_sender()
+                .send_system(SystemCommand::SetRoute(route));
+        }
+    });
+}
+
 fn error_ui(
     app_ctx: &AppContext<'_>,
     ctx: &Context<'_>,
@@ -523,10 +573,11 @@ fn warning_with_edit_button(
     message: &str,
     auth_context: Option<&re_viewer_context::AuthContext>,
 ) {
-    Alert::warning().show(ui, |ui| {
-        ui.vertical(|ui| {
-            ui.strong(message);
-
+    if alert_with_action_ui(
+        ui,
+        Alert::warning(),
+        message,
+        |ui| {
             if let Some(auth) = auth_context {
                 let identity = if let Some(org) = &auth.org_name {
                     format!("Logged in as {} ({})", auth.email, org)
@@ -535,23 +586,21 @@ fn warning_with_edit_button(
                 };
                 ui.weak(identity);
             }
-            ui.add_space(8.0);
-            if ui
-                .add(egui::Button::new("Edit connection").size_small())
-                .clicked()
-            {
-                send_crossbeam(
-                    ctx.command_sender,
-                    Command::OpenEditServerModal(EditRedapServerModalCommand {
-                        origin: origin.clone(),
-                        open_on_success: None,
-                        title: None,
-                    }),
-                )
-                .ok();
-            }
-        });
-    });
+        },
+        "Edit connection",
+    )
+    .clicked()
+    {
+        send_crossbeam(
+            ctx.command_sender,
+            Command::OpenEditServerModal(EditRedapServerModalCommand {
+                origin: origin.clone(),
+                open_on_success: None,
+                title: None,
+            }),
+        )
+        .ok();
+    }
 }
 
 /// All servers known to the viewer, and their catalog data.
@@ -1407,6 +1456,27 @@ impl RedapServers {
             return;
         };
         let Some(entry) = server.find_entry(active_entry) else {
+            let details = match server.entries.state() {
+                Poll::Ready(Err(err)) => err.to_string().into(),
+                Poll::Ready(Ok(_)) => {
+                    let mut text = egui::text::LayoutJob::default();
+                    for part in [
+                        egui::RichText::new("Entry "),
+                        egui::RichText::new(active_entry.to_string()).monospace(),
+                        egui::RichText::new(" was not found on this server."),
+                    ] {
+                        part.append_to(
+                            &mut text,
+                            ui.style(),
+                            egui::FontSelection::Default,
+                            egui::Align::Center,
+                        );
+                    }
+                    text.into()
+                }
+                Poll::Pending => return,
+            };
+            entry_error_ui(ctx, ui, origin, "Could not open entry", details);
             return;
         };
 
@@ -1426,13 +1496,13 @@ impl RedapServers {
                 server.table_entry_ui(ctx, ui, table, table_blueprints, view_states);
             }
             Err(err) => {
-                Frame::new().inner_margin(16.0).show(ui, |ui| {
-                    Alert::error().show_text(
-                        ui,
-                        format!("Error loading entry {}", entry.name()),
-                        Some(err.to_string()),
-                    );
-                });
+                entry_error_ui(
+                    ctx,
+                    ui,
+                    origin,
+                    &format!("Error loading entry {}", entry.name()),
+                    err.to_string().into(),
+                );
             }
         }
     }

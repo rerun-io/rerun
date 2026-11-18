@@ -25,27 +25,27 @@ const OWNER_KINDS =
 export function load(app) {
   app.converter.on(Converter.EVENT_RESOLVE_END, (context) => {
     /** @type {Map<import("typedoc").Reflection, Set<DeclarationReflection>>} */
-    const used_by = new Map();
+    const usedBy = new Map();
 
     for (const reflection of Object.values(context.project.reflections)) {
-      const owner = owner_of(reflection);
+      const owner = ownerOf(reflection);
       if (!owner) {
         continue;
       }
       /** @type {Set<import("typedoc").Reflection>} */
       const targets = new Set();
-      collect_targets(/** @type {any} */ (reflection).type, targets);
+      collectTargets(/** @type {any} */ (reflection).type, targets);
       for (const type of /** @type {any} */ (reflection).extendedTypes ?? []) {
-        collect_targets(type, targets);
+        collectTargets(type, targets);
       }
       for (const target of targets) {
         if (target !== owner && target !== owner.parent) {
-          used_by.set(target, (used_by.get(target) ?? new Set()).add(owner));
+          usedBy.set(target, (usedBy.get(target) ?? new Set()).add(owner));
         }
       }
     }
 
-    for (const [target, owners] of used_by) {
+    for (const [target, owners] of usedBy) {
       const comment = (target.comment ??= new Comment());
       const sorted = [...owners].sort((a, b) =>
         a.getFriendlyFullName().localeCompare(b.getFriendlyFullName()),
@@ -72,7 +72,7 @@ export function load(app) {
  * @param {import("typedoc").Reflection} reflection
  * @returns {DeclarationReflection | undefined}
  */
-function owner_of(reflection) {
+function ownerOf(reflection) {
   /** @type {DeclarationReflection | undefined} */
   let owner;
   /** @type {import("typedoc").Reflection | undefined} */
@@ -94,7 +94,7 @@ function owner_of(reflection) {
  * @param {any} type
  * @param {Set<import("typedoc").Reflection>} targets
  */
-function collect_targets(type, targets) {
+function collectTargets(type, targets) {
   if (!type || typeof type !== "object") {
     return;
   }
@@ -105,12 +105,12 @@ function collect_targets(type, targets) {
     // An object literal type: what its members and signatures use is used here too.
     const declaration = type.declaration;
     for (const child of declaration.children ?? []) {
-      collect_targets(child.type, targets);
+      collectTargets(child.type, targets);
     }
     for (const signature of declaration.signatures ?? []) {
-      collect_targets(signature.type, targets);
+      collectTargets(signature.type, targets);
       for (const parameter of signature.parameters ?? []) {
-        collect_targets(parameter.type, targets);
+        collectTargets(parameter.type, targets);
       }
     }
     return;
@@ -135,6 +135,6 @@ function collect_targets(type, targets) {
     type.templateType,
     type.nameType,
   ]) {
-    collect_targets(nested, targets);
+    collectTargets(nested, targets);
   }
 }

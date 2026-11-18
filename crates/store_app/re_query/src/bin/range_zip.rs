@@ -1,6 +1,7 @@
 //! CLI tool to generate `RangeZip` implementations of different arities.
 
 #![expect(clippy::tuple_array_conversions)] // false positive
+#![expect(clippy::print_stdout)] // Prints the generated code
 
 use itertools::{Itertools as _, chain, izip};
 

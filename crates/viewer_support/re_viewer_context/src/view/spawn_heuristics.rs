@@ -12,7 +12,23 @@ use re_sdk_types::ViewClassIdentifier;
 /// This limit applies on a per view class basis.
 pub const MAX_VIEWS_SPAWNED: usize = 8;
 
-/// Properties of a view that as recommended to be spawned by default via view spawn heuristics.
+/// Why a view class is being asked for spawn recommendations.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ViewSpawnContext {
+    /// Recommend views to show without a user request.
+    ///
+    /// By convention, this should exclude property entities.
+    /// Classes that should only be created explicitly can return no recommendations.
+    Automatic,
+
+    /// Recommend a view in response to an explicit user request, without an entity selection.
+    ///
+    /// All entities, including properties, are eligible.
+    /// The caller uses the first recommendation, or creates a root-subtree view if none are returned.
+    Explicit,
+}
+
+/// Properties of a view recommended by view spawn heuristics.
 #[derive(Debug, Clone)]
 pub struct RecommendedView {
     pub origin: EntityPath,

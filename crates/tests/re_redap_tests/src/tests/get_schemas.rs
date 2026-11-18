@@ -11,8 +11,8 @@ use re_chunk_index::RawRrdManifest;
 use re_protos::cloud::v1alpha1::ext::{self, ScanDatasetManifestDataframe};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::{GetSchemasRequest, ScanDatasetManifestRequest};
-use re_protos::common::v1alpha1::ext::SchemaId;
 use re_protos::headers::RerunHeadersInjectorExt as _;
+use re_sorbet::SchemaId;
 
 use super::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, entry_name,
@@ -60,8 +60,8 @@ pub async fn get_schemas(service: impl RerunCloudService) {
     let mut entity_sets = BTreeSet::new();
     for ext::GetSchemasResponse { schema_id, schema } in &schemas {
         assert_eq!(
-            &RawRrdManifest::compute_sorbet_schema_sha256(schema).unwrap(),
-            schema_id.sha256(),
+            RawRrdManifest::compute_sorbet_schema_sha256(schema).unwrap(),
+            *schema_id,
             "the returned schema must hash to the identifier it was looked up by"
         );
         entity_sets.insert(component_entities(schema));

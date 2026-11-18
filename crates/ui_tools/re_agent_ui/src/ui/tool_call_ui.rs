@@ -19,18 +19,44 @@ pub fn tool_call_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallSt
         default_open,
     );
     let is_open = state.is_open();
-    let mut header_clicked = false;
-    let mut header = state.show_header(ui, |ui| {
-        header_clicked = ui
-            .scope(|ui| header_ui(ui, session, call, is_open))
-            .response
-            .interact(egui::Sense::click())
-            .clicked();
+    subdued_collapsing_ui(
+        ui,
+        state,
+        |ui| {
+            ui.scope(|ui| header_ui(ui, session, call, is_open))
+                .response
+                .interact(egui::Sense::click())
+        },
+        |ui| body_ui(ui, call),
+    );
+}
+
+pub fn subdued_collapsing_ui(
+    ui: &mut egui::Ui,
+    mut state: egui::collapsing_header::CollapsingState,
+    add_header: impl FnOnce(&mut egui::Ui) -> egui::Response,
+    add_body: impl FnOnce(&mut egui::Ui),
+) -> egui::Response {
+    let header = ui.horizontal(|ui| {
+        let item_spacing = ui.spacing().item_spacing;
+        ui.spacing_mut().item_spacing.x = 0.0;
+        state.show_toggle_button(ui, subdued_triangle);
+        ui.spacing_mut().item_spacing = item_spacing;
+        add_header(ui).clicked()
     });
-    if header_clicked {
-        header.toggle();
+    if header.inner {
+        state.toggle(ui);
     }
-    header.body(|ui| body_ui(ui, call));
+    state.show_body_indented(&header.response, ui, add_body);
+    header.response
+}
+
+pub fn subdued_triangle(ui: &mut egui::Ui, openness: f32, response: &egui::Response) {
+    let subdued = ui.tokens().text_subdued;
+    let inactive = &mut ui.visuals_mut().widgets.inactive.fg_stroke.color;
+    let default = std::mem::replace(inactive, subdued);
+    egui::collapsing_header::paint_default_icon(ui, openness, response);
+    ui.visuals_mut().widgets.inactive.fg_stroke.color = default;
 }
 
 /// The title is truncated while collapsed and wraps when expanded, so no tooltip is needed.
@@ -140,64 +166,65 @@ const MAX_INLINE_CHARS: usize = 120;
 /// (see [`MARKDOWN_FIELDS`]) or code; fields holding a file path become links that open the file.
 /// Anything else is pretty-printed JSON.
 pub fn tool_input_ui(ui: &mut egui::Ui, value: &serde_json::Value) {
-    let tokens = ui.tokens();
     match value {
         serde_json::Value::String(text) => code_ui(ui, text, None),
-        serde_json::Value::Object(fields) => {
-            for (key, value) in fields {
-                match value {
-                    serde_json::Value::String(text) if is_file_path(text) => {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new(format!("{key}:")).color(tokens.text_subdued));
-                            ui.hyperlink_to(RichText::new(text).monospace(), file_url(text))
-                                .on_hover_text("Open the file");
-                        });
-                    }
-                    serde_json::Value::String(text)
-                        if text.contains('\n') || MAX_INLINE_CHARS < text.chars().count() =>
-                    {
-                        let lines = text.lines().count();
-                        let header = format!("{key} ({lines} lines)");
-                        egui::CollapsingHeader::new(RichText::new(header).small())
-                            .id_salt(key)
-                            .default_open(false)
-                            .show(ui, |ui| {
-                                if MARKDOWN_FIELDS.contains(&key.as_str()) {
-                                    markdown_ui(ui, text);
-                                } else {
-                                    code_ui(ui, text, None);
-                                }
-                            });
-                    }
-                    serde_json::Value::String(text) => {
-                        ui.horizontal_wrapped(|ui| {
-                            ui.label(RichText::new(format!("{key}:")).color(tokens.text_subdued));
-                            ui.add(
-                                egui::Label::new(RichText::new(text).monospace()).selectable(true),
-                            );
-                        });
-                    }
-                    serde_json::Value::Null
-                    | serde_json::Value::Bool(_)
-                    | serde_json::Value::Number(_) => {
-                        ui.horizontal_wrapped(|ui| {
-                            ui.label(RichText::new(format!("{key}:")).color(tokens.text_subdued));
-                            ui.label(RichText::new(value.to_string()).monospace());
-                        });
-                    }
-                    serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
-                        let json = serde_json::to_string_pretty(value).unwrap_or_default();
-                        egui::CollapsingHeader::new(RichText::new(key).small())
-                            .id_salt(key)
-                            .default_open(false)
-                            .show(ui, |ui| code_ui(ui, &json, None));
-                    }
-                }
-            }
-        }
+        serde_json::Value::Object(fields) => tool_fields_ui(ui, fields),
         other => {
             let json = serde_json::to_string_pretty(other).unwrap_or_else(|_| other.to_string());
             code_ui(ui, &json, None);
+        }
+    }
+}
+
+pub fn tool_fields_ui<'a>(
+    ui: &mut egui::Ui,
+    fields: impl IntoIterator<Item = (&'a String, &'a serde_json::Value)>,
+) {
+    let tokens = ui.tokens();
+    for (key, value) in fields {
+        match value {
+            serde_json::Value::String(text) if is_file_path(text) => {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(format!("{key}:")).color(tokens.text_subdued));
+                    ui.hyperlink_to(RichText::new(text).monospace(), file_url(text))
+                        .on_hover_text("Open the file");
+                });
+            }
+            serde_json::Value::String(text)
+                if text.contains('\n') || MAX_INLINE_CHARS < text.chars().count() =>
+            {
+                let lines = text.lines().count();
+                let header = format!("{key} ({lines} lines)");
+                egui::CollapsingHeader::new(RichText::new(header).small())
+                    .id_salt(key)
+                    .default_open(false)
+                    .show(ui, |ui| {
+                        if MARKDOWN_FIELDS.contains(&key.as_str()) {
+                            markdown_ui(ui, text);
+                        } else {
+                            code_ui(ui, text, None);
+                        }
+                    });
+            }
+            serde_json::Value::String(text) => {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(RichText::new(format!("{key}:")).color(tokens.text_subdued));
+                    ui.add(egui::Label::new(RichText::new(text).monospace()).selectable(true));
+                });
+            }
+            serde_json::Value::Null | serde_json::Value::Bool(_) | serde_json::Value::Number(_) => {
+                ui.horizontal_wrapped(|ui| {
+                    ui.label(RichText::new(format!("{key}:")).color(tokens.text_subdued));
+                    ui.label(RichText::new(value.to_string()).monospace());
+                });
+            }
+            serde_json::Value::Array(_) | serde_json::Value::Object(_) => {
+                let json = serde_json::to_string_pretty(value).unwrap_or_default();
+                egui::CollapsingHeader::new(RichText::new(key).small())
+                    .id_salt(key)
+                    .default_open(false)
+                    .show(ui, |ui| code_ui(ui, &json, None));
+            }
         }
     }
 }
@@ -359,7 +386,7 @@ fn kind_icon(kind: ToolKind) -> Option<&'static re_ui::Icon> {
         ToolKind::Delete => &icons::TRASH,
         ToolKind::Move => &icons::DND_MOVE,
         ToolKind::Search => &icons::SEARCH,
-        ToolKind::Execute => &icons::VIEW_LOG,
+        ToolKind::Execute => &icons::TERMINAL,
         ToolKind::Think => &icons::INFO,
         ToolKind::Fetch => &icons::URL,
         ToolKind::SwitchMode => &icons::SETTINGS,

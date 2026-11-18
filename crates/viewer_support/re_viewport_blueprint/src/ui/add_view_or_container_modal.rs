@@ -104,12 +104,14 @@ fn modal_ui(
 
     ui.full_span_separator();
 
-    let add_view_row = |ui: &mut egui::Ui, view: ViewBlueprint| {
-        let icon = view.class(ctx.view_class_registry()).icon();
-        let title = view.class(ctx.view_class_registry()).display_name();
+    let add_view_row = |ui: &mut egui::Ui, view_class| {
+        let class = ctx.view_class_registry().get_class_or_log_error(view_class);
+        let icon = class.icon();
+        let title = class.display_name();
         let subtitle = format!("Create a new {title} view.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {
+            let view = ViewBlueprint::new_for_user_request(ctx, view_class);
             viewport.add_views(std::iter::once(view), target_container, None);
             viewport.mark_user_interaction(ctx);
             ui.close();
@@ -117,7 +119,7 @@ fn modal_ui(
     };
 
     for entry in ctx.view_class_registry().iter_registry() {
-        add_view_row(ui, ViewBlueprint::new_with_root_wildcard(entry.identifier));
+        add_view_row(ui, entry.identifier);
     }
 }
 

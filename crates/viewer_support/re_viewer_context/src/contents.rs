@@ -1,4 +1,4 @@
-use std::convert::{TryFrom, TryInto as _};
+use std::convert::TryInto as _;
 
 use egui_tiles::TileId;
 use re_log_types::EntityPath;

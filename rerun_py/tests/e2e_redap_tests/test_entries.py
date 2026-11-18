@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
+import pytest
 
 if TYPE_CHECKING:
     from syrupy import SnapshotAssertion
@@ -142,3 +143,23 @@ def test_entry_eq(entry_factory: EntryFactory) -> None:
     assert ds2.name in entries
 
     assert "doesnt_exists" not in client.entries()
+
+
+def test_rename_table(entry_factory: EntryFactory) -> None:
+    client = entry_factory.client
+    old_name = entry_factory.apply_prefix("table_to_rename")
+    new_name = entry_factory.apply_prefix("renamed_table")
+
+    table = entry_factory.create_table("table_to_rename", pa.schema([("id", pa.int32())]))
+    table.append(id=[1, 2])
+    assert client.ctx.table(old_name).count() == 2
+
+    table.set_name(new_name)
+
+    assert table.name == new_name
+    assert new_name in client.table_names()
+    assert old_name not in client.table_names()
+    assert client.get_table(name=new_name).id == table.id
+    assert client.ctx.table(new_name).count() == 2
+    with pytest.raises(Exception):  # noqa: B017 — error type varies across DataFusion versions
+        client.ctx.table(old_name)

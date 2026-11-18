@@ -259,7 +259,11 @@ impl UnitChunkShared {
     /// Turns the unit chunk back into a standard [`Chunk`].
     #[inline]
     pub fn into_chunk(self) -> ChunkShared {
-        self.chunk
+        let Self {
+            chunk,
+            original_chunk_id: _,
+        } = self;
+        chunk
     }
 
     /// The [`ChunkId`] of the original chunk this unit was derived from.

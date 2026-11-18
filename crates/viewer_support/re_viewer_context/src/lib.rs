@@ -113,7 +113,7 @@ pub use self::contents::{Contents, ContentsName, blueprint_id_to_tile_id};
 pub use self::drag_and_drop::{DragAndDropFeedback, DragAndDropManager, DragAndDropPayload};
 pub use self::file_dialog::sanitize_file_name;
 pub use self::focus_target::FocusTarget;
-pub use self::heuristics::suggest_view_for_each_entity;
+pub use self::heuristics::{suggest_root_view_if_indicated_for, suggest_view_for_each_entity};
 pub use self::image_info::{
     ColormapWithRange, ImageInfo, StoredBlobCacheKey, resolution_of_image_at,
 };
@@ -170,14 +170,14 @@ pub use self::view::{
     ViewClass, ViewClassExt, ViewClassLayoutPriority, ViewClassPlaceholder, ViewClassRegistry,
     ViewClassRegistryError, ViewClassUiOutput, ViewContext, ViewContextCollection,
     ViewContextSystem, ViewContextSystemOncePerFrameResult, ViewEntityHighlight, ViewHighlights,
-    ViewOutlineMasks, ViewQuery, ViewSelectionUi, ViewSpawnHeuristics, ViewState, ViewStateExt,
-    ViewStates, ViewSystemExecutionError, ViewSystemIdentifier, ViewSystemRegistrator,
-    ViewSystemState, ViewerDiagnostic, ViewerReportSeverity, VisualizabilityConstraints,
-    VisualizerCollection, VisualizerComponentMappings, VisualizerComponentSource,
-    VisualizerExecutionOutput, VisualizerInstruction, VisualizerInstructionReport,
-    VisualizerInstructionsPerType, VisualizerQueryInfo, VisualizerReportContext, VisualizerSystem,
-    VisualizerTypeReport, VisualizerViewReport, VisualizersSectionOutput, VisualizersSectionUi,
-    default_view_entity_drop,
+    ViewOutlineMasks, ViewQuery, ViewSelectionUi, ViewSpawnContext, ViewSpawnHeuristics, ViewState,
+    ViewStateExt, ViewStates, ViewSystemExecutionError, ViewSystemIdentifier,
+    ViewSystemRegistrator, ViewSystemState, ViewerDiagnostic, ViewerReportSeverity,
+    VisualizabilityConstraints, VisualizerCollection, VisualizerComponentMappings,
+    VisualizerComponentSource, VisualizerExecutionOutput, VisualizerInstruction,
+    VisualizerInstructionReport, VisualizerInstructionsPerType, VisualizerQueryInfo,
+    VisualizerReportContext, VisualizerSystem, VisualizerTypeReport, VisualizerViewReport,
+    VisualizersSectionOutput, VisualizersSectionUi, default_view_entity_drop,
 };
 pub use self::viewer_context::ViewerContext;
 pub use self::visitor_flow_control::VisitorControlFlow; // Historical reasons

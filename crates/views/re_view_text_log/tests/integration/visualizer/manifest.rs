@@ -119,7 +119,7 @@ fn scrolling_during_load_does_not_cancel_cursor_seek() {
 fn manifest_static_logs_are_not_requested() {
     let timeline = Timeline::log_tick();
     let static_log = Chunk::builder("static_logs")
-        .with_archetype_auto_row(TimePoint::default(), &TextLog::new("static"))
+        .with_archetype_auto_row(TimePoint::STATIC, &TextLog::new("static"))
         .build()
         .unwrap();
     let mut chunks = vec![static_log.clone()];

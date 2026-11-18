@@ -16,7 +16,7 @@ pub fn test_annotations() {
         test_context.log_entity("/", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::AnnotationContext::new([
                     (
                         0,
@@ -42,7 +42,7 @@ pub fn test_annotations() {
         test_context.log_entity("segmentation", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::AnnotationContext::new([
                     (
                         0,
@@ -67,7 +67,7 @@ pub fn test_annotations() {
         test_context.log_entity("detections", |builder| {
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::Boxes2D::from_mins_and_sizes(
                     [(200.0, 50.0), (75.0, 150.0)],
                     [(30.0, 30.0), (20.0, 20.0)],
@@ -83,7 +83,7 @@ pub fn test_annotations() {
 
             builder.with_archetype(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::SegmentationImage::try_from(image)
                     .unwrap()
                     .with_draw_order(0.0),

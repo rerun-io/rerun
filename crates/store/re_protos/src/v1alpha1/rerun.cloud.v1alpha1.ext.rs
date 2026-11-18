@@ -1,4 +1,5 @@
 use std::collections::BTreeSet;
+use std::num::NonZeroU32;
 use std::sync::Arc;
 
 use arrow::array::{Array, ArrayRef, RecordBatch, StringArray};
@@ -10,6 +11,7 @@ use re_arrow_util::ArrowArrayDowncastRef as _;
 use re_chunk::TimelineName;
 use re_log_types::AbsoluteTimeRange;
 use re_log_types::{EntryId, TimeInt};
+use re_sorbet::SchemaId;
 use re_types_core::LayerName;
 
 use crate::cloud::v1alpha1::ext::ScanSegmentTableDataframe;
@@ -19,8 +21,12 @@ use crate::cloud::v1alpha1::{
     UploadMethod,
 };
 use crate::common::v1alpha1::ext as common_ext;
-use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SchemaId, SegmentId};
+use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
+use crate::protocol_level::ProtocolLevel;
+pub use crate::storage_location::{
+    InvalidStorageStringValue, StorageBucketName, StoragePrefix, StorageRegion,
+};
 use crate::{TypeConversionError, invalid_field, missing_field};
 
 /// Helper to simplify writing `field_XXX() -> FieldRef` methods.
@@ -551,6 +557,220 @@ pub struct InconsistentBlueprintDetailsError {
     entry_kind: &'static str,
 }
 
+// --- DatasetPolicy ---
+
+/// Selects every name of a dimension, or an explicit set.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum IndexingPolicySelection {
+    /// Every name, including names that appear later.
+    All,
+
+    /// Exactly the listed names. An empty set selects nothing.
+    Explicit(BTreeSet<String>),
+}
+
+impl IndexingPolicySelection {
+    /// Whether `name` is selected. Names match exactly.
+    pub fn contains(&self, name: &str) -> bool {
+        match self {
+            Self::All => true,
+            Self::Explicit(names) => names.contains(name),
+        }
+    }
+
+    /// The names both selections contain.
+    pub fn intersection(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Self::All, other) | (other, Self::All) => other.clone(),
+            (Self::Explicit(a), Self::Explicit(b)) => Self::Explicit(a & b),
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::IndexingPolicySelection> for IndexingPolicySelection {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::IndexingPolicySelection,
+    ) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::indexing_policy_selection::Selection;
+
+        let selection = value.selection.ok_or(missing_field!(
+            crate::cloud::v1alpha1::IndexingPolicySelection,
+            "selection"
+        ))?;
+        Ok(match selection {
+            Selection::All(()) => Self::All,
+            Selection::Explicit(list) => Self::Explicit(list.names.into_iter().collect()),
+        })
+    }
+}
+
+impl From<IndexingPolicySelection> for crate::cloud::v1alpha1::IndexingPolicySelection {
+    fn from(value: IndexingPolicySelection) -> Self {
+        use crate::cloud::v1alpha1::indexing_policy_selection::Selection;
+
+        let selection = match value {
+            IndexingPolicySelection::All => Selection::All(()),
+            IndexingPolicySelection::Explicit(names) => {
+                Selection::Explicit(crate::cloud::v1alpha1::IndexingPolicyNameList {
+                    names: names.into_iter().collect(),
+                })
+            }
+        };
+        Self {
+            selection: Some(selection),
+        }
+    }
+}
+
+/// Which entity paths and timelines a dataset indexes for chunk queries.
+///
+/// Entity paths match the way [`re_log_types::EntityPath`] prints them, so `a/b` and `/a/b`
+/// select the same entity. Decoding from protobuf and [`Self::explicit`] normalize them; a
+/// struct literal must use the normalized form itself.
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ChunkIndexingPolicy {
+    /// The entity paths the dataset indexes.
+    pub entity_paths: IndexingPolicySelection,
+
+    /// The timelines the dataset indexes.
+    pub timelines: IndexingPolicySelection,
+}
+
+impl ChunkIndexingPolicy {
+    /// Every entity path and every timeline.
+    pub const ALL: Self = Self {
+        entity_paths: IndexingPolicySelection::All,
+        timelines: IndexingPolicySelection::All,
+    };
+
+    /// No entity path and no timeline.
+    pub const NOTHING: Self = Self {
+        entity_paths: IndexingPolicySelection::Explicit(BTreeSet::new()),
+        timelines: IndexingPolicySelection::Explicit(BTreeSet::new()),
+    };
+
+    /// Exactly the listed entity paths and timelines, with the entity paths normalized.
+    pub fn explicit(
+        entity_paths: impl IntoIterator<Item = impl AsRef<str>>,
+        timelines: impl IntoIterator<Item = impl AsRef<str>>,
+    ) -> Self {
+        Self {
+            entity_paths: IndexingPolicySelection::Explicit(
+                entity_paths
+                    .into_iter()
+                    .map(|path| normalized_entity_path(path.as_ref()))
+                    .collect(),
+            ),
+            timelines: IndexingPolicySelection::Explicit(
+                timelines
+                    .into_iter()
+                    .map(|timeline| timeline.as_ref().to_owned())
+                    .collect(),
+            ),
+        }
+    }
+
+    /// Whether this is [`Self::ALL`].
+    pub fn indexes_everything(&self) -> bool {
+        *self == Self::ALL
+    }
+
+    /// The entity paths and timelines both policies index.
+    pub fn intersection(&self, other: &Self) -> Self {
+        Self {
+            entity_paths: self.entity_paths.intersection(&other.entity_paths),
+            timelines: self.timelines.intersection(&other.timelines),
+        }
+    }
+}
+
+fn normalized_entity_path(path: &str) -> String {
+    re_log_types::EntityPath::from(path).to_string()
+}
+
+impl TryFrom<crate::cloud::v1alpha1::ChunkIndexingPolicy> for ChunkIndexingPolicy {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::ChunkIndexingPolicy) -> Result<Self, Self::Error> {
+        let crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths,
+            timelines,
+        } = value;
+        let entity_paths = entity_paths.ok_or(missing_field!(
+            crate::cloud::v1alpha1::ChunkIndexingPolicy,
+            "entity_paths"
+        ))?;
+        let timelines = timelines.ok_or(missing_field!(
+            crate::cloud::v1alpha1::ChunkIndexingPolicy,
+            "timelines"
+        ))?;
+        let entity_paths = match IndexingPolicySelection::try_from(entity_paths)? {
+            IndexingPolicySelection::All => IndexingPolicySelection::All,
+            IndexingPolicySelection::Explicit(paths) => IndexingPolicySelection::Explicit(
+                paths
+                    .iter()
+                    .map(|path| normalized_entity_path(path))
+                    .collect(),
+            ),
+        };
+        Ok(Self {
+            entity_paths,
+            timelines: timelines.try_into()?,
+        })
+    }
+}
+
+impl From<ChunkIndexingPolicy> for crate::cloud::v1alpha1::ChunkIndexingPolicy {
+    fn from(value: ChunkIndexingPolicy) -> Self {
+        let ChunkIndexingPolicy {
+            entity_paths,
+            timelines,
+        } = value;
+        Self {
+            entity_paths: Some(entity_paths.into()),
+            timelines: Some(timelines.into()),
+        }
+    }
+}
+
+/// Dataset-level policies.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct DatasetPolicy {
+    /// `None` states no preference. The server that stores the entry then picks a policy.
+    pub chunk_indexing_policy: Option<ChunkIndexingPolicy>,
+}
+
+impl DatasetPolicy {
+    /// Replaces an unset chunk indexing policy with `default`.
+    pub fn resolve_chunk_indexing_policy(&mut self, default: ChunkIndexingPolicy) {
+        self.chunk_indexing_policy.get_or_insert(default);
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::DatasetPolicy> for DatasetPolicy {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::DatasetPolicy) -> Result<Self, Self::Error> {
+        Ok(Self {
+            chunk_indexing_policy: value
+                .chunk_indexing_policy
+                .map(TryInto::try_into)
+                .transpose()?,
+        })
+    }
+}
+
+impl From<DatasetPolicy> for crate::cloud::v1alpha1::DatasetPolicy {
+    fn from(value: DatasetPolicy) -> Self {
+        Self {
+            chunk_indexing_policy: value.chunk_indexing_policy.map(Into::into),
+        }
+    }
+}
+
 // --- DatasetDetails ---
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -559,6 +779,9 @@ pub struct DatasetDetails {
     pub asset_dataset: Option<EntryId>,
     pub default_blueprint_segment: Option<SegmentId>,
     pub default_segment_table_blueprint_segment: Option<SegmentId>,
+
+    /// The dataset's policies. On an update, `None` keeps the stored policy.
+    pub policy: Option<DatasetPolicy>,
 }
 
 impl DatasetDetails {
@@ -599,6 +822,14 @@ impl DatasetDetails {
             .as_ref()
             .map(|default| (blueprint.clone(), default.clone()))
     }
+
+    /// Replaces an absent or unset chunk indexing policy with `default`, so the details name an
+    /// explicit one.
+    pub fn resolve_chunk_indexing_policy(&mut self, default: ChunkIndexingPolicy) {
+        self.policy
+            .get_or_insert_default()
+            .resolve_chunk_indexing_policy(default);
+    }
 }
 
 impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
@@ -620,6 +851,7 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetDetails> for DatasetDetails {
             asset_dataset: value.asset_dataset.map(TryInto::try_into).transpose()?,
             default_blueprint_segment,
             default_segment_table_blueprint_segment,
+            policy: value.policy.map(TryInto::try_into).transpose()?,
         })
     }
 }
@@ -634,6 +866,7 @@ impl From<DatasetDetails> for crate::cloud::v1alpha1::DatasetDetails {
                 .default_segment_table_blueprint_segment
                 .clone()
                 .map(Into::into),
+            policy: value.policy.map(Into::into),
         }
     }
 }
@@ -703,6 +936,9 @@ pub struct DatasetEntry {
     pub details: EntryDetails,
     pub dataset_details: DatasetDetails,
     pub handle: DatasetHandle,
+
+    /// The lowest protocol level a client needs to read this dataset. Server-managed.
+    pub required_client_protocol_level: ProtocolLevel,
 }
 
 impl TryFrom<crate::cloud::v1alpha1::DatasetEntry> for DatasetEntry {
@@ -731,6 +967,7 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetEntry> for DatasetEntry {
                     "handle"
                 ))?
                 .try_into()?,
+            required_client_protocol_level: value.required_client_protocol_level.into(),
         })
     }
 }
@@ -741,6 +978,7 @@ impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
             details: Some(value.details.into()),
             dataset_details: Some(value.dataset_details.into()),
             dataset_handle: Some(value.handle.into()),
+            required_client_protocol_level: value.required_client_protocol_level.as_u32(),
         }
     }
 }
@@ -754,6 +992,9 @@ pub struct CreateDatasetEntryRequest {
 
     /// Override, use at your own risk.
     pub id: Option<EntryId>,
+
+    /// The dataset's policies. An unset chunk indexing policy states no preference.
+    pub policy: DatasetPolicy,
 }
 
 impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEntryRequest {
@@ -761,6 +1002,7 @@ impl From<CreateDatasetEntryRequest> for crate::cloud::v1alpha1::CreateDatasetEn
         Self {
             name: Some(value.name.to_string()),
             id: value.id.map(Into::into),
+            policy: Some(value.policy.into()),
         }
     }
 }
@@ -778,6 +1020,11 @@ impl TryFrom<crate::cloud::v1alpha1::CreateDatasetEntryRequest> for CreateDatase
         Ok(Self {
             name: EntryName::new(name_str).map_err(TypeConversionError::InvalidEntryName)?,
             id: value.id.map(TryInto::try_into).transpose()?,
+            policy: value
+                .policy
+                .map(TryInto::try_into)
+                .transpose()?
+                .unwrap_or_default(),
         })
     }
 }
@@ -826,6 +1073,7 @@ pub struct CreateTableEntryRequest {
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(value: CreateTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name.to_string(),
@@ -840,6 +1088,7 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
 
 impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(
         value: &crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
@@ -865,6 +1114,7 @@ impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEn
 
 impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(
         value: crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
@@ -881,6 +1131,7 @@ pub struct CreateTableEntryResponse {
 
 impl TryFrom<CreateTableEntryResponse> for crate::cloud::v1alpha1::CreateTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: CreateTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table.try_into()?),
@@ -967,11 +1218,13 @@ impl UpdateDatasetEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateDatasetEntryRequest> for crate::cloud::v1alpha1::UpdateDatasetEntryRequest {
     fn from(value: UpdateDatasetEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             dataset_details: Some(value.dataset_details.into()),
+            ..Default::default()
         }
     }
 }
@@ -1009,11 +1262,81 @@ impl TryFrom<crate::cloud::v1alpha1::UpdateDatasetEntryResponse> for UpdateDatas
     }
 }
 
+// --- ApplyDatasetPolicyRequest ---
+
+#[derive(Debug, Clone, Default)]
+pub struct ApplyDatasetPolicyRequest {
+    pub policy: DatasetPolicy,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::ApplyDatasetPolicyRequest> for ApplyDatasetPolicyRequest {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::ApplyDatasetPolicyRequest,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            policy: value
+                .policy
+                .map(TryInto::try_into)
+                .transpose()?
+                .unwrap_or_default(),
+        })
+    }
+}
+
+impl From<ApplyDatasetPolicyRequest> for crate::cloud::v1alpha1::ApplyDatasetPolicyRequest {
+    fn from(value: ApplyDatasetPolicyRequest) -> Self {
+        Self {
+            policy: Some(value.policy.into()),
+        }
+    }
+}
+
+// --- ApplyDatasetPolicyResponse ---
+
+#[derive(Debug, Clone)]
+pub struct ApplyDatasetPolicyResponse {
+    pub dataset_entry: DatasetEntry,
+
+    /// The tasks that apply the policy.
+    pub task_ids: Vec<crate::common::v1alpha1::TaskId>,
+}
+
+impl From<ApplyDatasetPolicyResponse> for crate::cloud::v1alpha1::ApplyDatasetPolicyResponse {
+    fn from(value: ApplyDatasetPolicyResponse) -> Self {
+        Self {
+            dataset: Some(value.dataset_entry.into()),
+            task_ids: value.task_ids,
+        }
+    }
+}
+
+impl TryFrom<crate::cloud::v1alpha1::ApplyDatasetPolicyResponse> for ApplyDatasetPolicyResponse {
+    type Error = TypeConversionError;
+
+    fn try_from(
+        value: crate::cloud::v1alpha1::ApplyDatasetPolicyResponse,
+    ) -> Result<Self, Self::Error> {
+        Ok(Self {
+            dataset_entry: value
+                .dataset
+                .ok_or(missing_field!(
+                    crate::cloud::v1alpha1::ApplyDatasetPolicyResponse,
+                    "dataset"
+                ))?
+                .try_into()?,
+            task_ids: value.task_ids,
+        })
+    }
+}
+
 // --- DeleteEntryRequest ---
 
 impl TryFrom<crate::cloud::v1alpha1::DeleteEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
+    #[expect(deprecated, reason = "reads the body id that old clients send")]
     fn try_from(value: crate::cloud::v1alpha1::DeleteEntryRequest) -> Result<Self, Self::Error> {
         Ok(value
             .id
@@ -1082,11 +1405,13 @@ impl UpdateEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateEntryRequest> for crate::cloud::v1alpha1::UpdateEntryRequest {
     fn from(value: UpdateEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             entry_details_update: Some(value.entry_details_update.into()),
+            ..Default::default()
         }
     }
 }
@@ -1127,6 +1452,7 @@ impl From<UpdateEntryResponse> for crate::cloud::v1alpha1::UpdateEntryResponse {
 impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
+    #[expect(deprecated, reason = "reads the body id that old clients send")]
     fn try_from(value: crate::cloud::v1alpha1::ReadTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(value
             .id
@@ -1147,6 +1473,7 @@ pub struct ReadTableEntryResponse {
 
 impl TryFrom<ReadTableEntryResponse> for crate::cloud::v1alpha1::ReadTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: ReadTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table_entry.try_into()?),
@@ -1200,11 +1527,13 @@ impl UpdateTableEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateTableEntryRequest> for crate::cloud::v1alpha1::UpdateTableEntryRequest {
     fn from(value: UpdateTableEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             table_details: Some(value.table_details.into()),
+            ..Default::default()
         }
     }
 }
@@ -1218,6 +1547,7 @@ pub struct UpdateTableEntryResponse {
 
 impl TryFrom<UpdateTableEntryResponse> for crate::cloud::v1alpha1::UpdateTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: UpdateTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table_entry.try_into()?),
@@ -1253,6 +1583,7 @@ pub struct RegisterTableRequest {
 
 impl TryFrom<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {
     type Error = TypeConversionError;
+
     fn try_from(value: RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name.to_string(),
@@ -1311,6 +1642,7 @@ pub struct TableEntry {
 
 impl TryFrom<TableEntry> for crate::cloud::v1alpha1::TableEntry {
     type Error = TypeConversionError;
+
     fn try_from(value: TableEntry) -> Result<Self, Self::Error> {
         Ok(Self {
             details: Some(value.details.into()),
@@ -1356,6 +1688,7 @@ pub enum ProviderDetails {
 
 impl TryFrom<&prost_types::Any> for ProviderDetails {
     type Error = TypeConversionError;
+
     fn try_from(value: &prost_types::Any) -> Result<Self, Self::Error> {
         if value.type_url == crate::cloud::v1alpha1::LanceTable::type_url() {
             let as_proto = value.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
@@ -1378,6 +1711,7 @@ impl TryFrom<&prost_types::Any> for ProviderDetails {
 
 impl TryFrom<&ProviderDetails> for prost_types::Any {
     type Error = TypeConversionError;
+
     fn try_from(value: &ProviderDetails) -> Result<Self, Self::Error> {
         match value {
             ProviderDetails::SystemTable(table) => {
@@ -1708,6 +2042,17 @@ impl GetDatasetSchemaResponse {
     }
 }
 
+// --- ClientMeta ---
+
+impl crate::cloud::v1alpha1::ClientMeta {
+    /// The metadata of this build, as a client.
+    pub fn current() -> Self {
+        Self {
+            protocol_level: ProtocolLevel::CURRENT.as_u32(),
+        }
+    }
+}
+
 // --- GetSchemasRequest ---
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -1954,13 +2299,164 @@ impl std::fmt::Display for ObjectKey {
     }
 }
 
+/// Names a storage location configured in a catalog deployment.
+///
+/// The alias is only meaningful within one deployment: it does not identify the underlying storage.
+///
+/// An alias has at most 253 characters: lowercase ASCII letters, digits, `-`, and `.`.
+/// Each dot-separated part must be non-empty and start and end with a letter or digit.
+#[derive(
+    Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, serde::Serialize, serde::Deserialize,
+)]
+#[serde(try_from = "String", into = "String")]
+pub struct StorageLocationAlias(String);
+
+/// Returned when an alias does not follow the [`StorageLocationAlias`] format.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error(
+    "storage location alias must use 1 to 253 lowercase ASCII letters, digits, `-`, and `.`, \
+     with each dot-separated part starting and ending with a letter or digit"
+)]
+pub struct InvalidStorageLocationAliasError;
+
+impl StorageLocationAlias {
+    pub fn try_new(alias: impl Into<String>) -> Result<Self, InvalidStorageLocationAliasError> {
+        let alias = alias.into();
+        let is_alphanumeric = |byte: u8| byte.is_ascii_lowercase() || byte.is_ascii_digit();
+        let is_valid = alias.len() <= 253
+            && alias.split('.').all(|label| {
+                let bytes = label.as_bytes();
+                bytes.first().is_some_and(|&byte| is_alphanumeric(byte))
+                    && bytes.last().is_some_and(|&byte| is_alphanumeric(byte))
+                    && bytes
+                        .iter()
+                        .all(|&byte| is_alphanumeric(byte) || byte == b'-')
+            });
+        if !is_valid {
+            return Err(InvalidStorageLocationAliasError);
+        }
+        Ok(Self(alias))
+    }
+
+    /// The alias as a string.
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl TryFrom<String> for StorageLocationAlias {
+    type Error = InvalidStorageLocationAliasError;
+
+    fn try_from(alias: String) -> Result<Self, Self::Error> {
+        Self::try_new(alias)
+    }
+}
+
+impl std::str::FromStr for StorageLocationAlias {
+    type Err = InvalidStorageLocationAliasError;
+
+    fn from_str(alias: &str) -> Result<Self, Self::Err> {
+        Self::try_new(alias)
+    }
+}
+
+impl From<StorageLocationAlias> for String {
+    fn from(alias: StorageLocationAlias) -> Self {
+        alias.0
+    }
+}
+
+impl std::fmt::Display for StorageLocationAlias {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Storage locations and the alias selected when none is specified.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageLocations {
+    pub locations: Vec<StorageLocation>,
+    pub default_alias: StorageLocationAlias,
+}
+
+/// A storage location configured in this catalog deployment.
+// TODO(RR-6055): Define provider and network constraints for location selection.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StorageLocation {
+    pub alias: StorageLocationAlias,
+    pub display_name: Option<String>,
+    pub region: StorageRegion,
+
+    /// Bucket name, without a URI scheme or object path.
+    pub bucket_name: StorageBucketName,
+    pub prefix: Option<StoragePrefix>,
+    pub read_only: bool,
+}
+
+impl TryFrom<crate::cloud::v1alpha1::StorageLocation> for StorageLocation {
+    type Error = TypeConversionError;
+
+    fn try_from(value: crate::cloud::v1alpha1::StorageLocation) -> Result<Self, Self::Error> {
+        Ok(Self {
+            alias: StorageLocationAlias::try_new(value.alias).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "alias",
+                    err.to_string()
+                )
+            })?,
+            display_name: value.display_name,
+            region: StorageRegion::try_new(value.region).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "region",
+                    err.to_string()
+                )
+            })?,
+            bucket_name: StorageBucketName::try_new(value.bucket_name).map_err(|err| {
+                invalid_field!(
+                    crate::cloud::v1alpha1::StorageLocation,
+                    "bucket_name",
+                    err.to_string()
+                )
+            })?,
+            prefix: value
+                .prefix
+                .map(StoragePrefix::try_new)
+                .transpose()
+                .map_err(|err| {
+                    invalid_field!(
+                        crate::cloud::v1alpha1::StorageLocation,
+                        "prefix",
+                        err.to_string()
+                    )
+                })?,
+            read_only: value.read_only,
+        })
+    }
+}
+
+impl From<StorageLocation> for crate::cloud::v1alpha1::StorageLocation {
+    fn from(value: StorageLocation) -> Self {
+        Self {
+            alias: value.alias.into(),
+            display_name: value.display_name,
+            region: value.region.into(),
+            bucket_name: value.bucket_name.into(),
+            prefix: value.prefix.map(Into::into),
+            read_only: value.read_only,
+        }
+    }
+}
+
 /// Requests authorization to write one object at `key`.
 #[derive(Debug, Clone)]
 pub struct GetWriteAccessGrantRequest {
     pub key: ObjectKey,
 
     /// The requested storage location, or the server's default.
-    pub location: Option<crate::cloud::v1alpha1::Location>,
+    /// TODO(RR-6055): Negotiate server support before sending an explicit alias.
+    pub storage_location: Option<StorageLocationAlias>,
 
     /// Exact object size, if known.
     pub size_bytes: Option<u64>,
@@ -1987,14 +2483,23 @@ impl TryFrom<crate::cloud::v1alpha1::GetWriteAccessGrantRequest> for GetWriteAcc
     ) -> Result<Self, Self::Error> {
         let crate::cloud::v1alpha1::GetWriteAccessGrantRequest {
             key,
-            location,
             size_bytes,
             supported_upload_methods,
             signing,
+            storage_location,
         } = value;
         Ok(Self {
             key: ObjectKey::try_new(key)?,
-            location,
+            storage_location: storage_location
+                .map(StorageLocationAlias::try_new)
+                .transpose()
+                .map_err(|err| {
+                    invalid_field!(
+                        crate::cloud::v1alpha1::GetWriteAccessGrantRequest,
+                        "storage_location",
+                        err.to_string()
+                    )
+                })?,
             size_bytes,
             supported_upload_methods: if supported_upload_methods.is_empty() {
                 vec![UploadMethod::SingleRequest]
@@ -2020,14 +2525,14 @@ impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccess
     fn from(value: GetWriteAccessGrantRequest) -> Self {
         let GetWriteAccessGrantRequest {
             key,
-            location,
+            storage_location,
             size_bytes,
             supported_upload_methods,
             signing,
         } = value;
         Self {
             key: key.0,
-            location,
+            storage_location: storage_location.map(Into::into),
             size_bytes,
             supported_upload_methods: if supported_upload_methods.is_empty() {
                 // An empty wire list means single-request only, so encode no support explicitly.
@@ -2048,6 +2553,7 @@ impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccess
 pub enum UrlSigning {
     /// Server-signed URLs, usable without client-managed object-store credentials.
     Signed,
+
     /// Unsigned URLs that the client authorizes with its own object-store credentials.
     Unsigned,
 }
@@ -2132,8 +2638,10 @@ pub struct AccessGrant {
     /// Storage may reject HTTP requests earlier. Confirming publication and abort remain valid
     /// after the session deadline; publishing an unfinished upload does not.
     pub expires_at: jiff::Timestamp,
+
     /// The server-selected mechanism; clients must support it before consuming the source.
     pub redemption: Redemption,
+
     /// Effective signing mode, including for renewed part requests. Must match the request.
     pub signing: UrlSigning,
 }
@@ -2143,31 +2651,38 @@ pub struct AccessGrant {
 pub enum Redemption {
     /// An HTTP request the caller performs directly.
     HttpRequest(HttpRequest),
+
     /// A multipart session whose bytes are uploaded directly to storage.
-    MultipartRequest(MultipartRequest),
+    MultipartSession(MultipartSession),
 }
 
 /// A multipart session with initial part requests and an opaque token.
 #[derive(Debug, Clone)]
-pub struct MultipartRequest {
+pub struct MultipartSession {
     /// Bearer token for part grants, completion, and abort. Return unchanged; do not log it.
     pub upload_token: prost::bytes::Bytes,
+
     /// Size of each part except the last, which may be smaller.
     pub part_size_bytes: std::num::NonZeroU64,
+
     /// Requests for consecutive parts starting at 1, in part-number order.
     pub part_requests: Vec<HttpRequest>,
+
+    /// Maximum part count, including the final part. Absence selects the legacy 10,000-part limit.
+    pub max_part_count: Option<NonZeroU32>,
 }
 
-impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
+impl TryFrom<crate::cloud::v1alpha1::MultipartSession> for MultipartSession {
     type Error = TypeConversionError;
 
-    fn try_from(value: crate::cloud::v1alpha1::MultipartRequest) -> Result<Self, Self::Error> {
-        use crate::cloud::v1alpha1::MultipartRequest as Proto;
+    fn try_from(value: crate::cloud::v1alpha1::MultipartSession) -> Result<Self, Self::Error> {
+        use crate::cloud::v1alpha1::MultipartSession as Proto;
 
         let Proto {
             upload_token,
             part_size_bytes,
             part_requests,
+            max_part_count,
         } = value;
         if upload_token.is_empty() {
             return Err(invalid_field!(
@@ -2179,9 +2694,17 @@ impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
         let part_size_bytes = std::num::NonZeroU64::new(part_size_bytes).ok_or_else(|| {
             invalid_field!(Proto, "part_size_bytes", "expected a positive part size")
         })?;
+        let max_part_count = max_part_count
+            .map(|count| {
+                NonZeroU32::new(count).ok_or_else(|| {
+                    invalid_field!(Proto, "max_part_count", "expected a positive part count")
+                })
+            })
+            .transpose()?;
         Ok(Self {
             upload_token,
             part_size_bytes,
+            max_part_count,
             part_requests: part_requests
                 .into_iter()
                 .map(TryInto::try_into)
@@ -2190,18 +2713,20 @@ impl TryFrom<crate::cloud::v1alpha1::MultipartRequest> for MultipartRequest {
     }
 }
 
-impl TryFrom<MultipartRequest> for crate::cloud::v1alpha1::MultipartRequest {
+impl TryFrom<MultipartSession> for crate::cloud::v1alpha1::MultipartSession {
     type Error = TypeConversionError;
 
-    fn try_from(value: MultipartRequest) -> Result<Self, Self::Error> {
-        let MultipartRequest {
+    fn try_from(value: MultipartSession) -> Result<Self, Self::Error> {
+        let MultipartSession {
             upload_token,
             part_size_bytes,
             part_requests,
+            max_part_count,
         } = value;
         Ok(Self {
             upload_token,
             part_size_bytes: part_size_bytes.get(),
+            max_part_count: max_part_count.map(NonZeroU32::get),
             part_requests: part_requests
                 .into_iter()
                 .map(TryInto::try_into)
@@ -2227,8 +2752,8 @@ impl TryFrom<crate::cloud::v1alpha1::AccessGrant> for AccessGrant {
             crate::cloud::v1alpha1::access_grant::Redemption::HttpRequest(request) => {
                 Redemption::HttpRequest(request.try_into()?)
             }
-            crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(request) => {
-                Redemption::MultipartRequest(request.try_into()?)
+            crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(request) => {
+                Redemption::MultipartSession(request.try_into()?)
             }
         };
         Ok(Self {
@@ -2263,8 +2788,8 @@ impl TryFrom<AccessGrant> for crate::cloud::v1alpha1::AccessGrant {
                         request.try_into()?,
                     )
                 }
-                Redemption::MultipartRequest(request) => {
-                    crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
+                Redemption::MultipartSession(request) => {
+                    crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(
                         request.try_into()?,
                     )
                 }
@@ -2547,97 +3072,158 @@ pub struct DataSource {
     /// File format of the recording data.
     pub kind: DataSourceKind,
 
-    /// Use a specific object store provider for this registration.
-    /// Inferred from the URL if not specified.
-    pub object_store_config: Option<String>,
+    /// The storage location that holds the data.
+    ///
+    /// If `None`, the server infers the object store from `storage_url`.
+    #[serde(rename = "object_store_config")]
+    pub storage_location: Option<StorageLocationAlias>,
+
+    /// The store to register out of this source.
+    ///
+    /// `None` picks the first store of the dataset's kind (recording or blueprint) in the source.
+    /// Must be `None` when `is_prefix` is `true`.
+    ///
+    /// Deserializes as `None` when absent, so serialized sources that predate it still load.
+    #[serde(default)]
+    pub store_id: Option<re_log_types::StoreId>,
+
+    /// The segment to register this source as, instead of the recording id of its store.
+    ///
+    /// Must be `None` when `is_prefix` is `true`.
+    ///
+    /// Servers without the [`crate::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE`] capability
+    /// ignore it.
+    ///
+    /// Deserializes as `None` when absent, so serialized sources that predate it still load.
+    #[serde(default)]
+    pub segment_id_override: Option<SegmentId>,
 }
 
 impl DataSource {
     pub const DEFAULT_LAYER: &str = LayerName::DEFAULT_STR;
 
+    /// Registers this source as `segment_id` instead of its store's recording id.
+    #[must_use]
+    pub fn with_segment_id_override(mut self, segment_id: SegmentId) -> Self {
+        self.segment_id_override = Some(segment_id);
+        self
+    }
+
     pub fn new_rrd(
         storage_url: impl AsRef<str>,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
+            segment_id_override: None,
         })
     }
 
     pub fn new_rrd_prefix(
         storage_url: impl AsRef<str>,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
+            segment_id_override: None,
         })
     }
 
     pub fn new_rrd_layer(
         layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: false,
             layer: layer.into(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
+            segment_id_override: None,
         })
     }
 
     pub fn new_rrd_layer_prefix(
         layer: impl Into<LayerName>,
         storage_url: impl AsRef<str>,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> Result<Self, url::ParseError> {
         Ok(Self {
             storage_url: storage_url.as_ref().parse()?,
             is_prefix: true,
             layer: layer.into(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
+            segment_id_override: None,
         })
     }
 
-    pub fn new_rrd_url(storage_url: url::Url, object_store_config: Option<String>) -> Self {
+    pub fn new_rrd_url(
+        storage_url: url::Url,
+        storage_location: Option<StorageLocationAlias>,
+    ) -> Self {
         Self {
             storage_url,
             is_prefix: false,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
+            segment_id_override: None,
         }
     }
 
-    pub fn new_rrd_prefix_url(storage_url: url::Url, object_store_config: Option<String>) -> Self {
+    pub fn new_rrd_prefix_url(
+        storage_url: url::Url,
+        storage_location: Option<StorageLocationAlias>,
+    ) -> Self {
         Self {
             storage_url,
             is_prefix: true,
             layer: LayerName::base(),
             kind: DataSourceKind::Rrd,
-            object_store_config,
+            storage_location,
+            store_id: None,
+            segment_id_override: None,
         }
     }
 }
 
 impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
+    #[expect(deprecated, reason = "Older servers require the legacy selector field")]
     fn from(value: DataSource) -> Self {
+        let DataSource {
+            storage_url,
+            is_prefix,
+            layer,
+            kind,
+            storage_location,
+            store_id,
+            segment_id_override,
+        } = value;
+
         crate::cloud::v1alpha1::DataSource {
-            storage_url: Some(value.storage_url.to_string()),
-            prefix: value.is_prefix,
-            layer: Some(value.layer.into()),
-            typ: value.kind as i32,
-            object_store_config: value.object_store_config,
+            storage_url: Some(storage_url.to_string()),
+            prefix: is_prefix,
+            layer: Some(layer.into()),
+            typ: kind as i32,
+            storage_location: storage_location.clone().map(String::from),
+            object_store_config: storage_location.map(String::from),
+            store_id: store_id.map(Into::into),
+            segment_id: segment_id_override.map(Into::into),
         }
     }
 }
@@ -2645,7 +3231,32 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
 impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
     type Error = TypeConversionError;
 
+    #[expect(
+        deprecated,
+        reason = "Older clients only send the legacy selector field"
+    )]
     fn try_from(data_source: crate::cloud::v1alpha1::DataSource) -> Result<Self, Self::Error> {
+        let parse_alias = |alias: Option<String>, field| {
+            alias
+                .map(StorageLocationAlias::try_new)
+                .transpose()
+                .map_err(|err| {
+                    invalid_field!(crate::cloud::v1alpha1::DataSource, field, err.to_string())
+                })
+        };
+        let storage_location = parse_alias(data_source.storage_location, "storage_location")?;
+        let object_store_config =
+            parse_alias(data_source.object_store_config, "object_store_config")?;
+        if let (Some(alias), Some(legacy_alias)) = (&storage_location, &object_store_config)
+            && alias != legacy_alias
+        {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "storage_location",
+                "must match object_store_config when both are supplied"
+            ));
+        }
+
         let storage_url = data_source
             .storage_url
             .ok_or_else(|| missing_field!(crate::cloud::v1alpha1::DataSource, "storage_url"))?
@@ -2663,17 +3274,54 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
 
         let prefix = data_source.prefix;
 
+        let store_id = data_source
+            .store_id
+            .map(re_log_types::StoreId::try_from)
+            .transpose()?;
+        if prefix && store_id.is_some() {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "store_id",
+                "a prefix data source cannot select a store",
+            ));
+        }
+
+        let segment_id_override = data_source
+            .segment_id
+            .map(SegmentId::try_from)
+            .transpose()?;
+        if prefix && segment_id_override.is_some() {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "segment_id",
+                "a prefix data source cannot set a segment id",
+            ));
+        }
+        if segment_id_override
+            .as_ref()
+            .is_some_and(|segment_id| segment_id.as_str().is_empty())
+        {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "segment_id",
+                "the segment id must not be empty",
+            ));
+        }
+
         Ok(Self {
             storage_url,
             is_prefix: prefix,
             layer,
             kind,
-            object_store_config: data_source.object_store_config,
+            storage_location: storage_location.or(object_store_config),
+            store_id,
+            segment_id_override,
         })
     }
 }
 
 #[test]
+#[expect(deprecated, reason = "Exercise legacy selector decoding")]
 fn datasource_layer_from_proto() {
     let proto = |layer: Option<&str>| crate::cloud::v1alpha1::DataSource {
         storage_url: Some("s3://bucket/file.rrd".to_owned()),
@@ -2681,6 +3329,9 @@ fn datasource_layer_from_proto() {
         layer: layer.map(ToOwned::to_owned),
         typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
         object_store_config: Some("custom".to_owned()),
+        storage_location: None,
+        store_id: None,
+        segment_id: None,
     };
 
     let data_source = DataSource::try_from(proto(None)).unwrap();
@@ -2693,7 +3344,64 @@ fn datasource_layer_from_proto() {
     let data_source = DataSource::try_from(proto(Some("my_layer"))).unwrap();
     assert_eq!(data_source.layer, "my_layer");
 
-    assert_eq!(data_source.object_store_config, Some("custom".to_owned()));
+    assert_eq!(
+        data_source
+            .storage_location
+            .as_ref()
+            .map(StorageLocationAlias::as_str),
+        Some("custom")
+    );
+}
+
+#[test]
+fn datasource_store_id_from_proto() {
+    let store_id = re_log_types::StoreId::recording("app", "rec");
+    let proto = |prefix: bool| crate::cloud::v1alpha1::DataSource {
+        storage_url: Some("s3://bucket/file.rrd".to_owned()),
+        prefix,
+        layer: None,
+        typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+        store_id: Some(store_id.clone().into()),
+        ..Default::default()
+    };
+
+    let data_source = DataSource::try_from(proto(false)).unwrap();
+    assert_eq!(data_source.store_id, Some(store_id.clone()));
+
+    assert!(
+        DataSource::try_from(proto(true)).is_err(),
+        "a prefix must not select a store"
+    );
+}
+
+#[test]
+fn datasource_segment_id_roundtrip() {
+    let segment_id = SegmentId::from("my_segment");
+    let data_source = DataSource::new_rrd("s3://bucket/file.rrd", None)
+        .unwrap()
+        .with_segment_id_override(segment_id.clone());
+
+    let proto = crate::cloud::v1alpha1::DataSource::from(data_source);
+    let data_source = DataSource::try_from(proto.clone()).unwrap();
+    assert_eq!(data_source.segment_id_override, Some(segment_id));
+
+    let prefix = crate::cloud::v1alpha1::DataSource {
+        prefix: true,
+        ..proto.clone()
+    };
+    assert!(
+        DataSource::try_from(prefix).is_err(),
+        "a prefix must not set a segment id"
+    );
+
+    let empty = crate::cloud::v1alpha1::DataSource {
+        segment_id: Some(String::new().into()),
+        ..proto
+    };
+    assert!(
+        DataSource::try_from(empty).is_err(),
+        "a segment id must not be empty"
+    );
 }
 
 // --- Tasks ---
@@ -2823,6 +3531,28 @@ impl From<TableInsertMode> for crate::cloud::v1alpha1::TableInsertMode {
     }
 }
 
+/// Fixed fragments of the Lance messages that `WriteTable` reports when the caller's batch
+/// does not fit the table. `re_redap_tests::write_table_rejects_bad_batches` triggers each
+/// one, so a Lance upgrade that rewords them fails CI.
+const BAD_WRITE_TABLE_INPUT_MESSAGES: &[&str] = &[
+    "Append with different schema",
+    "contained null values even though the field is marked non-null",
+    "Cannot insert rows with a partial-schema source",
+    "Ambiguous merge inserts are prohibited",
+    "Failed to encode JSON",
+];
+
+/// Whether a failed table write was caused by the caller's batch, judged by the message of
+/// any error in the `source` chain.
+pub fn is_bad_write_table_input(err: &(dyn std::error::Error + 'static)) -> bool {
+    std::iter::successors(Some(err), |err| err.source()).any(|err| {
+        let message = err.to_string();
+        BAD_WRITE_TABLE_INPUT_MESSAGES
+            .iter()
+            .any(|fragment| message.contains(fragment))
+    })
+}
+
 // ---
 
 /// Ergonomic counterpart to the codegen'd [`crate::cloud::v1alpha1::VersionResponse`].
@@ -2831,6 +3561,7 @@ pub struct VersionResponse {
     pub version: String,
     pub cloud_provider: Option<String>,
     pub cloud_region: Option<String>,
+
     /// Server-supported feature flags. See `crate::cloud::v1alpha1::features`
     /// for known feature names. An empty list means the server is older than
     /// the client and feature-gated paths must fall back.
@@ -2864,6 +3595,95 @@ mod tests {
         ChunkCandidatesDataframe, QueryDatasetDataframe, QueryTasksDataframe,
         RegisterWithDatasetDataframe, ScanDatasetManifestDataframe,
     };
+
+    #[test]
+    fn storage_location_alias_validation() {
+        for input in ["a", "0", "robot-storage.json", "a--b.0-1", &"a".repeat(253)] {
+            let alias = StorageLocationAlias::try_new(input).unwrap();
+            assert_eq!(String::from(alias), input);
+        }
+
+        for input in [
+            "",
+            ".",
+            ".a",
+            "a.",
+            "-a",
+            "a-",
+            "a..b",
+            "a.-b",
+            "a-.b",
+            "A",
+            "a_b",
+            "a/b",
+            "a b",
+            "é",
+            &"a".repeat(254),
+        ] {
+            assert!(StorageLocationAlias::try_new(input).is_err(), "{input:?}");
+            assert!(
+                serde_json::from_value::<StorageLocationAlias>(serde_json::json!(input)).is_err(),
+                "{input:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn datasource_serde_keeps_legacy_location_key() {
+        let storage_location = StorageLocationAlias::try_new("robot-storage.json").unwrap();
+        let source =
+            DataSource::new_rrd("s3://bucket/file.rrd", Some(storage_location.clone())).unwrap();
+
+        let json = serde_json::to_value(&source).unwrap();
+        assert_eq!(json["object_store_config"], "robot-storage.json");
+
+        let decoded: DataSource = serde_json::from_value(json).unwrap();
+        assert_eq!(decoded.storage_location, Some(storage_location));
+    }
+
+    #[test]
+    #[expect(deprecated, reason = "Exercise both wire selector fields")]
+    fn datasource_storage_location_fields() {
+        let proto =
+            |location: Option<&str>, legacy: Option<&str>| crate::cloud::v1alpha1::DataSource {
+                storage_url: Some("s3://bucket/file.rrd".to_owned()),
+                typ: crate::cloud::v1alpha1::DataSourceKind::Rrd as i32,
+                storage_location: location.map(str::to_owned),
+                object_store_config: legacy.map(str::to_owned),
+                ..Default::default()
+            };
+        for (location, legacy, expected) in [
+            (None, None, None),
+            (Some("robot-storage.json"), None, Some("robot-storage.json")),
+            (None, Some("robot-storage.json"), Some("robot-storage.json")),
+            (Some("a"), Some("a"), Some("a")),
+        ] {
+            let source = DataSource::try_from(proto(location, legacy)).unwrap();
+            assert_eq!(
+                source
+                    .storage_location
+                    .as_ref()
+                    .map(StorageLocationAlias::as_str),
+                expected
+            );
+            let encoded: crate::cloud::v1alpha1::DataSource = source.into();
+            assert_eq!(encoded.storage_location.as_deref(), expected);
+            assert_eq!(encoded.object_store_config.as_deref(), expected);
+        }
+        for (location, legacy) in [
+            (Some("a"), Some("b")),
+            (Some(""), None),
+            (None, Some("")),
+            (Some("My_Store.json"), None),
+            (None, Some("My_Store.json")),
+        ] {
+            let err = DataSource::try_from(proto(location, legacy)).unwrap_err();
+            assert_eq!(
+                tonic::Status::from(err).code(),
+                tonic::Code::InvalidArgument
+            );
+        }
+    }
 
     #[test]
     fn test_scan_segment_table_response_create_dataframe() {
@@ -2941,7 +3761,7 @@ mod tests {
         let last_updated_at = vec![2];
         let num_chunks = vec![1];
         let size_bytes = vec![2];
-        let schema_sha256 = vec![[1; 32]];
+        let schema_sha256 = vec![SchemaId::from_sha256([1; 32])];
         let registration_status = vec![LayerRegistrationStatus::Done.to_string()];
 
         let batch = ScanDatasetManifestDataframe::new(
@@ -3101,32 +3921,47 @@ mod tests {
                 jiff::Timestamp::new(1_700_000_000, 0).unwrap(),
             )),
             redemption: Some(
-                crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(
-                    crate::cloud::v1alpha1::MultipartRequest {
+                crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(
+                    crate::cloud::v1alpha1::MultipartSession {
                         upload_token: b"opaque-token".as_slice().into(),
                         part_size_bytes: 8 * 1024 * 1024,
                         part_requests: vec![],
+                        max_part_count: None,
                     },
                 ),
             ),
         };
         let parsed = AccessGrant::try_from(grant.clone()).unwrap();
-        assert!(matches!(parsed.redemption, Redemption::MultipartRequest(_)));
+        assert!(matches!(parsed.redemption, Redemption::MultipartSession(_)));
         assert_eq!(
             crate::cloud::v1alpha1::AccessGrant::try_from(parsed).unwrap(),
             grant
         );
 
-        let Some(crate::cloud::v1alpha1::access_grant::Redemption::MultipartRequest(mut request)) =
+        let Some(crate::cloud::v1alpha1::access_grant::Redemption::MultipartSession(mut request)) =
             grant.redemption
         else {
-            panic!("expected multipart request");
+            panic!("expected multipart session");
         };
+        for max_part_count in [None, Some(1), Some(u32::MAX)] {
+            request.max_part_count = max_part_count;
+            let parsed = MultipartSession::try_from(request.clone())
+                .expect("valid multipart session should parse");
+            assert_eq!(parsed.max_part_count.map(NonZeroU32::get), max_part_count);
+            assert_eq!(
+                crate::cloud::v1alpha1::MultipartSession::try_from(parsed)
+                    .expect("valid multipart session should serialize"),
+                request
+            );
+        }
+        request.max_part_count = Some(0);
+        assert!(MultipartSession::try_from(request.clone()).is_err());
+        request.max_part_count = Some(1);
         request.part_size_bytes = 0;
-        assert!(MultipartRequest::try_from(request.clone()).is_err());
+        assert!(MultipartSession::try_from(request.clone()).is_err());
         request.part_size_bytes = 1;
         request.upload_token = prost::bytes::Bytes::new();
-        assert!(MultipartRequest::try_from(request).is_err());
+        assert!(MultipartSession::try_from(request).is_err());
     }
 
     #[test]
@@ -3261,5 +4096,109 @@ mod tests {
         };
 
         assert!(crate::cloud::v1alpha1::HttpRequest::try_from(request).is_err());
+    }
+
+    #[test]
+    fn name_selection_round_trips() {
+        let explicit = IndexingPolicySelection::Explicit(["b".to_owned(), "a".to_owned()].into());
+        for selection in [IndexingPolicySelection::All, explicit] {
+            let proto = crate::cloud::v1alpha1::IndexingPolicySelection::from(selection.clone());
+            let back =
+                IndexingPolicySelection::try_from(proto).expect("a set selection converts back");
+            assert_eq!(back, selection);
+        }
+
+        let proto = crate::cloud::v1alpha1::IndexingPolicySelection::from(
+            IndexingPolicySelection::Explicit(["b".to_owned(), "a".to_owned()].into()),
+        );
+        let Some(crate::cloud::v1alpha1::indexing_policy_selection::Selection::Explicit(list)) =
+            proto.selection
+        else {
+            panic!("expected an explicit selection");
+        };
+        assert_eq!(list.names, vec!["a".to_owned(), "b".to_owned()]);
+    }
+
+    #[test]
+    fn policy_conversion_reports_the_missing_field() {
+        let result =
+            IndexingPolicySelection::try_from(crate::cloud::v1alpha1::IndexingPolicySelection {
+                selection: None,
+            });
+        assert!(
+            matches!(
+                result,
+                Err(TypeConversionError::MissingField {
+                    field_name: "selection",
+                    ..
+                })
+            ),
+            "{result:?}"
+        );
+
+        let result = ChunkIndexingPolicy::try_from(crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths: Some(IndexingPolicySelection::All.into()),
+            timelines: None,
+        });
+        assert!(
+            matches!(
+                result,
+                Err(TypeConversionError::MissingField {
+                    field_name: "timelines",
+                    ..
+                })
+            ),
+            "{result:?}"
+        );
+    }
+
+    #[test]
+    fn chunk_indexing_policy_normalizes_entity_paths() {
+        let explicit = ChunkIndexingPolicy::explicit(["a/b"], ["a/b"]);
+        assert_eq!(
+            explicit.entity_paths,
+            IndexingPolicySelection::Explicit(["/a/b".to_owned()].into())
+        );
+        assert_eq!(
+            explicit.timelines,
+            IndexingPolicySelection::Explicit(["a/b".to_owned()].into()),
+            "timeline names are not paths"
+        );
+
+        let decoded = ChunkIndexingPolicy::try_from(crate::cloud::v1alpha1::ChunkIndexingPolicy {
+            entity_paths: Some(
+                IndexingPolicySelection::Explicit(["a/b".to_owned(), "/a/b".to_owned()].into())
+                    .into(),
+            ),
+            timelines: Some(IndexingPolicySelection::Explicit(["a/b".to_owned()].into()).into()),
+        })
+        .expect("a complete policy decodes");
+        assert_eq!(decoded, explicit);
+    }
+
+    #[test]
+    fn resolve_chunk_indexing_policy_fills_only_an_unset_policy() {
+        let mut details = DatasetDetails::default();
+        details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::NOTHING);
+        assert_eq!(
+            details.policy,
+            Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::NOTHING),
+            })
+        );
+
+        let mut details = DatasetDetails {
+            policy: Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::ALL),
+            }),
+            ..Default::default()
+        };
+        details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::NOTHING);
+        assert_eq!(
+            details.policy,
+            Some(DatasetPolicy {
+                chunk_indexing_policy: Some(ChunkIndexingPolicy::ALL),
+            })
+        );
     }
 }

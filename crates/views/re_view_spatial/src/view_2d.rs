@@ -153,14 +153,14 @@ impl ViewClass for SpatialView2D {
     fn spawn_heuristics(
         &self,
         ctx: &ViewerContext<'_>,
-        include_entity: &dyn Fn(&EntityPath) -> bool,
+        spawn_context: re_viewer_context::ViewSpawnContext,
     ) -> re_viewer_context::ViewSpawnHeuristics {
         re_tracing::profile_function!();
 
         let IndicatedVisualizableEntities {
             indicated_entities,
             excluded_entities,
-        } = IndicatedVisualizableEntities::new(ctx, Self::identifier(), include_entity, |_| {});
+        } = IndicatedVisualizableEntities::new(ctx, Self::identifier(), spawn_context, |_| {});
 
         let image_dimensions =
             crate::max_image_dimension_subscriber::MaxImageDimensionsStoreSubscriber::access(

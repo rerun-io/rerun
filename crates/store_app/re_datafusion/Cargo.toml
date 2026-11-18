@@ -22,7 +22,7 @@ all-features = true
 
 [package.metadata.cargo-shear]
 # Needed for Datafusion on wasm, see note below.
-ignored = ["chrono", "getrandom"]
+ignored = ["chrono"]
 
 
 [features]
@@ -83,6 +83,7 @@ chrono = { workspace = true, features = ["wasmbind"] }
 
 
 [dev-dependencies]
+insta.workspace = true
 re_uri.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 

@@ -19,7 +19,7 @@ pub fn test_segmentation_image_transparency() {
     let timeline = Timeline::new_sequence("frame");
     test_context.set_active_timeline(*timeline.name());
     let frame = |sequence: i64| {
-        TimePoint::default().with(
+        TimePoint::STATIC.with(
             timeline,
             TimeInt::from_sequence(sequence.try_into().expect("unexpected min value")),
         )
@@ -59,7 +59,7 @@ pub fn test_segmentation_image_transparency() {
         image.slice_mut(s![.., .., 2]).fill(255); // blue
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Image::from_color_model_and_tensor(
                 re_sdk_types::encodings::ColorModel::RGB,
                 image,
@@ -76,7 +76,7 @@ pub fn test_segmentation_image_transparency() {
         segmentation.slice_mut(s![4..8, 6..12]).fill(2);
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::SegmentationImage::try_from(segmentation)
                 .unwrap()
                 .with_opacity(1.0), // Make sure opacity is 1.0, otherwise heuristics will set this to something lower.

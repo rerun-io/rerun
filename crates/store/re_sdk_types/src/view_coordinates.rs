@@ -2,6 +2,53 @@
 
 pub use crate::encodings::ViewDir;
 
+/// Failed to interpret a value as a [`ViewDir`].
+#[derive(thiserror::Error, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ViewDirError {
+    /// The character is not one of `UDRLFB`.
+    #[error("Expected one of U/D/R/L/F/B (Up Down Right Left Forward Back), got {0:?}")]
+    InvalidChar(char),
+
+    /// The integer does not correspond to any [`ViewDir`].
+    #[error("Could not interpret {0} as ViewDir.")]
+    InvalidInteger(u8),
+}
+
+/// An invalid or unsupported [`crate::components::ViewCoordinates`].
+#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
+pub enum ViewCoordinatesError {
+    /// The coordinate system does not span all three dimensions.
+    #[error(
+        "Coordinate system does not cover all three cardinal directions: {}",
+        .0.describe()
+    )]
+    MissingDimension(crate::components::ViewCoordinates),
+
+    /// The coordinate system is degenerate.
+    #[error("Found a degenerate coordinate system: {}", .0.describe())]
+    Degenerate(crate::components::ViewCoordinates),
+
+    /// The coordinate system is left-handed, which is not yet supported.
+    #[error(
+        "Rerun does not yet support left-handed coordinate systems (found {})",
+        .0.describe()
+    )]
+    LeftHanded(crate::components::ViewCoordinates),
+
+    /// A textual description did not have exactly three letters.
+    #[error("Expected three letters, got: {0:?}")]
+    WrongLength(String),
+
+    /// One of the letters is not a valid [`ViewDir`].
+    #[error(transparent)]
+    InvalidViewDir(#[from] ViewDirError),
+}
+
+/// Failed to parse a [`SignedAxis3`] from a string.
+#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
+#[error("Expected one of: +X -X +Y -Y +Z -Z, got {0:?}")]
+pub struct SignedAxis3ParseError(pub String);
+
 /// One of `X`, `Y`, `Z`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Deserialize, serde::Serialize)]
 pub enum Axis3 {
@@ -110,7 +157,7 @@ impl std::fmt::Display for SignedAxis3 {
 }
 
 impl std::str::FromStr for SignedAxis3 {
-    type Err = String;
+    type Err = SignedAxis3ParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -120,7 +167,7 @@ impl std::str::FromStr for SignedAxis3 {
             "-Y" => Ok(Self::new(Sign::Negative, Axis3::Y)),
             "+Z" => Ok(Self::new(Sign::Positive, Axis3::Z)),
             "-Z" => Ok(Self::new(Sign::Negative, Axis3::Z)),
-            _ => Err("Expected one of: +X -X +Y -Y +Z -Z".to_owned()),
+            _ => Err(SignedAxis3ParseError(s.to_owned())),
         }
     }
 }

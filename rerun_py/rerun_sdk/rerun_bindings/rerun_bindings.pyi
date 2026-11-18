@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Iterable, Iterator, Sequence
+from contextvars import ContextVar
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
@@ -16,6 +17,8 @@ from .types import (
     IndexValuesLike as IndexValuesLike,
     MergeSplitSettingsDict as MergeSplitSettingsDict,
     OwnChunkRuleDict as OwnChunkRuleDict,
+    StorageLocationDict as StorageLocationDict,
+    StorageLocationsDict as StorageLocationsDict,
     TemporalTimelineType as TemporalTimelineType,
     TimelineType as TimelineType,
 )
@@ -183,7 +186,11 @@ class SchemaInternal:
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
     ) -> ComponentColumnDescriptor: ...
-    def __arrow_c_schema__(self) -> Any: ...
+    def __arrow_c_schema__(self) -> object: ...
+
+class ChunkIndexingPolicyInternal:
+    @staticmethod
+    def match_entity_paths(schema: SchemaInternal, entity_paths: list[str]) -> list[str]: ...
 
 class ChunkInternal:
     @property
@@ -231,6 +238,12 @@ def format_uint(number: int) -> str:
 
 def format_index_value(timeline_type: str, value: int) -> str:
     """Format one index value of a timeline, as the viewer does, with timestamps in UTC and always dated."""
+
+def timeline_datatype(timeline_type: str) -> pa.DataType:
+    """The Arrow datatype of index columns of a timeline type."""
+
+def timeline_type_from_datatype(datatype: pa.DataType) -> str | None:
+    """The short name (`sequence`, `duration`, or `timestamp`) of the timeline type an index column of this Arrow datatype holds, if any."""
 
 def _get_write_access_grant(
     client: CatalogClientInternal, *, key: str, size_bytes: int | None
@@ -978,7 +991,9 @@ def new_entity_path(parts: list[str]) -> str:
 def new_property_entity_path(parts: list[str]) -> str:
     """Create a property entity path."""
 
-def asset_video_read_frame_timestamps_nanos(video_bytes_arrow_array: Any, media_type: str | None = None) -> list[int]:
+def asset_video_read_frame_timestamps_nanos(
+    video_bytes_arrow_array: pa.Array, media_type: str | None = None
+) -> list[int]:
     """
     Reads the timestamps of all frames in a video asset.
 
@@ -1055,7 +1070,7 @@ class DatasetInfoInternal:
     @property
     def timelines(
         self,
-    ) -> list[tuple[str, Literal["sequence", "timestamp", "duration"], int, int | None, int | None]]: ...
+    ) -> list[tuple[str, Literal["sequence", "timestamp", "duration"], int, int, int]]: ...
     @property
     def num_entities(self) -> int: ...
     @property
@@ -1067,13 +1082,17 @@ class DatasetEntryInternal:
     def catalog(self) -> CatalogClientInternal: ...
     def delete(self) -> None: ...
     def set_name(self, name: str) -> None: ...
+    def chunk_indexing_policy(self) -> tuple[list[str] | Literal["all"], list[str] | Literal["all"]] | None: ...
+    def set_chunk_indexing_policy(
+        self, policy: tuple[list[str] | Literal["all"], list[str] | Literal["all"]] | None
+    ) -> DatasetPolicyHandleInternal: ...
     def entry_details(self) -> EntryDetailsInternal: ...
 
     # ---
 
     @property
     def manifest_url(self) -> str: ...
-    def schema(self) -> SchemaInternal: ...
+    def schema(self, *, scope: str = "full") -> SchemaInternal: ...
     def _dataset_revision(self) -> int | None: ...
 
     # ---
@@ -1081,10 +1100,10 @@ class DatasetEntryInternal:
     def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
     def asset_dataset(self) -> DatasetEntryInternal | None: ...
     def _ensure_asset_dataset(self) -> None: ...
-    def default_blueprint_segment_id(self) -> str | None: ...
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
-    def default_segment_table_blueprint_segment_id(self) -> str | None: ...
-    def set_default_segment_table_blueprint_segment_id(self, segment_id: str | None) -> None: ...
+    def default_blueprint(
+        self, *, kind: Literal["recording", "table"]
+    ) -> tuple[str, str | None, Literal["recording", "table"]] | None: ...
+    def set_default_blueprint(self, segment_id: str | None, *, kind: Literal["recording", "table"]) -> None: ...
 
     # ---
 
@@ -1114,6 +1133,7 @@ class DatasetEntryInternal:
         kind: Literal["segment", "blueprint", "asset"],
         layer: str,
         on_duplicate: str,
+        segment_id: str | None = None,
     ) -> WriteOperationInternal: ...
     def write_path(
         self,
@@ -1122,6 +1142,7 @@ class DatasetEntryInternal:
         kind: Literal["segment", "blueprint", "asset"],
         layer: str,
         on_duplicate: str,
+        segment_id: str | None = None,
     ) -> WriteOperationInternal: ...
     def register(
         self,
@@ -1129,7 +1150,8 @@ class DatasetEntryInternal:
         recording_layers: list[str],
         on_duplicate: str,
         *,
-        object_store_config: str | None = None,
+        segment_ids: list[str] | None = None,
+        storage_location: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def register_prefix(
         self,
@@ -1137,7 +1159,7 @@ class DatasetEntryInternal:
         layer_name: str,
         on_duplicate: str,
         *,
-        object_store_config: str | None = None,
+        storage_location: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def unregister(
         self,
@@ -1150,14 +1172,27 @@ class DatasetEntryInternal:
     # ---
 
     def assets_for_segment(self, segment_id: str) -> list[str]: ...
-    def _get_segment_properties(self, segment_id: str) -> tuple[pa.RecordBatch, int] | None: ...
-    def _set_segment_properties(
+    def get_segment_properties(self, segment_id: str) -> tuple[pa.RecordBatch, int] | None: ...
+    def set_segment_properties(
         self,
         segment_id: str,
         properties: pa.RecordBatch,
         expected_revision: int | None = None,
     ) -> int: ...
     def delete_segment_properties(self, segment_ids: list[str]) -> None: ...
+    def blueprints(self) -> list[tuple[str, str | None, Literal["recording", "table"]]]: ...
+    def blueprint_by_name(self, name: str) -> tuple[str, str | None, Literal["recording", "table"]] | None: ...
+    def set_blueprint_name(
+        self, segment_id: str, name: str
+    ) -> tuple[str, str | None, Literal["recording", "table"]]: ...
+    def register_blueprint(
+        self,
+        uri: str,
+        name: str | None,
+        storage_location: str | None,
+        *,
+        kind: Literal["recording", "table"],
+    ) -> tuple[str, str | None, Literal["recording", "table"]]: ...
 
     # ---
 
@@ -1200,7 +1235,7 @@ class SegmentInternal:
 class SegmentUrlUdfInternal:
     """Rust-backed ScalarUDF for building segment URLs."""
 
-    def __datafusion_scalar_udf__(self) -> Any:
+    def __datafusion_scalar_udf__(self) -> object:
         """Scalar UDF pycapsule."""
 
 class DatasetSelectionInternal:
@@ -1215,8 +1250,9 @@ class DatasetSelectionInternal:
     def content_filters(self) -> list[str] | None: ...
 
     # Methods
-    def schema(self) -> SchemaInternal: ...
-    def arrow_schema(self) -> pa.Schema: ...
+    def schema(self, *, scope: str = "full") -> SchemaInternal: ...
+    def arrow_schema(self, *, scope: str = "full") -> pa.Schema: ...
+    def info(self) -> DatasetInfoInternal: ...
     def segment_ids(self) -> list[str]: ...
     def reader(
         self,
@@ -1226,6 +1262,7 @@ class DatasetSelectionInternal:
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
         using_index_values: dict[str, IndexValuesLike] | None = None,
+        scope: str = "full",
     ) -> dfn.DataFrame: ...
     def read_arrow(
         self,
@@ -1248,12 +1285,12 @@ class TableEntryInternal:
     # ---
 
     def blueprint_dataset(self) -> DatasetEntryInternal: ...
-    def default_blueprint_segment_id(self) -> str | None: ...
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
+    def default_blueprint(self) -> tuple[str, str | None, Literal["recording", "table"]] | None: ...
+    def set_default_blueprint(self, segment_id: str | None) -> None: ...
 
     # ---
 
-    def __datafusion_table_provider__(self, session: Any) -> Any: ...
+    def __datafusion_table_provider__(self, session: object) -> object: ...
     def reader(self) -> dfn.DataFrame: ...
     def to_arrow_reader(self) -> pa.RecordBatchReader: ...
 
@@ -1388,7 +1425,7 @@ class _IndexValuesLikeInternal:
 class TableProviderAdapterInternal:
     """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
 
-    def __datafusion_table_provider__(self, session: Any) -> Any: ...
+    def __datafusion_table_provider__(self, session: object) -> object: ...
 
 class BearerTokenObjectStoreAuth:
     """
@@ -1428,10 +1465,11 @@ class CatalogClientInternal:
 
     # ---
 
+    def get_storage_locations(self) -> StorageLocationsDict: ...
     def version_info(self) -> tuple[str, str | None, str | None, list[str]]: ...
     def rtt_seconds(self, num_pings: int) -> float: ...
     def bandwidth_bytes_per_sec(self, num_bytes: int, rtt_seconds: float) -> float | None: ...
-    # TODO(RR-6055): Add object_store_config to the file and bytes staging signatures.
+    # TODO(RR-6055): Negotiate server support before adding storage_location to staging.
     def stage_file(self, path: str, *, key: str, upload_method: Literal["auto", "single", "multipart"]) -> str: ...
     def stage_bytes(self, data: bytes, *, key: str, upload_method: Literal["auto", "single", "multipart"]) -> str: ...
     def datasets(self, include_hidden: bool) -> list[DatasetEntryInternal]: ...
@@ -1444,7 +1482,11 @@ class CatalogClientInternal:
 
     # ---
 
-    def create_dataset(self, name: str) -> DatasetEntryInternal: ...
+    def create_dataset(
+        self,
+        name: str,
+        chunk_indexing_policy: tuple[list[str] | Literal["all"], list[str] | Literal["all"]] | None = None,
+    ) -> DatasetEntryInternal: ...
     def register_table(self, name: str, url: str) -> TableEntryInternal: ...
     def create_table(self, name: str, schema: pa.Schema, url: str | None) -> TableEntryInternal: ...
     def ctx(self) -> dfn.SessionContext: ...
@@ -1470,6 +1512,9 @@ class UnregistrationHandleInternal:
     def wait(self, timeout_secs: int | None = None) -> None: ...
     def cancel(self) -> None: ...
 
+class DatasetPolicyHandleInternal:
+    def wait(self, timeout_secs: int | None = None) -> None: ...
+
 #####################################################################################################################
 ## VIEWER_CLIENT                                                                                                   ##
 #####################################################################################################################
@@ -1487,6 +1532,9 @@ class NotFoundError(Exception):
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
 
+class ChunkNotIndexedError(Exception):
+    """Raised when a query reads data the dataset's chunk indexing policy excludes and the server can't serve it."""
+
 # The `asset` property layout, shared with the servers that read it.
 ASSET_PROPERTY: str
 ASSET_MODE_COMPONENT: str
@@ -1498,7 +1546,7 @@ class SelectorInternal:
     def __init__(self, query: str) -> None: ...
     def execute(self, source: pa.Array) -> pa.Array | None: ...
     def execute_per_row(self, source: pa.Array) -> pa.Array | None: ...
-    def pipe(self, func: Any) -> SelectorInternal: ...
+    def pipe(self, func: SelectorInternal | Callable[[pa.Array], pa.Array | None]) -> SelectorInternal: ...
     def try_to_string(self) -> str | None: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
@@ -1621,6 +1669,9 @@ class Credentials:
 def get_credentials() -> Credentials | None:
     """Returns the credentials for the current user."""
 
+def analytics_allowed() -> bool:
+    """Whether this machine's analytics config allows analytics, as set by `rerun analytics`."""
+
 def logout() -> str | None:
     """
     Log out by clearing stored credentials.
@@ -1632,7 +1683,7 @@ def logout() -> str | None:
 
     """
 
-def _get_trace_context_var() -> Any:
+def _get_trace_context_var() -> ContextVar[dict[str, str]] | None:
     """
     Return the `ContextVar` that Python uses to pass trace headers to Rust.
 
@@ -1643,7 +1694,7 @@ def _get_trace_context_var() -> Any:
     Returns `None` when `perf_telemetry` is disabled.
     """
 
-def _get_tracing_session_var() -> Any:
+def _get_tracing_session_var() -> ContextVar[str] | None:
     """
     Return the `ContextVar` carrying the active rerun session id.
 
@@ -2023,7 +2074,7 @@ class LazyChunkStreamInternal:
     def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod
-    def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+    def from_iter(iterable: Iterable[ChunkInternal]) -> LazyChunkStreamInternal: ...
     def send_to_recording(self, recording: PyRecordingStream | None = None) -> None:
         """
         Drain this stream into a recording stream.

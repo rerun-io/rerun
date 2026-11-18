@@ -5,7 +5,7 @@
 ///
 /// Supports raw text and markdown.
 ///
-/// \example archetypes/text_document title="Markdown text document" image="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png"
+/// \example archetypes/text_document title="Markdown text document" image="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png" alt="Rerun Viewer with a rendered markdown document view next to a plain text document view, and the raw markdown in the selection panel"
 #[rerun::rerun_type]
 #[docs(category = "Text")]
 #[docs(view_types = "TextDocumentView")]

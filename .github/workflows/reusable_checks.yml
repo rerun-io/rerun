@@ -87,11 +87,21 @@ jobs:
       - name: Rerun lints
         run: pixi run lint-rerun
 
-      - name: Check crate layering
-        run: pixi run scripts/check_crate_layers.py
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-linux"
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: Check forbidden dependencies
-        run: pixi run python scripts/check_forbidden_dependencies.py
+      - name: relint
+        run: pixi run relint
+
+      - name: relint self-check
+        run: pixi run relint-self-check
+
+      - name: Check crate dependencies
+        run: pixi run scripts/check_crate_dependencies.py
 
       - name: Check skills
         run: pixi run python scripts/ci/check_skills.py

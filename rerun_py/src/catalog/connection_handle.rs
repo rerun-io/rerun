@@ -8,12 +8,12 @@ use pyo3::{PyResult, Python};
 use re_catalog_client::{CatalogClient, DatasetSelection, RegistrationHandle, StageOpt};
 use re_log::external::log::warn;
 use re_log_types::{EntryId, EntryName};
-use re_protos::cloud::v1alpha1::EntryFilter;
 use re_protos::cloud::v1alpha1::ext as cloud_ext;
 use re_protos::cloud::v1alpha1::ext::{
-    DataSource, DatasetDetails, DatasetEntry, EntryDetails, ObjectKey, TableDetails, TableEntry,
-    VersionResponse,
+    ApplyDatasetPolicyResponse, DataSource, DatasetDetails, DatasetEntry, DatasetPolicy,
+    EntryDetails, ObjectKey, StorageLocationAlias, TableDetails, TableEntry, VersionResponse,
 };
+use re_protos::cloud::v1alpha1::{DatasetQueryScope, EntryFilter};
 use re_protos::common::v1alpha1::TaskId;
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_redap_client::{ConnectionClient, ConnectionRegistryHandle, DatasetSchema, TraceId};
@@ -63,7 +63,7 @@ impl PyConnectionHandle {
     }
 }
 
-// TODO(RR-6055): Pass object_store_config through both staging paths to StageOpt.
+// TODO(RR-6055): Negotiate server support before forwarding storage_location to StageOpt.
 impl PyConnectionHandle {
     #[tracing::instrument(level = "info", skip_all)]
     pub fn stage_file(
@@ -83,9 +83,7 @@ impl PyConnectionHandle {
                     path.display()
                 ))
             })?;
-            let url = self
-                .inner
-                .stage_opt(key, file, opt)
+            let url = Box::pin(self.inner.stage_opt(key, file, opt))
                 .await
                 .map_err(to_py_err)?;
             Ok(url.to_string())
@@ -105,9 +103,7 @@ impl PyConnectionHandle {
         let bytes = bytes::Bytes::copy_from_slice(bytes);
 
         wait_for_future(py, async move {
-            let url = self
-                .inner
-                .stage_opt(key, bytes, opt)
+            let url = Box::pin(self.inner.stage_opt(key, bytes, opt))
                 .await
                 .map_err(to_py_err)?;
             Ok(url.to_string())
@@ -145,6 +141,13 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
+    pub fn get_storage_locations(&self, py: Python<'_>) -> PyResult<cloud_ext::StorageLocations> {
+        wait_for_future(py, async {
+            self.inner.get_storage_locations().await.map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
     pub fn find_entries(&self, py: Python<'_>, filter: EntryFilter) -> PyResult<Vec<EntryDetails>> {
         wait_for_future(py, async {
             self.inner.find_entries(filter).await.map_err(to_py_err)
@@ -174,10 +177,18 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn create_dataset(&self, py: Python<'_>, name: String) -> PyResult<DatasetEntry> {
+    pub fn create_dataset(
+        &self,
+        py: Python<'_>,
+        name: String,
+        policy: Option<re_protos::cloud::v1alpha1::ext::DatasetPolicy>,
+    ) -> PyResult<DatasetEntry> {
         let name = EntryName::new(name).map_err(|err| PyValueError::new_err(err.to_string()))?;
         wait_for_future(py, async {
-            self.inner.create_dataset(name).await.map_err(to_py_err)
+            self.inner
+                .create_dataset(name, policy)
+                .await
+                .map_err(to_py_err)
         })
     }
 
@@ -198,6 +209,21 @@ impl PyConnectionHandle {
         wait_for_future(py, async {
             self.inner
                 .update_dataset(entry_id, dataset_details)
+                .await
+                .map_err(to_py_err)
+        })
+    }
+
+    #[tracing::instrument(level = "info", skip_all)]
+    pub fn apply_dataset_policy(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        policy: DatasetPolicy,
+    ) -> PyResult<ApplyDatasetPolicyResponse> {
+        wait_for_future(py, async {
+            self.inner
+                .apply_dataset_policy(entry_id, policy)
                 .await
                 .map_err(to_py_err)
         })
@@ -388,10 +414,15 @@ impl PyConnectionHandle {
     }
 
     #[tracing::instrument(level = "info", skip_all)]
-    pub fn get_dataset_schema(&self, py: Python<'_>, entry_id: EntryId) -> PyResult<DatasetSchema> {
+    pub fn get_dataset_schema(
+        &self,
+        py: Python<'_>,
+        entry_id: EntryId,
+        scope: DatasetQueryScope,
+    ) -> PyResult<DatasetSchema> {
         wait_for_future(py, async {
             self.inner
-                .get_dataset_schema(entry_id)
+                .get_dataset_schema(entry_id, scope)
                 .await
                 .map_err(to_py_err)
         })
@@ -406,31 +437,56 @@ impl PyConnectionHandle {
     /// * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
     ///   I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
     ///
+    /// `segment_ids`, when set, must have the same length as `recording_uris`.
+    ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
     #[tracing::instrument(level = "info", skip_all)]
+    #[expect(clippy::too_many_arguments)]
     pub fn register_with_dataset(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
         recording_layers: Vec<LayerName>,
+        segment_ids: Option<Vec<SegmentId>>,
         on_duplicate: IfDuplicateBehavior,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> PyResult<RegistrationHandle> {
+        if let Some(segment_ids) = &segment_ids
+            && segment_ids.len() != recording_uris.len()
+        {
+            return Err(PyValueError::new_err(format!(
+                "`segment_id` must have the same length as `recording_uri`, got {} and {}",
+                segment_ids.len(),
+                recording_uris.len(),
+            )));
+        }
+
         let last_layer = recording_layers
             .last()
             .cloned()
             .unwrap_or_else(LayerName::base);
 
-        let data_sources = std::iter::zip(
+        let segment_ids: Vec<Option<SegmentId>> = match segment_ids {
+            Some(ids) => ids.into_iter().map(Some).collect(),
+            None => vec![None; recording_uris.len()],
+        };
+
+        let data_sources = itertools::izip!(
             &recording_uris,
             std::iter::chain(
                 recording_layers,
                 std::iter::repeat_with(|| last_layer.clone()),
             ),
+            segment_ids,
         )
-        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url, object_store_config.clone()))
+        .map(|(url, layer, segment_id)| {
+            DataSource::new_rrd_layer(layer, url, storage_location.clone()).map(|ds| DataSource {
+                segment_id_override: segment_id,
+                ..ds
+            })
+        })
         .try_collect()
         .map_err(to_py_err)?;
 
@@ -486,14 +542,11 @@ impl PyConnectionHandle {
         recordings_prefix: String,
         recordings_layer: LayerName,
         on_duplicate: IfDuplicateBehavior,
-        object_store_config: Option<String>,
+        storage_location: Option<StorageLocationAlias>,
     ) -> PyResult<RegistrationHandle> {
-        let data_source = DataSource::new_rrd_layer_prefix(
-            recordings_layer,
-            recordings_prefix,
-            object_store_config,
-        )
-        .map_err(to_py_err)?;
+        let data_source =
+            DataSource::new_rrd_layer_prefix(recordings_layer, recordings_prefix, storage_location)
+                .map_err(to_py_err)?;
         let data_sources = vec![data_source];
 
         wait_for_future(py, async {

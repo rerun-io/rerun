@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import socket
 from pathlib import Path
 
 import pyarrow as pa
@@ -12,9 +13,17 @@ RESOURCES_DIR = Path(__file__).parent.parent / "e2e_redap_tests" / "resources"
 DATASET_DIR = RESOURCES_DIR / "dataset"
 
 
+def _find_free_port() -> int:
+    """Bind to port 0, read what the OS picked, then release it."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port: int = s.getsockname()[1]
+        return port
+
+
 def test_server_starts_and_stops() -> None:
     """Test that a server can be started and stopped."""
-    server = Server()
+    server = Server(host="127.0.0.1")
     assert server.is_running()
 
     url = server.url()
@@ -26,7 +35,7 @@ def test_server_starts_and_stops() -> None:
 
 def test_server_context_manager() -> None:
     """Test that the server works as a context manager."""
-    with Server() as server:
+    with Server(host="127.0.0.1") as server:
         assert server.is_running()
         url = server.url()
         assert url.startswith("rerun+http://")
@@ -36,14 +45,15 @@ def test_server_context_manager() -> None:
 
 def test_server_custom_port() -> None:
     """Test that the server can be started on a custom port."""
-    with Server(port=19876) as server:
+    port = _find_free_port()
+    with Server(host="127.0.0.1", port=port) as server:
         assert server.is_running()
-        assert "19876" in server.url()
+        assert server.url().endswith(f":{port}")
 
 
 def test_server_random_port() -> None:
     """Test that the server selects a random port when none is specified."""
-    with Server() as server1, Server() as server2:
+    with Server(host="127.0.0.1") as server1, Server(host="127.0.0.1") as server2:
         # Both servers should be running on different ports
         assert server1.is_running()
         assert server2.is_running()
@@ -65,7 +75,7 @@ def test_server_ephemeral_port() -> None:
 
 def test_server_shutdown_twice_raises() -> None:
     """Test that shutting down a server twice raises an error."""
-    server = Server()
+    server = Server(host="127.0.0.1")
     server.shutdown()
 
     with pytest.raises(ValueError, match="not running"):
@@ -74,7 +84,7 @@ def test_server_shutdown_twice_raises() -> None:
 
 def test_server_client_after_shutdown_raises() -> None:
     """Test that getting a client after shutdown raises an error."""
-    server = Server()
+    server = Server(host="127.0.0.1")
     server.shutdown()
 
     with pytest.raises(RuntimeError, match="not running"):
@@ -83,7 +93,7 @@ def test_server_client_after_shutdown_raises() -> None:
 
 def test_server_with_dataset_prefix() -> None:
     """Test that the server can be started with a dataset prefix (directory)."""
-    with Server(datasets={"test_dataset": DATASET_DIR}) as server:
+    with Server(host="127.0.0.1", datasets={"test_dataset": DATASET_DIR}) as server:
         assert server.is_running()
 
         client = server.client()
@@ -96,7 +106,7 @@ def test_server_with_dataset_files() -> None:
     rrd_files = list(DATASET_DIR.glob("*.rrd"))[:3]
     assert len(rrd_files) == 3
 
-    with Server(datasets={"my_dataset": rrd_files}) as server:
+    with Server(host="127.0.0.1", datasets={"my_dataset": rrd_files}) as server:
         assert server.is_running()
 
         client = server.client()
@@ -109,10 +119,11 @@ def test_server_with_multiple_datasets() -> None:
     rrd_files = list(DATASET_DIR.glob("*.rrd"))[:2]
 
     with Server(
+        host="127.0.0.1",
         datasets={
             "prefix_dataset": DATASET_DIR,
             "files_dataset": rrd_files,
-        }
+        },
     ) as server:
         assert server.is_running()
 
@@ -130,24 +141,24 @@ def test_server_dataset_prefix_must_be_directory() -> None:
     rrd_file = next(DATASET_DIR.glob("*.rrd"))
 
     with pytest.raises(ValueError, match="must be a directory"):
-        Server(datasets={"bad_dataset": rrd_file})
+        Server(host="127.0.0.1", datasets={"bad_dataset": rrd_file})
 
 
 def test_server_dataset_files_must_exist() -> None:
     """Test that dataset file paths must exist."""
     with pytest.raises(ValueError, match="must be a RRD file"):
-        Server(datasets={"bad_dataset": [Path("/nonexistent/file.rrd")]})
+        Server(host="127.0.0.1", datasets={"bad_dataset": [Path("/nonexistent/file.rrd")]})
 
 
 def test_server_dataset_files_must_be_files() -> None:
     """Test that dataset file paths must be files, not directories."""
     with pytest.raises(ValueError, match="must be a RRD file"):
-        Server(datasets={"bad_dataset": [DATASET_DIR]})
+        Server(host="127.0.0.1", datasets={"bad_dataset": [DATASET_DIR]})
 
 
 def test_server_version_info() -> None:
     """Test that version_info() returns valid info for a local OSS server."""
-    with Server() as server:
+    with Server(host="127.0.0.1") as server:
         client = server.client()
         info = client.version_info()
         assert isinstance(info.version, str)
@@ -158,7 +169,7 @@ def test_server_version_info() -> None:
 def test_server_failed_table_creation_does_not_leak_entry(tmp_path: Path) -> None:
     """Regression test for https://linear.app/rerun/issue/RR-3644/create-table-failure-leads-to-unlisted-existing-table."""
 
-    with Server() as server:
+    with Server(host="127.0.0.1") as server:
         client = server.client()
 
         schema = pa.schema([])

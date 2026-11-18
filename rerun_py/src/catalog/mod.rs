@@ -10,6 +10,7 @@
 #![expect(clippy::needless_pass_by_value)] // A lot of arguments to #[pyfunction] need to be by value
 
 mod catalog_client;
+mod chunk_indexing_policy;
 mod component_columns;
 mod connection_handle;
 mod dataframe_rendering;
@@ -22,6 +23,7 @@ mod errors;
 mod index_columns;
 mod layer;
 mod object_store;
+mod policy_handle;
 mod registration_handle;
 mod schema;
 mod segment;
@@ -32,9 +34,9 @@ mod type_aliases;
 mod unregistration_handle;
 mod write_operation;
 
-use errors::{AlreadyExistsError, NotFoundError};
+use errors::{AlreadyExistsError, ChunkNotIndexedError, NotFoundError};
 use pyo3::prelude::*;
-use pyo3::{Bound, PyResult};
+use re_catalog_client::{BlueprintKind, BlueprintName, RegisteredBlueprint};
 use re_protos::cloud::v1alpha1::ext::{
     ASSET_MODE_COMPONENT, ASSET_PROPERTY, ASSET_SEGMENTS_COMPONENT, AssetMode,
 };
@@ -51,6 +53,7 @@ pub use self::errors::to_py_err;
 pub use self::index_columns::{PyIndexColumnDescriptor, PyIndexColumnSelector};
 pub use self::layer::PyLayerInternal;
 pub use self::object_store::{AnyObjectStoreAuthenticator, BearerTokenObjectStoreAuthenticator};
+pub use self::policy_handle::PyDatasetPolicyHandleInternal;
 pub use self::registration_handle::{PyRegistrationHandleInternal, PyRegistrationIterator};
 pub use self::schema::PySchemaInternal;
 pub use self::segment::PySegmentInternal;
@@ -59,6 +62,28 @@ pub use self::table_entry::{PyTableEntryInternal, PyTableInsertModeInternal};
 pub use self::table_provider_adapter::PyTableProviderAdapterInternal;
 pub use self::type_aliases::{AnyComponentColumn, IndexValuesLike, PyIndexValuesLikeInternal};
 pub use self::unregistration_handle::PyUnregistrationHandleInternal;
+
+/// The ID of a blueprint, which is its segment ID in the blueprint dataset, its name, and its kind.
+///
+/// The name is `None` for a blueprint without a name. The kind is `"recording"` or `"table"`.
+type BlueprintFields = (String, Option<String>, &'static str);
+
+fn blueprint_fields(blueprint: RegisteredBlueprint) -> BlueprintFields {
+    (
+        blueprint.segment_id.to_string(),
+        blueprint.name.map(BlueprintName::into_string),
+        blueprint.kind.as_str(),
+    )
+}
+
+/// The [`BlueprintKind`] with this name, or a `ValueError` for any other string.
+fn parse_blueprint_kind(kind: &str) -> PyResult<BlueprintKind> {
+    BlueprintKind::parse(kind).ok_or_else(|| {
+        pyo3::exceptions::PyValueError::new_err(format!(
+            "Unknown blueprint kind {kind:?}, expected \"recording\" or \"table\""
+        ))
+    })
+}
 
 /// Register the `rerun.catalog` module.
 pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -76,6 +101,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyTableInsertModeInternal>()?;
     m.add_class::<PyRegistrationHandleInternal>()?;
     m.add_class::<PyUnregistrationHandleInternal>()?;
+    m.add_class::<PyDatasetPolicyHandleInternal>()?;
     m.add_class::<write_operation::PyWriteOperationInternal>()?;
     m.add_class::<PyRegistrationIterator>()?;
     m.add_class::<PyTableProviderAdapterInternal>()?;
@@ -89,6 +115,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     m.add_class::<PyIndexColumnSelector>()?;
     m.add_class::<PyComponentColumnDescriptor>()?;
     m.add_class::<PyComponentColumnSelector>()?;
+    m.add_class::<chunk_indexing_policy::PyChunkIndexingPolicyInternal>()?;
 
     // testing
     m.add_function(wrap_pyfunction!(
@@ -100,6 +127,10 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
     // register exceptions generated with the [`pyo3::create_exception!`] macro
     m.add("NotFoundError", _py.get_type::<NotFoundError>())?;
     m.add("AlreadyExistsError", _py.get_type::<AlreadyExistsError>())?;
+    m.add(
+        "ChunkNotIndexedError",
+        _py.get_type::<ChunkNotIndexedError>(),
+    )?;
 
     // The `asset` property layout, so the SDK writes what `GetAssetsForSegment` reads.
     m.add("ASSET_PROPERTY", ASSET_PROPERTY)?;

@@ -168,8 +168,6 @@ fn apply_one_to_one(work: &DeriveWork, runtime: &Runtime) -> Result<Chunk, LensE
 /// For each row: if null or empty, one index is emitted (preserving the row).
 /// Otherwise, `count` copies of the row index are emitted (one per inner element).
 fn compute_scatter_indices(reference: &ListArray) -> UInt32Array {
-    use arrow::array::UInt32Array;
-
     let offsets = reference.value_offsets();
     let mut indices = Vec::new();
 

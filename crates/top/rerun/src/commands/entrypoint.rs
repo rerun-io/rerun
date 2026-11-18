@@ -5,6 +5,7 @@ use std::time::Duration;
 use clap::{CommandFactory as _, Subcommand};
 use itertools::Itertools as _;
 use re_data_source::{AuthErrorHandler, LogDataSource};
+use re_error::{try_eprintln, try_println};
 use re_log_channel::{DataSourceMessage, LogReceiver, LogReceiverSet, SmartMessagePayload};
 #[cfg(feature = "web_viewer")]
 use re_sdk::web_viewer::WebViewerConfig;
@@ -113,8 +114,13 @@ impl std::fmt::Display for PortArg {
     }
 }
 
+/// Error returned when parsing a [`PortArg`] from a string.
+#[derive(Debug, thiserror::Error)]
+#[error("invalid port: {0}")]
+struct InvalidPortArgError(#[source] std::num::ParseIntError);
+
 impl std::str::FromStr for PortArg {
-    type Err = String;
+    type Err = InvalidPortArgError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.eq_ignore_ascii_case("auto") {
@@ -122,7 +128,7 @@ impl std::str::FromStr for PortArg {
         } else {
             s.parse::<u16>()
                 .map(Self::Port)
-                .map_err(|err| format!("invalid port: {err}"))
+                .map_err(InvalidPortArgError)
         }
     }
 }
@@ -149,7 +155,7 @@ struct Args {
     /// `rerun --asset mesh.rrd robot.rrd other.rrd --asset urdf.rrd` registers both assets with
     /// the datasets of both recordings.
     ///
-    /// See <https://www.rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>
+    /// See <https://www.rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets>
     ///
     /// The files are then loaded through the Viewer catalog, which turns on the
     /// "Load files via Viewer catalog" setting if it is off.
@@ -299,7 +305,7 @@ When persisted, the state will be stored at the following locations:
 - A path to a Rerun .rrd recording
 - A path to a Rerun .rbl blueprint
 - An HTTP(S) URL to an .rrd or .rbl file to load
-- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
+- A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview)
 
 If no arguments are given, a server will be hosted which a Rerun SDK can connect to.")]
     url_or_paths: Vec<String>,
@@ -572,7 +578,7 @@ impl Args {
             // > - A path to a Rerun .rrd recording
             // > - A path to a Rerun .rbl blueprint
             // > - An HTTP(S) URL to an .rrd or .rbl file to load
-            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview)
+            // > - A path to an image or mesh, or any other file that Rerun can load (see https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview)
             // >
             // > If no arguments are given, a server will be hosted which a Rerun SDK can connect to.
             // """
@@ -667,20 +673,26 @@ enum Command {
 
     /// Run an MCP server that controls a running Rerun Viewer.
     ///
-    /// Register it with your agent using `claude mcp add rerun -- rerun viewer-mcp` or
-    /// `codex mcp add rerun -- rerun viewer-mcp`, or add an `mcp.json` entry with
-    /// `"command": "rerun"` and `"args": ["viewer-mcp"]`.
+    /// Register it with your agent using `claude mcp add rerun -- rerun mcp` or
+    /// `codex mcp add rerun -- rerun mcp`, or add an `mcp.json` entry with
+    /// `"command": "rerun"` and `"args": ["mcp"]`.
     ///
-    /// See <https://rerun.io/docs/reference/viewer/mcp> for details.
+    /// See <https://rerun.io/docs/viewer/extend/mcp> for details.
     #[cfg(feature = "native_viewer")]
-    #[command(name = "viewer-mcp")]
-    ViewerMcp {
+    #[command(name = "mcp")]
+    Mcp {
         /// gRPC endpoint of the viewer to connect to on startup, e.g. `http://127.0.0.1:9876`.
         ///
         /// Without it, the server starts unconnected and the agent picks a viewer with its
         /// `connect` tool.
         #[arg(long)]
         endpoint: Option<url::Url>,
+
+        /// Marks a server started by the viewer's agent panel.
+        ///
+        /// Only analytics reads it, the server behaves the same either way.
+        #[arg(long, hide = true)]
+        from_agent_panel: bool,
     },
 
     /// Reset the memory of the Rerun Viewer.
@@ -727,6 +739,24 @@ where
     I: IntoIterator<Item = T>,
     T: Into<std::ffi::OsString> + Clone,
 {
+    match run_inner(main_thread_token, build_info, call_source, args) {
+        // Clean success when the reader of stdout exits, e.g. `rerun rrd print | head`
+        Err(err) if re_error::is_output_closed_error(err.as_ref()) => Ok(0),
+
+        res => res,
+    }
+}
+
+fn run_inner<I, T>(
+    main_thread_token: crate::MainThreadToken,
+    build_info: re_build_info::BuildInfo,
+    call_source: CallSource,
+    args: I,
+) -> anyhow::Result<u8>
+where
+    I: IntoIterator<Item = T>,
+    T: Into<std::ffi::OsString> + Clone,
+{
     if cfg!(feature = "analytics") {
         re_analytics::enable_in_this_process();
     }
@@ -738,7 +768,7 @@ where
 
     #[cfg(not(target_arch = "wasm32"))]
     if cfg!(feature = "perf_telemetry") && re_log::env_var_is_truthy("TELEMETRY_ENABLED") {
-        eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED"); // Ask Clement why
+        try_eprintln!("Disabling crash handler because of perf_telemetry/TELEMETRY_ENABLED")?; // Ask Clement why
     } else {
         re_crash_handler::install_crash_handlers(build_info.clone());
     }
@@ -776,14 +806,14 @@ where
     }
 
     if args.version {
-        println!("{build_info}");
+        try_println!("{build_info}")?;
         #[cfg(feature = "video")]
-        println!(
+        try_println!(
             "Video features: {}",
             re_video::enabled_features().iter().join(" ")
-        );
+        )?;
         #[cfg(not(feature = "video"))]
-        println!("Video features: (video support disabled in this build)");
+        try_println!("Video features: (video support disabled in this build)")?;
         return Ok(0);
     }
 
@@ -815,12 +845,13 @@ where
                     ---
                     title: ⌨️ CLI manual
                     order: 1150
+                    description: Every command, flag, and option of the rerun command-line interface
                     ---
 
                     <!-- DO NOT EDIT! This file was auto-generated by `pixi run man`. -->\
                     ",
                 );
-                println!("{web_header}\n\n{man}");
+                try_println!("{web_header}\n\n{man}")?;
                 Ok(())
             }
 
@@ -828,9 +859,12 @@ where
             Command::Mcap(mcap) => mcap.run(),
 
             #[cfg(feature = "native_viewer")]
-            Command::ViewerMcp { endpoint } => {
-                tokio_runtime.block_on(re_viewer_mcp::serve(endpoint))
-            }
+            Command::Mcp {
+                endpoint,
+                from_agent_panel: _,
+            } => tokio_runtime.block_on(re_rerun_mcp::serve(re_rerun_mcp::Config {
+                viewer: Some(re_rerun_mcp::ViewerConfig { endpoint }),
+            })),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -1827,7 +1861,7 @@ fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     // Name the tokio threads for the benefit of debuggers and profilers:
-    let mut builder = tokio::runtime::Builder::new_multi_thread(); // NOLINT: the CLI process owns this configurable runtime
+    let mut builder = tokio::runtime::Builder::new_multi_thread(); // relint: allow(tokio_runtime): the CLI process owns this configurable runtime
     builder.thread_name_fn(|| {
         static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
         let nr = ATOMIC_ID.fetch_add(1, Ordering::Relaxed);
@@ -2114,6 +2148,18 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         integration_test: _,
     } = args;
 
+    let mcp_launcher = cfg_select! {
+        feature = "native_viewer" => match command {
+            Some(Command::Mcp {
+                from_agent_panel: true,
+                ..
+            }) => Some(re_analytics::event::McpLauncher::AgentPanel),
+            Some(Command::Mcp { .. }) => Some(re_analytics::event::McpLauncher::Unknown),
+            _ => None,
+        },
+        _ => None,
+    };
+
     let (command, subcommand) = match command {
         #[cfg(feature = "analytics")]
         Some(Command::Analytics(cmd)) => {
@@ -2142,13 +2188,17 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         Some(Command::Manual) => ("man", None),
 
         #[cfg(feature = "importers")]
-        Some(Command::Mcap(_cmd)) => {
-            // TODO(RR-4073): Re-enable analytics for MCAP commands.
-            return;
+        Some(Command::Mcap(cmd)) => {
+            let subcommand = match cmd {
+                McapCommands::Convert(_) => "convert",
+                McapCommands::Info(_) => "info",
+                McapCommands::Check(_) => "check",
+            };
+            ("mcap", Some(subcommand))
         }
 
         #[cfg(feature = "native_viewer")]
-        Some(Command::ViewerMcp { .. }) => ("viewer-mcp", None),
+        Some(Command::Mcp { .. }) => ("mcp", None),
 
         Some(Command::Download(_)) => ("download", None),
 
@@ -2157,9 +2207,21 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         #[cfg(feature = "native_viewer")]
         Some(Command::Reset) => ("reset", None),
 
-        Some(Command::Rrd(_cmd)) => {
-            // TODO(RR-4073): Re-enable analytics for RRD commands.
-            return;
+        Some(Command::Rrd(cmd)) => {
+            let subcommand = match cmd {
+                RrdCommands::Compare(_) => "compare",
+                RrdCommands::Filter(_) => "filter",
+                RrdCommands::Merge(_) => "merge",
+                RrdCommands::Migrate(_) => "migrate",
+                RrdCommands::Optimize(_) => "optimize",
+                RrdCommands::Compact(_) => "compact",
+                RrdCommands::Print(_) => "print",
+                RrdCommands::Route(_) => "route",
+                RrdCommands::Split(_) => "split",
+                RrdCommands::Stats(_) => "stats",
+                RrdCommands::Verify(_) => "verify",
+            };
+            ("rrd", Some(subcommand))
         }
 
         #[cfg(feature = "oss_server")]
@@ -2185,6 +2247,7 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         hide_welcome_screen: *hide_welcome_screen,
         detach_process: *detach_process,
         test_receive: *test_receive,
+        mcp_launcher,
     });
 }
 
@@ -2312,7 +2375,33 @@ mod cli_data_source_tests {
 mod tests {
     use super::*;
 
+    use std::assert_matches;
+
     use clap::Parser as _;
+
+    #[test]
+    fn mcp_parses_from_agent_panel() {
+        let args = Args::try_parse_from(["rerun", "mcp", "--from-agent-panel"]).unwrap();
+        assert_matches!(
+            args.command,
+            Some(Command::Mcp {
+                from_agent_panel: true,
+                ..
+            })
+        );
+    }
+
+    #[test]
+    fn mcp_is_not_from_agent_panel_by_default() {
+        let args = Args::try_parse_from(["rerun", "mcp"]).unwrap();
+        assert_matches!(
+            args.command,
+            Some(Command::Mcp {
+                from_agent_panel: false,
+                ..
+            })
+        );
+    }
 
     #[test]
     fn detach_relaunches_a_native_viewer_exactly_once() {

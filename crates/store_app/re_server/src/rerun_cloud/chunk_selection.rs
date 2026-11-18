@@ -351,11 +351,16 @@ impl QueryResults {
         self.missing_virtual.extend(missing_virtual);
     }
 
-    fn finish(mut self) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
-        for id in self.seen_physical {
-            self.missing_virtual.remove(&id);
+    fn finish(self) -> (Vec<Arc<Chunk>>, Vec<ChunkId>) {
+        let Self {
+            chunks,
+            seen_physical,
+            mut missing_virtual,
+        } = self;
+        for id in seen_physical {
+            missing_virtual.remove(&id);
         }
-        (self.chunks, self.missing_virtual.into_iter().collect())
+        (chunks, missing_virtual.into_iter().collect())
     }
 }
 

@@ -185,15 +185,15 @@ mod tests {
         assert_eq!(&Duration::from_micros(69_000).format_secs(0..=6), "+0.069s");
         assert_eq!(
             &Duration::from_micros(69_900).format_secs(0..=6),
-            "+0.069 900s"
+            "+0.069 900s"
         );
         assert_eq!(
             &Duration::from_micros(42_123_000_000).format_secs(0..=6),
-            "+42 123s"
+            "+42 123s"
         );
         assert_eq!(
             &Duration::from_nanos(1_234_567_891).format_secs(0..=6),
-            "+1.234 568s",
+            "+1.234 568s",
             "Should limit decimals and round"
         );
     }

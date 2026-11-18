@@ -14,13 +14,17 @@ test("the deprecated getters and setters still work", async ({ viewer }) => {
 
     // The old setters return nothing to wait on: the viewer applies them on a later frame.
     const deadline = Date.now() + 30_000;
-    while (Date.now() < deadline && (v.get_playing(id) || v.get_current_time(id, timeline) !== range.min)) {
+    while (
+      Date.now() < deadline &&
+      (v.get_playing(id) || v.get_current_time(id, timeline) !== range.min)
+    ) {
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
 
     return {
       // The old API names a recording by its recording id, not its whole store id.
-      id_matches: id === window.rerun.parse_store_id((await v.get_state()).active_store_id!).recording_id,
+      id_matches:
+        id === window.rerun.parse_store_id((await v.get_state()).active_store_id!).recording_id,
       timeline,
       range_ok: range.min <= range.max,
       playing: v.get_playing(id),

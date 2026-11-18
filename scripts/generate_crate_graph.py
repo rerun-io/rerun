@@ -82,7 +82,9 @@ EXTRA_CRATES = {
 
 # `re_type_definitions` is never linked; it only exists as codegen input, so an
 # edge to it would suggest a build dependency that does not exist.
-SKIPPED_CRATES = {"re_type_definitions"}
+# `re_workspace_hack` only unifies features for faster builds, and every crate
+# depends on it, so it would only add noise.
+SKIPPED_CRATES = {"re_type_definitions", "re_workspace_hack"}
 
 POINTS_PER_INCH = 72.0
 BAND_PADDING = 14.0  # Between a band's crates and the edge of its box, in points.

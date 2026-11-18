@@ -35,7 +35,7 @@ impl PyDataFusionCatalogProviderList {
     }
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods] // relint: allow(pymethods_str): not in the Python API stubs
 impl PyDataFusionCatalogProviderList {
     /// Returns a DataFusion catalog provider list capsule.
     fn __datafusion_catalog_provider_list__<'py>(

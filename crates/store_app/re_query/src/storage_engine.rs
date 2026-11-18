@@ -251,9 +251,10 @@ pub struct StorageEngineWriteGuard<'a> {
 impl<'a> StorageEngineWriteGuard<'a> {
     #[inline]
     pub fn downgrade(self) -> StorageEngineReadGuard<'a> {
+        let Self { store, cache } = self;
         StorageEngineReadGuard {
-            store: parking_lot::RwLockWriteGuard::downgrade(self.store),
-            cache: parking_lot::RwLockWriteGuard::downgrade(self.cache),
+            store: parking_lot::RwLockWriteGuard::downgrade(store),
+            cache: parking_lot::RwLockWriteGuard::downgrade(cache),
         }
     }
 }
@@ -282,9 +283,10 @@ pub struct StorageEngineArcWriteGuard {
 impl StorageEngineArcWriteGuard {
     #[inline]
     pub fn downgrade(self) -> StorageEngineArcReadGuard {
+        let Self { store, cache } = self;
         StorageEngineArcReadGuard {
-            store: parking_lot::ArcRwLockWriteGuard::downgrade(self.store),
-            cache: parking_lot::ArcRwLockWriteGuard::downgrade(self.cache),
+            store: parking_lot::ArcRwLockWriteGuard::downgrade(store),
+            cache: parking_lot::ArcRwLockWriteGuard::downgrade(cache),
         }
     }
 }

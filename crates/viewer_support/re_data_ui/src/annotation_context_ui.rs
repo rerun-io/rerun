@@ -19,8 +19,9 @@ impl crate::EntityDataUi for components::ClassId {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        _component_descriptor: &ComponentDescriptor,
-        _row_id: Option<RowId>,
+        _target_component_descriptor: &ComponentDescriptor,
+        _source_row_id: Option<RowId>,
+        _source: &re_viewer_context::VisualizerComponentSource,
     ) {
         let annotations = crate::annotations(ctx, entity_path);
         let class = annotations
@@ -64,8 +65,9 @@ impl crate::EntityDataUi for components::KeypointId {
         ui: &mut egui::Ui,
         ui_layout: UiLayout,
         entity_path: &EntityPath,
-        _component_descriptor: &ComponentDescriptor,
-        _row_id: Option<RowId>,
+        _target_component_descriptor: &ComponentDescriptor,
+        _source_row_id: Option<RowId>,
+        _source: &re_viewer_context::VisualizerComponentSource,
     ) {
         if let Some(info) = annotation_info(ctx, entity_path, self.0) {
             ui.horizontal(|ui| {

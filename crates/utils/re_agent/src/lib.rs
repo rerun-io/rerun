@@ -36,10 +36,13 @@ mod backend;
 mod elicitation;
 mod error;
 mod model_api_backend;
+mod model_recommendation;
 mod redactor;
+mod reports;
 mod responder;
 mod session;
 mod settings;
+mod startup;
 mod transcript;
 mod turn;
 
@@ -57,21 +60,28 @@ pub mod acp {
 #[cfg(agent_harness_backend)]
 pub use agent_harness::find_executable;
 pub use agent_harness::{
-    AgentEntry, AgentHarnessConfig, AgentKind, AgentProfile, AgentProfileId, McpStdioServer,
+    AgentEntry, AgentHarnessConfig, AgentInstall, AgentKind, AgentProfile, AgentProfileId,
+    McpStdioServer,
 };
 pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
-pub use backend::{AgentCommand, AgentEvent, LineDirection};
-pub use error::McpStartupFailure;
+pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin, TurnError};
+pub use error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
+pub use model_recommendation::{ModelPreference, preferred_model};
 pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
+pub use reports::{McpStartupReport, SessionReports};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, ElicitationId, LogLine, PendingElicitation, PendingPermission, Phase,
     Prompt, PromptImage,
 };
-pub use settings::{AgentLaunch, AgentLaunchError, AgentSettings, McpServerConfig, SessionContext};
+pub use settings::{
+    AgentLaunch, AgentLaunchError, AgentPreferences, AgentSettings, DEFAULT_MODEL_PREFERENCES,
+    Effort, McpServerConfig, SavedConversation, SessionContext,
+};
+pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};
 pub use transcript::{
-    ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,
-    truncate_bytes,
+    ToolCallState, Transcript, TranscriptEntry, TranscriptItem, TurnId, message_text, model_name,
+    select_options, truncate_bytes,
 };
 pub use turn::{TurnOutcome, TurnReport};

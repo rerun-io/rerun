@@ -109,14 +109,15 @@ impl re_types_core::Archetype for MyPoints {
 impl ::re_types_core::AsComponents for MyPoints {
     #[inline]
     fn as_serialized_batches(&self) -> Vec<SerializedComponentBatch> {
-        [
-            self.colors.clone(),
-            self.labels.clone(),
-            self.points.clone(),
-        ]
-        .into_iter()
-        .flatten()
-        .collect()
+        let Self {
+            points,
+            colors,
+            labels,
+        } = self;
+        [colors.clone(), labels.clone(), points.clone()]
+            .into_iter()
+            .flatten()
+            .collect()
     }
 }
 

@@ -36,7 +36,7 @@ fn test_grid_map_texel_accuracy() {
     test_context.log_entity("map", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &GridMap::new(
                 pixels.clone(),
                 ImageFormat::from_color_model([width, height], ColorModel::L, ChannelDatatype::U8),
@@ -50,7 +50,7 @@ fn test_grid_map_texel_accuracy() {
     test_context.log_entity("map_rotated", |builder| {
         builder.with_archetype(
             RowId::new(),
-            TimePoint::default(),
+            TimePoint::STATIC,
             &GridMap::new(
                 pixels.clone(),
                 ImageFormat::from_color_model([width, height], ColorModel::L, ChannelDatatype::U8),

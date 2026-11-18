@@ -1,5 +1,7 @@
 //! Integration tests for rerun and the in memory server.
 
+#![expect(clippy::print_stdout, clippy::print_stderr)] // This is only a test
+
 mod inspection;
 mod kittest_harness_ext;
 mod test_data;
@@ -16,7 +18,8 @@ use re_sdk_types::SegmentId;
 use re_server::ServerHandle;
 use re_uri::external::url::Host;
 pub use test_data::{
-    TEST_DATASET_ID, asset_rrd, file_url, register_asset, register_table_blueprint,
+    TEST_DATASET_ID, asset_rrd, file_url, register_asset, register_blueprint_segment,
+    register_dataset_blueprint, register_table_blueprint, spatial_3d_blueprint_rbl,
 };
 pub use viewer_harness_ext::ViewerHarnessExt;
 // pub use viewer_section::GetSection;

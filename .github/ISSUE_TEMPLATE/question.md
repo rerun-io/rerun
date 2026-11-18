@@ -2,7 +2,6 @@
 name: Question
 about: For questions please use the Rerun Discord
 title: ''
-labels: 👀 needs triage
 assignees: ''
 
 ---

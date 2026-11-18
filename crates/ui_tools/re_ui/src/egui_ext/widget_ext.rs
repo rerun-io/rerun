@@ -150,9 +150,15 @@ where
 
 impl<T: egui::Widget> egui::Widget for OnResponse<'_, T> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let mut response = ui.add_enabled(self.enabled, self.inner);
+        let Self {
+            inner,
+            on_response,
+            enabled,
+        } = self;
 
-        for on_response in self.on_response {
+        let mut response = ui.add_enabled(enabled, inner);
+
+        for on_response in on_response {
             response = on_response(response);
         }
 

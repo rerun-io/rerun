@@ -54,6 +54,10 @@ pub enum DocsAttr {
     #[strum(serialize = "attr.docs.category")]
     Category,
 
+    /// Comma-separated discovery keywords shared by documentation and runtime reflection.
+    #[strum(serialize = "attr.docs.keywords")]
+    Keywords,
+
     /// The views an archetype can be shown in, as `View`, or `View: why`, separated by commas.
     #[strum(serialize = "attr.docs.view_types")]
     ViewTypes,

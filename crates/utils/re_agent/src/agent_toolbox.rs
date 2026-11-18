@@ -36,15 +36,26 @@ pub enum ToolOutput {
 
 /// The tools a host offers a model-API agent.
 ///
-/// Subprocess agents get their tools elsewhere, e.g. from MCP servers.
+/// Subprocess agents get their tools elsewhere, e.g. from MCP servers. When one of those serves
+/// the same tools, see [`Self::mcp_server_name`].
 pub trait AgentToolbox: Send + Sync {
     /// Every tool on offer, sent to the model with each request.
     fn definitions(&self) -> Vec<ToolDefinition>;
 
-    /// Whether the user is asked before each call of the tool `name`.
+    /// Whether the user is asked before this call of the tool `name`, with `arguments`.
     ///
-    /// Tools that only read should return `false`, so that the agent can look around freely.
-    fn requires_approval(&self, name: &str) -> bool;
+    /// Calls that only read, or that the user can easily undo, should return `false`, so that
+    /// the agent can work freely.
+    fn requires_approval(&self, name: &str, arguments: &Map<String, Value>) -> bool;
+
+    /// The host-supplied MCP server that serves the same tools, under the same names, to agent
+    /// harnesses.
+    ///
+    /// A harness asks permission for calls to it as `mcp__<server>__<tool>`, and those that
+    /// [`Self::requires_approval`] lets through are then approved without asking the user.
+    fn mcp_server_name(&self) -> Option<&str> {
+        None
+    }
 
     /// Runs the tool `name`.
     ///

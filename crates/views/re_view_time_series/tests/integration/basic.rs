@@ -51,13 +51,13 @@ fn test_clear_series_points_and_line_impl(
     // explicitly setting the marker shape to circle.
     test_context.log_entity("plots/line", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::SeriesLines::new(),
         )
     });
     test_context.log_entity("plots/point", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::SeriesPoints::new()
                 .with_markers([re_sdk_types::components::MarkerShape::Circle]),
         )
@@ -271,7 +271,7 @@ fn test_line_properties_impl(
             .with_names(["static"])
     };
     test_context.log_entity("entity_static_props", |builder| {
-        builder.with_archetype_auto_row(TimePoint::default(), &properties_static)
+        builder.with_archetype_auto_row(TimePoint::STATIC, &properties_static)
     });
 
     for step in 0..32 {
@@ -334,7 +334,7 @@ fn test_per_series_visibility() {
 
         test_context.log_entity("plots", |builder| {
             builder.with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::SeriesLines::new().with_visible_series(visibility),
             )
         });
@@ -412,7 +412,7 @@ fn test_point_properties_impl(
     };
 
     test_context.log_entity("entity_static_props", |builder| {
-        builder.with_archetype_auto_row(TimePoint::default(), &static_props)
+        builder.with_archetype_auto_row(TimePoint::STATIC, &static_props)
     });
 
     for step in 0..32 {
@@ -494,7 +494,7 @@ fn test_non_finite_islands() {
     for (entity, gap_value, offset) in series {
         test_context.log_entity(entity, |builder| {
             builder.with_archetype_auto_row(
-                TimePoint::default(),
+                TimePoint::STATIC,
                 &re_sdk_types::archetypes::SeriesLines::new().with_widths([3.0]),
             )
         });
@@ -553,13 +553,13 @@ fn test_line_series_always_show_markers() {
 
     test_context.log_entity("plots/line", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::SeriesLines::new(),
         )
     });
     test_context.log_entity("plots/measurement", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::Measurements::update_fields().with_widths([8.0]),
         )
     });
@@ -610,7 +610,7 @@ fn test_series_lines_single_logged_point() {
 
     test_context.log_entity("plots/line", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::SeriesLines::new().with_widths([8.0]),
         )
     });
@@ -778,7 +778,7 @@ fn test_float32_native_scalars() {
 
     test_context.log_entity("plots/point", |builder| {
         builder.with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::SeriesPoints::new()
                 .with_markers([re_sdk_types::components::MarkerShape::Circle]),
         )

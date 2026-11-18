@@ -49,6 +49,6 @@ snippet: archetypes/grid_map_pose
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/1200w.png">
-  <img src="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/full.png">
+  <img src="https://static.rerun.io/grid_map_pose/55eeb468043da65a1c678f97048dca8545806983/full.png" alt="3D view of a grid map showing an orange cartoon crab, tilted in space with a white outline and axes labeled map at its origin">
 </picture>
 

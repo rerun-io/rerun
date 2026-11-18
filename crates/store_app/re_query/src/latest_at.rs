@@ -812,18 +812,15 @@ impl LatestAtCache {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use itertools::Itertools as _;
-    use re_chunk::{Chunk, ChunkId, RowId};
     use re_chunk_index::RrdManifest;
     use re_chunk_store::{
-        ChunkDeletionReason, ChunkStore, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
+        ChunkDeletionReason, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
         ChunkStoreSubscriber as _,
     };
     use re_log_types::example_components::{MyPoint, MyPoints};
     use re_log_types::external::re_tuid::Tuid;
-    use re_log_types::{EntityPath, StoreId, TimePoint, Timeline};
+    use re_log_types::{StoreId, TimePoint, Timeline};
     use re_sdk_types::archetypes::Clear;
 
     use super::*;

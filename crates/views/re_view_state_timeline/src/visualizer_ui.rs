@@ -41,10 +41,16 @@ struct ChangeFlags {
 
 impl ChangeFlags {
     fn merge(&mut self, other: Self) {
-        self.values |= other.values;
-        self.labels |= other.labels;
-        self.colors |= other.colors;
-        self.visible |= other.visible;
+        let Self {
+            values,
+            labels,
+            colors,
+            visible,
+        } = other;
+        self.values |= values;
+        self.labels |= labels;
+        self.colors |= colors;
+        self.visible |= visible;
     }
 }
 

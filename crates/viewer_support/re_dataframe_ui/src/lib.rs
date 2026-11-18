@@ -17,6 +17,7 @@ mod table_blueprints;
 mod table_selection;
 
 pub use self::blueprint::TableColumn;
+pub use self::datafusion_adapter::InvalidFilter;
 pub use self::datafusion_table_widget::{DataFusionTableWidget, TableSchemaColumn, TableStatus};
 pub use self::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 // for testing purposes

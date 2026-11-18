@@ -1,7 +1,8 @@
 """
 Shows how to configure micro-batching directly from code.
 
-Check out <https://rerun.io/docs/reference/sdk/micro-batching> for more info.
+For more info, check out:
+<https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching>
 """
 
 from datetime import timedelta

@@ -95,10 +95,7 @@ impl GrpcStreamToTable for DatasetManifestProvider {
 
         let request = tonic::Request::new(ScanDatasetManifestRequest {
             columns: params
-                .projected_columns
-                .as_deref()
-                .unwrap_or_default()
-                .to_vec(),
+                .requested_columns(ScanDatasetManifestDataframe::COLUMN_RERUN_LAST_UPDATED_AT_NAME),
             segment_id_filter,
             layer_name_filter,
         })

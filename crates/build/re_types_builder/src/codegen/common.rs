@@ -26,6 +26,9 @@ pub struct ExampleInfo<'a> {
     /// A screenshot of the example.
     pub image: Option<ImageUrl<'a>>,
 
+    /// Alt text describing the screenshot, for the web docs.
+    pub alt: Option<&'a str>,
+
     /// If true, use this example only for the manual, not for documentation embedded in the emitted code.
     pub exclude_from_api_docs: bool,
 
@@ -34,7 +37,9 @@ pub struct ExampleInfo<'a> {
 }
 
 impl<'a> ExampleInfo<'a> {
-    /// Parses e.g.  `// \example example_name title="Example Title" image="https://www.example.com/img.png"`
+    /// Parses e.g.  `// \example example_name title="Example Title" image="https://www.example.com/img.png" alt="What the image shows"`
+    ///
+    /// Values cannot contain double quotes.
     pub fn parse(tag_content: &'a str) -> Self {
         fn find_keyed<'a>(tag: &str, args: &'a str) -> Option<&'a str> {
             let mut prev_end = 0;
@@ -44,7 +49,10 @@ impl<'a> ExampleInfo<'a> {
                 }
                 let key_start = prev_end + args[prev_end..].find(tag)?;
                 let key_end = key_start + tag.len();
-                if !args[key_end..].starts_with("=\"") {
+                // The key must be a word of its own, so `alt` never matches inside e.g. `salt="…"`.
+                let at_word_start =
+                    key_start == 0 || args[..key_start].ends_with(char::is_whitespace);
+                if !at_word_start || !args[key_end..].starts_with("=\"") {
                     prev_end = key_end;
                     continue;
                 }
@@ -58,20 +66,29 @@ impl<'a> ExampleInfo<'a> {
             }
         }
 
+        /// Is `flag` present as a word of its own, outside of any quoted value?
+        ///
+        /// Values such as `alt="…"` are free prose and must not be mistaken for flags.
+        fn has_flag(flag: &str, args: &str) -> bool {
+            args.split('"')
+                .step_by(2)
+                .any(|unquoted| unquoted.split_whitespace().any(|word| word == flag))
+        }
+
         let tag_content = tag_content.trim();
         let (path, args) = tag_content
             .split_once(' ')
             .map_or((tag_content, None), |(a, b)| (a, Some(b)));
         let name = path.split('/').next_back().unwrap_or_default().to_owned();
 
-        let (mut title, mut image, mut exclude_from_api_docs) = (None, None, false);
+        let (mut title, mut image, mut alt, mut exclude_from_api_docs) = (None, None, None, false);
 
         let mut missing_extensions = Vec::new();
 
         if let Some(args) = args {
             let args = args.trim();
 
-            exclude_from_api_docs = args.contains("!api");
+            exclude_from_api_docs = has_flag("!api", args);
             let args = if let Some(args_without_api_prefix) = args.strip_prefix("!api") {
                 args_without_api_prefix.trim()
             } else {
@@ -85,6 +102,7 @@ impl<'a> ExampleInfo<'a> {
                 // \example example_name title="Example Title" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png" missing="cpp, py"
                 title = find_keyed("title", args);
                 image = find_keyed("image", args).map(ImageUrl::parse);
+                alt = find_keyed("alt", args);
                 if let Some(missing) = find_keyed("missing", args) {
                     missing_extensions.extend(missing.split(',').map(|s| s.trim().to_owned()));
                 }
@@ -96,6 +114,7 @@ impl<'a> ExampleInfo<'a> {
             name,
             title,
             image,
+            alt,
             exclude_from_api_docs,
             missing_extensions,
         }
@@ -128,6 +147,7 @@ impl ImageUrl<'_> {
             url: self,
             width: None,
             snippet_id: None,
+            alt: None,
             center: false,
         }
     }
@@ -137,6 +157,7 @@ pub struct ImageStack<'a> {
     url: &'a ImageUrl<'a>,
     width: Option<u16>,
     snippet_id: Option<SnippetId<'a>>,
+    alt: Option<&'a str>,
     center: bool,
 }
 
@@ -166,14 +187,41 @@ impl<'a> ImageStack<'a> {
         self
     }
 
+    /// Set the `alt` attribute of the image.
+    #[inline]
+    pub fn alt(mut self, v: &'a str) -> Self {
+        self.alt = Some(v);
+        self
+    }
+
     pub fn finish(self) -> Vec<String> {
-        match self.url {
-            ImageUrl::Rerun(rerun) => rerun.image_stack(self.snippet_id, self.width, self.center),
+        let Self {
+            url,
+            width,
+            snippet_id,
+            alt,
+            center,
+        } = self;
+        match url {
+            ImageUrl::Rerun(rerun) => rerun.image_stack(snippet_id, width, alt, center),
             ImageUrl::Other(url) => {
-                vec![format!(r#"<img src="{url}">"#)]
+                let alt = alt_attribute(alt);
+                vec![format!(r#"<img src="{url}"{alt}>"#)]
             }
         }
     }
+}
+
+/// Formats ` alt="…"` (with a leading space), or nothing if there is no alt text.
+fn alt_attribute(alt: Option<&str>) -> String {
+    alt.map_or_else(String::new, |alt| {
+        let alt = alt
+            .replace('&', "&amp;")
+            .replace('"', "&quot;")
+            .replace('<', "&lt;")
+            .replace('>', "&gt;");
+        format!(r#" alt="{alt}""#)
+    })
 }
 
 pub struct SnippetId<'a>(pub &'a str);
@@ -221,6 +269,7 @@ impl RerunImageUrl<'_> {
         &self,
         snippet_id: Option<SnippetId<'_>>,
         desired_width: Option<u16>,
+        alt: Option<&str>,
         center: bool,
     ) -> Vec<String> {
         const WIDTHS: [u16; 4] = [480, 768, 1024, 1200];
@@ -232,6 +281,7 @@ impl RerunImageUrl<'_> {
             extension,
         } = *self;
 
+        let alt = alt_attribute(alt);
         let mut stack = vec![];
 
         if center {
@@ -256,11 +306,11 @@ impl RerunImageUrl<'_> {
 
         if let Some(desired_width) = desired_width {
             stack.push(format!(
-                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}" width="{desired_width}">"#
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}"{alt} width="{desired_width}">"#
             ));
         } else {
             stack.push(format!(
-                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}">"#
+                r#"  <img src="https://static.rerun.io/{name}/{hash}/full.{extension}"{alt}>"#
             ));
         }
         stack.push("</picture>".into());
@@ -475,4 +525,62 @@ pub fn write_file(filepath: &Utf8PathBuf, source: &str) {
 
     std::fs::write(filepath, source)
         .unwrap_or_else(|err| panic!("Failed to write file {filepath:?}: {err}"));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn example_alt_is_free_prose() {
+        let example = ExampleInfo::parse(
+            r#"archetypes/points3d_simple title="Simple 3D points" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png" alt="3D view of an image plane (the camera's), titled 'title', with missing points, !api and all""#,
+        );
+        assert_eq!(example.name, "points3d_simple");
+        assert_eq!(example.title, Some("Simple 3D points"));
+        assert!(matches!(example.image, Some(ImageUrl::Rerun(_))));
+        assert_eq!(
+            example.alt,
+            Some(
+                "3D view of an image plane (the camera's), titled 'title', with missing points, !api and all"
+            )
+        );
+        assert!(!example.exclude_from_api_docs);
+        assert!(example.missing_extensions.is_empty());
+    }
+
+    #[test]
+    fn example_flags_and_keys_are_whole_words() {
+        let example = ExampleInfo::parse(
+            r#"archetypes/transform3d_hierarchy title="Salt and basalt" !api image="https://example.com/img.png" missing="cpp, py""#,
+        );
+        assert_eq!(example.title, Some("Salt and basalt"));
+        assert_eq!(example.alt, None);
+        assert!(example.exclude_from_api_docs);
+        assert_eq!(example.missing_extensions, vec!["cpp", "py"]);
+
+        let example = ExampleInfo::parse(r#"archetypes/foo salt="not an alt" title="Foo""#);
+        assert_eq!(example.alt, None);
+        assert_eq!(example.title, Some("Foo"));
+    }
+
+    #[test]
+    fn image_stack_emits_escaped_alt() {
+        let url = ImageUrl::parse(
+            "https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png",
+        );
+        let with_alt = url.image_stack().alt("a < b & c").finish().join("\n");
+        assert!(with_alt.contains(
+            r#"<img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png" alt="a &lt; b &amp; c">"#
+        ));
+
+        let without_alt = url.image_stack().finish().join("\n");
+        assert!(!without_alt.contains("alt="));
+
+        let other = ImageUrl::parse("https://example.com/img.png");
+        assert_eq!(
+            other.image_stack().alt("An example").finish(),
+            vec![r#"<img src="https://example.com/img.png" alt="An example">"#]
+        );
+    }
 }

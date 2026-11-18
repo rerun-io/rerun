@@ -1,6 +1,6 @@
 //! The agent tool surface for `ViewerControlService`, derived from the protobuf descriptors.
 //!
-//! Independent of how the tools reach the agent, e.g. over MCP (`re_viewer_mcp`).
+//! Independent of how the tools reach the agent, e.g. over MCP (`re_rerun_mcp`).
 //!
 //! Every operation of the service is a variant of `ViewerControlRequest.kind`, so the tool list,
 //! the input schemas, and the descriptions an agent reads can all come from the descriptor set
@@ -34,17 +34,35 @@ pub struct ToolDefinition {
     /// JSON Schema of the arguments, as [`build_request`] takes them.
     pub input_schema: Map<String, Value>,
 
-    /// Whether an agent should ask the user before running the operation.
-    ///
-    /// True for every operation not known to be harmless, including ones added later.
-    pub requires_approval: bool,
+    /// What running the operation can change, which decides whether an agent asks first.
+    pub effect: ToolEffect,
 }
 
-/// Prefix on the name of every viewer-control tool an agent sees, as in `rerun_get_state`.
+/// What running a tool can change, in the terms of MCP's `readOnlyHint` and `destructiveHint`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ToolEffect {
+    /// Changes nothing.
+    ReadOnly,
+
+    /// Changes only what the viewer shows, in a way the user can easily undo.
+    NonDestructive,
+
+    /// Anything else, including every operation not classified yet.
+    Destructive,
+}
+
+impl ToolEffect {
+    /// Whether an agent should ask the user before running the tool.
+    pub fn requires_approval(self) -> bool {
+        self == Self::Destructive
+    }
+}
+
+/// Prefix on the name of every viewer-control tool an agent sees, as in `viewer_get_state`.
 ///
 /// The same for every agent, however it reaches the viewer, so instructions and transcripts read
 /// alike, and so these tools stand apart from any others the agent has.
-pub const TOOL_NAME_PREFIX: &str = "rerun_";
+pub const TOOL_NAME_PREFIX: &str = "viewer_";
 
 /// Fully-qualified name of the request envelope whose `oneof` defines the operations.
 ///
@@ -63,13 +81,11 @@ const OPERATION_ONEOF: &str = "kind";
 /// agent the raw bytes would be worse than the tools it backs.
 const HIDDEN_OPERATIONS: &[&str] = &["egui_inspect"];
 
-/// Operations an agent may run without asking the user.
+/// Operations that change nothing. See [`ToolEffect::ReadOnly`].
 ///
-/// They only read, or change what is shown in a way the user can see and undo. Everything else,
-/// including operations added later, asks first: `open` and `set_location` load data from any
-/// URL, `close` drops recordings, `run_command` runs any UI command, `capture_profile_trace`
-/// writes files, and `submit_feedback` sends text to Rerun.
-const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
+/// `save_screenshot` is only read-only with [`ScreenshotDelivery::Inline`]: otherwise it writes
+/// a file, possibly over another one.
+const READ_ONLY_OPERATIONS: &[&str] = &[
     "describe_commands",
     "get_blueprint",
     "get_dataset_assets_schema",
@@ -77,20 +93,34 @@ const OPERATIONS_WITHOUT_APPROVAL: &[&str] = &[
     "get_location",
     "get_logs",
     "get_recording_schema",
+    "get_selection",
     "get_state",
     "get_table_schema",
     "get_transform_graph",
-    "highlight_rect",
     "list_commands",
-    "save_screenshot",
+    "list_view_types",
+];
+
+/// Operations the user can easily undo. See [`ToolEffect::NonDestructive`].
+///
+/// Everything not listed here or in [`READ_ONLY_OPERATIONS`] asks first, including operations
+/// added later: `open` loads data from any URL, `close` drops recordings, `capture_profile_trace`
+/// writes files, and `submit_feedback` sends text to Rerun. `run_command` asks too, since it runs
+/// any UI command, but a host that sees the arguments can let the undoable commands through.
+const NON_DESTRUCTIVE_OPERATIONS: &[&str] = &[
+    "highlight_rect",
     "set_blueprint",
+    "set_location",
     "set_time_cursor",
 ];
 
 /// Fully-qualified names of the `oneof`s a caller may leave unset, which the viewer then fills in.
 ///
 /// A `.proto` cannot mark a `oneof` as omittable, so this list does.
-const OMITTABLE_ONEOFS: &[&str] = &["rerun.viewer_control.v1alpha1.GetBlueprintRequest.target"];
+const OMITTABLE_ONEOFS: &[&str] = &[
+    "rerun.viewer_control.v1alpha1.GetBlueprintRequest.target",
+    "rerun.viewer_control.v1alpha1.SetBlueprintRequest.target",
+];
 
 /// The screenshot operation, whose `max_size` this server defaults.
 const SCREENSHOT_OPERATION: &str = "save_screenshot";
@@ -107,7 +137,7 @@ const SCREENSHOT_FILE_PATH: &str = "file_path";
 pub enum ScreenshotDelivery {
     /// The agent must pass a `file_path`, and the viewer writes the image there.
     ///
-    /// For coding agents that reach the viewer over MCP (`re_viewer_mcp`). That server returns
+    /// For coding agents that reach the viewer over MCP (`re_rerun_mcp`). That server returns
     /// every response as JSON text, where a PNG would be a base64 string that fills the context
     /// window. With a path, the agent opens the file only if it needs to, with its own
     /// file-reading tool, which shows the model an image.
@@ -135,6 +165,21 @@ const DEFAULT_SCREENSHOT_MAX_SIZE: u64 = 1024;
 const SCREENSHOT_MAX_SIZE_DESCRIPTION: &str = "Longest side of the saved image, in pixels. \
     A larger screenshot is scaled down to fit, keeping its aspect ratio. \
     Defaults to 1024. Pass 0 for full resolution.";
+
+/// Replaces the proto's description of `file_path` when the tool requires it.
+const SCREENSHOT_FILE_PATH_DESCRIPTION: &str = "Path at which the screenshot will be saved, \
+    which picks the image format by its extension. Required. \
+    This path is relative to the current working directory of the viewer process. \
+    Look at the saved image with a file-reading tool.";
+
+/// Replaces the proto's description of the screenshot tool when it requires a `file_path`.
+const SCREENSHOT_FILE_DESCRIPTION: &str = "Take a screenshot of the viewer, or of a single view \
+    within it, and write it to the required `file_path`.\n\n\
+    The screenshot is saved by the viewer process, so the path is resolved on the machine \
+    running the viewer, not on the machine making the request.\n\n\
+    Fails with `INVALID_ARGUMENT` if `view_id` is not a UUID, `NOT_FOUND` if no such view is \
+    currently visible, `FAILED_PRECONDITION` if the view is too small to capture, and \
+    `INTERNAL` if the capture itself, the PNG encoding, or the write to disk failed.";
 
 /// How deep to expand nested message fields before emitting an opaque object.
 ///
@@ -238,6 +283,12 @@ fn in_real_oneof(field: &FieldDescriptor) -> bool {
 fn real_oneofs(message: &MessageDescriptor) -> impl Iterator<Item = OneofDescriptor> + '_ {
     message.oneofs().filter(|oneof| !oneof.is_synthetic())
 }
+
+/// The keywords that the Anthropic and `OpenAI` APIs reject at the top level of a tool's input
+/// schema, failing every request that offers the tool. They are fine nested inside a property.
+///
+/// Agents such as `OpenCode` pass MCP tool schemas through to the model API unchanged.
+const TOP_LEVEL_SCHEMA_COMBINATORS: [&str; 3] = ["allOf", "anyOf", "oneOf"];
 
 /// Whether a caller may leave this `oneof` unset.
 fn is_omittable(oneof: &OneofDescriptor) -> bool {
@@ -398,7 +449,7 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
                     name: field.name().to_owned(),
                     description: "Unsupported operation".to_owned(),
                     input_schema: Map::new(),
-                    requires_approval: true,
+                    effect: ToolEffect::Destructive,
                 };
             };
 
@@ -422,15 +473,52 @@ pub fn tools(screenshot: ScreenshotDelivery) -> Vec<ToolDefinition> {
             if field.name() == SCREENSHOT_OPERATION {
                 screenshot_schema(&mut schema, screenshot);
             }
+            // The description still names the exclusive arms, and `build_request` enforces them.
+            for keyword in TOP_LEVEL_SCHEMA_COMBINATORS {
+                schema.remove(keyword);
+            }
+
+            let description =
+                if field.name() == SCREENSHOT_OPERATION && screenshot == ScreenshotDelivery::File {
+                    SCREENSHOT_FILE_DESCRIPTION.to_owned()
+                } else {
+                    description
+                };
 
             ToolDefinition {
                 name: field.name().to_owned(),
                 description,
                 input_schema: schema,
-                requires_approval: !OPERATIONS_WITHOUT_APPROVAL.contains(&field.name()),
+                effect: operation_effect(field.name(), screenshot),
             }
         })
         .collect()
+}
+
+/// What one call of `operation` with `arguments` can change.
+///
+/// Can differ from the tool's [`ToolDefinition::effect`]: `save_screenshot` given a `file_path`
+/// writes a file, whichever [`ScreenshotDelivery`] the tool was described with.
+pub fn call_effect(operation: &str, arguments: &Map<String, Value>) -> ToolEffect {
+    let screenshot = if has_screenshot_file_path(arguments) {
+        ScreenshotDelivery::File
+    } else {
+        ScreenshotDelivery::Inline
+    };
+    operation_effect(operation, screenshot)
+}
+
+/// What `operation` can change, when screenshots are delivered as `screenshot`.
+fn operation_effect(operation: &str, screenshot: ScreenshotDelivery) -> ToolEffect {
+    if READ_ONLY_OPERATIONS.contains(&operation)
+        || (operation == SCREENSHOT_OPERATION && screenshot == ScreenshotDelivery::Inline)
+    {
+        ToolEffect::ReadOnly
+    } else if NON_DESTRUCTIVE_OPERATIONS.contains(&operation) {
+        ToolEffect::NonDestructive
+    } else {
+        ToolEffect::Destructive
+    }
 }
 
 /// Adjusts the screenshot tool's schema: the `max_size` default this crate applies, and the
@@ -446,8 +534,21 @@ fn screenshot_schema(schema: &mut Map<String, Value>, screenshot: ScreenshotDeli
                 json!(SCREENSHOT_MAX_SIZE_DESCRIPTION),
             );
         }
-        if screenshot == ScreenshotDelivery::Inline {
-            properties.remove(SCREENSHOT_FILE_PATH);
+        match screenshot {
+            ScreenshotDelivery::Inline => {
+                properties.remove(SCREENSHOT_FILE_PATH);
+            }
+            ScreenshotDelivery::File => {
+                if let Some(file_path) = properties
+                    .get_mut(SCREENSHOT_FILE_PATH)
+                    .and_then(Value::as_object_mut)
+                {
+                    file_path.insert(
+                        "description".to_owned(),
+                        json!(SCREENSHOT_FILE_PATH_DESCRIPTION),
+                    );
+                }
+            }
         }
     }
     if screenshot == ScreenshotDelivery::File {
@@ -458,6 +559,126 @@ fn screenshot_schema(schema: &mut Map<String, Value>, screenshot: ScreenshotDeli
             .unwrap_or(schema.len());
         schema.shift_insert(index, "required".to_owned(), json!([SCREENSHOT_FILE_PATH]));
     }
+}
+
+/// Why [`build_request`] could not turn an agent's arguments into a request.
+#[derive(Debug, thiserror::Error)]
+pub enum BuildRequestError {
+    /// No operation has this name.
+    #[error("unknown operation `{name}`")]
+    UnknownOperation {
+        /// The requested operation.
+        name: String,
+    },
+
+    /// The operation's oneof arm is not a message.
+    #[error("operation `{name}` has no request message")]
+    NoRequestMessage {
+        /// The requested operation.
+        name: String,
+    },
+
+    /// The arguments break a rule the schema advertises.
+    #[error("invalid arguments for `{name}`: {source}")]
+    InvalidArguments {
+        /// The requested operation.
+        name: String,
+
+        /// What is wrong with the arguments.
+        source: ArgumentsError,
+    },
+
+    /// The arguments do not deserialize into the request message.
+    #[error("invalid arguments for `{name}`: {source}")]
+    Deserialize {
+        /// The requested operation.
+        name: String,
+
+        /// Why deserialization failed.
+        source: serde_json::Error,
+    },
+
+    /// The descriptor pool lacks the request envelope.
+    #[error("missing descriptor for `{message_name}`")]
+    MissingDescriptor {
+        /// Full name of the missing message.
+        message_name: String,
+    },
+
+    /// The dynamic envelope does not decode into the generated type.
+    #[error("failed to build the request envelope for `{name}`: {source}")]
+    Envelope {
+        /// The requested operation.
+        name: String,
+
+        /// Why decoding failed.
+        source: prost::DecodeError,
+    },
+}
+
+/// What is wrong with the arguments of an operation.
+#[derive(Debug, thiserror::Error)]
+pub enum ArgumentsError {
+    /// File delivery needs a path to write the screenshot to.
+    #[error("missing required field `{SCREENSHOT_FILE_PATH}`")]
+    MissingScreenshotFilePath,
+
+    /// Inline delivery returns the image, so it takes no path.
+    #[error("`{SCREENSHOT_FILE_PATH}` is not taken here, the image comes back in the result")]
+    UnexpectedScreenshotFilePath,
+
+    /// The blueprint update mode is not one of the short names.
+    #[error("mode must be `full` or `partial`")]
+    InvalidBlueprintMode,
+
+    /// A `oneof` has the wrong number of arms set.
+    #[error(
+        "`{oneof}` takes {} of `{}`, but {}",
+        if *.omittable { "at most one" } else { "exactly one" },
+        .arms.join("`, `"),
+        if .set.is_empty() { "none were set".to_owned() } else { format!("`{}` were set", .set.join("`, `")) }
+    )]
+    OneofArms {
+        /// Path of the `oneof`.
+        oneof: String,
+
+        /// Whether the `oneof` may be left unset.
+        omittable: bool,
+
+        /// All arms of the `oneof`.
+        arms: Vec<String>,
+
+        /// The arms that were set.
+        set: Vec<String>,
+    },
+
+    /// A required field is absent or null.
+    #[error("missing required field `{field}`")]
+    MissingRequiredField {
+        /// Path of the field.
+        field: String,
+    },
+}
+
+/// Why [`response_json`] could not render a response.
+#[derive(Debug, thiserror::Error)]
+pub enum ResponseJsonError {
+    /// The response belongs to another operation.
+    #[error("expected a `{expected}` response, got `{actual}`")]
+    UnexpectedKind {
+        /// The operation that was called.
+        expected: String,
+
+        /// The operation the response belongs to.
+        actual: String,
+    },
+
+    /// The response could not be converted to JSON.
+    #[error("{source}")]
+    Json {
+        /// Why conversion failed.
+        source: re_protos::json::JsonError,
+    },
 }
 
 /// Whether `name` is one of the generated operations.
@@ -475,30 +696,32 @@ pub fn build_request(
     name: &str,
     arguments: Option<Map<String, Value>>,
     screenshot: ScreenshotDelivery,
-) -> Result<ViewerControlRequest, String> {
+) -> Result<ViewerControlRequest, BuildRequestError> {
     let field = operation_oneof()
         .fields()
         .find(|field| field.name() == name)
-        .ok_or_else(|| format!("unknown operation `{name}`"))?;
+        .ok_or_else(|| BuildRequestError::UnknownOperation {
+            name: name.to_owned(),
+        })?;
+    let invalid_arguments = |source| BuildRequestError::InvalidArguments {
+        name: name.to_owned(),
+        source,
+    };
     let Kind::Message(request_descriptor) = field.kind() else {
-        return Err(format!("operation `{name}` has no request message"));
+        return Err(BuildRequestError::NoRequestMessage {
+            name: name.to_owned(),
+        });
     };
 
     let mut arguments = arguments.unwrap_or_default();
     if name == SCREENSHOT_OPERATION {
-        let has_file_path = [SCREENSHOT_FILE_PATH, "filePath"]
-            .into_iter()
-            .any(|key| arguments.get(key).is_some_and(|value| !value.is_null()));
-        match (screenshot, has_file_path) {
+        match (screenshot, has_screenshot_file_path(&arguments)) {
             (ScreenshotDelivery::File, false) => {
-                return Err(format!(
-                    "invalid arguments for `{name}`: missing required field `{SCREENSHOT_FILE_PATH}`"
-                ));
+                return Err(invalid_arguments(ArgumentsError::MissingScreenshotFilePath));
             }
             (ScreenshotDelivery::Inline, true) => {
-                return Err(format!(
-                    "invalid arguments for `{name}`: `{SCREENSHOT_FILE_PATH}` is not taken here, \
-                     the image comes back in the result"
+                return Err(invalid_arguments(
+                    ArgumentsError::UnexpectedScreenshotFilePath,
                 ));
             }
             (ScreenshotDelivery::File, true) | (ScreenshotDelivery::Inline, false) => {}
@@ -514,10 +737,7 @@ pub fn build_request(
             Some("partial") => Some(BlueprintUpdateMode::Partial),
             _ if value.is_null() => None,
             _ => {
-                return Err(
-                    "invalid arguments for `set_blueprint`: mode must be `full` or `partial`"
-                        .to_owned(),
-                );
+                return Err(invalid_arguments(ArgumentsError::InvalidBlueprintMode));
             }
         };
         if let Some(mode) = mode {
@@ -529,8 +749,7 @@ pub fn build_request(
     // Protobuf has no required fields, so the `required` and `oneOf` the schema advertises would
     // otherwise go unchecked: an omitted `time` would become 0 and move the cursor to the start
     // of the recording rather than failing.
-    validate(&request_descriptor, &arguments, "", 0)
-        .map_err(|err| format!("invalid arguments for `{name}`: {err}"))?;
+    validate(&request_descriptor, &arguments, "", 0).map_err(invalid_arguments)?;
 
     // A field we do not recognize is a typo, or a call written against an older surface. Dropping
     // it silently would turn `{"target": "all"}` into an empty request, which closes the current
@@ -538,16 +757,34 @@ pub fn build_request(
     let options = DeserializeOptions::new().deny_unknown_fields(true);
     let request =
         DynamicMessage::deserialize_with_options(request_descriptor, &arguments, &options)
-            .map_err(|err| format!("invalid arguments for `{name}`: {err}"))?;
+            .map_err(|source| BuildRequestError::Deserialize {
+                name: name.to_owned(),
+                source,
+            })?;
 
     let envelope_descriptor = re_protos::json::descriptor_pool()
         .get_message_by_name(&request_envelope())
-        .ok_or_else(|| format!("missing descriptor for `{}`", request_envelope()))?;
+        .ok_or_else(|| BuildRequestError::MissingDescriptor {
+            message_name: request_envelope(),
+        })?;
     let mut envelope = DynamicMessage::new(envelope_descriptor);
     envelope.set_field(&field, prost_reflect::Value::Message(request));
 
-    ViewerControlRequest::decode(envelope.encode_to_vec().as_slice())
-        .map_err(|err| format!("failed to build the request envelope for `{name}`: {err}"))
+    ViewerControlRequest::decode(envelope.encode_to_vec().as_slice()).map_err(|source| {
+        BuildRequestError::Envelope {
+            name: name.to_owned(),
+            source,
+        }
+    })
+}
+
+/// Whether `save_screenshot` `arguments` name a file to write the image to.
+///
+/// Protobuf JSON accepts both the field name and its camel-case JSON name, so both are checked.
+fn has_screenshot_file_path(arguments: &Map<String, Value>) -> bool {
+    [SCREENSHOT_FILE_PATH, "filePath"]
+        .into_iter()
+        .any(|key| arguments.get(key).is_some_and(|value| !value.is_null()))
 }
 
 /// Apply [`DEFAULT_SCREENSHOT_MAX_SIZE`] when `max_size` is unset, and turn an explicit 0 into
@@ -582,7 +819,7 @@ fn validate(
     value: &Value,
     path: &str,
     depth: usize,
-) -> Result<(), String> {
+) -> Result<(), ArgumentsError> {
     if depth >= MAX_SCHEMA_DEPTH {
         return Ok(());
     }
@@ -606,28 +843,21 @@ fn validate(
             continue;
         }
         if set.len() != 1 {
-            return Err(format!(
-                "`{path}{}` takes {} of `{}`, but {}",
-                oneof.name(),
-                if is_omittable(&oneof) {
-                    "at most one"
-                } else {
-                    "exactly one"
-                },
-                arms.join("`, `"),
-                if set.is_empty() {
-                    "none were set".to_owned()
-                } else {
-                    format!("`{}` were set", set.join("`, `"))
-                }
-            ));
+            return Err(ArgumentsError::OneofArms {
+                oneof: format!("{path}{}", oneof.name()),
+                omittable: is_omittable(&oneof),
+                arms,
+                set,
+            });
         }
     }
 
     for field in message.fields() {
         let child = present(&field);
         if is_required(&field) && child.is_none() {
-            return Err(format!("missing required field `{path}{}`", field.name()));
+            return Err(ArgumentsError::MissingRequiredField {
+                field: format!("{path}{}", field.name()),
+            });
         }
         if let (Kind::Message(nested), Some(child)) = (field.kind(), child)
             && !field.is_list()
@@ -647,15 +877,22 @@ fn validate(
 /// Render a response envelope as the JSON an agent sees, unwrapping the operation's variant.
 ///
 /// The envelope adds one level of nesting that only repeats the tool's own name, so we drop it.
-pub fn response_json(operation: &str, response: &ViewerControlResponse) -> Result<Value, String> {
+pub fn response_json(
+    operation: &str,
+    response: &ViewerControlResponse,
+) -> Result<Value, ResponseJsonError> {
     // The service promises the response variant matches the request. Unwrapping whatever arrived
     // would let a mismatched peer pass another operation's payload off as this one's result.
     let actual = response.kind_name();
     if actual != operation {
-        return Err(format!("expected a `{operation}` response, got `{actual}`"));
+        return Err(ResponseJsonError::UnexpectedKind {
+            expected: operation.to_owned(),
+            actual: actual.to_owned(),
+        });
     }
 
-    let envelope = re_protos::json::to_json_value(response).map_err(|err| format!("{err}"))?;
+    let envelope = re_protos::json::to_json_value(response)
+        .map_err(|source| ResponseJsonError::Json { source })?;
 
     let Value::Object(mut fields) = envelope else {
         return Ok(envelope);
@@ -677,9 +914,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn every_operation_without_approval_exists() {
-        for operation in OPERATIONS_WITHOUT_APPROVAL {
+    fn every_classified_operation_exists() {
+        for operation in std::iter::chain(READ_ONLY_OPERATIONS, NON_DESTRUCTIVE_OPERATIONS) {
             assert!(is_operation(operation), "{operation:?} is not an operation");
+        }
+    }
+
+    #[test]
+    fn a_screenshot_written_to_a_file_needs_approval() {
+        let tool_effect = |screenshot| {
+            tools(screenshot)
+                .into_iter()
+                .find(|tool| tool.name == SCREENSHOT_OPERATION)
+                .map(|tool| tool.effect)
+        };
+        assert_eq!(
+            tool_effect(ScreenshotDelivery::Inline),
+            Some(ToolEffect::ReadOnly)
+        );
+        assert_eq!(
+            tool_effect(ScreenshotDelivery::File),
+            Some(ToolEffect::Destructive)
+        );
+
+        assert_eq!(
+            call_effect(SCREENSHOT_OPERATION, &Map::new()),
+            ToolEffect::ReadOnly
+        );
+        for key in [SCREENSHOT_FILE_PATH, "filePath"] {
+            let to_file = Map::from_iter([(key.to_owned(), Value::from("/tmp/screenshot.png"))]);
+            assert_eq!(
+                call_effect(SCREENSHOT_OPERATION, &to_file),
+                ToolEffect::Destructive,
+                "{key}"
+            );
         }
     }
 
@@ -858,7 +1126,7 @@ mod tests {
     }
 
     /// Build a request from a JSON literal, for the validation tests.
-    fn build(name: &str, arguments: &Value) -> Result<ViewerControlRequest, String> {
+    fn build(name: &str, arguments: &Value) -> Result<ViewerControlRequest, BuildRequestError> {
         build_request(
             name,
             arguments.as_object().cloned(),
@@ -869,19 +1137,19 @@ mod tests {
     #[test]
     fn rejects_a_missing_required_field() {
         let err = build("open", &json!({})).expect_err("`url` is required");
-        assert!(err.contains("url"), "{err}");
+        assert!(err.to_string().contains("url"), "{err}");
 
         let err = build("open", &json!({ "url": null }))
             .expect_err("an explicit null clears the field, so it is as wrong as an absent one");
-        assert!(err.contains("url"), "{err}");
+        assert!(err.to_string().contains("url"), "{err}");
 
         let err = build("set_time_cursor", &json!({ "time": {} }))
             .expect_err("`time` is optional, but a given `time` needs its own required fields");
-        assert!(err.contains("time.time"), "{err}");
+        assert!(err.to_string().contains("time.time"), "{err}");
     }
 
     #[test]
-    fn screenshot_delivery_controls_file_paths() -> Result<(), String> {
+    fn screenshot_delivery_controls_file_paths() -> Result<(), Box<dyn std::error::Error>> {
         use re_protos::viewer_control::v1alpha1::viewer_control_request;
 
         for delivery in [ScreenshotDelivery::Inline, ScreenshotDelivery::File] {
@@ -912,7 +1180,7 @@ mod tests {
                 } else {
                     let Some(viewer_control_request::Kind::SaveScreenshot(request)) = request?.kind
                     else {
-                        return Err("expected a screenshot request".to_owned());
+                        return Err("expected a screenshot request".into());
                     };
                     assert_eq!(request.file_path, None);
                     assert_eq!(request.max_size, Some(1024));
@@ -925,7 +1193,7 @@ mod tests {
                 if writes_file {
                     let Some(viewer_control_request::Kind::SaveScreenshot(request)) = request?.kind
                     else {
-                        return Err("expected a screenshot request".to_owned());
+                        return Err("expected a screenshot request".into());
                     };
                     assert_eq!(request.file_path.as_deref(), Some("a.png"));
                 } else {
@@ -976,7 +1244,7 @@ mod tests {
         // The shape of a call written against the older, hand-written surface.
         let err = build("close", &json!({ "target": "all" }))
             .expect_err("silently dropping this would close the current recording instead");
-        assert!(err.contains("target"), "{err}");
+        assert!(err.to_string().contains("target"), "{err}");
     }
 
     #[test]
@@ -1008,7 +1276,7 @@ mod tests {
 
         let err = response_json("get_state", &response)
             .expect_err("another operation's payload must not pass as this one's result");
-        assert!(err.contains("open"), "{err}");
+        assert!(err.to_string().contains("open"), "{err}");
 
         response_json("open", &response).expect("the matching operation");
     }
@@ -1028,37 +1296,47 @@ mod tests {
             .as_str()
             .expect("a description listing the exclusive arms");
         assert!(description.contains("Exactly one of"), "{description}");
-
-        // A `oneof` is an enum, so the schema has to reject both no arm and two arms.
-        assert_eq!(
-            close.input_schema["oneOf"],
-            json!([
-                { "required": ["current"] },
-                { "required": ["all"] },
-                { "required": ["store_ids"] },
-                { "required": ["urls"] },
-            ])
-        );
     }
 
-    /// `get_blueprint` reads what is on screen when it names no target, but still refuses two.
+    /// A top-level `oneOf`, `anyOf`, or `allOf` makes the model API reject every request.
+    #[test]
+    fn no_top_level_schema_combinators() {
+        for tool in tools(ScreenshotDelivery::File) {
+            for keyword in TOP_LEVEL_SCHEMA_COMBINATORS {
+                assert!(
+                    !tool.input_schema.contains_key(keyword),
+                    "`{}` has a top-level `{keyword}`",
+                    tool.name
+                );
+            }
+        }
+    }
+
+    /// The blueprint tools use what is on screen when they name no target, but still refuse two.
     #[test]
     fn an_omittable_oneof_takes_no_arm_but_not_several() {
         build("get_blueprint", &json!({})).expect("the target is omittable");
+        build("set_blueprint", &json!({ "json": "{}" })).expect("the target is omittable");
 
-        let err = build("get_blueprint", &json!({ "recording": {}, "table": {} }))
-            .expect_err("two targets contradict each other");
-        assert!(err.contains("at most one"), "{err}");
+        let err = build(
+            "set_blueprint",
+            &json!({ "json": "{}", "recording": {}, "table": {} }),
+        )
+        .expect_err("two targets contradict each other");
+        assert!(err.to_string().contains("at most one"), "{err}");
     }
 
     #[test]
     fn rejects_a_request_that_sets_no_oneof_arm_or_several() {
         let err = build("close", &json!({})).expect_err("an unset target names no recording");
-        assert!(err.contains("none were set"), "{err}");
+        assert!(err.to_string().contains("none were set"), "{err}");
 
         let err = build("close", &json!({ "current": true, "all": true }))
             .expect_err("two selectors contradict each other");
-        assert!(err.contains("`current`, `all` were set"), "{err}");
+        assert!(
+            err.to_string().contains("`current`, `all` were set"),
+            "{err}"
+        );
     }
 
     #[test]

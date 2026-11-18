@@ -390,12 +390,12 @@ mod pushdown_tests {
     use std::fs::File;
     use std::path::Path;
 
-    use re_chunk::{Chunk, RowId, TimePoint, Timeline};
+    use re_chunk::{RowId, TimePoint, Timeline};
     use re_log_encoding::{EncodingOptions, RrdChunkProvider};
     use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo, StoreSource};
     use re_log_types::example_components::{MyColor, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, StoreId, StoreKind};
-    use re_types_core::{ComponentDescriptor, ComponentIdentifier, TimelineName};
+    use re_log_types::{StoreId, StoreKind};
+    use re_types_core::ComponentDescriptor;
 
     use super::*;
 
@@ -451,7 +451,7 @@ mod pushdown_tests {
                         Chunk::builder(entity)
                             .with_sparse_component_batches(
                                 row_id,
-                                TimePoint::default(),
+                                TimePoint::STATIC,
                                 [(descriptor, Some(&points as _))],
                             )
                             .build()
@@ -462,7 +462,7 @@ mod pushdown_tests {
                         Chunk::builder(entity)
                             .with_sparse_component_batches(
                                 row_id,
-                                TimePoint::default(),
+                                TimePoint::STATIC,
                                 [(descriptor, Some(&colors as _))],
                             )
                             .build()
@@ -475,7 +475,7 @@ mod pushdown_tests {
                 for frame in 0..spec.num_frames {
                     let row_id = RowId::new();
                     #[expect(clippy::cast_possible_wrap)]
-                    let timepoint = TimePoint::default().with(timeline, frame as i64);
+                    let timepoint = TimePoint::STATIC.with(timeline, frame as i64);
                     builder = match spec.component {
                         TestComponent::Points => {
                             #[expect(clippy::cast_possible_truncation)]

@@ -20,7 +20,7 @@ class ShuffleStrategy(ABC):
     """
     Determines the order in which an epoch's samples are fetched.
 
-    See [the training guide](https://rerun.io/docs/howto/train/dataloader) for the trade-offs.
+    See [the training guide](https://rerun.io/docs/train/dataloader) for the trade-offs.
     """
 
     # Stable identifier recorded as the manifest header's `shuffle_strategy` (provenance).

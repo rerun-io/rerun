@@ -5,8 +5,9 @@ use std::collections::VecDeque;
 use std::sync::Arc;
 
 use re_agent::{
-    AgentEntry, AgentLaunch, AgentProfileId, AgentSession, AgentSettings, AgentToolbox,
-    ModelApiProvider, Phase, Prompt, SessionContext, TurnReport,
+    AgentEntry, AgentLaunch, AgentPreferences, AgentProfileId, AgentSession, AgentSettings,
+    AgentToolbox, ModelApiProvider, Phase, Prompt, SavedConversation, SessionContext,
+    SessionReports,
 };
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_ui::UiExt as _;
@@ -16,7 +17,7 @@ use super::Screen;
 use super::agent_panel::ConversationId;
 use super::chat_ui::{ChatInput, chat_ui};
 use super::conversation_list::ConversationStatus;
-use super::setup_ui::{selected_agent_name, setup_ui};
+use super::setup_ui::{agent_name, selected_agent_name, setup_ui};
 
 /// One chat with one agent: a row in the conversation list.
 pub struct Conversation {
@@ -26,7 +27,8 @@ pub struct Conversation {
     /// Where a model-API agent runs. Without it, a model-API agent fails to start.
     pub async_runtime: Option<AsyncRuntimeHandle>,
 
-    /// The tools a model-API agent gets. See [`super::AgentPanel::set_toolbox`].
+    /// The tools a model-API agent gets, and that an agent harness may reach over MCP.
+    /// See [`super::AgentPanel::set_toolbox`].
     pub toolbox: Option<Arc<dyn AgentToolbox>>,
 
     /// The model-API providers whose key was found, offered on the setup screen.
@@ -44,8 +46,8 @@ pub struct Conversation {
     /// The connection to its agent, and the transcript.
     pub session: AgentSession,
 
-    /// Reports of the turns of sessions that a restart replaced, until the host takes them.
-    replaced_session_turns: Vec<TurnReport>,
+    /// Reports of sessions that a restart replaced, until the host takes them.
+    replaced_session_reports: SessionReports,
 
     /// The prompt being written.
     pub input: ChatInput,
@@ -61,6 +63,10 @@ pub struct Conversation {
 
     /// Prompts waiting for the agent to be ready, e.g. sent from the command palette.
     pub pending_prompts: VecDeque<Prompt>,
+
+    /// What [`Self::save`] last kept of it. Every start of a harness asks the agent to load it,
+    /// so that neither a restart of the viewer nor of the agent loses the conversation.
+    saved: Option<SavedConversation>,
 }
 
 impl Conversation {
@@ -69,10 +75,8 @@ impl Conversation {
         settings: &AgentSettings,
         async_runtime: Option<AsyncRuntimeHandle>,
         id: ConversationId,
-        auto_approve: bool,
     ) -> Self {
-        let mut session = AgentSession::default();
-        session.set_auto_approve(auto_approve);
+        let session = AgentSession::default();
         Self {
             id,
             async_runtime,
@@ -81,7 +85,7 @@ impl Conversation {
             created_at: SystemTime::now(),
             seen_finished_items: 0,
             session,
-            replaced_session_turns: Vec::new(),
+            replaced_session_reports: SessionReports::default(),
             input: ChatInput::default(),
             profile_id: settings.profile_id.clone(),
             screen: if settings.setup_done {
@@ -91,11 +95,54 @@ impl Conversation {
             },
             context: None,
             pending_prompts: Default::default(),
+            saved: None,
         }
+    }
+
+    /// A conversation from an earlier run. Its agent starts, and loads it, once it is shown.
+    pub fn restored(
+        settings: &AgentSettings,
+        async_runtime: Option<AsyncRuntimeHandle>,
+        id: ConversationId,
+        saved: SavedConversation,
+    ) -> Self {
+        let mut conversation = Self::new(settings, async_runtime, id);
+        conversation.created_at = to_system_time(saved.last_prompt_at);
+        conversation.profile_id.clone_from(&saved.profile_id);
+        conversation.screen = Screen::Chat;
+        conversation.saved = Some(saved);
+        conversation
+    }
+
+    /// What to keep of it for the next run, if its agent can load it again.
+    ///
+    /// Conversations the host opened with a context of its own are not kept, since that context
+    /// is gone after a restart.
+    pub fn save(
+        &mut self,
+        settings: &AgentSettings,
+        agents: &[AgentEntry],
+    ) -> Option<SavedConversation> {
+        re_tracing::profile_function!();
+        let savable = self.context.is_none() && self.profile_id.model_api_provider().is_none();
+        if savable
+            && self.has_started()
+            && let Some(session_id) = self.session.session_id()
+        {
+            self.saved = Some(SavedConversation {
+                profile_id: self.profile_id.clone(),
+                session_id: session_id.clone(),
+                cwd: self.session.cwd().to_owned(),
+                title: self.title(settings, agents),
+                last_prompt_at: to_timestamp(self.last_prompt_at()),
+            });
+        }
+        self.saved.clone()
     }
 
     /// Starts (or restarts) its agent, or goes to setup with the error if it cannot be launched.
     ///
+    /// Continues the saved conversation, if there is one, with the agent that had it.
     /// Marks setup as done in `settings` on success.
     pub fn start(
         &mut self,
@@ -105,20 +152,48 @@ impl Conversation {
         agents: &[AgentEntry],
     ) {
         let context = self.context.as_ref().unwrap_or(context);
-        match settings.launch(agents, context) {
+        let launched = if let Some(saved) = &self.saved
+            && saved.profile_id != settings.profile_id
+        {
+            let mut settings = settings.clone();
+            settings.profile_id.clone_from(&saved.profile_id);
+            settings.launch(agents, context)
+        } else {
+            settings.launch(agents, context)
+        };
+        match launched {
             Ok(mut launch) => {
-                if let AgentLaunch::ModelApi(config) = &mut launch {
-                    config.toolbox.clone_from(&self.toolbox);
+                match &mut launch {
+                    AgentLaunch::AgentHarness(config) => {
+                        if let Some(saved) = &self.saved {
+                            config.session_to_load = Some(saved.session_id.clone());
+                            let cwd_exists = cfg_select! {
+                                target_arch = "wasm32" => false,
+                                _ => saved.cwd.is_dir(),
+                            };
+                            if cwd_exists {
+                                config.cwd.clone_from(&saved.cwd);
+                            }
+                        }
+                    }
+                    AgentLaunch::ModelApi(config) => {
+                        config.toolbox.clone_from(&self.toolbox);
+                    }
                 }
-                self.profile_id.clone_from(&settings.profile_id);
+                self.profile_id = self
+                    .saved
+                    .as_ref()
+                    .map_or(&settings.profile_id, |saved| &saved.profile_id)
+                    .clone();
                 // Shut the old agent down before the new one starts.
                 let replaced = std::mem::take(&mut self.session);
                 let auto_approve = replaced.auto_approve();
-                self.replaced_session_turns
-                    .extend(replaced.into_finished_turns());
+                self.replaced_session_reports
+                    .append(replaced.into_reports());
 
                 self.session = AgentSession::start(launch, self.async_runtime.as_ref(), waker);
                 self.session.set_auto_approve(auto_approve);
+                self.session.set_toolbox(self.toolbox.clone());
                 self.seen_finished_items = 0;
                 self.input.reset_keeping_prompt();
                 self.screen = Screen::Chat;
@@ -131,28 +206,30 @@ impl Conversation {
         }
     }
 
-    /// Drains the reports of the turns finished since the last call, including those of sessions
-    /// that a restart replaced.
-    pub fn take_finished_turns(&mut self) -> Vec<TurnReport> {
-        let mut turns = std::mem::take(&mut self.replaced_session_turns);
-        turns.extend(self.session.take_finished_turns());
-        turns
+    /// Drains what its sessions reported since the last call, including sessions that a restart
+    /// replaced.
+    pub fn take_reports(&mut self) -> SessionReports {
+        let mut reports = std::mem::take(&mut self.replaced_session_reports);
+        reports.append(self.session.take_reports());
+        reports
     }
 
-    /// Ends the conversation, and returns the reports of every turn the host has not taken yet,
-    /// including the running turn, reported as aborted.
-    pub fn into_finished_turns(self) -> Vec<TurnReport> {
+    /// Ends the conversation, and returns every report the host has not taken yet, including the
+    /// running turn, reported as aborted.
+    pub fn into_reports(self) -> SessionReports {
         let Self {
             session,
-            mut replaced_session_turns,
+            mut replaced_session_reports,
             ..
         } = self;
-        replaced_session_turns.extend(session.into_finished_turns());
-        replaced_session_turns
+        replaced_session_reports.append(session.into_reports());
+        replaced_session_reports
     }
 
     /// Session title if the agent gave one, else the first line of the first prompt, else the
-    /// agent name.
+    /// saved title, else the agent name.
+    ///
+    /// The saved title only stands in until the agent has replayed the history.
     pub fn title(&self, settings: &AgentSettings, agents: &[AgentEntry]) -> String {
         let transcript = self.session.transcript();
         transcript
@@ -165,6 +242,7 @@ impl Conversation {
                     .find_map(|entry| entry.item.user_prompt())?;
                 Some(prompt.text.lines().next().unwrap_or_default().to_owned())
             })
+            .or_else(|| self.saved.as_ref().map(|saved| saved.title.clone()))
             .or_else(|| self.session.agent_name().map(ToOwned::to_owned))
             .or_else(|| selected_agent_name(settings, agents))
             .unwrap_or_else(|| "New chat".to_owned())
@@ -217,11 +295,14 @@ impl Conversation {
     }
 
     /// When the user last sent a message, or else when the conversation was opened.
+    ///
+    /// For a restored conversation, its saved time stands in for the replayed history.
     pub fn last_prompt_at(&self) -> SystemTime {
         self.session
             .transcript()
             .items
             .iter()
+            .skip(self.session.history_len())
             .rev()
             .find(|entry| entry.item.user_prompt().is_some())
             .map_or(self.created_at, |entry| entry.created_at)
@@ -251,22 +332,26 @@ impl Conversation {
             .find(|agent| agent.profile.id == self.profile_id)
             .map(|agent| agent.profile.login_hint.as_str())
             .filter(|hint| !hint.is_empty());
-        let mut preferred_model = settings.preferred_models.get(&self.profile_id).cloned();
+        let mut preferences = settings
+            .preferences(&self.profile_id)
+            .cloned()
+            .unwrap_or_default();
+        let agent_name = agent_name(&self.profile_id, agents)
+            .or_else(|| self.session.agent_name().map(ToOwned::to_owned))
+            .unwrap_or_else(|| "Custom agent".to_owned());
         chat_ui(
             ui,
             &mut self.session,
             &mut self.input,
-            &mut settings.preferred_mode,
-            &mut preferred_model,
+            &mut preferences,
+            Some(&agent_name),
             settings.show_thoughts,
             login_hint,
             example_prompts,
             home_ui,
         );
-        if let Some(model) = preferred_model {
-            settings
-                .preferred_models
-                .insert(self.profile_id.clone(), model);
+        if preferences != AgentPreferences::default() {
+            *settings.preferences_mut(self.profile_id.clone()) = preferences;
         }
         if let Some(prompt) = self.input.example_prompt_clicked.take() {
             self.pending_prompts.push_back(prompt.into());
@@ -318,9 +403,29 @@ impl Conversation {
             .inner;
 
         if next_screen == Screen::Chat {
+            // The user picked an agent here, which cannot load another agent's session.
+            if self
+                .saved
+                .as_ref()
+                .is_some_and(|saved| saved.profile_id != settings.profile_id)
+            {
+                self.saved = None;
+            }
             self.start(ui.ui_waker(), settings, context, agents);
         } else if back {
             self.screen = Screen::Chat;
         }
     }
+}
+
+fn to_system_time(timestamp: jiff::Timestamp) -> SystemTime {
+    let since_epoch = timestamp.duration_since(jiff::Timestamp::UNIX_EPOCH);
+    SystemTime::UNIX_EPOCH + std::time::Duration::try_from(since_epoch).unwrap_or_default()
+}
+
+fn to_timestamp(time: SystemTime) -> jiff::Timestamp {
+    time.duration_since(SystemTime::UNIX_EPOCH)
+        .ok()
+        .and_then(|since_epoch| jiff::Timestamp::UNIX_EPOCH.checked_add(since_epoch).ok())
+        .unwrap_or(jiff::Timestamp::UNIX_EPOCH)
 }

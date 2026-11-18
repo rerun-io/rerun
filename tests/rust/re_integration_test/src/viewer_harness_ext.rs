@@ -86,14 +86,14 @@ pub trait ViewerHarnessExt {
     }
 
     /// Repeatedly [`run`](Self::run) and evaluate `predicate` until it returns `true` or the
-    /// default timeout elapses.
+    /// 15-second timeout elapses.
     #[track_caller]
     fn step_until(&mut self, description: &'static str, predicate: impl FnMut(&Self) -> bool) {
         self.step_until_with_custom_timeout(
             description,
             predicate,
             re_viewer::viewer_test_utils::DEFAULT_POLL_INTERVAL,
-            re_viewer::viewer_test_utils::DEFAULT_WAIT_TIMEOUT,
+            Duration::from_secs(15),
         );
     }
 

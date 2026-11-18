@@ -639,10 +639,8 @@ impl PartialEq for EditableTimestamp {
 impl Hash for EditableTimestamp {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self.timestamp_string.hash(state);
-        self.resolved_timestamp
-            .as_ref()
-            .map_err(|err| err.to_string())
-            .hash(state);
+        // `eq` treats all errors as equal, so the error must not affect the hash.
+        self.resolved_timestamp.as_ref().ok().hash(state);
     }
 }
 

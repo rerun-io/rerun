@@ -141,8 +141,6 @@ mod tests {
     use arrow::datatypes::{DataType, Field, Schema};
     use re_chunk::EntityPath;
 
-    use crate::{ImportedData, ImporterSettings};
-
     use super::*;
 
     fn write_parquet_tmp(batch: &RecordBatch) -> std::path::PathBuf {

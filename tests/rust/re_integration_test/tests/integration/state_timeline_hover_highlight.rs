@@ -9,7 +9,6 @@ use re_sdk::Timeline;
 use re_sdk::log::RowId;
 use re_view_state_timeline::StateTimelineView;
 use re_view_time_series::TimeSeriesView;
-use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{RecommendedView, TimeControlCommand, ViewClass as _};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;

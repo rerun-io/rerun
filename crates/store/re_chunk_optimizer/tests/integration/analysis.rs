@@ -34,7 +34,7 @@ fn chunk(id_seed: u128, entity_path: &str, rows: &[Vec<(Timeline, i64)>]) -> any
     if rows.is_empty() {
         builder = builder.with_serialized_batches(
             RowId::from_u128(id_seed << 32),
-            TimePoint::default(),
+            TimePoint::STATIC,
             [colors(0).try_serialized(MyPoints::descriptor_colors())?],
         );
     }
@@ -42,7 +42,7 @@ fn chunk(id_seed: u128, entity_path: &str, rows: &[Vec<(Timeline, i64)>]) -> any
     for (i, row) in rows.iter().enumerate() {
         let timepoint = row
             .iter()
-            .fold(TimePoint::default(), |timepoint, (timeline, time)| {
+            .fold(TimePoint::STATIC, |timepoint, (timeline, time)| {
                 timepoint.with(*timeline, *time)
             });
         builder = builder.with_serialized_batches(

@@ -11,7 +11,7 @@ const viewer = new WebViewer();
 await viewer.start(RECORDING_URL, $("viewer"), {
   width: "100%",
   height: "100%",
-  hide_welcome_screen: true,
+  hideWelcomeScreen: true,
 });
 
 // Control channel. Each frame is one `Message` from `src/comms/protocol.rs`,

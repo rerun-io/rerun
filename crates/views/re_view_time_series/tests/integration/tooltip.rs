@@ -31,7 +31,7 @@ fn test_tooltip_mode(tooltip_mode: TooltipMode, snapshot_results: &mut SnapshotR
         if is_measurement {
             test_context.log_entity(entity_path.as_str(), |builder| {
                 builder.with_archetype_auto_row(
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_sdk_types::archetypes::Measurements::update_fields()
                         .with_names([format!("series_{series_index:02}")]),
                 )
@@ -39,7 +39,7 @@ fn test_tooltip_mode(tooltip_mode: TooltipMode, snapshot_results: &mut SnapshotR
         } else {
             test_context.log_entity(entity_path.as_str(), |builder| {
                 builder.with_archetype_auto_row(
-                    TimePoint::default(),
+                    TimePoint::STATIC,
                     &re_sdk_types::archetypes::SeriesLines::new()
                         .with_names([format!("series_{series_index:02}")]),
                 )

@@ -360,6 +360,120 @@ impl CommandKind {
         }
     }
 
+    /// Can the user easily undo running this command?
+    ///
+    /// Not necessarily by cmd-Z style undo. Undoing by clicking somewhere is also fine.
+    /// In other words: any non-destructive edit is considered easily undone.
+    ///
+    /// An agent may run such a command without asking first. Opening a dialog, a panel, or a
+    /// website counts as undoable, since the user can close it again. Writing files, replacing
+    /// the clipboard, and adding data to a recording do not.
+    pub fn is_easily_undone(self) -> bool {
+        match self {
+            Self::Ui(cmd) => match cmd {
+                UICommand::CloseAllRecordings
+                | UICommand::ResetViewer
+                | UICommand::ImportFileIntoCurrentRecording
+                | UICommand::CopyDirectLinkToClipboard
+                | UICommand::CopyTimeSelectionLinkToClipboard
+                | UICommand::CopyEntityHierarchyToClipboard => false,
+
+                // These can reopen a closed recording, or (on web) leave the viewer.
+                UICommand::NavigateBackInHistory | UICommand::NavigateForwardInHistory => false,
+
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::Quit
+                | UICommand::CaptureProfileTrace
+                | UICommand::CopyScreenshotToClipboard
+                | UICommand::OpenProfiler => false,
+
+                #[cfg(target_arch = "wasm32")]
+                UICommand::RestartWithWebGl | UICommand::RestartWithWebGpu => false,
+
+                UICommand::About
+                | UICommand::OpenFile
+                | UICommand::OpenUrlDialog
+                | UICommand::SwitchToNextRecording
+                | UICommand::SwitchToPreviousRecording
+                | UICommand::OpenRerunWebsite
+                | UICommand::OpenDocsWebsite
+                | UICommand::OpenDiscordWebsite
+                | UICommand::TogglePanelStateOverrides
+                | UICommand::ToggleDevPanel
+                | UICommand::ToggleChunkStoreBrowser
+                | UICommand::ToggleTopPanel
+                | UICommand::ToggleBlueprintPanel
+                | UICommand::ExpandBlueprintPanel
+                | UICommand::ToggleSelectionPanel
+                | UICommand::ExpandSelectionPanel
+                | UICommand::ToggleAgentPanel
+                | UICommand::OpenSettings
+                | UICommand::ToggleFullscreen
+                | UICommand::ToggleCommandPalette
+                | UICommand::OpenShareDialog
+                | UICommand::OpenAddServerDialog => true,
+
+                #[cfg(not(target_arch = "wasm32"))]
+                UICommand::ZoomInUi | UICommand::ZoomOutUi | UICommand::ResetUiZoom => true,
+
+                #[cfg(debug_assertions)]
+                UICommand::ResetEguiMemory => false,
+
+                #[cfg(debug_assertions)]
+                UICommand::ToggleEguiDebugPanel
+                | UICommand::DebugTools
+                | UICommand::PlayTestSound => true,
+            },
+
+            Self::Recording(kind) => match kind {
+                RecordingCommandKind::Close
+                | RecordingCommandKind::ResetBlueprintToDefault
+                | RecordingCommandKind::ResetBlueprintToHeuristic
+                | RecordingCommandKind::Save
+                | RecordingCommandKind::SaveTimeSelection
+                | RecordingCommandKind::SaveBlueprint => false,
+
+                RecordingCommandKind::UndoBlueprintEdit
+                | RecordingCommandKind::RedoBlueprintEdit
+                | RecordingCommandKind::OpenAddViewOrContainerDialog
+                | RecordingCommandKind::ToggleTimePanel
+                | RecordingCommandKind::TogglePlayPause
+                | RecordingCommandKind::SeekToPreviousEvent
+                | RecordingCommandKind::SeekToNextEvent
+                | RecordingCommandKind::SeekBackwardShort
+                | RecordingCommandKind::SeekForwardShort
+                | RecordingCommandKind::SeekBackwardLong
+                | RecordingCommandKind::SeekForwardLong
+                | RecordingCommandKind::SeekToStart
+                | RecordingCommandKind::SeekToEndAndFollow
+                | RecordingCommandKind::PlaybackSpeed(_) => true,
+
+                #[cfg(debug_assertions)]
+                RecordingCommandKind::ToggleBlueprintInspectionPanel => true,
+
+                // These also copy what they print to the clipboard.
+                #[cfg(not(target_arch = "wasm32"))]
+                RecordingCommandKind::PrintChunkStore
+                | RecordingCommandKind::PrintBlueprintStore
+                | RecordingCommandKind::PrintPrimaryCache => false,
+            },
+
+            Self::RedapServer(kind) => match kind {
+                RedapServerCommandKind::Remove | RedapServerCommandKind::CopyUrlToClipboard => {
+                    false
+                }
+                RedapServerCommandKind::Refresh | RedapServerCommandKind::OpenEditDialog => true,
+            },
+
+            Self::Table(kind) => match kind {
+                TableCommandKind::ResetBlueprintToDefault => false,
+                TableCommandKind::Refresh
+                | TableCommandKind::UndoBlueprintEdit
+                | TableCommandKind::RedoBlueprintEdit => true,
+            },
+        }
+    }
+
     /// Pair this command with its target from `env`, making it dispatchable.
     ///
     /// Returns `None` when the command cannot run in `env`: there is no target for it (no active

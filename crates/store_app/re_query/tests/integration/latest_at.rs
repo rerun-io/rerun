@@ -135,7 +135,7 @@ fn static_query() {
     let chunk = Chunk::builder(entity_path)
         .with_archetype(
             row_id2,
-            TimePoint::default(),
+            TimePoint::STATIC,
             &MyPoints::update_fields().with_colors(colors.clone()),
         )
         .build()
@@ -390,7 +390,7 @@ fn invalidation() {
         );
     };
 
-    let static_ = TimePoint::default();
+    let static_ = TimePoint::STATIC;
     let frame_122 = build_frame_nr(122);
     let frame_123 = build_frame_nr(123);
     let frame_124 = build_frame_nr(124);
@@ -445,7 +445,7 @@ fn invalidation_of_future_optionals() {
 
     let entity_path = "points";
 
-    let static_ = TimePoint::default();
+    let static_ = TimePoint::STATIC;
     let frame2 = [build_frame_nr(2)];
     let frame3 = [build_frame_nr(3)];
 
@@ -562,7 +562,7 @@ fn static_invalidation() {
 
     let entity_path = "points";
 
-    let static_ = TimePoint::default();
+    let static_ = TimePoint::STATIC;
 
     let query_time = [build_frame_nr(9999)];
 

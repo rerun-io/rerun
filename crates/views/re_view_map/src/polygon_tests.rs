@@ -1,11 +1,28 @@
 use super::*;
-use re_log_types::{TimeInt, TimePoint, Timeline};
+use re_log_types::{EntityPath, TimePoint, Timeline};
 use re_sdk_types::RowId;
 use re_sdk_types::archetypes::{GeoLineStrings, GeoPoints, GeoPolygons};
 use re_sdk_types::components::{Color, GeoLineString, GeoPolygon, Radius};
 use re_test_context::TestContext;
 use re_test_viewport::TestContextExt as _;
 use re_viewport_blueprint::ViewBlueprint;
+
+#[test]
+fn polygons_alone_trigger_automatic_map_view() {
+    let mut test_context = TestContext::new_with_view_class::<MapView>();
+    let polygon = GeoPolygon::from_lat_lon([[[0.0, 0.0], [0.0, 1.0], [1.0, 0.0]]]);
+    test_context.log_entity("regions", |builder| {
+        builder.with_archetype_auto_row(TimePoint::STATIC, &GeoPolygons::new([polygon]))
+    });
+
+    test_context.run(&egui::Context::default(), |ctx| {
+        let recommended = MapView
+            .spawn_heuristics(ctx, re_viewer_context::ViewSpawnContext::Automatic)
+            .into_vec();
+        assert_eq!(recommended.len(), 1);
+        assert_eq!(recommended[0].origin, EntityPath::root());
+    });
+}
 
 #[test]
 fn polygon_holes_transparency_and_timeline_updates() {
@@ -17,9 +34,7 @@ fn polygon_holes_transparency_and_timeline_updates() {
     let mut test_context = TestContext::new_with_view_class::<MapView>();
     let timeline = Timeline::new_sequence("frame");
     test_context.set_active_timeline(*timeline.name());
-    let frame = |value: i64| {
-        TimePoint::default().with(timeline, TimeInt::from_sequence(value.try_into().unwrap()))
-    };
+    let frame = |value: i64| TimePoint::from([(timeline, value)]);
     let polygon = GeoPolygon::from_lat_lon([
         vec![
             [0.0, 0.0],

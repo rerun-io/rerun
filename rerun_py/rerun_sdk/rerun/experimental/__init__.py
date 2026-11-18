@@ -42,12 +42,20 @@ from ._viewer_client import (
     ProfileTrace as ProfileTrace,
     Recording as Recording,
     RecordingSchema as RecordingSchema,
+    SelectedComponent as SelectedComponent,
+    SelectedContainer as SelectedContainer,
+    SelectedEntity as SelectedEntity,
+    SelectedItem as SelectedItem,
+    SelectedRecording as SelectedRecording,
+    SelectedView as SelectedView,
+    Selection as Selection,
     StoreId as StoreId,
     TableColumnSchema as TableColumnSchema,
     Timeline as Timeline,
     View as View,
     ViewerClient as ViewerClient,
     ViewerState as ViewerState,
+    ViewerViewType as ViewerViewType,
     ViewReport as ViewReport,
 )
 
@@ -78,7 +86,8 @@ _MOVED_TO_CHUNK = frozenset({
 })
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     """Forward moved names to their new home with a deprecation warning (see PEP 562)."""
     if name == "send_chunks":
         import warnings

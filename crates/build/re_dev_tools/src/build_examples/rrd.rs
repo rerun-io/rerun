@@ -26,24 +26,31 @@ pub struct Rrd {
 
 impl Rrd {
     pub fn run(self) -> anyhow::Result<()> {
-        create_dir_all(&self.output_dir)?;
+        let Self {
+            output_dir,
+            channel,
+            examples: example_names,
+            install,
+        } = self;
 
-        if self.install {
+        create_dir_all(&output_dir)?;
+
+        if install {
             Install {
-                channel: self.channel,
-                examples: self.examples.clone(),
+                channel,
+                examples: example_names.clone(),
             }
             .run()?;
         }
 
         let workspace_root = re_build_tools::cargo_metadata()?.workspace_root;
-        let mut examples = if self.examples.is_empty() {
-            self.channel.examples(workspace_root)?
+        let mut examples = if example_names.is_empty() {
+            channel.examples(workspace_root)?
         } else {
             Channel::Nightly
                 .examples(workspace_root)?
                 .into_iter()
-                .filter(|example| self.examples.contains(&example.name))
+                .filter(|example| example_names.contains(&example.name))
                 .collect()
         };
         examples.sort_by(|a, b| a.name.cmp(&b.name));
@@ -51,7 +58,7 @@ impl Rrd {
         let progress = MultiProgress::new();
         let results: Vec<anyhow::Result<PathBuf>> = examples
             .into_par_iter()
-            .map(|example| example.build_rrd(&progress, &self.output_dir))
+            .map(|example| example.build_rrd(&progress, &output_dir))
             .collect();
 
         let mut num_failed = 0;

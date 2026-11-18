@@ -4,6 +4,8 @@
 //! Run with no arguments to render the checked-in `cactus.ply` from a fixed camera, so
 //! `cargo run -p test_gaussian_compare` just works as a quick demo / smoke test.
 
+#![expect(clippy::print_stdout)] // This is only a test
+
 use std::path::PathBuf;
 
 use clap::Parser as _;

@@ -1,6 +1,6 @@
 use re_sdk_types::ViewClassIdentifier;
 use re_ui::Icon;
-use re_viewer_context::{ContainerId, Item, RecommendedView};
+use re_viewer_context::{ContainerId, Item};
 use re_viewport_blueprint::ViewBlueprint;
 
 use crate::{ContextMenuAction, ContextMenuContext};
@@ -29,7 +29,7 @@ impl ContextMenuAction for AddViewAction {
     }
 
     fn process_container(&self, ctx: &ContextMenuContext<'_>, container_id: &ContainerId) {
-        let view = ViewBlueprint::new(self.id, RecommendedView::root());
+        let view = ViewBlueprint::new_for_user_request(ctx.viewer_context, self.id);
 
         ctx.viewport_blueprint
             .add_views(std::iter::once(view), Some(*container_id), None);

@@ -6,9 +6,7 @@ use arrow::array::{RecordBatch as ArrowRecordBatch, RecordBatchOptions};
 use arrow::datatypes::{Field as ArrowField, Schema as ArrowSchema};
 use itertools::Either;
 use re_build_info::CrateVersion;
-use re_chunk::external::crossbeam;
 use re_sdk::EntityPath;
-use re_sdk::external::arrow;
 
 use crate::commands::read_rrd_streams_from_file_or_stdin;
 
@@ -169,7 +167,7 @@ impl FilterCommand {
         let rrd_out_size = encoding_handle
             .context("couldn't spawn IO thread")?
             .join()
-            .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // NOLINT: there is no `Display` for this `err`
+            .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // relint: allow(debug_formatted_error): a thread panic payload (`Box<dyn Any + Send>`) has no `Display`
 
         let rrds_in_size = rx_size_bytes.recv().ok().map(|(size, _footers)| size);
         let size_reduction =

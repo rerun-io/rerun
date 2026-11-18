@@ -11,7 +11,7 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import builtins
@@ -424,7 +424,7 @@ def _negated(row_filter: Filter) -> Filter:
     return Filter(f"({row_filter.sql}) IS NOT TRUE")
 
 
-def _number_sql(value: Any) -> str:
+def _number_sql(value: Number) -> str:
     """The SQL literal of a number."""
     # `bool` is a subclass of `int`.
     if isinstance(value, bool) or not isinstance(value, (int, float)):
@@ -438,7 +438,7 @@ def _number_sql(value: Any) -> str:
     return f"CAST({_quote_string('NaN' if math.isnan(value) else repr(value))} AS DOUBLE)"
 
 
-def _timestamp_sql(value: Any) -> str:
+def _timestamp_sql(value: datetime) -> str:
     """The SQL literal of a timestamp."""
     if not isinstance(value, datetime):
         raise TypeError("Timestamp filters require a datetime")

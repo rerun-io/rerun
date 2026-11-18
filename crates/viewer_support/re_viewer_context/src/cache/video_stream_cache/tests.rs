@@ -1,10 +1,8 @@
 #![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
 use std::assert_matches;
 
-use re_chunk::{ChunkBuilder, RowId, TimePoint, Timeline};
-use re_chunk_store::ChunkStoreDiff;
+use re_chunk::{ChunkBuilder, TimePoint, Timeline};
 use re_log_types::StoreId;
-use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::VideoCodec;
 use re_video::{VideoDataDescription, VideoEncodingDetails};
 
@@ -472,7 +470,7 @@ fn video_stream_cache_from_single_static_encoded_image() {
     // Statically logged image => static chunk (empty timepoint).
     let chunk = ChunkBuilder::new(ChunkId::new(), "img".into())
         .with_archetype_auto_row(
-            TimePoint::default(),
+            TimePoint::STATIC,
             &re_sdk_types::archetypes::EncodedImage::new(jpeg_data).with_media_type("image/jpeg"),
         )
         .build()
@@ -533,8 +531,8 @@ fn video_stream_cache_static_picks_highest_row_id() {
     assert!(high_row_id > low_row_id);
 
     let chunk = ChunkBuilder::new(ChunkId::new(), "img".into())
-        .with_archetype(low_row_id, TimePoint::default(), &image)
-        .with_archetype(high_row_id, TimePoint::default(), &image)
+        .with_archetype(low_row_id, TimePoint::STATIC, &image)
+        .with_archetype(high_row_id, TimePoint::STATIC, &image)
         .build()
         .unwrap();
     assert!(chunk.is_static());

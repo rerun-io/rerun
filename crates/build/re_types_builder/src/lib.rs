@@ -1,4 +1,5 @@
 #![allow(clippy::iter_over_hash_type)]
+#![expect(clippy::print_stdout, clippy::print_stderr)] // Build tool
 
 //! This crate implements Rerun's code generation tools.
 //!

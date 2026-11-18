@@ -92,7 +92,7 @@ def set_sinks(
         logging.warning("Rerun is disabled - set_sinks() call ignored")
         return
 
-    application_id = get_application_id(recording)  # NOLINT
+    application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
@@ -150,7 +150,7 @@ def connect_grpc(
 
     from rerun.recording_stream import get_application_id
 
-    application_id = get_application_id(recording)  # NOLINT
+    application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
@@ -375,7 +375,7 @@ def serve_grpc(
         If `False`, the messages will be played back in the order they arrived.
     cors_allow_origin:
         Additional origin patterns allowed to make CORS requests to the gRPC server.
-        By default, only localhost and rerun.io are allowed.
+        By default, only localhost, rerun.io, and its subdomains are allowed.
         Patterns are matched against the full `Origin` header (e.g. `"https://example.com:8080"`),
         using glob-style matching where `*` matches any sequence of characters.
         Examples: `"https://*.example.com"`, `"https://example.com:8080"`,

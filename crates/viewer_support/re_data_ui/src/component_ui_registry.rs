@@ -10,7 +10,7 @@ pub fn register_component_uis(registry: &mut re_viewer_context::ComponentUiRegis
     // TODO(#6661): Move this to component_ui_registry. Separate components could simplify this to the extent that multi/single line is enough?
     add_to_registry::<re_sdk_types::components::AnnotationContext>(registry);
 
-    // TODO(#6661): Move this to component_ui_registry. Image preview is a bit hard because row_id and size stuff needs to be known. `ImageBuffer` needs to be handled as well.
+    // TODO(#6661): Move this to component_ui_registry. Image preview is a bit hard because source_row_id and size stuff needs to be known. `ImageBuffer` needs to be handled as well.
     add_to_registry::<re_sdk_types::components::Blob>(registry);
     add_to_registry::<re_sdk_types::components::TensorData>(registry);
 
@@ -26,7 +26,14 @@ pub fn add_to_registry<C: EntityDataUi + re_sdk_types::Component>(
     registry.add_legacy_display_ui(
         C::name(),
         Box::new(
-            |ctx, ui, ui_layout, entity_path, component_descriptor, row_id, component_raw| {
+            |ctx,
+             ui,
+             ui_layout,
+             entity_path,
+             target_component_descriptor,
+             source_row_id,
+             source,
+             component_raw| {
                 match C::from_arrow(component_raw) {
                     Ok(components) => match components.len() {
                         1 => {
@@ -41,8 +48,9 @@ pub fn add_to_registry<C: EntityDataUi + re_sdk_types::Component>(
                                     ui,
                                     ui_layout,
                                     entity_path,
-                                    component_descriptor,
-                                    row_id,
+                                    target_component_descriptor,
+                                    source_row_id,
+                                    source,
                                 );
                             } else {
                                 arrow_ui(

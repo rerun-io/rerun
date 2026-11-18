@@ -31,7 +31,7 @@ pub fn test_gaussian_splats3d() {
         .with_colors([0xFF0000FF, 0x00FF00FF, 0x0000FFFF]);
 
     test_context.log_entity("world/gaussians", |builder| {
-        builder.with_archetype(RowId::new(), TimePoint::default(), &gaussians)
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &gaussians)
     });
 
     let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {
@@ -72,7 +72,7 @@ pub fn test_gaussian_splats3d_cactus() {
     .expect("failed to load cactus.ply");
 
     test_context.log_entity("world/cactus", |builder| {
-        builder.with_archetype(RowId::new(), TimePoint::default(), &gaussians)
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &gaussians)
     });
 
     // Several non-identity instance transforms: this exercises instancing (one draw per pose) as
@@ -87,7 +87,7 @@ pub fn test_gaussian_splats3d_cactus() {
                 RotationAxisAngle::new([0.0, 0.0, 1.0], Angle::from_degrees(90.0)),
             ])
             .with_scales([1.0, 1.0, 0.5]);
-        builder.with_archetype(RowId::new(), TimePoint::default(), &poses)
+        builder.with_archetype(RowId::new(), TimePoint::STATIC, &poses)
     });
 
     let view_id = test_context.setup_viewport_blueprint(|_ctx, blueprint| {

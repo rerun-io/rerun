@@ -10,6 +10,10 @@ use std::collections::HashSet;
 
 use arrow::array::{Array, AsArray as _, RecordBatch};
 
+use super::rerun_cloud_v1alpha1_ext_properties::{
+    first_string, list_values_at, property_column, string_list,
+};
+
 pub const ASSET_PROPERTY: &str = "asset";
 pub const ASSET_MODE_COMPONENT: &str = "mode";
 pub const ASSET_SEGMENTS_COMPONENT: &str = "segments";
@@ -86,23 +90,6 @@ pub fn asset_properties<'a>(
     .expect("a batch of equal-length single-row list columns is always valid")
 }
 
-/// A single-row `List<Utf8>` column holding `values`.
-fn string_list(values: &[&str]) -> arrow::array::ArrayRef {
-    use arrow::array::{ListArray, StringArray};
-    use arrow::buffer::OffsetBuffer;
-    use arrow::datatypes::{DataType, Field};
-    use std::sync::Arc;
-
-    let values = Arc::new(StringArray::from(values.to_vec()));
-    let field = Arc::new(Field::new("item", DataType::Utf8, true));
-    Arc::new(ListArray::new(
-        field,
-        OffsetBuffer::from_lengths([values.len()]),
-        values,
-        None,
-    ))
-}
-
 /// Read the [`AssetMode`] of an asset from its `asset` property at `row`, defaulting to
 /// [`AssetMode::OptOut`] when unset.
 pub fn read_asset_mode(batch: &RecordBatch, row: usize) -> AssetMode {
@@ -119,27 +106,6 @@ pub fn read_asset_segments(batch: &RecordBatch, row: usize) -> HashSet<String> {
     list_values_at(batch, row, &column)
         .map(|values| string_values(&values))
         .unwrap_or_default()
-}
-
-/// The column holding component `component` of the property logged under
-/// `__properties/{property_key}`, i.e. `property:{property_key}:{component}`.
-fn property_column(property_key: &str, component: &str) -> String {
-    format!("property:{property_key}:{component}")
-}
-
-/// Return the list-element array for `column` at `row`, handling both `List` and `LargeList`.
-fn list_values_at(batch: &RecordBatch, row: usize, column: &str) -> Option<arrow::array::ArrayRef> {
-    let col = batch.column_by_name(column)?;
-    if row >= col.len() {
-        return None;
-    }
-    if let Some(list) = col.as_list_opt::<i32>() {
-        return list.is_valid(row).then(|| list.value(row));
-    }
-    if let Some(list) = col.as_list_opt::<i64>() {
-        return list.is_valid(row).then(|| list.value(row));
-    }
-    None
 }
 
 /// Collect the non-null strings of a `Utf8`, `LargeUtf8`, or `Utf8View` array.
@@ -167,33 +133,6 @@ fn string_values(values: &dyn Array) -> HashSet<String> {
         });
     }
     HashSet::new()
-}
-
-/// The first non-null string of a `Utf8`, `LargeUtf8`, or `Utf8View` array, in order.
-///
-/// Used to read a scalar string component such as the asset mode, which is stored list-wrapped like
-/// any other property.
-fn first_string(values: &dyn Array) -> Option<String> {
-    let first = |len: usize, valid: &dyn Fn(usize) -> bool, value: &dyn Fn(usize) -> String| {
-        (0..len).find(|&i| valid(i)).map(value)
-    };
-
-    if let Some(array) = values.as_string_opt::<i32>() {
-        return first(array.len(), &|i| array.is_valid(i), &|i| {
-            array.value(i).to_owned()
-        });
-    }
-    if let Some(array) = values.as_string_opt::<i64>() {
-        return first(array.len(), &|i| array.is_valid(i), &|i| {
-            array.value(i).to_owned()
-        });
-    }
-    if let Some(array) = values.as_string_view_opt() {
-        return first(array.len(), &|i| array.is_valid(i), &|i| {
-            array.value(i).to_owned()
-        });
-    }
-    None
 }
 
 #[cfg(test)]

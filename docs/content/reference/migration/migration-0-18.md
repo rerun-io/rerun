@@ -2,6 +2,7 @@
 title: Migrating from 0.17 to 0.18
 order: 992
 hidden: true
+description: Breaking changes in Rerun 0.18 and how to update code written for 0.17
 ---
 
 ## ⚠️ Breaking changes
@@ -45,7 +46,7 @@ After:
 rec.log("image", rerun::Image(data, {WIDTH, HEIGHT}, datatypes::ColorModel::RGB));
 ```
 
-The same can now also achieved with this utility:
+The same can now also be achieved with this utility:
 ```cpp
 rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
 ```

@@ -4,6 +4,7 @@
 //!
 
 #![expect(clippy::exit)]
+#![expect(clippy::print_stderr)] // Build tool
 
 /// Generate rust from protobuf definitions. We rely on `tonic_build` to do the heavy lifting.
 /// `tonic_build` relies on `prost` which itself relies on `protoc`.

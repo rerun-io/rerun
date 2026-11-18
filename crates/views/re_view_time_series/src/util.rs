@@ -256,7 +256,6 @@ fn aggregation_bucket_width(aggregation_duration: f64) -> NonZeroU64 {
     NonZeroU64::new(bucket_width).unwrap_or(NonZeroU64::MIN)
 }
 
-#[expect(clippy::needless_pass_by_value)]
 #[inline(never)] // Better callstacks on crashes
 fn add_series_runs(
     run: SeriesProperties,
@@ -268,20 +267,29 @@ fn add_series_runs(
 ) {
     re_tracing::profile_function!();
 
+    let SeriesProperties {
+        instance_path,
+        label,
+        unit,
+        visible,
+        has_variances,
+        visualizer_instruction_id,
+    } = run;
+
     let num_points = points.len();
 
     // Series without a band carry no variances at all.
     let push = |series: &mut PlotSeries, time: i64, value: f64, variance: f32| {
         series.push_point(time, value);
-        if run.has_variances {
+        if has_variances {
             series.variances.push(variance);
         }
     };
 
     let new_series = |attrs: &PlotPointAttrs, capacity: usize| PlotSeries {
-        instance_path: run.instance_path.clone(),
-        visible: run.visible,
-        label: run.label.clone(),
+        instance_path: instance_path.clone(),
+        visible,
+        label: label.clone(),
         color: attrs.color,
         radius_ui: attrs.radius_ui,
         kind: attrs.kind,
@@ -291,9 +299,9 @@ fn add_series_runs(
         first_point_is_continuity_bridge: false,
         aggregation_factor,
         min_time,
-        visualizer_instruction_id: run.visualizer_instruction_id,
+        visualizer_instruction_id,
         variances: Vec::new(),
-        unit: run.unit.clone(),
+        unit: unit.clone(),
     };
 
     let mut attrs = points[0].attrs.clone();

@@ -123,7 +123,10 @@ impl std::str::FromStr for RedapUri {
             ["folder", path, ..] => {
                 let decoded = percent_encoding::percent_decode_str(path)
                     .decode_utf8()
-                    .map_err(|_err| Error::UnexpectedUri(format!("folder/{path}")))?;
+                    .map_err(|source| Error::InvalidFolderPath {
+                        path: (*path).to_owned(),
+                        source,
+                    })?;
                 if decoded.is_empty() {
                     return Err(Error::UnexpectedUri("folder/".to_owned()));
                 }
@@ -181,7 +184,7 @@ mod tests {
     use re_types_core::SegmentId;
 
     use super::*;
-    use crate::{DatasetResource, DatasetUri, Fragment, Scheme};
+    use crate::{DatasetResource, Scheme};
 
     #[test]
     fn scheme_conversion() {

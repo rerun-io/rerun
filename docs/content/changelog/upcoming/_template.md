@@ -20,7 +20,7 @@ type: feature # highlight | misc | breaking | feature
    type   — which section the entry belongs in. One of:
               highlight  — a flagship change worth selling at the top of the notes
               misc       — concise user-facing information, rendered as one list item
-              breaking   — a breaking change; MUST include a migration guide
+              breaking   — a breaking change; the entry is its migration guide
               feature    — a user-facing feature; SHOULD link docs and/or an example
 
  At release time, an agent merges every file in this folder into the release's
@@ -31,11 +31,12 @@ type: feature # highlight | misc | breaking | feature
  Keep it short: one to three sentences on what the user can now do.
  Leave out implementation details and anything the user doesn't need to know.
  Stick to facts, not sales copy, and reserve `highlight` for flagship changes.
+ Features that only work against Rerun Hub, and not against the OSS server, don't get an entry.
  If the feature is partial (e.g. data types without viewer support yet), say what doesn't work yet.
- A breaking change gets a new migration guide; never edit the migration guides of past releases.
+ A `breaking` entry is the migration guide for its change; never edit the migration guides of past releases.
 
  For each entry, consider:
-   * Migration guide   — required for any breaking change. Show before/after.
+   * Before/after      — required in any `breaking` entry.
    * Visual media      — required for any visual feature. Use permanent website
                          assets with normal Markdown or HTML markup. Do not use
                          GitHub-hosted assets or paste a URL on its own line.

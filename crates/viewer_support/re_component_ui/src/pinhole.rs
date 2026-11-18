@@ -14,7 +14,7 @@ pub fn singleline_view_pinhole(
     let fl = pinhole.focal_length_in_pixels();
     let pp = pinhole.principal_point();
     if let Err(err) = pinhole.sanity_check() {
-        ui.error_label(err)
+        ui.error_label(err.to_string())
     } else if *pinhole == PinholeProjection::from_focal_length_and_principal_point(fl, pp) {
         let fl = if fl.x() == fl.y() {
             fl.x().to_string()
@@ -41,7 +41,7 @@ pub fn multiline_view_pinhole(
     let mat3x3 = value.as_ref().0;
 
     if let Err(err) = value.as_ref().sanity_check() {
-        ui.error_label(err);
+        ui.error_label(err.to_string());
     }
 
     egui::Grid::new("mat3")

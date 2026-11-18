@@ -75,10 +75,12 @@ impl StoreInfo {
 }
 
 impl StoreInfo {
-    /// Whether this `StoreInfo` is the default used when a user is not explicitly
-    /// creating their own blueprint.
-    pub fn is_app_default_blueprint(&self) -> bool {
-        self.application_id().as_str() == self.recording_id().as_str()
+    /// Whether this is the blueprint that the viewer heuristics generate, used when a user is not
+    /// explicitly creating their own blueprint.
+    ///
+    /// See [`StoreId::heuristic_blueprint`].
+    pub fn is_heuristic_blueprint(&self) -> bool {
+        self.store_id.is_heuristic_blueprint()
     }
 
     pub fn application_id(&self) -> &ApplicationId {

@@ -626,20 +626,27 @@ impl ExecutionPlan {
     }
 
     pub fn run(
-        mut self,
+        self,
         mcap_bytes: &[u8],
         summary: &mcap::Summary,
         time_type: TimeType,
         emit: &(dyn Fn(Chunk) + Send + Sync),
     ) -> anyhow::Result<()> {
-        let empty_channels = collect_empty_channels(mcap_bytes, summary)?;
-        let ctx = DecoderContext::new(mcap_bytes, summary, &self.topic_filter, empty_channels);
+        let Self {
+            file_decoders,
+            mut runners,
+            assignments: _,
+            topic_filter,
+            time_range,
+        } = self;
 
-        for mut decoder in self.file_decoders {
+        let empty_channels = collect_empty_channels(mcap_bytes, summary)?;
+        let ctx = DecoderContext::new(mcap_bytes, summary, &topic_filter, empty_channels);
+
+        for mut decoder in file_decoders {
             decoder.process(&ctx, emit)?;
         }
 
-        let time_range = self.time_range;
         if let Some(time_range) = time_range {
             re_log::info!(
                 "Filtering MCAP messages to log_time range [{}, {}) (nanoseconds)",
@@ -647,7 +654,7 @@ impl ExecutionPlan {
                 time_range.end(),
             );
         }
-        for runner in &mut self.runners {
+        for runner in &mut runners {
             runner.process(mcap_bytes, summary, time_type, time_range, emit)?;
         }
         Ok(())
@@ -938,7 +945,6 @@ fn join_without_pool<RA: Send, RB>(
 mod tests {
     use std::io;
 
-    use re_log_types::TimeType;
     use re_sdk_types::archetypes::McapMessage;
 
     use super::*;

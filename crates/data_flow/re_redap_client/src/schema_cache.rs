@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use arrow::datatypes::Schema as ArrowSchema;
-use re_protos::common::v1alpha1::ext::SchemaId;
+use re_sorbet::{SchemaId, SchemaIdMap};
 
 /// Layer schemas already fetched from one server, keyed by their [`SchemaId`].
 ///
@@ -13,7 +13,7 @@ pub struct SchemaCacheHandle(Arc<re_mutex::RwLock<SchemaCache>>);
 
 #[derive(Default, re_byte_size::SizeBytes)]
 struct SchemaCache {
-    schemas: ahash::HashMap<SchemaId, Arc<ArrowSchema>>,
+    schemas: SchemaIdMap<Arc<ArrowSchema>>,
 
     /// The server answered `/GetSchemas` with `Unimplemented`.
     ///

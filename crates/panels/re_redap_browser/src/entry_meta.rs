@@ -325,7 +325,12 @@ async fn segment_ids(client: CatalogClient, entry_id: EntryId) -> ApiResult<Segm
 }
 
 async fn schema(client: CatalogClient, entry_id: EntryId) -> ApiResult<Arc<DatasetSchema>> {
-    let schema = client.get_dataset_schema(entry_id).await?;
+    let schema = client
+        .get_dataset_schema(
+            entry_id,
+            re_protos::cloud::v1alpha1::DatasetQueryScope::Full,
+        )
+        .await?;
 
     let schema = DatasetSchema::from_arrow(&schema.schema).map_err(|err| {
         ApiError::deserialization(

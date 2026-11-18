@@ -11,7 +11,7 @@
 /// \py of `rerun.components.TensorDataBatch` does not support more than a single element.
 /// \py This will be addressed as part of <https://github.com/rerun-io/rerun/issues/6832>.
 ///
-/// \example archetypes/tensor_simple title="Simple tensor" image="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png"
+/// \example archetypes/tensor_simple title="Simple tensor" image="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/1200w.png" alt="Tensor view showing an 8 by 6 Viridis heatmap slice, with channel and batch sliders and dimension mapping in the selection panel"
 #[rerun::rerun_type]
 #[docs(category = "Image & tensor")]
 #[docs(view_types = "TensorView, BarChartView: for 1D tensors")]

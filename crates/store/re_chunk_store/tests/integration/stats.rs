@@ -97,7 +97,7 @@ fn stats() -> anyhow::Result<()> {
         let chunk = Chunk::builder(entity_path.clone())
             .with_sparse_component_batches(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [
                     (MyPoints::descriptor_colors(), None),
                     (
@@ -108,7 +108,7 @@ fn stats() -> anyhow::Result<()> {
             )
             .with_sparse_component_batches(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [
                     (
                         MyPoints::descriptor_colors(),
@@ -119,7 +119,7 @@ fn stats() -> anyhow::Result<()> {
             )
             .with_sparse_component_batches(
                 RowId::new(),
-                TimePoint::default(),
+                TimePoint::STATIC,
                 [
                     (
                         MyPoints::descriptor_colors(),

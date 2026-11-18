@@ -478,7 +478,7 @@ pub fn entity_db_button_ui(
 ) -> egui::Response {
     re_tracing::profile_function!();
 
-    use re_viewer_context::{SystemCommand, SystemCommandSender as _};
+    use re_viewer_context::SystemCommandSender as _;
 
     let app_id_prefix = if include_app_id {
         format!("{} - ", entity_db.application_id())

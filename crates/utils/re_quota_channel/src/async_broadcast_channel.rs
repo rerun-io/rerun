@@ -128,7 +128,8 @@ impl<T> TrackedMessage<T> {
     /// The `TrackedInner` (via the Arc) will decrement counters when all
     /// clones of this message have been dropped.
     fn into_value(self) -> T {
-        self.value
+        let Self { value, state: _ } = self;
+        value
     }
 }
 
@@ -442,7 +443,6 @@ pub fn channel<T: Clone>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::sync::Arc;
     use std::time::Duration;
 
     #[derive(Clone, Debug, PartialEq)]

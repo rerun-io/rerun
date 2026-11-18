@@ -751,15 +751,12 @@ impl DataQueryPropertyResolver<'_> {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use re_chunk::{Chunk, EntityPath, RowId};
-    use re_entity_db::EntityDb;
+    use re_chunk::{Chunk, RowId};
     use re_log_types::example_components::{MyPoint, MyPoints};
-    use re_log_types::{StoreId, TimePoint, Timeline};
+    use re_log_types::{StoreId, TimePoint};
     use re_viewer_context::{
         ActiveStoreContext, FallbackProviderRegistry, IdentifiedViewSystem as _, StoreCache,
-        ViewClass as _, ViewClassRegistry, VisualizableReason, blueprint_timeline,
+        ViewClass as _, ViewClassRegistry, blueprint_timeline,
     };
 
     use super::*;

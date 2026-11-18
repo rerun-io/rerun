@@ -19,7 +19,7 @@ pub enum EntryKind {
 /// [`crate::viewer_url::ViewerUrl::from_route`] and
 /// [`crate::viewer_url::ViewerUrl::to_route`] convert between the two.
 ///
-/// The URL of each route is documented in `docs/content/reference/viewer/urls.md`.
+/// The URL of each route is documented in `docs/content/viewer/extend/urls.md`.
 /// Keep that page up to date when adding or changing a route.
 #[derive(Clone, PartialEq, Eq)]
 pub enum Route {

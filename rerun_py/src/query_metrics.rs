@@ -451,7 +451,7 @@ impl PyQueryMetrics {
 /// Cheap to clone — the inner `MetricsCollector` is itself an `Arc` wrapper,
 /// so each attached `DataframeQueryTableProvider` and the Python-side handle
 /// share the same buffer.
-#[pyclass( // NOLINT: ignore[py-cls-eq] opaque handle — eq would be the same as `is`
+#[pyclass( // relint: allow(pyclass_eq): opaque handle — eq would be the same as `is`
     name = "_MetricsCollectorHandle",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -459,7 +459,7 @@ pub struct PyMetricsCollectorHandle {
     pub(crate) collector: MetricsCollector,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str] opaque handle
+#[pymethods] // relint: allow(pymethods_str): opaque handle
 impl PyMetricsCollectorHandle {
     /// Non-destructive copy of all snapshots received so far.
     ///

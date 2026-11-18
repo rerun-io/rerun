@@ -1,7 +1,7 @@
 ---
 title: Set up a Python project
 order: 100
-description: Bootstrap a Python project that depends on rerun-sdk
+description: Bootstrap a Python project that depends on the rerun-sdk package
 ---
 
 You should have already [installed the Python SDK](../install-rerun/python.md).
@@ -13,4 +13,4 @@ Open your editor of choice, create a new file, and import Rerun:
 import rerun as rr
 ```
 
-You're now ready to follow the [Log and Ingest](../data-in.md) tutorial.
+You're now ready to follow the [Log and Ingest](../../logging-and-ingestion/tutorial.md) tutorial.

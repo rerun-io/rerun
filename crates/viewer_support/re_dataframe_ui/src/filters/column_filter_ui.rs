@@ -612,7 +612,7 @@ impl ColumnFilter {
                     .find(|column| column.column_filter.field.name() == self.field.name())
                     .map(|column| column.display_name.as_str())
             })
-            .unwrap_or(self.field.name());
+            .unwrap_or_else(|| self.field.name());
         let layout_job = SyntaxHighlightedBuilder::new()
             .with_body_default(display_name)
             .with_keyword(" ")

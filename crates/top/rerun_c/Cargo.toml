@@ -31,13 +31,13 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 crate-type = ["staticlib"]
 name = "rerun_c"
 doctest = false
-test = false
 
 
 [dependencies]
 re_arrow_util.workspace = true
 re_build_info.workspace = true
 re_crash_handler.workspace = true
+re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_sdk = { workspace = true, features = ["importers", "server"] }
 re_video.workspace = true

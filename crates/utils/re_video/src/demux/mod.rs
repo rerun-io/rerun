@@ -247,7 +247,7 @@ impl VideoDataDescription {
     /// large videos.
     ///
     /// Check implementation for details.
-    pub fn sanity_check(&self) -> Result<(), String> {
+    pub fn sanity_check(&self) -> Result<(), SanityCheckError> {
         self.sanity_check_keyframes()?;
         self.sanity_check_samples()?;
 
@@ -262,53 +262,48 @@ impl VideoDataDescription {
                 re_mp4::StsdBoxContent::Vp08(_) => crate::VideoCodec::VP8,
                 re_mp4::StsdBoxContent::Vp09(_) => crate::VideoCodec::VP9,
                 _ => {
-                    return Err(format!(
-                        "STSD box content type {:?} doesn't have a supported codec.",
-                        stsd.contents
-                    ));
+                    return Err(SanityCheckError::UnsupportedStsdCodec {
+                        stsd_contents: format!("{:?}", stsd.contents),
+                    });
                 }
             };
             if stsd_codec != self.codec {
-                return Err(format!(
-                    "STSD box content type {:?} does not match with the internal codec {:?}.",
-                    stsd.contents, self.codec
-                ));
+                return Err(SanityCheckError::StsdCodecMismatch {
+                    stsd_contents: format!("{:?}", stsd.contents),
+                    codec: self.codec.clone(),
+                });
             }
         }
 
         Ok(())
     }
 
-    fn sanity_check_keyframes(&self) -> Result<(), String> {
+    fn sanity_check_keyframes(&self) -> Result<(), SanityCheckError> {
         if !self.keyframe_indices.is_sorted() {
-            return Err("Keyframes aren't sorted".to_owned());
+            return Err(SanityCheckError::UnsortedKeyframes);
         }
 
         for &keyframe in &self.keyframe_indices {
             if keyframe < self.samples.min_index() {
-                return Err(format!(
-                    "Keyframe {keyframe} refers to sample to the left of the list of samples.",
-                ));
+                return Err(SanityCheckError::KeyframeBeforeSamples(keyframe));
             }
 
             if keyframe >= self.samples.next_index() {
-                return Err(format!(
-                    "Keyframe {keyframe} refers to sample to the right of the list of samples.",
-                ));
+                return Err(SanityCheckError::KeyframeAfterSamples(keyframe));
             }
 
             match &self.samples[keyframe] {
                 SampleMetadataState::Present(sample_metadata) => {
                     // All samples at the beginning of a GOP are marked with `is_sync==true`
                     if !sample_metadata.is_sync {
-                        return Err(format!("Keyframe {keyframe} is not marked with `is_sync`."));
+                        return Err(SanityCheckError::KeyframeNotSync(keyframe));
                     }
                 }
                 SampleMetadataState::Clear { .. } => {
-                    return Err(format!("Keyframe {keyframe} refers to a clear"));
+                    return Err(SanityCheckError::KeyframeIsCleared(keyframe));
                 }
                 SampleMetadataState::Unloaded { .. } => {
-                    return Err(format!("Keyframe {keyframe} refers to an unloaded sample"));
+                    return Err(SanityCheckError::KeyframeIsUnloaded(keyframe));
                 }
             }
         }
@@ -321,33 +316,35 @@ impl VideoDataDescription {
             .filter_map(|(idx, s)| Some((idx, s.sample()?)))
         {
             if sample.is_sync && keyframes.next().is_none_or(|idx| idx != sample_idx) {
-                return Err(format!("Not tracking the keyframe {sample_idx}."));
+                return Err(SanityCheckError::UntrackedKeyframe(sample_idx));
             }
         }
         Ok(())
     }
 
-    fn sanity_check_samples(&self) -> Result<(), String> {
+    fn sanity_check_samples(&self) -> Result<(), SanityCheckError> {
         // Decode timestamps are monotonically increasing.
         for ((a_idx, a), (b_idx, b)) in self.samples.iter_indexed().tuple_windows() {
             if let SampleMetadataState::Present(a) = a
                 && let SampleMetadataState::Present(b) = b
                 && a.decode_timestamp > b.decode_timestamp
             {
-                return Err(format!(
-                    "Decode timestamps for {a_idx}..{b_idx} are not monotonically increasing: {:?} {:?}",
-                    a.decode_timestamp, b.decode_timestamp
-                ));
+                return Err(SanityCheckError::NonMonotonicDecodeTimestamps {
+                    a_idx,
+                    b_idx,
+                    a_timestamp: a.decode_timestamp,
+                    b_timestamp: b.decode_timestamp,
+                });
             }
         }
 
         // Sample statistics are consistent with the samples.
         let expected_statistics = SamplesStatistics::new(&self.samples);
         if expected_statistics != self.samples_statistics {
-            return Err(format!(
-                "Sample statistics are not consistent with the samples.\nExpected: {:?}\nActual: {:?}",
-                expected_statistics, self.samples_statistics
-            ));
+            return Err(SanityCheckError::InconsistentStatistics {
+                expected: Box::new(expected_statistics),
+                actual: Box::new(self.samples_statistics.clone()),
+            });
         }
 
         Ok(())
@@ -434,6 +431,87 @@ pub enum SampleConversionError {
 
     #[error("Failed converting sample to Annex-B: {0}")]
     AnnexB(#[from] AnnexBStreamWriteError),
+}
+
+/// A violated invariant of a [`VideoDataDescription`], found by [`VideoDataDescription::sanity_check`].
+#[derive(thiserror::Error, Debug)]
+pub enum SanityCheckError {
+    /// The STSD box has a content type without a supported codec.
+    #[error("STSD box content type {stsd_contents} doesn't have a supported codec.")]
+    UnsupportedStsdCodec {
+        /// Debug-formatted STSD box contents.
+        stsd_contents: String,
+    },
+
+    /// The STSD box content type does not match the codec of the description.
+    #[error(
+        "STSD box content type {stsd_contents} does not match with the internal codec {codec:?}."
+    )]
+    StsdCodecMismatch {
+        /// Debug-formatted STSD box contents.
+        stsd_contents: String,
+
+        /// The codec of the description.
+        codec: VideoCodec,
+    },
+
+    /// The keyframe indices are not sorted.
+    #[error("Keyframes aren't sorted")]
+    UnsortedKeyframes,
+
+    /// A keyframe refers to a sample before the first sample.
+    #[error("Keyframe {0} refers to sample to the left of the list of samples.")]
+    KeyframeBeforeSamples(SampleIndex),
+
+    /// A keyframe refers to a sample after the last sample.
+    #[error("Keyframe {0} refers to sample to the right of the list of samples.")]
+    KeyframeAfterSamples(SampleIndex),
+
+    /// A keyframe refers to a sample that is not marked as sync.
+    #[error("Keyframe {0} is not marked with `is_sync`.")]
+    KeyframeNotSync(SampleIndex),
+
+    /// A keyframe refers to a cleared sample.
+    #[error("Keyframe {0} refers to a clear")]
+    KeyframeIsCleared(SampleIndex),
+
+    /// A keyframe refers to a sample that is not loaded.
+    #[error("Keyframe {0} refers to an unloaded sample")]
+    KeyframeIsUnloaded(SampleIndex),
+
+    /// A sync sample is not tracked as a keyframe.
+    #[error("Not tracking the keyframe {0}.")]
+    UntrackedKeyframe(SampleIndex),
+
+    /// Decode timestamps decrease between two consecutive samples.
+    #[error(
+        "Decode timestamps for {a_idx}..{b_idx} are not monotonically increasing: {a_timestamp:?} {b_timestamp:?}"
+    )]
+    NonMonotonicDecodeTimestamps {
+        /// Index of the first sample.
+        a_idx: SampleIndex,
+
+        /// Index of the second sample.
+        b_idx: SampleIndex,
+
+        /// Decode timestamp of the first sample.
+        a_timestamp: Time,
+
+        /// Decode timestamp of the second sample.
+        b_timestamp: Time,
+    },
+
+    /// The cached sample statistics differ from the ones computed from the samples.
+    #[error(
+        "Sample statistics are not consistent with the samples.\nExpected: {expected:?}\nActual: {actual:?}"
+    )]
+    InconsistentStatistics {
+        /// Statistics computed from the samples.
+        expected: Box<SamplesStatistics>,
+
+        /// Statistics stored in the description.
+        actual: Box<SamplesStatistics>,
+    },
 }
 
 /// Various information about how the video was encoded.
@@ -770,7 +848,7 @@ impl VideoDataDescription {
             total_secs += duration.into_secs(timescale);
         }
 
-        (total_secs > 0.0).then(|| total_bytes as f64 * 8.0 / total_secs)
+        (total_secs > 0.0).then_some(total_bytes as f64 * 8.0 / total_secs)
     }
 
     /// Determines the video timestamps of all present frames inside a video, returning raw time values.
@@ -1324,7 +1402,16 @@ impl SampleMetadata {
     /// Returns `None` if the sample is out of bounds, which can only happen
     /// if `data` is not the original video data.
     pub fn get(&self, video_source: &dyn GetVideoSource, sample_idx: SampleIndex) -> Option<Chunk> {
-        let bytes = video_source.get_video_chunk(self.source);
+        let Self {
+            is_sync,
+            frame_nr,
+            decode_timestamp,
+            presentation_timestamp,
+            duration,
+            source,
+        } = *self;
+
+        let bytes = video_source.get_video_chunk(source);
 
         if bytes.is_empty() {
             return None;
@@ -1333,12 +1420,12 @@ impl SampleMetadata {
         Some(Chunk {
             data: bytes.to_vec(),
             sample_idx,
-            frame_nr: self.frame_nr,
-            decode_timestamp: self.decode_timestamp,
-            presentation_timestamp: self.presentation_timestamp,
-            duration: self.duration,
-            is_sync: self.is_sync,
-            source: self.source,
+            frame_nr,
+            decode_timestamp,
+            presentation_timestamp,
+            duration,
+            is_sync,
+            source,
         })
     }
 }
@@ -1373,6 +1460,16 @@ pub enum VideoLoadError {
     #[error("Video file has invalid sample entries")]
     InvalidSamples,
 
+    /// Not even the first sample of the video track fits within the file.
+    #[error(
+        "Video file is truncated or corrupt: the first sample is {sample_size} bytes at offset {sample_offset}, but the file is only {file_size} bytes"
+    )]
+    SampleOutOfBounds {
+        sample_offset: u64,
+        sample_size: u64,
+        file_size: u64,
+    },
+
     #[error(
         "Video file has no timescale, which is required to determine frame timestamps in time units"
     )]
@@ -1403,6 +1500,9 @@ pub enum VideoLoadError {
 
     #[error("Failed to parse H.264 SPS from mp4: {0:?}")]
     SpsParsingError(#[size_bytes(ignore)] h264_reader::nal::sps::SpsError),
+
+    #[error("Failed to parse H.265 SPS from mp4: {0}")]
+    H265SpsParsingError(#[size_bytes(ignore)] String),
 }
 
 impl std::fmt::Debug for VideoDataDescription {
@@ -1669,6 +1769,211 @@ mod tests {
             }
             Err(other) => panic!("expected UnsupportedCodec, got {other:?}"),
             Ok(_) => panic!("expected loading MPEG-4 Part 2 to fail"),
+        }
+    }
+
+    /// Appends zero bytes to the first SPS of the `avcC` box, growing every box around it.
+    ///
+    /// Sample offsets are only left intact if `moov` comes after `mdat`.
+    fn pad_avcc_sps(mp4: &[u8], num_zeros: usize) -> Vec<u8> {
+        let mut padded = mp4.to_vec();
+        let mut grow = |offset: usize, num_bytes: usize| {
+            let field = &mut padded[offset..offset + num_bytes];
+            let value = field
+                .iter()
+                .fold(0, |value, &byte| (value << 8) | byte as usize);
+            let value = (value + num_zeros).to_be_bytes();
+            field.copy_from_slice(&value[value.len() - num_bytes..]);
+        };
+
+        let mut offset = 0;
+        loop {
+            let size = u32::from_be_bytes(mp4[offset..offset + 4].try_into().unwrap()) as usize;
+            let children_offset = match &mp4[offset + 4..offset + 8] {
+                b"moov" | b"trak" | b"mdia" | b"minf" | b"stbl" => 8,
+                b"stsd" => 16,
+                b"avc1" => 86,
+                b"avcC" => break,
+                _ => {
+                    offset += size;
+                    continue;
+                }
+            };
+            grow(offset, 4);
+            offset += children_offset;
+        }
+
+        grow(offset, 4);
+        let sps_len_offset = offset + 14;
+        let sps_len = u16::from_be_bytes([mp4[sps_len_offset], mp4[sps_len_offset + 1]]) as usize;
+        grow(sps_len_offset, 2);
+
+        let sps_end = sps_len_offset + 2 + sps_len;
+        padded.splice(sps_end..sps_end, std::iter::repeat_n(0x00, num_zeros));
+        padded
+    }
+
+    fn avcc_sps(details: &VideoEncodingDetails) -> &[u8] {
+        match &details.stsd.as_ref().unwrap().contents {
+            re_mp4::StsdBoxContent::Avc1(avc1) => &avc1.avcc.sequence_parameter_sets[0].bytes,
+            _ => panic!("expected an `avc1` sample entry"),
+        }
+    }
+
+    #[test]
+    fn test_load_mp4_with_zero_padded_avcc_sps() {
+        let mp4 = std::fs::read(video_test_file_mp4(&VideoCodec::H264, false)).unwrap();
+
+        let original = VideoDataDescription::load_mp4(&mp4, "original").unwrap();
+        let original_details = original.encoding_details.unwrap();
+
+        for num_zeros in 1..=4 {
+            let padded = VideoDataDescription::load_mp4(&pad_avcc_sps(&mp4, num_zeros), "padded")
+                .unwrap_or_else(|err| panic!("{num_zeros} trailing zero bytes: {err}"));
+            let padded_details = padded.encoding_details.unwrap();
+
+            let mut expected_sps = avcc_sps(&original_details).to_vec();
+            expected_sps.resize(expected_sps.len() + num_zeros, 0x00);
+            assert_eq!(avcc_sps(&padded_details), expected_sps);
+
+            assert_eq!(
+                VideoEncodingDetails {
+                    stsd: None,
+                    ..padded_details
+                },
+                VideoEncodingDetails {
+                    stsd: None,
+                    ..original_details.clone()
+                }
+            );
+            assert_eq!(
+                padded.samples.num_elements(),
+                original.samples.num_elements()
+            );
+        }
+    }
+
+    /// Overwrites the size of one sample in the first `stsz` box.
+    fn set_sample_size(mp4: &mut [u8], sample_idx: usize, size: u32) {
+        let stsz = mp4.windows(4).position(|w| w == b"stsz").unwrap();
+        // Box type, version & flags, uniform sample size, sample count, then the per-sample sizes.
+        assert_eq!(
+            mp4[stsz + 8..stsz + 12],
+            [0; 4],
+            "fixture must use per-sample sizes"
+        );
+        let entry = stsz + 16 + 4 * sample_idx;
+        mp4[entry..entry + 4].copy_from_slice(&size.to_be_bytes());
+    }
+
+    fn fixture(codec: &str) -> Vec<u8> {
+        let path = format!("tests/assets/video/Big_Buck_Bunny_1080_1s_{codec}.mp4");
+        std::fs::read(workspace_dir().join(path)).unwrap()
+    }
+
+    fn assert_all_samples_readable(video: &VideoDataDescription, data: &[u8]) {
+        for (sample_idx, sample) in video.samples.iter_indexed() {
+            let sample = sample.sample().unwrap();
+            assert!(
+                sample.get(&VideoSliceSource(data), sample_idx).is_some(),
+                "sample {sample_idx} is not readable"
+            );
+        }
+    }
+
+    /// The end of the byte span of the given sample.
+    fn sample_end(video: &VideoDataDescription, sample_idx: SampleIndex) -> usize {
+        match video.samples[sample_idx].sample().unwrap().source {
+            VideoSource::Span(span) => span.range_usize().end,
+            VideoSource::Id { .. } => panic!("mp4 samples are spans"),
+        }
+    }
+
+    #[test]
+    fn test_truncated_file_keeps_leading_samples() {
+        // The VP8 fixture has its `moov` box up front, so cutting the file only loses samples.
+        let full = fixture("vp8");
+        let full_video = VideoDataDescription::load_from_bytes(&full, "video/mp4", "vp8").unwrap();
+        let full_duration = full_video.duration().unwrap();
+
+        // Cut one byte short of the end of sample 20.
+        let truncated = &full[..sample_end(&full_video, 20) - 1];
+        let video = VideoDataDescription::load_from_bytes(truncated, "video/mp4", "vp8").unwrap();
+
+        assert_eq!(video.samples.num_elements(), 20);
+        assert!(
+            video.duration().unwrap() < full_duration,
+            "the duration must not cover the dropped samples"
+        );
+        assert_all_samples_readable(&video, truncated);
+    }
+
+    #[test]
+    fn test_truncated_keyframe_is_not_listed_as_keyframe() {
+        let full =
+            std::fs::read(workspace_dir().join("tests/assets/video/Sintel_1080_10s_av1.mp4"))
+                .unwrap();
+        let full_video = VideoDataDescription::load_from_bytes(&full, "video/mp4", "av1").unwrap();
+        let second_keyframe = full_video.keyframe_indices[1];
+
+        let truncated = &full[..sample_end(&full_video, second_keyframe) - 1];
+        let video = VideoDataDescription::load_from_bytes(truncated, "video/mp4", "av1").unwrap();
+
+        assert_eq!(video.samples.num_elements(), second_keyframe);
+        assert_eq!(video.keyframe_indices, vec![full_video.keyframe_indices[0]]);
+        video.sanity_check().unwrap();
+    }
+
+    #[test]
+    fn test_truncated_trailing_box_is_ignored() {
+        let full = fixture("h264");
+        let num_samples = VideoDataDescription::load_from_bytes(&full, "video/mp4", "h264")
+            .unwrap()
+            .samples
+            .num_elements();
+
+        // A `moof` box that declares 112 bytes, cut off at various lengths.
+        let mut moof = 112_u32.to_be_bytes().to_vec();
+        moof.extend_from_slice(b"moof");
+        moof.resize(111, 0);
+
+        for cut in [1, 7, 8, 60, 111] {
+            let mut data = full.clone();
+            data.extend_from_slice(&moof[..cut]);
+
+            let video = VideoDataDescription::load_from_bytes(&data, "video/mp4", "h264").unwrap();
+
+            assert_eq!(video.samples.num_elements(), num_samples, "cut at {cut}");
+        }
+    }
+
+    #[test]
+    fn test_sample_past_end_of_file_drops_the_tail() {
+        // VP9 reads samples while loading, the others only when sampled later.
+        for codec in ["vp9", "h264"] {
+            let mut data = fixture(codec);
+            set_sample_size(&mut data, 10, u32::MAX);
+
+            let video = VideoDataDescription::load_from_bytes(&data, "video/mp4", codec).unwrap();
+
+            assert_eq!(video.samples.num_elements(), 10, "{codec}");
+            assert_all_samples_readable(&video, &data);
+        }
+    }
+
+    #[test]
+    fn test_first_sample_past_end_of_file_is_rejected() {
+        for codec in ["vp9", "h264"] {
+            let mut data = fixture(codec);
+            set_sample_size(&mut data, 0, u32::MAX);
+
+            match VideoDataDescription::load_from_bytes(&data, "video/mp4", codec) {
+                Err(VideoLoadError::SampleOutOfBounds { file_size, .. }) => {
+                    assert_eq!(file_size, data.len() as u64);
+                }
+                Err(other) => panic!("expected SampleOutOfBounds, got {other:?}"),
+                Ok(_) => panic!("expected loading {codec} with an oversized sample to fail"),
+            }
         }
     }
 

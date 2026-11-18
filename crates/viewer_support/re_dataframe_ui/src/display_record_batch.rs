@@ -265,6 +265,7 @@ impl DisplayComponentColumn {
                 &self.entity_path,
                 component_descr,
                 row_id,
+                &re_viewer_context::VisualizerComponentSource::identity(component_descr.component),
                 data_to_display.as_ref(),
             );
         } else {

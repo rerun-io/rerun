@@ -32,7 +32,7 @@ The visualizations in this example were created with the following Rerun code:
 ### Timelines
 
 All data logged using Rerun in the following sections is connected to a specific frame.
-Rerun assigns a frame to each piece of logged data, and these timestamps are associated with a [`timeline`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines).
+Rerun assigns a frame to each piece of logged data, and these timestamps are associated with a [`timeline`](https://www.rerun.io/docs/logging-and-ingestion/data-model/timelines).
 
  ```python
 for n, image_uri in enumerate(args.images):

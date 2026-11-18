@@ -9,6 +9,7 @@
   ],
   "private": true,
   "scripts": {
+    "postinstall": "npm run build:proto --workspace web-viewer",
     "docs": "node scripts/docs.mjs",
     "docs:serve": "node scripts/serve-docs.mjs"
   },

@@ -20,6 +20,7 @@ warnings.warn(
 )
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     """Forward every lookup to [`rerun.encodings`][] (see PEP 562)."""
     return getattr(encodings, name)

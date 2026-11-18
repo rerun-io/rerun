@@ -78,11 +78,11 @@ impl EntityPathPart {
                                 Ok(c) => {
                                     output.push(c);
                                 }
-                                Err(s) => {
+                                Err(InvalidUnicodeEscape { consumed }) => {
                                     // Invalid unicode escape: treat it as a (escaped) backslash
                                     output.push('\\');
                                     output.push('u');
-                                    output.push_str(&s);
+                                    output.push_str(&consumed);
                                 }
                             }
                         }
@@ -138,7 +138,9 @@ impl EntityPathPart {
                             Ok(c) => {
                                 output.push(c);
                             }
-                            Err(s) => return Err(PathParseError::InvalidUnicodeEscape(s)),
+                            Err(InvalidUnicodeEscape { consumed }) => {
+                                return Err(PathParseError::InvalidUnicodeEscape(consumed));
+                            }
                         },
                         c if c.is_ascii_punctuation() || c == ' ' => {
                             output.push(c);
@@ -209,6 +211,13 @@ impl EntityPathPart {
     }
 }
 
+/// A malformed unicode escape sequence.
+#[derive(Debug)]
+struct InvalidUnicodeEscape {
+    /// The input characters consumed while parsing the escape.
+    consumed: String,
+}
+
 /// Parses e.g. `{262E}`.
 ///
 /// Rust-style unicode escapes: 1-6 hexadecimal digits between the braces,
@@ -216,8 +225,9 @@ impl EntityPathPart {
 /// Code points above `U+FFFF` need more than four digits,
 /// so a fixed width of four would reject e.g. emoji.
 ///
-/// Returns the consumed input characters on fail.
-fn parse_unicode_escape(input: &mut impl Iterator<Item = char>) -> Result<char, String> {
+fn parse_unicode_escape(
+    input: &mut impl Iterator<Item = char>,
+) -> Result<char, InvalidUnicodeEscape> {
     /// `{` + at most six hex digits + `}`
     const MAX_LEN: usize = 8;
 
@@ -232,21 +242,31 @@ fn parse_unicode_escape(input: &mut impl Iterator<Item = char>) -> Result<char, 
     let chars = all_chars.as_str();
 
     let Some(chars) = chars.strip_prefix('{') else {
-        return Err(all_chars);
+        return Err(InvalidUnicodeEscape {
+            consumed: all_chars,
+        });
     };
     let Some(chars) = chars.strip_suffix('}') else {
-        return Err(all_chars);
+        return Err(InvalidUnicodeEscape {
+            consumed: all_chars,
+        });
     };
 
     if chars.is_empty() || 6 < chars.len() || !chars.chars().all(|c| c.is_ascii_hexdigit()) {
-        return Err(all_chars);
+        return Err(InvalidUnicodeEscape {
+            consumed: all_chars,
+        });
     }
 
     let Ok(num) = u32::from_str_radix(chars, 16) else {
-        return Err(all_chars);
+        return Err(InvalidUnicodeEscape {
+            consumed: all_chars,
+        });
     };
 
-    char::from_u32(num).ok_or(all_chars)
+    char::from_u32(num).ok_or(InvalidUnicodeEscape {
+        consumed: all_chars,
+    })
 }
 
 impl From<InternedString> for EntityPathPart {

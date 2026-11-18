@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from typing import TYPE_CHECKING
 
 import torch.utils.data
@@ -9,9 +10,11 @@ import torch.utils.data
 from rerun._tracing import with_tracing
 
 from ._config import TimeAlignedSampling
+from ._metrics import DataloaderMetrics
 from ._sample_index import SampleIndex, _validate_timeline_sampling
 from ._utils import (
     FetchedBlock,
+    FetchMetricsAccumulator,
     _build_query_plans,
     _build_targets,
     _decode_iter,
@@ -20,6 +23,7 @@ from ._utils import (
     _fetch_queries_parallel,
     _index_fetched_block,
     _locate_samples,
+    _record_query_metrics,
     _resolve_decode_requests_in_block,
     _resolve_decode_threads,
     _warn_if_fork_unsafe,
@@ -101,6 +105,8 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
             self._fields,
             timeline_sampling=timeline_sampling,
         )
+        self._metrics: DataloaderMetrics | None = DataloaderMetrics()
+        self._metrics_publisher = self._metrics._worker_publisher()
 
         self._connection = _WorkerConnection.from_source(source, fields)
 
@@ -158,8 +164,17 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         # Query construction only needs the grid step / dtype, not the full sample space.
         self._sample_index = SampleIndex([], ns_per_sample=meta.ns_per_sample, ns_dtype=meta.ns_dtype)
         _validate_timeline_sampling(timeline_sampling, self._sample_index)
+        self._metrics = DataloaderMetrics()
+        self._metrics_publisher = self._metrics._worker_publisher()
         self._connection = _WorkerConnection.from_source(source, fields)
         return self
+
+    @property
+    def metrics(self) -> DataloaderMetrics:
+        """Cumulative fetch and decode metrics aggregated across this dataset's workers."""
+        if self._metrics is None:
+            raise RuntimeError("Dataloader metrics are only available from the process that created the dataset")
+        return self._metrics
 
     @property
     def sample_index(self) -> SampleIndex:
@@ -171,6 +186,12 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         if self._manifest is not None:
             return self._manifest.num_rows
         return self._sample_index.total_samples
+
+    def __getstate__(self) -> dict[str, object]:
+        """Keep the parent-owned metrics reader out of spawned workers."""
+        state = self.__dict__.copy()
+        state["_metrics"] = None
+        return state
 
     def __getitem__(self, idx: int) -> DecodedSample:  # ty: ignore[invalid-method-override]
         """Fetch a single sample by global index."""
@@ -184,55 +205,80 @@ class RerunMapDataset(torch.utils.data.Dataset[DecodedSample]):
         PyTorch's `DataLoader` calls this once per batch.
         """
         view, decoders = self._connection.ensure()
-        if self._manifest is not None:
-            from .manifest._manifest_read import targets_from_rows
+        fetch_metrics = FetchMetricsAccumulator()
+        fetch_started_ns = time.perf_counter_ns()
+        with _record_query_metrics(fetch_metrics):
+            if self._manifest is not None:
+                from .manifest._manifest_read import targets_from_rows
 
-            rows = self._manifest.to_arrow().take(indices)
-            targets = targets_from_rows(rows, fields=self._fields, sample_index=self._sample_index)
-        else:
-            located = _locate_samples(
-                indices,
-                sample_index=self._sample_index,
-                num_fields=len(self._fields),
-            )
-            keyframes = (
-                {}
-                if isinstance(self._timeline_sampling, TimeAlignedSampling)
-                else _discover_prior_keyframes(
-                    view=view,
-                    index=self._index,
-                    fields=self._fields,
-                    located=located,
+                rows = self._manifest.to_arrow().take(indices)
+                targets = targets_from_rows(rows, fields=self._fields, sample_index=self._sample_index)
+            else:
+                located = _locate_samples(
+                    indices,
                     sample_index=self._sample_index,
+                    num_fields=len(self._fields),
                 )
-            )
-            targets = _build_targets(
-                located,
-                keyframes,
-                fields=self._fields,
+                keyframes = (
+                    {}
+                    if isinstance(self._timeline_sampling, TimeAlignedSampling)
+                    else _discover_prior_keyframes(
+                        view=view,
+                        index=self._index,
+                        fields=self._fields,
+                        located=located,
+                        sample_index=self._sample_index,
+                    )
+                )
+                targets = _build_targets(
+                    located,
+                    keyframes,
+                    fields=self._fields,
+                    sample_index=self._sample_index,
+                    timeline_sampling=self._timeline_sampling,
+                )
+
+            query_plans = _build_query_plans(
+                targets,
+                self._fields,
                 sample_index=self._sample_index,
                 timeline_sampling=self._timeline_sampling,
+                index=self._index,
             )
-
-        query_plans = _build_query_plans(
-            targets,
-            self._fields,
-            sample_index=self._sample_index,
-            timeline_sampling=self._timeline_sampling,
-            index=self._index,
+            fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
+        fetched = FetchedBlock(
+            targets=targets,
+            fetched_groups=fetched_groups,
+            fetch_direct_original_ranges=fetch_metrics.direct_original_ranges,
+            fetch_direct_merged_ranges=fetch_metrics.direct_merged_ranges,
+            fetch_grpc_requests=fetch_metrics.grpc_requests,
+            delivered_bytes=fetch_metrics.delivered_bytes,
         )
-        fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
-        fetched = FetchedBlock(targets=targets, fetched_groups=fetched_groups)
+        fetch_elapsed_ns = time.perf_counter_ns() - fetch_started_ns
+        self._metrics_publisher.record_fetch(
+            stall_ns=fetch_elapsed_ns,
+            samples_fetched=len(fetched.targets),
+            direct_original_ranges=fetch_metrics.direct_original_ranges,
+            direct_merged_ranges=fetch_metrics.direct_merged_ranges,
+            grpc_requests=fetch_metrics.grpc_requests,
+            delivered_bytes=fetch_metrics.delivered_bytes,
+        )
         with _decode_pool(self._decode_threads, len(self._fields)) as executor:
+            preparation_started_ns = time.perf_counter_ns()
             # 1. Group each fetched table into contiguous, index-ordered segment spans.
             indexed = _index_fetched_block(fetched, self._index)
             # 2. Map each requested timeline range to physical Arrow rows.
             prepared = _resolve_decode_requests_in_block(indexed)
+            preparation_elapsed_ns = time.perf_counter_ns() - preparation_started_ns
             # 3. Decode field batches and scatter their results back into sample order.
-            return list(
+            samples = list(
                 _decode_iter(
                     prepared=prepared,
                     decoders=decoders,
                     executor=executor,
+                    metrics=self._metrics_publisher,
+                    preparation_elapsed_ns=preparation_elapsed_ns,
                 ),
             )
+        self._metrics_publisher.flush()
+        return samples

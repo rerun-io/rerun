@@ -17,20 +17,18 @@ readonly GECKODRIVER_SHA256="e815130ea95983e162ae91843b48d3a3ce991735635fce83a64
 readonly firefox_dir="${RUNNER_TEMP}/firefox-bin"
 readonly firefox_archive="${RUNNER_TEMP}/firefox.tar.xz"
 mkdir -p "${firefox_dir}"
-curl --fail --location --silent --show-error \
+"$(dirname "$0")/download_verified.sh" \
   "https://ftp.mozilla.org/pub/firefox/releases/${FIREFOX_VERSION}/linux-x86_64/en-US/firefox-${FIREFOX_VERSION}.tar.xz" \
-  --output "${firefox_archive}"
-echo "${FIREFOX_SHA256}  ${firefox_archive}" | sha256sum --check
+  "${FIREFOX_SHA256}" "${firefox_archive}"
 tar --extract --xz --file "${firefox_archive}" --directory "${firefox_dir}" --strip-components=1
 rm "${firefox_archive}"
 
 readonly geckodriver_dir="${RUNNER_TEMP}/geckodriver-bin"
 readonly geckodriver_archive="${RUNNER_TEMP}/geckodriver.tar.gz"
 mkdir -p "${geckodriver_dir}"
-curl --fail --location --silent --show-error \
+"$(dirname "$0")/download_verified.sh" \
   "https://github.com/mozilla/geckodriver/releases/download/v${GECKODRIVER_VERSION}/geckodriver-v${GECKODRIVER_VERSION}-linux64.tar.gz" \
-  --output "${geckodriver_archive}"
-echo "${GECKODRIVER_SHA256}  ${geckodriver_archive}" | sha256sum --check
+  "${GECKODRIVER_SHA256}" "${geckodriver_archive}"
 tar --extract --gzip --file "${geckodriver_archive}" --directory "${geckodriver_dir}"
 rm "${geckodriver_archive}"
 

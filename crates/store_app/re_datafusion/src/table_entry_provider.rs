@@ -207,10 +207,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
     #[instrument(skip(self), err, parent = &self.parent_span)]
     async fn fetch_schema(&mut self) -> ApiResult<SchemaRef> {
         let table_id = self.table_id().await?;
-        let request = tonic::Request::new(GetTableSchemaRequest {
-            table_id: Some(table_id.into()),
-        })
-        .with_entry_id(table_id);
+        let request = tonic::Request::new(GetTableSchemaRequest::default()).with_entry_id(table_id);
 
         let mut client = self.client.clone();
         let origin = client.origin().clone();
@@ -254,10 +251,7 @@ impl GrpcStreamToTable for TableEntryTableProvider {
         _params: &ScanParams,
     ) -> ApiResult<re_redap_client::ApiResponseStream<Self::GrpcStreamData>> {
         let table_id = self.table_id().await?;
-        let request = tonic::Request::new(ScanTableRequest {
-            table_id: Some(table_id.into()),
-        })
-        .with_entry_id(table_id);
+        let request = tonic::Request::new(ScanTableRequest::default()).with_entry_id(table_id);
 
         let mut client = self.client.clone();
         let origin = client.origin().clone();

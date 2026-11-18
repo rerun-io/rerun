@@ -59,20 +59,8 @@ export interface DeploymentBuild {
   use: string;
   createdIn: string;
   deployedTo: string;
-  readyState:
-    | "INITIALIZING"
-    | "ANALYZING"
-    | "BUILDING"
-    | "DEPLOYING"
-    | "READY"
-    | "ERROR";
-  state?:
-    | "INITIALIZING"
-    | "ANALYZING"
-    | "BUILDING"
-    | "DEPLOYING"
-    | "READY"
-    | "ERROR";
+  readyState: "INITIALIZING" | "ANALYZING" | "BUILDING" | "DEPLOYING" | "READY" | "ERROR";
+  state?: "INITIALIZING" | "ANALYZING" | "BUILDING" | "DEPLOYING" | "READY" | "ERROR";
   readyStateAt: string;
   path: string;
 }
@@ -101,13 +89,7 @@ export type LegacyDeployment = {
   name: string;
   ready?: number;
   source?: "cli" | "git" | "import" | "import/repo" | "clone/repo";
-  state:
-    | "BUILDING"
-    | "ERROR"
-    | "INITIALIZING"
-    | "QUEUED"
-    | "READY"
-    | "CANCELED";
+  state: "BUILDING" | "ERROR" | "INITIALIZING" | "QUEUED" | "READY" | "CANCELED";
   target?: "production" | "staging" | null;
   type: "LAMBDAS";
   uid: string;

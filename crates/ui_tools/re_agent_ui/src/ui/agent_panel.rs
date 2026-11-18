@@ -2,9 +2,10 @@
 
 use std::sync::Arc;
 
-use re_agent::acp::schema::v1::{SessionModeId, SessionModeState};
+use re_agent::acp::schema::v1::{SessionConfigId, SessionConfigOption, SessionConfigOptionValue};
 use re_agent::{AgentToolbox, ModelApiProvider};
 use re_async::{AsyncRuntimeHandle, UiWaker};
+use re_error::StructuredError;
 use re_ui::alert::Alert;
 use re_ui::{ContextExt as _, UiExt as _, icons};
 
@@ -15,7 +16,7 @@ use super::setup_ui::selected_agent_ready;
 use re_agent::AgentEntry;
 use re_agent::Transcript;
 use re_agent::{AgentLaunch, AgentLaunchError};
-use re_agent::{AgentSession, Phase, Prompt, TurnReport};
+use re_agent::{AgentSession, Phase, Prompt, SessionReports};
 use re_agent::{AgentSettings, SessionContext};
 
 /// How wide a host should make the panel.
@@ -36,6 +37,13 @@ const SELF_IMPROVE_TOOLTIP: &str = "Rerun development builds only.\n\n\
 /// new-tab shortcut. Only fires while the panel holds the pointer or the keyboard focus.
 pub const NEW_CONVERSATION_SHORTCUT: egui::KeyboardShortcut =
     egui::KeyboardShortcut::new(egui::Modifiers::COMMAND, egui::Key::T);
+
+/// How many conversations are kept for the next run. The oldest are forgotten first.
+///
+/// They are stored in [`AgentSettings`], which is serialized on every save,
+/// and each one is restored into the conversation list at startup.
+/// Without a cap, both would grow with every conversation the user ever had.
+const MAX_SAVED_CONVERSATIONS: usize = 50;
 
 /// Identifies one conversation for as long as the panel lives. Never reused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -176,8 +184,8 @@ pub struct AgentPanel {
     /// Every conversation the user has started, in the order they were opened.
     conversations: Vec<Conversation>,
 
-    /// Reports of the turns of closed conversations, until the host takes them.
-    closed_conversation_turns: Vec<TurnReport>,
+    /// Reports of closed conversations, until the host takes them.
+    closed_conversation_reports: SessionReports,
 
     /// The conversation the list view's input starts. It joins [`Self::conversations`] when the
     /// user sends its first prompt.
@@ -249,9 +257,23 @@ impl AgentPanel {
             };
         }
 
-        let mut draft =
-            Conversation::new(&settings, async_runtime.clone(), ConversationId(0), false);
+        let mut draft = Conversation::new(&settings, async_runtime.clone(), ConversationId(0));
         draft.available_model_apis.clone_from(&available_model_apis);
+        let conversations: Vec<Conversation> = std::iter::zip(1.., &settings.saved_conversations)
+            .map(|(id, saved)| {
+                let mut conversation = Conversation::restored(
+                    &settings,
+                    async_runtime.clone(),
+                    ConversationId(id),
+                    saved.clone(),
+                );
+                conversation
+                    .available_model_apis
+                    .clone_from(&available_model_apis);
+                conversation
+            })
+            .collect();
+        let next_conversation_id = ConversationId(conversations.len() as u64 + 1);
         Self {
             settings,
             async_runtime,
@@ -259,8 +281,8 @@ impl AgentPanel {
             available_model_apis,
             context: SessionContext::default(),
             agents,
-            conversations: Vec::new(),
-            closed_conversation_turns: Vec::new(),
+            conversations,
+            closed_conversation_reports: SessionReports::default(),
             draft,
             user_opened_draft_setup: false,
             view: View::List,
@@ -270,12 +292,15 @@ impl AgentPanel {
             self_improve_requested: false,
             feedback_enabled: false,
             feedback_requested: false,
-            next_conversation_id: ConversationId(1),
+            next_conversation_id,
         }
     }
 
     /// The tools that model-API agents, such as the `anthropic-api` profile, may call.
-    /// Applies to sessions started from now on. Agent harnesses get their tools from MCP servers.
+    /// Applies to sessions started from now on.
+    ///
+    /// Agent harnesses get their tools from MCP servers. Their permission requests for the
+    /// toolbox's own MCP server follow [`AgentToolbox::requires_approval`].
     pub fn set_toolbox(&mut self, toolbox: Arc<dyn AgentToolbox>) {
         for conversation in self.all_conversations_mut() {
             conversation.toolbox = Some(Arc::clone(&toolbox));
@@ -345,6 +370,14 @@ impl AgentPanel {
         self.active_conversation_mut().input.request_focus();
     }
 
+    /// Attaches the contents of an image file (PNG or JPEG) to the prompt being composed in the
+    /// shown conversation.
+    pub fn attach_image_file(&mut self, bytes: &[u8]) -> Result<(), image::ImageError> {
+        let image = super::pasted_image::encode_image_file(bytes)?;
+        self.active_conversation_mut().input.attach_image(image);
+        Ok(())
+    }
+
     /// Switch the shown conversation to the chat view. Starts its agent if none is running.
     pub fn show_chat(&mut self) {
         self.active_conversation_mut().screen = Screen::Chat;
@@ -380,15 +413,23 @@ impl AgentPanel {
         self.session().is_ready()
     }
 
-    /// The permission modes the shown conversation's agent offers, if it offers any.
-    pub fn modes(&self) -> Option<&SessionModeState> {
-        self.session().modes()
+    /// The settings currently offered by the shown conversation's agent.
+    pub fn config_options(&self) -> &[SessionConfigOption] {
+        &self.session().transcript().config_options
     }
 
-    /// Switches the shown conversation's permission mode, and makes it the default for new ones.
-    pub fn set_mode(&mut self, mode_id: SessionModeId) {
-        self.settings.preferred_mode = Some(mode_id.clone());
-        self.session_mut().set_mode(mode_id);
+    /// Changes a setting and remembers the selection for conversations with the same profile.
+    pub fn set_config_option(
+        &mut self,
+        config_id: SessionConfigId,
+        value: impl Into<SessionConfigOptionValue>,
+    ) {
+        let value = value.into();
+        let profile_id = self.active_conversation().profile_id.clone();
+        self.settings
+            .preferences_mut(profile_id)
+            .set(config_id.clone(), value.clone());
+        self.session().set_config_option(config_id, value);
     }
 
     /// Sends a prompt in the shown conversation as if the user had typed it.
@@ -422,15 +463,13 @@ impl AgentPanel {
         })
     }
 
-    /// Drains the reports of the turns finished in every conversation since the last call,
-    /// closed ones included.
-    pub fn take_finished_turns(&mut self) -> Vec<TurnReport> {
-        let mut turns = std::mem::take(&mut self.closed_conversation_turns);
-        turns.extend(
-            self.all_conversations_mut()
-                .flat_map(Conversation::take_finished_turns),
-        );
-        turns
+    /// Drains what every conversation reported since the last call, closed ones included.
+    pub fn take_reports(&mut self) -> SessionReports {
+        let mut reports = std::mem::take(&mut self.closed_conversation_reports);
+        for conversation in self.all_conversations_mut() {
+            reports.append(conversation.take_reports());
+        }
+        reports
     }
 
     /// Starts (or restarts) the agent of the shown conversation with the current settings.
@@ -494,12 +533,8 @@ impl AgentPanel {
     fn fresh_conversation(&mut self) -> Conversation {
         let id = self.next_conversation_id;
         self.next_conversation_id = ConversationId(id.0 + 1);
-        let mut conversation = Conversation::new(
-            &self.settings,
-            self.async_runtime.clone(),
-            id,
-            self.auto_approve,
-        );
+        let mut conversation = Conversation::new(&self.settings, self.async_runtime.clone(), id);
+        conversation.session.set_auto_approve(self.auto_approve);
         conversation.toolbox.clone_from(&self.toolbox);
         conversation
             .available_model_apis
@@ -529,6 +564,11 @@ impl AgentPanel {
     /// another agent than the selected one, unless the selected agent cannot be launched or the
     /// draft's own setup is open. What the user typed into it carries over.
     fn refresh_draft(&mut self) {
+        // Leaving setup by any way, including Escape, ends the user's own setup of the draft.
+        if self.draft.screen == Screen::Chat {
+            self.user_opened_draft_setup = false;
+        }
+
         // A draft whose start failed keeps its setup screen, with the error in the transcript.
         let draft = &mut self.draft;
         if draft.screen == Screen::Setup
@@ -558,15 +598,36 @@ impl AgentPanel {
     /// [`Self::ui`] does this too, but must also be called while the panel is collapsed,
     /// or messages queue up unseen until the user opens it again.
     pub fn poll_events(&mut self) {
+        re_tracing::profile_function!();
         for conversation in self.all_conversations_mut() {
             conversation.session.poll_events();
             conversation.send_pending_prompts();
         }
         self.promote_started_draft();
+        self.save_conversations();
+    }
+
+    /// Keeps [`AgentSettings::saved_conversations`] in line with the conversation list.
+    fn save_conversations(&mut self) {
+        re_tracing::profile_function!();
+        let Self {
+            settings,
+            agents,
+            conversations,
+            ..
+        } = self;
+        let mut saved: Vec<_> = conversations
+            .iter_mut()
+            .filter_map(|conversation| conversation.save(settings, agents))
+            .collect();
+        saved.sort_by_key(|saved| std::cmp::Reverse(saved.last_prompt_at));
+        saved.truncate(MAX_SAVED_CONVERSATIONS);
+        settings.saved_conversations = saved;
     }
 
     /// Shows the header, then the conversation list or the shown conversation.
     pub fn ui(&mut self, ui: &mut egui::Ui) {
+        re_tracing::profile_function!();
         self.poll_events();
         self.refresh_draft();
 
@@ -647,6 +708,10 @@ impl AgentPanel {
         if new_conversation_shortcut_pressed(ui, panel_rect) {
             action = Some(PanelAction::NewConversation);
         }
+        let shown = self.active_conversation_mut();
+        if std::mem::take(&mut shown.input.open_setup_requested) {
+            action = Some(PanelAction::OpenSetup(shown.id));
+        }
         self.handle_action(ui.ctx(), action);
         self.promote_started_draft();
     }
@@ -680,7 +745,7 @@ impl AgentPanel {
             .frame(
                 egui::Frame::new()
                     .fill(tokens.tab_bar_color)
-                    .inner_margin(egui::Margin::symmetric(8, 0)),
+                    .inner_margin(egui::Margin::symmetric(tokens.view_padding(), 0)),
             )
             .show(ui, |ui| {
                 let (left, right) = egui::containers::Sides::new()
@@ -696,6 +761,9 @@ impl AgentPanel {
                                     .on_hover_text("Back to conversations")
                                     .clicked();
                             ui.label(egui::RichText::new(title).strong());
+                            if !in_chat {
+                                experimental_tag_ui(ui).on_hover_text("Expect rough edges.");
+                            }
                             back.then_some(PanelAction::ShowList)
                         },
                         |ui| {
@@ -735,8 +803,8 @@ impl AgentPanel {
                     .position(|conversation| conversation.id == id)
                 {
                     let closed = self.conversations.remove(index);
-                    self.closed_conversation_turns
-                        .extend(closed.into_finished_turns());
+                    self.closed_conversation_reports
+                        .append(closed.into_reports());
                 }
                 if self.view == View::Conversation(id) {
                     self.view = View::List;
@@ -803,10 +871,7 @@ impl AgentPanel {
 /// Why the draft's agent failed to start, and a way to fix its setup.
 fn draft_error_ui(ui: &mut egui::Ui, message: &str, draft: ConversationId) -> Option<PanelAction> {
     let action = Alert::error()
-        .show(ui, |ui| {
-            ui.set_min_width(ui.available_width());
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-            ui.label(message);
+        .show_structured_error(ui, &StructuredError::parse(message), |ui| {
             ui.button("Agent setup…")
                 .clicked()
                 .then_some(PanelAction::OpenSetup(draft))
@@ -853,17 +918,126 @@ fn new_conversation_shortcut_pressed(ui: &egui::Ui, panel_rect: egui::Rect) -> b
         && ui.input_mut(|input| input.consume_shortcut(&NEW_CONVERSATION_SHORTCUT))
 }
 
+/// A warning-colored pill saying that the panel is experimental.
+fn experimental_tag_ui(ui: &mut egui::Ui) -> egui::Response {
+    let tokens = ui.tokens();
+    let alert = &tokens.alert_warning;
+    egui::WidgetAtom::new(
+        egui::RichText::new("Experimental")
+            .small()
+            .color(alert.icon),
+    )
+    .frame(
+        egui::Frame::new()
+            .fill(alert.fill)
+            .corner_radius(tokens.normal_corner_radius())
+            .inner_margin(egui::Margin::symmetric(6, 1)),
+    )
+    .show(ui)
+    .response
+}
+
 #[cfg(test)]
 mod tests {
     use re_agent::AgentProfileId;
 
-    use super::super::conversation_list::ConversationStatus;
     use super::*;
+
+    #[test]
+    fn saved_conversations_survive_a_failed_start_until_closed() {
+        let saved = saved_conversation();
+        let settings = AgentSettings {
+            setup_done: true,
+            saved_conversations: vec![saved.clone()],
+            ..Default::default()
+        };
+        // No agents installed, so its agent fails to start.
+        let mut panel = AgentPanel::with_agents(settings, None, Vec::new(), Vec::new());
+        let rows = conversation_rows(&panel.conversations, &panel.settings, &panel.agents);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].title, "Plot the IMU");
+
+        let id = rows[0].id;
+        panel.start_conversation(UiWaker::noop(), id);
+        panel.poll_events();
+        assert_eq!(panel.settings.saved_conversations, [saved]);
+
+        // New ids must not collide with the restored ones.
+        let fresh = panel.fresh_conversation();
+        assert!(panel.conversations.iter().all(|c| c.id != fresh.id));
+
+        panel.handle_action(&egui::Context::default(), Some(PanelAction::Close(id)));
+        panel.poll_events();
+        assert!(panel.settings.saved_conversations.is_empty());
+    }
+
+    #[test]
+    fn opening_a_saved_conversation_keeps_its_place_in_the_list() {
+        let saved = saved_conversation();
+        let mut conversation = Conversation::restored(
+            &AgentSettings::default(),
+            None,
+            ConversationId(1),
+            saved.clone(),
+        );
+        let session = &mut conversation.session;
+        session.handle_event(re_agent::AgentEvent::LoadingSession);
+        session.handle_event(re_agent::AgentEvent::Update(
+            re_agent::acp::schema::v1::SessionUpdate::UserMessageChunk(
+                re_agent::acp::schema::v1::ContentChunk::new("Plot the IMU".into()),
+            ),
+        ));
+        session.handle_event(re_agent::AgentEvent::SessionStarted {
+            session_id: saved.session_id.clone(),
+            config_options: Vec::new(),
+            origin: re_agent::SessionOrigin::Loaded,
+        });
+
+        let resaved = conversation
+            .save(&AgentSettings::default(), &[])
+            .expect("saved");
+        assert_eq!(resaved.last_prompt_at, saved.last_prompt_at);
+        assert_eq!(resaved.title, saved.title);
+    }
+
+    fn saved_conversation() -> re_agent::SavedConversation {
+        re_agent::SavedConversation {
+            profile_id: AgentProfileId::new("claude"),
+            session_id: re_agent::acp::schema::v1::SessionId::new("earlier"),
+            cwd: std::path::PathBuf::from("/nowhere"),
+            title: "Plot the IMU".to_owned(),
+            last_prompt_at: jiff::Timestamp::from_second(1_700_000_000).expect("timestamp"),
+        }
+    }
+
+    #[test]
+    fn model_api_conversations_are_not_saved() {
+        let mut conversation = Conversation::new(
+            &AgentSettings {
+                profile_id: ModelApiProvider::Anthropic.profile_id(),
+                ..Default::default()
+            },
+            None,
+            ConversationId(0),
+        );
+        conversation
+            .session
+            .handle_event(re_agent::AgentEvent::SessionStarted {
+                session_id: re_agent::acp::schema::v1::SessionId::new("api"),
+                config_options: Vec::new(),
+                origin: re_agent::SessionOrigin::New,
+            });
+        conversation
+            .session
+            .transcript_mut()
+            .push_user("Hello".into());
+        assert_eq!(conversation.save(&AgentSettings::default(), &[]), None);
+    }
 
     #[test]
     fn turn_that_ends_unseen_is_a_notification() {
         let mut conversation =
-            Conversation::new(&AgentSettings::default(), None, ConversationId(0), false);
+            Conversation::new(&AgentSettings::default(), None, ConversationId(0));
         conversation
             .session
             .transcript_mut()
@@ -891,8 +1065,8 @@ mod tests {
         let session = panel.session_mut();
         session.handle_event(re_agent::AgentEvent::SessionStarted {
             session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
-            modes: None,
             config_options: Vec::new(),
+            origin: re_agent::SessionOrigin::New,
         });
         session.begin_test_turn();
 
@@ -950,8 +1124,13 @@ mod tests {
             .map(|profile| {
                 let installed = matches!(profile.id.as_str(), "claude" | "codex");
                 AgentEntry {
-                    executable: installed
-                        .then(|| std::path::PathBuf::from("/usr/local/bin").join(&profile.command)),
+                    install: if installed {
+                        re_agent::AgentInstall::Ready(
+                            std::path::PathBuf::from("/usr/local/bin").join(&profile.command),
+                        )
+                    } else {
+                        re_agent::AgentInstall::NotInstalled
+                    },
                     profile,
                 }
             })
@@ -966,8 +1145,8 @@ mod tests {
             .session
             .handle_event(re_agent::AgentEvent::SessionStarted {
                 session_id: re_agent::acp::schema::v1::SessionId::new("test-session"),
-                modes: None,
                 config_options: Vec::new(),
+                origin: re_agent::SessionOrigin::New,
             });
         panel.draft.input.prompt = "Half-written".into();
         let first = panel.draft.id;
@@ -978,10 +1157,12 @@ mod tests {
 
         panel.settings.profile_id = AgentProfileId::new("codex");
         panel.user_opened_draft_setup = true;
+        panel.draft.screen = Screen::Setup;
         panel.refresh_draft();
         assert_eq!(panel.draft.id, first, "the draft's own setup starts codex");
 
-        panel.user_opened_draft_setup = false;
+        // Leaving setup with Escape goes straight back to the chat, without a panel action.
+        panel.draft.screen = Screen::Chat;
         panel.refresh_draft();
         assert_ne!(panel.draft.id, first, "codex is installed");
         assert_eq!(panel.draft.input.prompt.text, "Half-written");
@@ -1000,7 +1181,7 @@ mod tests {
         panel.refresh_draft();
         assert_eq!(panel.draft.screen, Screen::Setup, "its own start failed");
 
-        panel.draft = Conversation::new(&AgentSettings::default(), None, ConversationId(99), false);
+        panel.draft = Conversation::new(&AgentSettings::default(), None, ConversationId(99));
         panel.refresh_draft();
         assert_eq!(panel.draft.screen, Screen::Chat);
     }

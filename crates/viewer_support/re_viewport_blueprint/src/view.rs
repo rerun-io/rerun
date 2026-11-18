@@ -66,6 +66,24 @@ impl ViewBlueprint {
         Self::new_with_id(view_class, recommended, ViewId::random())
     }
 
+    /// Creates a view of the requested class without an explicit configuration.
+    ///
+    /// Uses the first explicit-creation recommendation, or the root subtree if there are none.
+    pub fn new_for_user_request(ctx: &ViewerContext<'_>, view_class: ViewClassIdentifier) -> Self {
+        let heuristics = ctx
+            .view_class_registry()
+            .get_class_or_log_error(view_class)
+            .spawn_heuristics(ctx, re_viewer_context::ViewSpawnContext::Explicit);
+        Self::new(
+            view_class,
+            heuristics
+                .into_vec()
+                .into_iter()
+                .next()
+                .unwrap_or_else(RecommendedView::root),
+        )
+    }
+
     /// Creates a new [`ViewBlueprint`] with a single [`ViewContents`] containing everything under the root.
     ///
     /// This [`ViewBlueprint`] is ephemeral. If you want to make it permanent, you
@@ -466,7 +484,6 @@ mod tests {
     use std::sync::Arc;
 
     use ahash::HashSet;
-    use re_chunk::RowId;
     use re_log_types::TimePoint;
     use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
     use re_sdk_types::blueprint::archetypes::EntityBehavior;
@@ -493,7 +510,7 @@ mod tests {
                 test_ctx.log_entity(entity_path.clone(), |builder| {
                     builder.with_component_batches(
                         RowId::new(),
-                        TimePoint::default(),
+                        TimePoint::STATIC,
                         [(
                             MyPoints::descriptor_points(),
                             &[MyPoint::new(1.0, 2.0)] as _,
@@ -637,7 +654,7 @@ mod tests {
             let mut add_to_blueprint =
                 |path: &EntityPath, archetype: &dyn re_types_core::AsComponents| {
                     let chunk = Chunk::builder(path.clone())
-                        .with_archetype(RowId::new(), TimePoint::default(), archetype)
+                        .with_archetype(RowId::new(), TimePoint::STATIC, archetype)
                         .build()
                         .unwrap();
 

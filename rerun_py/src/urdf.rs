@@ -33,11 +33,8 @@ impl PyUrdfTree {
         frame_prefix: Option<String>,
         static_transform_entity_path: Option<String>,
     ) -> PyResult<Self> {
-        let mut tree =
-            UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from_single_string))
-                .map_err(|err| {
-                    PyRuntimeError::new_err(format!("Failed to load URDF file: {err}"))
-                })?;
+        let mut tree = UrdfTree::from_file_path(path, entity_path_prefix.map(EntityPath::from))
+            .map_err(|err| PyRuntimeError::new_err(format!("Failed to load URDF file: {err}")))?;
         if let Some(prefix) = frame_prefix {
             tree = tree.with_frame_prefix(prefix);
         }
@@ -129,7 +126,7 @@ impl PyUrdfTree {
 
         let mut chunks = Vec::new();
         self.0
-            .emit(&mut |chunk| chunks.push(chunk), &TimePoint::default(), true)
+            .emit(&mut |chunk| chunks.push(chunk), &TimePoint::STATIC, true)
             .map_err(|err| PyRuntimeError::new_err(format!("Failed to log URDF: {err}")))?;
 
         recording.send_chunks(chunks);

@@ -5,7 +5,7 @@
 ///
 /// The bar heights will be the provided values, and the x coordinates of the bars will be the provided abscissa or default to the index of the provided values.
 ///
-/// \example archetypes/bar_chart title="Simple bar chart" image="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1200w.png"
+/// \example archetypes/bar_chart title="Simple bar chart" image="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1200w.png" alt="Two bar chart views side by side: one with bars at default indices, one named bar_chart_custom_abscissa with bars at custom x positions"
 #[rerun::rerun_type]
 #[docs(category = "Plotting")]
 #[docs(view_types = "BarChartView")]

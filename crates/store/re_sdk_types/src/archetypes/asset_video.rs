@@ -28,7 +28,7 @@ use ::std::borrow::Cow;
 ///
 /// Only MP4 containers are currently supported.
 ///
-/// See <https://rerun.io/docs/reference/video> for codec support and more general information.
+/// See <https://rerun.io/docs/logging-and-ingestion/media/video> for codec support and more general information.
 ///
 /// In order to display a video, you also need to log a [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] for each frame.
 ///

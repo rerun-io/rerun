@@ -63,7 +63,7 @@ fn grpc_server_sink_streams_recording_data_and_shuts_down() -> Result<(), Box<dy
     )?;
     rec.flush_blocking()?;
 
-    let runtime = tokio::runtime::Builder::new_multi_thread() // NOLINT: needed for testing.
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(1)
         .enable_all()
         .build()?;

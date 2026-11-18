@@ -4,7 +4,48 @@ use std::sync::Arc;
 
 use re_types_core::SegmentId;
 
-use crate::ApplicationId;
+use crate::{ApplicationId, InvalidApplicationIdError};
+
+/// Error returned when parsing a [`StoreKind`] from a string.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("{kind:?} is not a valid StoreKind")]
+pub struct InvalidStoreKindError {
+    /// The text that was not a store kind.
+    pub kind: String,
+}
+
+/// Error returned when parsing a [`StoreId`] from a string.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum StoreIdParseError {
+    /// The text is not of the form `kind:application_id:recording_id`.
+    #[error("{input:?} is not a store id: expected `kind:application_id:recording_id`")]
+    Malformed {
+        /// The text that failed to parse.
+        input: String,
+    },
+
+    /// The recording id part is empty.
+    #[error("{input:?} is not a store id: the recording id must not be empty")]
+    EmptyRecordingId {
+        /// The text that failed to parse.
+        input: String,
+    },
+
+    /// The application id part is invalid.
+    #[error("{input:?} is not a store id: {source}")]
+    InvalidApplicationId {
+        /// The text that failed to parse.
+        input: String,
+
+        /// Why the application id is invalid.
+        #[source]
+        source: InvalidApplicationIdError,
+    },
+
+    /// The kind part is not a valid [`StoreKind`].
+    #[error(transparent)]
+    InvalidKind(#[from] InvalidStoreKindError),
+}
 
 /// What kind of store this is.
 ///
@@ -44,13 +85,15 @@ impl std::fmt::Display for StoreKind {
 }
 
 impl std::str::FromStr for StoreKind {
-    type Err = String;
+    type Err = InvalidStoreKindError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "recording" => Ok(Self::Recording),
             "blueprint" => Ok(Self::Blueprint),
-            unknown => Err(format!("{unknown:?} is not a valid StoreKind")),
+            unknown => Err(InvalidStoreKindError {
+                kind: unknown.to_owned(),
+            }),
         }
     }
 }
@@ -124,10 +167,15 @@ pub struct StoreId {
 impl std::fmt::Debug for StoreId {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let Self {
+            kind,
+            application_id,
+            recording_id,
+        } = self;
         f.debug_tuple("StoreId")
-            .field(&self.kind)
-            .field(&self.application_id.as_str())
-            .field(&self.recording_id.as_str())
+            .field(kind)
+            .field(&application_id.as_str())
+            .field(&recording_id.as_str())
             .finish()
     }
 }
@@ -178,23 +226,28 @@ fn unescape_until_separator(text: &str) -> Option<(String, &str)> {
 /// Both ids may contain a colon, so the application id's colons are escaped; see the note on
 /// [`StoreId`]. Every id `Display` writes parses back to the same id.
 impl std::str::FromStr for StoreId {
-    type Err = String;
+    type Err = StoreIdParseError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let malformed =
-            || format!("{s:?} is not a store id: expected `kind:application_id:recording_id`");
+        let malformed = || StoreIdParseError::Malformed {
+            input: s.to_owned(),
+        };
 
         let (kind, rest) = s.split_once(':').ok_or_else(malformed)?;
         let (application_id, recording_id) =
             unescape_until_separator(rest).ok_or_else(malformed)?;
         if recording_id.is_empty() {
-            return Err(format!(
-                "{s:?} is not a store id: the recording id must not be empty"
-            ));
+            return Err(StoreIdParseError::EmptyRecordingId {
+                input: s.to_owned(),
+            });
         }
 
-        let application_id = ApplicationId::try_new(application_id)
-            .map_err(|err| format!("{s:?} is not a store id: {err}"))?;
+        let application_id = ApplicationId::try_new(application_id).map_err(|err| {
+            StoreIdParseError::InvalidApplicationId {
+                input: s.to_owned(),
+                source: err,
+            }
+        })?;
 
         Ok(Self::new(
             kind.parse::<StoreKind>()?,
@@ -237,6 +290,9 @@ fn store_id_str_roundtrip() {
 }
 
 impl StoreId {
+    /// The recording id of [`Self::heuristic_blueprint`].
+    const HEURISTIC_BLUEPRINT_RECORDING_ID: &str = "@heuristic";
+
     #[inline]
     pub fn new(
         kind: StoreKind,
@@ -258,11 +314,15 @@ impl StoreId {
         Self::new(StoreKind::Recording, application_id, recording_id)
     }
 
-    /// Create a [`Self`] for the default blueprint of a given application id
+    /// Create a [`Self`] for the blueprint that the viewer heuristics generate for a given
+    /// application id.
     #[inline]
-    pub fn default_blueprint(application_id: ApplicationId) -> Self {
-        let recording_id = application_id.as_recording_id();
-        Self::new(StoreKind::Blueprint, application_id, recording_id)
+    pub fn heuristic_blueprint(application_id: ApplicationId) -> Self {
+        Self::new(
+            StoreKind::Blueprint,
+            application_id,
+            Self::HEURISTIC_BLUEPRINT_RECORDING_ID,
+        )
     }
 
     /// Generate a random [`StoreId`] with the provided application id.
@@ -316,8 +376,17 @@ impl StoreId {
         self.kind == StoreKind::Recording && self.recording_id.as_str() == "<EMPTY>"
     }
 
+    /// Whether this is the id from [`Self::heuristic_blueprint`].
     #[inline]
-    pub fn is_default_blueprint(&self) -> bool {
+    pub fn is_heuristic_blueprint(&self) -> bool {
+        self.kind == StoreKind::Blueprint
+            && self.recording_id.as_str() == Self::HEURISTIC_BLUEPRINT_RECORDING_ID
+    }
+
+    /// Whether this is the id that earlier versions of the viewer gave the heuristic blueprint,
+    /// with the application id as recording id.
+    #[inline]
+    pub fn is_legacy_heuristic_blueprint(&self) -> bool {
         self.kind == StoreKind::Blueprint
             && self.application_id.as_str() == self.recording_id.as_str()
     }

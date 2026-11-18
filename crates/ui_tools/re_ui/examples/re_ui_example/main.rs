@@ -1,5 +1,7 @@
 // Run the example with `cargo r -p re_ui --example re_ui_example`
 
+#![expect(clippy::print_stdout)] // Example
+
 mod drag_and_drop;
 mod hierarchical_drag_and_drop;
 mod right_panel;

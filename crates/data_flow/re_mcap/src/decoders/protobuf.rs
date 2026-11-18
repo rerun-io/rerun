@@ -339,9 +339,7 @@ fn append_value(
                 append_map_key(map_builder.keys(), map_key);
                 append_value(map_builder.values(), &value_field, map_value)?;
             }
-            map_builder
-                .append(true)
-                .map_err(|_err| ProtobufError::UnsupportedType("MapBuilder append failed"))?;
+            map_builder.append(true)?;
         }
         Value::EnumNumber(x) => {
             let kind = field.kind();

@@ -1,4 +1,4 @@
-//! The viewer's recent log messages, kept so that `re_viewer_mcp` can hand them to an agent.
+//! The viewer's recent log messages, kept so that `re_rerun_mcp` can hand them to an agent.
 
 use std::collections::VecDeque;
 

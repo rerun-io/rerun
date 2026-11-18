@@ -95,7 +95,7 @@ mod tests {
         let chunk = import_single_chunk(filepath, contents);
 
         let expected = Chunk::builder(EntityPath::from_file_path(Path::new(filepath)))
-            .with_archetype(RowId::new(), TimePoint::default(), expected)
+            .with_archetype(RowId::new(), TimePoint::STATIC, expected)
             .build()
             .unwrap();
 
