@@ -33,13 +33,13 @@ fn snapshot_default_framing(name: &str, points: &Points2D, snapshot_results: &mu
 }
 
 #[test]
-fn test_colinear_points_scene_radius() {
+fn test_collinear_points_scene_radius() {
     let mut snapshot_results = SnapshotResults::new();
 
     let points = Points2D::new([[0.0, 0.0], [100.0, 0.0]])
         .with_radii([Radius::new_scene_units(10.0), Radius::new_scene_units(10.0)]);
     snapshot_default_framing(
-        "points2d_default_framing_colinear_points",
+        "points2d_default_framing_collinear_points",
         &points,
         &mut snapshot_results,
     );
