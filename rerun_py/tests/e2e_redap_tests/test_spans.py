@@ -10,7 +10,8 @@ import pytest
 import rerun as rr
 from datafusion import col
 from rerun.catalog import AlreadyExistsError
-from rerun.experimental.spans import SpanTable
+from rerun.experimental import query_metrics
+from rerun.experimental.spans import Curation, SpanTable
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -53,7 +54,8 @@ def span_table(
                 {"rerun_segment_id": second, "rerun_span_id": "b1", "time_2:start": 12, "time_2:end": 15},
             ],
             schema=spans.arrow_schema(),
-        )
+        ),
+        mode="upsert",
     )
     return spans
 
@@ -118,7 +120,8 @@ def test_sequence_spans_write_and_read(
             "time_3:start": pa.array([2, 5, 12], pa.int64()),
             "time_3:end": pa.array([10, 8, 15], pa.int64()),
             "state": ["grasp", "release", "grasp"],
-        })
+        }),
+        mode="upsert",
     )
 
     selected = spans.reader().filter((col("state") == "grasp") & (col("time_3:start") > 3)).to_arrow_table().to_pylist()
@@ -190,7 +193,8 @@ def test_containment_semi_join_returns_each_span_once(span_table: SpanTable, seg
             "time_2:start": pa.array([0, 1, 5, 3], pa.duration("ns")),
             "time_2:end": pa.array([20, 11, 21, 4], pa.duration("ns")),
             "state": ["pick_and_place", "pick_and_place", "grasp", "grasp"],
-        })
+        }),
+        mode="upsert",
     )
     spans = span_table.reader()
     grasps = spans.filter(col("state") == "grasp").alias("grasp")
@@ -297,3 +301,60 @@ def test_span_table_outlives_dataset_deletion(spans_dataset: DatasetEntry, reque
     spans_dataset.delete()
 
     assert spans_dataset.catalog.get_table(id=spans.table.id).id == spans.table.id
+
+
+def test_curation_export_preserves_temporal_coordinates(span_table: SpanTable, segments: tuple[str, str]) -> None:
+    with query_metrics() as queries:
+        selected = span_table.reader().filter(col("score") >= 0.7).to_arrow_table().take([0, 0])
+        coordinates = span_table.to_curation_arrow(selected, index="time_2")
+        local = Curation.from_arrow(span_table.dataset, coordinates)
+    assert not queries.queries, "Span curation must not query recording chunks"
+    assert coordinates.column_names == ["segment_id", "start", "end"]
+    assert coordinates["start"].type == coordinates["end"].type == pa.duration("ns")
+    assert coordinates["start"].cast(pa.int64()).to_pylist() == [2, 2]
+    assert local.to_arrow()["segment_id"].to_pylist() == [segments[0]]
+    assert local.num_spans() == 1
+    assert local.index_name == "time_2"
+    assert local.dataset_id == str(span_table.dataset.id)
+    empty = span_table.to_curation_arrow(selected.slice(0, 0), index="time_2")
+    assert empty.schema == coordinates.schema
+    assert Curation.from_arrow(span_table.dataset, empty).num_spans() == 0
+
+
+@pytest.mark.local_only
+def test_tagged_curations_are_dataset_scoped_snapshots(
+    spans_dataset: DatasetEntry, entry_factory: EntryFactory, request: pytest.FixtureRequest
+) -> None:
+    annotations = SpanTable.create(spans_dataset, index="time", schema=pa.schema([("score", pa.float32())]))
+    annotations.append(
+        segment_id="episode_a", start=timedelta(seconds=2), end=timedelta(seconds=10), data={"score": 0.9}
+    )
+    selected = annotations.reader().filter(col("score") >= 0.7).to_arrow_table().take([0, 0])
+    snapshot = annotations.to_curation_arrow(selected, index="time")
+    saved = Curation.save(spans_dataset, snapshot, tag="training-v1")
+    request.addfinalizer(saved.table.delete)
+    with pytest.raises(AlreadyExistsError):
+        Curation.save(spans_dataset, snapshot, tag="training-v1")
+    annotations.delete()
+    loaded = Curation.open(spans_dataset, tag="training-v1").to_arrow()
+    assert loaded.to_pydict() == snapshot.take([0]).to_pydict()
+    metadata = loaded.schema.metadata or {}
+    assert metadata[b"rerun:curation:tag"] == b"training-v1"
+    assert metadata[b"rerun:curation:num_rows"] == b"1"
+    assert all(metadata.get(key) == value for key, value in (snapshot.schema.metadata or {}).items())
+
+    other = entry_factory.create_dataset("other_curation_scope")
+    with pytest.raises(ValueError, match=r"[Dd]ataset"):
+        Curation.save(other, snapshot, tag="training-v1")
+    other_snapshot = loaded.replace_schema_metadata({**metadata, b"dataset_id": str(other.id).encode()})
+    other_saved = Curation.save(other, other_snapshot, tag="training-v1")
+    request.addfinalizer(other_saved.table.delete)
+    assert other_saved.table.id != saved.table.id
+    assert Curation.open(other, tag="training-v1").to_arrow().to_pydict() == other_snapshot.take([0]).to_pydict()
+
+    empty = Curation.save(spans_dataset, snapshot.slice(0, 0), tag="empty")
+    request.addfinalizer(empty.table.delete)
+    assert Curation.open(spans_dataset, tag="empty").to_arrow().num_rows == 0
+    saved.table.overwrite(pa.RecordBatch.from_pylist([], schema=loaded.schema))
+    with pytest.raises(RuntimeError, match="Incomplete curation"):
+        Curation.open(spans_dataset, tag="training-v1").to_arrow()

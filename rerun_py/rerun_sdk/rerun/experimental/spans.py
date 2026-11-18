@@ -2,23 +2,28 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timedelta
+from hashlib import sha256
 from typing import TYPE_CHECKING, Any, Literal, TypeGuard, assert_never, overload
 from uuid import uuid4
 
 import numpy as np
 import pyarrow as pa
 import pyarrow.compute as pc
+import pyarrow.parquet as pq
 
+from rerun._tracing import tracing_scope
 from rerun.catalog import TimelineKind
 from rerun.time import to_nanos, to_nanos_since_epoch
 
 if TYPE_CHECKING:
+    import os
     from collections.abc import Mapping
 
     import datafusion as dfn
 
-    from rerun.catalog import DatasetEntry, TableEntry
+    from rerun.catalog import DatasetEntry, DatasetSelection, TableEntry
 
 _SEGMENT_ID = "rerun_segment_id"
 _SPAN_ID = "rerun_span_id"
@@ -160,6 +165,46 @@ def _span_schema(data: pa.Schema | None, index: str, index_type: pa.DataType) ->
     schema = pa.schema([*fields, *bounds, *data], metadata=data.metadata)
     _validate_schema(schema)
     return schema
+
+
+def _type_descriptor(datatype: pa.DataType) -> dict[str, str | None]:
+    if datatype == pa.int64():
+        return {"kind": "sequence"}
+    if datatype == pa.duration("ns"):
+        return {"kind": "duration"}
+    if pa.types.is_timestamp(datatype) and datatype.unit == "ns":
+        return {"kind": "timestamp", "timezone": datatype.tz}
+    raise ValueError(f"Span boundaries require int64, duration[ns], or timestamp[ns], got {datatype}")
+
+
+def _curation_arrow(spans: pa.Table | pa.RecordBatch, *, index: str, dataset_id: str) -> pa.Table:
+    if isinstance(spans, pa.RecordBatch):
+        spans = pa.Table.from_batches([spans])
+    if not isinstance(spans, pa.Table):
+        raise TypeError("Curated spans must be an Arrow Table or RecordBatch")
+    table = spans.select(["rerun_segment_id", f"{index}:start", f"{index}:end"]).rename_columns([
+        "segment_id",
+        "start",
+        "end",
+    ])
+    datatype = table["start"].type
+    descriptor = _type_descriptor(datatype)
+    if table["end"].type != datatype or table["segment_id"].type not in (pa.string(), pa.large_string()):
+        raise ValueError("Curation coordinates require a string segment ID and matching boundary types")
+    if any(column.null_count for column in table.columns):
+        raise ValueError("Curation coordinates cannot contain nulls")
+    start, end = table["start"].cast(pa.int64()), table["end"].cast(pa.int64())
+    if any(
+        pc.any(values).as_py()
+        for values in [pc.equal(table["segment_id"], ""), pc.equal(start, -(1 << 63)), pc.greater(start, end)]
+    ):
+        raise ValueError("Curation coordinates require nonempty segment IDs and inclusive start <= end bounds")
+    return table.replace_schema_metadata({
+        "manifest_format_version": "3",
+        "dataset_id": dataset_id,
+        "index_name": index,
+        "index_type": json.dumps(descriptor, sort_keys=True),
+    })
 
 
 class SpanTable:
@@ -451,9 +496,10 @@ class SpanTable:
         self, spans: pa.Table | pa.RecordBatch, *, mode: Literal["append", "upsert", "overwrite"] = "append"
     ) -> None:
         """
-        Write Arrow rows, generating missing IDs; overwrite with empty input clears the table.
+        Write Arrow rows; overwrite with empty input clears the table.
 
-        Caller-supplied IDs must remain unique. Upsert replaces entire rows rather than patching columns.
+        Append and overwrite generate UUID4 IDs and reject supplied non-null IDs.
+        Upsert requires IDs and replaces entire rows rather than patching columns.
 
         Raises
         ------
@@ -463,7 +509,7 @@ class SpanTable:
             value or after its end; or a `rerun_segment_id` is not in the dataset.
 
         """
-        span_batch = self._span_batch(spans)
+        span_batch = self._span_batch(spans, generate_ids=mode in ("append", "overwrite"))
         match mode:
             case "append":
                 self.table.append(span_batch)
@@ -474,30 +520,25 @@ class SpanTable:
             case _:
                 assert_never(mode)
 
-    def _span_batch(self, data: pa.Table | pa.RecordBatch) -> pa.RecordBatch:
+    def _span_batch(self, data: pa.Table | pa.RecordBatch, *, generate_ids: bool = False) -> pa.RecordBatch:
         if isinstance(data, pa.RecordBatch):
             data = pa.Table.from_batches([data])
         if not isinstance(data, pa.Table):
             raise TypeError("Span data must be an Arrow Table or RecordBatch")
-        if _SPAN_ID not in data.column_names:
+        if duplicates := sorted({name for name in data.column_names if data.column_names.count(name) > 1}):
+            raise ValueError(f"Duplicate span data columns: {duplicates}")
+        if generate_ids:
+            if _SPAN_ID in data.column_names:
+                if data[_SPAN_ID].null_count != data.num_rows:
+                    raise ValueError(
+                        "Span IDs must be omitted or null for append and overwrite; use upsert to supply IDs"
+                    )
+                data = data.drop_columns([_SPAN_ID])
             data = data.append_column(_SPAN_ID, pa.array([uuid4().hex for _ in range(data.num_rows)], pa.string()))
-        elif pa.types.is_null(data[_SPAN_ID].type) or (
-            data[_SPAN_ID].type == pa.string() and data[_SPAN_ID].null_count
-        ):
-            data = data.set_column(
-                data.column_names.index(_SPAN_ID),
-                _SPAN_ID,
-                pa.array(
-                    [uuid4().hex if value is None else value for value in data[_SPAN_ID].to_pylist()],
-                    pa.string(),
-                ),
-            )
         schema, index = self._schema, self._index_name
         for name, datatype in _IDS.items():
             if name not in data.column_names or data[name].type != datatype:
                 raise ValueError(f"Span data requires {name!r} with datatype {datatype}")
-        if duplicates := sorted({name for name in data.column_names if data.column_names.count(name) > 1}):
-            raise ValueError(f"Duplicate span data columns: {duplicates}")
         if undeclared := sorted(set(data.column_names) - set(schema.names)):
             raise ValueError(f"Undeclared span data columns: {undeclared}")
         for name in _boundary_columns(index):
@@ -556,4 +597,309 @@ class SpanTable:
             recordings.select(*recordings.find_qualified_columns(_SEGMENT_ID, *properties)).alias("recordings"),
             on=_SEGMENT_ID,
             how="inner",
+        )
+
+    def to_curation_arrow(self, spans: pa.Table | pa.RecordBatch, *, index: str) -> pa.Table:
+        """
+        Export selected coordinates with dataset and timeline identity, without source reads.
+
+        Input requires `rerun_segment_id` and the table's typed `<index>:start/end` columns.
+        Annotation data is discarded; `Curation` sorts and deduplicates the exported coordinates.
+        """
+        if index != self._index_name:
+            raise ValueError(f"Span table timeline is {self._index_name!r}, got {index!r}")
+        table = _curation_arrow(spans, index=index, dataset_id=str(self.dataset.id))
+        if table["start"].type != self._index_type:
+            raise ValueError(f"Curation boundaries must match the span table timeline type {self._index_type}")
+        return table
+
+
+class Curation:
+    """
+    A selection of inclusive training intervals, independent of editable span annotations.
+
+    Resolve datasets, views, and selected spans with `from_source()`.
+    Create local selections with `from_arrow()` or `from_parquet()`, or save and open tagged selections
+    in the catalog. Tags are case-sensitive and scoped to the dataset. Saved selections are ordinary
+    tables; direct table APIs can still modify them. Tag lookup relies on their generated names.
+    Boundaries select sample anchors; field windows may extend beyond them.
+    Dataset contents must remain immutable for reproducible loading.
+    """
+
+    def __init__(self, dataset: DatasetEntry, table: TableEntry | pa.Table, *, tag: str | None = None) -> None:
+        self._dataset, self._table, self._tag = dataset, table, tag
+        self._data = self._curation_data(dataset, table) if isinstance(table, pa.Table) else None
+        self._schema = self._data.schema if self._data is not None else self.table.arrow_schema()
+        if self._data is not None:
+            self._table = self._data
+            if tag is None:
+                encoded_tag = (self._data.schema.metadata or {}).get(b"rerun:curation:tag")
+                self._tag = encoded_tag.decode() if encoded_tag is not None else None
+
+    def __repr__(self) -> str:
+        return f"Curation(dataset_id={self.dataset_id!r}, tag={self.tag!r})"
+
+    @property
+    def dataset(self) -> DatasetEntry:
+        """The dataset whose recordings the selection references."""
+        return self._dataset
+
+    @property
+    def table(self) -> TableEntry:
+        """The underlying catalog table; local Arrow and Parquet selections have no catalog entry."""
+        if isinstance(self._table, pa.Table):
+            raise ValueError("Local curation has no catalog table; save it first")
+        return self._table
+
+    @property
+    def tag(self) -> str | None:
+        """The dataset-scoped name, if this selection was saved under a tag."""
+        return self._tag
+
+    @property
+    def dataset_id(self) -> str:
+        """Identity of the source dataset."""
+        return str(self.dataset.id)
+
+    @property
+    def index_name(self) -> str:
+        """Timeline selected by these intervals."""
+        return bytes(self._schema.metadata[b"index_name"]).decode()
+
+    @property
+    def index_type(self) -> pa.DataType:
+        """Integer steps or nanosecond-resolution timestamps/durations."""
+        return self._schema.field("start").type
+
+    def num_spans(self) -> int:
+        """Number of distinct selected intervals; catalog selections are read to determine this count."""
+        return int(self.to_arrow().num_rows)
+
+    @classmethod
+    def from_source(
+        cls,
+        source: DatasetEntry | DatasetSelection,
+        *,
+        index: str,
+        spans: Curation | pa.Table | pa.RecordBatch | None = None,
+    ) -> Curation:
+        """
+        Resolve a dataset or view and optional span selection into a training manifest.
+
+        Reads recording metadata to freeze the selected recordings' inclusive timeline ranges.
+        Selected spans are intersected with those ranges; missing recordings and disjoint intervals are omitted.
+        The resulting Arrow coordinates can be saved without retaining the source view or annotation query.
+        Content filters, training fields, and sampling settings are not stored in the manifest.
+
+        Parameters
+        ----------
+        source
+            Dataset or filtered selection whose recordings are eligible for training.
+        index
+            Timeline on which to select intervals.
+        spans
+            Optional curation or canonical Arrow coordinates from `SpanTable.to_curation_arrow()`.
+            Dataset and timeline identity must match the source.
+            Omit to select the full timeline ranges of the source's recordings.
+
+        Raises
+        ------
+        ValueError
+            The timeline is missing or the selected spans have a different dataset or timeline identity.
+
+        """
+        curation, _ = cls._from_source(source, index=index, spans=spans)
+        return curation
+
+    @classmethod
+    def _from_source(
+        cls,
+        source: DatasetEntry | DatasetSelection,
+        *,
+        index: str,
+        spans: Curation | pa.Table | pa.RecordBatch | None = None,
+    ) -> tuple[Curation, dict[str, int | None]]:
+        from rerun.catalog import DatasetSelection
+
+        dataset = source.dataset if isinstance(source, DatasetSelection) else source
+        selected = None
+        if spans is not None:
+            curation = spans if isinstance(spans, Curation) else cls.from_arrow(dataset, spans)
+            if curation.dataset_id != str(dataset.id):
+                raise ValueError("Curation dataset identity does not match the supplied source")
+            if curation.index_name != index:
+                raise ValueError(f"Curation timeline is {curation.index_name!r}, got {index!r}")
+            selected = curation.to_arrow()
+        datatype = _dataset_index_type(dataset, index)
+        if selected is not None:
+            if datatype != selected["start"].type:
+                raise ValueError(
+                    f"Timeline {index!r} has type {datatype}, but the curation requires {selected['start'].type}"
+                )
+            source = source.filter_segments(sorted(set(selected["segment_id"].to_pylist())))
+
+        start_col, end_col = _boundary_columns(index)
+        ranges_df = source.get_index_ranges().select(_SEGMENT_ID, start_col, end_col)
+        with tracing_scope("ranges_df.to_arrow_table"):
+            ranges = ranges_df.to_arrow_table()
+        segment_ids = ranges[_SEGMENT_ID].to_pylist()
+        starts = ranges[start_col].cast(pa.int64()).to_pylist()
+        ends = ranges[end_col].cast(pa.int64()).to_pylist()
+        recording_minima = dict(zip(segment_ids, starts, strict=True))
+        bounds = {
+            segment_id: (start, end)
+            for segment_id, start, end in zip(segment_ids, starts, ends, strict=True)
+            if start is not None and end is not None
+        }
+        if selected is None:
+            rows = [(segment_id, start, end) for segment_id, (start, end) in bounds.items()]
+        else:
+            rows = []
+            for segment_id, start, end in zip(
+                selected["segment_id"].to_pylist(),
+                selected["start"].cast(pa.int64()).to_pylist(),
+                selected["end"].cast(pa.int64()).to_pylist(),
+                strict=True,
+            ):
+                if segment_id not in bounds:
+                    continue
+                recording_start, recording_end = bounds[segment_id]
+                lo, hi = max(start, recording_start), min(end, recording_end)
+                if lo <= hi:
+                    rows.append((segment_id, lo, hi))
+        coordinates = _curation_arrow(
+            pa.table({
+                _SEGMENT_ID: pa.array([row[0] for row in rows], type=pa.string()),
+                start_col: pa.array([row[1] for row in rows], type=datatype),
+                end_col: pa.array([row[2] for row in rows], type=datatype),
+            }),
+            index=index,
+            dataset_id=str(dataset.id),
+        )
+        return cls.from_arrow(dataset, coordinates), recording_minima
+
+    @classmethod
+    def from_arrow(cls, dataset: DatasetEntry, data: pa.Table | pa.RecordBatch) -> Curation:
+        """Validate, sort, and deduplicate exported coordinates without querying the dataset."""
+        if isinstance(data, pa.RecordBatch):
+            data = pa.Table.from_batches([data])
+        if not isinstance(data, pa.Table):
+            raise TypeError("Curation data must be an Arrow Table or RecordBatch")
+        return cls(dataset, data)
+
+    @classmethod
+    def from_parquet(cls, dataset: DatasetEntry, path: str | os.PathLike[str]) -> Curation:
+        """Read a portable selection together with its dataset and timeline identity."""
+        return cls.from_arrow(dataset, pq.read_table(path))
+
+    def write_parquet(self, path: str | os.PathLike[str], *, row_group_size: int = 1 << 16) -> None:
+        """Persist selected coordinates and identity metadata as compressed Parquet."""
+        pq.write_table(self.to_arrow(), path, compression="zstd", row_group_size=row_group_size)
+
+    def materialize(self) -> Curation:
+        """Read once and return a local selection whose subsequent operations need no source reads."""
+        if self._data is not None:
+            return self
+        local = Curation(self.dataset, self.table, tag=self.tag)
+        local._data = self.to_arrow()
+        return local
+
+    @classmethod
+    def save(cls, dataset: DatasetEntry, data: pa.Table | pa.RecordBatch, *, tag: str) -> Curation:
+        """
+        Save exported coordinates under a new tag without reading annotation data.
+
+        Existing tags raise `AlreadyExistsError`. Creation and writing are separate operations;
+        failed writes can leave an incomplete table, which `to_arrow()` rejects.
+        """
+        name = cls._curation_name(dataset, tag)
+        coordinates = cls.from_arrow(dataset, data).to_arrow()
+        coordinates = coordinates.replace_schema_metadata({
+            **(coordinates.schema.metadata or {}),
+            b"rerun:curation:tag": tag.encode(),
+            b"rerun:curation:num_rows": str(coordinates.num_rows).encode(),
+        })
+        table = dataset.catalog.create_table(name, coordinates.schema)
+        table.append(coordinates.to_reader())
+        return cls(dataset, table, tag=tag)
+
+    @classmethod
+    def open(cls, dataset: DatasetEntry, *, tag: str) -> Curation:
+        """Open a saved selection without looking up the dataset's annotation table or reading rows."""
+        table = dataset.catalog.get_table(cls._curation_name(dataset, tag))
+        return cls(dataset, table, tag=tag)
+
+    def to_arrow(self) -> pa.Table:
+        """Return canonical coordinates and identity metadata, rejecting incomplete saved writes."""
+        if self._data is not None:
+            return self._data
+        coordinates = self._curation_data(self.dataset, self.table.reader().to_arrow_table())
+        metadata = coordinates.schema.metadata or {}
+        if self.tag is not None and metadata.get(b"rerun:curation:tag") != self.tag.encode():
+            raise ValueError("Saved curation tag does not match the requested tag")
+        if b"rerun:curation:num_rows" not in metadata:
+            raise ValueError("Saved curation is missing an expected row count")
+        return coordinates
+
+    @staticmethod
+    def _curation_name(dataset: DatasetEntry, tag: str) -> str:
+        if not isinstance(tag, str) or not tag.strip():  # type: ignore[redundant-expr]
+            raise ValueError("Curation tags must be nonempty strings")
+        return f"curation_{dataset.id}_{sha256(tag.encode()).hexdigest()}".lower()
+
+    @staticmethod
+    def _curation_data(dataset: DatasetEntry, data: pa.Table | pa.RecordBatch) -> pa.Table:
+        if isinstance(data, pa.RecordBatch):
+            data = pa.Table.from_batches([data])
+        if not isinstance(data, pa.Table):
+            raise TypeError("Curation data must be an Arrow Table or RecordBatch")
+        if data.column_names != ["segment_id", "start", "end"]:
+            raise ValueError("Curation data requires columns: segment_id, start, end")
+        metadata = data.schema.metadata or {}
+        if metadata.get(b"manifest_format_version") != b"3":
+            raise ValueError(
+                "Unsupported curation format; regenerate it with Curation.from_source() or SpanTable.to_curation_arrow()."
+            )
+        if metadata.get(b"dataset_id") != str(dataset.id).encode():
+            raise ValueError("Curation dataset identity does not match this dataset")
+        try:
+            index = metadata[b"index_name"].decode()
+            descriptor = json.loads(metadata[b"index_type"])
+        except (KeyError, ValueError) as err:
+            raise ValueError("Curation data requires valid timeline identity metadata") from err
+        if not index.strip() or any(ord(c) < 32 for c in index):
+            raise ValueError("Curation timeline must be a nonempty name without control characters")
+        validated = _curation_arrow(
+            data.rename_columns(["rerun_segment_id", f"{index}:start", f"{index}:end"]),
+            index=index,
+            dataset_id=str(dataset.id),
+        )
+        if descriptor != json.loads(validated.schema.metadata[b"index_type"]):
+            raise ValueError("Curation boundary types do not match its timeline identity")
+        if b"rerun:curation:num_rows" in metadata:
+            try:
+                expected_rows = int(metadata[b"rerun:curation:num_rows"])
+            except ValueError as err:
+                raise ValueError("Saved curation has an invalid expected row count") from err
+            if expected_rows < 0 or data.num_rows != expected_rows:
+                raise RuntimeError(f"Incomplete curation: expected {expected_rows} rows, found {data.num_rows}")
+        rows = sorted(
+            set(
+                zip(
+                    data["segment_id"].to_pylist(),
+                    data["start"].cast(pa.int64()).to_pylist(),
+                    data["end"].cast(pa.int64()).to_pylist(),
+                    strict=True,
+                )
+            )
+        )
+        if b"rerun:curation:num_rows" in metadata:
+            metadata = {**metadata, b"rerun:curation:num_rows": str(len(rows)).encode()}
+        return pa.table(
+            {
+                "segment_id": pa.array([row[0] for row in rows], type=pa.string()),
+                "start": pa.array([row[1] for row in rows], type=data["start"].type),
+                "end": pa.array([row[2] for row in rows], type=data["end"].type),
+            },
+            metadata=metadata,
         )

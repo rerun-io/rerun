@@ -23,8 +23,6 @@ class ShuffleStrategy(ABC):
     See [the training guide](https://rerun.io/docs/train/dataloader) for the trade-offs.
     """
 
-    # Stable identifier recorded as the manifest header's `shuffle_strategy` (provenance).
-    # Decoupled from the class name on purpose, so renaming a class never changes the header.
     RECIPE_TAG: ClassVar[str]
 
     @abstractmethod
@@ -50,9 +48,6 @@ class ShuffleStrategy(ABC):
         [`NoShuffle`][rerun.experimental.dataloader.NoShuffle] is a deterministic
         baseline that a buffer would only contaminate.
 
-        Owning the buffer here is what keeps a live run and a manifest replay
-        in step: both read it off the same strategy object, so they cannot be
-        configured with different buffers by accident.
         """
         return None
 
@@ -197,21 +192,6 @@ class ShuffleBuffer:
                 yield _pick(buffer, rng)
         finally:
             items.close()
-
-    def emit_order(self, n: int, *, rng: np.random.Generator) -> np.ndarray:
-        """
-        Return the emission permutation for `n` items: `emit_order[k]` is the input position emitted `k`-th.
-
-        Rolls the very same buffer [`shuffle`][rerun.experimental.dataloader.ShuffleBuffer.shuffle]
-        uses, but over positions `[0, n)` instead of decoded samples. A baked
-        manifest and the live buffer therefore share one implementation and can
-        never diverge. Values are `int64`.
-        """
-
-        def _positions() -> Generator[int, None, None]:
-            yield from range(n)
-
-        return np.fromiter(self.shuffle(_positions(), rng=rng), dtype=np.int64, count=n)
 
 
 def _pick(buffer: list[T], rng: np.random.Generator) -> T:

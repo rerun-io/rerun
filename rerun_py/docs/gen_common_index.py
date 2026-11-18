@@ -90,9 +90,6 @@ EXCLUDED_FROM_TRACK_A: Final[set[str]] = {
     # Namespace-only package; its public symbols are re-exported from
     # `rerun.utilities.datafusion` and documented there.
     "rerun.utilities.datafusion.functions",
-    # Sampling-manifest internals; its only public symbol (`Manifest`) is
-    # re-exported flat into `rerun.experimental.dataloader` and documented there.
-    "rerun.experimental.dataloader.manifest",
     # Column-decoder internals
     "rerun.experimental.dataloader.decoders",
     # Deprecated aliases for `rerun.encodings` / `rerun.blueprint.encodings`, which

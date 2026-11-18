@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta, timezone
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, Literal
 from unittest.mock import Mock
+from uuid import UUID
 
 import numpy as np
 import pyarrow as pa
@@ -39,7 +40,7 @@ def _span_schema(datatype: pa.DataType = _DURATION) -> pa.Schema:
 
 def _spans(datatype: pa.DataType = _DURATION) -> tuple[SpanTable, Mock]:
     """A span table on `capture_time`, and the mocked table entry its writes go to."""
-    table = Mock(spec=["arrow_schema", "append", "upsert"])
+    table = Mock(spec=["arrow_schema", "append", "upsert", "overwrite"])
     table.arrow_schema.return_value = _span_schema(datatype)
     return SpanTable(_mock_dataset({"capture_time": datatype}), table), table
 
@@ -235,6 +236,8 @@ def test_upsert_requires_span_id(span_id: Any) -> None:
         (_rows(rerun_segment_id=pa.array(["typo"])), r"Unknown segment IDs .*\['typo'\]"),
         (_rows(extra=pa.array([1])), r"Undeclared span data columns: \['extra'\]"),
         (_rows(**{"capture_time:end": pa.array([None], _DURATION)}), r"contain nulls: \['capture_time:end'\]"),
+        (_rows().drop_columns(["rerun_span_id"]), r"requires 'rerun_span_id' with datatype string"),
+        (_rows(rerun_span_id=pa.array([None], pa.string())), r"contain nulls: \['rerun_span_id'\]"),
         (_rows(rerun_span_id=pa.array([""])), r"contain empty strings: \['rerun_span_id'\]"),
         (_rows(**{"capture_time:start": pa.array([-(2**63)], _DURATION)}), r"minimum 64-bit value"),
     ],
@@ -243,9 +246,9 @@ def test_write_rejects_invalid_rows(rows: pa.Table, message: str) -> None:
     spans, table = _spans()
 
     with pytest.raises(ValueError, match=message):
-        spans.write(rows)
+        spans.write(rows, mode="upsert")
 
-    table.append.assert_not_called()
+    table.upsert.assert_not_called()
 
 
 def _boundaries(column_type: pa.DataType) -> tuple[pa.Array, pa.Array]:
@@ -274,9 +277,9 @@ def test_write_accepts_boundary_columns_of_the_timeline_kind(
 ) -> None:
     spans, table = _spans(table_type)
 
-    spans.write(_rows(**{"capture_time:start": start, "capture_time:end": end}))
+    spans.write(_rows(**{"capture_time:start": start, "capture_time:end": end}), mode="upsert")
 
-    (batch,) = table.append.call_args.args
+    (batch,) = table.upsert.call_args.args
     assert [batch[f"capture_time:{marker}"].cast(pa.int64())[0].as_py() for marker in ("start", "end")] == expected
 
 
@@ -306,17 +309,27 @@ def test_write_rejects_boundary_columns_of_another_kind(table_type: pa.DataType,
     })
 
     with pytest.raises(ValueError, match=rf"capture_time:{marker} is .*, but the .* timeline 'capture_time' takes"):
-        spans.write(rows)
+        spans.write(rows, mode="upsert")
 
-    table.append.assert_not_called()
+    table.upsert.assert_not_called()
 
 
-def test_write_fills_missing_span_ids() -> None:
+@pytest.mark.parametrize("mode", ["append", "overwrite"])
+def test_write_generates_span_ids(mode: Literal["append", "overwrite"]) -> None:
+    spans, table = _spans()
+    rows = _rows(rerun_span_id=pa.array([None], pa.string()))
+
+    spans.write(rows, mode=mode)
+
+    (batch,) = getattr(table, mode).call_args.args
+    assert UUID(batch["rerun_span_id"][0].as_py()).version == 4
+
+
+@pytest.mark.parametrize("mode", ["append", "overwrite"])
+def test_write_rejects_supplied_span_ids(mode: Literal["append", "overwrite"]) -> None:
     spans, table = _spans()
 
-    spans.write(pa.concat_tables([_rows(rerun_span_id=pa.array([None], pa.string())), _rows()]))
+    with pytest.raises(ValueError, match="Span IDs must be omitted or null"):
+        spans.write(_rows(), mode=mode)
 
-    (batch,) = table.append.call_args.args
-    generated, kept = batch["rerun_span_id"].to_pylist()
-    assert len(generated) == 32, f"expected a generated UUID hex, got {generated!r}"
-    assert kept == "a1"
+    getattr(table, mode).assert_not_called()
