@@ -663,8 +663,13 @@ fn show_video_frame(
         if let Some(texture) = texture {
             has_rendered_texture = true;
             let animated_valid_frame = ctx.egui_ctx().animate_bool(
-                egui::Id::unique((entity_path, "video loading indicator"))
-                    .with(visualizer_instruction),
+                egui::Id::unique((
+                    entity_path,
+                    "video loading indicator",
+                    ctx.store_id(),
+                    ctx.view_id,
+                    visualizer_instruction,
+                )),
                 issue.is_none() && !show_loading_indicator,
             );
             depth_offset = frame.depth_offset;
