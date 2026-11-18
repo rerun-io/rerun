@@ -387,10 +387,11 @@ fn resolve_label_positions(
 
     let mut resolved = Vec::with_capacity(labels.len());
     for label in labels {
+        // Geometry labels in 3D must supply world-space Position3D anchors.
         let (wrap_width, text_anchor_pos) = match label.target {
             UiLabelTarget::Rect(rect) => {
                 if spatial_kind == SpaceKind::ThreeD {
-                    continue; // TODO(#1640): 2D labels are not visible in 3D for now.
+                    continue;
                 }
                 let rect_in_ui = ui_from_scene.transform_rect(rect);
                 (
@@ -400,7 +401,7 @@ fn resolve_label_positions(
             }
             UiLabelTarget::Point2D(pos) => {
                 if spatial_kind == SpaceKind::ThreeD {
-                    continue; // TODO(#1640): 2D labels are not visible in 3D for now.
+                    continue;
                 }
                 let pos_in_ui = ui_from_scene.transform_pos(pos);
                 (f32::INFINITY, pos_in_ui)

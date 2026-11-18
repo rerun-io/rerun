@@ -11,7 +11,7 @@ use re_viewer_context::{
     VisualizerSystem, typed_fallback_for,
 };
 
-use super::utilities::{LabeledBatch, process_labels_2d};
+use super::utilities::{LabeledBatch, process_labels_2d, spatial_view_kind_from_view_class};
 use super::{SpatialViewVisualizerData, process_radius_slice};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 // ---
@@ -111,6 +111,7 @@ impl Lines2DVisualizer {
                     }),
                 },
                 world_from_obj,
+                spatial_view_kind_from_view_class(ent_context.view_class_identifier),
             ));
         }
     }

@@ -25,7 +25,7 @@ use re_viewer_context::{
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
-use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle};
 use crate::SpaceKind;
 use crate::contexts::EntityDepthOffsets;
 use crate::eye::ExtendedEyeFrustum;
@@ -801,7 +801,7 @@ fn show_video_frame(
     visualizer_data.ui_labels.push(UiLabel {
         text: issue.message,
         style,
-        target: UiLabelTarget::Rect(label_target_rect),
+        target: label_target_rect.into(),
         labeled_instance: re_entity_db::InstancePathHash::entity_all(entity_path),
         visualizer_instruction,
     });
