@@ -18,7 +18,7 @@ This will use up a lot of space and bandwidth. You can also encode them as PNG a
 though it should be noted that PNG encoding usually does very little for the file size of photographic images.
 
 If you want to reduce bandwidth and storage cost, you can encode each frame as a JPEG and log it using `EncodedImage`. This can easily reduce the file sizes by almost two orders of magnitude with minimal perceptual loss.
-This is also very simple to do, and the Python logging SDK has built-in support for it using [`Image.compress`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Image.compress).
+This is also very simple to do, and the Python logging SDK has built-in support for it using [`Image.compress`](https://ref.rerun.io/docs/python/stable/archetypes/#rerun.archetypes.Image.compress).
 
 Finally, for the best compression ratio, you can encode the images as an encoded video.
 There are two options to choose from:
@@ -171,7 +171,7 @@ We tested the following codecs in more detail:
 [^2]: Chrome on Windows has been observed to stutter on playback. It can be mitigated by [using software decoding](../../getting-started/install-rerun/troubleshooting.md#video-stuttering), but this may lead to high memory usage. See [#7595](https://github.com/rerun-io/rerun/issues/7595).
 [^3]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
 [^4]: Safari/WebKit has been observed stuttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not to support H.265 decoding.
-[^5]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see above.
+[^5]: Only supported if hardware decoding is available. Therefore always affected by Windows stuttering issues, see above.
 
 Beyond this, for best compatibility we recommend:
 * prefer YUV over RGB & monochrome formats

@@ -29,7 +29,7 @@ See also [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archet
 
 ## API reference links
  * 🌊 [C++ API docs for `McapSchema`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapSchema.html)
- * 🐍 [Python API docs for `McapSchema`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.McapSchema)
+ * 🐍 [Python API docs for `McapSchema`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.McapSchema)
  * 🦀 [Rust API docs for `McapSchema`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapSchema.html)
 
 ## Example

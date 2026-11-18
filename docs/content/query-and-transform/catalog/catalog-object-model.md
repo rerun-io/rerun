@@ -4,7 +4,9 @@ order: 100
 description: How the catalog organizes datasets, segments, and entries
 ---
 
-This page covers the catalog server's object model. For logging and recording basics, see [Recordings](../../logging-and-ingestion/data-model/recordings.md). For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/).
+This page covers the catalog server's object model.
+For logging and recording basics, see [Recordings](../../logging-and-ingestion/data-model/recordings.md).
+For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/catalog/).
 
 
 ## Catalog
@@ -143,7 +145,7 @@ Such an occurrence is rare, and practically impossible when using standard Rerun
 
 A dataset can be assigned a blueprint.
 This is done by registering a `.rbl` blueprint file typically stored in object storage to the dataset.
-A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
+A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
 In that case, the blueprint is applied to all segments of the dataset when visualized in the Rerun Viewer.
 
 A separate **table blueprint** can be used to configure the segment table itself: columns, card layouts, and embedded segment previews.
@@ -158,7 +160,7 @@ Registering it once as an asset means it does not have to be copied into every r
 Like blueprints, assets live in their own dataset, owned by the dataset they belong to.
 Deleting the dataset also deletes its asset dataset and the asset storage.
 
-Assets are registered from a `.rrd` file that the server can read, using [`DatasetEntry.register_asset()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_asset):
+Assets are registered from a `.rrd` file that the server can read, using [`DatasetEntry.register_asset()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_asset):
 
 ```python
 client = rr.catalog.CatalogClient(…)
@@ -197,8 +199,8 @@ segment_only = dataset.segment_store(segment_id, include_assets=False)
 Fetching an asset's manifest costs one request per asset, so `include_assets=False` is worth it when you only care about the segment's own data.
 
 The [dataframe query APIs](../dataframes/dataframe-queries.md) are the exception: they stay on the dataset's own segments, so assets never show up there.
-[`DatasetEntry.schema()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.schema), [`DatasetEntry.segment_ids()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_ids), [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_table) and [`DatasetEntry.reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.reader) all ignore the asset dataset.
-The asset dataset is hidden, so it is also left out of [`CatalogClient.datasets()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.CatalogClient.datasets) unless you pass `include_hidden=True`.
+[`DatasetEntry.schema()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.schema), [`DatasetEntry.segment_ids()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_ids), [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_table) and [`DatasetEntry.reader()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.reader) all ignore the asset dataset.
+The asset dataset is hidden, so it is also left out of [`CatalogClient.datasets()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.CatalogClient.datasets) unless you pass `include_hidden=True`.
 
 To query asset data, target the asset dataset itself, which is a regular dataset with one segment per registered asset:
 

@@ -78,7 +78,7 @@ You can learn more about this in the [shared recordings guide](../sinks-and-mode
 ### View several recordings
 
 The Viewer can have many recordings open, but it shows one active recording at a time.
-Switch between them in the recording panel on the left.
+Switch between them in the Sources panel on the left.
 Recordings that share an application ID are grouped together and use the same blueprint.
 
 To combine several `.rrd` files:
@@ -116,9 +116,9 @@ Application IDs are used by the Viewer when loading recordings directly (not via
 As stated above, application IDs are discarded when registering recordings to a catalog server. See [Recordings on a catalog server](#recordings-on-a-catalog-server) above.
 
 Check out the API to learn more about SDK initialization:
-- [🐍 Python](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init)
+- [🐍 Python](https://ref.rerun.io/docs/python/stable/rerun/#rerun.init)
 - [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new)
-- [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#abda6202900fa439fe5c27f7aa0d1105a)
+- [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a5fcc5c8fbf051c148165eb3e0464a4c5)
 
 
 ## Recording IDs

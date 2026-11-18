@@ -100,7 +100,7 @@ The cleared data stays in the recording, can still be seen at earlier times, and
 There is no API to delete the data of a single entity from a recording.
 Instead, you can:
 
-- **Close a whole recording** in the Viewer, from the recording panel.
+- **Close a whole recording** in the Viewer, from the Sources panel.
   From code, use the experimental `rerun.experimental.ViewerClient.close(…)` on a running Viewer, e.g. `ViewerClient.connect().close("current")`.
 - **Drop entities from a file** with the Rerun CLI:
 

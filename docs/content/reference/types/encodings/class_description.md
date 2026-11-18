@@ -57,7 +57,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `ClassDescription`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ClassDescription.html)
- * 🐍 [Python API docs for `ClassDescription`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ClassDescription)
+ * 🐍 [Python API docs for `ClassDescription`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.ClassDescription)
  * 🦀 [Rust API docs for `ClassDescription`](https://docs.rs/rerun/latest/rerun/encodings/struct.ClassDescription.html)
 
 

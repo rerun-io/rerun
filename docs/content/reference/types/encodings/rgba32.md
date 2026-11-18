@@ -16,7 +16,7 @@ UInt32
 
 ## API reference links
  * 🌊 [C++ API docs for `Rgba32`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Rgba32.html)
- * 🐍 [Python API docs for `Rgba32`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Rgba32)
+ * 🐍 [Python API docs for `Rgba32`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.Rgba32)
  * 🦀 [Rust API docs for `Rgba32`](https://docs.rs/rerun/latest/rerun/encodings/struct.Rgba32.html)
 
 

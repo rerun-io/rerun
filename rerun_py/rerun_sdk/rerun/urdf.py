@@ -361,10 +361,6 @@ class UrdfTree:
         """
         Return a lazy stream over chunks emitted from this URDF tree.
 
-        !!! warning
-            This method is experimental and returns the experimental
-            `rerun.chunk.LazyChunkStream` API.
-
         Parameters
         ----------
         include_joint_transforms:

@@ -106,7 +106,7 @@ Output:
 
 Properties are stored under the reserved `/__properties` entity path and are logged as [static data](../../logging-and-ingestion/data-model/static.md), meaning they have no timeline association.
 Logging directly under this entity path is not recommended.
-Use the [`rr.send_property()`](https://ref.rerun.io/docs/python/stable/common/property_functions/#rerun.send_property) or [`RecordingStream.send_property()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream.send_property) API instead.
+Use the [`rr.send_property()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_property) or [`RecordingStream.send_property()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.RecordingStream.send_property) API instead.
 
 ### How are property columns named?
 
@@ -166,6 +166,6 @@ Output:
 ### Can the built-in properties be omitted from recordings?
 
 Yes.
-Both [`rr.init()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init) and [`RecordingStream()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream) accept a `send_properties` parameter (default: `True`).
+Both [`rr.init()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.init) and [`RecordingStream()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.RecordingStream) accept a `send_properties` parameter (default: `True`).
 Set it to `False` to prevent the built-in `RecordingInfo` properties from being automatically sent when the recording is created.
 In Rust, `RecordingStreamBuilder::send_properties(false)` does the same.

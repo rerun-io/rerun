@@ -352,6 +352,11 @@ Files written without a footer (streaming sinks, legacy producers) skip the `End
 
 ## Stability
 
+RRD files written by Rerun 0.23 or later load in every newer Rerun version, which migrates them when it loads them.
+The reverse is not guaranteed: an older Viewer may not be able to read a file written by a newer SDK.
+Data logged with types whose [reference page](../../reference/types.md) marks them _unstable_ may not be read the same way by newer versions.
+See [A stable file format](https://rerun.io/blog/data-layer-for-robot-learning#a-stable-file-format-with-chunklevel-python-apis) for the announcement.
+
 The format is split into two layers with different stability stories.
 
 ### Binary format

@@ -29,7 +29,7 @@ title: "Boxes2D"
 
 ## API reference links
  * 🌊 [C++ API docs for `Boxes2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Boxes2D.html)
- * 🐍 [Python API docs for `Boxes2D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Boxes2D)
+ * 🐍 [Python API docs for `Boxes2D`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Boxes2D)
  * 🦀 [Rust API docs for `Boxes2D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Boxes2D.html)
 
 ## Example

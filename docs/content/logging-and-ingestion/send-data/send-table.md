@@ -108,15 +108,6 @@ viewer.send_table(
 )
 ```
 
-You can also send tables to a native Viewer instead of the notebook widget:
-
-```python
-from rerun.experimental import ViewerClient
-
-# Connect to a running Rerun Viewer
-client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
-```
-
 ## Current limitations
 
 As this is an experimental API, there are several limitations to be aware of:

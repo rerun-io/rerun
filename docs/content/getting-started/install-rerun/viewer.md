@@ -5,7 +5,8 @@ description: Install the standalone Rerun Viewer and match its version to your S
 ---
 
 The [Viewer](../../viewer/ui/overview.md) can be installed independent of the library language you're using.
-Make sure that your library version matches the version of the Viewer you're using, because [our data format is not yet stable across different versions](https://github.com/rerun-io/rerun/issues/6410).
+Make sure that your library version matches the version of the Viewer you're using.
+An older Viewer may not be able to read data from a newer SDK, see [RRD format stability](../../logging-and-ingestion/chunks-and-rrd/rrd-format.md#stability).
 
 There are many ways to install the viewer. Please pick whatever works best for your setup:
 

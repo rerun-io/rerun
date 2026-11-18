@@ -19,7 +19,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphEdge`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphEdge.html)
- * 🐍 [Python API docs for `GraphEdge`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.GraphEdge)
+ * 🐍 [Python API docs for `GraphEdge`](https://ref.rerun.io/docs/python/stable/components#rerun.components.GraphEdge)
  * 🦀 [Rust API docs for `GraphEdge`](https://docs.rs/rerun/latest/rerun/components/struct.GraphEdge.html)
 
 

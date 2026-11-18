@@ -31,7 +31,7 @@ but can also be useful for other use cases where an image buffer needs to be pla
 
 ## API reference links
  * 🌊 [C++ API docs for `GridMap`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GridMap.html)
- * 🐍 [Python API docs for `GridMap`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GridMap)
+ * 🐍 [Python API docs for `GridMap`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.GridMap)
  * 🦀 [Rust API docs for `GridMap`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GridMap.html)
 
 ## Examples

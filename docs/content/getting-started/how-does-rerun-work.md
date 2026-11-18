@@ -28,7 +28,9 @@ The Viewer visualizes your data. It comes in two forms:
 
 The viewer includes a [**Chunk Store**](../logging-and-ingestion/chunks-and-rrd/chunks.md) (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
 
-The Web Viewer has performance limitations compared to the native viewer. It runs as 32-bit Wasm and is limited to ~2 GiB memory in practice, limiting the amount of data that can be visualized simultaneously. It also runs single-threaded, making it generally slower than native.
+The Web Viewer has performance limitations compared to the native viewer.
+It runs as 32-bit Wasm, which caps memory at 4 GiB, and browsers often allow less, limiting the amount of data that can be visualized simultaneously.
+It also runs single-threaded, making it generally slower than native.
 
 Both viewers can be extended: the Native Viewer through its [Rust API](../viewer/extend/extend-ui.md), and the Web Viewer can be [embedded in web applications](../viewer/integrations/embed-web.md) or [Jupyter notebooks](../viewer/integrations/embed-notebooks.md).
 

@@ -18,7 +18,7 @@ Int64
 
 ## API reference links
  * 🌊 [C++ API docs for `Timestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Timestamp.html)
- * 🐍 [Python API docs for `Timestamp`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Timestamp)
+ * 🐍 [Python API docs for `Timestamp`](https://ref.rerun.io/docs/python/stable/components#rerun.components.Timestamp)
  * 🦀 [Rust API docs for `Timestamp`](https://docs.rs/rerun/latest/rerun/components/struct.Timestamp.html)
 
 

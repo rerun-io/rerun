@@ -16,7 +16,7 @@ Float32
 
 ## API reference links
  * 🌊 [C++ API docs for `VoxelValue`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VoxelValue.html)
- * 🐍 [Python API docs for `VoxelValue`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VoxelValue)
+ * 🐍 [Python API docs for `VoxelValue`](https://ref.rerun.io/docs/python/stable/components#rerun.components.VoxelValue)
  * 🦀 [Rust API docs for `VoxelValue`](https://docs.rs/rerun/latest/rerun/components/struct.VoxelValue.html)
 
 

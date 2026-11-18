@@ -44,7 +44,7 @@ Changes over time are supported for most but not all styling fields (see respect
 
 ## API reference links
  * 🌊 [C++ API docs for `Measurements`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Measurements.html)
- * 🐍 [Python API docs for `Measurements`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Measurements)
+ * 🐍 [Python API docs for `Measurements`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Measurements)
  * 🦀 [Rust API docs for `Measurements`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Measurements.html)
 
 ## Example

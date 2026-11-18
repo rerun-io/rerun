@@ -10,7 +10,7 @@ For Python and Rust we have helpers for this, called `AnyValues`, allowing you t
 For C++ a similar thing can be accomplished without the helpers.
 You find the documentation for these helpers here:
 
--   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues)
+-   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/rerun/#rerun.AnyValues)
 -   [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html)
 
 snippet: tutorials/any_values
@@ -19,7 +19,7 @@ If your values should be grouped together and that grouping isn't referred to fr
 
 You find the documentation for these helpers here:
 
--   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DynamicArchetype)
+-   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/rerun/#rerun.DynamicArchetype)
 -   [`DynamicArchetype` in Rust](https://docs.rs/rerun/latest/rerun/struct.DynamicArchetype.html)
 
 snippet: tutorials/dynamic_archetype

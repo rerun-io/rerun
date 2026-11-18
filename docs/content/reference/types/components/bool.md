@@ -20,7 +20,7 @@ Boolean
 
 ## API reference links
  * 🌊 [C++ API docs for `Bool`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Bool.html)
- * 🐍 [Python API docs for `Bool`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Bool)
+ * 🐍 [Python API docs for `Bool`](https://ref.rerun.io/docs/python/stable/components#rerun.components.Bool)
  * 🦀 [Rust API docs for `Bool`](https://docs.rs/rerun/latest/rerun/components/struct.Bool.html)
 
 

@@ -29,13 +29,13 @@ A [vision-language-action policy](https://en.wikipedia.org/wiki/Vision-language-
   <img src="https://rerun.io/blog/data-layer-tax/vla.jpg" alt="A single training sample for a VLA model with camera, task, state, and action columns aligned at the current row">
 </picture>
 
-The dataloader assembles those samples on demand from the per-recording [chunks](https://rerun.io/docs/logging-and-ingestion/chunks-and-rrd/chunks) in a Rerun [catalog](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#catalog), while the PyTorch `DataLoader` drives batching, shuffling, and worker parallelism.
+The dataloader assembles those samples on demand from the per-recording [chunks](../logging-and-ingestion/chunks-and-rrd/chunks.md) in a Rerun [catalog](../query-and-transform/catalog/catalog-object-model.md#catalog), while the PyTorch `DataLoader` drives batching, shuffling, and worker parallelism.
 
 ## How to use it
 
 ### Register data with a catalog
 
-The dataloader reads from a Rerun catalog, so you must first register [RRDs](https://rerun.io/docs/logging-and-ingestion/data-model/recordings/#storage-formats). Start the OSS server in a separate terminal:
+The dataloader reads from a Rerun catalog, so you must first register [RRDs](../logging-and-ingestion/data-model/recordings.md#storage-formats). Start the OSS server in a separate terminal:
 
 ```bash
 rerun server

@@ -26,7 +26,7 @@ See [`archetypes.McapChannel`](https://rerun.io/docs/reference/types/archetypes/
 
 ## API reference links
  * 🌊 [C++ API docs for `McapMessage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapMessage.html)
- * 🐍 [Python API docs for `McapMessage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.McapMessage)
+ * 🐍 [Python API docs for `McapMessage`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.McapMessage)
  * 🦀 [Rust API docs for `McapMessage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapMessage.html)
 
 ## Example

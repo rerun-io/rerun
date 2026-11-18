@@ -16,7 +16,7 @@ Here, only the positions of the points have been specified but, looking at the [
 > **Recommended** & **Optional**: [`Radius`](../../reference/types/components/radius.md), [`Color`](../../reference/types/components/color.md), [`Text`](../../reference/types/components/text.md), [`ShowLabels`](../../reference/types/components/show_labels.md), [`PointShading`](../../reference/types/components/point_shading.md), [`ClassId`](../../reference/types/components/class_id.md), [`KeypointId`](../../reference/types/components/keypoint_id.md)
 
 
-### Log only what changed
+## Log only what changed
 
 The SDK does not deduplicate: if you log the same value again, it is stored again.
 To save bandwidth and memory, skip values that did not change yourself.

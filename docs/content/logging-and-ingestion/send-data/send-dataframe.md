@@ -25,4 +25,4 @@ To control component types or spread columns across several entities, see [Chunk
 
 ## Reference
 
-* [🐍 Python `send_dataframe`](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_dataframe)
+* [🐍 Python `send_dataframe`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_dataframe)

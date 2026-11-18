@@ -10,7 +10,7 @@ The core of Rerun's data model is inspired by the ideas of the [Entity Component
 short, an ECS is a composition-oriented framework in which *entities* represent generic objects while *components* describe
 data associated with those entities.
 
- * *Entities* are the "things" that you log with the [`rr.log()`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function. They are represented by the
+ * *Entities* are the "things" that you log with the [`rr.log()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.log) function. They are represented by the
    [*entity path*](entity-path.md) string which is passed as first argument.
  * *Components*, however, are what contains the data that is associated with those "things". For example, position, color,
    pixel data, etc.
@@ -30,7 +30,7 @@ For example, consider the case of logging a point:
 rr.log("my_point", rr.Points2D([32.7, 45.9], colors=[255, 0, 0]))
 ```
 
-This statement uses the [`rr.Points2D`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Points2D) archetype.
+This statement uses the [`rr.Points2D`](https://ref.rerun.io/docs/python/stable/archetypes/#rerun.archetypes.Points2D) archetype.
 Internally, this archetype builds a set of, in this case, two components:
 * `Points2D:positions` of type [`Position2D`](../../reference/types/components/position2d.md)
 * `Points2D:colors` of type [`Color`](../../reference/types/components/color.md).
@@ -54,7 +54,7 @@ Your entity could have any number of additional components as well. This isn't a
 aren't relevant to the scene that the view is drawing are safely ignored. Also, Rerun even allows you to log your
 own set of components, bypassing archetypes altogether.
 
-In Python, the [rr.AnyValues](https://ref.rerun.io/docs/python/stable/common/custom_data/#rerun.AnyValues) helper object can be used to add custom component(s) to an archetype:
+In Python, the [rr.AnyValues](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AnyValues) helper object can be used to add custom component(s) to an archetype:
 
 snippet: tutorials/extra_values
 

@@ -22,7 +22,7 @@ By default, edges are undirected.
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphEdges`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GraphEdges.html)
- * 🐍 [Python API docs for `GraphEdges`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GraphEdges)
+ * 🐍 [Python API docs for `GraphEdges`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.GraphEdges)
  * 🦀 [Rust API docs for `GraphEdges`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GraphEdges.html)
 
 ## Examples

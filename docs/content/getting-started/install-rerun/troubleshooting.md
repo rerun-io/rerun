@@ -51,8 +51,13 @@ The prebuilt `rerun` binaries and the `rerun-sdk` wheels should work out of the 
 If the Viewer does not start, first make sure your graphics drivers are up to date (see [Graphics issues](#graphics-issues)).
 Installing `libxkbcommon-x11-0` also helps on some systems.
 
-[TODO(#1250)](https://github.com/rerun-io/rerun/issues/1250): Running with the wayland window manager sometimes causes Rerun to crash.
-Try unsetting the wayland display (`unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `) as a workaround.
+Running with the Wayland window manager sometimes causes Rerun to crash ([#1250](https://github.com/rerun-io/rerun/issues/1250)).
+Try unsetting the Wayland display (`unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `) as a workaround.
+
+<!--
+Discoverable for scripts/zombie_todos.py:
+TODO(#1250): fix above if ticket is outdated.
+-->
 
 ### Building from source on Linux
 

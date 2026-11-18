@@ -48,8 +48,8 @@ In Rust and C++, you set the fields with the builder methods and pass the row le
 
 ## Reference
 
-* [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
-* [🐍 Python](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
+* [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#addc516744c330c5021352266fdc2bf92)
+* [🐍 Python](https://ref.rerun.io/docs/python/stable/rerun/#rerun.send_columns)
 * [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 

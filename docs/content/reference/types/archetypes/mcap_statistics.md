@@ -36,7 +36,7 @@ and the [MCAP specification](https://mcap.dev/) for complete format details.
 
 ## API reference links
  * 🌊 [C++ API docs for `McapStatistics`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1McapStatistics.html)
- * 🐍 [Python API docs for `McapStatistics`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.McapStatistics)
+ * 🐍 [Python API docs for `McapStatistics`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.McapStatistics)
  * 🦀 [Rust API docs for `McapStatistics`](https://docs.rs/rerun/latest/rerun/archetypes/struct.McapStatistics.html)
 
 ## Example

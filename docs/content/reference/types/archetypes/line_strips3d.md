@@ -27,7 +27,7 @@ title: "LineStrips3D"
 
 ## API reference links
  * 🌊 [C++ API docs for `LineStrips3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1LineStrips3D.html)
- * 🐍 [Python API docs for `LineStrips3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.LineStrips3D)
+ * 🐍 [Python API docs for `LineStrips3D`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.LineStrips3D)
  * 🦀 [Rust API docs for `LineStrips3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.LineStrips3D.html)
 
 ## Examples

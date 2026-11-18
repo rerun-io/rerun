@@ -16,7 +16,7 @@ Formatting options for the text document view.
 * `word_wrap`: Whether to wrap long lines in the document body.
 
 ## API reference links
- * 🐍 [Python API docs for `TextDocumentView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.TextDocumentView)
+ * 🐍 [Python API docs for `TextDocumentView`](https://ref.rerun.io/docs/python/stable/blueprint_views#rerun.blueprint.views.TextDocumentView)
 
 ## Example
 

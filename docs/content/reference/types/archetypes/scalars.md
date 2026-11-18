@@ -30,7 +30,7 @@ or click series in the plot legend.
 
 ## API reference links
  * 🌊 [C++ API docs for `Scalars`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Scalars.html)
- * 🐍 [Python API docs for `Scalars`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Scalars)
+ * 🐍 [Python API docs for `Scalars`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Scalars)
  * 🦀 [Rust API docs for `Scalars`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Scalars.html)
 
 ## Examples

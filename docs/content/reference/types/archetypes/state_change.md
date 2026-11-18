@@ -23,7 +23,7 @@ The state timeline view displays these as horizontal colored lanes over time.
 
 ## API reference links
  * 🌊 [C++ API docs for `StateChange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1StateChange.html)
- * 🐍 [Python API docs for `StateChange`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.StateChange)
+ * 🐍 [Python API docs for `StateChange`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.StateChange)
  * 🦀 [Rust API docs for `StateChange`](https://docs.rs/rerun/latest/rerun/archetypes/struct.StateChange.html)
 
 ## Example

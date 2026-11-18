@@ -4,7 +4,7 @@ order: 500
 description: Load robot models defined in URDF files and visualize them in the 3D view
 ---
 
-Rerun features a built-in [importer](https://rerun.io/docs/logging-and-ingestion/import/importers/overview) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
+Rerun features a built-in [importer](importers/overview.md) for [URDF](https://en.wikipedia.org/wiki/URDF) files.
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/urdf-viewer/ebdefa158ab6f26f9dc1cb1924fce4b846fe8db2/full.png" alt="A robot model loaded from an URDF file visualized in Rerun.">
@@ -149,7 +149,7 @@ if (mimic := joint.mimic) is not None:
 
 ### Streaming the model as chunks
 
-`UrdfTree.stream()` returns the chunks of the model as an experimental `rerun.chunk.LazyChunkStream`, for use with the [Chunk Processing API](chunk-processing-api.md).
+`UrdfTree.stream()` returns the chunks of the model as a `rerun.chunk.LazyChunkStream`, for use with the [Chunk Processing API](chunk-processing-api.md).
 Pass `include_joint_transforms=False` to leave out the static joint transforms.
 
 ## Load URDF into an existing recording
@@ -168,6 +168,6 @@ To add them, we can simply drag the corresponding URDF files into the viewer whe
 
 ## References
 
-* [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
+* [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.log_file_from_path)
 * [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
 * [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)

@@ -68,4 +68,4 @@ Use `set_global()` or `set_thread_local()` to make one of them the default.
 See also:
 - [Share recordings across multiple processes](shared-recordings.md)
 - [Recordings](../data-model/recordings.md)
-- [🐍 Python `RecordingStream` API](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.RecordingStream)
+- [🐍 Python `RecordingStream` API](https://ref.rerun.io/docs/python/stable/rerun/#rerun.RecordingStream)

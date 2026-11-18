@@ -29,7 +29,7 @@ Dimensionality of the scalar arrays logged at each time point is assumed to be t
 
 ## API reference links
  * 🌊 [C++ API docs for `SeriesLines`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesLines.html)
- * 🐍 [Python API docs for `SeriesLines`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SeriesLines)
+ * 🐍 [Python API docs for `SeriesLines`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.SeriesLines)
  * 🦀 [Rust API docs for `SeriesLines`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SeriesLines.html)
 
 ## Example

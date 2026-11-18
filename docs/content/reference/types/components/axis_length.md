@@ -16,7 +16,7 @@ Float32
 
 ## API reference links
  * 🌊 [C++ API docs for `AxisLength`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AxisLength.html)
- * 🐍 [Python API docs for `AxisLength`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.AxisLength)
+ * 🐍 [Python API docs for `AxisLength`](https://ref.rerun.io/docs/python/stable/components#rerun.components.AxisLength)
  * 🦀 [Rust API docs for `AxisLength`](https://docs.rs/rerun/latest/rerun/components/struct.AxisLength.html)
 
 

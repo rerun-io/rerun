@@ -216,17 +216,16 @@ To view data from a remote machine, a Docker container, or over SSH, see [View d
 
 Sometimes, sending data over the network is not an option. Maybe you'd like to share the data, attach it to a bug report, etc.
 
-Rerun has you covered: each SDK exposes a `save` method (Python: [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.save), Rust: [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save), C++: [`RecordingStream::save`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a555a7940a076c93d951de5b139d14918)) that streams all logged data to disk. View the resulting file with `rerun path/to/recording.rrd`.
+Rerun has you covered: each SDK exposes a `save` method (Python: [`rr.save`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.save), Rust: [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save), C++: [`RecordingStream::save`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a555a7940a076c93d951de5b139d14918)) that streams all logged data to disk.
+View the resulting file with `rerun path/to/recording.rrd`.
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
 
 ### RRD file backwards compatibility
 
-RRD files saved with Rerun 0.23 or later can be opened with a newer Rerun version.
-For more details and potential limitations, please refer to [our blog post](https://rerun.io/blog/release-0.23).
-
-> [!WARNING]
-> At the moment, we only guarantee compatibility across adjacent minor versions (e.g. Rerun 0.24 can open RRDs from 0.23).
+RRD files saved with Rerun 0.23 or later can be opened with any newer Rerun version.
+An older Viewer is not guaranteed to open files written by a newer SDK.
+See [RRD format stability](chunks-and-rrd/rrd-format.md#stability) for details.
 
 ### Rust-only: showing the Viewer in-process
 

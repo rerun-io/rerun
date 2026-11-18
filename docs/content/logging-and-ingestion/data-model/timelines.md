@@ -12,7 +12,7 @@ The logging SDK can automatically create two timelines for you:
 * `log_time` - a temporal timeline with the time of the log call. Enabled by default; opt-out via the `RERUN_LOG_TIME` environment variable or `set_log_time_enabled`.
 * `log_tick` - a sequence timeline with the sequence number of the log call. Disabled by default; opt-in via the `RERUN_LOG_TICK` environment variable or `set_log_tick_enabled`.
 
-You can use the `set_time` function (Python reference: [set_time](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.set_time)) to associate logs with other timestamps on other timelines. For example:
+You can use the `set_time` function (Python reference: [set_time](https://ref.rerun.io/docs/python/stable/rerun/#rerun.set_time)) to associate logs with other timestamps on other timelines. For example:
 
 snippet: tutorials/timelines_example
 
@@ -74,7 +74,7 @@ With `send_columns`, pass one `rr.TimeColumn` per timeline in `indexes`.
 
 ## Events
 
-An _event_ refers to an instance of logging one or more component batches to one or more timelines. In the viewer, the Time panel provides a graphical representation of these events across time and entities.
+An _event_ refers to an instance of logging one or more component batches to one or more timelines. In the viewer, the time panel provides a graphical representation of these events across time and entities.
 
 <picture>
   <img src="https://static.rerun.io/event/57255c0552d76ca2837c2e9581a4dc3534b105a5/full.png" alt="Time panel streams for a scalar entity, with a tooltip on the Scalar component row reporting 5 events and a value">
@@ -87,7 +87,7 @@ An _event_ refers to an instance of logging one or more component batches to one
 
 ## Static data
 
-The [`rr.log()`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log) function has a `static=False` default argument.
+The [`rr.log()`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.log) function has a `static=False` default argument.
 If `static=True` is used instead, the data logged becomes *static*. Static data belongs to all timelines (existing ones, and ones not yet created) and shadows any temporal data of the same type on the same entity.
 
 This is useful for data that isn't part of normal data capture, but sets the scene for how it should be shown.
