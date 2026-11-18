@@ -5,6 +5,11 @@ Runs custom linting on our code.
 
 Adding "NOLINT" to any line makes the linter ignore that line. Adding a pair of "NOLINT_START" and "NOLINT_END" makes
 the linter ignore these lines, as well as all lines in between.
+
+If you are linting Rust code, consider using `relint` instead,
+which has access to a proper AST of the source code.
+
+A NOLINT that suppresses nothing is an error, so that NOLINTs don't outlive the code they were written for.
 """
 
 from __future__ import annotations
@@ -32,21 +37,6 @@ from gitignore_parser import parse_gitignore
 # Set in main().
 rerun_prefix = "./"
 
-debug_format_of_err = re.compile(r"\{\:#?\?\}.*, \w*err")
-error_match_name = re.compile(r"Err\((\w+)\)")
-error_map_err_name = re.compile(r"map_err\(\|(\w+)\|")
-
-# Detect log macros with inline sensitive data (URLs, paths) in the format string.
-# Sensitive data should be passed as structured fields instead.
-# Bad:  re_log::warn!("Failed to open URL {url}: {err}");
-# Good: re_log::warn!(?url, "Failed to open URL: {err}");
-log_with_inline_sensitive_data = re.compile(
-    r're_log::(error|warn)(_once)?!\s*\(\s*"[^"]*\{(url|path|filepath|file_path|uri|file|filename|dir|directory|folder)[^}]*\}'
-)
-
-# Detect thiserror #[error(...)] with multiple unnamed tuple fields like {0}, {1}
-# Bad:  #[error("Failed to do {0}: {1}")]
-# Good: #[error("Failed to do {path}: {err}")]
 wasm_caps = re.compile(r"\bWASM\b")
 else_return = re.compile(r"else\s*{\s*return;?\s*};")
 # Looks for: \"{foo}\" (manual quotes), including \"{foo:?}\" (excess quotes).
@@ -54,8 +44,6 @@ explicit_quotes = re.compile(r'[^(]\\"\{[^}]*\}\\"')
 # Three dots between two words or `{placeholders}` are a range (e.g. `main...HEAD`, `{sha}...{tag}`), not an ellipsis.
 ellipsis = re.compile(r"[^.](?<![\w}])\.\.\.([^\-.0-9a-zA-Z]|$)|[^.]\.\.\.([^\-.0-9a-zA-Z{]|$)")
 ellipsis_expression = re.compile(r"[\[\]\(\)<>\{\}]?.*\.\.\..*[\[\]\(\)<>\{\}]")
-anyhow_result = re.compile(r"Result<.*, anyhow::Error>")
-tonic_result = re.compile(r"Result<.*?,\s*tonic::Status\s*,?\s*>", re.DOTALL)
 # A `///` comment, either opening a line or trailing a declaration. `////` separator lines are fine.
 triple_slash_comment = re.compile(r"(?:^|\s)///(?!/)")
 
@@ -70,11 +58,6 @@ unspaced_em_dash = re.compile(r"[\w\)\*]—[\w\(\*]")
 sentence_en_dash = re.compile(r"[A-Za-z\"'\)]\s–\s[A-Za-z]")
 todo_owner = re.compile(r"TODO\(([^)]*)\)")
 malformed_todo = re.compile(r'TODO([^_"(]|$)')
-tokio_runtime_creation = re.compile(
-    r"(?:tokio::)?runtime::Builder::new_(?:current|multi)_thread|tokio::runtime::Runtime::new"
-)
-debug_formatted_error = re.compile(r"\{\w*err:#?\?\}")
-debug_tracing_error = re.compile(r"\?\w*err\b")
 debug_formatted_ui_label = re.compile(r"ui\.\w+\([^)]*\n?[^)]*:\?")
 quoted_string = re.compile(r'"([^"]*)"')
 deprecated_rerun_cloud = re.compile(r"\bRerun\s+Cloud\b", re.IGNORECASE)
@@ -83,8 +66,8 @@ deprecated_rerun_data_platform = re.compile(r"\bRerun\s+Data\s+Platform\b", re.I
 deprecated_data_platform = re.compile(r"\bData\s+Platform\b", re.IGNORECASE)
 deprecated_dataplatform = re.compile(r"(?<![/\[,])dataplatform(?![/\],])", re.IGNORECASE)
 rerun_hub = re.compile(r"\bRerun\s+Hub\b", re.IGNORECASE)
-recording_stream_app_id = re.compile(r'(RecordingStreamBuilder::new|\.init|RecordingStream)\("([^"]*)')
-script_setup_app_id = re.compile(r'(rr.script_setup)\(args, "(\w*)')
+recording_stream_app_id = re.compile(r'(RecordingStreamBuilder::new|\.init|RecordingStream)\(\s*"([^"]*)')
+script_setup_app_id = re.compile(r'(rr.script_setup)\(\s*args,\s*"(\w*)')
 
 # reStructuredText syntax that we don't want in Python docstrings.
 # Our Python API docs use MkDocs + mkdocstrings (not Sphinx), so rST isn't rendered.
@@ -152,7 +135,8 @@ def check_string(s: str) -> str | None:
         "Viewport",
     ]
 
-    if m := re.search(r"[^.] ([A-Z]\w+)", s):
+    # A capitalized word followed by `<`, `::`, `(`, or `{` is Rust code, not prose.
+    if m := re.search(r"[^.] ([A-Z]\w+)\b(?!<|::|\(|\{)", s):
         word = m.group(1)
         if word in bad_titles:
             return f"Do not use title casing ({word}). See https://github.com/rerun-io/rerun/blob/main/DESIGN.md"
@@ -219,6 +203,19 @@ def lint_docs_redirect_links(filepath: str, content: str, redirects: dict[str, s
     return errors
 
 
+def lint_example_app_ids(content: str) -> list[tuple[int, str]]:
+    """Application ids that don't start with `rerun_example_`, as `(index, error)`."""
+    errors = []
+    for match in [*recording_stream_app_id.finditer(content), *script_setup_app_id.finditer(content)]:
+        app_id = match.group(2)
+        if not app_id.startswith("rerun_example_") and app_id != "<your_app_name>":
+            errors.append((
+                match.start(),
+                f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'",
+            ))
+    return errors
+
+
 def lint_line(
     line: str,
     prev_line: str | None,
@@ -229,15 +226,10 @@ def lint_line(
     if line == "":
         return None
 
-    if prev_line is None:
-        prev_line_stripped = ""
-    else:
-        prev_line_stripped = prev_line.strip()
-
     if line[-1].isspace():
         return "Trailing whitespace"
 
-    if "NOLINT" in line:
+    if has_nolint(line):
         return None  # NOLINT ignores the linter
 
     if file_extension not in ("py", "txt", "yaml", "yml"):
@@ -317,9 +309,6 @@ def lint_line(
     if "todo:" in line:
         return "write 'TODO:' in upper-case"
 
-    if "todo!()" in line:
-        return 'todo!() should be written as todo!("$details")'
-
     if m := todo_owner.search(line):
         parts = m.group(1).split(",")
         if len(parts) == 0 or not all(is_valid_todo_part(p) for p in parts):
@@ -328,39 +317,8 @@ def lint_line(
     if malformed_todo.search(line):
         return "TODO:s should be written as `TODO(yourname): what to do`"
 
-    if file_extension == "rs" and is_in_oss_rerun_repo and tokio_runtime_creation.search(line):
-        return (
-            "Create Tokio runtimes only at audited process or thread ownership boundaries. "
-            "Library code should accept `re_async::AsyncRuntimeHandle`. Add a NOLINT with the ownership reason if this runtime is required."
-        )
-
-    if file_extension == "rs" and "SnapshotOptions::default(" in line:
-        # `clippy.toml` forbids `SnapshotOptions::new` instead - clippy cannot refer to trait methods.
-        return "Use `re_ui::testing::default_snapshot_options_for_ui/_3d` instead, so that snapshot tests get strict thresholds on CI"
-
-    if debug_formatted_error.search(line) or debug_format_of_err.search(line):
-        return "Format errors with re_error::format or using Display - NOT Debug formatting!"
-
-    if debug_tracing_error.search(line):
-        return "Use `%err` (Display) instead of `?err` (Debug) in tracing macros"
-
-    if log_with_inline_sensitive_data.search(line):
-        return 'URLs and paths should be passed as structured fields, not inline in log messages. Use e.g. `re_log::warn!(?url, "message: {err}")` instead of `re_log::warn!("message {url}: {err}")`'
-
-    if "{1" in line and "#[error(" in line:
-        return "Use named fields for complex errors instead of multiple unnamed tuple fields like {0}, {1}"
-
     if "from attr import dataclass" in line:
         return "Avoid 'from attr import dataclass'; prefer 'from dataclasses import dataclass'"
-
-    if anyhow_result.search(line):
-        return "Prefer using anyhow::Result<>"
-
-    if m := error_map_err_name.search(line) or error_match_name.search(line):
-        name = m.group(1)
-        # if name not in ("_", "_ignored") and not re.fullmatch(r"_?\w*err", name):
-        if name == "e" or name.endswith(("error", "status", "res")):
-            return f"Errors should be called `err` or have a `_err` suffix. Found: '{name}'"
 
     if m := else_return.search(line):
         match = m.group(0)
@@ -445,43 +403,6 @@ def lint_line(
         if m.group(0) != "Rerun Hub":
             return "'Rerun Hub' must be properly capitalized."
 
-    if not is_in_docstring:
-        if m := recording_stream_app_id.search(line) or script_setup_app_id.search(line):
-            app_id = m.group(2)
-            if not app_id.startswith("rerun_example_") and app_id != "<your_app_name>":
-                return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
-
-    # Deref impls should be marked #[inline] or #[inline(always)].
-    if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
-        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
-            return "Deref/DerefMut impls should be marked #[inline]"
-
-    # Deref impls should be marked #[inline] or #[inline(always)].
-    if "fn as_ref(&self)" in line or "fn borrow(&self)" in line:
-        if prev_line_stripped not in {"#[inline]", "#[inline(always)]"}:
-            return "as_ref/borrow implementations should be marked #[inline]"
-
-    if any(
-        s in line
-        for s in (
-            ": &dyn std::any::Any",
-            ": &mut dyn std::any::Any",
-            ": &dyn Any",
-            ": &mut dyn Any",
-        )
-    ):
-        return """Functions should never take `&dyn std::any::Any` as argument since `&Box<std::any::Any>`
- itself implements `Any`, making it easy to accidentally pass the wrong object. Expect purpose defined traits instead."""
-
-    if file_extension == "rs":
-        if ".zip(" in line:
-            return (
-                "Prefer `std::iter::zip(a, b)` (iterators), `itertools::izip!(a, b, …)` (3+ iterators), "
-                "or `Option::zip(a, b)` (options) over `a.zip(b)`"
-            )
-        if ".chain(" in line:
-            return "Prefer `std::iter::chain(a, b)` or `itertools::chain!(a, b, …)` over `a.chain(b)`"
-
     return None
 
 
@@ -489,6 +410,8 @@ def test_lint_line() -> None:
     assert lint_line("hello world", None) is None
 
     should_pass = [
+        'lint_rule("fn f() -> Result<(), String> {}")',
+        'lint("fn f() { Result::<(), E>::Ok(()) }")',
         "hello world",
         "this is a 2D view",
         "todo lowercase is fine",
@@ -504,16 +427,6 @@ def test_lint_line() -> None:
         "TODO(rust-lang/rust#42):",
         "TODO(rust-lang/rust#42,rust-lang/rust#43):",
         "TODO(rust-lang/rust#42, rust-lang/rust#43):",
-        'eprintln!("{:?}, {err}", foo)',
-        'eprintln!("{:#?}, {err}", foo)',
-        'eprintln!("{err}")',
-        'eprintln!("{}", err)',
-        "if let Err(err) = foo",
-        "if let Err(_err) = foo",
-        "if let Err(_) = foo",
-        "map_err(|err| …)",
-        "map_err(|_err| …)",
-        "map_err(|_| …)",
         "WASM_FOO env var",
         "Wasm",
         "num_instances",
@@ -523,55 +436,10 @@ def test_lint_line() -> None:
         'ui.label("This is fine. Correct casing.")',
         'ui.label(format!("Value: {value}"));',
         "rec",
-        "anyhow::Result<()>",
         "The theme is great",
         "template <typename... Args>",
         'f"repos/{OWNER}/rerun/compare/{sha}...{tag}"',
         '_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])',
-        'rr.init("rerun_example_app")',
-        'rr.script_setup(args, "rerun_example_app")',
-        """
-        #[inline]
-        fn foo(mut self) -> Self {
-""",
-        """
-        #[inline(always)]
-        fn foo_always(mut self) -> Self {
-""",
-        """
-        #[inline]
-        fn deref(&self) -> Self::Target {
-""",
-        """
-        #[inline(always)]
-        fn deref(&self) -> Self::Target {
-""",
-        """
-        #[inline]
-        fn deref_mut(&mut self) -> &mut Self::Target {
-""",
-        """
-        #[inline(always)]
-        fn deref_mut(&mut self) -> &mut Self::Target {
-""",
-        """
-        #[inline]
-        fn borrow(&self) -> &Self {
-""",
-        """
-        #[inline(always)]
-        fn borrow(&self) -> &Self {
-""",
-        """
-        #[inline]
-        fn as_ref(&self) -> &Self {
-""",
-        """
-        #[inline(always)]
-        fn as_ref(&self) -> &Self {
-""",
-        "fn ret_any() -> &dyn std::any::Any",
-        "fn ret_any_mut() -> &mut dyn std::any::Any",
         # URL paths and python package extras still reference the feature name.
         "Visit /dataplatform/docs for more info",
         "The https://example.com/dataplatform/api endpoint",
@@ -582,32 +450,6 @@ def test_lint_line() -> None:
         "Connect to Rerun Hub for hosted catalogs.",
         "Spin up a catalog server locally.",
         "We use the catalog server in production.",
-        # %err (Display) in tracing macros is good
-        'tracing::warn!(%err, "something failed");',
-        're_log::error!(%err, "something failed");',
-        # Structured logging with sensitive data as fields (good pattern)
-        're_log::warn!(?url, "Failed to open URL: {err}");',
-        're_log::error!(?path, "Failed to read file: {err}");',
-        're_log::info!(?filepath, loader = ?exe, "Loading data…");',
-        're_log::debug!(url = ?url, "Fetching data");',
-        # _once variants with structured fields (good)
-        're_log::warn_once!(?url, "Failed to open URL: {err}");',
-        're_log::error_once!(?path, "Cannot read file: {err}");',
-        # Log messages without sensitive inline data (also fine)
-        're_log::info!("Starting server on port {port}");',
-        're_log::warn!("Connection failed: {err}");',
-        # info! is allowed to have inline paths (user-facing)
-        're_log::info!("Saving to {filepath}");',
-        're_log::info!("Scanning {dir}");',
-        # debug! and trace! are allowed to have inline paths (developer-facing)
-        're_log::debug!("Loading {file_path}");',
-        're_log::trace!("Connecting to {uri}");',
-        're_log::debug!("Entering {directory}");',
-        're_log::trace!("Created {folder}");',
-        # thiserror with named fields (good)
-        '#[error("Failed to open {path}: {err}")]',
-        '#[error("Something went wrong: {0}")]',  # single unnamed is fine
-        '#[error("Simple error message")]',
         # Spaced em dash is the convention.
         "Use a spaced em dash (` — `) for parenthetical breaks.",
         "foo — bar — baz",
@@ -622,11 +464,6 @@ def test_lint_line() -> None:
         'return sha[:8] if sha else "—"',
         # Mathematical/UI display with en dash, no spaces.
         'ui.button("–∞")',
-        # Preferred zip/chain alternatives.
-        "let it = std::iter::zip(a, b);",
-        "let it = std::iter::chain(a, b);",
-        "for (x, y, z) in izip!(a, b, c) {",
-        "for x in itertools::chain!(a, b, c) {",
     ]
 
     should_error = [
@@ -644,23 +481,6 @@ def test_lint_line() -> None:
         "TODO(Claude)",  # TODOs left for a coding agent
         "TODO(codex)",  # TODOs left for a coding agent
         "TODO(llm)",  # TODOs left for a coding agent
-        "todo!()",
-        'eprintln!("{err:?}")',
-        'eprintln!("{err:#?}")',
-        'eprintln!("{:?}", err)',
-        'eprintln!("{:#?}", err)',
-        'eprintln!("{js_err:?}")',
-        'eprintln!("{js_err:#?}")',
-        'eprintln!("{:?}", js_err)',
-        'eprintln!("{:#?}", js_err)',
-        # ?err (Debug) in tracing macros (bad - use %err for Display):
-        'tracing::warn!(?err, "something failed");',
-        're_log::error!(?err, "something failed");',
-        'tracing::warn!(?js_err, "something failed");',
-        're_log::error!(?js_err, "something failed");',
-        "if let Err(error) = foo",
-        "Ok(Err(status))",
-        "map_err(|e| …)",
         "We use WASM in Rerun",
         "nb_instances",
         "inner_nb_instances",
@@ -674,29 +494,13 @@ def test_lint_line() -> None:
         "trailing whitespace ",
         "rr_stream",
         "rec_stream",
-        "Result<(), anyhow::Error>",
-        "let options = SnapshotOptions::default();",
         "The the problem with double words",
         "More than meets the eye...",
         'print(f"Loading {name}...")',
         're_log::trace!("Performing migrations...");',
         'rr.log("/", rr.TextLog("Logging things..."))',
         'logging.info("Detection finished...")',
-        'RecordingStreamBuilder::new("missing_prefix")',
-        'args.rerun.init("missing_prefix")',
-        'RecordingStream("missing_prefix")',
-        'rr.init("missing_prefix")',
-        'rr.script_setup(args, "missing_prefix")',
-        'rr.script_setup(args, "")',
         "I accidentally wrote the same same word twice",
-        "fn deref(&self) -> Self::Target {",
-        "fn deref_mut(&mut self) -> &mut Self::Target",
-        "fn borrow(&self) -> &Self",
-        "fn as_ref(&self) -> &Self",
-        "fn take_any(thing: &dyn std::any::Any)",
-        "fn take_any_mut(thing: &mut dyn std::any::Any)",
-        "fn take_any(thing: &dyn Any)",
-        "fn take_any_mut(thing: &mut dyn Any)",
         # Deprecated brand names — must use 'Rerun Hub' or 'catalog server' instead.
         # Matched case-insensitively, so lowercase variants must also error.
         "The dataplatform is powerful",
@@ -718,17 +522,6 @@ def test_lint_line() -> None:
         "Use rerun Hub for catalogs.",
         "Use rerun hub for catalogs.",
         "USE RERUN HUB FOR CATALOGS.",
-        # Inline sensitive data in log messages (bad pattern) - only error/warn are linted
-        're_log::warn!("Failed to open URL {url}: {err}");',
-        're_log::error!("Failed to read file at {path}: {err}");',
-        're_log::warn!("Cannot find {file}");',
-        're_log::error!("Missing {filename}");',
-        # _once variants should also be linted
-        're_log::warn_once!("Failed to open URL {url}: {err}");',
-        're_log::error_once!("Cannot read {path}");',
-        # thiserror with multiple unnamed fields (bad)
-        '#[error("Failed to do {0}: {1}")]',
-        '#[error("{0} failed with {1} at {2}")]',
         # Unspaced em dash (should be spaced).
         "the layout—are computed",
         "components—the viewer no longer",
@@ -738,9 +531,6 @@ def test_lint_line() -> None:
         "Foo – the description",
         "[Python](./install-rerun/python.md) – the Python SDK",
         "done – next step",
-        # Method `.zip(` / `.chain(` — prefer `std::iter::*` or `itertools::izip!/chain!`.
-        "let it = a.iter().zip(b.iter());",
-        "let it = a.iter().chain(b.iter());",
     ]
 
     for test in should_pass:
@@ -761,10 +551,6 @@ def test_lint_line() -> None:
     assert debug_formatted_ui_label.search('ui.error_label(format!("Value: {value:?}"));')
     assert not debug_formatted_ui_label.search('ui.label(format!("Value: {value}"));')
     assert not debug_formatted_ui_label.search('ui.error_label(format!("Value: {value}"));')
-
-    runtime_creation = "tokio::runtime::Runtime::new()"
-    assert lint_line(runtime_creation, None, is_in_oss_rerun_repo=True) is not None
-    assert lint_line(runtime_creation, None, is_in_oss_rerun_repo=False) is None
 
     # Deprecated brand names are checked everywhere in the monorepo…
     assert lint_line("Connect via Rerun Cloud today.", None, is_in_oss_rerun_repo=False) is not None
@@ -822,144 +608,6 @@ def test_lint_line() -> None:
 
 # -----------------------------------------------------------------------------
 
-re_declaration = re.compile(r"^\s*((pub(\(\w*\))? )?(async )?((impl|fn|struct|enum|union|trait|type)\b))")
-re_attribute = re.compile(r"^\s*\#\[(error|derive|inline)")
-
-
-def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
-    def is_empty(line: str) -> bool:
-        return line == "" or line.startswith(("#", "//")) or line.endswith(("{", "(", "\\", 'r"', 'r#"', "]"))
-
-    """Only for Rust files."""
-    if re_declaration.match(line) or re_attribute.match(line) or line.lstrip().startswith("///"):
-        line = line.strip()
-        prev_line = prev_line.strip()
-
-        if "template<" in prev_line:
-            return False  # C++ template inside Rust code that generates C++ code.
-
-        if is_empty(prev_line) or prev_line.strip().startswith("```"):
-            return False
-
-        if re.match(r"fn\b.*;$", line):
-            return False  # maybe a trait function or function pointer type
-
-        if line.startswith("type ") and prev_line.endswith(";"):
-            return False  # many type declarations in a row is fine
-
-        if prev_line.endswith(",") and line.startswith("impl"):
-            return False
-
-        if prev_line.endswith("*"):
-            return False  # maybe in a macro
-
-        return not prev_line.endswith('r##"')  # part of a multi-line string
-
-    return False
-
-
-def lint_vertical_spacing(lines_in: list[str]) -> tuple[list[str], list[str]]:
-    """Only for Rust files."""
-    prev_line = None
-
-    errors: list[str] = []
-    lines_out: list[str] = []
-
-    for line_nr, line in enumerate(lines_in):
-        line_nr = line_nr + 1
-
-        if prev_line is not None and is_missing_blank_line_between(prev_line, line):
-            errors.append(f"{line_nr}: for readability, add newline before `{line.strip()}`")
-            lines_out.append("\n")
-
-        lines_out.append(line)
-        prev_line = line
-
-    return errors, lines_out
-
-
-def test_lint_vertical_spacing() -> None:
-    assert re_declaration.match("fn foo() {}")
-    assert re_declaration.match("async fn foo() {}")
-    assert re_declaration.match("pub async fn foo() {}")
-
-    should_pass = [
-        "hello world",
-        """
-        /// docstring
-        foo
-
-        /// docstring
-        bar
-        """,
-        """
-        trait Foo {
-            fn bar();
-            fn baz();
-        }
-        """,
-        # macros:
-        """
-        $(#[$meta])*
-        #[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-        """,
-        """
-        Item = (
-            &PointCloudBatchInfo,
-            impl Iterator<Item = &PointCloudVertex>,
-        ),
-        """,
-        """
-        type Response = Response<Body>;
-        type Error = hyper::Error;
-        """,
-        """
-        type Callback =
-            fn(&mut egui::Ui, UiLayout, TimestampFormat, &dyn arrow::array::Array);
-        """,
-        """
-        template<typename T>
-        struct AsComponents;
-        """,  # C++ template inside Rust code that generates C++ code.
-    ]
-
-    should_fail = [
-        """
-        /// docstring
-        foo
-        /// docstring
-        bar
-        """,
-        """
-        Foo,
-        #[error]
-        Bar,
-        """,
-        """
-        slotmap::new_key_type! { pub struct ViewBuilderHandle; }
-        type ViewBuilderMap = slotmap::SlotMap<ViewBuilderHandle, ViewBuilder>;
-        """,
-        """
-        fn foo() {}
-        fn bar() {}
-        """,
-        """
-        async fn foo() {}
-        async fn bar() {}
-        """,
-    ]
-
-    for code in should_pass:
-        errors, _ = lint_vertical_spacing(code.split("\n"))
-        assert len(errors) == 0, f"expected this to pass:\n{code}\ngot: {errors}"
-
-    for code in should_fail:
-        errors, _ = lint_vertical_spacing(code.split("\n"))
-        assert len(errors) > 0, f"expected this to fail:\n{code}"
-
-
-# -----------------------------------------------------------------------------
-
 
 workspace_lints = re.compile(r"\[lints\]\nworkspace\s*=\s*true")
 
@@ -989,327 +637,6 @@ def lint_workspace_dependency_headings(cargo_file_content: str) -> str | None:
                 "Move it under the right heading."
             )
     return None
-
-
-# -----------------------------------------------------------------------------
-
-
-def lint_pyclass_requirements(lines_in: list[str]) -> tuple[list[str], list[int], list[str]]:
-    """Only for Rust files. Check that #[pyclass(...)] declarations include 'eq' and the correct module."""
-
-    errors: list[str] = []
-    error_linenumbers: list[int] = []
-    error_codes: list[str] = []
-
-    i = 0
-    while i < len(lines_in):
-        line = lines_in[i]
-        line_nr = i + 1
-
-        # Check if this line starts a pyclass declaration
-        if "#[pyclass(" in line:
-            # Collect the entire pyclass declaration (it might span multiple lines)
-            pyclass_content = line
-            original_line_nr = line_nr
-
-            # Keep reading lines until we find the closing parenthesis
-            paren_count = line.count("(") - line.count(")")
-            j = i + 1
-
-            while paren_count > 0 and j < len(lines_in):
-                next_line = lines_in[j]
-                pyclass_content += next_line
-                paren_count += next_line.count("(") - next_line.count(")")
-                j += 1
-
-            # First remove comments to avoid false matches in comments
-            pyclass_content_no_comments = "\n".join(part.partition("//")[0] for part in pyclass_content.split("\n"))
-
-            # Extract class name: prefer 'name = "..."' from pyclass, fallback to struct name
-            name_match = re.search(r'name\s*=\s*"([^"]+)"', pyclass_content_no_comments)
-            if name_match:
-                cls_name = name_match.group(1)
-            else:
-                # Look at the struct definition that follows
-                cls_name = None
-                struct_line_idx = j
-                while struct_line_idx < len(lines_in):
-                    sl = lines_in[struct_line_idx].strip()
-                    if sl.startswith(("pub struct ", "struct ")):
-                        struct_match = re.search(r"struct\s+(\w+)", sl)
-                        if struct_match:
-                            cls_name = struct_match.group(1)
-                        break
-                    struct_line_idx += 1
-
-            if cls_name and cls_name.endswith("Internal"):
-                i = j
-                continue
-
-            # Check if 'eq' is present in the pyclass declaration
-            # Look for 'eq' as a standalone parameter (not part of another word)
-            if not re.search(r"\beq\b", pyclass_content_no_comments):
-                errors.append(
-                    f"{original_line_nr}: #[pyclass(...)] should include 'eq' parameter for Python equality support"
-                )
-                error_linenumbers.append(original_line_nr)
-                error_codes.append("py-cls-eq")
-
-            # Check if the correct module is specified
-            expected_module = 'module = "rerun_bindings.rerun_bindings"'
-            if expected_module not in pyclass_content:
-                errors.append(
-                    f"{original_line_nr}: #[pyclass(...)] should include 'module = \"rerun_bindings.rerun_bindings\"' parameter"
-                )
-                error_linenumbers.append(original_line_nr)
-                error_codes.append("py-cls-mod")
-
-            # Move the index to after the pyclass declaration
-            i = j
-        else:
-            i += 1
-
-    return errors, error_linenumbers, error_codes
-
-
-def lint_pymethods_requirements(lines_in: list[str]) -> tuple[list[str], list[int], list[str]]:
-    """Only for Rust files. Check that #[pymethods] blocks have a __str__ method."""
-
-    errors: list[str] = []
-    error_linenumbers: list[int] = []
-    error_codes: list[str] = []
-
-    i = 0
-    while i < len(lines_in):
-        line = lines_in[i]
-        line_nr = i + 1
-
-        # Check if this line starts a pymethods declaration
-        if "#[pymethods]" in line:
-            # Find the corresponding impl block
-            j = i + 1
-            impl_start_line = None
-            class_name = None
-
-            # Look for the impl block that follows
-            while j < len(lines_in):
-                impl_line = lines_in[j].strip()
-                if impl_line.startswith("impl "):
-                    impl_start_line = j
-                    # Extract class name from "impl ClassName {"
-                    match = re.search(r"impl\s+(\w+)\s*\{", impl_line)
-                    if match:
-                        class_name = match.group(1)
-                    break
-                elif impl_line and not impl_line.startswith("//"):
-                    # If we hit any non-comment, non-empty line that's not impl, stop looking
-                    break
-                j += 1
-
-            if impl_start_line is None or class_name is None:
-                i += 1
-                continue
-
-            if class_name.endswith("Internal"):
-                i += 1
-                continue
-
-            # Find the end of the impl block by counting braces
-            brace_count = 0
-            impl_content = ""
-            k = impl_start_line
-
-            while k < len(lines_in):
-                current_line = lines_in[k]
-                impl_content += current_line
-                brace_count += current_line.count("{") - current_line.count("}")
-
-                if brace_count == 0 and "{" in lines_in[impl_start_line]:
-                    # We've found the end of the impl block
-                    break
-                k += 1
-
-            # Check if __str__ or __repr__ is present in the impl content
-            # Remove comments to avoid false matches
-            impl_content_no_comments = "\n".join(part.partition("//")[0] for part in impl_content.split("\n"))
-
-            has_str = re.search(r"\b__str__\b", impl_content_no_comments)
-            has_repr = re.search(r"\b__repr__\b", impl_content_no_comments)
-
-            if not has_str and not has_repr:
-                errors.append(
-                    f"{line_nr}: #[pymethods] impl {class_name} should include a '__str__' method (or '__repr__' which serves as fallback)"
-                )
-                error_linenumbers.append(line_nr)
-                error_codes.append("py-mthd-str")
-
-            # Move the index to after the impl block
-            i = k + 1
-        else:
-            i += 1
-
-    return errors, error_linenumbers, error_codes
-
-
-def test_lint_pymethods_requirements() -> None:
-    """Test the lint_pymethods_requirements function with various pymethods declarations."""
-
-    should_pass = [
-        # pymethods with __str__
-        """#[pymethods]
-impl MyClass {
-    pub fn __str__(&self) -> String {
-        "test".to_string()
-    }
-}""",
-        # pymethods with __repr__ (serves as __str__ fallback)
-        """#[pymethods]
-impl MyClass {
-    fn __repr__(&self) -> String {
-        "test".to_string()
-    }
-}""",
-        # pymethods with both __str__ and __repr__
-        """#[pymethods]
-impl MyClass {
-    pub fn __str__(&self) -> String {
-        "str".to_string()
-    }
-    fn __repr__(&self) -> String {
-        "repr".to_string()
-    }
-}""",
-        # pymethods with other methods and __str__
-        """#[pymethods]
-impl MyClass {
-    #[new]
-    pub fn new() -> Self {
-        Self {}
-    }
-    pub fn __str__(&self) -> String {
-        "test".to_string()
-    }
-}""",
-        # Internal class without __str__ should be auto-skipped
-        """#[pymethods]
-impl PyFooInternal {
-    #[new]
-    pub fn new() -> Self {
-        Self {}
-    }
-}""",
-    ]
-
-    should_error = [
-        # pymethods without __str__ or __repr__
-        """#[pymethods]
-impl MyClass {
-    #[new]
-    pub fn new() -> Self {
-        Self {}
-    }
-}""",
-        # pymethods with other methods but no __str__ or __repr__
-        """#[pymethods]
-impl MyClass {
-    pub fn other_method(&self) -> i32 {
-        42
-    }
-    pub fn another_method(&self) -> bool {
-        true
-    }
-}""",
-    ]
-
-    # Test cases that should pass (no errors)
-    for test_case in should_pass:
-        lines = test_case.split("\n")
-        errors, _, _ = lint_pymethods_requirements(lines)
-        assert len(errors) == 0, f'expected "{test_case}" to pass, but got errors: {errors}'
-
-    # Test cases that should fail (produce errors)
-    for test_case in should_error:
-        lines = test_case.split("\n")
-        errors, _, _ = lint_pymethods_requirements(lines)
-        assert len(errors) > 0, f'expected "{test_case}" to fail, but got no errors'
-
-
-def test_lint_pyclass_requirements() -> None:
-    """Test the lint_pyclass_requirements function with various pyclass declarations."""
-
-    should_pass = [
-        # Simple pyclass with eq and module
-        '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
-        # Multiple parameters including eq and module
-        '#[pyclass(frozen, eq, hash, module = "rerun_bindings.rerun_bindings")]',
-        # eq in different position
-        '#[pyclass(eq, frozen, module = "rerun_bindings.rerun_bindings")]',
-        # Multi-line pyclass with eq and module
-        '#[pyclass(\n    frozen,\n    eq,\n    hash,\n    module = "rerun_bindings.rerun_bindings"\n)]',
-        # eq at the end
-        '#[pyclass(frozen, hash, eq, module = "rerun_bindings.rerun_bindings")]',
-        # With module specification and eq
-        '#[pyclass(eq, module = "rerun_bindings.rerun_bindings")]',
-        # Complex real-world example
-        """#[pyclass(
-            frozen,
-            eq,
-            hash,
-            name = "IndexColumnDescriptor",
-            module = "rerun_bindings.rerun_bindings"
-        )]""",
-        # With name parameter
-        '#[pyclass(eq, name = "MyClass", module = "rerun_bindings.rerun_bindings")]',
-        # Internal class (via name param) without eq should be auto-skipped
-        '#[pyclass(name = "FooInternal", module = "rerun_bindings.rerun_bindings")]\npub struct PyFooInternal {}',
-        # Internal class (via struct name fallback) without eq should be auto-skipped
-        '#[pyclass(module = "rerun_bindings.rerun_bindings")]\npub struct PyFooInternal {}',
-    ]
-
-    should_error = [
-        # Missing eq parameter
-        '#[pyclass(frozen, module = "rerun_bindings.rerun_bindings")]',
-        # Multiple parameters but no eq
-        '#[pyclass(frozen, hash, module = "rerun_bindings.rerun_bindings")]',
-        # With module but no eq
-        '#[pyclass(module = "rerun_bindings.rerun_bindings")]',
-        # With eq but no module
-        "#[pyclass(eq, frozen)]",
-        # Missing both eq and module
-        "#[pyclass(frozen)]",
-        # Multi-line without eq
-        '#[pyclass(\n    frozen,\n    hash,\n    module = "rerun_bindings.rerun_bindings"\n)]',
-        # Multi-line without module
-        "#[pyclass(\n    frozen,\n    eq,\n    hash\n)]",
-        # Complex example without eq
-        """#[pyclass(
-            frozen,
-            hash,
-            name = "IndexColumnDescriptor",
-            module = "rerun_bindings.rerun_bindings"
-        )]""",
-        # Complex example without module
-        """#[pyclass(
-            frozen,
-            eq,
-            hash,
-            name = "IndexColumnDescriptor"
-        )]""",
-        # Wrong module name
-        '#[pyclass(eq, module = "wrong_module")]',
-    ]
-
-    # Test cases that should pass (no errors)
-    for test_case in should_pass:
-        lines = test_case.split("\n")
-        errors, _, _ = lint_pyclass_requirements(lines)
-        assert len(errors) == 0, f'expected "{test_case}" to pass, but got errors: {errors}'
-
-    # Test cases that should fail (produce errors)
-    for test_case in should_error:
-        lines = test_case.split("\n")
-        errors, _, _ = lint_pyclass_requirements(lines)
-        assert len(errors) > 0, f'expected "{test_case}" to fail, but got no errors'
 
 
 # -----------------------------------------------------------------------------
@@ -1425,6 +752,32 @@ def test_lint_docs_redirect_links() -> None:
     assert errors("README.md", "https://rerun.io/docs/old/page-two") == []
     assert errors("CHANGELOG.md", "https://rerun.io/docs/old/page") == []
     assert errors("docs/content/changelog/changeset-0-42.md", "https://rerun.io/docs/old/page") == []
+
+
+def test_lint_example_app_ids() -> None:
+    def app_id_errors(content: str) -> list[str]:
+        return [error for _, error in lint_example_app_ids(content)]
+
+    for content in [
+        'rr.init("rerun_example_app")',
+        'rr.script_setup(args, "rerun_example_app")',
+        'rr.script_setup(\n    args,\n    "rerun_example_app",\n)',
+        'RecordingStreamBuilder::new(\n    "rerun_example_app",\n)',
+        'rr.init("<your_app_name>")',
+    ]:
+        assert app_id_errors(content) == [], content
+
+    for content in [
+        'RecordingStreamBuilder::new("missing_prefix")',
+        'args.rerun.init("missing_prefix")',
+        'RecordingStream("missing_prefix")',
+        'rr.init("missing_prefix")',
+        'rr.script_setup(args, "missing_prefix")',
+        'rr.script_setup(args, "")',
+        'rr.script_setup(\n    args,\n    "missing_prefix",\n)',
+        'rr.RecordingStream(\n    "missing_prefix",\n)',
+    ]:
+        assert len(app_id_errors(content)) == 1, content
 
 
 def test_is_emoji() -> None:
@@ -1670,59 +1023,30 @@ def _index_to_line_nr(content: str, index: int) -> int:
 class SourceFile:
     """Wrapper over a source file with some utility functions."""
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str, content: str | None = None) -> None:
         self.path = path
         self.ext = path.rsplit(".", maxsplit=1)[-1]
-        with open(path, encoding="utf8") as f:
-            self.lines = f.readlines()
+        if content is None:
+            with open(path, encoding="utf8") as f:
+                self.lines = f.readlines()
+        else:
+            self.lines = content.splitlines(keepends=True)
         self._update_content()
 
     def _update_content(self) -> None:
         """Sync everything with `self.lines`."""
         self.content = "".join(self.lines)
 
-        # gather lines with a `NOLINT` marker
-        # nolints is a dict from code to set of line numbers
-        # None key is used for unqualified NOLINT
-        self.nolints: dict[str | None, set[int]] = {}
+        # The 0-based lines with a `NOLINT` marker, or inside a `NOLINT_START`/`NOLINT_END` block.
+        self.nolints: set[int] = set()
         is_in_nolint_block = False
         for i, line in enumerate(self.lines):
-            if "NOLINT" in line:
-                # Check for NOLINT: ignore[<code>] format
-                if "NOLINT: ignore[" in line:
-                    match = re.search(r"NOLINT: ignore\[([^\]]+)\]", line)
-                    if match:
-                        code = match.group(1)
-                        if code not in self.nolints:
-                            self.nolints[code] = set()
-                        self.nolints[code].add(i)
-                    else:
-                        # Fallback to unqualified NOLINT if parsing fails
-                        if None not in self.nolints:
-                            self.nolints[None] = set()
-                        self.nolints[None].add(i)
-                else:
-                    # Unqualified NOLINT
-                    if None not in self.nolints:
-                        self.nolints[None] = set()
-                    self.nolints[None].add(i)
-
             if "NOLINT_START" in line:
-                # Check if this is trying to use the ignore[code] format with NOLINT_START
-                if "NOLINT_START: ignore[" in line:
-                    raise NotImplementedError(
-                        f"NOLINT_START: ignore[<code>] format is not implemented yet. "
-                        f"Found at line {i + 1}: {line.strip()}"
-                    )
                 is_in_nolint_block = True
-
-            if is_in_nolint_block:
-                # NOLINT_START/END blocks are always unqualified
-                if None not in self.nolints:
-                    self.nolints[None] = set()
-                self.nolints[None].add(i)
-                if "NOLINT_END" in line:
-                    is_in_nolint_block = False
+            if is_in_nolint_block or has_nolint(line):
+                self.nolints.add(i)
+            if "NOLINT_END" in line:
+                is_in_nolint_block = False
 
     def rewrite(self, new_lines: list[str]) -> None:
         """Rewrite the contents of the file."""
@@ -1733,7 +1057,7 @@ class SourceFile:
             self._update_content()
             print(f"{self.path} fixed.")
 
-    def should_ignore(self, from_line: int, to_line: int | None = None, code: str | None = None) -> bool:
+    def should_ignore(self, from_line: int, to_line: int | None = None) -> bool:
         """
         Determines if we should ignore a violation.
 
@@ -1742,27 +1066,19 @@ class SourceFile:
         Args:
             from_line: Starting line number (1-based)
             to_line: Ending line number (1-based), defaults to from_line
-            code: Specific error code to check for (e.g., 'py-cls-eq'),
-                  or None to check for unqualified NOLINT
 
         """
 
         if to_line is None:
             to_line = from_line
 
-        line_range = range(from_line - 1, to_line + 1)
+        return any(i in self.nolints for i in range(from_line - 1, to_line + 1))
 
-        # Check for specific code if provided
-        if code in self.nolints:
-            return any(i in self.nolints[code] for i in line_range)
-        return False
-
-    def should_ignore_index(self, start_idx: int, end_idx: int | None = None, code: str | None = None) -> bool:
+    def should_ignore_index(self, start_idx: int, end_idx: int | None = None) -> bool:
         """Same as `should_ignore` but takes 0-based indices instead of line numbers."""
         return self.should_ignore(
             _index_to_line_nr(self.content, start_idx),
             _index_to_line_nr(self.content, end_idx) if end_idx is not None else None,
-            code,
         )
 
     def error(self, message: str, *, line_nr: int | None = None, index: int | None = None) -> str:
@@ -1775,8 +1091,13 @@ class SourceFile:
             return f"{self.path}:{line_nr + 1}: {message}"
 
 
-def lint_file(filepath: str, args: Any) -> int:
-    source = SourceFile(filepath)
+def lint_file(filepath: str, args: Any, content: str | None = None) -> int:
+    """
+    Lint a file, print the errors, and return how many there were.
+
+    `content` replaces the contents of the file on disk. It is used to find dead `NOLINT`s.
+    """
+    source = SourceFile(filepath, content)
     num_errors = 0
 
     error: str | None
@@ -1784,6 +1105,7 @@ def lint_file(filepath: str, args: Any) -> int:
     is_in_docstring = False
     is_in_oss_rerun_repo = filepath.startswith(rerun_prefix)
 
+    docstring_lines = set()
     prev_line = None
     for line_nr, line in enumerate(source.lines):
         if source.should_ignore(line_nr):
@@ -1795,6 +1117,8 @@ def lint_file(filepath: str, args: Any) -> int:
             line = line[:-1]
             if line.strip() == '"""':
                 is_in_docstring = not is_in_docstring
+            if is_in_docstring:
+                docstring_lines.add(line_nr)
             error = lint_line(line, prev_line, source.ext, is_in_docstring, is_in_oss_rerun_repo)
             prev_line = line
         if error is not None:
@@ -1813,11 +1137,6 @@ def lint_file(filepath: str, args: Any) -> int:
                 print(source.error("Use Display, not Debug formatting, in GUI labels", line_nr=line_nr))
                 num_errors += 1
 
-        for match in tonic_result.finditer(source.content):
-            line_nr = _index_to_line_nr(source.content, match.start())
-            print(source.error("Prefer using tonic::Result<>", line_nr=line_nr))
-            num_errors += 1
-
     if filepath.endswith(".proto"):
         for line_nr, line in enumerate(source.lines):
             if source.should_ignore(line_nr):
@@ -1832,42 +1151,6 @@ def lint_file(filepath: str, args: Any) -> int:
         if not source.should_ignore(0) and not (source.lines and source.lines[0].startswith("//")):
             print(source.error("A .proto file must start with a comment explaining what it defines", line_nr=0))
             num_errors += 1
-
-    if filepath.endswith(".rs"):
-        errors, lines_out = lint_vertical_spacing(source.lines)
-        for error in errors:
-            print(source.error(error))
-        num_errors += len(errors)
-
-        # Check for pyclass requirements (eq and module) in rerun_py Rust files
-        if filepath.startswith(f"{rerun_prefix}rerun_py/") and filepath.endswith(".rs"):
-            pyclass_errors, error_lines, error_codes = lint_pyclass_requirements(source.lines)
-            valid_errors = 0
-            for error, line_number, error_code in zip(pyclass_errors, error_lines, error_codes, strict=True):
-                if not source.should_ignore(line_number, code=error_code):
-                    print(
-                        source.error(error)
-                        + f"\n\tUnqualified NOLINT not allowed for pyclass lints. Use `NOLINT: ignore[{error_code}]` instead."
-                    )
-                    valid_errors += 1
-            num_errors += valid_errors
-
-            # Check for pymethods requirements (__str__ method) in rerun_py Rust files
-            pymethods_errors, pymethods_error_lines, pymethods_error_codes = lint_pymethods_requirements(source.lines)
-            valid_pymethods_errors = 0
-            for error, line_number, error_code in zip(
-                pymethods_errors, pymethods_error_lines, pymethods_error_codes, strict=True
-            ):
-                if not source.should_ignore(line_number, code=error_code):
-                    print(
-                        source.error(error)
-                        + f"\n\tUnqualified NOLINT not allowed for pymethods lints. Use `NOLINT: ignore[{error_code}]` instead."
-                    )
-                    valid_pymethods_errors += 1
-            num_errors += valid_pymethods_errors
-
-        if args.fix:
-            source.rewrite(lines_out)
 
     if filepath.endswith(".md"):
         errors, lines_out = lint_markdown(filepath, source)
@@ -1891,6 +1174,12 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error(error))
             num_errors += 1
 
+    for index, error in lint_example_app_ids(source.content):
+        line_nr = _index_to_line_nr(source.content, index)
+        if line_nr not in docstring_lines and not source.should_ignore(line_nr):
+            print(source.error(error, line_nr=line_nr))
+            num_errors += 1
+
     for index, error in lint_docs_redirect_links(filepath, source.content, redirected_doc_paths()):
         if not source.should_ignore_index(index):
             print(source.error(error, line_nr=_index_to_line_nr(source.content, index)))
@@ -1904,7 +1193,92 @@ def lint_file(filepath: str, args: Any) -> int:
             print(source.error(error))
         num_errors += len(errors)
 
+    if content is None and not args.fix:
+        for error in find_dead_nolints(source, args):
+            print(error)
+            num_errors += 1
+
     return num_errors
+
+
+# A `NOLINT` right after a backtick is a mention in prose, like this one, not a marker.
+nolint_marker = re.compile(r"(?<!`)NOLINT")
+nolint_comment = re.compile(r"[ \t]*(<!--\s*NOLINT.*?-->|/\*\s*NOLINT.*?\*/|(//|#)\s*NOLINT.*?(?=\n|$))")
+
+
+def has_nolint(line: str) -> bool:
+    return nolint_marker.search(line) is not None
+
+
+def without_nolint(line: str) -> str:
+    """The line as it would be without its `NOLINT` comment, so the comment syntax itself can't hide an error."""
+    stripped = nolint_comment.sub("", line, count=1)
+    return stripped if stripped != line else nolint_marker.sub("N0LINT", line)
+
+
+def find_dead_nolints(source: SourceFile, args: Any) -> list[str]:
+    """
+    Find the `NOLINT`s that suppress nothing.
+
+    A `NOLINT` suppresses errors on its own line and the next one.
+    A dead `NOLINT` would hide real problems that later appear there, so it is an error.
+    """
+    if source.ext in ("c", "cpp", "h", "hpp"):
+        return []  # clang-tidy uses `NOLINT` markers too
+    if "CHANGELOG.md" in source.path or "docs/content/changelog/" in source.path:
+        return []  # History: it mentions NOLINT, and quotes old code.
+
+    markers = [i for i, line in enumerate(source.lines) if has_nolint(line)]
+    if not markers:
+        return []
+
+    output = StringIO()
+    quiet_args = argparse.Namespace(**{**vars(args), "fix": False})
+    with redirect_stdout(output):
+        lint_file(source.path, quiet_args, content="".join(without_nolint(line) for line in source.lines))
+    prefix = f"{source.path}:"
+    error_lines = {
+        int(line_nr) - 1
+        for line_nr, _ in (
+            line[len(prefix) :].split(":", 1) for line in output.getvalue().splitlines() if line.startswith(prefix)
+        )
+        if line_nr.isdigit()
+    }
+
+    errors = []
+    block_start = None
+    for i in markers:
+        line = source.lines[i]
+        if "NOLINT_START" in line:
+            block_start = i
+            continue
+        if "NOLINT_END" in line and block_start is not None:
+            used = any(block_start <= nr <= i for nr in error_lines)
+            nr, block_start = block_start, None
+        else:
+            used = i in error_lines or i + 1 in error_lines
+            nr = i
+        if not used:
+            errors.append(source.error("This NOLINT does not suppress anything. Remove it.", line_nr=nr))
+    return errors
+
+
+def test_find_dead_nolints() -> None:
+    args = argparse.Namespace(fix=False)
+
+    def dead_lines(content: str, extension: str = "txt") -> list[int]:
+        source = SourceFile(f"{rerun_prefix}test.{extension}", content)
+        return [int(error.split(":")[1]) for error in find_dead_nolints(source, args)]
+
+    assert dead_lines("FIXME # NOLINT\n") == []
+    assert dead_lines("all good # NOLINT\n") == [1]
+    assert dead_lines("# NOLINT\nFIXME\n") == [], "a NOLINT covers the next line too"
+    assert dead_lines("FIXME # NOLINT\nHACK # NOLINT\n") == [], "each covers its own line"
+    assert dead_lines("# NOLINT_START\nFIXME\n# NOLINT_END\n") == []
+    assert dead_lines("# NOLINT_START\nfine\n# NOLINT_END\n") == [1]
+    assert dead_lines("This mentions `NOLINT` in prose.\n") == []
+    assert dead_lines("Use `...` <!-- NOLINT -->\n") == [], "the comment itself must not hide the error"
+    assert dead_lines("x(); // NOLINT\n", "cpp") == [], "clang-tidy uses NOLINT too"
 
 
 _worker_args: argparse.Namespace | None = None
@@ -2020,11 +1394,9 @@ def main() -> None:
     # Make sure we are bug free before we run:
     test_split_words()
     test_lint_line()
-    test_lint_vertical_spacing()
-    test_lint_pyclass_requirements()
-    test_lint_pymethods_requirements()
     test_is_emoji()
     test_lint_docs_redirect_links()
+    test_lint_example_app_ids()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
@@ -2107,6 +1479,8 @@ def main() -> None:
     # Helper to build a path relative to the git root, inside the rerun directory.
     def rerun(path: str) -> str:
         return f"{rerun_prefix}{path}"
+
+    test_find_dead_nolints()  # needs the working directory, for `_redirects.yaml`
 
     exclude_paths = (
         "./dataplatform/crates/redap_protos/Cargo.toml",  # intentional [lints.clippy] override (see file header)

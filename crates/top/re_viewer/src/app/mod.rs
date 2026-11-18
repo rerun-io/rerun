@@ -342,7 +342,7 @@ impl App {
     ) -> Self {
         re_tracing::profile_function!();
 
-        if cfg!(feature = "analytics") {
+        if cfg!(feature = "analytics") && startup_options.analytics_mode.allows_analytics() {
             re_analytics::enable_in_this_process();
         }
 
@@ -443,10 +443,6 @@ impl App {
             state.app_options.video.hw_acceleration = video_decoder_hw_acceleration;
         }
 
-        if cfg!(debug_assertions) {
-            state.app_options.experimental.agent_panel = true;
-        }
-
         if is_test {
             creation_context.egui_ctx.mark_as_test();
             state.app_options = AppOptions::test();
@@ -479,7 +475,11 @@ impl App {
             crate::version_check::check_for_new_version(
                 build_info.version,
                 &app_env,
-                ehttp::fetch,
+                |request, on_response| {
+                    ehttp::fetch(request, move |response| {
+                        on_response(response.map_err(crate::version_check::FetchError));
+                    });
+                },
                 move |notification| {
                     command_sender.send_system(SystemCommand::ShowNotification(notification));
                     egui_ctx.request_repaint();
@@ -823,9 +823,9 @@ impl AppCore {
         self.dev_panel.select_tab(tab);
     }
 
-    /// Whether the agent panel is shown. Requires the experimental setting.
+    /// Whether the agent panel is shown.
     pub fn agent_panel_open(&self) -> bool {
-        self.app_options().experimental.agent_panel && self.state.agent_panel_open
+        self.state.agent_panel_open
     }
 
     /// Whether the agent panel has ever been shown, which hides the attention dot on its button.
@@ -834,13 +834,9 @@ impl AppCore {
     }
 
     pub fn toggle_agent_panel(&mut self) {
-        if self.app_options().experimental.agent_panel {
-            self.state.agent_panel_open ^= true;
-            if self.state.agent_panel_open {
-                self.agent_panel.request_input_focus();
-            }
-        } else {
-            re_log::info!("The agent panel is disabled. Enable it under Settings → Experimental.");
+        self.state.agent_panel_open ^= true;
+        if self.state.agent_panel_open {
+            self.agent_panel.request_input_focus();
         }
     }
 
@@ -1832,7 +1828,6 @@ impl AppCore {
             }
 
             let mut cmd_palette_provider = crate::command_palette::CommandPaletteProviderImpl {
-                agent_enabled: self.app_options().experimental.agent_panel,
                 agent_setup_done: self.state.agent_settings.setup_done,
                 recording: store_context.as_ref().map(|ctx| ctx.recording()),
                 redap_servers: &self.state.redap_servers,

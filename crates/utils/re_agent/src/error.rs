@@ -40,7 +40,7 @@ impl McpStartupFailure {
     /// A notice to show instead of this failure, if codex-acp did not start our server because
     /// the user's Codex config defines one with the same name, which Codex runs instead.
     ///
-    /// For `rerun` that is usually `rerun viewer-mcp` from PATH, which still works
+    /// For `rerun` that is usually `rerun mcp` from PATH, which still works
     /// but might be using a different version of `rerun`.
     pub fn replaced_by_agent_config_note(&self) -> Option<String> {
         let Self {

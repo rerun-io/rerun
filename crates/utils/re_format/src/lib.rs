@@ -744,10 +744,35 @@ fn test_parse_bytes() {
 
 // --- Durations ---
 
-pub fn parse_duration(duration: &str) -> Result<f32, String> {
-    fn parse_num(s: &str) -> Result<f32, String> {
-        s.parse()
-            .map_err(|_ignored| format!("Expected a number, got {s:?}"))
+/// Failed to parse a duration with [`parse_duration`].
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ParseDurationError {
+    /// The number in front of the unit suffix is invalid.
+    #[error("Expected a number, got {number:?}: {source}")]
+    InvalidNumber {
+        /// The text that should have been a number.
+        number: String,
+
+        /// Why it is not a number.
+        source: std::num::ParseFloatError,
+    },
+
+    /// The duration does not end with a known unit suffix.
+    #[error("Expected a suffix of 'ms', 's', 'm' or 'h' in string {duration:?}")]
+    UnknownSuffix {
+        /// The full input.
+        duration: String,
+    },
+}
+
+pub fn parse_duration(duration: &str) -> Result<f32, ParseDurationError> {
+    fn parse_num(number: &str) -> Result<f32, ParseDurationError> {
+        number
+            .parse()
+            .map_err(|source| ParseDurationError::InvalidNumber {
+                number: number.to_owned(),
+                source,
+            })
     }
 
     if let Some(ms) = duration.strip_suffix("ms") {
@@ -759,9 +784,9 @@ pub fn parse_duration(duration: &str) -> Result<f32, String> {
     } else if let Some(s) = duration.strip_suffix('h') {
         Ok(parse_num(s)? * 60.0 * 60.0)
     } else {
-        Err(format!(
-            "Expected a suffix of 'ms', 's', 'm' or 'h' in string {duration:?}"
-        ))
+        Err(ParseDurationError::UnknownSuffix {
+            duration: duration.to_owned(),
+        })
     }
 }
 

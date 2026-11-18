@@ -4,7 +4,7 @@
 
 use super::ViewCoordinates;
 use crate::encodings::{self, ViewDir};
-use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3};
+use crate::view_coordinates::{Axis3, Handedness, Sign, SignedAxis3, ViewCoordinatesError};
 
 impl ViewCoordinates {
     /// Construct a new `ViewCoordinates` from an array of [`ViewDir`]s.
@@ -37,7 +37,7 @@ impl ViewCoordinates {
 
     /// Returns an error if this does not span all three dimensions.
     #[track_caller]
-    pub fn sanity_check(&self) -> Result<(), String> {
+    pub fn sanity_check(&self) -> Result<(), ViewCoordinatesError> {
         let mut dims = [false; 3];
         for dir in *self.0 {
             let dim = match dir {
@@ -50,10 +50,7 @@ impl ViewCoordinates {
         if dims == [true; 3] {
             Ok(())
         } else {
-            Err(format!(
-                "Coordinate system does not cover all three cardinal directions: {}",
-                self.describe()
-            ))
+            Err(ViewCoordinatesError::MissingDimension(*self))
         }
     }
 
@@ -203,22 +200,16 @@ impl ViewCoordinates {
     /// (RUB: X=Right, Y=Up, Z=Back)
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn from_rub_quat(&self) -> Result<glam::Quat, String> {
+    pub fn from_rub_quat(&self) -> Result<glam::Quat, ViewCoordinatesError> {
         let mat3 = self.from_rub();
 
         let det = mat3.determinant();
         if det == 1.0 {
             Ok(glam::Quat::from_mat3(&mat3))
         } else if det == -1.0 {
-            Err(format!(
-                "Rerun does not yet support left-handed coordinate systems (found {})",
-                self.describe()
-            ))
+            Err(ViewCoordinatesError::LeftHanded(*self))
         } else {
-            Err(format!(
-                "Found a degenerate coordinate system: {}",
-                self.describe()
-            ))
+            Err(ViewCoordinatesError::Degenerate(*self))
         }
     }
 
@@ -227,13 +218,13 @@ impl ViewCoordinates {
     /// If the coordinate system is degenerate, an error is returned.
     #[cfg(feature = "glam")]
     #[inline]
-    pub fn handedness(&self) -> Result<Handedness, String> {
+    pub fn handedness(&self) -> Result<Handedness, ViewCoordinatesError> {
         let to_rdf = self.to_rdf();
         let det = to_rdf.determinant();
         if det == -1.0 {
             Ok(Handedness::Left)
         } else if det == 0.0 {
-            Err(format!("Invalid ViewCoordinate: {}", self.describe()))
+            Err(ViewCoordinatesError::Degenerate(*self))
         } else {
             Ok(Handedness::Right)
         }
@@ -241,7 +232,7 @@ impl ViewCoordinates {
 }
 
 impl std::str::FromStr for ViewCoordinates {
-    type Err = String;
+    type Err = ViewCoordinatesError;
 
     #[inline]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -255,7 +246,7 @@ impl std::str::FromStr for ViewCoordinates {
                 slf.sanity_check()?;
                 Ok(slf)
             }
-            _ => Err(format!("Expected three letters, got: {s:?}")),
+            _ => Err(ViewCoordinatesError::WrongLength(s.to_owned())),
         }
     }
 }

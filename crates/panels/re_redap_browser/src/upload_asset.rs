@@ -52,6 +52,7 @@ impl UploadAssetExt for CatalogClient {
                 path,
                 None,
                 LayerName::base(),
+                None,
                 IfDuplicateBehavior::Overwrite,
             )
             .await
@@ -74,6 +75,7 @@ impl UploadAssetExt for CatalogClient {
                 source,
                 None,
                 LayerName::base(),
+                None,
                 IfDuplicateBehavior::Overwrite,
             )
             .await;

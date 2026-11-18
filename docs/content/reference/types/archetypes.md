@@ -7,7 +7,7 @@ sort_children: alphabetical
 
 Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. See [Entities and Components](../../logging-and-ingestion/data-model/entity-component.md) and
-[Visualizers and Overrides](../../viewer/blueprints-and-views/customize-views.md) for more information.
+[Visualizers and Overrides](../../viewer/view-concepts/customize-views.md) for more information.
 
 This page lists all built-in archetypes.
 

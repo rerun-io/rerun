@@ -163,6 +163,7 @@ async fn register_rrds(
                 path.to_path_buf(),
                 None,
                 LayerName::base(),
+                None,
                 IfDuplicateBehavior::Error,
             )
             .await?;

@@ -33,7 +33,17 @@ pub fn format_field_datatype(field: &Field) -> String {
 //    type, re_format shouldn't know how to deserialize a TUID…
 
 /// Format the given row as a string
-type CustomArrayFormatter<'a> = Box<dyn Fn(usize) -> Result<String, String> + 'a>;
+type CustomArrayFormatter<'a> = Box<dyn Fn(usize) -> Result<String, FormatCellError> + 'a>;
+
+/// Failed to format a single cell of a table.
+#[derive(Clone, Debug, thiserror::Error)]
+enum FormatCellError {
+    #[error("Invalid RowId")]
+    InvalidRowId,
+
+    #[error("Failed to format array: {0}")]
+    Arrow(#[source] std::sync::Arc<arrow::error::ArrowError>),
+}
 
 /// This is a `BTreeMap`, and not a `HashMap`, because we want a predictable order.
 type Metadata = std::collections::BTreeMap<String, String>;
@@ -73,7 +83,7 @@ fn custom_array_formatter<'a>(
                         Ok(format!("{prefix}{tuid}"))
                     }
                 } else {
-                    Err("Invalid RowId".to_owned())
+                    Err(FormatCellError::InvalidRowId)
                 }
             });
         }
@@ -81,7 +91,10 @@ fn custom_array_formatter<'a>(
 
     match ArrayFormatter::try_new(array, &FormatOptions::default().with_null("null")) {
         Ok(formatter) => Box::new(move |index| Ok(format!("{}", formatter.value(index)))),
-        Err(err) => Box::new(move |_| Err(format!("Failed to format array: {err}"))),
+        Err(err) => {
+            let err = std::sync::Arc::new(err);
+            Box::new(move |_| Err(FormatCellError::Arrow(err.clone())))
+        }
     }
 }
 

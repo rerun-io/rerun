@@ -106,6 +106,11 @@ We log problems using our own `re_log` crate (which is currently a wrapper aroun
 * Don't drop an error with `.map_err(|_err| …)` unless you log it or wrap it first.
 * Use `warn_once!`/`error_once!` for messages that would otherwise repeat every frame.
 * Invalid configuration (env vars, CLI args, config files) is an error, not a silent fallback to the default.
+* `unwrap_or(…)` and `unwrap_or_default()` on a `Result` silently drop the error: log it or propagate it, unless ignoring it is intended.
+* An error message says what failed, the offending value (sensitive values last, see below), and, when it can, what the user should do instead.
+* Classify a failure by who caused it.
+  If a server logs a rejected request, it uses `DEBUG` or `INFO`, never `ERROR`: `ERROR` is for our own failures.
+  Only blame the client for what you validated as its fault: errors from deeper layers (storage, I/O, dependencies) may be our bugs, and misclassifying them as client errors hides them from alerting.
 
 Strive to encode code invariants and contracts in the type system as much as possible. So if a vector cannot be empty, consider using [`vec1`](https://crates.io/crates/vec1). [Parse, don’t validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/).
 
@@ -166,6 +171,14 @@ This is a level you opt-in to to debug either an application or a library. These
 This is the last-resort log level, and mostly for debugging libraries or the use of libraries. Here any and all spam goes, logging low-level operations.
 
 The distinction between `DEBUG` and `TRACE` is the least clear. Here we use a rule of thumb: if it generates a lot of continuous logging (e.g. each frame), it should go to `TRACE`.
+
+
+### Untrusted input
+Requests, files, and anything else from outside the process can be malicious or degenerate.
+* Bound every size or count that the input controls, e.g. cap list lengths in requests.
+* Use `saturating_*` or `checked_*` arithmetic on sizes and offsets that the input controls.
+* Check that responses built from the input stay within transport limits (e.g. the gRPC message size).
+* Don't check for a file and then act on it (TOCTOU): do the operation and handle the error.
 
 
 ### Warning reporter pattern
@@ -251,6 +264,9 @@ For UI, prefer a runtime check (e.g. a disabled button on web) over compile-time
 
 Add `re_tracing::profile_function!()` (or `profile_scope!`) to functions that may be slow, e.g. I/O, encoding and decoding, opening or closing devices, and large loops.
 
+Don't `await` independent I/O one at a time in a loop: run it concurrently, with a concurrency limit.
+Don't issue one query or request per item when one call can fetch them all.
+
 Don't wrap code in a closure that is called immediately, and don't extract a helper that is only called once unless it names a concept.
 
 Avoid catch-all `_ =>` arms when matching on our own enums, so that the compiler flags every `match` that needs updating when a variant is added.
@@ -270,6 +286,8 @@ Refer to metadata keys and column names through their constants, never through a
   Small items like constants are fine there too; move functions and types with real logic into their own modules.
 * Don't add traits, public methods, or hooks to production code only so that tests can use them.
 * Don't add code "for later", or backwards compatibility that nothing needs.
+  Nothing needs compatibility with a feature that has not shipped or been announced.
+* Don't add an abstraction (trait, builder, env var, config knob) with a single implementation or value, unless it encodes an invariant the compiler then checks.
 * Before writing a helper, look for an existing one in this repo or in a dependency we maintain (egui, emath, quiver, …).
   If it is missing there, add it upstream instead of working around it locally.
 
@@ -293,6 +311,8 @@ A wrong comment is worse than no comment: after changing or renaming code, check
 When you must remember to do something before merging a PR, write `TODO` or `FIXME` in any file. The CI will not be green until you either remove them or rewrite them as `TODO(yourname)`.
 
 For work that is left for a later PR, prefer linking an issue, e.g. `TODO(rerun-io/rerun#1234)` or `TODO(RR-1234)`, so it doesn't get lost.
+Every temporary workaround and every deprecation gets such a `TODO` linking the issue for its removal.
+Keep the `TODO` text short and high-level; the details go in the issue.
 
 You can also use the `todo()!` macro during development, but again it won't pass CI until you rewrite it as `todo!("more details")`. Of course, we should try to avoid `todo!` macros in our code.
 
@@ -314,13 +334,14 @@ println!("{:-}, value"); // The `-` option stands for redaction.
 Look for `f.sign_minus()` in the code for where we handle this.
 
 ## Python
-Prefer kw-args (key-word arguments) for non-obvious parameters, especially when there are many of them.
+Arguments that every caller passes are positional; all others are keyword-only (kw-args).
 
 * Bad: `def serve(ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
-* Better: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
-* Best: `def serve(*, ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Bad: `def serve(*, ip: str, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
+* Good: `def serve(ip: str, *, port: int = 80, token: str | None = None, timeout_sec: int = 8)`
 
-This forces the use of kw-args for everything following the `*`.
+The `*` forces the use of kw-args for everything following it.
+Flags and modes (`bool`, `Literal[…]`) always go after the `*`, so call sites read `overwrite=True` instead of a bare `True`.
 
 kw-args have two big benefits:
 
@@ -328,7 +349,9 @@ First, they make future API changes a lot easier. We can add or remove arguments
 
 Secondly, named arguments makes the caller code a lot more readable.
 
-Usually, we do NOT use kw-args for single-parameter functions, nor for functions where the first (or all) parameters are obvious from the caller. For instance, `def load_file(path: str) -> bytes`
+Do not make a required argument keyword-only, unless a positional call would be ambiguous: several required arguments a caller could swap (`set_default_size(*, width, height)`, `stage(source, *, key)`), or a choice between keyword alternatives (`set_time(timeline, sequence=…)`).
+Otherwise every caller pays for it.
+The argument nearly every caller passes may stay positional even with a default, as in `get_dataset(name: str | None = None, *, id: EntryId | str | None = None)`.
 
 ## C++
 We use `clang-format` to enforce most style choices (see [`.clang-format`](.clang-format)).
@@ -430,6 +453,8 @@ Name things for what they are, not for what they are used for.
 Don't repeat the type in the name: `age`, not `age_integer`.
 
 Use one name for one concept, everywhere.
+Before naming a new public item, look at its siblings (other methods on the type, the same concept in the other SDKs or the proto) and reuse their nouns and verbs.
+Don't coin a new term for something that already has a name.
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
 

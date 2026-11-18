@@ -281,11 +281,16 @@ def test_disabled_pipeline_does_not_read_metrics_clock(monkeypatch: pytest.Monke
     blocks = [np.array([1]), np.array([2])]
     samples = _utils._pipeline_blocks(
         blocks,
-        fetch=lambda block: int(block[0]),
+        fetch=torch.from_numpy,
         process=lambda value: iter([{"value": value}]),
     )
 
-    assert list(samples) == [{"value": 1}, {"value": 2}]
+    values = []
+    for sample in samples:
+        value = sample["value"]
+        assert isinstance(value, torch.Tensor)
+        values.append(value.item())
+    assert values == [1, 2]
 
 
 def test_pipeline_records_completed_unconsumed_lookahead() -> None:

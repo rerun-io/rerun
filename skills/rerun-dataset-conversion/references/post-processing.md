@@ -58,6 +58,7 @@ Write each result at the timestamp of the frame it came from.
 
 Write one RRD file per segment, with the source segment's ID as `recording_id`.
 On a catalog, register the file under a new `layer_name`.
+A file written with another `recording_id` can still join the segment if it is registered with `segment_id=[…]`.
 Write derived values to a new entity or component, and keep the lens default `output_mode="drop_unmatched"`, so the layer holds only the derived data and no copy of the source.
 
 A chunk-processing pipeline already produces chunks.

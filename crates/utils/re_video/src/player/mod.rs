@@ -153,7 +153,26 @@ pub struct VideoSliceSource<'a>(pub &'a [u8]);
 impl GetVideoSource for VideoSliceSource<'_> {
     fn get_video_chunk(&self, source: VideoSource) -> &[u8] {
         match source {
-            VideoSource::Span(span) => &self.0[span.range_usize()],
+            VideoSource::Span(span) => {
+                let range = || {
+                    let start = usize::try_from(span.start).ok()?;
+                    let len = usize::try_from(span.len).ok()?;
+                    Some(start..start.checked_add(len)?)
+                };
+                range()
+                    .and_then(|range| self.0.get(range))
+                    .unwrap_or_else(|| {
+                        re_log::debug_panic!(
+                            "Video sample span {span:?} lies outside the {} byte video buffer",
+                            self.0.len()
+                        );
+                        re_log::error_once!(
+                            "Video sample lies outside the {} byte video buffer",
+                            self.0.len()
+                        );
+                        &[]
+                    })
+            }
             VideoSource::Id { .. } => &[],
         }
     }
@@ -405,6 +424,7 @@ pub fn request_keyframe_before(
                 video_description
                     .keyframe_indices
                     .binary_search(&from_idx)
+                    // relint: allow(map_err_dropped): `binary_search` returns the insertion index, not an error
                     .map_err(|_idx| {
                         if cfg!(debug_assertions) {
                             re_log::error_once!(
@@ -1245,5 +1265,37 @@ fn is_significantly_behind(
 
         // Check the sample prior to this one.
         sample = video_description.previous_presented_sample(current_sample);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_span::Span;
+
+    use super::{GetVideoSource as _, VideoSliceSource};
+    use crate::VideoSource;
+
+    #[test]
+    fn test_slice_source_with_in_bounds_span() {
+        let data = [0_u8; 16];
+        let in_bounds = VideoSource::Span(Span { start: 8, len: 8 });
+        assert_eq!(VideoSliceSource(&data).get_video_chunk(in_bounds).len(), 8);
+    }
+
+    #[test]
+    #[cfg_attr(debug_assertions, should_panic(expected = "DEBUG PANIC"))]
+    fn test_slice_source_with_out_of_bounds_span_is_empty() {
+        let data = [0_u8; 16];
+        let source = VideoSliceSource(&data);
+        for span in [
+            Span { start: 8, len: 9 },
+            Span { start: 17, len: 0 },
+            Span {
+                start: u64::MAX,
+                len: 2,
+            },
+        ] {
+            assert!(source.get_video_chunk(VideoSource::Span(span)).is_empty());
+        }
     }
 }

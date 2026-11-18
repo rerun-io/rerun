@@ -11,28 +11,28 @@ It works similar to e.g. Claude for Chrome or Codex Computer Use, but tailored t
 Some things it is useful for:
 
 - **Debugging a logging script**: "The left camera doesn't show up in the viewer, investigate and fix via the mcp."
-- **Adding a custom blueprint**: "Create a blueprint with two tabs: The first is a grid of the cameras, the second shows the map and 3D view. Verify with rerun viewer-mcp."
+- **Adding a custom blueprint**: "Create a blueprint with two tabs: The first is a grid of the cameras, the second shows the map and 3D view. Verify with rerun mcp."
 - **Explore recordings**: "Look at each recording in this dataset and find where it rains. Write a report including screenshots."
 
-To change how the Viewer looks, an agent writes a blueprint with `rerun_set_blueprint` instead of clicking through the Viewer's menus.
+To change how the Viewer looks, an agent writes a blueprint with `viewer_set_blueprint` instead of clicking through the Viewer's menus.
 This covers a recording's layout and views as well as a table's columns, row filters, and cards.
 See [Reading and writing the blueprint](#reading-and-writing-the-blueprint).
 
 ## Setup
 
-The server is the `viewer-mcp` subcommand of the `rerun` binary, speaking MCP over stdio.
-It connects to a separate, already-running Viewer over gRPC, so an MCP client only needs to know how to launch `rerun viewer-mcp`.
+The server is the `mcp` subcommand of the `rerun` binary, speaking MCP over stdio.
+It connects to a separate, already-running Viewer over gRPC, so an MCP client only needs to know how to launch `rerun mcp`.
 
 Add it to **Claude Code**:
 
 ```sh
-claude mcp add rerun -- rerun viewer-mcp
+claude mcp add rerun -- rerun mcp
 ```
 
 Add it to **Codex**:
 
 ```sh
-codex mcp add rerun -- rerun viewer-mcp
+codex mcp add rerun -- rerun mcp
 ```
 
 Or configure any MCP client manually. Most accept a `mcp.json` config like this:
@@ -42,9 +42,9 @@ Or configure any MCP client manually. Most accept a `mcp.json` config like this:
   "mcpServers": {
     "rerun": {
       "command": "rerun",
-      "args": ["viewer-mcp"],
+      "args": ["mcp"],
       "env": {
-        "RUST_LOG": "re_viewer_mcp=info,warn"
+        "RUST_LOG": "re_rerun_mcp=info,warn"
       }
     }
   }
@@ -54,10 +54,10 @@ Or configure any MCP client manually. Most accept a `mcp.json` config like this:
 These assume `rerun` is installed on your `PATH` (see [install rerun](../../getting-started/install-rerun.md)).
 If it is not, replace `rerun` with the absolute path to the binary.
 
-By default the agent picks the Viewer with the `rerun_connect` tool.
-To bind the server to one Viewer up front, pass its gRPC address: `rerun viewer-mcp --endpoint http://127.0.0.1:9876`.
-The server then connects on startup, so the agent can skip `rerun_connect`.
-If the Viewer is not running yet, the server tells the agent to call `rerun_connect` instead.
+By default the agent picks the Viewer with the `viewer_connect` tool.
+To bind the server to one Viewer up front, pass its gRPC address: `rerun mcp --endpoint http://127.0.0.1:9876`.
+The server then connects on startup, so the agent can skip `viewer_connect`.
+If the Viewer is not running yet, the server tells the agent to call `viewer_connect` instead.
 
 To check whether an address is a Rerun Viewer before connecting, use [gRPC server reflection](../../reference/grpc.md): `grpcurl -plaintext 127.0.0.1:9876 list` names the services it speaks.
 
@@ -70,10 +70,10 @@ Ask the agent to launch the Viewer headless or in the background, and it will st
 
 The tool name says which family it belongs to, and the agent is told to prefer the high-level one.
 
-The `rerun_*` tools (`rerun_get_state`, `rerun_get_recording_schema`, `rerun_set_time_cursor`, `rerun_open`, `rerun_close`, `rerun_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
+The `viewer_*` tools (`viewer_get_state`, `viewer_get_recording_schema`, `viewer_set_time_cursor`, `viewer_open`, `viewer_close`, `viewer_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
 They are generated from `viewer_control.proto`, so they cover exactly what that service can do, and they travel on its `ViewerControl` endpoint.
 
-Among them, `rerun_list_commands`, `rerun_describe_commands`, and `rerun_run_command` reach every command of the Viewer's command palette.
+Among them, `viewer_list_commands`, `viewer_describe_commands`, and `viewer_run_command` reach every command of the Viewer's command palette.
 Listing returns only the ids by default, so the agent can pick a command without reading the details of every one.
 Commands that open a native modal, such as a file dialog, are refused unless the caller opts in, because the modal freezes the Viewer until a person answers it.
 
@@ -81,50 +81,50 @@ The remaining tools (`widget_tree`, `click`, `type_text`, `hover`, `scroll`, `sc
 They come from `egui_mcp` and travel on the separate `EguiInspect` endpoint, which carries an opaque body the Viewer's `egui_inspection` plugin services.
 
 They reach anything the Viewer can do, including everything the high-level tools do not cover, but at the cost of several calls and a lot of agent context per action, and they break whenever the layout moves.
-That is why an agent should drop to them only when no `rerun_*` tool fits.
+That is why an agent should drop to them only when no `viewer_*` tool fits.
 
 ## What the agent sees
 
 Besides the accessibility tree and screenshots, the server gives the agent the same signals a user relies on to tell whether the Viewer is healthy:
 
-- **View reports**: `rerun_get_state` lists every view of the current blueprint together with the warnings and errors it reported the last time it was shown, the same ones behind the warning icon in a view's title bar.
+- **View reports**: `viewer_get_state` lists every view of the current blueprint together with the warnings and errors it reported the last time it was shown, the same ones behind the warning icon in a view's title bar.
   That tells the agent why a view is empty or looks wrong without a screenshot.
-- **Viewer logs**: the Viewer's log messages (INFO and above) since the previous tool call are appended to every tool result, and the `rerun_get_logs` tool returns the recent history.
+- **Viewer logs**: the Viewer's log messages (INFO and above) since the previous tool call are appended to every tool result, and the `viewer_get_logs` tool returns the recent history.
   The agent notices the same warnings and errors you see in the notification panel.
-- **What is still loading**: `rerun_get_state` lists the data sources the Viewer is still loading from, the same ones its loading screen spins for.
-  `rerun_open` waits a few seconds for the load to finish, and says so when it is still loading, so this is how the agent tells a recording that is still arriving from one that arrived empty.
+- **What is still loading**: `viewer_get_state` lists the data sources the Viewer is still loading from, the same ones its loading screen spins for.
+  `viewer_open` waits a few seconds for the load to finish, and says so when it is still loading, so this is how the agent tells a recording that is still arriving from one that arrived empty.
   It matters most while a large import is running, because the Viewer paints no frames then and the low-level tools all stall — this one keeps answering.
-- **Where the Viewer is**: `rerun_get_location` reports what the Viewer shows as a [Viewer URL](urls.md), and `rerun_set_location` navigates back to it without loading anything.
-  Each recording in `rerun_get_state` carries its own `location`, so switching recordings needs no clicking either.
-- **What you selected**: `rerun_get_selection` lists the entities, instances, components, views, containers, and recordings you have selected.
+- **Where the Viewer is**: `viewer_get_location` reports what the Viewer shows as a [Viewer URL](urls.md), and `viewer_set_location` navigates back to it without loading anything.
+  Each recording in `viewer_get_state` carries its own `location`, so switching recordings needs no clicking either.
+- **What you selected**: `viewer_get_selection` lists the entities, instances, components, views, containers, and recordings you have selected.
   So you can point the agent at something by clicking it, and ask about "this".
-- **Connected servers**: `rerun_get_state` lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, or the error that kept the catalog from loading.
-  So "open a dataset on that server" goes straight to `rerun_open`, without clicking through the tree.
+- **Connected servers**: `viewer_get_state` lists the Redap servers in the left panel, with the name, kind, and URL of every dataset and table on each, or the error that kept the catalog from loading.
+  So "open a dataset on that server" goes straight to `viewer_open`, without clicking through the tree.
 
 ## Reading the data
 
-`rerun_get_recording_schema` answers what a recording holds: every entity, the components logged on each, whether a component has a static value, and its Arrow datatype.
+`viewer_get_recording_schema` answers what a recording holds: every entity, the components logged on each, whether a component has a static value, and its Arrow datatype.
 It works for any open recording, whatever it was loaded from.
 Without it an agent guesses entity paths and component names from an archetype's documentation, and a query built on a wrong guess comes back empty rather than complaining — so the agent ends up describing data it never read.
 A recording too large to describe in one answer comes back truncated, with a count of the entities left out; the request narrows to a subtree to read the rest.
-For blueprint planning, call `rerun_list_view_types` to discover the connected viewer's supported view classes, descriptions, and keywords.
+For blueprint planning, call `viewer_list_view_types` to discover the connected viewer's supported view classes, descriptions, and keywords.
 Use its `class_identifier` when creating a view rather than guessing a class name.
 The catalog comes from the viewer's registry and generated view type metadata; it is available even without an open recording.
 
-For blueprint planning, call `rerun_get_recording_schema` to get each entity's sorted, unique `archetypes` by default.
+For blueprint planning, call `viewer_get_recording_schema` to get each entity's sorted, unique `archetypes` by default.
 It uses the same subtree filtering, limit (100 by default), and `omitted_entities` count; entities without archetype metadata still appear with no archetypes listed.
 To inspect component names and types, call again with `entity_path` and `with_components: true`.
 `with_archetypes` (default `true`) and `with_components` (default `false`) independently select the details to return; set both to `false` for paths only.
-`rerun_get_dataset_schema` gives the same description for a dataset on a server, merged over all its segments, without opening any of them.
+`viewer_get_dataset_schema` gives the same description for a dataset on a server, merged over all its segments, without opening any of them.
 Without a `dataset_url` it describes the dataset on screen, or the dataset of the segment on screen.
-It names the dataset's [assets](../../query-and-transform/catalog/catalog-object-model.md#assets) by id, and `rerun_get_dataset_assets_schema` describes each asset in the same form.
+It names the dataset's [assets](../../query-and-transform/catalog/catalog-object-model.md#assets) by id, and `viewer_get_dataset_assets_schema` describes each asset in the same form.
 The viewer shows an asset's static data as part of the segments it applies to, so an entity missing from the segments may be in an asset.
 It can also ask for the entity paths alone, which lists a whole recording at a size worth reading and leaves the components for a follow-up call.
 For a dataset, entity paths alone are the default when no `entity_path` is given.
-These describe the entities in the segments, not the columns of a table, which `rerun_get_table_schema` names.
+These describe the entities in the segments, not the columns of a table, which `viewer_get_table_schema` names.
 
 The transform graph tool described below can return transform values, but for general recording values, use the catalog API.
-The Viewer hosts a catalog server, and `rerun_get_state` reports its address as `catalog_url`, along with each recording's `store_id`.
+The Viewer hosts a catalog server, and `viewer_get_state` reports its address as `catalog_url`, along with each recording's `store_id`.
 That `store_id` is a `{kind}:{application_id}:{recording_id}` string, whose application id and recording id are its dataset id and segment id in that catalog.
 Both ids may contain a colon, so the application id's are escaped as `\:`: the kind runs to the first colon, the application id to the next unescaped one, and the recording id is the rest.
 The server instructions tell the agent to query that server with the Python `rerun.catalog` API for entity paths, components, and values rather than guessing them.
@@ -132,7 +132,7 @@ For a recording that is not in the catalog, such as one streamed from an SDK or 
 
 ## Inspecting transforms
 
-`rerun_get_transform_graph` returns a JSON snapshot of the direct transform graph at the recording's current timeline and time cursor.
+`viewer_get_transform_graph` returns a JSON snapshot of the direct transform graph at the recording's current timeline and time cursor.
 It includes canonical frame names, parent/child edges, source entity paths, sample times, and whether chunks were missing.
 Missing chunks mean the graph is incomplete; missing edges then do not prove disconnection.
 The tool is also available to the built-in agent panel.
@@ -174,7 +174,7 @@ Use the recording schema to locate `CoordinateFrame` components, then read their
 Neither schema presence nor `source.entity_path` reveals an assignment: the latter only says where a transform was logged.
 `CoordinateFrame` does not join frame trees.
 
-When investigating transform problems, call `rerun_get_state` to check whether the viewer has a spatial view and inspect its reports for transform-topology errors.
+When investigating transform problems, call `viewer_get_state` to check whether the viewer has a spatial view and inspect its reports for transform-topology errors.
 Use those reports as diagnostic evidence; absence of a spatial view or reports does not prove correctness.
 
 If a spatial view does not show the expected named-frame tree, check its target frame in the blueprint: a common cause is that the view still targets the default `tf#/` root.
@@ -189,7 +189,7 @@ Keep `edge_filter: "EDGE_FILTER_ALL"` when investigating connectivity within the
 Frame `has_transform` describes participation in the unfiltered latest-at graph, even if its edges are filtered out.
 
 The response echoes the effective options and query time.
-To inspect another time, call `rerun_set_time_cursor`, then request another graph; pause playback for repeatable inspection.
+To inspect another time, call `viewer_set_time_cursor`, then request another graph; pause playback for repeatable inspection.
 If no cursor is set, the query uses latest values and reports `query.mode = "latest"` with a null time.
 Temporal timestamps are integer strings to preserve precision.
 Matrices are arrays of rows acting on column vectors: `parent_from_child` maps child coordinates into parent coordinates.
@@ -206,7 +206,7 @@ See [Transforms & Coordinate Frames](../../logging-and-ingestion/data-model/tran
 
 If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
 
-`rerun_get_blueprint` with a `recording` target returns a recording's active blueprint as JSON: the layout, what each view shows, its properties, and per-entity overrides.
+`viewer_get_blueprint` with a `recording` target returns a recording's active blueprint as JSON: the layout, what each view shows, its properties, and per-entity overrides.
 The target's `store_id` defaults to the active recording.
 Without any target it reads the blueprint of what is on screen: the table if one is shown, else the active recording.
 A recording on screen without a blueprint of its own gives the views the Viewer adds by itself, so the agent always has a layout to start from.
@@ -221,8 +221,8 @@ The JSON mirrors the blueprint store row for row, so it matches what the SDKs lo
 }
 ```
 
-`rerun_set_blueprint` accepts `mode: "full"` (the default) or `mode: "partial"`.
-Like `rerun_get_blueprint`, it writes the blueprint of what is on screen when given no target.
+`viewer_set_blueprint` accepts `mode: "full"` (the default) or `mode: "partial"`.
+Like `viewer_get_blueprint`, it writes the blueprint of what is on screen when given no target.
 Full updates replace the whole blueprint and clear omitted fields and entities, so read the blueprint, edit it, and send all of it back.
 Partial updates write only supplied fields and preserve everything else; prefer them for small changes such as a view name, colormap, or column visibility.
 Arrays and struct-valued fields are replaced as a whole, not merged; preserve other entries when editing a component map or list of active visualizers.
@@ -251,7 +251,7 @@ For view-wide changes not meant for a specific entity, first consider component 
 For a specific entity, use a [component override](#component-overrides) instead.
 Defaults apply to every entity using that archetype in the view, matching the selection panel's **Visualizer defaults**, but do not supersede logged values or per-entity overrides.
 
-For example, to hide Boxes3D labels throughout a view, call `rerun_set_blueprint` with this partial update, substituting the existing view UUID from `rerun_get_blueprint`:
+For example, to hide Boxes3D labels throughout a view, call `viewer_set_blueprint` with this partial update, substituting the existing view UUID from `viewer_get_blueprint`:
 
 ```json
 {
@@ -307,18 +307,18 @@ Verify the effective value in the selection panel's Visualizers section and chec
 ### Table blueprints
 
 A table, such as a dataset's segment table or a catalog table, has a blueprint of its own with its row filters, layout, and column settings.
-`rerun_get_blueprint` and `rerun_set_blueprint` read and update it in the same JSON form when given a `table` target, whose `table_url` defaults to the table on screen.
+`viewer_get_blueprint` and `viewer_set_blueprint` read and update it in the same JSON form when given a `table` target, whose `table_url` defaults to the table on screen.
 The same full and partial update modes apply to tables.
 Their answer names the recording or table it used, as `store_id` or `table_url`.
 Row filters are SQL expressions such as `"task" ILIKE '%pick%'`, and the `filters` docs of `TableBlueprint` list the forms the Viewer shows as editable filter widgets.
 A filter that does not fit the table's columns comes back as an error.
-`rerun_get_table_schema` names each column's Arrow field name, header name, and datatype, as the table was last shown.
+`viewer_get_table_schema` names each column's Arrow field name, header name, and datatype, as the table was last shown.
 
 To hide, show, reorder, or rename columns, or to filter rows, write the table blueprint rather than clicking through the **Columns** menu with the low-level tools.
-The server instructions and the description of `rerun_set_blueprint` give the agent this rule and its steps: read the column names with `rerun_get_table_schema`, read the blueprint, write it back, and check it with one screenshot.
+The server instructions and the description of `viewer_set_blueprint` give the agent this rule and its steps: read the column names with `viewer_get_table_schema`, read the blueprint, write it back, and check it with one screenshot.
 
-For example, to tidy up the segment table of a DROID dataset, the agent first opens the table with `rerun_open`.
-`rerun_get_table_schema` then lists its columns in display order.
+For example, to tidy up the segment table of a DROID dataset, the agent first opens the table with `viewer_open`.
+`viewer_get_table_schema` then lists its columns in display order.
 It answers `NOT_FOUND` until the table has been shown once, so call it again if it was opened in the same step.
 
 ```json
@@ -335,8 +335,8 @@ It answers `NOT_FOUND` until the table has been shown once, so call it again if 
 ]}
 ```
 
-For a table that was never configured, `rerun_get_blueprint` with `{"table": {}}` gives the blueprint the table shows by default: every column in display order, and the columns it hides.
-`rerun_set_blueprint` with `{"table": {}}` and this `json` shows the recording link, task, and success columns first, and hides both external camera serials:
+For a table that was never configured, `viewer_get_blueprint` with `{"table": {}}` gives the blueprint the table shows by default: every column in display order, and the columns it hides.
+`viewer_set_blueprint` with `{"table": {}}` and this `json` shows the recording link, task, and success columns first, and hides both external camera serials:
 
 ```json
 {
@@ -354,7 +354,7 @@ For a table that was never configured, `rerun_get_blueprint` with `{"table": {}}
 The other columns keep their default order and visibility.
 In a column's entity path, `:` and spaces are escaped as `\:` and `\ `, which JSON writes as `\\:` and `\\ `.
 To show a column again, set `"visible": true` or leave its entry out.
-Calling `rerun_get_table_schema` again lists the columns in the new order, hidden ones included.
+Calling `viewer_get_table_schema` again lists the columns in the new order, hidden ones included.
 
 A column with a `TableColumnPreview` that lists views is a preview column.
 This shows a 3D view of `/my_scene` as a preview of the recording link on each card:
@@ -377,14 +377,14 @@ This shows a 3D view of `/my_scene` as a preview of the recording link on each c
 ```
 
 The user can undo and redo a table blueprint write, as with a recording's blueprint.
-To go back to the table's default blueprint, run the `table.reset_blueprint_to_default` command, **Reset to default blueprint** in the command palette, with `rerun_run_command`.
+To go back to the table's default blueprint, run the `table.reset_blueprint_to_default` command, **Reset to default blueprint** in the command palette, with `viewer_run_command`.
 
-To make a layout the default for everyone who opens the table, build it in Python and register it on the server, as described in [Configure table layouts and segment previews](../blueprints-and-views/configure-table-blueprints.md).
+To make a layout the default for everyone who opens the table, build it in Python and register it on the server, as described in [Configure table layouts and segment previews](../blueprints/configure-table-blueprints.md).
 The [`rerun-blueprint` skill](https://github.com/rerun-io/rerun/blob/main/skills/rerun-blueprint/SKILL.md) gives agents the same steps.
 
 ## Closing recordings
 
-The `rerun_close` tool removes one, many, or all recordings from the Viewer.
-An agent that regenerates a file and reopens it repeatedly otherwise accumulates stale recordings, which makes both `rerun_get_state` and the recording panel hard to read.
+The `viewer_close` tool removes one, many, or all recordings from the Viewer.
+An agent that regenerates a file and reopens it repeatedly otherwise accumulates stale recordings, which makes both `viewer_get_state` and the recording panel hard to read.
 Closing a recording does not touch files on disk, but unsaved blueprint edits to it are lost.
 A registered recording also stays in the catalog, so it can still be read over the catalog API and reopened later.

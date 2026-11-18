@@ -21,12 +21,8 @@ async fn get_table_batches(
     service: &impl RerunCloudService,
     entry: &EntryDetails,
 ) -> Vec<RecordBatch> {
-    let scan_request = ScanTableRequest {
-        table_id: Some(entry.id.into()),
-    };
-
     let table_resp: Vec<_> = service
-        .scan_table(tonic::Request::new(scan_request))
+        .scan_table(tonic::Request::new(ScanTableRequest::default()).with_entry_id(entry.id))
         .await
         .expect("Failed to scan table")
         .into_inner()

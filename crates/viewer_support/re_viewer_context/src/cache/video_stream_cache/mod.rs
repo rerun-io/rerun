@@ -160,8 +160,10 @@ pub enum VideoStreamProcessingError {
     #[error("Unexpected arrow type for video sample {0}")]
     InvalidVideoSampleType(DataType),
 
-    #[error("No codec specified.")]
-    MissingCodec,
+    #[error("No codec specified. Expected one in {component}.")]
+    MissingCodec {
+        component: re_types_core::ComponentIdentifier,
+    },
 
     #[error("Codec not loaded yet.")]
     UnloadedCodec,
@@ -210,7 +212,7 @@ impl VideoStreamCache {
             [codec_component],
         );
 
-        let codec_chunk = query_result.get_required(codec_component).map_err(|_err| {
+        let codec_chunk = query_result.get(codec_component).ok_or_else(|| {
             if store
                 .storage_engine()
                 .store()
@@ -218,7 +220,9 @@ impl VideoStreamCache {
             {
                 VideoStreamProcessingError::UnloadedCodec
             } else {
-                VideoStreamProcessingError::MissingCodec
+                VideoStreamProcessingError::MissingCodec {
+                    component: codec_component,
+                }
             }
         })?;
 
@@ -226,7 +230,9 @@ impl VideoStreamCache {
         // TODO(andreas): Should validate whether all codecs ever logged are the same, but it's a bit tedious.
         let last_codec = codec_chunk
             .component_mono::<components::VideoCodec>(codec_component)
-            .ok_or(VideoStreamProcessingError::MissingCodec)?
+            .ok_or(VideoStreamProcessingError::MissingCodec {
+                component: codec_component,
+            })?
             .map_err(|err| VideoStreamProcessingError::FailedReadingCodec(Box::new(err)))?;
 
         self.entry(
@@ -1109,9 +1115,7 @@ fn read_samples_from_known_chunk(
 
     let lengths = offsets.lengths().collect::<Vec<_>>();
 
-    let split_idx = keyframe_indices
-        .binary_search(&load_range.first_sample)
-        .unwrap_or_else(|e| e);
+    let split_idx = keyframe_indices.partition_point(|&idx| idx < load_range.first_sample);
 
     let end_keyframes = keyframe_indices.drain(split_idx..).collect::<Vec<_>>();
 

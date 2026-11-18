@@ -37,7 +37,7 @@ We are continually adding support for more standard message types.
 ### Visualizing ROS 2 messages without conversion
 
 The Viewer can also visualize some ROS 2 messages without converting them to Rerun archetypes, for example after `rerun mcap convert input.mcap -d ros2_reflection -o output.rrd`.
-For these messages, the heuristic blueprint sets up [component mappings](../../../viewer/blueprints-and-views/component-mappings.md) automatically:
+For these messages, the heuristic blueprint sets up [component mappings](../../../viewer/view-concepts/component-mappings.md) automatically:
 
 * `std_msgs/String`
 * `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`

@@ -355,7 +355,7 @@ impl SplitCommand {
             let (rrd_out_path, rrd_out_size) = handle
                 .context("couldn't spawn IO thread")?
                 .join()
-                .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // NOLINT: there is no `Display` for this `err`
+                .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // relint: allow(debug_formatted_error): a thread panic payload (`Box<dyn Any + Send>`) has no `Display`
             rrd_out_paths.push(rrd_out_path);
             rrd_out_sizes.push(file_size_to_string(Some(rrd_out_size)));
         }

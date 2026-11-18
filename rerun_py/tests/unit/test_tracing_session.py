@@ -193,6 +193,7 @@ def test_nested_sessions_shadow_and_restore(monkeypatch: pytest.MonkeyPatch) -> 
     monkeypatch.setattr(rerun_bindings, "_log_tracing_session_finished", lambda *_args: None)
 
     var = rerun_bindings._get_tracing_session_var()
+    assert var is not None
     assert var.get(None) is None, "expected no active session before any scope"
 
     with tracing_session() as t1:

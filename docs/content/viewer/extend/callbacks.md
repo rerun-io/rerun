@@ -16,8 +16,8 @@ Here is what you can do instead.
 
 We support registering callbacks to Viewer events, such as selection and time changes, in these environments:
 
-- Web browsers, through our [JS package](../../integrations/embed-web.md#callbacks)
-- Jupyter notebooks, through our [Notebook API](../../integrations/embed-notebooks.md#reacting-to-events-in-the-viewer)
+- Web browsers, through our [JS package](../integrations/embed-web.md#callbacks)
+- Jupyter notebooks, through our [Notebook API](../integrations/embed-notebooks.md#reacting-to-events-in-the-viewer)
 
 In both cases, you can build your own widgets in the host page or notebook (for example with `ipywidgets`), and use them to control the Viewer.
 

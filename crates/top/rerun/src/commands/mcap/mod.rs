@@ -146,7 +146,22 @@ fn compile_topic_filter(include: &[String], exclude: &[String]) -> anyhow::Resul
         .map_err(|err| anyhow::anyhow!("Invalid topic regex in include/exclude filters: {err}"))
 }
 
-fn parse_time(value: &str) -> Result<u64, String> {
+/// The `--start-time`/`--end-time` argument is not a valid time.
+#[derive(Debug, thiserror::Error)]
+enum ParseTimeError {
+    #[error("Time cannot be negative")]
+    Negative(#[source] std::num::TryFromIntError),
+
+    #[error("Time cannot be before the Unix epoch")]
+    BeforeUnixEpoch(#[source] std::num::TryFromIntError),
+
+    #[error(
+        "invalid time {0:?}; expected nanoseconds, a Unix timestamp with a unit suffix, or an RFC 3339 timestamp"
+    )]
+    Unrecognized(String),
+}
+
+fn parse_time(value: &str) -> Result<u64, ParseTimeError> {
     if let Ok(nanos) = value.parse::<u64>() {
         return Ok(nanos);
     }
@@ -154,18 +169,15 @@ fn parse_time(value: &str) -> Result<u64, String> {
     // `Duration` only provides unit-aware parsing here; the result remains an absolute offset from
     // the Unix epoch, not an offset relative to the start of the MCAP file.
     if let Ok(duration) = value.parse::<Duration>() {
-        return u64::try_from(duration.as_nanos())
-            .map_err(|_err| "Time cannot be negative".to_owned());
+        return u64::try_from(duration.as_nanos()).map_err(ParseTimeError::Negative);
     }
 
     if let Ok(timestamp) = value.parse::<Timestamp>() {
         return u64::try_from(timestamp.nanos_since_epoch())
-            .map_err(|_err| "Time cannot be before the Unix epoch".to_owned());
+            .map_err(ParseTimeError::BeforeUnixEpoch);
     }
 
-    Err(format!(
-        "invalid time {value:?}; expected nanoseconds, a Unix timestamp with a unit suffix, or an RFC 3339 timestamp"
-    ))
+    Err(ParseTimeError::Unrecognized(value.to_owned()))
 }
 
 fn compile_time_range(

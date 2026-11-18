@@ -353,15 +353,20 @@ impl std::fmt::Display for DatasetKind {
     }
 }
 
+/// Error returned when parsing a [`DatasetKind`] from a string.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("unknown DatasetKind: {0:?}")]
+pub struct UnknownDatasetKindError(pub String);
+
 impl std::str::FromStr for DatasetKind {
-    type Err = String;
+    type Err = UnknownDatasetKindError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Recording" => Ok(Self::Recording),
             "Blueprint" => Ok(Self::Blueprint),
             "Asset" => Ok(Self::Asset),
-            other => Err(format!("unknown DatasetKind: {other:?}")),
+            other => Err(UnknownDatasetKindError(other.to_owned())),
         }
     }
 }

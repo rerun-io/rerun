@@ -467,6 +467,7 @@ pub struct DecodedFrameContent {
     pub data: Vec<u8>,
     pub width: u32,
     pub height: u32,
+
     #[size_bytes(ignore)]
     pub format: PixelFormat,
 }
@@ -591,6 +592,7 @@ impl FrameInfo {
 #[derive(re_byte_size::SizeBytes)]
 pub struct Frame {
     pub content: FrameContent,
+
     #[size_bytes(ignore)]
     pub info: FrameInfo,
 }

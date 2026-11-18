@@ -306,7 +306,6 @@ fn command_palette_trigger_ui(
     const NAVIGATION_GAP: f32 = 8.0;
 
     let navigation_buttons_state = navigation_buttons_state(app);
-    let agent_enabled = app.app_options().experimental.agent_panel;
     let navigation_width = if navigation_buttons_state.is_visible() {
         2.0 * NAVIGATION_BUTTON_SIZE + NAVIGATION_GAP
     } else {
@@ -346,12 +345,7 @@ fn command_palette_trigger_ui(
             .as_image()
             .fit_to_exact_size(ui.tokens().small_icon_size)
             .tint(subdued_color),
-        RichText::new(if agent_enabled {
-            "Search commands or ask agent…"
-        } else {
-            "Search commands…"
-        })
-        .color(subdued_color),
+        RichText::new("Search commands or ask agent…").color(subdued_color),
     )
     .truncate()
     .right_text(RichText::new(shortcut).color(subdued_color))
@@ -671,19 +665,17 @@ fn panel_buttons_r2l(
     let item_spacing = ui.spacing().item_spacing.x;
     ui.spacing_mut().item_spacing.x = 2.0;
 
-    if app.app_options().experimental.agent_panel {
-        let mut open = app.agent_panel_open();
-        let response = ui
-            .medium_icon_toggle_button(&re_ui::icons::AGENT, "Agent panel toggle", &mut open)
-            .on_hover_ui(|ui| UICommand::ToggleAgentPanel.tooltip_ui(ui));
-        ui.maybe_paint_discovery_dot(
-            response.rect,
-            re_ui::discovery::Feature::AgentPanel,
-            app.state.agent_panel_ever_opened,
-        );
-        if response.clicked() {
-            app.toggle_agent_panel();
-        }
+    let mut open = app.agent_panel_open();
+    let response = ui
+        .medium_icon_toggle_button(&re_ui::icons::AGENT, "Agent panel toggle", &mut open)
+        .on_hover_ui(|ui| UICommand::ToggleAgentPanel.tooltip_ui(ui));
+    ui.maybe_paint_discovery_dot(
+        response.rect,
+        re_ui::discovery::Feature::AgentPanel,
+        app.state.agent_panel_ever_opened,
+    );
+    if response.clicked() {
+        app.toggle_agent_panel();
     }
 
     let route = app.navigation.routes.current();

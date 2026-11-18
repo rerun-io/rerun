@@ -91,8 +91,11 @@ enum ExternalError {
 
     /// A DataFusion error that isn't a server error, so it has no [`re_redap_client::ApiError`]
     /// (which always names a server) to carry it.
-    #[error("{0}")]
-    DataFusionError(Box<datafusion::error::DataFusionError>, ApiErrorKind),
+    #[error("{err}")]
+    DataFusionError {
+        err: Box<datafusion::error::DataFusionError>,
+        kind: ApiErrorKind,
+    },
 
     #[error("{0}")]
     ArrowError(#[from] arrow::error::ArrowError),
@@ -180,7 +183,10 @@ impl From<datafusion::error::DataFusionError> for ExternalError {
             return Self::ApiError(Box::new(api.clone()));
         }
         let kind = apierror_kind_for_df_error(&value);
-        Self::DataFusionError(Box::new(value), kind)
+        Self::DataFusionError {
+            err: Box::new(value),
+            kind,
+        }
     }
 }
 
@@ -237,7 +243,7 @@ impl From<ExternalError> for PyErr {
                 err => PyRuntimeError::new_err(format!("Staging failed: {err}")),
             },
 
-            ExternalError::DataFusionError(err, kind) => {
+            ExternalError::DataFusionError { err, kind } => {
                 let message = match kind {
                     ApiErrorKind::InvalidArguments => format!("DataFusion query error: {err}"),
                     ApiErrorKind::Unimplemented => {

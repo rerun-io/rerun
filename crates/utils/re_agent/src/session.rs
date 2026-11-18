@@ -241,6 +241,7 @@ struct AgentInfo {
     session_id: Option<SessionId>,
 
     name: Option<String>,
+    implementation_id: Option<String>,
 
     /// The version the agent reported, which is ours for a model-API agent.
     version: Option<String>,
@@ -515,6 +516,16 @@ impl AgentSession {
     /// What the agent calls itself, once it has told us.
     pub fn agent_name(&self) -> Option<&str> {
         self.agent.name.as_deref()
+    }
+
+    /// The implementation identifier from the ACP handshake, independent of its display title.
+    pub fn agent_implementation_id(&self) -> Option<&str> {
+        self.agent.implementation_id.as_deref()
+    }
+
+    /// The running agent's self-reported version, rather than a separately installed CLI's version.
+    pub fn agent_version(&self) -> Option<&str> {
+        self.agent.version.as_deref()
     }
 
     pub fn transcript(&self) -> &Transcript {
@@ -818,13 +829,14 @@ impl AgentSession {
     fn begin_turn(&mut self, prompt: Prompt) {
         let text = prompt.text.clone();
         self.transcript.push_user(prompt);
-        self.turns.current = Some(TurnStart {
-            prompt: text,
-            started: Instant::now(),
-            transcript_start: self.transcript.items.len(),
-            permissions_requested: 0,
-            permissions_rejected: 0,
-        });
+        self.turns.current = Some(TurnStart::new(text, self.transcript.items.len()));
+    }
+
+    fn note_waiting(&mut self) {
+        let waiting = self.is_waiting_on_user();
+        if let Some(turn) = &mut self.turns.current {
+            turn.set_waiting(waiting, Instant::now());
+        }
     }
 
     /// Closes the current turn, if any, and queues its report.
@@ -837,12 +849,14 @@ impl AgentSession {
         };
         self.transcript
             .fail_unfinished_tool_calls(unfinished_reason);
+        let working_time = turn.working_time(Instant::now());
         let TurnStart {
             prompt,
             started,
             transcript_start,
             permissions_requested,
             permissions_rejected,
+            ..
         } = turn;
 
         let items = self
@@ -883,6 +897,12 @@ impl AgentSession {
             }
         }
         let off_limits_paths: Vec<PathBuf> = off_limits_paths.into_iter().collect();
+        if let Some(turn_id) = transcript_start
+            .checked_sub(1)
+            .and_then(|index| self.transcript.turn_id(index))
+        {
+            self.transcript.set_turn_duration(turn_id, working_time);
+        }
 
         if !off_limits_paths.is_empty() {
             re_log::warn!(
@@ -920,6 +940,7 @@ impl AgentSession {
             pending.answer(None).ok();
         }
         self.requests.elicitations.clear();
+        self.note_waiting();
     }
 
     /// Asks the agent to change a session setting; its confirmed value arrives in a config update.
@@ -941,6 +962,7 @@ impl AgentSession {
             connection.send(AgentCommand::Authenticate(method_id));
             self.agent.auth = None;
         }
+        self.note_waiting();
     }
 
     /// Answers the pending permission request at `index` with the given option,
@@ -962,6 +984,7 @@ impl AgentSession {
                 self.report_error(format!("Failed to answer permission request: {err}"));
             }
         }
+        self.note_waiting();
     }
 
     /// Responds to a pending question and records its answer in the transcript.
@@ -982,6 +1005,7 @@ impl AgentSession {
                 Err(err) => self.report_error(format!("Failed to answer question: {err}")),
             }
         }
+        self.note_waiting();
     }
 
     fn push_elicitation(
@@ -1023,6 +1047,7 @@ impl AgentSession {
                 .as_ref()
                 .is_none_or(|responder| !responder.is_cancelled())
         });
+        self.note_waiting();
         let Some(connection) = &self.connection else {
             return;
         };
@@ -1030,6 +1055,7 @@ impl AgentSession {
         for event in events {
             self.handle_event(event);
         }
+        self.note_waiting();
     }
 
     /// Direct access to the transcript, for tests that script a conversation.
@@ -1078,6 +1104,7 @@ impl AgentSession {
                 ..
             } => {
                 self.agent.version = agent_info.as_ref().map(|info| info.version.clone());
+                self.agent.implementation_id = agent_info.as_ref().map(|info| info.name.clone());
                 self.agent.name = agent_info.map(|info| info.title.unwrap_or(info.name));
                 self.agent.prompt_capabilities = capabilities.prompt_capabilities;
             }
@@ -1221,7 +1248,7 @@ impl AgentSession {
                     }
                     Ok(_) => TurnOutcome::Completed,
                     Err(err) => {
-                        self.push_agent_error(FailedRequest::Prompt, err);
+                        self.push_agent_error(FailedRequest::Prompt, err.to_string());
                         TurnOutcome::Error
                     }
                 };
@@ -1920,7 +1947,9 @@ mod tests {
             "a failed setting change is not a failed prompt"
         );
 
-        session.handle_event(AgentEvent::TurnFinished(Err("boom".to_owned())));
+        session.handle_event(AgentEvent::TurnFinished(Err(crate::TurnError::Agent {
+            message: "boom".to_owned(),
+        })));
         let (error_index, prompt) = session
             .retryable_prompt()
             .expect("the failed prompt can be retried");
@@ -2043,6 +2072,20 @@ mod tests {
     }
 
     #[test]
+    fn a_finished_turn_records_its_duration_on_its_prompt() {
+        let mut session = AgentSession::default();
+        session.begin_turn("first".into());
+        let turn_id = session
+            .transcript
+            .turn_id(0)
+            .expect("the prompt starts a turn");
+        assert_eq!(session.transcript.turn_duration(turn_id), None);
+
+        session.handle_event(AgentEvent::TurnFinished(Ok(StopReason::EndTurn)));
+        assert!(session.transcript.turn_duration(turn_id).is_some());
+    }
+
+    #[test]
     fn turn_report() {
         let mut session = AgentSession::default();
         session.agent.name = Some("Test Agent".to_owned());
@@ -2111,7 +2154,7 @@ mod tests {
         let requested = McpStdioServer {
             name: "rerun".to_owned(),
             command: PathBuf::from("/Applications/Rerun.app/Contents/MacOS/rerun"),
-            args: vec!["viewer-mcp".to_owned()],
+            args: vec!["mcp".to_owned()],
         };
         let mut session = AgentSession::default();
         session.launch.mcp_servers = vec![requested.clone()];
@@ -2141,7 +2184,7 @@ mod tests {
         );
         let markdown = session.transcript.to_markdown();
         assert!(markdown.contains("MCP startup failure"));
-        assert!(markdown.contains("viewer-mcp"));
+        assert!(markdown.contains("rerun mcp"));
         assert!(markdown.contains("~/.codex/config.toml"));
 
         let failures = session.take_reports().mcp_startup_failures;
@@ -2221,7 +2264,7 @@ mod tests {
         let requested = McpStdioServer {
             name: "rerun".to_owned(),
             command: PathBuf::from("/Applications/Rerun.app/Contents/MacOS/rerun"),
-            args: vec!["viewer-mcp".to_owned()],
+            args: vec!["mcp".to_owned()],
         };
         let mut session = AgentSession::default();
         session.launch.mcp_servers = vec![requested.clone()];
@@ -2325,7 +2368,7 @@ mod tests {
                 .iter()
                 .map(|name| McpStdioServer {
                     name: (*name).to_owned(),
-                    command: PathBuf::from("viewer-mcp"),
+                    command: PathBuf::from("rerun"),
                     args: Vec::new(),
                 })
                 .collect::<Vec<_>>()

@@ -89,9 +89,6 @@ impl CommandPaletteAction {
 
 /// Feeds the viewer's commands into the [`re_ui::CommandPalette`].
 pub struct CommandPaletteProviderImpl<'a> {
-    /// Whether the agent panel feature is enabled, allowing agent mode in the palette.
-    pub agent_enabled: bool,
-
     /// Whether agent setup has been completed, allowing prompt submission.
     pub agent_setup_done: bool,
 
@@ -106,17 +103,13 @@ pub struct CommandPaletteProviderImpl<'a> {
 }
 
 impl CommandPaletteProvider<CommandPaletteAction> for CommandPaletteProviderImpl<'_> {
-    fn agent_enabled(&self) -> bool {
-        self.agent_enabled
-    }
-
     fn submit_agent_prompt(&mut self, query: &str) -> Option<CommandPaletteAction> {
-        (self.agent_enabled && self.agent_setup_done && !query.trim().is_empty())
+        (self.agent_setup_done && !query.trim().is_empty())
             .then(|| CommandPaletteAction::AskAgent(query.to_owned()))
     }
 
     fn agent_setup_action(&self) -> Option<CommandPaletteAction> {
-        (self.agent_enabled && !self.agent_setup_done).then_some(CommandPaletteAction::SetUpAgent)
+        (!self.agent_setup_done).then_some(CommandPaletteAction::SetUpAgent)
     }
 
     fn search_hint(&self) -> &'static str {

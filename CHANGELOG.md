@@ -1,5 +1,14 @@
 # Rerun changelog
 
+## [0.43.2](https://github.com/rerun-io/rerun/compare/0.43.1...0.43.2) - 2026-11-13
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix points and depth clouds not rendering in Safari [988f847](https://github.com/rerun-io/rerun/commit/988f847b27b61d0853752d3a9163dd04d47f6ebf)
+- Detect Safari 27 and other WebKit browsers by user agent [b3606ff](https://github.com/rerun-io/rerun/commit/b3606ff8bb9e1e2c70ac7d3e91976e0f1c76a724)
+- Fix overwritten static `AnnotationContext` being ignored [#13011](https://github.com/rerun-io/rerun/pull/13011) (thanks [@m-pilia](https://github.com/m-pilia)!)
+
 ## [0.43.1](https://github.com/rerun-io/rerun/compare/0.43.0...0.43.1) - 2026-11-11
 
 ### 🔎 Details

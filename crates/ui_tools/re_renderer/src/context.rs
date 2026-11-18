@@ -291,9 +291,8 @@ impl RenderContext {
                     timeout: None,
                 }) {
                     re_log::warn_once!(
-                        "Failed to limit number of in-flight GPU frames to {}: {:?}",
+                        "Failed to limit number of in-flight GPU frames to {}: {err}",
                         Self::MAX_NUM_INFLIGHT_QUEUE_SUBMISSIONS,
-                        err
                     );
                 }
             }

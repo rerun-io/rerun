@@ -22,7 +22,7 @@ This page gives a high-level overview of ongoing and planned work.
 
 ### Near term
 - The agent panel: chat with a coding agent that can inspect and drive the Viewer through the [Rerun MCP server](../viewer/extend/mcp.md)
-    - You can try it today in the native Viewer: enable **Settings → Experimental → Agent panel**
+    - You can try it today: click the agent button in the top right corner of the Viewer
     - We are working on making it a stable, non-experimental feature
 - A refreshed look and feel for the Viewer
 - Greater capabilities around sharing links to data
@@ -31,18 +31,18 @@ This page gives a high-level overview of ongoing and planned work.
 - Better blueprint management, such as several blueprints per dataset
 - A composable Viewer toolkit, for building your own viewer from Rerun's UI building blocks
 - More mature data loaders, and more ready-made conversions of open robotics datasets
-- Richer filtering in the dataframe view (table views already have [filters](../viewer/blueprints-and-views/configure-table-blueprints.md#filtering-rows))
+- Richer filtering in the dataframe view (table views already have [filters](../viewer/blueprints/configure-table-blueprints.md#filtering-rows))
 - Dataset views that give zero-copy modified views into large datasets
 
 ### Longer term
 - Interactive applications built with Rerun, such as UI for tweaking configs or custom data annotation tools
     - Today you can [react to Viewer events](../viewer/extend/callbacks.md) in the web Viewer, in notebooks, and from Rust, but the native Viewer has no user widgets or callbacks for Python
 - Official ROS 2 bridge
-    - Today you can [import ROS 2 bags in MCAP format](../logging-and-ingestion/import/mcap/working-with-mcap.md) and re-log live topics yourself, as shown in the [ROS 2 example](../integrations/ros2-nav-turtlebot.md)
+    - Today you can [import ROS 2 bags in MCAP format](../logging-and-ingestion/import/mcap/working-with-mcap.md) and re-log live topics yourself, as shown in the [ROS 2 example](../logging-and-ingestion/integrations/ros2-nav-turtlebot.md)
 - Extensibility of all parts of the stack
 
 ### Recently shipped
-- Configurable data interpretation, for example MCAP files with custom messages: see [Lenses](../query-and-transform/lenses.md) and [component mappings](../viewer/blueprints-and-views/component-mappings.md)
+- Configurable data interpretation, for example MCAP files with custom messages: see [Lenses](../query-and-transform/lenses.md) and [component mappings](../viewer/view-concepts/component-mappings.md)
 - Callbacks for Viewer events: see [React to events in the Viewer](../viewer/extend/callbacks.md)
 - Driving the Viewer from code: `rerun.experimental.ViewerClient` in Python and the `WebViewer` API in JavaScript
 - Data format stability: the `.rrd` framing is stable, and recordings from Rerun 0.23 and later are migrated automatically on load (see [RRD format stability](../logging-and-ingestion/chunks-and-rrd/rrd-format.md#stability))

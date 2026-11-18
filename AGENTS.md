@@ -60,7 +60,7 @@ Start the build, do something else, and read its output once the notification ar
 
 Two MCP servers let an agent see and click a running UI instead of guessing from code:
 
-- `rerun viewer-mcp` drives a running Rerun Viewer over gRPC. See `docs/content/viewer/extend/mcp.md`.
+- `rerun mcp` drives a running Rerun Viewer over gRPC. See `docs/content/viewer/extend/mcp.md`.
 - `egui-mcp` drives *any* egui app started with `EGUI_INSPECTION=1`, including our example apps and headless `egui_kittest` harnesses.
   It exposes `attach`, `widget_tree`, `click`, `type_text`, `screenshot`, `wait_for`, and friends.
   Both are configured in the repo-root `.mcp.json`; install with `cargo install egui_mcp`.
@@ -101,6 +101,7 @@ To add custom functionality to generated types, create `_ext` files:
 
 - use `…` instead of `...` <!-- NOLINT -->
 - validate various custom conventions via `pixi run lint-rerun <file>` (not passing any file will check everything)
+- validate Rust conventions via `pixi run relint <file>` (see [`scripts/relint/README.md`](scripts/relint/README.md))
 - lint JS and TS code with `pixi run js-lint` (oxlint, needs a built web-viewer)
 - Use `format!("{x}")` over `format!("{}, x)` (same in log calls etc)
 - Don't write trivial comments that add nothing new

@@ -114,8 +114,13 @@ impl std::fmt::Display for PortArg {
     }
 }
 
+/// Error returned when parsing a [`PortArg`] from a string.
+#[derive(Debug, thiserror::Error)]
+#[error("invalid port: {0}")]
+struct InvalidPortArgError(#[source] std::num::ParseIntError);
+
 impl std::str::FromStr for PortArg {
-    type Err = String;
+    type Err = InvalidPortArgError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.eq_ignore_ascii_case("auto") {
@@ -123,7 +128,7 @@ impl std::str::FromStr for PortArg {
         } else {
             s.parse::<u16>()
                 .map(Self::Port)
-                .map_err(|err| format!("invalid port: {err}"))
+                .map_err(InvalidPortArgError)
         }
     }
 }
@@ -668,14 +673,14 @@ enum Command {
 
     /// Run an MCP server that controls a running Rerun Viewer.
     ///
-    /// Register it with your agent using `claude mcp add rerun -- rerun viewer-mcp` or
-    /// `codex mcp add rerun -- rerun viewer-mcp`, or add an `mcp.json` entry with
-    /// `"command": "rerun"` and `"args": ["viewer-mcp"]`.
+    /// Register it with your agent using `claude mcp add rerun -- rerun mcp` or
+    /// `codex mcp add rerun -- rerun mcp`, or add an `mcp.json` entry with
+    /// `"command": "rerun"` and `"args": ["mcp"]`.
     ///
     /// See <https://rerun.io/docs/viewer/extend/mcp> for details.
     #[cfg(feature = "native_viewer")]
-    #[command(name = "viewer-mcp")]
-    ViewerMcp {
+    #[command(name = "mcp")]
+    Mcp {
         /// gRPC endpoint of the viewer to connect to on startup, e.g. `http://127.0.0.1:9876`.
         ///
         /// Without it, the server starts unconnected and the agent picks a viewer with its
@@ -854,10 +859,12 @@ where
             Command::Mcap(mcap) => mcap.run(),
 
             #[cfg(feature = "native_viewer")]
-            Command::ViewerMcp {
+            Command::Mcp {
                 endpoint,
                 from_agent_panel: _,
-            } => tokio_runtime.block_on(re_viewer_mcp::serve(endpoint)),
+            } => tokio_runtime.block_on(re_rerun_mcp::serve(re_rerun_mcp::Config {
+                viewer: Some(re_rerun_mcp::ViewerConfig { endpoint }),
+            })),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -1854,7 +1861,7 @@ fn initialize_tokio_runtime(threads_args: i32) -> std::io::Result<Runtime> {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     // Name the tokio threads for the benefit of debuggers and profilers:
-    let mut builder = tokio::runtime::Builder::new_multi_thread(); // NOLINT: the CLI process owns this configurable runtime
+    let mut builder = tokio::runtime::Builder::new_multi_thread(); // relint: allow(tokio_runtime): the CLI process owns this configurable runtime
     builder.thread_name_fn(|| {
         static ATOMIC_ID: AtomicUsize = AtomicUsize::new(0);
         let nr = ATOMIC_ID.fetch_add(1, Ordering::Relaxed);
@@ -2143,11 +2150,11 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
 
     let mcp_launcher = cfg_select! {
         feature = "native_viewer" => match command {
-            Some(Command::ViewerMcp {
+            Some(Command::Mcp {
                 from_agent_panel: true,
                 ..
             }) => Some(re_analytics::event::McpLauncher::AgentPanel),
-            Some(Command::ViewerMcp { .. }) => Some(re_analytics::event::McpLauncher::Unknown),
+            Some(Command::Mcp { .. }) => Some(re_analytics::event::McpLauncher::Unknown),
             _ => None,
         },
         _ => None,
@@ -2191,7 +2198,7 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         }
 
         #[cfg(feature = "native_viewer")]
-        Some(Command::ViewerMcp { .. }) => ("viewer-mcp", None),
+        Some(Command::Mcp { .. }) => ("mcp", None),
 
         Some(Command::Download(_)) => ("download", None),
 
@@ -2373,11 +2380,11 @@ mod tests {
     use clap::Parser as _;
 
     #[test]
-    fn viewer_mcp_parses_from_agent_panel() {
-        let args = Args::try_parse_from(["rerun", "viewer-mcp", "--from-agent-panel"]).unwrap();
+    fn mcp_parses_from_agent_panel() {
+        let args = Args::try_parse_from(["rerun", "mcp", "--from-agent-panel"]).unwrap();
         assert_matches!(
             args.command,
-            Some(Command::ViewerMcp {
+            Some(Command::Mcp {
                 from_agent_panel: true,
                 ..
             })
@@ -2385,11 +2392,11 @@ mod tests {
     }
 
     #[test]
-    fn viewer_mcp_is_not_from_agent_panel_by_default() {
-        let args = Args::try_parse_from(["rerun", "viewer-mcp"]).unwrap();
+    fn mcp_is_not_from_agent_panel_by_default() {
+        let args = Args::try_parse_from(["rerun", "mcp"]).unwrap();
         assert_matches!(
             args.command,
-            Some(Command::ViewerMcp {
+            Some(Command::Mcp {
                 from_agent_panel: false,
                 ..
             })

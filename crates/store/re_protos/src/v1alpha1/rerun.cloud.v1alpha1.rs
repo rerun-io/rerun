@@ -31,6 +31,9 @@ pub struct VersionResponse {
     /// and stay safe against rolling deployments where the server may be older
     /// than the client.
     ///
+    /// New flags do not go here: what a build understands is a protocol level, see
+    /// `ClientMeta.protocol_level`.
+    ///
     /// The format is a list of opaque feature strings. Known features:
     ///
     /// * `per_segment_index_values` — the server consumes
@@ -54,7 +57,11 @@ impl ::prost::Name for VersionResponse {
         "/rerun.cloud.v1alpha1.VersionResponse".into()
     }
 }
-/// Capability names describing what a server implements and supports.
+/// Capability names describing what this server is configured to offer.
+///
+/// Two servers of the same build can advertise different capabilities, because the names follow
+/// the server's configuration. What a build understands, on either side, is a protocol level
+/// instead: see `ClientMeta.protocol_level`.
 ///
 /// A capability does not depend on the caller. Whether the caller is allowed to
 /// use one is answered by `can_read` and `can_write`.
@@ -65,7 +72,7 @@ impl ::prost::Name for VersionResponse {
 /// so a new name never breaks an older client.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ServerCapabilities {
-    /// Every capability this server implements and supports.
+    /// Every capability this server is configured to offer.
     #[prost(string, repeated, tag = "1")]
     pub capabilities: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
@@ -77,6 +84,43 @@ impl ::prost::Name for ServerCapabilities {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.ServerCapabilities".into()
+    }
+}
+/// What a client understands, sent on the requests whose handling depends on it.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ClientMeta {
+    /// The protocol level the client implements.
+    ///
+    /// Protocol levels are protocol revisions shared by clients and servers: a level says what a
+    /// build understands and can handle. They count revisions within this package version. Each
+    /// level has a client part and a server part, and a level implies all the levels below it. A
+    /// side claims a level only once it implements its part of that level and of every level below.
+    /// The level is fixed by the build: it never depends on configuration, on the caller, or on the
+    /// platform.
+    ///
+    /// What can differ between two servers of the same build, such as their configuration, is
+    /// advertised by name in `ServerCapabilities` instead.
+    ///
+    /// A server can refuse a request from a client below the level it takes to handle the response
+    /// correctly, with `FailedPrecondition`. A dataset requires a level this way, in
+    /// `DatasetEntry.required_client_protocol_level`.
+    ///
+    /// Levels, detailed on `ProtocolLevel` in `re_protos`:
+    ///
+    /// * 0, `baseline`: also when `ClientMeta` is unset.
+    /// * 1, `manifest_key_store_id`.
+    /// * 2, `chunk_segment_from_request`.
+    #[prost(uint32, tag = "1")]
+    pub protocol_level: u32,
+}
+impl ::prost::Name for ClientMeta {
+    const NAME: &'static str = "ClientMeta";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ClientMeta".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ClientMeta".into()
     }
 }
 /// Request for `WhoAmI`. Empty: the caller is identified by their credentials.
@@ -706,6 +750,15 @@ pub struct DataSource {
     /// TODO(RR-6283): not yet implemented, returns UNIMPLEMENTED when set.
     #[prost(message, optional, tag = "8")]
     pub store_id: ::core::option::Option<super::super::common::v1alpha1::StoreId>,
+    /// The segment to register this data source as.
+    ///
+    /// When unset, the segment id is the recording id of the registered store.
+    /// Must be unset when `prefix` is true.
+    ///
+    /// Servers that predate this field ignore it, so clients must only set it when the server
+    /// advertises the `catalog:write:segment_id_override` capability.
+    #[prost(message, optional, tag = "9")]
+    pub segment_id: ::core::option::Option<super::super::common::v1alpha1::SegmentId>,
 }
 impl ::prost::Name for DataSource {
     const NAME: &'static str = "DataSource";
@@ -1243,17 +1296,14 @@ pub struct GetRrdManifestRequest {
     /// It is not guaranteed that the server will honor this.
     #[prost(bool, tag = "2")]
     pub generate_direct_urls: bool,
-    /// What this client implements, as capability names.
+    /// What the client implements.
     ///
-    /// Names follow the rules of `ServerCapabilities`. Servers ignore names they do not know.
-    /// Known names:
+    /// Below the protocol level the dataset requires, the request fails with `FailedPrecondition`.
     ///
-    /// * `dataset:rrd_manifest_key:store_id` — the client picks the manifest out of a fetched
-    ///    `RrdFooter` by `RrdManifestKey.store_id`, rather than by segment id.
-    ///    Without it, the server sends no direct URL for a segment whose segment id is not its
-    ///    store's recording id, and returns that segment's manifests in the response instead.
-    #[prost(string, repeated, tag = "3")]
-    pub client_capabilities: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+    /// Below protocol level 1, the server sends no manifest key for a segment whose segment id is
+    /// not its store's recording id, and returns that segment's manifests in the response instead.
+    #[prost(message, optional, tag = "200")]
+    pub client_meta: ::core::option::Option<ClientMeta>,
 }
 impl ::prost::Name for GetRrdManifestRequest {
     const NAME: &'static str = "GetRrdManifestRequest";
@@ -1552,6 +1602,11 @@ pub struct QueryDatasetRequest {
     /// `query` applies no temporal narrowing.
     #[prost(message, optional, tag = "6")]
     pub query: ::core::option::Option<Query>,
+    /// What the client implements.
+    ///
+    /// Below the protocol level the dataset requires, the request fails with `FailedPrecondition`.
+    #[prost(message, optional, tag = "200")]
+    pub client_meta: ::core::option::Option<ClientMeta>,
 }
 impl ::prost::Name for QueryDatasetRequest {
     const NAME: &'static str = "QueryDatasetRequest";
@@ -1792,6 +1847,11 @@ pub struct FindChunksRequest {
     ///    Without them, a request that touches unindexed data fails with `FailedPrecondition`.
     #[prost(enumeration = "DatasetQueryScope", tag = "6")]
     pub scope: i32,
+    /// What the client implements.
+    ///
+    /// Below the protocol level the dataset requires, the request fails with `FailedPrecondition`.
+    #[prost(message, optional, tag = "200")]
+    pub client_meta: ::core::option::Option<ClientMeta>,
     /// The selection mode. Required.
     ///
     /// A mode that names an unknown timeline fails with `InvalidArgument`, unless the dataset
@@ -2099,9 +2159,9 @@ impl ::prost::Name for ComponentIds {
 /// Request for `GetTableSchema`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetTableSchemaRequest {
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -2135,9 +2195,9 @@ impl ::prost::Name for GetTableSchemaResponse {
 /// Request for `ScanTable`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ScanTableRequest {
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub table_id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -2459,9 +2519,9 @@ impl ::prost::Name for FindEntriesResponse {
 /// The entry is identified by the `x-rerun-entry-id` header or the deprecated body `id`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct DeleteEntryRequest {
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -2495,9 +2555,9 @@ impl ::prost::Name for DeleteEntryResponse {
 pub struct UpdateEntryRequest {
     /// The entry to modify.
     ///
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The new values for updatable fields.
@@ -2665,9 +2725,9 @@ impl ::prost::Name for ReadDatasetEntryResponse {
 pub struct UpdateDatasetEntryRequest {
     /// The dataset to modify.
     ///
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The new values.
@@ -2788,9 +2848,9 @@ impl ::prost::Name for RegisterTableResponse {
 /// The table is identified by the `x-rerun-entry-id` header or the deprecated body `id`.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct ReadTableEntryRequest {
-    /// Deprecated: use x-rerun-entry-id header instead.
-    /// This field should be dropped once all servers are updated
-    /// to 0.14.x or later.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.32.x and older, which send no header.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
 }
@@ -2826,8 +2886,9 @@ impl ::prost::Name for ReadTableEntryResponse {
 pub struct UpdateTableEntryRequest {
     /// The table to modify.
     ///
-    /// Deprecated: use the x-rerun-entry-id header instead. This field is only a fallback for
-    /// clients that predate header-based addressing on this endpoint.
+    /// Deprecated: use the `x-rerun-entry-id` header instead. Kept for SDK and Viewer versions
+    /// 0.43.x and older, which send no header on this endpoint.
+    #[deprecated]
     #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<super::super::common::v1alpha1::EntryId>,
     /// The new values.
@@ -3089,6 +3150,12 @@ pub struct DatasetEntry {
     /// Read-only
     #[prost(message, optional, tag = "2")]
     pub dataset_handle: ::core::option::Option<super::super::common::v1alpha1::DatasetHandle>,
+    /// The lowest `ClientMeta.protocol_level` a client needs to read this dataset. Read-only.
+    ///
+    /// The server raises it when the dataset comes to hold data that clients below that level
+    /// misread, and never lowers it. 0 means every client can read the dataset.
+    #[prost(uint32, tag = "5")]
+    pub required_client_protocol_level: u32,
 }
 impl ::prost::Name for DatasetEntry {
     const NAME: &'static str = "DatasetEntry";
@@ -3713,6 +3780,7 @@ pub mod rerun_cloud_service_client {
     /// old clients, and both unset fails with `INVALID_ARGUMENT` (a gRPC status code). If both are set
     /// but disagree, the call fails with `INVALID_ARGUMENT` naming the two ids, rather than silently
     /// picking one. `x-rerun-entry-name-bin` is never resolved on these endpoints.
+    /// OSS servers older than 0.37 ignore the header on these endpoints and only read the body field.
     #[derive(Debug, Clone)]
     pub struct RerunCloudServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -5420,6 +5488,7 @@ pub mod rerun_cloud_service_server {
     /// old clients, and both unset fails with `INVALID_ARGUMENT` (a gRPC status code). If both are set
     /// but disagree, the call fails with `INVALID_ARGUMENT` naming the two ids, rather than silently
     /// picking one. `x-rerun-entry-name-bin` is never resolved on these endpoints.
+    /// OSS servers older than 0.37 ignore the header on these endpoints and only read the body field.
     #[derive(Debug)]
     pub struct RerunCloudServiceServer<T> {
         inner: Arc<T>,

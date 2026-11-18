@@ -435,6 +435,7 @@ pub enum ImporterError {
     #[error("{source}\nFile path: {path}")]
     File {
         path: String,
+
         #[source]
         source: Box<Self>,
     },

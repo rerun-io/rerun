@@ -163,10 +163,13 @@ pub(crate) fn open_group(file: &File, path: &H5Path) -> Result<Group, Hdf5Error>
     if path.is_root() {
         Ok(file.root())
     } else {
-        file.group(&path.as_hdf5())
-            .map_err(|_err| Hdf5Error::ObjectNotFound {
+        file.group(&path.as_hdf5()).map_err(|err| match err {
+            hdf5_pure::Error::Format(hdf5_pure::FormatError::PathNotFound(_))
+            | hdf5_pure::Error::NotAGroup(_) => Hdf5Error::ObjectNotFound {
                 path: path.to_string(),
-            })
+            },
+            err => Hdf5Error::metadata(path, err),
+        })
     }
 }
 

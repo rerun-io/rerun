@@ -78,7 +78,7 @@ fn speed_selection_is_saved_for_the_conversations_agent_profile() {
         .into_iter()
         .map(|profile| AgentEntry {
             profile,
-            executable: None,
+            install: re_agent::AgentInstall::NotInstalled,
         })
         .collect();
     let reopened = AgentPanel::with_agents(restored, None, agents, Vec::new());

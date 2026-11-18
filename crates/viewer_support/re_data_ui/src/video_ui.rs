@@ -846,9 +846,11 @@ impl VideoUi {
                     [codec_component],
                 );
 
-                let codec_chunk = query_result
-                    .get_required(codec_component)
-                    .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
+                let codec_chunk = query_result.get(codec_component).ok_or(
+                    VideoStreamProcessingError::MissingCodec {
+                        component: codec_component,
+                    },
+                )?;
 
                 let last_codec = codec_chunk
                     .component_mono::<MediaType>(codec_component)

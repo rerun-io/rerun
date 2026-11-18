@@ -9,7 +9,7 @@ import os
 from contextlib import closing
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Final
+from typing import TYPE_CHECKING, Final
 
 import cv2
 import mediapipe as mp
@@ -23,6 +23,8 @@ import rerun.blueprint as rrb
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    from mediapipe.tasks.python.vision import PoseLandmarkerResult
 
 DESCRIPTION = """
 # Human pose tracking
@@ -109,7 +111,7 @@ def track_pose(video_path: str, model_path: str, *, max_frame_count: int | None)
 
 
 def read_landmark_positions_2d(
-    results: Any,
+    results: PoseLandmarkerResult,
     image_width: int,
     image_height: int,
 ) -> npt.NDArray[np.float32] | None:
@@ -122,7 +124,7 @@ def read_landmark_positions_2d(
 
 
 def read_landmark_positions_3d(
-    results: Any,
+    results: PoseLandmarkerResult,
 ) -> npt.NDArray[np.float32] | None:
     if results.pose_landmarks is None or len(results.pose_landmarks) == 0:
         return None

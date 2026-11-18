@@ -57,6 +57,7 @@ if TYPE_CHECKING:
     from .decoders._base import ColumnDecoder, DecodedResult, DecodedSample, DecodedValue
 
 _DecodedT = TypeVar("_DecodedT")
+_FetchedT = TypeVar("_FetchedT")
 
 
 @dataclass(frozen=True, slots=True)
@@ -357,8 +358,8 @@ def _build_targets(
 def _pipeline_blocks(
     blocks: list[np.ndarray],
     *,
-    fetch: Callable[[np.ndarray], Any],
-    process: Callable[[Any], Iterator[DecodedSample]],
+    fetch: Callable[[np.ndarray], _FetchedT],
+    process: Callable[[_FetchedT], Iterator[DecodedSample]],
     metrics: _WorkerMetricsPublisher | None = None,
 ) -> Generator[DecodedSample, None, None]:
     """Process blocks while fetching the next block on a background thread."""
@@ -367,13 +368,13 @@ def _pipeline_blocks(
 
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
 
-    def submit(block: np.ndarray) -> Future[Any]:
+    def submit(block: np.ndarray) -> Future[_FetchedT]:
         # Copy the caller's contextvars so the fetch's span nests under the current OTel
         # context instead of appearing as a root trace.
         ctx = contextvars.copy_context()
         if metrics is not None:
 
-            def measured_fetch() -> Any:
+            def measured_fetch() -> _FetchedT:
                 value = fetch(block)
                 metrics.record_fetch_completion(
                     samples_fetched=len(value.targets) if isinstance(value, FetchedBlock) else 0,
@@ -384,11 +385,11 @@ def _pipeline_blocks(
                 )
                 return value
 
-            return executor.submit(ctx.run, measured_fetch)
+            return executor.submit(lambda: ctx.run(measured_fetch))
         return executor.submit(lambda: ctx.run(fetch, block))
 
     try:
-        pending: Future[Any] | None = submit(blocks[0])
+        pending: Future[_FetchedT] | None = submit(blocks[0])
         for i in range(len(blocks)):
             assert pending is not None
             with tracing_scope("RerunDataset._wait_for_fetch_block"):
@@ -1365,7 +1366,7 @@ def _fetch_prior_keyframes(
 
     unique_paths = list(dict.fromkeys(keyframe_fields.values()))
 
-    def idx_lit(value: int) -> Any:
+    def idx_lit(value: int) -> int | np.datetime64 | np.timedelta64:
         # The literal must match the index column type, or DataFusion fails to
         # coerce the comparison (`Duration(ns) <= Int64`).
         if sample_index.is_timestamp:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, ClassVar
+from typing import TYPE_CHECKING, ClassVar
 
 if TYPE_CHECKING:
     from . import MediaType
@@ -138,7 +138,7 @@ class MediaTypeExt:
     """
 
     @staticmethod
-    def deferred_patch_class(cls: Any) -> None:
+    def deferred_patch_class(cls: type[MediaType]) -> None:
         cls.TEXT = cls("text/plain")
         cls.MARKDOWN = cls("text/markdown")
 

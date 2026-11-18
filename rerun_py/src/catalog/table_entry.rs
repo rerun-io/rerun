@@ -16,8 +16,8 @@ use re_protos::common::v1alpha1::ext::SegmentId;
 use crate::catalog::entry::set_entry_name;
 use crate::catalog::table_provider_adapter::ffi_logical_codec_from_pycapsule;
 use crate::catalog::{
-    PyCatalogClientInternal, PyDatasetEntryInternal, PyEntryDetails, blueprint_id_and_name,
-    to_py_err,
+    BlueprintFields, PyCatalogClientInternal, PyDatasetEntryInternal, PyEntryDetails,
+    blueprint_fields, to_py_err,
 };
 use crate::trace_context::read_trace_context_from_python;
 use crate::utils::{get_tokio_runtime, wait_for_future};
@@ -90,16 +90,14 @@ impl PyTableEntryInternal {
         Py::new(py, PyDatasetEntryInternal::new(client, dataset_entry))
     }
 
-    /// The ID and name of the default blueprint of this table, if any.
-    ///
-    /// The name is `None` for a blueprint without a name.
+    /// The default blueprint of this table, if any.
     ///
     /// ⚠️ This API is experimental and may change or be removed in future versions! ⚠️
     /// TODO(#12746): Stabilize table blueprint APIs.
     fn default_blueprint(
         self_: PyRef<'_, Self>,
         py: Python<'_>,
-    ) -> PyResult<Option<(String, Option<String>)>> {
+    ) -> PyResult<Option<BlueprintFields>> {
         let _span = read_trace_context_from_python(py, "TableEntry.default_blueprint").entered();
         let connection = self_.client.borrow(py).connection().clone();
         let table_id = self_.entry_details.id;
@@ -111,7 +109,7 @@ impl PyTableEntryInternal {
                 .await
                 .map_err(to_py_err)
         })?;
-        Ok(blueprint.map(blueprint_id_and_name))
+        Ok(blueprint.map(blueprint_fields))
     }
 
     /// Set the default blueprint of this table to the blueprint with this segment ID, or clear it

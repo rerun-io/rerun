@@ -160,7 +160,7 @@ In general, datasets can be arbitrarily large, and it is often useful to query o
 # Filter by entity paths
 selection = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
 
-# Filter by segment IDs (recording IDs)
+# Filter by segment IDs
 selection = dataset.filter_segments(["recording_001", "recording_002"])
 
 # Chain filters

@@ -1,6 +1,6 @@
 //! The agent tool surface for `ViewerControlService`, derived from the protobuf descriptors.
 //!
-//! Independent of how the tools reach the agent, e.g. over MCP (`re_viewer_mcp`).
+//! Independent of how the tools reach the agent, e.g. over MCP (`re_rerun_mcp`).
 //!
 //! Every operation of the service is a variant of `ViewerControlRequest.kind`, so the tool list,
 //! the input schemas, and the descriptions an agent reads can all come from the descriptor set
@@ -58,11 +58,11 @@ impl ToolEffect {
     }
 }
 
-/// Prefix on the name of every viewer-control tool an agent sees, as in `rerun_get_state`.
+/// Prefix on the name of every viewer-control tool an agent sees, as in `viewer_get_state`.
 ///
 /// The same for every agent, however it reaches the viewer, so instructions and transcripts read
 /// alike, and so these tools stand apart from any others the agent has.
-pub const TOOL_NAME_PREFIX: &str = "rerun_";
+pub const TOOL_NAME_PREFIX: &str = "viewer_";
 
 /// Fully-qualified name of the request envelope whose `oneof` defines the operations.
 ///
@@ -137,7 +137,7 @@ const SCREENSHOT_FILE_PATH: &str = "file_path";
 pub enum ScreenshotDelivery {
     /// The agent must pass a `file_path`, and the viewer writes the image there.
     ///
-    /// For coding agents that reach the viewer over MCP (`re_viewer_mcp`). That server returns
+    /// For coding agents that reach the viewer over MCP (`re_rerun_mcp`). That server returns
     /// every response as JSON text, where a PNG would be a base64 string that fills the context
     /// window. With a path, the agent opens the file only if it needs to, with its own
     /// file-reading tool, which shows the model an image.
@@ -561,6 +561,126 @@ fn screenshot_schema(schema: &mut Map<String, Value>, screenshot: ScreenshotDeli
     }
 }
 
+/// Why [`build_request`] could not turn an agent's arguments into a request.
+#[derive(Debug, thiserror::Error)]
+pub enum BuildRequestError {
+    /// No operation has this name.
+    #[error("unknown operation `{name}`")]
+    UnknownOperation {
+        /// The requested operation.
+        name: String,
+    },
+
+    /// The operation's oneof arm is not a message.
+    #[error("operation `{name}` has no request message")]
+    NoRequestMessage {
+        /// The requested operation.
+        name: String,
+    },
+
+    /// The arguments break a rule the schema advertises.
+    #[error("invalid arguments for `{name}`: {source}")]
+    InvalidArguments {
+        /// The requested operation.
+        name: String,
+
+        /// What is wrong with the arguments.
+        source: ArgumentsError,
+    },
+
+    /// The arguments do not deserialize into the request message.
+    #[error("invalid arguments for `{name}`: {source}")]
+    Deserialize {
+        /// The requested operation.
+        name: String,
+
+        /// Why deserialization failed.
+        source: serde_json::Error,
+    },
+
+    /// The descriptor pool lacks the request envelope.
+    #[error("missing descriptor for `{message_name}`")]
+    MissingDescriptor {
+        /// Full name of the missing message.
+        message_name: String,
+    },
+
+    /// The dynamic envelope does not decode into the generated type.
+    #[error("failed to build the request envelope for `{name}`: {source}")]
+    Envelope {
+        /// The requested operation.
+        name: String,
+
+        /// Why decoding failed.
+        source: prost::DecodeError,
+    },
+}
+
+/// What is wrong with the arguments of an operation.
+#[derive(Debug, thiserror::Error)]
+pub enum ArgumentsError {
+    /// File delivery needs a path to write the screenshot to.
+    #[error("missing required field `{SCREENSHOT_FILE_PATH}`")]
+    MissingScreenshotFilePath,
+
+    /// Inline delivery returns the image, so it takes no path.
+    #[error("`{SCREENSHOT_FILE_PATH}` is not taken here, the image comes back in the result")]
+    UnexpectedScreenshotFilePath,
+
+    /// The blueprint update mode is not one of the short names.
+    #[error("mode must be `full` or `partial`")]
+    InvalidBlueprintMode,
+
+    /// A `oneof` has the wrong number of arms set.
+    #[error(
+        "`{oneof}` takes {} of `{}`, but {}",
+        if *.omittable { "at most one" } else { "exactly one" },
+        .arms.join("`, `"),
+        if .set.is_empty() { "none were set".to_owned() } else { format!("`{}` were set", .set.join("`, `")) }
+    )]
+    OneofArms {
+        /// Path of the `oneof`.
+        oneof: String,
+
+        /// Whether the `oneof` may be left unset.
+        omittable: bool,
+
+        /// All arms of the `oneof`.
+        arms: Vec<String>,
+
+        /// The arms that were set.
+        set: Vec<String>,
+    },
+
+    /// A required field is absent or null.
+    #[error("missing required field `{field}`")]
+    MissingRequiredField {
+        /// Path of the field.
+        field: String,
+    },
+}
+
+/// Why [`response_json`] could not render a response.
+#[derive(Debug, thiserror::Error)]
+pub enum ResponseJsonError {
+    /// The response belongs to another operation.
+    #[error("expected a `{expected}` response, got `{actual}`")]
+    UnexpectedKind {
+        /// The operation that was called.
+        expected: String,
+
+        /// The operation the response belongs to.
+        actual: String,
+    },
+
+    /// The response could not be converted to JSON.
+    #[error("{source}")]
+    Json {
+        /// Why conversion failed.
+        source: re_protos::json::JsonError,
+    },
+}
+
 /// Whether `name` is one of the generated operations.
 pub fn is_operation(name: &str) -> bool {
     operation_oneof()
@@ -576,27 +696,32 @@ pub fn build_request(
     name: &str,
     arguments: Option<Map<String, Value>>,
     screenshot: ScreenshotDelivery,
-) -> Result<ViewerControlRequest, String> {
+) -> Result<ViewerControlRequest, BuildRequestError> {
     let field = operation_oneof()
         .fields()
         .find(|field| field.name() == name)
-        .ok_or_else(|| format!("unknown operation `{name}`"))?;
+        .ok_or_else(|| BuildRequestError::UnknownOperation {
+            name: name.to_owned(),
+        })?;
+    let invalid_arguments = |source| BuildRequestError::InvalidArguments {
+        name: name.to_owned(),
+        source,
+    };
     let Kind::Message(request_descriptor) = field.kind() else {
-        return Err(format!("operation `{name}` has no request message"));
+        return Err(BuildRequestError::NoRequestMessage {
+            name: name.to_owned(),
+        });
     };
 
     let mut arguments = arguments.unwrap_or_default();
     if name == SCREENSHOT_OPERATION {
         match (screenshot, has_screenshot_file_path(&arguments)) {
             (ScreenshotDelivery::File, false) => {
-                return Err(format!(
-                    "invalid arguments for `{name}`: missing required field `{SCREENSHOT_FILE_PATH}`"
-                ));
+                return Err(invalid_arguments(ArgumentsError::MissingScreenshotFilePath));
             }
             (ScreenshotDelivery::Inline, true) => {
-                return Err(format!(
-                    "invalid arguments for `{name}`: `{SCREENSHOT_FILE_PATH}` is not taken here, \
-                     the image comes back in the result"
+                return Err(invalid_arguments(
+                    ArgumentsError::UnexpectedScreenshotFilePath,
                 ));
             }
             (ScreenshotDelivery::File, true) | (ScreenshotDelivery::Inline, false) => {}
@@ -612,10 +737,7 @@ pub fn build_request(
             Some("partial") => Some(BlueprintUpdateMode::Partial),
             _ if value.is_null() => None,
             _ => {
-                return Err(
-                    "invalid arguments for `set_blueprint`: mode must be `full` or `partial`"
-                        .to_owned(),
-                );
+                return Err(invalid_arguments(ArgumentsError::InvalidBlueprintMode));
             }
         };
         if let Some(mode) = mode {
@@ -627,8 +749,7 @@ pub fn build_request(
     // Protobuf has no required fields, so the `required` and `oneOf` the schema advertises would
     // otherwise go unchecked: an omitted `time` would become 0 and move the cursor to the start
     // of the recording rather than failing.
-    validate(&request_descriptor, &arguments, "", 0)
-        .map_err(|err| format!("invalid arguments for `{name}`: {err}"))?;
+    validate(&request_descriptor, &arguments, "", 0).map_err(invalid_arguments)?;
 
     // A field we do not recognize is a typo, or a call written against an older surface. Dropping
     // it silently would turn `{"target": "all"}` into an empty request, which closes the current
@@ -636,16 +757,25 @@ pub fn build_request(
     let options = DeserializeOptions::new().deny_unknown_fields(true);
     let request =
         DynamicMessage::deserialize_with_options(request_descriptor, &arguments, &options)
-            .map_err(|err| format!("invalid arguments for `{name}`: {err}"))?;
+            .map_err(|source| BuildRequestError::Deserialize {
+                name: name.to_owned(),
+                source,
+            })?;
 
     let envelope_descriptor = re_protos::json::descriptor_pool()
         .get_message_by_name(&request_envelope())
-        .ok_or_else(|| format!("missing descriptor for `{}`", request_envelope()))?;
+        .ok_or_else(|| BuildRequestError::MissingDescriptor {
+            message_name: request_envelope(),
+        })?;
     let mut envelope = DynamicMessage::new(envelope_descriptor);
     envelope.set_field(&field, prost_reflect::Value::Message(request));
 
-    ViewerControlRequest::decode(envelope.encode_to_vec().as_slice())
-        .map_err(|err| format!("failed to build the request envelope for `{name}`: {err}"))
+    ViewerControlRequest::decode(envelope.encode_to_vec().as_slice()).map_err(|source| {
+        BuildRequestError::Envelope {
+            name: name.to_owned(),
+            source,
+        }
+    })
 }
 
 /// Whether `save_screenshot` `arguments` name a file to write the image to.
@@ -689,7 +819,7 @@ fn validate(
     value: &Value,
     path: &str,
     depth: usize,
-) -> Result<(), String> {
+) -> Result<(), ArgumentsError> {
     if depth >= MAX_SCHEMA_DEPTH {
         return Ok(());
     }
@@ -713,28 +843,21 @@ fn validate(
             continue;
         }
         if set.len() != 1 {
-            return Err(format!(
-                "`{path}{}` takes {} of `{}`, but {}",
-                oneof.name(),
-                if is_omittable(&oneof) {
-                    "at most one"
-                } else {
-                    "exactly one"
-                },
-                arms.join("`, `"),
-                if set.is_empty() {
-                    "none were set".to_owned()
-                } else {
-                    format!("`{}` were set", set.join("`, `"))
-                }
-            ));
+            return Err(ArgumentsError::OneofArms {
+                oneof: format!("{path}{}", oneof.name()),
+                omittable: is_omittable(&oneof),
+                arms,
+                set,
+            });
         }
     }
 
     for field in message.fields() {
         let child = present(&field);
         if is_required(&field) && child.is_none() {
-            return Err(format!("missing required field `{path}{}`", field.name()));
+            return Err(ArgumentsError::MissingRequiredField {
+                field: format!("{path}{}", field.name()),
+            });
         }
         if let (Kind::Message(nested), Some(child)) = (field.kind(), child)
             && !field.is_list()
@@ -754,15 +877,22 @@ fn validate(
 /// Render a response envelope as the JSON an agent sees, unwrapping the operation's variant.
 ///
 /// The envelope adds one level of nesting that only repeats the tool's own name, so we drop it.
-pub fn response_json(operation: &str, response: &ViewerControlResponse) -> Result<Value, String> {
+pub fn response_json(
+    operation: &str,
+    response: &ViewerControlResponse,
+) -> Result<Value, ResponseJsonError> {
     // The service promises the response variant matches the request. Unwrapping whatever arrived
     // would let a mismatched peer pass another operation's payload off as this one's result.
     let actual = response.kind_name();
     if actual != operation {
-        return Err(format!("expected a `{operation}` response, got `{actual}`"));
+        return Err(ResponseJsonError::UnexpectedKind {
+            expected: operation.to_owned(),
+            actual: actual.to_owned(),
+        });
     }
 
-    let envelope = re_protos::json::to_json_value(response).map_err(|err| format!("{err}"))?;
+    let envelope = re_protos::json::to_json_value(response)
+        .map_err(|source| ResponseJsonError::Json { source })?;
 
     let Value::Object(mut fields) = envelope else {
         return Ok(envelope);
@@ -996,7 +1126,7 @@ mod tests {
     }
 
     /// Build a request from a JSON literal, for the validation tests.
-    fn build(name: &str, arguments: &Value) -> Result<ViewerControlRequest, String> {
+    fn build(name: &str, arguments: &Value) -> Result<ViewerControlRequest, BuildRequestError> {
         build_request(
             name,
             arguments.as_object().cloned(),
@@ -1007,19 +1137,19 @@ mod tests {
     #[test]
     fn rejects_a_missing_required_field() {
         let err = build("open", &json!({})).expect_err("`url` is required");
-        assert!(err.contains("url"), "{err}");
+        assert!(err.to_string().contains("url"), "{err}");
 
         let err = build("open", &json!({ "url": null }))
             .expect_err("an explicit null clears the field, so it is as wrong as an absent one");
-        assert!(err.contains("url"), "{err}");
+        assert!(err.to_string().contains("url"), "{err}");
 
         let err = build("set_time_cursor", &json!({ "time": {} }))
             .expect_err("`time` is optional, but a given `time` needs its own required fields");
-        assert!(err.contains("time.time"), "{err}");
+        assert!(err.to_string().contains("time.time"), "{err}");
     }
 
     #[test]
-    fn screenshot_delivery_controls_file_paths() -> Result<(), String> {
+    fn screenshot_delivery_controls_file_paths() -> Result<(), Box<dyn std::error::Error>> {
         use re_protos::viewer_control::v1alpha1::viewer_control_request;
 
         for delivery in [ScreenshotDelivery::Inline, ScreenshotDelivery::File] {
@@ -1050,7 +1180,7 @@ mod tests {
                 } else {
                     let Some(viewer_control_request::Kind::SaveScreenshot(request)) = request?.kind
                     else {
-                        return Err("expected a screenshot request".to_owned());
+                        return Err("expected a screenshot request".into());
                     };
                     assert_eq!(request.file_path, None);
                     assert_eq!(request.max_size, Some(1024));
@@ -1063,7 +1193,7 @@ mod tests {
                 if writes_file {
                     let Some(viewer_control_request::Kind::SaveScreenshot(request)) = request?.kind
                     else {
-                        return Err("expected a screenshot request".to_owned());
+                        return Err("expected a screenshot request".into());
                     };
                     assert_eq!(request.file_path.as_deref(), Some("a.png"));
                 } else {
@@ -1114,7 +1244,7 @@ mod tests {
         // The shape of a call written against the older, hand-written surface.
         let err = build("close", &json!({ "target": "all" }))
             .expect_err("silently dropping this would close the current recording instead");
-        assert!(err.contains("target"), "{err}");
+        assert!(err.to_string().contains("target"), "{err}");
     }
 
     #[test]
@@ -1146,7 +1276,7 @@ mod tests {
 
         let err = response_json("get_state", &response)
             .expect_err("another operation's payload must not pass as this one's result");
-        assert!(err.contains("open"), "{err}");
+        assert!(err.to_string().contains("open"), "{err}");
 
         response_json("open", &response).expect("the matching operation");
     }
@@ -1193,17 +1323,20 @@ mod tests {
             &json!({ "json": "{}", "recording": {}, "table": {} }),
         )
         .expect_err("two targets contradict each other");
-        assert!(err.contains("at most one"), "{err}");
+        assert!(err.to_string().contains("at most one"), "{err}");
     }
 
     #[test]
     fn rejects_a_request_that_sets_no_oneof_arm_or_several() {
         let err = build("close", &json!({})).expect_err("an unset target names no recording");
-        assert!(err.contains("none were set"), "{err}");
+        assert!(err.to_string().contains("none were set"), "{err}");
 
         let err = build("close", &json!({ "current": true, "all": true }))
             .expect_err("two selectors contradict each other");
-        assert!(err.contains("`current`, `all` were set"), "{err}");
+        assert!(
+            err.to_string().contains("`current`, `all` were set"),
+            "{err}"
+        );
     }
 
     #[test]

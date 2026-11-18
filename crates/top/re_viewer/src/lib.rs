@@ -237,6 +237,8 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<&str>) -> egui_wgpu::WgpuC
             // Should ideally produce structured reasoning of why which one was picked in the process.
             native_adapter_selector: Some(std::sync::Arc::new(move |adapters, surface| {
                 re_renderer::device_caps::select_adapter(adapters, backends, surface)
+                    // relint: allow(map_err_to_string): `egui_wgpu`'s adapter selector returns `Result<_, String>`
+                    .map_err(|err| err.to_string())
             })),
             device_descriptor: std::sync::Arc::new(|adapter| {
                 re_renderer::device_caps::DeviceCaps::from_adapter_without_validation(adapter)

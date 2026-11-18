@@ -91,7 +91,7 @@ Each episode arrives as its own recording, with `recording_id` `episode_0`, `epi
 
 ## Step 2: one RRD per episode
 
-Catalog segments are one-recording-per-file, and `recording_id` becomes the segment id on registration.
+Catalog segments are one-recording-per-file, and `recording_id` becomes the segment id on registration, unless `register(…, segment_id=[…])` names another one.
 
 `LeRobotReader` goes straight there, without building the combined RRD of Step 1 first:
 
@@ -141,7 +141,7 @@ Two non-obvious moves:
 
 If episodes need cleanup (drop topics, fix data, add derived components), run the store through lenses between read and write: `reader.stream(store=entry).drop(...).lenses(...)` then `collect().write_rrd(..., recording_id=episode_id)` (see `rerun-chunk-processing`).
 
-Computed layers and per-episode properties then follow the standard patterns in `rerun-data-model` (layer `recording_id` must equal the episode segment id).
+Computed layers and per-episode properties then follow the standard patterns in `rerun-data-model` (the layer registers under the episode segment id: its `recording_id`, or `register(…, segment_id=[…])`).
 
 ## Step 3: add the robot model (URDF)
 

@@ -10,6 +10,8 @@ use uuid::Uuid;
 use wasm_bindgen::JsCast as _;
 use wasm_bindgen::prelude::Closure;
 
+use super::LoginError;
+
 type StorageEventCallback = dyn FnMut(web_sys::StorageEvent);
 
 pub struct State {
@@ -20,7 +22,7 @@ pub struct State {
     pkce: Rc<Pkce>,
     state: String,
 
-    result: Rc<RefCell<Option<Result<Credentials, String>>>>,
+    result: Rc<RefCell<Option<Result<Credentials, LoginError>>>>,
 }
 
 impl Drop for State {
@@ -50,7 +52,7 @@ struct AuthEventPayload {
 }
 
 impl State {
-    pub fn start(&mut self) -> Result<(), String> {
+    pub fn start(&mut self) -> Result<(), LoginError> {
         if self.child_window.is_some() {
             // If already started, do nothing
             return Ok(());
@@ -62,9 +64,11 @@ impl State {
 
         let Some(child_window) = parent_window
             .open_with_url_and_target_and_features(&login_url, "auth", "width=480,height=640")
-            .map_err(|err| re_web::Error::from(err).to_string())?
+            .map_err(|err| LoginError::OpenPopup {
+                source: re_web::Error::from(err),
+            })?
         else {
-            return Err("window.open did not return a handle".into());
+            return Err(LoginError::NoPopupHandle);
         };
 
         // Keep a handle to the opened window, so we can close it later:
@@ -81,7 +85,7 @@ impl State {
     }
 
     #[expect(clippy::needless_pass_by_ref_mut)] // compat with native api
-    pub fn done(&mut self) -> Result<Option<Credentials>, String> {
+    pub fn done(&mut self) -> Result<Option<Credentials>, LoginError> {
         // Check if we have credentials
         if let Some(credentials) = self.result.borrow_mut().take() {
             return credentials.map(Some);
@@ -92,11 +96,11 @@ impl State {
             // ignoring the error here
             if child_window
                 .closed()
-                .map_err(|err| re_web::Error::from(err).to_string())
+                .map_err(re_web::Error::from)
                 .ok_or_log_error()
                 .unwrap_or_default()
             {
-                return Err("Login popup was closed before completing authentication".into());
+                return Err(LoginError::PopupClosed);
             }
         }
 
@@ -104,7 +108,7 @@ impl State {
     }
 
     #[expect(clippy::unnecessary_wraps)]
-    pub fn open(egui_ctx: &egui::Context, signed_in_url: String) -> Result<Self, String> {
+    pub fn open(egui_ctx: &egui::Context, signed_in_url: String) -> Result<Self, LoginError> {
         let parent_window = web_sys::window().expect("no window available");
         let pkce = Rc::new(Pkce::new());
         let state = Uuid::new_v4().to_string();
@@ -151,18 +155,29 @@ async fn try_handle_storage_event(
     e: web_sys::StorageEvent,
     pkce: Rc<Pkce>,
     stored_state: String,
-    result: Rc<RefCell<Option<Result<Credentials, String>>>>,
+    result: Rc<RefCell<Option<Result<Credentials, LoginError>>>>,
     waker: UiWaker,
 ) {
-    macro_rules! bail {
-        ($err:expr) => {{
-            let err = $err.to_string();
+    match handle_storage_event(e, &pkce, &stored_state).await {
+        Ok(Some(credentials)) => {
+            // Notify the UI that the login succeeded:
+            *result.borrow_mut() = Some(Ok(credentials));
+            waker.wake();
+        }
+        Ok(None) => {}
+        Err(err) => {
             re_log::error!("{err}");
             *result.borrow_mut() = Some(Err(err));
-            return;
-        }};
+        }
     }
+}
 
+/// Returns `Ok(None)` if the event is not a login event.
+async fn handle_storage_event(
+    e: web_sys::StorageEvent,
+    pkce: &Pkce,
+    stored_state: &str,
+) -> Result<Option<Credentials>, LoginError> {
     // Instead of setting the credentials in localstorage directly,
     // we instead first set it to a different key, and then only
     // when everything has succeeded do we store the final credentials
@@ -173,66 +188,48 @@ async fn try_handle_storage_event(
     // The payload is received on the `_auth` key,
     // see `AuthEventPayload` above for what it looks like.
     if e.key().as_deref() != Some("_auth") {
-        return;
+        return Ok(None);
     }
-    let Some(new_value) = e.new_value() else {
-        bail!("auth storage event without new value");
-    };
-    let payload = match serde_json::from_str::<AuthEventPayload>(&new_value) {
-        Ok(payload) => payload,
-        Err(err) => {
-            bail!(err);
-        }
-    };
+    let new_value = e.new_value().ok_or(LoginError::MissingStorageValue)?;
+    let payload = serde_json::from_str::<AuthEventPayload>(&new_value)
+        .map_err(|source| LoginError::ParseStorageEvent { source })?;
     if payload.type_ != "auth" {
         re_log::error!("storage event payload.type != auth");
-        return;
+        return Ok(None);
     }
     // The payload contains the URL to which the user was redirected to by
     // the login flow, which stores the code and state in its search params:
     let Some(url) = url::Url::parse(&payload.url).ok_or_log_error() else {
-        return;
+        return Ok(None);
     };
 
-    let Some(code) = url.query_pairs().find(|(k, _)| k == "code").map(|(_, v)| v) else {
-        bail!("missing code in url");
-    };
-    let Some(state) = url
+    let code = url
+        .query_pairs()
+        .find(|(k, _)| k == "code")
+        .map(|(_, v)| v)
+        .ok_or(LoginError::MissingCode)?;
+    let state = url
         .query_pairs()
         .find(|(k, _)| k == "state")
         .map(|(_, v)| v)
-    else {
-        bail!("missing state in url");
-    };
+        .ok_or(LoginError::MissingState)?;
 
     if state != stored_state {
-        bail!("invalid state");
+        return Err(LoginError::InvalidState);
     }
 
     // Now we need to exchange the code for tokens:
-    let res = match send_async(AuthenticateWithCode::new(&code, &pkce)).await {
-        Ok(res) => res,
-        Err(err) => {
-            bail!(err);
-        }
-    };
+    let res = send_async(AuthenticateWithCode::new(&code, pkce))
+        .await
+        .map_err(|source| LoginError::Authenticate { source })?;
 
-    let credentials = match re_auth::oauth::Credentials::from_auth_response(res.into()) {
-        Ok(v) => v,
-        Err(err) => {
-            bail!(err);
-        }
-    };
+    let credentials = re_auth::oauth::Credentials::from_auth_response(res.into())
+        .map_err(|source| LoginError::DecodeToken { source })?;
 
     // As the last step, we store the credentials in local storage:
-    let credentials = match credentials.ensure_stored() {
-        Ok(v) => v,
-        Err(err) => {
-            bail!(err);
-        }
-    };
+    let credentials = credentials
+        .ensure_stored()
+        .map_err(|source| LoginError::StoreCredentials { source })?;
 
-    // And then notify the UI that the login succeeded:
-    *result.borrow_mut() = Some(Ok(credentials));
-    waker.wake();
+    Ok(Some(credentials))
 }

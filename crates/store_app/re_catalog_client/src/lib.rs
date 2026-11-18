@@ -40,6 +40,7 @@ pub use self::registration::{RegistrationError, RegistrationHandle, SegmentRegis
 pub use self::staging::{StageOpt, StagingError};
 pub use self::write::{WriteError, WriteHandle};
 pub use self::write_operation::{WriteOperation, WriteOperationError, WriteResult, WriteStatus};
+pub use re_protos::cloud::v1alpha1::ext::BlueprintKind;
 
 /// High-level catalog operations backed by a short-lived protocol client per request.
 #[derive(Clone, Debug)]

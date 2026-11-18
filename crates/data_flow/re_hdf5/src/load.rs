@@ -113,7 +113,7 @@ pub fn read_attributes(
             // The path resolves but is a group, not a dataset.
             Err(hdf5_pure::Error::NotADataset(_)) => file
                 .group(&object.as_hdf5())
-                .map_err(|_err| not_found())?
+                .map_err(meta_err)?
                 .attrs()
                 .map_err(meta_err)?,
             Err(_) => return Err(not_found()),

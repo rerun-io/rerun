@@ -3,6 +3,7 @@
 use h264_reader::annexb::AnnexBReader;
 use h264_reader::nal::{self, Nal as _};
 use h264_reader::push::NalInterest;
+use h264_reader::rbsp::BitReaderError;
 
 use crate::nalu::{
     ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError,
@@ -13,7 +14,7 @@ use crate::{
 };
 
 /// Retrieve [`VideoEncodingDetails`] from a H.264 SPS.
-pub fn encoding_details_from_h264_sps(
+fn encoding_details_from_h264_sps(
     sps: &nal::sps::SeqParameterSet,
 ) -> Result<VideoEncodingDetails, nal::sps::SpsError> {
     let bit_depth = sps.chroma_info.bit_depth_chroma_minus8 + 8;
@@ -63,9 +64,37 @@ pub fn encoding_details_from_h264_sps(
     })
 }
 
+/// Retrieve [`VideoEncodingDetails`] from a single H.264 SPS NAL unit, without start code or length prefix.
+///
+/// Zero bytes after the NAL unit are ignored.
+/// A NAL unit never ends in a zero byte, so they can only be padding.
+pub fn encoding_details_from_h264_sps_nal(
+    mut sps_nal: &[u8],
+) -> Result<VideoEncodingDetails, nal::sps::SpsError> {
+    while let [rest @ .., 0x00] = sps_nal {
+        sps_nal = rest;
+    }
+
+    // `RefNal::new` panics on empty input.
+    if sps_nal.is_empty() {
+        return Err(nal::sps::SpsError::RbspReaderError(
+            BitReaderError::ReaderErrorFor(
+                "nal_unit_header",
+                std::io::ErrorKind::UnexpectedEof.into(),
+            ),
+        ));
+    }
+
+    let complete = true;
+    let sps_nal = nal::RefNal::new(sps_nal, &[], complete);
+
+    let sps = nal::sps::SeqParameterSet::from_bits(sps_nal.rbsp_bits())?;
+    encoding_details_from_h264_sps(&sps)
+}
+
 #[derive(Default)]
 struct H264GopDetectionState {
-    coding_details_from_sps: Option<Result<VideoEncodingDetails, String>>,
+    coding_details_from_sps: Option<Result<VideoEncodingDetails, nal::sps::SpsError>>,
     idr_frame_found: bool,
 }
 
@@ -96,7 +125,7 @@ impl h264_reader::push::AccumulatedNalHandler for H264GopDetectionState {
                         }
                         Ok(coding_details)
                     }
-                    Err(sps_err) => Err(format!("Failed reading SPS: {sps_err:?}")), // NOLINT: h264 errors don't implement display
+                    Err(sps_err) => Err(sps_err),
                 },
             );
         } else if nal_unit_type == nal::UnitType::SliceLayerWithoutPartitioningIdr {
@@ -143,8 +172,9 @@ pub fn detect_h264_annexb_gop(
                 Ok(GopStartDetection::NotStartOfGop)
             }
         }
-        Some(Err(error_str)) => Err(DetectGopStartError::FailedToExtractEncodingDetails(
-            error_str,
+        Some(Err(sps_err)) => Err(DetectGopStartError::FailedToExtractEncodingDetails(
+            // relint: allow(debug_formatted_error): `h264_reader::nal::sps::SpsError` only implements `Debug`
+            format!("Failed reading SPS: {sps_err:?}"),
         )),
         None => Ok(GopStartDetection::NotStartOfGop),
     }
@@ -205,8 +235,77 @@ pub fn write_avc_chunk_to_nalu_stream(
 
 #[cfg(test)]
 mod test {
-    use super::{GopStartDetection, detect_h264_annexb_gop};
+    use h264_reader::nal::sps::SpsError;
+    use h264_reader::rbsp::BitReaderError;
+
+    use super::{GopStartDetection, detect_h264_annexb_gop, encoding_details_from_h264_sps_nal};
+    use crate::nalu::ANNEXB_NAL_START_CODE;
     use crate::{ChromaSubsamplingModes, DetectGopStartError, VideoEncodingDetails};
+
+    const SPS_NAL: &[u8] = &[
+        0x67, 0x64, 0x00, 0x0A, 0xAC, 0x72, 0x84, 0x44, 0x26, 0x84, 0x00, 0x00, 0x03, 0x00, 0x04,
+        0x00, 0x00, 0x03, 0x00, 0xCA, 0x3C, 0x48, 0x96, 0x11, 0x80,
+    ];
+
+    const IDR_NAL: &[u8] = &[
+        0x65, 0x88, 0x84, 0x21, 0x43, 0x02, 0x4C, 0x82, 0x54, 0x2B, 0x8F, 0x2C, 0x8C, 0x54, 0x4A,
+        0x92, 0x54, 0x2B, 0x8F, 0x2C, 0x8C, 0x54, 0x4A, 0x92,
+    ];
+
+    fn sps_details() -> VideoEncodingDetails {
+        VideoEncodingDetails {
+            codec_string: "avc1.64000A".to_owned(),
+            coded_dimensions: [64, 64],
+            bit_depth: Some(8),
+            chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
+            max_num_reorder_frames: Some(2),
+            stsd: None,
+        }
+    }
+
+    #[test]
+    fn test_sps_nal_with_trailing_zero_bytes() {
+        for num_trailing_zeros in 0..=4 {
+            let mut sps_nal = SPS_NAL.to_vec();
+            sps_nal.resize(SPS_NAL.len() + num_trailing_zeros, 0x00);
+
+            match encoding_details_from_h264_sps_nal(&sps_nal) {
+                Ok(details) => assert_eq!(details, sps_details()),
+                Err(err) => panic!("{num_trailing_zeros} trailing zero bytes: {err:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn test_empty_sps_nal() {
+        for sps_nal in [&[][..], &[0x00, 0x00, 0x00]] {
+            assert!(matches!(
+                encoding_details_from_h264_sps_nal(sps_nal),
+                Err(SpsError::RbspReaderError(BitReaderError::ReaderErrorFor(
+                    "nal_unit_header",
+                    _
+                )))
+            ));
+        }
+    }
+
+    /// The decoders are handed the SPS of an `avcC` box as stored, followed by a start code.
+    #[test]
+    fn test_detect_h264_annexb_gop_with_trailing_zero_bytes() {
+        for num_trailing_zeros in 0..=4 {
+            let mut sample_data = ANNEXB_NAL_START_CODE.to_vec();
+            sample_data.extend_from_slice(SPS_NAL);
+            sample_data.resize(sample_data.len() + num_trailing_zeros, 0x00);
+            sample_data.extend_from_slice(ANNEXB_NAL_START_CODE);
+            sample_data.extend_from_slice(IDR_NAL);
+
+            assert_eq!(
+                detect_h264_annexb_gop(&sample_data),
+                Ok(GopStartDetection::StartOfGop(sps_details())),
+                "{num_trailing_zeros} trailing zero bytes"
+            );
+        }
+    }
 
     #[test]
     fn test_detect_h264_annexb_gop() {

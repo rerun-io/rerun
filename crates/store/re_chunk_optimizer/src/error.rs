@@ -27,6 +27,22 @@ pub enum Error {
     },
 
     #[error(
+        "Per-component chunk index column has an invalid component identifier: {source}\nColumn: {column:?}"
+    )]
+    InvalidComponentIdentifier {
+        column: String,
+        source: re_types_core::InvalidComponentIdentifierError,
+    },
+
+    #[error(
+        "Per-component chunk index column has an invalid component type: {source}\nColumn: {column:?}"
+    )]
+    InvalidComponentType {
+        column: String,
+        source: re_types_core::InvalidComponentTypeError,
+    },
+
+    #[error(
         "Chunk index references chunk {chunk_id}, but no such chunk row exists\nEntity: {entity_path}"
     )]
     UnknownChunkId {

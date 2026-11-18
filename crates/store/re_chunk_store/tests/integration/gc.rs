@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
 use arrow::array::ArrayRef;
-use rand::Rng as _;
+use rand::{Rng as _, SeedableRng as _};
+use re_byte_size::SizeBytes;
 use re_chunk::{
     Chunk, ChunkId, ComponentIdentifier, LatestAtQuery, RowId, TimeInt, TimePoint, TimelineName,
 };
@@ -49,7 +50,7 @@ fn query_latest_array(
 fn simple() -> anyhow::Result<()> {
     re_log::setup_logging();
 
-    let mut rng = rand::rng();
+    let mut rng = rand::rngs::StdRng::seed_from_u64(42);
 
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test_app"),
@@ -62,7 +63,7 @@ fn simple() -> anyhow::Result<()> {
             let entity_path = EntityPath::from(format!("this/that/{i}"));
 
             let num_frames = rng.random_range(0..=100);
-            let frames = (0..num_frames).filter(|_| rand::rng().random());
+            let frames: Vec<i64> = (0..num_frames).filter(|_| rng.random()).collect();
             for frame_nr in frames {
                 let num_instances = rng.random_range(0..=1_000);
                 let chunk = Chunk::builder(entity_path.clone())
@@ -79,27 +80,32 @@ fn simple() -> anyhow::Result<()> {
             }
         }
 
+        let target = GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0);
         let stats_before = store.stats();
+        let largest_chunk_num_bytes = store
+            .iter_physical_chunks()
+            .map(|chunk| <Chunk as SizeBytes>::total_size_bytes(chunk))
+            .max()
+            .unwrap_or(0);
 
         let (_store_events, stats_diff) = store.gc(&GarbageCollectionOptions {
-            target: GarbageCollectionTarget::DropAtLeastFraction(1.0 / 3.0),
+            target,
             ..GarbageCollectionOptions::gc_everything()
         });
 
-        // NOTE: only temporal data gets purged!
-        let num_bytes_dropped = stats_diff.total().total_size_bytes as f64;
-        let num_bytes_dropped_expected_min =
-            stats_before.total().total_size_bytes as f64 * 0.95 / 3.0;
-        let num_bytes_dropped_expected_max =
-            stats_before.total().total_size_bytes as f64 * 1.05 / 3.0;
+        // The GC drops whole chunks until it reaches its target,
+        // so it overshoots by less than the size of one chunk.
+        let num_bytes_dropped = stats_diff.total().total_size_bytes;
+        let num_bytes_dropped_min =
+            target.target_bytes_from_size(stats_before.total().total_size_bytes);
+        let num_bytes_dropped_max = num_bytes_dropped_min + largest_chunk_num_bytes;
 
         assert!(
-            num_bytes_dropped_expected_min <= num_bytes_dropped
-                && num_bytes_dropped <= num_bytes_dropped_expected_max,
-            "{} <= {} <= {}",
-            re_format::format_bytes(num_bytes_dropped_expected_min),
-            re_format::format_bytes(num_bytes_dropped),
-            re_format::format_bytes(num_bytes_dropped_expected_max),
+            num_bytes_dropped_min <= num_bytes_dropped && num_bytes_dropped < num_bytes_dropped_max,
+            "{} <= {} < {}",
+            re_format::format_bytes(num_bytes_dropped_min as _),
+            re_format::format_bytes(num_bytes_dropped as _),
+            re_format::format_bytes(num_bytes_dropped_max as _),
         );
     }
 

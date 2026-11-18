@@ -52,7 +52,7 @@ These queries drive any visualization where data from more than one time is show
 The obvious example is time series plots,
 but it can also be used to e.g. show lidar point clouds from the last 10 frames together.
 
-The queried range is configurable per view and per entity, see [Show trails, history, and sliding time windows](../../viewer/plots-and-maps/visible-time-ranges.md).
+The queried range is configurable per view and per entity, see [Visible time ranges](../../viewer/view-concepts/visible-time-ranges.md).
 
 
 ## Partial updates

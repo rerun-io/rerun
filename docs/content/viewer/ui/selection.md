@@ -61,4 +61,4 @@ To link them, give the related data the same entity path, or build your own link
 
 Time is also shared: all views show the same time cursor.
 Right-click in a time series view to move the time cursor to that time.
-To pan and zoom the time axis of several plots together, see [linked time axes](../plots-and-maps/visible-time-ranges.md#link-the-time-axis-of-several-plots).
+To pan and zoom the time axis of several plots together, see [linked time axes](../view-concepts/visible-time-ranges.md#link-the-time-axis-of-several-plots).

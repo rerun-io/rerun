@@ -28,7 +28,7 @@ overview/installing-rerun/troubleshooting: getting-started/install-rerun/trouble
 
 # Getting Started section
 getting-started/what-is-rerun: getting-started
-getting-started/navigating-the-viewer: viewer/tutorial/navigating-the-viewer
+getting-started/navigating-the-viewer: viewer/ui/overview
 getting-started/troubleshooting: getting-started/install-rerun/troubleshooting
 getting-started/installing-viewer: getting-started/install-rerun/viewer
 getting-started/data-out/analyze-and-log: query-and-transform/tutorial/analyze-and-send
@@ -45,10 +45,10 @@ getting-started/data-in/rust: logging-and-ingestion/tutorial
 concepts/app-model: getting-started/how-does-rerun-work
 concepts/apps-and-recordings: logging-and-ingestion/data-model/recordings
 concepts/logging-and-ingestion/apps-and-recordings: logging-and-ingestion/data-model/recordings
-concepts/annotation-context: viewer/blueprints-and-views/annotation-context
+concepts/annotation-context: viewer/view-concepts/annotation-context
 concepts/batches: logging-and-ingestion/data-model/batches
-concepts/blueprint: viewer/blueprints-and-views/blueprints
-concepts/blueprints: viewer/blueprints-and-views/blueprints
+concepts/blueprint: viewer/blueprints
+concepts/blueprints: viewer/blueprints
 concepts/chunks: logging-and-ingestion/chunks-and-rrd/chunks
 concepts/entity-component: logging-and-ingestion/data-model/entity-component
 concepts/entity-path: logging-and-ingestion/data-model/entity-path
@@ -58,8 +58,8 @@ concepts/spaces-and-transforms: logging-and-ingestion/data-model/transforms
 concepts/static: logging-and-ingestion/data-model/static
 concepts/timelines: logging-and-ingestion/data-model/timelines
 concepts/transforms: logging-and-ingestion/data-model/transforms
-concepts/visualizers-and-overrides: viewer/blueprints-and-views/customize-views
-concepts/visualization/visualizers-and-overrides: viewer/blueprints-and-views/customize-views
+concepts/visualizers-and-overrides: viewer/view-concepts/customize-views
+concepts/visualization/visualizers-and-overrides: viewer/view-concepts/customize-views
 
 # Reference section
 reference/dataframes: query-and-transform/dataframes/dataframe-queries
@@ -74,7 +74,7 @@ concepts/logging-and-ingestion/data-loaders/overview: logging-and-ingestion/impo
 concepts/logging-and-ingestion/data-loaders/python: logging-and-ingestion/import/importers/python
 concepts/logging-and-ingestion/data-loaders/rust: logging-and-ingestion/import/importers/rust
 concepts/logging-and-ingestion/data-loaders/cpp: logging-and-ingestion/import/importers/cpp
-reference/entity-queries: viewer/blueprints-and-views/entity-queries
+reference/entity-queries: viewer/view-concepts/entity-path-filter
 reference/mcap: logging-and-ingestion/import/mcap/message-formats
 reference/mcap/cli-reference: logging-and-ingestion/import/mcap/cli-reference
 reference/mcap/layers-explained: logging-and-ingestion/import/mcap/decoders-explained
@@ -88,25 +88,25 @@ reference/sdk-operating-modes: logging-and-ingestion/sinks-and-modes/operating-m
 reference/video: logging-and-ingestion/media/video
 
 # Howto section
-howto/build-a-blueprint-programmatically: viewer/blueprints-and-views/build-a-blueprint-programmatically
+howto/build-a-blueprint-programmatically: viewer/blueprints/build-a-blueprint-programmatically
 howto/callbacks: viewer/extend/callbacks
-howto/configure-viewer-through-code: viewer/tutorial/navigating-the-viewer#programmatic-blueprints
+howto/configure-viewer-through-code: viewer/ui/overview
 howto/logging-and-ingestion/convert-existing-data: logging-and-ingestion/import/chunk-processing-api
 howto/dataframe-api: query-and-transform/catalog/get-data-out
-howto/embed-rerun-viewer: integrations/embed-web
-howto/fixed-window-plot: viewer/plots-and-maps/fixed-window-plot
+howto/embed-rerun-viewer: viewer/integrations/embed-web
+howto/fixed-window-plot: viewer/view-types/time-series#visualize-fixed-window-plots
 howto/get-data-out: query-and-transform/catalog/get-data-out
 howto/limit-ram: viewer/performance/limit-ram
 howto/logging: logging-and-ingestion/send-data/send-columns
 howto/mcap: logging-and-ingestion/import/mcap/working-with-mcap
-howto/notebook: integrations/embed-notebooks
+howto/notebook: viewer/integrations/embed-notebooks
 howto/optimize-chunks: logging-and-ingestion/chunks-and-rrd/optimize-chunks
-howto/ros2-nav-turtlebot: integrations/ros2-nav-turtlebot
+howto/ros2-nav-turtlebot: logging-and-ingestion/integrations/ros2-nav-turtlebot
 howto/send_columns: logging-and-ingestion/send-data/send-columns
 howto/shared-recordings: logging-and-ingestion/sinks-and-modes/shared-recordings
 howto/short-lived-entities: logging-and-ingestion/send-data/clears
 howto/urdf: logging-and-ingestion/import/urdf
-howto/using-native-loggers: integrations/integrate-host-loggers
+howto/using-native-loggers: logging-and-ingestion/integrations/integrate-host-loggers
 
 # Howto - logging subfolder
 howto/logging/clears: logging-and-ingestion/send-data/clears
@@ -217,19 +217,19 @@ concepts/query-and-transform/oss-server: query-and-transform/catalog/oss-server
 concepts/query-and-transform/properties-and-segments: query-and-transform/catalog/properties-and-segments
 concepts/train: train
 concepts/visualization: viewer
-concepts/visualization/annotation-context: viewer/blueprints-and-views/annotation-context
-concepts/visualization/blueprints: viewer/blueprints-and-views/blueprints
-concepts/visualization/customize-views: viewer/blueprints-and-views/customize-views
-concepts/visualization/entity-queries: viewer/blueprints-and-views/entity-queries
+concepts/visualization/annotation-context: viewer/view-concepts/annotation-context
+concepts/visualization/blueprints: viewer/blueprints
+concepts/visualization/customize-views: viewer/view-concepts/customize-views
+concepts/visualization/entity-queries: viewer/view-concepts/entity-path-filter
 howto: getting-started
-howto/extend: integrations/extend
-howto/integrations: integrations
-howto/integrations/distribute-viewer: integrations/distribute-viewer
-howto/integrations/embed-notebooks: integrations/embed-notebooks
-howto/integrations/embed-web: integrations/embed-web
-howto/integrations/host-web-viewer: integrations/host-web-viewer
-howto/integrations/integrate-host-loggers: integrations/integrate-host-loggers
-howto/integrations/ros2-nav-turtlebot: integrations/ros2-nav-turtlebot
+howto/extend: viewer/integrations/extend
+howto/integrations: viewer/integrations
+howto/integrations/distribute-viewer: viewer/integrations/distribute-viewer
+howto/integrations/embed-notebooks: viewer/integrations/embed-notebooks
+howto/integrations/embed-web: viewer/integrations/embed-web
+howto/integrations/host-web-viewer: viewer/integrations/host-web-viewer
+howto/integrations/integrate-host-loggers: logging-and-ingestion/integrations/integrate-host-loggers
+howto/integrations/ros2-nav-turtlebot: logging-and-ingestion/integrations/ros2-nav-turtlebot
 howto/logging-and-ingestion: logging-and-ingestion
 howto/logging-and-ingestion/clears: logging-and-ingestion/send-data/clears
 howto/logging-and-ingestion/cpp-custom-types: logging-and-ingestion/send-data/cpp-custom-types
@@ -263,31 +263,31 @@ howto/train: train/dataloader
 howto/train/dataloader: train/dataloader
 howto/train/lerobot_export: train/lerobot_export
 howto/visualization: viewer
-howto/visualization/build-a-blueprint-programmatically: viewer/blueprints-and-views/build-a-blueprint-programmatically
+howto/visualization/build-a-blueprint-programmatically: viewer/blueprints/build-a-blueprint-programmatically
 howto/visualization/callbacks: viewer/extend/callbacks
-howto/visualization/component-mappings: viewer/blueprints-and-views/component-mappings
-howto/visualization/configure-table-blueprints: viewer/blueprints-and-views/configure-table-blueprints
-howto/visualization/control-3d-eye: viewer/scenes/control-3d-eye
+howto/visualization/component-mappings: viewer/view-concepts/component-mappings
+howto/visualization/configure-table-blueprints: viewer/blueprints/configure-table-blueprints
+howto/visualization/control-3d-eye: viewer/view-types/3d#control-the-3d-camera
 howto/visualization/control-the-viewer: viewer/extend/control-the-viewer
-howto/visualization/customize-plots: viewer/plots-and-maps/customize-plots
-howto/visualization/depth-heightmaps-voxels: viewer/scenes/depth-heightmaps-voxels
+howto/visualization/customize-plots: viewer/view-types/time-series#customize-plots
+howto/visualization/depth-heightmaps-voxels: viewer/view-types/3d#depth-images-heightmaps-and-voxels
 howto/visualization/diagnose-performance: viewer/performance/diagnose-performance
 howto/visualization/export-screenshots: viewer/extend/export-screenshots
 howto/visualization/extend-ui: viewer/extend/extend-ui
-howto/visualization/fixed-window-plot: viewer/plots-and-maps/fixed-window-plot
-howto/visualization/geospatial-data: viewer/plots-and-maps/geospatial-data
-howto/visualization/labels: viewer/scenes/labels
+howto/visualization/fixed-window-plot: viewer/view-types/time-series#visualize-fixed-window-plots
+howto/visualization/geospatial-data: viewer/view-types/map
+howto/visualization/labels: viewer/view-concepts/labels
 howto/visualization/limit-ram: viewer/performance/limit-ram
-howto/visualization/mesh-appearance: viewer/scenes/mesh-appearance
+howto/visualization/mesh-appearance: viewer/view-types/3d#control-mesh-appearance
 howto/visualization/missing-data: viewer/performance/missing-data
 howto/visualization/multiple-viewers: viewer/performance/multiple-viewers
-howto/visualization/plot-any-scalar: viewer/plots-and-maps/plot-any-scalar
+howto/visualization/plot-any-scalar: viewer/view-types/time-series#plot-any-scalar
 howto/visualization/remote-viewing: logging-and-ingestion/sinks-and-modes/remote-viewing
-howto/visualization/state-timeline: viewer/plots-and-maps/state-timeline
-howto/visualization/text-logs: viewer/plots-and-maps/text-logs
-howto/visualization/uncertainty: viewer/scenes/uncertainty
-howto/visualization/visible-series: viewer/plots-and-maps/visible-series
-howto/visualization/visible-time-ranges: viewer/plots-and-maps/visible-time-ranges
+howto/visualization/state-timeline: viewer/view-types/state-timeline
+howto/visualization/text-logs: viewer/view-types/text-log
+howto/visualization/uncertainty: viewer/view-types/3d#covariance-ellipsoids-in-3d
+howto/visualization/visible-series: viewer/view-types/time-series#show-a-subset-of-plotted-series
+howto/visualization/visible-time-ranges: viewer/view-concepts/visible-time-ranges
 overview: getting-started
 overview/resources: getting-started
 overview/what-is-rerun: getting-started
@@ -308,8 +308,8 @@ reference/viewer/urls: viewer/extend/urls
 reference/viewer/viewport: viewer/ui/viewport
 
 # Docs restructure: tutorials join their product sections
-getting-started/configure-the-viewer: viewer/tutorial
-getting-started/configure-the-viewer/navigating-the-viewer: viewer/tutorial/navigating-the-viewer
+getting-started/configure-the-viewer: viewer/ui/overview
+getting-started/configure-the-viewer/navigating-the-viewer: viewer/ui/overview
 getting-started/data-in: logging-and-ingestion/tutorial
 getting-started/data-in/open-any-file: logging-and-ingestion/import/open-any-file
 getting-started/data-out: query-and-transform/tutorial
@@ -317,3 +317,42 @@ getting-started/data-out/analyze-and-send: query-and-transform/tutorial/analyze-
 getting-started/data-out/explore-as-dataframe: query-and-transform/tutorial/explore-as-dataframe
 getting-started/data-out/export-dataframe: query-and-transform/tutorial/export-dataframe
 getting-started/train: train/tutorial
+
+# Integrations join their product sections
+integrations: viewer/integrations
+integrations/embed-notebooks: viewer/integrations/embed-notebooks
+integrations/embed-web: viewer/integrations/embed-web
+integrations/distribute-viewer: viewer/integrations/distribute-viewer
+integrations/host-web-viewer: viewer/integrations/host-web-viewer
+integrations/extend: viewer/integrations/extend
+integrations/ros2-nav-turtlebot: logging-and-ingestion/integrations/ros2-nav-turtlebot
+integrations/integrate-host-loggers: logging-and-ingestion/integrations/integrate-host-loggers
+
+# Viewer tutorial
+viewer/tutorial: viewer/ui/overview
+viewer/tutorial/navigating-the-viewer: viewer/ui/overview
+
+# Viewer: blueprints, view concepts, and view types
+viewer/blueprints-and-views: viewer/blueprints
+viewer/blueprints-and-views/annotation-context: viewer/view-concepts/annotation-context
+viewer/blueprints-and-views/blueprints: viewer/blueprints
+viewer/blueprints-and-views/build-a-blueprint-programmatically: viewer/blueprints/build-a-blueprint-programmatically
+viewer/blueprints-and-views/component-mappings: viewer/view-concepts/component-mappings
+viewer/blueprints-and-views/configure-table-blueprints: viewer/blueprints/configure-table-blueprints
+viewer/blueprints-and-views/customize-views: viewer/view-concepts/customize-views
+viewer/blueprints-and-views/entity-queries: viewer/view-concepts/entity-path-filter
+viewer/plots-and-maps: viewer/view-types
+viewer/plots-and-maps/customize-plots: viewer/view-types/time-series#customize-plots
+viewer/plots-and-maps/fixed-window-plot: viewer/view-types/time-series#visualize-fixed-window-plots
+viewer/plots-and-maps/geospatial-data: viewer/view-types/map
+viewer/plots-and-maps/plot-any-scalar: viewer/view-types/time-series#plot-any-scalar
+viewer/plots-and-maps/state-timeline: viewer/view-types/state-timeline
+viewer/plots-and-maps/text-logs: viewer/view-types/text-log
+viewer/plots-and-maps/visible-series: viewer/view-types/time-series#show-a-subset-of-plotted-series
+viewer/plots-and-maps/visible-time-ranges: viewer/view-concepts/visible-time-ranges
+viewer/scenes: viewer/view-types
+viewer/scenes/control-3d-eye: viewer/view-types/3d#control-the-3d-camera
+viewer/scenes/depth-heightmaps-voxels: viewer/view-types/3d#depth-images-heightmaps-and-voxels
+viewer/scenes/labels: viewer/view-concepts/labels
+viewer/scenes/mesh-appearance: viewer/view-types/3d#control-mesh-appearance
+viewer/scenes/uncertainty: viewer/view-types/3d#covariance-ellipsoids-in-3d

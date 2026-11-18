@@ -25,7 +25,7 @@ The Rerun command-line interface:
 * `dump-puffin`: Dump a puffin profiler recording (`.puffin` file) as JSON.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `mcap`: Manipulate the contents of .mcap files.
-* `viewer-mcp`: Run an MCP server that controls a running Rerun Viewer.
+* `mcp`: Run an MCP server that controls a running Rerun Viewer.
 * `reset`: Reset the memory of the Rerun Viewer.
 * `rrd`: Manipulate the contents of .rrd and .rbl files.
 * `server`: Local Rerun catalog server.
@@ -516,15 +516,15 @@ Reports timelines that disagree on row ordering, whole-topic ordering conflicts,
 >
 > [Default: `false`]
 
-## rerun viewer-mcp
+## rerun mcp
 
 Run an MCP server that controls a running Rerun Viewer.
 
-Register it with your agent using `claude mcp add rerun -- rerun viewer-mcp` or `codex mcp add rerun -- rerun viewer-mcp`, or add an `mcp.json` entry with `"command": "rerun"` and `"args": ["viewer-mcp"]`.
+Register it with your agent using `claude mcp add rerun -- rerun mcp` or `codex mcp add rerun -- rerun mcp`, or add an `mcp.json` entry with `"command": "rerun"` and `"args": ["mcp"]`.
 
 See <https://rerun.io/docs/viewer/extend/mcp> for details.
 
-**Usage**: `rerun viewer-mcp [OPTIONS]`
+**Usage**: `rerun mcp [OPTIONS]`
 
 **Options**
 

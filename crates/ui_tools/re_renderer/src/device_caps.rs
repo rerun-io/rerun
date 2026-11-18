@@ -60,7 +60,7 @@ impl DeviceCapabilityTier {
 
     pub fn support_bgra_textures(&self) -> bool {
         match self {
-            // TODO(wgpu#3583): Incorrectly reported by wgpu right now.
+            // TODO(gfx-rs/wgpu#3583): Incorrectly reported by wgpu right now.
             // GLES2 does not support BGRA textures!
             Self::Limited => false,
             Self::FullWebGpuSupport => true,
@@ -430,6 +430,23 @@ pub async fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter 
     adapter
 }
 
+/// Why [`select_adapter`] found no usable graphics adapter.
+#[derive(thiserror::Error, Debug)]
+pub enum SelectAdapterError {
+    /// No adapter exists for the enabled backends.
+    #[error(
+        "No graphics adapter was found for the enabled graphics backends ({enabled_backends:?})"
+    )]
+    NoAdapter {
+        /// The backends that were searched.
+        enabled_backends: wgpu::Backends,
+    },
+
+    /// No adapter can present to the given surface.
+    #[error("No graphics adapter was found that is compatible with the surface.")]
+    NoSurfaceCompatibleAdapter,
+}
+
 /// Tries to select an adapter.
 ///
 /// This is very similar to wgpu-core's implementation of `DynInstance::enumerate_adapters`.
@@ -437,11 +454,9 @@ pub fn select_adapter(
     adapters: &[wgpu::Adapter],
     enabled_backends: wgpu::Backends,
     surface: Option<&wgpu::Surface<'_>>,
-) -> Result<wgpu::Adapter, String> {
+) -> Result<wgpu::Adapter, SelectAdapterError> {
     if adapters.is_empty() {
-        return Err(format!(
-            "No graphics adapter was found for the enabled graphics backends ({enabled_backends:?})"
-        ));
+        return Err(SelectAdapterError::NoAdapter { enabled_backends });
     }
 
     let mut adapters = adapters.to_vec();
@@ -461,9 +476,7 @@ pub fn select_adapter(
             }
         });
         if adapters.is_empty() {
-            return Err(
-                "No graphics adapter was found that is compatible with the surface.".to_owned(),
-            );
+            return Err(SelectAdapterError::NoSurfaceCompatibleAdapter);
         }
     }
 
@@ -513,12 +526,22 @@ pub fn default_backends() -> wgpu::Backends {
         // For changing the backend we use standard wgpu env var, i.e. WGPU_BACKEND.
         wgpu::Backends::from_env()
             .unwrap_or(wgpu::Backends::VULKAN | wgpu::Backends::METAL | wgpu::Backends::GL)
-    } else if browser::is_webkit() || browser::is_firefox() {
-        // TODO(#12788): Safari WebGPU broken on 26.4 (3D content fails to render)
-        // TODO(#11009): Fix videos on WebGPU firefox
+    } else if browser::is_chromium() {
+        // Chromium based browsers (Chrome, Edge, Brave, etc.) work already really well with WebGPU!
+        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
+    } else if browser::is_firefox() {
+        // TODO(#11009): Fix videos on WebGPU Firefox
+        wgpu::Backends::GL
+    } else if browser::is_webkit() {
+        // TODO(#12788): Safari WebGPU broken on 26.4 (3D content fails to render) and 27.2
+        // As per https://github.com/rerun-io/reality/pull/5094 we have a workaround in, but we haven't done sufficient testing yet,
+        // also we'd need to lint against this workaround being applies to all usages of `mat4x3`
+        // At least [the bug in question above](https://bugs.webkit.org/show_bug.cgi?id=320443) has been fixed in the 626 WebKit line (starting with 626.1.1).
+        // However, Safari 27.2 (which is recent as of writing) is on 625.2.8.11.9, a different release branch.
         wgpu::Backends::GL
     } else {
-        wgpu::Backends::GL | wgpu::Backends::BROWSER_WEBGPU
+        // Unknown browser, WebGL is a safer bet.
+        wgpu::Backends::GL
     }
 }
 
@@ -570,14 +593,14 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
         }
         wgpu::Backend::Dx12 => {
             // We don't have DX12 enabled right now, but someone could.
-            // TODO(wgpu#5166): But if we get this wrong we might crash.
-            // TODO(wgpu#5167): And we also can't query the config.
+            // TODO(gfx-rs/wgpu#5166): But if we get this wrong we might crash.
+            // TODO(gfx-rs/wgpu#5167): And we also can't query the config.
             return Err("DX12 backend is currently not supported.");
         }
         wgpu::Backend::Gl => {
             // Using Angle Mac might actually run GL, but we don't enable this.
-            // TODO(wgpu#5166): But if we get this wrong we might crash.
-            // TODO(wgpu#5167): And we also can't query the config.
+            // TODO(gfx-rs/wgpu#5166): But if we get this wrong we might crash.
+            // TODO(gfx-rs/wgpu#5167): And we also can't query the config.
             if cfg!(target_os = "macos") {
                 return Err("Cannot run with GL backend on Mac.");
             }

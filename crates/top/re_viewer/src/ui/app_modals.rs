@@ -158,7 +158,7 @@ pub fn about_rerun_ui(
         // For the web-viewer (`crate_name: "re_viewer"`) it is much less interesting.
         if crate_name == "rerun-cli" && !features.is_empty() {
             ui.label("Features");
-            ui.label(features.as_ref());
+            ui.add(egui::Label::new(features.as_ref()).wrap());
             ui.end_row();
         }
 
@@ -172,7 +172,7 @@ pub fn about_rerun_ui(
             if !llvm_version.is_empty() {
                 write!(compiler, ", LLVM {llvm_version}").ok();
             }
-            ui.label(compiler);
+            ui.add(egui::Label::new(compiler).wrap());
             ui.end_row();
         }
     });
@@ -209,7 +209,7 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 
         egui::Grid::new("adapter_info").show(ui, |ui| {
             ui.label("Backend");
-            ui.label(backend.to_str()); // TODO(wgpu#5170): Use std::fmt::Display for backend.
+            ui.label(backend.to_str());
             ui.end_row();
 
             ui.label("Device Type");
@@ -253,7 +253,6 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 
     let wgpu_adapter_ui = |ui: &mut egui::Ui, adapter: &eframe::wgpu::Adapter| {
         let info = &adapter.get_info();
-        // TODO(wgpu#5170): Use std::fmt::Display for backend.
         ui.label(info.backend.to_str()).on_hover_ui(|ui| {
             wgpu_adapter_details_ui(ui, adapter);
         });
@@ -518,6 +517,7 @@ fn debug_menu_options_ui(
             /// crash may not occur
             #[cfg(target_pointer_width = "64")]
             pub const SEGFAULT_ADDRESS: u64 = u32::MAX as u64 + 0x42;
+
             #[cfg(target_pointer_width = "32")]
             pub const SEGFAULT_ADDRESS: u32 = 0x42;
 

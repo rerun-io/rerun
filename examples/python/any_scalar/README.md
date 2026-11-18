@@ -133,9 +133,9 @@ Rerun uses a path syntax inspired by [`jq`](https://jqlang.org/) to reach into y
 
 ## Resources
 
-- [Customize views](https://rerun.io/docs/viewer/blueprints-and-views/customize-views)
-- [Plot any scalar](https://rerun.io/docs/viewer/plots-and-maps/plot-any-scalar)
-- [Component Mappings Guide](https://rerun.io/docs/viewer/blueprints-and-views/component-mappings)
+- [Customize views](https://rerun.io/docs/viewer/view-concepts/customize-views)
+- [Plot any scalar](https://rerun.io/docs/viewer/view-types/time-series#plot-any-scalar)
+- [Component Mappings Guide](https://rerun.io/docs/viewer/view-concepts/component-mappings)
 
 ---
 

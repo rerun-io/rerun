@@ -26,8 +26,15 @@ const REDACTION_QUEUE_CAPACITY: usize = 1024;
 /// Redaction is mechanical work on one short JSON object, so the cheapest capable model of each
 /// family is enough, and the user should not pay flagship prices for a background task.
 /// An agent that offers none of these keeps its default model.
-#[cfg(agent_harness_backend)]
-const REDACTION_MODELS: &[&str] = &["sonnet", "flash", "mini", "haiku"];
+static REDACTION_MODELS: std::sync::LazyLock<Vec<crate::ModelPreference>> =
+    std::sync::LazyLock::new(|| {
+        vec![
+            crate::ModelPreference::new(&["haiku"]),
+            crate::ModelPreference::new(&["luna"]),
+            crate::ModelPreference::new(&["gemini", "flash"]),
+            crate::ModelPreference::new(&["gpt", "mini"]),
+        ]
+    });
 
 /// Instructions for removing sensitive data from agent analytics.
 const REDACTION_INSTRUCTIONS: &str = r#"# Redact analytics
@@ -69,11 +76,14 @@ The redacted JSON object only, on one line or pretty-printed, starting with `{` 
 pub enum RedactionError {
     #[cfg(agent_harness_backend)]
     NoScratchDirectory,
+
     #[cfg(not(agent_harness_backend))]
     NoHarness,
+
     #[cfg(not(target_arch = "wasm32"))]
     NoThread,
     QueueFull,
+
     #[cfg(not(target_arch = "wasm32"))]
     ThreadGone,
     TimedOut,
@@ -338,7 +348,12 @@ impl Redactor {
             },
             AgentLaunch::ModelApi(mut config) => {
                 config.hosted_tools = HostedTools::NONE;
-                config.model = config.provider.default_model().to_owned();
+                config.model = crate::model_recommendation::preferred_model_id(
+                    config.provider.models(),
+                    &REDACTION_MODELS,
+                )
+                .unwrap_or_else(|| config.provider.default_model())
+                .to_owned();
                 config.effort = None;
                 config.system_prompt = None;
                 config.toolbox = None;
@@ -370,10 +385,7 @@ impl Redactor {
         config.mcp_servers.clear();
         config.cwd = self.scratch.as_ref()?.path().to_owned();
         config.preferences = Default::default();
-        config.model_preferences = REDACTION_MODELS
-            .iter()
-            .map(|&model| model.to_owned())
-            .collect();
+        config.model_preferences = REDACTION_MODELS.clone();
         Some(config)
     }
 }
@@ -550,7 +562,7 @@ mod tests {
             mcp_servers: vec![crate::McpStdioServer {
                 name: "rerun".to_owned(),
                 command: std::path::PathBuf::from("rerun"),
-                args: vec!["viewer-mcp".to_owned()],
+                args: vec!["mcp".to_owned()],
             }],
             log_protocol: false,
             preamble: None,
@@ -571,8 +583,8 @@ mod tests {
         assert!(config.mcp_servers.is_empty());
         assert!(config.preferences.config_options.is_empty());
         assert_eq!(
-            config.model_preferences.first().map(String::as_str),
-            Some("sonnet")
+            config.model_preferences.first(),
+            Some(&crate::ModelPreference::new(&["haiku"]))
         );
         assert_ne!(config.cwd, std::env::current_dir().expect("cwd"));
         assert!(config.cwd.is_dir());
@@ -603,7 +615,7 @@ mod tests {
             panic!("a model-API agent redacts with a model-API agent");
         };
         assert_eq!(config.hosted_tools, HostedTools::NONE);
-        assert_eq!(config.model, provider.default_model());
+        assert!(crate::ModelPreference::new(&["haiku"]).matches(&config.model));
         assert!(config.effort.is_none());
         assert!(config.system_prompt.is_none());
     }

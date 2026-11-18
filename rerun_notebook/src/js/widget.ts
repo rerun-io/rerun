@@ -24,6 +24,7 @@ interface WidgetModel {
 
   "_fallback_token"?: string;
   "_theme"?: AppOptions["theme"] | null;
+  "_analytics"?: AppOptions["analytics"] | null;
 }
 
 type Opt<T> = T | null | undefined;
@@ -92,6 +93,10 @@ class ViewerWidget {
     const theme = model.get("_theme");
     if (theme) {
       this.options.theme = theme;
+    }
+    const analytics = model.get("_analytics");
+    if (analytics) {
+      this.options.analytics = analytics;
     }
 
     (this.viewer as any)._on_raw_event((event: string) => model.send(event));

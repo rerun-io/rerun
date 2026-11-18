@@ -294,7 +294,8 @@ Rerun catalog or Hub, unless explicitly asked otherwise.
 - Scope lenses with `content=`; the same component name often exists under
   many entities.
 - Preserve Arrow array type and length in `MutateLens` transforms.
-- For catalog layers, the layer `recording_id` must equal the segment id.
+- For catalog layers, the layer `recording_id` must equal the segment id,
+  unless the layer is registered with `register(…, segment_id=[…])`.
 - This is `rerun.chunk`; pin-check signatures when upgrading.
 
 ## References

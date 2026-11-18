@@ -130,6 +130,7 @@ pub enum DeserializationError {
     #[error("Failed to deserialize {location:?}")]
     Context {
         location: String,
+
         #[source]
         source: Box<Self>,
     },

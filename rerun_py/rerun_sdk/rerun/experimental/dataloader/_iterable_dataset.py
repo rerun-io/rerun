@@ -367,7 +367,8 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
             view, decoders = self._connection.ensure()
 
             indices, block_bounds = self._worker_order()
-            blocks = _fetch_blocks(indices, block_bounds, fetch_block_size=self._fetch_block_size)
+            with tracing_scope("RerunIterableDataset._iter_catalog._fetch_blocks"):
+                blocks = _fetch_blocks(indices, block_bounds, fetch_block_size=self._fetch_block_size)
 
             set_current_span_attributes({
                 "rerun.dataloader.iter.num_blocks": len(blocks),
@@ -533,26 +534,29 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
 
     def _worker_order(self) -> tuple[np.ndarray, np.ndarray]:
         """Return this worker's shard of the epoch's `(indices, block_bounds)`, in fetch order."""
-        indices, block_bounds = self._shuffle_strategy.epoch_order(
-            self._sample_index,
-            fetch_block_size=self._fetch_block_size,
-            seed=self._epoch,
-        )
+        with tracing_scope("RerunIterableDataset._worker_order.epoch_order"):
+            indices, block_bounds = self._shuffle_strategy.epoch_order(
+                self._sample_index,
+                fetch_block_size=self._fetch_block_size,
+                seed=self._epoch,
+            )
 
         # Partition across distributed ranks first (DDP), then across
         # DataLoader workers within this rank. Contiguous (not interleaved)
         # slices keep a worker on a small set of segments.
         rank, world_size = self._ddp_topology()
         if world_size > 1:
-            indices, block_bounds = _contiguous_shard(indices, block_bounds, rank=rank, world_size=world_size)
+            with tracing_scope("RerunIterableDataset._worker_order.ddp_shard"):
+                indices, block_bounds = _contiguous_shard(indices, block_bounds, rank=rank, world_size=world_size)
 
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is not None:
-            indices, block_bounds = _contiguous_shard(
-                indices,
-                block_bounds,
-                rank=worker_info.id,
-                world_size=worker_info.num_workers,
-            )
+            with tracing_scope("RerunIterableDataset._worker_order.worker_shard"):
+                indices, block_bounds = _contiguous_shard(
+                    indices,
+                    block_bounds,
+                    rank=worker_info.id,
+                    world_size=worker_info.num_workers,
+                )
 
         return indices, block_bounds

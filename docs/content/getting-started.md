@@ -54,7 +54,7 @@ snippet: tutorials/getting_started[ingest]
 ### Visualize
 
 Point the Viewer at your server to browse every recording in the catalog.
-See the [Viewer tutorial](./viewer/tutorial.md).
+See the [Viewer overview](./viewer/ui/overview.md).
 
 ```bash
 rerun rerun+http://127.0.0.1:51234

@@ -1,20 +1,30 @@
 use super::PinholeProjection;
 use crate::encodings::Vec2D;
 
+/// An invalid [`PinholeProjection`].
+#[derive(thiserror::Error, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum PinholeProjectionError {
+    /// Some matrix entries are NaN or infinite.
+    #[error("Invalid projection matrix: matrix entries must be finite.")]
+    NonFinite,
+
+    /// One of the focal lengths is zero.
+    #[error("Invalid projection matrix: focal lengths fx and fy must be nonzero.")]
+    ZeroFocalLength,
+}
+
 impl PinholeProjection {
     /// Checks that the projection is finite, with nonzero focal lengths.
     ///
     /// Negative focal lengths are allowed, since they can represent mirrored images.
-    pub fn sanity_check(&self) -> Result<(), String> {
+    pub fn sanity_check(&self) -> Result<(), PinholeProjectionError> {
         if !self.0.0.iter().all(|value| value.is_finite()) {
-            return Err("Invalid projection matrix: matrix entries must be finite.".to_owned());
+            return Err(PinholeProjectionError::NonFinite);
         }
 
         let focal_length = self.focal_length_in_pixels();
         if focal_length.x() == 0.0 || focal_length.y() == 0.0 {
-            return Err(
-                "Invalid projection matrix: focal lengths fx and fy must be nonzero.".to_owned(),
-            );
+            return Err(PinholeProjectionError::ZeroFocalLength);
         }
 
         Ok(())

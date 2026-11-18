@@ -107,6 +107,7 @@ impl Context {
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Document {
     id: u64,
+
     #[serde(flatten)]
     data: DocumentData,
 }

@@ -196,6 +196,11 @@ pub enum FetchBehavior {
     /// Return these chunks, each tagged with the given segment id.
     Chunks(Vec<(Chunk, String)>),
 
+    /// Return those of these chunks that the call asks for, as a server does.
+    ///
+    /// For fixtures whose calls can arrive in any order.
+    Requested(Vec<(Chunk, String)>),
+
     /// Fail the RPC.
     Fail(Status),
 }
@@ -215,6 +220,7 @@ impl std::fmt::Debug for FetchBehavior {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Chunks(chunks) => write!(f, "Chunks({})", chunks.len()),
+            Self::Requested(chunks) => write!(f, "Requested({})", chunks.len()),
             Self::Fail(err) => write!(f, "Fail({err})"),
         }
     }
@@ -239,8 +245,24 @@ impl MockFetchClient {
     }
 }
 
+/// The ids of the chunks that a `FetchChunks` request asks for.
+fn requested_chunk_ids(request: FetchChunksRequest) -> Vec<ChunkId> {
+    request
+        .chunk_infos
+        .into_iter()
+        .flat_map(|chunk_info| {
+            let batch: RecordBatch = chunk_info.try_into().expect("request rows decode");
+            ChunkCandidatesDataframe::COLUMN_CHUNK_ID
+                .extract(&batch)
+                .expect("request rows have chunk ids")
+                .into_iter_owned()
+                .collect::<Vec<_>>()
+        })
+        .collect()
+}
+
 /// Encodes a chunk the way the server does, so the client-side decode path
-/// in `fetch_chunks_response_to_chunk_and_segment_id` runs for real.
+/// in `fetch_chunks_response_to_chunks` runs for real.
 fn encode_chunk(chunk: &Chunk, segment_id: &str) -> re_protos::log_msg::v1alpha1::ArrowMsg {
     use re_log_encoding::ToTransport as _;
 
@@ -321,7 +343,7 @@ impl DataframeClientAPI for MockFetchClient {
 
     async fn fetch_chunks(
         &mut self,
-        _request: Request<FetchChunksRequest>,
+        request: Request<FetchChunksRequest>,
     ) -> tonic::Result<Response<tonic::codec::Streaming<FetchChunksResponse>>> {
         self.calls
             .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
@@ -330,6 +352,11 @@ impl DataframeClientAPI for MockFetchClient {
         let chunks = match behavior {
             Some(FetchBehavior::Fail(err)) => return Err(err),
             Some(FetchBehavior::Chunks(chunks)) => chunks,
+            Some(FetchBehavior::Requested(mut chunks)) => {
+                let requested = requested_chunk_ids(request.into_inner());
+                chunks.retain(|(chunk, _segment_id)| requested.contains(&chunk.id()));
+                chunks
+            }
             // Drained: the plan asked for more batches than the script
             // covers. An empty response is the honest answer.
             None => Vec::new(),
@@ -787,11 +814,31 @@ mod smoke {
         assert_eq!(chunks.len(), 1);
         let (chunk, segment_id) = &chunks[0];
         assert_eq!(chunk.id(), chunk_id_for("seg-a", 0));
-        assert_eq!(
-            segment_id.as_ref().map(ToString::to_string).as_deref(),
-            Some("seg-a")
-        );
+        assert_eq!(segment_id.as_str(), "seg-a");
         assert_eq!(client.call_count(), 1);
+    }
+
+    /// A segment registered under an id that is not its store's recording id: the fetched chunk
+    /// carries the recording id, and must still go to the segment of its request row.
+    #[tokio::test]
+    async fn grpc_fetch_attributes_chunks_to_the_request_segment_not_the_recording() {
+        let chunk = scalar_chunk("seg-a", 0, "frame", Some(10), 42);
+        let client = MockFetchClient::returning([(chunk, "some-recording".to_owned())]);
+
+        let request = chunk_info_batch("seg-a", Some("frame"), &[Some(10)], &[false], &[Some(100)]);
+        let counter = AtomicU64::new(0);
+        let mut stats = TaskFetchStats::default();
+
+        let fetched = fetch_batch_group_via_grpc(&[request], &client, &counter, &mut stats)
+            .await
+            .expect("mock fetch succeeds");
+
+        let segment_ids: Vec<_> = fetched
+            .iter()
+            .flatten()
+            .map(|(_chunk, segment_id)| segment_id.as_str())
+            .collect();
+        assert_eq!(segment_ids, ["seg-a"]);
     }
 }
 

@@ -251,7 +251,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         row_index,
         entity_path,
     )? {
-        let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|_err| {
+        let axis_angle = convert::rotation_axis_angle_to_daffine3(axis_angle).map_err(|()| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
                 component: identifier_rotation_axis_angles,
@@ -265,7 +265,7 @@ pub fn query_and_resolve_tree_transform_at_entity(
         row_index,
         entity_path,
     )? {
-        let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|_err| {
+        let quaternion = convert::rotation_quat_to_daffine3(quaternion).map_err(|()| {
             TransformError::InvalidTransform {
                 entity_path: entity_path.clone(),
                 component: identifier_quaternions,

@@ -140,11 +140,8 @@ def register_segments(client: rr.catalog.CatalogClient) -> None:
     path = Path("segments.rbl").resolve()
     blueprint.save("my_app", path)
 
-    client.get_dataset("my_dataset").register_blueprint(
-        path.as_uri(),
-        name="segments",
-        # Apply to the segment table, not individual recordings.
-        segment_table=True,
+    client.get_dataset("my_dataset").register_table_blueprint(
+        path.as_uri(), name="segments"
     )
     # endregion: register_segments
 

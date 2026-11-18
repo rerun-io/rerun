@@ -289,7 +289,7 @@ where
         match stream.next().await {
             Some(Ok(first)) => Ok(ApiResponseStream::new(
                 self.origin.clone(),
-                futures::stream::iter([Ok(first)]).chain(stream), // NOLINT: Stream::chain, not Iterator::chain
+                futures::stream::iter([Ok(first)]).chain(stream),
                 trace_id,
             )),
             // Browsers report a CORS block as an opaque network failure, so `Connection` is
@@ -334,10 +334,9 @@ where
                                 re_protos::cloud::v1alpha1::GetRrdManifestRequest {
                                     segment_id: Some(request_segment_id.clone().into()),
                                     generate_direct_urls,
-                                    client_capabilities: vec![
-                                        re_protos::capabilities::DATASET_RRD_MANIFEST_KEY_STORE_ID
-                                            .to_owned(),
-                                    ],
+                                    client_meta: Some(
+                                        re_protos::cloud::v1alpha1::ClientMeta::current(),
+                                    ),
                                 },
                             )
                             .with_entry_id(dataset_id),

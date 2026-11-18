@@ -559,9 +559,9 @@ pub async fn update_dataset_entry_replaces_deleted_asset_dataset(service: impl R
 
     // Delete the asset dataset directly, leaving the dataset's reference dangling.
     service
-        .delete_entry(tonic::Request::new(DeleteEntryRequest {
-            id: Some(original_asset.into()),
-        }))
+        .delete_entry(
+            tonic::Request::new(DeleteEntryRequest::default()).with_entry_id(original_asset),
+        )
         .await
         .expect("failed to delete the asset dataset");
 
@@ -589,9 +589,7 @@ pub async fn update_dataset_entry_replaces_deleted_asset_dataset(service: impl R
     // A client sending the stored reference back unchanged is not choosing a new one: after
     // deleting the replacement, the stale reference is replaced too.
     service
-        .delete_entry(tonic::Request::new(DeleteEntryRequest {
-            id: Some(replacement.into()),
-        }))
+        .delete_entry(tonic::Request::new(DeleteEntryRequest::default()).with_entry_id(replacement))
         .await
         .expect("failed to delete the replacement asset dataset");
     let updated = update_dataset_entry(
@@ -759,7 +757,7 @@ async fn update_entry(
     request: UpdateEntryRequest,
 ) -> tonic::Result<UpdateEntryResponse> {
     service
-        .update_entry(tonic::Request::new(request.into()))
+        .update_entry(with_entry_id_header(request.id, request))
         .await
         .map(|response| response.into_inner().try_into().unwrap())
 }
@@ -769,7 +767,7 @@ async fn update_dataset_entry(
     request: UpdateDatasetEntryRequest,
 ) -> tonic::Result<DatasetEntry> {
     service
-        .update_dataset_entry(tonic::Request::new(request.into()))
+        .update_dataset_entry(with_entry_id_header(request.id, request))
         .await
         .map(|response| response.into_inner().dataset.unwrap().try_into().unwrap())
 }
@@ -797,9 +795,13 @@ async fn update_table_entry(
     request: UpdateTableEntryRequest,
 ) -> tonic::Result<TableEntry> {
     service
-        .update_table_entry(tonic::Request::new(request.into()))
+        .update_table_entry(with_entry_id_header(request.id, request))
         .await
         .map(|response| response.into_inner().table.unwrap().try_into().unwrap())
+}
+
+fn with_entry_id_header<T>(entry_id: EntryId, request: impl Into<T>) -> tonic::Request<T> {
+    tonic::Request::new(request.into()).with_entry_id(entry_id)
 }
 
 async fn read_table_entry(
@@ -807,9 +809,9 @@ async fn read_table_entry(
     table_id: EntryId,
 ) -> tonic::Result<TableEntry> {
     service
-        .read_table_entry(tonic::Request::new(ReadTableEntryRequest {
-            id: Some(table_id.into()),
-        }))
+        .read_table_entry(
+            tonic::Request::new(ReadTableEntryRequest::default()).with_entry_id(table_id),
+        )
         .await
         .map(|response| response.into_inner().table.unwrap().try_into().unwrap())
 }

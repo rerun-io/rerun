@@ -97,13 +97,11 @@ async fn fetch_chunk_ids(
     batch: &RecordBatch,
 ) -> Result<Vec<ChunkId>, ApiError> {
     let stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(stream, None);
+    let mut stream = re_redap_client::fetch_chunks_response_to_chunks(stream, None);
 
     let mut chunk_ids = Vec::new();
     while let Some(chunks) = stream.next().await {
-        for (chunk, _segment_id) in chunks? {
-            chunk_ids.push(chunk.id());
-        }
+        chunk_ids.extend(chunks?.iter().map(|chunk| chunk.id()));
     }
     chunk_ids.sort();
 

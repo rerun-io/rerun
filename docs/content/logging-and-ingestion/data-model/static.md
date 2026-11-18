@@ -40,7 +40,7 @@ snippet: concepts/static/log_static
 
 The alternative would be to log that data at the beginning of every relevant timeline, which can be very problematic as the set of timelines might not even be known before runtime.
 
-Similarly, [coordinate systems](transforms.md) or [annotation context](../../viewer/blueprints-and-views/annotation-context.md) are typically stored as static.
+Similarly, [coordinate systems](transforms.md) or [annotation context](../../viewer/view-concepts/annotation-context.md) are typically stored as static.
 
 
 ### Memory savings

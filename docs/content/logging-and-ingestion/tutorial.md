@@ -62,7 +62,7 @@ If the Viewer was still running, Rerun will simply connect to this existing sess
 </picture>
 
 _This is a good time to make yourself familiar with the viewer: try interacting with the scene and exploring the different menus._
-_Checkout the [Viewer Walkthrough](../viewer/tutorial/navigating-the-viewer.md) and [viewer reference](../viewer/ui/overview.md) for a complete tour of the viewer's capabilities._
+_See the [Viewer overview](../viewer/ui/overview.md) for a tour of the user interface._
 
 ## Under the hood
 

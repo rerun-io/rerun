@@ -59,10 +59,13 @@ pub enum UICommand {
     DebugTools,
 
     ToggleFullscreen,
+
     #[cfg(not(target_arch = "wasm32"))]
     ZoomInUi,
+
     #[cfg(not(target_arch = "wasm32"))]
     ZoomOutUi,
+
     #[cfg(not(target_arch = "wasm32"))]
     ResetUiZoom,
 
@@ -86,6 +89,7 @@ pub enum UICommand {
     // Graphics options:
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGl,
+
     #[cfg(target_arch = "wasm32")]
     RestartWithWebGpu,
 

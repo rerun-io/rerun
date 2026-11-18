@@ -4,7 +4,7 @@ order: 100
 description: Chunks, the Arrow-backed unit Rerun uses to log, store, and query data
 ---
 
-A *Chunk* is the core datastructure at the heart of Rerun: it dictates how data gets logged, injected, stored, and queried.
+A *Chunk* is the core datastructure at the heart of Rerun: it dictates how data gets logged, ingested, stored, and queried.
 A basic understanding of chunks is important in order to understand why and how Rerun and its APIs work the way they work.
 
 

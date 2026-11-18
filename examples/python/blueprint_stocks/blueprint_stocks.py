@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import datetime as dt
-from typing import Any
 
 import humanize
 import pytz
@@ -42,7 +41,7 @@ def one_stock_with_info(symbol: str) -> rrb.ContainerLike:
     )
 
 
-def compare_two(symbol1: str, symbol2: str, day: Any) -> rrb.ContainerLike:
+def compare_two(symbol1: str, symbol2: str, day: dt.date) -> rrb.ContainerLike:
     """Create a blueprint comparing 2 stocks for a single day."""
     return rrb.TimeSeriesView(
         name=f"{symbol1} vs {symbol2} ({day})",
@@ -69,7 +68,7 @@ def one_stock_no_peaks(symbol: str) -> rrb.ContainerLike:
     )
 
 
-def stock_grid(symbols: list[str], dates: list[Any]) -> rrb.ContainerLike:
+def stock_grid(symbols: list[str], dates: list[dt.date]) -> rrb.ContainerLike:
     """Create a grid of stocks and their time series over all days."""
     return rrb.Vertical(
         contents=[

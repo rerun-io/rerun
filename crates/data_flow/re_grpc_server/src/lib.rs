@@ -1275,7 +1275,7 @@ impl MessageProxy {
         });
 
         match self.options.playback_behavior {
-            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)), // NOLINT: Stream::chain
+            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)), // relint: allow(zip_chain_method): Stream::chain
             PlaybackBehavior::NewestFirst => Box::pin(PriorityMerge::new(channel, history)),
         }
     }

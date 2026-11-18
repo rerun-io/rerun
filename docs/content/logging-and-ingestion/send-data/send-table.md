@@ -85,7 +85,7 @@ client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))
 
 ## Using in Jupyter notebooks
 
-Rerun provides special support for Jupyter notebooks, see [Embed Rerun in notebooks](../../integrations/embed-notebooks.md).
+Rerun provides special support for Jupyter notebooks, see [Embed Rerun in notebooks](../../viewer/integrations/embed-notebooks.md).
 Note that this API makes use of `rr.notebook.Viewer`:
 
 ```python

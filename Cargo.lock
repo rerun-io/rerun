@@ -9098,6 +9098,7 @@ dependencies = [
  "re_ui",
  "re_workspace_hack",
  "serde_json",
+ "thiserror 2.0.19",
  "tokio",
  "web-time",
 ]
@@ -9273,6 +9274,7 @@ dependencies = [
  "rand 0.9.5",
  "re_async",
  "re_workspace_hack",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -9310,6 +9312,7 @@ dependencies = [
  "re_byte_size",
  "re_workspace_hack",
  "serde",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -9953,6 +9956,7 @@ dependencies = [
  "re_log",
  "re_workspace_hack",
  "serde",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -10277,6 +10281,7 @@ dependencies = [
  "re_workspace_hack",
  "serde",
  "thiserror 2.0.19",
+ "uuid",
 ]
 
 [[package]]
@@ -10444,6 +10449,7 @@ dependencies = [
  "serde",
  "smallvec",
  "sysinfo",
+ "thiserror 2.0.19",
  "wasm-bindgen",
  "web-time",
 ]
@@ -10463,11 +10469,9 @@ dependencies = [
 [[package]]
 name = "re_mp4"
 version = "0.5.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63d71dca1bc07c053ed67ccfd0b52df652192a6541fbdf85cc3d46142e20d709"
+source = "git+https://github.com/rerun-io/re_mp4.git?branch=main#dd10225b0bcd192e0acaa4efa7d6e41682481d72"
 dependencies = [
  "byteorder",
- "bytes",
  "num-rational",
  "serde",
  "serde_json",
@@ -10762,6 +10766,7 @@ dependencies = [
  "rfd",
  "serde",
  "serde_json",
+ "thiserror 2.0.19",
  "tokio",
  "url",
  "uuid",
@@ -10934,6 +10939,7 @@ dependencies = [
  "re_math",
  "re_renderer",
  "re_workspace_hack",
+ "thiserror 2.0.19",
  "web-sys",
  "web-time",
  "wgpu",
@@ -10951,6 +10957,31 @@ dependencies = [
  "re_test_context",
  "re_viewer_context",
  "re_workspace_hack",
+]
+
+[[package]]
+name = "re_rerun_mcp"
+version = "0.44.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "egui_inspection",
+ "egui_mcp",
+ "insta",
+ "parking_lot",
+ "re_analytics",
+ "re_error",
+ "re_log",
+ "re_protos",
+ "re_viewer_control_tools",
+ "re_workspace_hack",
+ "rmcp",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.19",
+ "tokio",
+ "tonic",
+ "url",
 ]
 
 [[package]]
@@ -11106,6 +11137,7 @@ dependencies = [
  "serde",
  "smallvec",
  "static_assertions",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -11443,6 +11475,7 @@ dependencies = [
  "strum 0.26.3",
  "syn 3.0.3",
  "tempfile",
+ "thiserror 2.0.19",
  "toml",
  "unindent",
  "walkdir",
@@ -12218,30 +12251,7 @@ dependencies = [
  "re_protos",
  "re_workspace_hack",
  "serde_json",
-]
-
-[[package]]
-name = "re_viewer_mcp"
-version = "0.44.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "egui_inspection",
- "egui_mcp",
- "insta",
- "parking_lot",
- "re_analytics",
- "re_error",
- "re_log",
- "re_protos",
- "re_viewer_control_tools",
- "re_workspace_hack",
- "rmcp",
- "schemars 1.2.2",
- "serde",
- "serde_json",
- "tokio",
- "tonic",
- "url",
+ "thiserror 2.0.19",
 ]
 
 [[package]]
@@ -12858,6 +12868,7 @@ dependencies = [
  "re_protos",
  "re_quota_channel",
  "re_redap_client",
+ "re_rerun_mcp",
  "re_sdk",
  "re_sdk_types",
  "re_server",
@@ -12868,11 +12879,11 @@ dependencies = [
  "re_uri",
  "re_video",
  "re_viewer",
- "re_viewer_mcp",
  "re_web_viewer_server",
  "re_workspace_hack",
  "similar-asserts",
  "tempfile",
+ "thiserror 2.0.19",
  "tokio",
  "unindent",
  "url",
@@ -12974,6 +12985,7 @@ dependencies = [
  "pyo3",
  "pyo3-build-config",
  "rand 0.9.5",
+ "re_analytics",
  "re_arrow_util",
  "re_async",
  "re_auth",

@@ -1,7 +1,7 @@
 //! Instructions sent to the viewer agent with its first prompt.
 //!
 //! Only things specific to the agent panel should go into this file.
-//! Anything general to rerun-mcp goes in the `re_viewer_mcp` preamble instead.
+//! Anything general to rerun-mcp goes in the `re_rerun_mcp` preamble instead.
 
 #[cfg(agent_harness_backend)]
 use std::fmt::Write as _;
@@ -76,26 +76,26 @@ impl Preamble<'_> {
         if let Some(endpoint) = viewer_endpoint {
             write!(
                 text,
-                "- The `rerun` MCP server is already connected to this very viewer: do not call `rerun_connect`. \
-                 Only if a tool reports that it is not connected, call `rerun_connect` with the endpoint `{endpoint}`."
+                "- The `rerun` MCP server is already connected to this very viewer: do not call `viewer_connect`. \
+                 Only if a tool reports that it is not connected, call `viewer_connect` with the endpoint `{endpoint}`."
             )
             .ok();
         } else {
             text.push_str(
                 "- The `rerun` MCP server drives this very viewer, but is not connected yet: \
-                 call `rerun_connect` before its other tools.",
+                 call `viewer_connect` before its other tools.",
             );
         }
         text.push_str(
             " Use its tools to see what the user sees and to drive the viewer, instead of guessing. \
-             Prefer the high-level `rerun_*` tools (`rerun_get_state`, `rerun_set_time_cursor`, …), \
-             and `rerun_list_commands` + `rerun_run_command` for anything the command palette can do; \
+             Prefer the high-level `viewer_*` tools (`viewer_get_state`, `viewer_set_time_cursor`, …), \
+             and `viewer_list_commands` + `viewer_run_command` for anything the command palette can do; \
              drop to the low-level widget tools (`widget_tree`, `click`, `screenshot`, …) only for what they do not cover. \
              The panel hands the `rerun` server to this session directly, so it never shows up in your own MCP \
-             configuration, with tools as `rerun_*`.\n",
+             configuration, with tools as `viewer_*`.\n",
         );
         text.push_str(
-            "- If your harness defers `rerun_*` tool schemas (e.g. `ToolSearch` in Claude Code), \
+            "- If your harness defers `viewer_*` tool schemas (e.g. `ToolSearch` in Claude Code), \
              load them before the first call.\n",
         );
 
@@ -141,7 +141,7 @@ impl Preamble<'_> {
              The SDK installs as `rerun-sdk` and imports as `rerun`. \
              Give users that same install line. \
              Pin the SDK to the viewer's minor version: read `viewer_version` from \
-             `rerun_get_state`, and use `rerun-sdk[catalog]~=0.X.0`. Check `rerun.__version__` in your first run, \
+             `viewer_get_state`, and use `rerun-sdk[catalog]~=0.X.0`. Check `rerun.__version__` in your first run, \
              and do not trust an unpinned resolve or an inherited `VIRTUAL_ENV`.\n",
         );
 
@@ -196,11 +196,11 @@ impl Preamble<'_> {
 pub fn model_api_text() -> String {
     let mut text = intro();
     text.push_str(
-        "- Your `rerun_*` tools act on this viewer directly and are ready to use. Start with \
-         `rerun_get_state` to see the loaded recordings, timelines, and views. Use \
-         `rerun_list_commands` and `rerun_run_command` for anything the command palette can do.\n\
-         - Use `rerun_save_screenshot` to inspect appearance and framing. The result is an image. \
-         Check state with `rerun_get_state` or `rerun_get_blueprint` first. A full-window screenshot is large.\n\
+        "- Your `viewer_*` tools act on this viewer directly and are ready to use. Start with \
+         `viewer_get_state` to see the loaded recordings, timelines, and views. Use \
+         `viewer_list_commands` and `viewer_run_command` for anything the command palette can do.\n\
+         - Use `viewer_save_screenshot` to inspect appearance and framing. The result is an image. \
+         Check state with `viewer_get_state` or `viewer_get_blueprint` first. A full-window screenshot is large.\n\
          - Ask for clarification in chat when needed. Provide code for the user to run when a \
          task needs their local files or Python environment.\n",
     );

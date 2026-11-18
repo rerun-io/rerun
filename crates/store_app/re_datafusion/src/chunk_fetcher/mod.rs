@@ -28,7 +28,7 @@ use re_redap_client::ApiResult;
 use re_span::Span;
 
 use crate::analytics::{DirectFetchFailureReason, PendingQueryAnalytics, TaskFetchStats};
-use crate::dataframe_query_common::DataframeClientAPI;
+use crate::dataframe_query_common::{ChunkSegments, ChunksWithSegment, DataframeClientAPI};
 
 // --- Telemetry ---
 
@@ -103,9 +103,6 @@ pub(crate) mod metrics {
             .add(bytes, &[KeyValue::new("method", "grpc")]);
     }
 }
-
-/// Chunks tagged with their segment ID.
-pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
 
 pub type SortedChunksWithSegment = (SegmentId, Vec<Chunk>);
 
@@ -398,6 +395,16 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
     let origin = client.origin().clone();
     let mut client = client.clone();
     for batch in batch_group {
+        let mut chunk_segments = ChunkSegments::default();
+        let batch = chunk_segments.add_batch(batch).map_err(|err| {
+            re_redap_client::ApiError::internal_with_source(
+                &origin,
+                None,
+                err,
+                "reading the chunks to fetch",
+            )
+        })?;
+
         request_counter.fetch_add(1, Ordering::Relaxed);
         let chunk_info: re_protos::common::v1alpha1::DataframePart = batch.clone().into();
 
@@ -421,16 +428,16 @@ pub async fn fetch_batch_group_via_grpc<T: DataframeClientAPI>(
             "/FetchChunks",
         );
 
-        let chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
+        let chunk_stream = re_redap_client::fetch_chunks_response_to_chunks(
             response_stream,
             Some(std::sync::Arc::clone(&decode_us)),
         );
 
-        let batch_chunks: Vec<ApiResult<ChunksWithSegment>> = chunk_stream.collect().await;
+        let batch_chunks: Vec<ApiResult<Vec<Chunk>>> = chunk_stream.collect().await;
         for chunk_result in batch_chunks {
-            all_chunks.push(chunk_result?);
+            all_chunks.push(chunk_segments.attribute(chunk_result?));
         }
-        stats.record_grpc_bytes(batch_byte_size(batch));
+        stats.record_grpc_bytes(batch_byte_size(&batch));
     }
 
     stats.record_decode(Duration::from_micros(decode_us.load(Ordering::Relaxed)));
@@ -659,7 +666,7 @@ fn calculate_adaptive_concurrency(ranges: &[Span<u64>]) -> usize {
 
 /// Decode a single chunk from raw RRD bytes (protobuf-encoded `ArrowMsg`).
 #[tracing::instrument(level = "debug", skip_all)]
-fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<SegmentId>), DirectFetchError> {
+fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<Chunk, DirectFetchError> {
     re_tracing::profile_function!();
     use re_log_encoding::Decodable;
     let raw_msg =
@@ -672,21 +679,14 @@ fn decode_chunk_from_bytes(bytes: &[u8]) -> Result<(Chunk, Option<SegmentId>), D
         return Err(DirectFetchError::new("invalid msg type".to_owned(), false));
     };
 
-    let segment_id_opt = arrow_msg
-        .store_id
-        .clone()
-        .map(|id| SegmentId::from(id.recording_id));
-
     use re_log_encoding::ToApplication as _;
     let app_msg = arrow_msg.to_application(()).map_err(|err| {
         DirectFetchError::new(format!("ArrowMsg::to_application() failed: {err}"), false)
     })?;
 
-    let chunk = Chunk::from_arrow_msg(&app_msg).map_err(|err| {
+    Chunk::from_arrow_msg(&app_msg).map_err(|err| {
         DirectFetchError::new(format!("Chunk::from_record_batch failed: {err}"), false)
-    })?;
-
-    Ok((chunk, segment_id_opt))
+    })
 }
 
 /// Fetches chunks for a single request batch using direct URLs and HTTP Range requests.
@@ -708,6 +708,11 @@ async fn fetch_batch_via_direct_urls(
     object_store_auth: &dyn ObjectStoreAuthenticator,
 ) -> Result<Vec<ChunksWithSegment>, DirectFetchError> {
     let column = |err: quiver::Error| DirectFetchError::new(err.to_string(), false);
+
+    let mut chunk_segments = ChunkSegments::default();
+    let batch = &chunk_segments
+        .add_batch(batch)
+        .map_err(|err| DirectFetchError::new(err.to_string(), false))?;
 
     // The fetchable URL comes from `direct_url` (presigned `https://`),
     // populated by the server. `chunk_key` carries the canonical source URL
@@ -911,7 +916,7 @@ async fn fetch_batch_via_direct_urls(
 
     // Fold every inner buffer into the outer task's accumulator before we bail
     // on the first error — we want stats from successful fetches preserved.
-    let mut all_chunks: Vec<(usize, (Chunk, Option<SegmentId>))> = Vec::new();
+    let mut all_chunks: Vec<DecodedChunk> = Vec::new();
     let mut first_err: Option<DirectFetchError> = None;
     async {
         let mut stream = futures::stream::iter(fetches).buffer_unordered(concurrency);
@@ -934,16 +939,13 @@ async fn fetch_batch_via_direct_urls(
     }
 
     // Step 6: Reassemble in original row order.
-    all_chunks.sort_by_key(|(idx, _)| *idx);
-    let ordered: Vec<(Chunk, Option<SegmentId>)> = all_chunks
-        .into_iter()
-        .map(|(_, chunk_with_segment)| chunk_with_segment)
-        .collect();
+    let ordered = chunk_segments.attribute_in_row_order(all_chunks);
 
     Ok(vec![ordered])
 }
 
-type DecodedChunk = (usize, (Chunk, Option<SegmentId>));
+/// A decoded chunk, with the index of its row in the request batch.
+type DecodedChunk = (usize, Chunk);
 
 /// Returns the decoded chunks plus the CPU time spent decoding them (the
 /// network permit has already been released, so this is pure decode cost).
@@ -1026,7 +1028,7 @@ async fn fetch_merged_range(
                         err
                     }
                 })
-                .map(|chunk_with_segment| (info.original_row_index, chunk_with_segment))
+                .map(|chunk| (info.original_row_index, chunk))
         })
         .try_collect()?;
     Ok((decoded, decode_start.elapsed()))

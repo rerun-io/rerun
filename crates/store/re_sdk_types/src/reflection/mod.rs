@@ -1610,7 +1610,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <ImageBuffer as Component>::name(),
             ComponentTypeReflection {
-                docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).",
+                docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).",
                 deprecation_summary: None,
                 custom_placeholder: None,
                 datatype: ImageBuffer::arrow_data_type(),
@@ -2340,7 +2340,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <TransformMat3x3 as Component>::name(),
             ComponentTypeReflection {
-                docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
+                docstring_md: "A 3x3 transformation matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
                 deprecation_summary: None,
                 custom_placeholder: Some(TransformMat3x3::default().to_arrow()?),
                 datatype: TransformMat3x3::arrow_data_type(),

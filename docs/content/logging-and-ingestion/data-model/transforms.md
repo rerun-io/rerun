@@ -54,7 +54,7 @@ Note that unlike in ROS, you can log your transform relationship on _any_ entity
 
 Named transform frames have several advantages over entity path based hierarchies:
 * topology may change over time
-* association of entities with coordinate frames is explicit and may change over time (it can also be [overridden via blueprint](../../viewer/blueprints-and-views/customize-views.md))
+* association of entities with coordinate frames is explicit and may change over time (it can also be [overridden via blueprint](../../viewer/view-concepts/customize-views.md))
 * several entities may be associated with the same frame
 * frees up entity paths for semantic rather than geometric organization
 
@@ -188,7 +188,7 @@ rr.log(
 )
 ```
 
-You can also set these for all cameras in a view with a [view default](../../viewer/blueprints-and-views/customize-views.md#per-view-component-default), e.g. `rrb.Spatial3DView(defaults=[rr.Pinhole.from_fields(image_plane_distance=0.5)])`.
+You can also set these for all cameras in a view with a [view default](../../viewer/view-concepts/customize-views.md#per-view-component-default), e.g. `rrb.Spatial3DView(defaults=[rr.Pinhole.from_fields(image_plane_distance=0.5)])`.
 
 A [`DepthImage`](../../reference/types/archetypes/depth_image.md) logged under a pinhole entity is back-projected into a 3D point cloud in 3D views, using the pinhole's intrinsics.
 
@@ -288,7 +288,7 @@ In 3D views, a transform can be shown as three axis arrows (red, green, and blue
   ```
 
 - `axis_length` sets the arrow length, in the local units of the transform.
-  You can also set it with a blueprint override or [view default](../../viewer/blueprints-and-views/customize-views.md#per-view-component-default).
+  You can also set it with a blueprint override or [view default](../../viewer/view-concepts/customize-views.md#per-view-component-default).
 - To hide the arrows, select the entity and remove the `TransformAxes3D` visualizer in the selection panel.
 - To show axes at the origin of the 3D view itself, set `show_axes` on the view: `rrb.Spatial3DView(spatial_information=rrb.SpatialInformation(show_axes=True))`.
 
@@ -317,7 +317,7 @@ The UI supports horizontal and vertical tree layout and you can filter by transf
     <source src="https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4" type="video/mp4" />
 </video>
 
-Agents can also inspect the transform graph through the [Viewer's MCP server](../../viewer/extend/mcp.md#inspecting-transforms) using `rerun_get_transform_graph`.
+Agents can also inspect the transform graph through the [Viewer's MCP server](../../viewer/extend/mcp.md#inspecting-transforms) using `viewer_get_transform_graph`.
 The tool provides a machine-readable JSON snapshot of the transform graph, including frame connections and optional transform values.
 
 <!--

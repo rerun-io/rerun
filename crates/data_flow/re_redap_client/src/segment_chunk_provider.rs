@@ -8,9 +8,7 @@ use re_log_types::EntryId;
 use re_types_core::SegmentId;
 
 use crate::asset::{AssetSegments, asset_manifest, asset_segments};
-use crate::{
-    ApiError, ConnectionClient, ConnectionHandle, fetch_chunks_response_to_chunk_and_segment_id,
-};
+use crate::{ApiError, ConnectionClient, ConnectionHandle, fetch_chunks_response_to_chunks};
 
 /// gRPC-backed [`ChunkProvider`]: serves the manifest of a dataset segment
 /// and fetches its chunks on demand via `FetchChunks`.
@@ -193,11 +191,11 @@ impl ChunkProvider for SegmentChunkProvider {
             .fetch_segment_chunks_by_id(&rb)
             .await
             .map_err(SegmentProviderError::Api)?;
-        let mut stream = fetch_chunks_response_to_chunk_and_segment_id(response, None);
+        let mut stream = fetch_chunks_response_to_chunks(response, None);
 
         let mut out = Vec::with_capacity(ids.len());
         while let Some(batch) = stream.next().await {
-            for (chunk, _seg_id) in batch.map_err(SegmentProviderError::Api)? {
+            for chunk in batch.map_err(SegmentProviderError::Api)? {
                 out.push(Arc::new(chunk));
             }
         }

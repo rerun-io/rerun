@@ -756,7 +756,7 @@ mod tests {
         );
 
         // `Debug` must defer to `Display`, so `.unwrap()` panics with the readable message:
-        assert_eq!(format!("{err:?}"), err.to_string()); // NOLINT: this test asserts `Debug` defers to `Display`
+        assert_eq!(format!("{err:?}"), err.to_string());
 
         // Downcasting to the type we already have must succeed:
         assert!(array.try_downcast_array_ref::<Int32Array>().is_ok());

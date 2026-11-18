@@ -56,6 +56,7 @@ DOCUMENTED_PACKAGES: Final[dict[str, tuple[str, ...]]] = {
     "rerun.chunk": ("Chunk",),
     "rerun.experimental": ("Experimental",),
     "rerun.experimental.dataloader": ("Experimental", "Dataloader"),
+    "rerun.experimental.spans": ("Experimental", "Spans"),
     "rerun.server": ("Server",),
     "rerun.urdf": ("URDF Support",),
     "rerun.notebook": ("Notebook",),

@@ -167,7 +167,7 @@ impl FilterCommand {
         let rrd_out_size = encoding_handle
             .context("couldn't spawn IO thread")?
             .join()
-            .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // NOLINT: there is no `Display` for this `err`
+            .map_err(|err| anyhow::anyhow!("Unknown error: {err:?}"))??; // relint: allow(debug_formatted_error): a thread panic payload (`Box<dyn Any + Send>`) has no `Display`
 
         let rrds_in_size = rx_size_bytes.recv().ok().map(|(size, _footers)| size);
         let size_reduction =

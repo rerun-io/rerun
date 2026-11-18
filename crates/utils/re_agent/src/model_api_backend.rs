@@ -33,7 +33,9 @@ use rig_core::streaming::{Item, StreamEvent};
 use crate::AgentProfileId;
 use crate::Responder;
 use crate::agent_toolbox::{AgentToolbox, ToolOutput};
-use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin};
+use crate::backend::{
+    AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin, TurnError,
+};
 
 /// The id of the model selector the backend offers as a session config option.
 const MODEL_CONFIG_ID: &str = "model";
@@ -237,15 +239,8 @@ impl ModelApiProvider {
     /// harnesses, because the agent panel should feel fast.
     pub fn default_model(self) -> &'static str {
         let models = self.models();
-        crate::DEFAULT_MODEL_PREFERENCES
-            .iter()
-            .find_map(|preference| {
-                models
-                    .iter()
-                    .find(|model| crate::transcript::matches_model_preference(model, preference))
-            })
-            .or_else(|| models.first())
-            .copied()
+        crate::model_recommendation::preferred_model_id(models, &crate::DEFAULT_MODEL_PREFERENCES)
+            .or_else(|| models.first().copied())
             .unwrap_or_default()
     }
 
@@ -310,7 +305,7 @@ impl ModelApiProvider {
     }
 
     /// Models offered in the model selector, best first. Includes [`Self::default_model`].
-    fn models(self) -> &'static [&'static str] {
+    pub fn models(self) -> &'static [&'static str] {
         match self {
             Self::Anthropic => &[
                 rig_core::providers::anthropic::CLAUDE_OPUS_5_5,
@@ -708,7 +703,7 @@ async fn run(
                     }
                 };
                 events.send(AgentEvent::TurnFinished(
-                    result.map_err(|err| err.to_string()),
+                    result.map_err(TurnError::ModelApi),
                 ));
 
                 for (config_id, value) in config_changes {
@@ -1797,7 +1792,7 @@ mod tests {
             .collect()
     }
 
-    fn turn_results(events: &[AgentEvent]) -> Vec<&Result<StopReason, String>> {
+    fn turn_results(events: &[AgentEvent]) -> Vec<&Result<StopReason, TurnError>> {
         events
             .iter()
             .filter_map(|event| match event {
@@ -1892,7 +1887,7 @@ mod tests {
         assert!(
             results[0]
                 .as_ref()
-                .is_err_and(|err| err.contains("overloaded"))
+                .is_err_and(|err| err.to_string().contains("overloaded"))
         );
         assert!(matches!(results[1], Ok(StopReason::EndTurn)));
         assert_eq!(message_text(&events), "ok");

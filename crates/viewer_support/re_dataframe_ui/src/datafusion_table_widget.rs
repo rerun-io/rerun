@@ -33,7 +33,7 @@ use crate::cards_view::CellChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection, SortDirectionUiExt as _};
 use crate::datafusion_adapter::{
     DataFusionAdapter, DataFusionQueryData, DataFusionQueryError, DataFusionQueryResult,
-    EntryLinksSpec, SegmentLinksSpec, check_filter, query_error_message,
+    EntryLinksSpec, InvalidFilter, SegmentLinksSpec, check_filter, query_error_message,
 };
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
@@ -383,6 +383,9 @@ pub struct DataFusionTableWidget<'a> {
     /// If provided, the toolbar on top of the table shows this as its title.
     title: Option<String>,
 
+    /// Header of the loading screen shown before the first results arrive.
+    loading_header: String,
+
     /// If provided, the toolbar on top of the table shows this at its left end.
     toolbar_summary_fn: Option<ToolbarSummaryFn<'a>>,
 
@@ -440,13 +443,12 @@ impl<'a> DataFusionTableWidget<'a> {
 
     /// Check that `sql` is a filter the table can run, against the columns it last showed.
     ///
-    /// The error is the message the filter bar shows for the filter. `None` if the table has not
-    /// been shown yet.
+    /// `None` if the table has not been shown yet.
     pub fn check_filter(
         egui_ctx: &egui::Context,
         table_ref: &TableReference,
         sql: &str,
-    ) -> Option<Result<(), String>> {
+    ) -> Option<Result<(), InvalidFilter>> {
         let schema =
             egui_ctx.data(|data| data.get_temp::<ShownTableSchema>(table_schema_id(table_ref)))?;
         Some(check_filter(schema.arrow_schema, sql))
@@ -478,6 +480,7 @@ impl<'a> DataFusionTableWidget<'a> {
             datafusion_table_ref: datafusion_table_ref.into(),
 
             title: None,
+            loading_header: "Loading table".to_owned(),
             toolbar_summary_fn: None,
             additional_column_heuristics: Box::new(|_, _, column| column),
             initial_query_data: Default::default(),
@@ -486,6 +489,13 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+
+        self
+    }
+
+    /// Overrides the default loading screen header, e.g. when the table is a dataset.
+    pub fn loading_header(mut self, loading_header: impl Into<String>) -> Self {
+        self.loading_header = loading_header.into();
 
         self
     }
@@ -654,7 +664,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 .map_err(|err| re_error::format_ref(&err))
                 .err();
             ui.loading_screen(
-                "Loading table",
+                self.loading_header.as_str(),
                 self.display_name().as_ref(),
                 error_string.as_deref(),
                 None,
@@ -717,7 +727,12 @@ impl<'a> DataFusionTableWidget<'a> {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
-                ui.loading_screen("Loading table", self.display_name().as_ref(), None, None);
+                ui.loading_screen(
+                    self.loading_header.as_str(),
+                    self.display_name().as_ref(),
+                    None,
+                    None,
+                );
                 return TableStatus::InitialLoading;
             }
         };

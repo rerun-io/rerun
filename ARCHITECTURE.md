@@ -144,9 +144,9 @@ Pass `--edges all` to `scripts/generate_crate_graph.py` for a version with every
 
 | Crate                | Description                                                                        |
 | -------------------- | ---------------------------------------------------------------------------------- |
+| re_rerun_mcp         | MCP server that lets LLM agents use Rerun.                                         |
 | re_sdk               | Rerun logging SDK                                                                  |
 | re_viewer            | The Rerun viewer                                                                   |
-| re_viewer_mcp        | MCP server that allows llm agents to use the Rerun Viewer.                         |
 | re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                              |
 | rerun                | The Rerun Rust SDK: log images, point clouds, etc, and visualize them effortlessly |
 | rerun-cli            | The Rerun command-line tool: the `rerun` binary, including the native Viewer       |

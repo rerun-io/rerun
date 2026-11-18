@@ -16,6 +16,13 @@ version.workspace = true
 [lints]
 workspace = true
 
+[lib]
+test = false
+
+[[bin]]
+name = "build_re_remote_store_types"
+test = false
+
 
 [package.metadata.docs.rs]
 all-features = true

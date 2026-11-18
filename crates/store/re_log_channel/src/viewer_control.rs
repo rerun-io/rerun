@@ -19,7 +19,7 @@ use re_protos::viewer_control::v1alpha1::{ViewerControlRequest, ViewerControlRes
 /// The viewer answers every operation within a few frames. Slow work, like `open` waiting
 /// on a slow server, has a shorter time limit of its own, after which the viewer answers that
 /// the work is still in progress. So if this limit is hit, the viewer has stopped responding.
-/// Keep it in step with `re_viewer_mcp`'s own deadlines: whichever of the two is shorter is the
+/// Keep it in step with `re_rerun_mcp`'s own deadlines: whichever of the two is shorter is the
 /// one that fires.
 pub const VIEWER_CONTROL_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15);
 
@@ -181,8 +181,11 @@ pub enum ViewerControlErrorCode {
 #[derive(thiserror::Error, Debug)]
 pub enum SaveScreenshotError {
     /// The requested view id could not be parsed as a UUID.
-    #[error("Failed to parse view id {view_id:?}, expected a UUID")]
-    InvalidViewId { view_id: String },
+    #[error("Failed to parse view id {view_id:?}, expected a UUID: {source}")]
+    InvalidViewId {
+        view_id: String,
+        source: uuid::Error,
+    },
 
     /// The requested view does not exist (or is not currently visible).
     #[error("View {view_id} not found")]

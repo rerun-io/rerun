@@ -16,6 +16,12 @@ pub enum Error {
     #[error("Unexpected URI:: {0}")]
     UnexpectedUri(String),
 
+    #[error("Folder path is not valid percent-encoded UTF-8: {source}\nPath: {path:?}")]
+    InvalidFolderPath {
+        path: String,
+        source: std::str::Utf8Error,
+    },
+
     #[error("Unexpected opaque origin: {0}")]
     UnexpectedOpaqueOrigin(String),
 

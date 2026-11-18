@@ -32,6 +32,7 @@ nohash-hasher.workspace = true
 parking_lot.workspace = true
 serde.workspace = true
 smallvec.workspace = true
+thiserror.workspace = true
 web-time.workspace = true
 
 # native dependencies:

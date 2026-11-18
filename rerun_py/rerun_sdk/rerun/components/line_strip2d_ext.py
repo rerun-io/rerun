@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import numbers
 from collections.abc import Sequence, Sized
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import LineStrip2DArrayLike
+    from . import LineStrip2DArrayLike, LineStrip2DLike
 
 
 def next_offset(acc: int, arr: Sized) -> int:
@@ -60,7 +60,7 @@ class LineStrip2DExt:
             # .. otherwise assume that it's several strips.
             else:
 
-                def to_vec2d_batch(strip: Any) -> Vec2DBatch:
+                def to_vec2d_batch(strip: LineStrip2DLike) -> Vec2DBatch:
                     if isinstance(strip, LineStrip2D):
                         return Vec2DBatch(strip.points)
                     else:
