@@ -32,11 +32,14 @@ use crate::{Pinhole, SpatialView2D};
 fn store_screen_space_2d(state: &mut SpatialViewState, screen_space: ScreenSpace2D) -> bool {
     let ScreenSpace2D {
         pixels_per_scene_unit,
+        viewport_size: view_size_in_points,
         visible_scene_rect,
     } = screen_space;
     // Degenerate visual bounds give NaN, which never equals itself and would repaint forever.
-    let screen_space = (pixels_per_scene_unit.is_finite() && visible_scene_rect.is_finite())
-        .then_some(screen_space);
+    let screen_space = (pixels_per_scene_unit.is_finite()
+        && view_size_in_points.is_finite()
+        && visible_scene_rect.is_finite())
+    .then_some(screen_space);
     if state.screen_space_2d == screen_space {
         return false;
     }
@@ -161,6 +164,7 @@ impl SpatialView2D {
         // Visualizers already ran this frame, so a change needs another frame.
         let screen_space = ScreenSpace2D {
             pixels_per_scene_unit: ui.ctx().pixels_per_point() * ui_from_scene.scale().max_elem(),
+            viewport_size: response.rect.size(),
             visible_scene_rect: scene_from_ui.transform_rect(response.rect),
         };
         if store_screen_space_2d(state, screen_space) {

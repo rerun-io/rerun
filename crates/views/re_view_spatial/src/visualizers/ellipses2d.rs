@@ -67,6 +67,7 @@ fn ellipse_segment_count_in_view(
     let Some(ScreenSpace2D {
         pixels_per_scene_unit,
         visible_scene_rect,
+        ..
     }) = screen_space
     else {
         return Some(FIXED_ELLIPSE_SEGMENTS_IN_3D);
@@ -403,6 +404,7 @@ mod tests {
     fn screen_space() -> ScreenSpace2D {
         ScreenSpace2D {
             pixels_per_scene_unit: 10.0,
+            viewport_size: egui::vec2(1000.0, 1000.0),
             visible_scene_rect: egui::Rect::from_min_max(
                 egui::pos2(-50.0, -50.0),
                 egui::pos2(50.0, 50.0),
