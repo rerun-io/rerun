@@ -13,6 +13,7 @@ from rerun.experimental.spans import SpanTable
 
 _DURATION = pa.duration("ns")
 _TIMESTAMP = pa.timestamp("ns")
+_SEQUENCE = pa.int64()
 
 
 def _mock_dataset(timelines: dict[str, pa.DataType]) -> Mock:
@@ -59,9 +60,11 @@ def _rows(**columns: pa.Array) -> pa.Table:
         (
             _span_schema(),
             {"other_time": _DURATION},
-            r"Span timeline 'capture_time' is not a duration or timestamp timeline",
+            r"Span timeline 'capture_time' is not a timeline of the dataset",
         ),
         (_span_schema(), {"capture_time": _TIMESTAMP}, r"but the dataset timeline is timestamp"),
+        (_span_schema(_SEQUENCE), {"capture_time": _DURATION}, r"are int64, but the dataset timeline is duration"),
+        (_span_schema(pa.int32()), {"capture_time": pa.int32()}, r"Not a timeline datatype: int32"),
         (_span_schema().remove(1), {"capture_time": _DURATION}, r"requires 'rerun_span_id'"),
         (
             _span_schema().append(pa.field("other:start", _DURATION)).append(pa.field("other:end", _DURATION)),
@@ -84,9 +87,9 @@ def test_wrapping_rejects_tables_that_do_not_match_the_dataset(
     "index,schema,message",
     [
         (
-            "frame",
+            "missing",
             None,
-            r"Span timeline 'frame' is not a duration or timestamp timeline of the dataset; candidates are \['capture_time'\]",
+            r"Span timeline 'missing' is not a timeline of the dataset; candidates are \['capture_time', 'frame'\]",
         ),
         ("capture_time", pa.schema([("rerun_note", pa.string())]), r"'rerun_note' conflicts"),
         ("capture_time", pa.schema([("note:start", _DURATION)]), r"'note:start' conflicts"),
@@ -99,6 +102,16 @@ def test_create_rejects_invalid_columns(index: str, schema: pa.Schema | None, me
         SpanTable.create(dataset, index, schema=schema)
 
     dataset.catalog.create_table.assert_not_called()
+
+
+def test_create_on_sequence_timeline() -> None:
+    dataset = _mock_dataset({"capture_time": _DURATION, "frame": _SEQUENCE})
+    dataset.catalog.create_table.side_effect = lambda _name, schema, _url: Mock(arrow_schema=Mock(return_value=schema))
+
+    spans = SpanTable.create(dataset, "frame", name="spans")
+
+    schema = spans.arrow_schema()
+    assert (schema.field("frame:start").type, schema.field("frame:end").type) == (_SEQUENCE, _SEQUENCE)
 
 
 def test_reader_joins_recording_properties() -> None:
@@ -141,6 +154,8 @@ def test_reader_joins_recording_properties() -> None:
 @pytest.mark.parametrize(
     "datatype,start,end,expected",
     [
+        (_SEQUENCE, 3, 7, [3, 7]),
+        (_SEQUENCE, np.int32(-4), np.uint64(2**63 - 1), [-4, 2**63 - 1]),
         (_DURATION, timedelta(seconds=1), timedelta(seconds=2, microseconds=7), [1_000_000_000, 2_000_007_000]),
         (_DURATION, np.timedelta64(3, "s"), np.timedelta64(3_000_000_001, "ns"), [3_000_000_000, 3_000_000_001]),
         (
@@ -170,6 +185,12 @@ def test_append_converts_boundaries_exactly(datatype: pa.DataType, start: Any, e
     "datatype,overrides,error,message",
     [
         (_DURATION, {"start": 1, "end": 1}, TypeError, "Boundaries on"),
+        (_SEQUENCE, {"start": timedelta(1)}, TypeError, "Boundaries on"),
+        (_SEQUENCE, {"start": 1.0}, TypeError, "Boundaries on"),
+        (_SEQUENCE, {"start": True}, TypeError, "Boundaries on"),
+        (_SEQUENCE, {"start": np.timedelta64(1, "ns")}, TypeError, "Boundaries on"),
+        (_SEQUENCE, {"end": 2**63}, ValueError, "not representable as a 64-bit integer"),
+        (_SEQUENCE, {"end": np.uint64(2**63)}, ValueError, "not representable as a 64-bit integer"),
         (_TIMESTAMP, {"start": timedelta(1), "end": timedelta(1)}, TypeError, "Boundaries on"),
         (_TIMESTAMP, {"end": np.datetime64("2300-01-01")}, ValueError, "not representable exactly"),
         (_DURATION, {"end": timedelta(days=300 * 365)}, ValueError, "not representable exactly"),
@@ -184,8 +205,12 @@ def test_append_rejects_invalid_spans(
     datatype: pa.DataType, overrides: dict[str, Any], error: type[Exception], message: str
 ) -> None:
     spans, table = _spans(datatype)
-    epoch = datetime(2026, 1, 1, tzinfo=UTC) if datatype == _TIMESTAMP else timedelta(0)
-    values: dict[str, Any] = {"segment_id": "episode_a", "start": epoch, "end": epoch + timedelta(seconds=7)}
+    values: dict[str, Any]
+    if datatype == _SEQUENCE:
+        values = {"segment_id": "episode_a", "start": 0, "end": 7}
+    else:
+        epoch = datetime(2026, 1, 1, tzinfo=UTC) if datatype == _TIMESTAMP else timedelta(0)
+        values = {"segment_id": "episode_a", "start": epoch, "end": epoch + timedelta(seconds=7)}
 
     with pytest.raises(error, match=message):
         spans.append(**{**values, **overrides})
@@ -218,6 +243,69 @@ def test_write_rejects_invalid_rows(rows: pa.Table, message: str) -> None:
     spans, table = _spans()
 
     with pytest.raises(ValueError, match=message):
+        spans.write(rows)
+
+    table.append.assert_not_called()
+
+
+def _boundaries(column_type: pa.DataType) -> tuple[pa.Array, pa.Array]:
+    return pa.array([3], pa.int64()).cast(column_type), pa.array([7], pa.int64()).cast(column_type)
+
+
+@pytest.mark.parametrize(
+    "table_type,start,end,expected",
+    [
+        (_SEQUENCE, *_boundaries(_SEQUENCE), [3, 7]),
+        (_SEQUENCE, *_boundaries(pa.uint8()), [3, 7]),
+        (_DURATION, *_boundaries(_SEQUENCE), [3, 7]),
+        (_DURATION, *_boundaries(pa.duration("us")), [3_000, 7_000]),
+        (_TIMESTAMP, *_boundaries(pa.timestamp("us", tz="UTC")), [3_000, 7_000]),
+        (
+            _TIMESTAMP,
+            pa.array([1], pa.int32()).cast(pa.date32()),
+            pa.array([2], pa.int32()).cast(pa.date32()),
+            [86_400 * 10**9, 2 * 86_400 * 10**9],
+        ),
+        (_SEQUENCE, *(array.dictionary_encode() for array in _boundaries(_SEQUENCE)), [3, 7]),
+    ],
+)
+def test_write_accepts_boundary_columns_of_the_timeline_kind(
+    table_type: pa.DataType, start: pa.Array, end: pa.Array, expected: list[int]
+) -> None:
+    spans, table = _spans(table_type)
+
+    spans.write(_rows(**{"capture_time:start": start, "capture_time:end": end}))
+
+    (batch,) = table.append.call_args.args
+    assert [batch[f"capture_time:{marker}"].cast(pa.int64())[0].as_py() for marker in ("start", "end")] == expected
+
+
+@pytest.mark.parametrize(
+    "table_type,column",
+    [
+        (_SEQUENCE, pa.array([3], pa.int64()).cast(_TIMESTAMP)),
+        (_SEQUENCE, pa.array([3], pa.int64()).cast(_TIMESTAMP).dictionary_encode()),
+        (_SEQUENCE, pa.array([3], pa.int64()).cast(_DURATION)),
+        (_SEQUENCE, pa.array([3.0])),
+        (_SEQUENCE, pa.array([True])),
+        (_SEQUENCE, pa.array(["3"])),
+        (_SEQUENCE, pa.array([3], pa.int64()).cast(pa.time64("ns"))),
+        (_DURATION, pa.array([3], pa.int64()).cast(_TIMESTAMP)),
+        (_DURATION, pa.array([3.0])),
+        (_TIMESTAMP, pa.array([3], pa.int64()).cast(_DURATION)),
+        (_TIMESTAMP, pa.array(["2026-01-01T00:00:00"])),
+    ],
+)
+@pytest.mark.parametrize("marker", ["start", "end"])
+def test_write_rejects_boundary_columns_of_another_kind(table_type: pa.DataType, column: pa.Array, marker: str) -> None:
+    spans, table = _spans(table_type)
+    rows = _rows(**{
+        "capture_time:start": pa.array([3], pa.int64()),
+        "capture_time:end": pa.array([7], pa.int64()),
+        f"capture_time:{marker}": column,
+    })
+
+    with pytest.raises(ValueError, match=rf"capture_time:{marker} is .*, but the .* timeline 'capture_time' takes"):
         spans.write(rows)
 
     table.append.assert_not_called()

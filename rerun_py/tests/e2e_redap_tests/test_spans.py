@@ -68,6 +68,7 @@ def test_reader_segment_filters(span_table: SpanTable, segments: tuple[str, str]
 @pytest.mark.parametrize(
     "index,boundaries",
     [
+        ("time_3", [(7, 7), (np.int64(2**63 - 1), 2**63 - 1)]),
         (
             "time_2",
             [
@@ -94,7 +95,7 @@ def test_scalar_boundaries_round_trip_exactly(
     spans = SpanTable.create(readonly_test_dataset, index=index)
     request.addfinalizer(spans.delete)
     expected = {
-        spans.append(segment_id=segments[0], start=boundary, end=boundary): nanos for boundary, nanos in boundaries
+        spans.append(segment_id=segments[0], start=boundary, end=boundary): stored for boundary, stored in boundaries
     }
 
     rows = spans.table.reader().to_arrow_table()
@@ -102,6 +103,27 @@ def test_scalar_boundaries_round_trip_exactly(
     for name in (f"{index}:start", f"{index}:end"):
         actual = dict(zip(rows["rerun_span_id"].to_pylist(), rows[name].cast(pa.int64()).to_pylist(), strict=True))
         assert actual == expected, name
+
+
+def test_sequence_spans_write_and_read(
+    readonly_test_dataset: DatasetEntry, segments: tuple[str, str], request: pytest.FixtureRequest
+) -> None:
+    spans = SpanTable.create(readonly_test_dataset, "time_3", schema=DATA_SCHEMA)
+    request.addfinalizer(spans.delete)
+    first, second = segments
+    spans.write(
+        pa.table({
+            "rerun_segment_id": [first, first, second],
+            "rerun_span_id": ["a1", "a2", "b1"],
+            "time_3:start": pa.array([2, 5, 12], pa.int64()),
+            "time_3:end": pa.array([10, 8, 15], pa.int64()),
+            "state": ["grasp", "release", "grasp"],
+        })
+    )
+
+    selected = spans.reader().filter((col("state") == "grasp") & (col("time_3:start") > 3)).to_arrow_table().to_pylist()
+
+    assert [(row["rerun_span_id"], row["time_3:start"], row["time_3:end"]) for row in selected] == [("b1", 12, 15)]
 
 
 def test_append_generates_uuid4_ids(span_table: SpanTable, segments: tuple[str, str]) -> None:

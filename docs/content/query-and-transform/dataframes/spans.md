@@ -22,17 +22,16 @@ Each span includes at least these columns:
 |---|---|---|
 | `rerun_segment_id` | `string` | ID of the recording containing the span |
 | `rerun_span_id` | `string` | Unique ID of the span, generated as a UUID when omitted |
-| `<timeline>:start` | `duration[ns]` or `timestamp[ns]` | Required inclusive start |
+| `<timeline>:start` | `int64`, `duration[ns]`, or `timestamp[ns]` | Required inclusive start |
 | `<timeline>:end` | Same type as start | Required inclusive end |
 
-Each table uses one duration or timestamp timeline, chosen with `index`.
-Its boundaries use the timeline's nanosecond-resolution Arrow type.
+Each table uses one timeline, chosen with `index`.
+Its boundaries use the timeline's Arrow type: `int64` steps on sequence timelines and nanoseconds on duration and timestamp timelines.
 Use `schema` to declare additional data columns, such as `state` and `score`:
 
 snippet: howto/spans[create]
 
 Omit `schema` if you do not need additional data columns.
-Sequence timelines, including frame indices, are not supported.
 Data columns and the timeline are fixed at creation.
 By default, the table appears in the catalog's `spans` folder.
 Retrieve it later with `SpanTable.open(dataset)`.
@@ -41,6 +40,7 @@ To keep several span tables for one dataset, pass the same `name` to `SpanTable.
 ## Add or edit spans
 
 Pass inclusive `start` and `end` boundaries, with `start <= end`.
+On sequence timelines, use `int` or `numpy.integer` values.
 On duration timelines, use `datetime.timedelta` or `numpy.timedelta64` values.
 On timestamp timelines, use `datetime.datetime` or `numpy.datetime64` values; naive datetimes are treated as UTC.
 Pass column values through `data`:
@@ -55,7 +55,9 @@ Upsert replaces the whole row, so omitted nullable fields become null; an unknow
 Use `annotations.write(rows, mode="append")` for bulk Arrow writes; `"upsert"` and `"overwrite"` are also supported.
 `"overwrite"` replaces every span in the table, not only the rows with matching IDs.
 Supply `rerun_segment_id` and typed `<timeline>:start` / `<timeline>:end` columns, such as `time:start` and `time:end`.
-Both boundary columns are required on every row and use `duration[ns]` or `timestamp[ns]` to match the table schema.
+Both boundary columns are required on every row and use `int64`, `duration[ns]`, or `timestamp[ns]` to match the table schema.
+Integer boundary columns are also accepted on every timeline, as nanoseconds on duration and timestamp timelines, and timestamp timelines also accept dates.
+Any other boundary type, such as timestamps on a sequence timeline, is rejected.
 Missing span IDs are generated automatically.
 Bulk writes don't check that caller-supplied span IDs are unique; appending an existing ID creates a duplicate row.
 Every write rejects segment IDs that are not in the dataset.

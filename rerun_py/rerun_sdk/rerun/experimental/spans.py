@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta
-from typing import TYPE_CHECKING, Any, Literal, assert_never, overload
+from typing import TYPE_CHECKING, Any, Literal, TypeGuard, assert_never, overload
 from uuid import uuid4
 
 import numpy as np
@@ -25,11 +25,43 @@ _SPAN_ID = "rerun_span_id"
 _IDS = {_SEGMENT_ID: pa.string(), _SPAN_ID: pa.string()}
 
 _BOUNDARY_TYPES: dict[TimelineKind, tuple[type, ...]] = {
+    TimelineKind.SEQUENCE: (int, np.integer),
     TimelineKind.DURATION: (timedelta, np.timedelta64),
     TimelineKind.TIMESTAMP: (datetime, np.datetime64),
 }
 
-_Boundary = timedelta | np.timedelta64 | datetime | np.datetime64
+_Boundary = int | np.integer | timedelta | np.timedelta64 | datetime | np.datetime64
+
+
+def _is_step(value: object) -> TypeGuard[int | np.integer]:
+    # `numpy.timedelta64` subclasses `numpy.signedinteger`, and `bool` subclasses `int`.
+    return isinstance(value, (int, np.integer)) and not isinstance(value, (bool, np.timedelta64))
+
+
+_BULK_BOUNDARY_TYPES = {
+    TimelineKind.SEQUENCE: "integers",
+    TimelineKind.DURATION: "durations, or integers as nanoseconds",
+    TimelineKind.TIMESTAMP: "timestamps, dates, or integers as nanoseconds since the Unix epoch",
+}
+
+
+def _source_kind_matches(source: pa.DataType, kind: TimelineKind) -> bool:
+    """Whether a bulk boundary column of type `source` holds values of timeline kind `kind`, so casting keeps its meaning."""
+    while True:
+        if isinstance(source, pa.ExtensionType):
+            source = source.storage_type
+        elif pa.types.is_dictionary(source) or pa.types.is_run_end_encoded(source):
+            source = source.value_type
+        else:
+            break
+    # Integers are raw stored values on every kind; a null-typed column is rejected later as missing boundaries.
+    if pa.types.is_integer(source) or pa.types.is_null(source):
+        return True
+    if pa.types.is_duration(source):
+        return kind is TimelineKind.DURATION
+    if pa.types.is_timestamp(source) or pa.types.is_date(source):
+        return kind is TimelineKind.TIMESTAMP
+    return False
 
 
 def _boundary_columns(index: str) -> tuple[str, str]:
@@ -45,7 +77,13 @@ def _is_managed(name: str) -> bool:
     return name.startswith("rerun_") or _is_boundary(name)
 
 
-def _boundary_nanos(value: _Boundary) -> int | None:
+def _boundary_value(value: _Boundary) -> int | None:
+    """The stored 64-bit value: the step itself on sequence timelines, nanoseconds on the others."""
+    if _is_step(value):
+        step = int(value)
+        if not -(1 << 63) <= step < 1 << 63:
+            raise ValueError(f"Span boundary {value!r} is not representable as a 64-bit integer")
+        return step
     if isinstance(value, (np.timedelta64, np.datetime64)):
         if np.isnat(value):
             return None
@@ -56,13 +94,6 @@ def _boundary_nanos(value: _Boundary) -> int | None:
     if not -(1 << 63) <= nanos < 1 << 63:
         raise ValueError(f"Span boundary {value!r} is not representable exactly as 64-bit nanoseconds")
     return nanos
-
-
-def _time_kind(datatype: pa.DataType) -> TimelineKind:
-    kind = TimelineKind.from_datatype(datatype)
-    if kind not in _BOUNDARY_TYPES:
-        raise ValueError(f"Span boundaries require duration[ns] or timestamp[ns]; got {datatype}")
-    return kind
 
 
 # TODO(RR-6288): `rr.catalog.Schema` should handle that for us.
@@ -87,7 +118,7 @@ def _validate_schema(schema: pa.Schema) -> tuple[str, pa.DataType]:
     index = next(iter(starts))
     start, end = _boundary_columns(index)
     datatype = schema.field(start).type
-    _time_kind(datatype)
+    TimelineKind.from_datatype(datatype)
     if (end_type := schema.field(end).type) != datatype:
         raise ValueError(f"Span boundaries on {index!r} must have matching types; got {datatype} and {end_type}")
     return index, datatype
@@ -97,12 +128,9 @@ def _dataset_index_type(dataset: DatasetEntry, index: str) -> pa.DataType:
     schema = dataset.schema()
     fields = schema.to_arrow()
     timelines = {column.name: fields.field(column.name).type for column in schema.index_columns()}
-    if index not in timelines or TimelineKind.from_datatype(timelines[index]) not in _BOUNDARY_TYPES:
-        candidates = sorted(
-            name for name, datatype in timelines.items() if TimelineKind.from_datatype(datatype) in _BOUNDARY_TYPES
-        )
+    if index not in timelines:
         raise ValueError(
-            f"Span timeline {index!r} is not a duration or timestamp timeline of the dataset; candidates are {candidates}"
+            f"Span timeline {index!r} is not a timeline of the dataset; candidates are {sorted(timelines)}"
         )
     return timelines[index]
 
@@ -138,9 +166,9 @@ class SpanTable:
     """
     Time span annotations for a dataset.
 
-    Data columns and one duration or timestamp timeline are fixed at creation.
-    Every row requires inclusive start and end boundaries, stored in nanoseconds.
-    Sequence timelines are unsupported.
+    Data columns and one timeline are fixed at creation.
+    Every row requires inclusive start and end boundaries, stored in the timeline's own datatype:
+    `int64` steps for sequence timelines, and nanoseconds for duration and timestamp timelines.
 
     Span annotations have an independent lifecycle from their dataset.
     """
@@ -165,7 +193,7 @@ class SpanTable:
         self._dataset, self._table = dataset, table
         self._schema = table.arrow_schema()
         self._index_name, self._index_type = _validate_schema(self._schema)
-        self._index_kind = _time_kind(self._index_type)
+        self._index_kind = TimelineKind.from_datatype(self._index_type)
         dataset_type = _dataset_index_type(dataset, self._index_name)
         if dataset_type != self._index_type:
             raise ValueError(
@@ -186,7 +214,7 @@ class SpanTable:
         url: str | None = None,
     ) -> SpanTable:
         """
-        Create an empty table on the duration or timestamp timeline `index`; `schema` declares data columns.
+        Create an empty table on the timeline `index`; `schema` declares data columns.
 
         `name` defaults to a name in the catalog's `spans` folder derived from the dataset ID.
 
@@ -195,7 +223,7 @@ class SpanTable:
         AlreadyExistsError
             If a table named `name` already exists.
         ValueError
-            If `index` is not a duration or timestamp timeline of the dataset, or `schema` declares a reserved column.
+            If `index` is not a timeline of the dataset, or `schema` declares a reserved column.
 
         """
         columns = _span_schema(schema, index, _dataset_index_type(dataset, index))
@@ -246,6 +274,16 @@ class SpanTable:
         self,
         *,
         segment_id: str,
+        start: int | np.integer,
+        end: int | np.integer,
+        data: Mapping[str, Any] | None = None,
+    ) -> str: ...
+
+    @overload
+    def append(
+        self,
+        *,
+        segment_id: str,
         start: timedelta | np.timedelta64,
         end: timedelta | np.timedelta64,
         data: Mapping[str, Any] | None = None,
@@ -274,17 +312,18 @@ class SpanTable:
 
         `segment_id` must name a segment of the dataset.
         `start` and `end` are inclusive.
+        Sequence timelines take `int` or `numpy.integer` boundaries, stored as given.
         Duration timelines take `datetime.timedelta` or `numpy.timedelta64` boundaries.
         Timestamp timelines take `datetime.datetime` or `numpy.datetime64` boundaries; naive datetimes are UTC.
-        Values convert exactly to nanoseconds.
+        Duration and timestamp values convert exactly to nanoseconds.
 
         Raises
         ------
         TypeError
             If a boundary type does not match the timeline kind.
         ValueError
-            If a boundary is not exact in nanoseconds, `start` is after `end`, `data` names an undeclared or managed
-            column, or `segment_id` is not in the dataset.
+            If a boundary does not fit in 64 bits or is not exact in nanoseconds, `start` is after `end`, `data` names
+            an undeclared or managed column, or `segment_id` is not in the dataset.
 
         """
         return self._write_span(
@@ -295,6 +334,17 @@ class SpanTable:
             span_id=uuid4().hex,
             data=data,
         )
+
+    @overload
+    def upsert(
+        self,
+        *,
+        segment_id: str,
+        start: int | np.integer,
+        end: int | np.integer,
+        span_id: str,
+        data: Mapping[str, Any] | None = None,
+    ) -> str: ...
 
     @overload
     def upsert(
@@ -366,7 +416,8 @@ class SpanTable:
     ) -> str:
         accepted = _BOUNDARY_TYPES[self._index_kind]
         for boundary in (start, end):
-            if not isinstance(boundary, accepted):
+            valid = _is_step(boundary) if self._index_kind is TimelineKind.SEQUENCE else isinstance(boundary, accepted)
+            if not valid:
                 expected = " or ".join(f"{t.__module__}.{t.__name__}" for t in accepted)
                 raise TypeError(
                     f"Boundaries on {self._index_kind} timeline {self._index_name!r} must be {expected}, "
@@ -383,8 +434,8 @@ class SpanTable:
             **attributes,
             _SEGMENT_ID: segment_id,
             _SPAN_ID: span_id,
-            start_column: _boundary_nanos(start),
-            end_column: _boundary_nanos(end),
+            start_column: _boundary_value(start),
+            end_column: _boundary_value(end),
         }
         batch = self._span_batch(pa.RecordBatch.from_pylist([values], schema=schema))
         match mode:
@@ -407,8 +458,9 @@ class SpanTable:
         Raises
         ------
         ValueError
-            If a column is undeclared, duplicated, or has the wrong ID type; a required column contains nulls; an ID is
-            empty; a start is the minimum 64-bit value or after its end; or a `rerun_segment_id` is not in the dataset.
+            If a column is undeclared, duplicated, or has the wrong ID type; a boundary column is not an integer or the
+            timeline's kind of time; a required column contains nulls; an ID is empty; a start is the minimum 64-bit
+            value or after its end; or a `rerun_segment_id` is not in the dataset.
 
         """
         span_batch = self._span_batch(spans)
@@ -448,6 +500,12 @@ class SpanTable:
             raise ValueError(f"Duplicate span data columns: {duplicates}")
         if undeclared := sorted(set(data.column_names) - set(schema.names)):
             raise ValueError(f"Undeclared span data columns: {undeclared}")
+        for name in _boundary_columns(index):
+            if name in data.column_names and not _source_kind_matches(data[name].type, self._index_kind):
+                raise ValueError(
+                    f"{name} is {data[name].type}, but the {self._index_kind} timeline {index!r} takes "
+                    f"{_BULK_BOUNDARY_TYPES[self._index_kind]}"
+                )
         columns = [
             data[field.name].cast(field.type).combine_chunks()
             if field.name in data.column_names
