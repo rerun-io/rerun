@@ -16,6 +16,7 @@ use base64::Engine as _;
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
 use futures::future::Either;
+use re_agent_tools::{AgentToolbox, ToolOutput};
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use rig_core::DynModel;
 use rig_core::catalog::Catalog;
@@ -32,7 +33,6 @@ use rig_core::streaming::{Item, StreamEvent};
 
 use crate::AgentProfileId;
 use crate::Responder;
-use crate::agent_toolbox::{AgentToolbox, ToolOutput};
 use crate::backend::{
     AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin, TurnError,
 };
@@ -1384,13 +1384,18 @@ mod tests {
     struct TestToolbox;
 
     impl AgentToolbox for TestToolbox {
-        fn definitions(&self) -> Vec<crate::ToolDefinition> {
+        fn definitions(&self) -> Vec<re_agent_tools::ToolDefinition> {
             ["echo", "delete"]
                 .into_iter()
-                .map(|name| crate::ToolDefinition {
+                .map(|name| re_agent_tools::ToolDefinition {
                     name: name.to_owned(),
                     description: format!("The {name} tool"),
                     input_schema: serde_json::Map::new(),
+                    effect: if name == "delete" {
+                        re_agent_tools::ToolEffect::Destructive
+                    } else {
+                        re_agent_tools::ToolEffect::ReadOnly
+                    },
                 })
                 .collect()
         }
@@ -1420,11 +1425,12 @@ mod tests {
     struct ScreenshotToolbox;
 
     impl AgentToolbox for ScreenshotToolbox {
-        fn definitions(&self) -> Vec<crate::ToolDefinition> {
-            vec![crate::ToolDefinition {
+        fn definitions(&self) -> Vec<re_agent_tools::ToolDefinition> {
+            vec![re_agent_tools::ToolDefinition {
                 name: "screenshot".to_owned(),
                 description: "Takes a screenshot".to_owned(),
                 input_schema: serde_json::Map::new(),
+                effect: re_agent_tools::ToolEffect::ReadOnly,
             }]
         }
 

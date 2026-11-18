@@ -25,13 +25,12 @@
 //!
 //! The model-API backend has none of that: no skills or configuration of the user's, only the
 //! model, [`SessionContext::model_api_preamble`] as its system prompt, and the tools of the host's
-//! [`AgentToolbox`].
+//! [`re_agent_tools::AgentToolbox`].
 
 // The workspace has two reqwest versions until it can move to 0.13; see the root `Cargo.toml`.
 extern crate reqwest013 as reqwest;
 
 mod agent_harness;
-mod agent_toolbox;
 mod backend;
 mod elicitation;
 mod error;
@@ -63,7 +62,6 @@ pub use agent_harness::{
     AgentEntry, AgentHarnessConfig, AgentInstall, AgentKind, AgentProfile, AgentProfileId,
     McpStdioServer,
 };
-pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
 pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin, TurnError};
 pub use error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};

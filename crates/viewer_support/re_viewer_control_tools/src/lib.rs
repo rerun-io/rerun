@@ -18,45 +18,10 @@ use prost_reflect::{
 };
 use serde_json::{Map, Value, json};
 
+use re_agent_tools::{ToolDefinition, ToolEffect};
 use re_protos::viewer_control::v1alpha1::{
     BlueprintUpdateMode, ViewerControlRequest, ViewerControlResponse,
 };
-
-/// One tool an agent can call: one operation of the service.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ToolDefinition {
-    /// The operation's name, e.g. `set_time_cursor`. Also the name of its `oneof` arm.
-    pub name: String,
-
-    /// What the operation does, taken from the `.proto` comments.
-    pub description: String,
-
-    /// JSON Schema of the arguments, as [`build_request`] takes them.
-    pub input_schema: Map<String, Value>,
-
-    /// What running the operation can change, which decides whether an agent asks first.
-    pub effect: ToolEffect,
-}
-
-/// What running a tool can change, in the terms of MCP's `readOnlyHint` and `destructiveHint`.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ToolEffect {
-    /// Changes nothing.
-    ReadOnly,
-
-    /// Changes only what the viewer shows, in a way the user can easily undo.
-    NonDestructive,
-
-    /// Anything else, including every operation not classified yet.
-    Destructive,
-}
-
-impl ToolEffect {
-    /// Whether an agent should ask the user before running the tool.
-    pub fn requires_approval(self) -> bool {
-        self == Self::Destructive
-    }
-}
 
 /// Prefix on the name of every viewer-control tool an agent sees, as in `viewer_get_state`.
 ///

@@ -9027,6 +9027,7 @@ dependencies = [
  "futures",
  "http",
  "jiff",
+ "re_agent_tools",
  "re_async",
  "re_error",
  "re_log",
@@ -9055,6 +9056,7 @@ dependencies = [
  "jiff",
  "parking_lot",
  "re_agent",
+ "re_agent_tools",
  "re_agent_ui",
  "re_analytics",
  "re_async",
@@ -9076,6 +9078,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_agent_tools"
+version = "0.44.0-alpha.1+dev"
+dependencies = [
+ "ahash",
+ "futures",
+ "pollster 1.0.1",
+ "re_log",
+ "re_workspace_hack",
+ "serde_json",
+]
+
+[[package]]
 name = "re_agent_ui"
 version = "0.44.0-alpha.1+dev"
 dependencies = [
@@ -9090,6 +9104,7 @@ dependencies = [
  "jiff",
  "pulldown-cmark",
  "re_agent",
+ "re_agent_tools",
  "re_async",
  "re_error",
  "re_format",
@@ -10968,6 +10983,7 @@ dependencies = [
  "egui_mcp",
  "insta",
  "parking_lot",
+ "re_agent_tools",
  "re_analytics",
  "re_error",
  "re_log",
@@ -12246,6 +12262,7 @@ version = "0.44.0-alpha.1+dev"
 dependencies = [
  "prost",
  "prost-reflect",
+ "re_agent_tools",
  "re_log",
  "re_protos",
  "re_workspace_hack",

@@ -17,10 +17,10 @@ use agent_client_protocol_schema::v1::{
     ToolCallId, ToolCallStatus, ToolKind,
 };
 
+use re_agent_tools::AgentToolbox;
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use web_time::Instant;
 
-use crate::AgentToolbox;
 use crate::agent_harness::McpStdioServer;
 use crate::backend::{AgentCommand, AgentConnection, AgentEvent, LineDirection, SessionOrigin};
 use crate::elicitation::response_note;
@@ -2333,7 +2333,7 @@ mod tests {
     struct TestToolbox;
 
     impl AgentToolbox for TestToolbox {
-        fn definitions(&self) -> Vec<crate::ToolDefinition> {
+        fn definitions(&self) -> Vec<re_agent_tools::ToolDefinition> {
             Vec::new()
         }
 
@@ -2355,7 +2355,7 @@ mod tests {
             _arguments: serde_json::Map<String, serde_json::Value>,
         ) -> futures::future::BoxFuture<
             'static,
-            Result<Vec<crate::ToolOutput>, Box<dyn std::error::Error + Send + Sync>>,
+            Result<Vec<re_agent_tools::ToolOutput>, Box<dyn std::error::Error + Send + Sync>>,
         > {
             Box::pin(std::future::ready(Ok(Vec::new())))
         }

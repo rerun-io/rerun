@@ -1,9 +1,28 @@
+//! The interface between an LLM agent and the tools a host offers it: [`AgentToolbox`].
+//!
+//! A toolbox does not care how it reaches the agent. The viewer's agent panel hands toolboxes
+//! to a model-API agent in-process, and `re_rerun_mcp` serves them to coding agents over MCP.
+//!
+//! The types follow MCP's tool model, so that serving a toolbox over MCP is a direct mapping:
+//! [`ToolDefinition`] is MCP's `Tool`, [`ToolEffect`] its tool annotations, [`ToolOutput`] its
+//! content blocks, and a [`ToolError`] a result with `isError` set.
+
+mod combined_toolbox;
+
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
 use serde_json::{Map, Value};
 
-/// Describes one tool to the model.
+pub use self::combined_toolbox::CombinedToolbox;
+
+/// The error a tool call fails with.
+///
+/// Its message is reported to the model, so it can correct itself.
+/// Over MCP, it becomes a tool result with `isError` set, not a protocol error.
+pub type ToolError = Box<dyn std::error::Error + Send + Sync>;
+
+/// Describes one tool to the model, like MCP's `Tool`.
 ///
 /// A tool is a function that the model can ask the host to run.
 /// For example, the Rerun Viewer offers `get_state` to read what is loaded and shown,
@@ -18,11 +37,42 @@ pub struct ToolDefinition {
 
     /// JSON Schema of the arguments the tool takes.
     pub input_schema: Map<String, Value>,
+
+    /// What running the tool can change, whatever its arguments.
+    ///
+    /// [`AgentToolbox::requires_approval`] may judge one call differently, from its arguments.
+    pub effect: ToolEffect,
+}
+
+/// What running a tool can change.
+///
+/// Over MCP, this sets the tool annotations: `ReadOnly` is `readOnlyHint: true`,
+/// `NonDestructive` is `destructiveHint: false`, and `Destructive` is `destructiveHint: true`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ToolEffect {
+    /// Changes nothing.
+    ReadOnly,
+
+    /// Changes only state the user can easily undo, e.g. what the viewer shows.
+    NonDestructive,
+
+    /// Anything else.
+    Destructive,
+}
+
+impl ToolEffect {
+    /// Whether an agent should ask the user before running the tool.
+    pub fn requires_approval(self) -> bool {
+        self == Self::Destructive
+    }
 }
 
 /// One piece of what a tool call returned, shown to the model and in the transcript.
+///
+/// Each variant is one MCP content block, of type `text` or `image`.
 #[derive(Clone, Debug)]
 pub enum ToolOutput {
+    /// Text for the model, often JSON.
     Text(String),
 
     Image {
@@ -34,7 +84,7 @@ pub enum ToolOutput {
     },
 }
 
-/// The tools a host offers a model-API agent.
+/// The tools a host offers an agent.
 ///
 /// Subprocess agents get their tools elsewhere, e.g. from MCP servers. When one of those serves
 /// the same tools, see [`Self::mcp_server_name`].
@@ -65,5 +115,5 @@ pub trait AgentToolbox: Send + Sync {
         &self,
         name: &str,
         arguments: Map<String, Value>,
-    ) -> BoxFuture<'static, Result<Vec<ToolOutput>, Box<dyn std::error::Error + Send + Sync>>>;
+    ) -> BoxFuture<'static, Result<Vec<ToolOutput>, ToolError>>;
 }

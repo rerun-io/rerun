@@ -6,7 +6,7 @@
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use re_agent::{AgentToolbox, ToolDefinition, ToolOutput};
+use re_agent_tools::{AgentToolbox, ToolDefinition, ToolOutput};
 use re_async::UiWaker;
 use re_log_channel::{UiCallback, ViewerControlError};
 use re_protos::viewer_control::v1alpha1::{
@@ -118,7 +118,7 @@ pub struct ViewerToolbox {
     waker: UiWaker,
 
     /// Built once: every tool, as the service describes it.
-    tools: Vec<re_viewer_control_tools::ToolDefinition>,
+    tools: Vec<ToolDefinition>,
 }
 
 impl ViewerToolbox {
@@ -160,6 +160,7 @@ impl AgentToolbox for ViewerToolbox {
                 name: format!("{TOOL_NAME_PREFIX}{}", tool.name),
                 description: tool.description.clone(),
                 input_schema: tool.input_schema.clone(),
+                effect: tool.effect,
             })
             .collect()
     }

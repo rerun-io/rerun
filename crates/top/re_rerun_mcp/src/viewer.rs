@@ -416,7 +416,7 @@ impl ViewerToolset {
             re_viewer_control_tools::tools(SCREENSHOT_DELIVERY)
                 .into_iter()
                 .map(
-                    |re_viewer_control_tools::ToolDefinition {
+                    |re_agent_tools::ToolDefinition {
                          name,
                          description,
                          input_schema,

@@ -175,6 +175,7 @@ re_workspace_hack = "0.0.0" # See `[patch.crates-io]`
 
 # crates/utils:
 re_agent = { path = "crates/utils/re_agent", version = "=0.44.0-alpha.1", default-features = false }
+re_agent_tools = { path = "crates/utils/re_agent_tools", version = "=0.44.0-alpha.1", default-features = false }
 re_analytics = { path = "crates/utils/re_analytics", version = "=0.44.0-alpha.1", default-features = false }
 re_arrow_util = { path = "crates/utils/re_arrow_util", version = "=0.44.0-alpha.1", default-features = false }
 re_async = { path = "crates/utils/re_async", version = "=0.44.0-alpha.1", default-features = false }

@@ -34,7 +34,7 @@ use rmcp::{
 };
 use url::Url;
 
-use re_viewer_control_tools::ToolEffect;
+use re_agent_tools::ToolEffect;
 
 use self::viewer::ViewerToolset;
 

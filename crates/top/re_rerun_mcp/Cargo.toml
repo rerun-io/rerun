@@ -31,6 +31,7 @@ test = false
 [dependencies]
 egui_inspection.workspace = true
 egui_mcp.workspace = true
+re_agent_tools.workspace = true
 re_analytics.workspace = true
 re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }

@@ -297,6 +297,7 @@ Nothing Rerun-specific in here.
 | Crate               | Description                                                                                                                                                                |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | re_agent            | Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol, or run an agent loop against a model API                                                    |
+| re_agent_tools      | The interface between an LLM agent and the tools a host offers it.                                                                                                         |
 | re_analytics        | Rerun's analytics SDK                                                                                                                                                      |
 | re_arrow_util       | Helpers for working with arrow.                                                                                                                                            |
 | re_async            | Async runtime abstractions for native and WebAssembly targets.                                                                                                             |
