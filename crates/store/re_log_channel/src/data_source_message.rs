@@ -18,7 +18,13 @@ pub enum DataSourceMessage {
     ///
     /// Some sources may send this, others may not.
     /// There may be one or more of these, followed by [`Self::RrdManifestComplete`].
-    RrdManifest(StoreId, Arc<RrdManifest>),
+    RrdManifest {
+        /// The store the manifest describes.
+        store_id: StoreId,
+
+        /// One piece of the manifest.
+        manifest: Arc<RrdManifest>,
+    },
 
     /// All parts of the RRD manifest have been sent.
     RrdManifestComplete(StoreId),
@@ -55,7 +61,7 @@ impl DataSourceMessage {
     /// The name of the variant, useful for error message etc
     pub fn variant_name(&self) -> &'static str {
         match self {
-            Self::RrdManifest(..) => "RrdManifest",
+            Self::RrdManifest { .. } => "RrdManifest",
             Self::RrdManifestComplete(_) => "RrdManifestComplete",
             Self::LogMsg(_) => "LogMsg",
             Self::DefaultBlueprintRegistration(_) => "BlueprintRegistration",
@@ -71,7 +77,7 @@ impl DataSourceMessage {
         match self {
             Self::LogMsg(log_msg) => log_msg.track_latency(location),
             Self::TableMsg(table_msg) => table_msg.track_latency(location),
-            Self::RrdManifest(..)
+            Self::RrdManifest { .. }
             | Self::RrdManifestComplete(_)
             | Self::DefaultBlueprintRegistration(_)
             | Self::ViewerControl(_) => {}

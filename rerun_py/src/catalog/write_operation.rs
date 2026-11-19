@@ -87,7 +87,7 @@ fn write_error_to_py(err: &WriteError) -> PyErr {
             );
             to_py_err(contextual)
         }
-        WriteError::ResolveDataset { source, .. } => {
+        WriteError::ResolveDataset { source, .. } | WriteError::SegmentIdOverride(source) => {
             let mut contextual = ApiError::clone(source);
             contextual.message = err.to_string();
             to_py_err(contextual)

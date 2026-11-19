@@ -15,6 +15,7 @@ mod encoded_image_clear;
 mod gaussian_splats3d;
 mod grid_map;
 mod keypoint_rendering;
+mod labels_2d_in_3d;
 mod latest_at_partial_updates;
 mod magnification_filter;
 mod mesh;

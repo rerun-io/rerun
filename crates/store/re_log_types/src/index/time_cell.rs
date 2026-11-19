@@ -136,6 +136,7 @@ impl TryFrom<std::time::SystemTime> for TimeCell {
     fn try_from(time: std::time::SystemTime) -> Result<Self, Self::Error> {
         let duration_since_epoch = time
             .duration_since(std::time::SystemTime::UNIX_EPOCH)
+            // relint: allow(map_err_dropped): a time before the epoch is exactly what `OutOfRange` means
             .map_err(|_ignored| OutOfRange)?;
         let nanos_since_epoch = duration_since_epoch.as_nanos();
         let nanos_since_epoch = i64::try_from(nanos_since_epoch).map_err(|_ignored| OutOfRange)?;
@@ -152,6 +153,7 @@ impl TryFrom<web_time::SystemTime> for TimeCell {
     fn try_from(time: web_time::SystemTime) -> Result<Self, Self::Error> {
         let duration_since_epoch = time
             .duration_since(web_time::SystemTime::UNIX_EPOCH)
+            // relint: allow(map_err_dropped): a time before the epoch is exactly what `OutOfRange` means
             .map_err(|_ignored| OutOfRange)?;
         let nanos_since_epoch = duration_since_epoch.as_nanos();
         let nanos_since_epoch = i64::try_from(nanos_since_epoch).map_err(|_ignored| OutOfRange)?;

@@ -23,8 +23,7 @@ const MAX_FILE_TYPE_PREFIX_LEN: u64 = 8 * 1024;
 /// Return type of [`do_register_with_dataset`].
 #[derive(Default)]
 pub struct RegisterWithDatasetResult {
-    /// Recording IDs from the RRDs, one per data source, including sources whose registration
-    /// task failed.
+    /// Segment IDs, one per registered store, including stores whose registration task failed.
     pub segment_ids: Vec<SegmentId>,
 
     /// Layer name for each registered source.
@@ -48,6 +47,9 @@ enum ValidatedSource {
         rrd_path: PathBuf,
         layer_info: Arc<LayerInfo>,
         storage_url: url::Url,
+
+        /// Set only for a file holding exactly one store of the dataset's kind.
+        segment_id_override: Option<SegmentId>,
     },
     Memory {
         store_slot_id: StoreSlotId,
@@ -106,6 +108,7 @@ async fn validate_sources(
             kind,
             storage_location: _,
             store_id,
+            segment_id_override,
         } = source;
 
         // TODO(ab): Should some or all of these errors be returned as task error instead?
@@ -141,13 +144,20 @@ async fn validate_sources(
                 store_kind,
                 &storage_url,
                 layer_info,
+                segment_id_override,
                 &mut seen,
             )?);
             continue;
         }
 
-        if let Some(file_source) =
-            validate_file_source(store_kind, &storage_url, layer_info, &mut seen).await?
+        if let Some(file_source) = validate_file_source(
+            store_kind,
+            &storage_url,
+            layer_info,
+            segment_id_override,
+            &mut seen,
+        )
+        .await?
         {
             validated.push(file_source);
         }
@@ -163,6 +173,7 @@ fn validate_memory_source(
     expected_store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
+    segment_id_override: Option<SegmentId>,
     seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
 ) -> tonic::Result<ValidatedSource> {
     let store_slot_id = parse_memory_url(storage_url)?;
@@ -176,7 +187,8 @@ fn validate_memory_source(
             store_id.kind()
         )));
     }
-    let segment_id = SegmentId::new(store_id.recording_id().to_string());
+    let segment_id =
+        segment_id_override.unwrap_or_else(|| SegmentId::new(store_id.recording_id().to_string()));
     seen.entry((layer_info.name.clone(), segment_id.clone()))
         .or_default()
         .push(storage_url.clone());
@@ -189,10 +201,14 @@ fn validate_memory_source(
 }
 
 /// Returns `None` if the file's store kind doesn't match (silently skipped).
+///
+/// A file registers every store of the dataset's kind, so a segment id override requires the file
+/// to hold exactly one.
 async fn validate_file_source(
     store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
+    segment_id_override: Option<SegmentId>,
     seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
 ) -> tonic::Result<Option<ValidatedSource>> {
     let rrd_path = rrd_path_from_url(storage_url)?;
@@ -212,30 +228,40 @@ async fn validate_file_source(
         )));
     }
 
-    let store_ids = load_store_ids(&rrd_path).await?;
+    let store_ids: Vec<StoreId> = load_store_ids(&rrd_path)
+        .await?
+        .into_iter()
+        .filter(|store_id| store_id.kind() == store_kind)
+        .collect();
 
-    let mut matched = false;
-    for store_id in store_ids {
-        if store_id.kind() != store_kind {
-            continue;
-        }
-        matched = true;
-        seen.entry((
-            layer_info.name.clone(),
-            SegmentId::from(store_id.recording_id()),
-        ))
-        .or_default()
-        .push(storage_url.clone());
+    if store_ids.is_empty() {
+        return Ok(None);
     }
 
-    if !matched {
-        return Ok(None);
+    if let Some(segment_id) = &segment_id_override
+        && store_ids.len() > 1
+    {
+        return Err(tonic::Status::invalid_argument(format!(
+            "cannot register {} stores of kind {store_kind} as the single segment {segment_id}\n\
+             URL: {storage_url}",
+            store_ids.len(),
+        )));
+    }
+
+    for store_id in &store_ids {
+        let segment_id = segment_id_override
+            .clone()
+            .unwrap_or_else(|| SegmentId::from(store_id.recording_id()));
+        seen.entry((layer_info.name.clone(), segment_id))
+            .or_default()
+            .push(storage_url.clone());
     }
 
     Ok(Some(ValidatedSource::File {
         rrd_path,
         layer_info,
         storage_url: storage_url.clone(),
+        segment_id_override,
     }))
 }
 
@@ -265,6 +291,7 @@ fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<PathBuf> {
 
                     String::from_utf8(bytes)
                         .map(PathBuf::from)
+                        // relint: allow(map_err_dropped): mirrors `Url::to_file_path`, whose error is `()`
                         .map_err(|_err| ())
                 })
             } else {
@@ -343,16 +370,20 @@ async fn load_sources(
                 rrd_path,
                 layer_info,
                 storage_url,
+                segment_id_override,
             } => {
                 re_log::info!("Loading {rrd_path:?}…");
 
                 let stores = ResolvedStore::load_rrd_file(&rrd_path, store_kind).await?;
 
                 for (store_id, resolved) in stores {
+                    let segment_id = segment_id_override
+                        .clone()
+                        .unwrap_or_else(|| SegmentId::new(store_id.recording_id().to_string()));
                     ready.push(ReadySource {
                         store_slot_id: StoreSlotId::new(),
                         resolved,
-                        segment_id: SegmentId::new(store_id.recording_id().to_string()),
+                        segment_id,
                         layer_info: layer_info.clone(),
                         storage_url: storage_url.clone(),
                     });

@@ -329,7 +329,7 @@ fn read_ply(
         if key != crate::ply::ELEMENT_VERTEX {
             if read_any_splats {
                 // Everything after the gaussians is ignored; we just stop reading here.
-                re_log::warn_once!("Ignoring {key:?} in .ply file{path_suffix}"); // NOLINT path at end
+                re_log::warn_once!("Ignoring {key:?} in .ply file{path_suffix}"); // relint: allow(log_sensitive_inline): path at end
                 break;
             }
             // Skipping an element means decoding its payload, which we don't do — so anything
@@ -356,12 +356,14 @@ fn read_ply(
         let num_sh_per_channel = if num_f_rest % 3 == 0 {
             let num_sh_per_channel = num_f_rest / 3;
             if NUM_SH_COEFFICIENTS < num_sh_per_channel {
+                // relint: allow(log_sensitive_inline): path at end
                 re_log::warn_once!(
                     "Ignoring spherical harmonics coefficients above degree 3: keeping {NUM_SH_COEFFICIENTS} of the {num_sh_per_channel} coefficients per channel ({num_f_rest} f_rest_* properties){path_suffix}"
                 );
             }
             num_sh_per_channel
         } else {
+            // relint: allow(log_sensitive_inline): path at end
             re_log::warn_once!(
                 "Ignoring spherical harmonics: expected a multiple of 3 f_rest_* properties (RGB), got {num_f_rest}{path_suffix}"
             );

@@ -28,8 +28,10 @@ pub struct AppState {
     pub(crate) selection_panel: re_selection_panel::SelectionPanel,
     pub(crate) time_panel: re_time_panel::TimePanel,
     pub(crate) blueprint_time_panel: re_time_panel::TimePanel,
+
     #[serde(skip)]
     pub(crate) blueprint_tree: re_blueprint_tree::BlueprintTree,
+
     #[serde(skip)]
     pub(crate) recording_panel: re_recording_panel::RecordingPanel,
 

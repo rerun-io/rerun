@@ -92,7 +92,7 @@ def set_sinks(
         logging.warning("Rerun is disabled - set_sinks() call ignored")
         return
 
-    application_id = get_application_id(recording)  # NOLINT
+    application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
@@ -150,7 +150,7 @@ def connect_grpc(
 
     from rerun.recording_stream import get_application_id
 
-    application_id = get_application_id(recording)  # NOLINT
+    application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",

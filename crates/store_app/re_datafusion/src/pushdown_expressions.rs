@@ -556,7 +556,7 @@ pub(crate) fn apply_filter_expr_to_queries(
                         schema,
                         selection_timeline,
                     ) {
-                        KnownFilterColumn::Index(index_name, time) => Some(
+                        KnownFilterColumn::Index { index_name, time } => Some(
                             queries
                                 .into_iter()
                                 .map(|query| {
@@ -667,8 +667,14 @@ enum KnownFilterColumn {
     /// Rerun segment ID
     SegmentId(SegmentId),
 
-    /// Index name and value
-    Index(String, TimeInt),
+    /// A comparison of an index column with a value.
+    Index {
+        /// The name of the index column.
+        index_name: String,
+
+        /// The value the index is compared with.
+        time: TimeInt,
+    },
 
     /// Any other expression
     Unknown,
@@ -721,7 +727,10 @@ fn known_filter_column(
                 _ => return KnownFilterColumn::Unknown,
             };
             let time = TimeInt::new_temporal(value);
-            KnownFilterColumn::Index(col_expr.name().to_owned(), time)
+            KnownFilterColumn::Index {
+                index_name: col_expr.name().to_owned(),
+                time,
+            }
         } else {
             KnownFilterColumn::Unknown
         }

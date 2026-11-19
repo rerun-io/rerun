@@ -9,7 +9,7 @@ An RRD is the file format Rerun uses to persist recordings and blueprints. At th
 ## Stores
 
 Logical groupings of chunks form so-called stores.
-They come in two flavors: [recording](../data-model/recordings.md) and [blueprint](../../viewer/blueprints-and-views/blueprints.md).
+They come in two flavors: [recording](../data-model/recordings.md) and [blueprint](../../viewer/blueprints.md).
 Both are structurally identical and distinguished only by a flag (store kind).
 
 A single RRD can hold any number of stores.
@@ -99,7 +99,7 @@ Every store in an RRD is identified by a `StoreId` and described by a `StoreInfo
 - **`StoreId`** combines:
     - **`kind`** — `Recording` or `Blueprint`. The on-disk format treats both identically; the kind is just a flag. What differs is the *expected content*: recordings hold user-logged data on user-defined entity paths, blueprints hold `rr.blueprint.*` objects on Viewer-reserved paths. The Viewer dispatches on the kind — recordings populate the data store, blueprints populate the Viewer's UI/layout state.
     - **`application_id`** — a user-chosen identifier for the application that produced the recording (see [Recordings](../data-model/recordings.md) for the conventions, including the relationship with segment and dataset IDs in the remote/catalog context).
-    - **`recording_id`** — a UUID or user-chosen string that distinguishes runs of the same application (catalog servers use this as the segment ID — see the [catalog object model](../../query-and-transform/catalog/catalog-object-model.md)).
+    - **`recording_id`** — a UUID or user-chosen string that distinguishes runs of the same application (catalog servers use this as the segment ID by default — see the [catalog object model](../../query-and-transform/catalog/catalog-object-model.md)).
 - **`StoreInfo`** wraps the `StoreId` and adds:
     - **`store_source`** — where the store came from (`PythonSdk`, `RustSdk`, `CSdk` (used by the C and C++ SDKs), or a file source such as CLI / drag-drop).
     - **`store_version`** — the Rerun version that produced the data.
@@ -351,6 +351,11 @@ Files written without a footer (streaming sinks, legacy producers) skip the `End
 
 
 ## Stability
+
+RRD files written by Rerun 0.23 or later load in every newer Rerun version, which migrates them when it loads them.
+The reverse is not guaranteed: an older Viewer may not be able to read a file written by a newer SDK.
+Data logged with types whose [reference page](../../reference/types.md) marks them _unstable_ may not be read the same way by newer versions.
+See [A stable file format](https://rerun.io/blog/data-layer-for-robot-learning#a-stable-file-format-with-chunklevel-python-apis) for the announcement.
 
 The format is split into two layers with different stability stories.
 

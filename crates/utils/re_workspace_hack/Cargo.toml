@@ -25,6 +25,9 @@ version = "0.0.0" # Must match the stub on crates.io, which never changes.
 [lints]
 workspace = true
 
+[lib]
+test = false
+
 # The parts of the file between the BEGIN HAKARI SECTION and END HAKARI SECTION comments
 # are managed by hakari.
 
@@ -90,7 +93,7 @@ icu_locale_core = { version = "2", default-features = false, features = ["alloc"
 icu_provider = { version = "2", default-features = false, features = ["alloc", "baked"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 indexmap = { version = "2", features = ["serde"] }
-insta = { version = "1", features = ["filters", "glob", "redactions", "yaml"] }
+insta = { version = "1", features = ["filters", "glob", "json", "redactions", "yaml"] }
 itertools = { version = "0.14" }
 jiff = { version = "0.2", features = ["js", "serde"] }
 litemap = { version = "0.8", default-features = false, features = ["alloc"] }
@@ -253,7 +256,7 @@ icu_locale_core = { version = "2", default-features = false, features = ["alloc"
 icu_provider = { version = "2", default-features = false, features = ["alloc", "baked"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 indexmap = { version = "2", features = ["serde"] }
-insta = { version = "1", features = ["filters", "glob", "redactions", "yaml"] }
+insta = { version = "1", features = ["filters", "glob", "json", "redactions", "yaml"] }
 itertools = { version = "0.14" }
 jiff = { version = "0.2", features = ["js", "serde"] }
 litemap = { version = "0.8", default-features = false, features = ["alloc"] }

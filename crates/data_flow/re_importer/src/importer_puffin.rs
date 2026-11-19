@@ -86,7 +86,11 @@ impl Importer for PuffinImporter {
                 .map_err(|err| err.with_path(&filepath))?;
 
             for chunk in chunks {
-                let data = ImportedData::Chunk(self.name(), store_id.clone(), chunk);
+                let data = ImportedData::Chunk {
+                    importer_name: self.name(),
+                    store_id: store_id.clone(),
+                    chunk,
+                };
                 if re_quota_channel::send_crossbeam(&tx, data).is_err() {
                     break 'threads;
                 }

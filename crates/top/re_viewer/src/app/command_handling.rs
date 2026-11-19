@@ -23,6 +23,7 @@ use crate::{app_blueprint::AppBlueprint, event::ViewerEventDispatcher};
 
 #[cfg(not(target_arch = "wasm32"))]
 const MIN_ZOOM_FACTOR: f32 = 0.2;
+
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
 
@@ -589,7 +590,7 @@ impl AppCore {
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
 
-            SystemCommand::AppendToStore(store_id, chunks) => {
+            SystemCommand::AppendToStore { store_id, chunks } => {
                 re_log::trace!(
                     "{}:{} Update {} entities: {}",
                     sent_from.file(),
@@ -698,8 +699,11 @@ impl AppCore {
                 }
             }
 
-            SystemCommand::DropEntity(blueprint_id, entity_path) => {
-                let blueprint_db = store_hub.entity_db_entry(&blueprint_id);
+            SystemCommand::DropEntity {
+                store_id,
+                entity_path,
+            } => {
+                let blueprint_db = store_hub.entity_db_entry(&store_id);
                 blueprint_db.drop_entity_path_recursive(&entity_path);
             }
 
@@ -1063,7 +1067,7 @@ impl AppCore {
             }
             UICommand::OpenDocsWebsite => {
                 egui_ctx.open_url(egui::output::OpenUrl {
-                    url: "https://rerun.io/docs/viewer/tutorial/navigating-the-viewer".to_owned(),
+                    url: "https://rerun.io/docs/viewer/ui/overview".to_owned(),
                     new_tab: true,
                 });
             }

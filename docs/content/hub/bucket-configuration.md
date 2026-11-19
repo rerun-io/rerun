@@ -34,7 +34,7 @@ What the Viewer sends and reads:
 {
   "CORSRules": [
     {
-      "AllowedOrigins": ["https://<customer>.cloud.rerun.io"],
+      "AllowedOrigins": ["https://<stack>.cloud.rerun.io"],
       "AllowedMethods": ["GET", "HEAD"],
       "AllowedHeaders": ["Range", "If-Match"],
       "ExposeHeaders": ["Content-Range", "ETag", "Last-Modified", "Accept-Ranges"],

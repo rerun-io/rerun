@@ -138,7 +138,9 @@ async fn command_palette_segment_url_expands_ancestor_folders() {
         .await;
     let mut harness = InspectionHarness::spawn(HarnessConfig::default());
 
-    harness.get_by_label_contains("Search commands…").click();
+    harness
+        .get_by_label_contains("Search commands or ask agent…")
+        .click();
     harness.run();
     harness
         .get_by_role(egui::Role::TextInput)

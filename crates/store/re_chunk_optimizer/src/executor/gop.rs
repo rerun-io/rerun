@@ -1,4 +1,4 @@
-//! Execution of one [`PlanUnit::GopRun`](crate::plan::PlanUnit).
+//! Execution of one [`GopRun`].
 
 use std::collections::VecDeque;
 use std::ops::ControlFlow;
@@ -22,9 +22,9 @@ use super::accumulator::Accumulator;
 use super::load_in_order;
 use crate::error::{Error, VideoStreamErrorSource};
 use crate::plan::{
-    CodecSource, GopChunkingConfig, KeyframePlacementConfig, codec_column, sample_column,
+    CodecSource, GopChunkingConfig, GopRun, KeyframePlacementConfig, codec_column, sample_column,
 };
-use crate::row_merge::{MergeInput, RowMerge};
+use crate::row_merge::RowMerge;
 use crate::view::ChunkIndexView;
 
 /// The stream's codec, decided from `source`. Under [`CodecSource::Temporal`], the codec is also
@@ -199,7 +199,7 @@ fn sample_bytes<'a>(
     ))
 }
 
-/// Executor state of a single [`PlanUnit::GopRun`](crate::plan::PlanUnit).
+/// Executor state of a single [`GopRun`].
 pub struct GopRunState {
     entity_path: EntityPath,
 
@@ -238,14 +238,15 @@ enum KeyframeSink {
 }
 
 impl GopRunState {
-    pub fn new(
-        entity_path: EntityPath,
-        inputs: Vec<MergeInput>,
-        codec: CodecSource,
-        timeline: TimelineName,
-        gop_chunking: GopChunkingConfig,
-        keyframes: KeyframePlacementConfig,
-    ) -> Self {
+    pub fn new(run: GopRun) -> Self {
+        let GopRun {
+            entity_path,
+            codec,
+            inputs,
+            timeline,
+            gop_chunking,
+            keyframes,
+        } = run;
         Self {
             entity_path,
             codec: StreamCodec::Pending(codec),

@@ -1,12 +1,12 @@
 //! The viewer's own tools for a model-API agent: the viewer-control operations, run in-process.
 //!
-//! An agent harness reaches the same operations through `rerun viewer-mcp` instead, and its
+//! An agent harness reaches the same operations through `rerun mcp` instead, and its
 //! permission requests for them are judged by the same rules.
 
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use re_agent::{AgentToolbox, ToolDefinition, ToolOutput};
+use re_agent_tools::{AgentToolbox, ToolDefinition, ToolOutput};
 use re_async::UiWaker;
 use re_log_channel::{UiCallback, ViewerControlError};
 use re_protos::viewer_control::v1alpha1::{
@@ -40,8 +40,14 @@ enum ViewerToolError {
     #[error("`{name}` failed: {message}")]
     Failed { name: String, message: String },
 
-    #[error("{message}")]
-    InvalidRequest { message: String },
+    #[error(transparent)]
+    InvalidRequest(re_viewer_control_tools::BuildRequestError),
+
+    #[error("`{name}` failed: {source}")]
+    InvalidResponse {
+        name: String,
+        source: re_viewer_control_tools::ResponseJsonError,
+    },
 
     #[error("The viewer is no longer running")]
     Stopped,
@@ -112,7 +118,7 @@ pub struct ViewerToolbox {
     waker: UiWaker,
 
     /// Built once: every tool, as the service describes it.
-    tools: Vec<re_viewer_control_tools::ToolDefinition>,
+    tools: Vec<ToolDefinition>,
 }
 
 impl ViewerToolbox {
@@ -133,7 +139,7 @@ impl ViewerToolbox {
     ) -> Result<futures::channel::oneshot::Receiver<ViewerControlResult>, ViewerToolError> {
         let request =
             re_viewer_control_tools::build_request(operation, Some(arguments), SCREENSHOT_DELIVERY)
-                .map_err(|message| ViewerToolError::InvalidRequest { message })?;
+                .map_err(ViewerToolError::InvalidRequest)?;
 
         let (reply_tx, reply_rx) = futures::channel::oneshot::channel();
         let call = QueuedCall { request, reply_tx };
@@ -154,6 +160,7 @@ impl AgentToolbox for ViewerToolbox {
                 name: format!("{TOOL_NAME_PREFIX}{}", tool.name),
                 description: tool.description.clone(),
                 input_schema: tool.input_schema.clone(),
+                effect: tool.effect,
             })
             .collect()
     }
@@ -201,7 +208,11 @@ impl AgentToolbox for ViewerToolbox {
                 }
             };
             let response = answer
-                .map_err(|_canceled| ViewerToolError::Dropped { name: name.clone() })?
+                .map_err(
+                    |futures::channel::oneshot::Canceled| ViewerToolError::Dropped {
+                        name: name.clone(),
+                    },
+                )?
                 .map_err(|err| ViewerToolError::Failed {
                     name: name.clone(),
                     message: err.message,
@@ -215,7 +226,7 @@ impl AgentToolbox for ViewerToolbox {
                 }]);
             }
             let json = re_viewer_control_tools::response_json(&operation, &response)
-                .map_err(|message| ViewerToolError::Failed { name, message })?;
+                .map_err(|source| ViewerToolError::InvalidResponse { name, source })?;
             Ok(vec![ToolOutput::Text(json.to_string())])
         })
     }
@@ -280,7 +291,7 @@ mod tests {
         let schema = toolbox
             .definitions()
             .into_iter()
-            .find(|tool| tool.name == "rerun_save_screenshot")
+            .find(|tool| tool.name == "viewer_save_screenshot")
             .expect("the screenshot tool")
             .input_schema;
         assert!(schema["properties"].get("file_path").is_none());

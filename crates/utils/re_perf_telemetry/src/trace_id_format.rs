@@ -394,7 +394,7 @@ mod tests {
 
         let output = writer.output();
         let parsed: serde_json::Value = serde_json::from_str(output.trim())
-            .unwrap_or_else(|e| panic!("output should be valid JSON: {e}\noutput: {output}"));
+            .unwrap_or_else(|err| panic!("output should be valid JSON: {err}\noutput: {output}"));
         assert!(parsed["trace_id"].as_str().is_some());
         assert!(parsed["fields"]["message"].as_str().is_some());
     }

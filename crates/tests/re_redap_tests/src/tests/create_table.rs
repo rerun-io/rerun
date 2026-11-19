@@ -8,6 +8,7 @@ use re_protos::cloud::v1alpha1::ext::{
     CreateTableEntryRequest, EntryDetails, LanceTable, ProviderDetails,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use super::common::entry_name;
 use crate::SchemaTestExt as _;
@@ -59,9 +60,9 @@ pub async fn create_table_entry(service: impl RerunCloudService) {
     assert_eq!(entry.name, entry_name(table_name));
 
     let schema_response = service
-        .get_table_schema(tonic::Request::new(GetTableSchemaRequest {
-            table_id: Some(entry.id.into()),
-        }))
+        .get_table_schema(
+            tonic::Request::new(GetTableSchemaRequest::default()).with_entry_id(entry.id),
+        )
         .await
         .expect("get table schema")
         .into_inner();

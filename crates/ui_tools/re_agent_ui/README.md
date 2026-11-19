@@ -9,7 +9,7 @@ A chat panel for talking to a coding agent from inside an egui app.
 The agent (Claude Code, Codex, Gemini CLI, …) runs as a subprocess and speaks the
 [Agent Client Protocol](https://agentclientprotocol.com/).
 Any MCP servers configured in the panel are handed to the agent when the session starts,
-so the agent can drive the Rerun Viewer through `rerun viewer-mcp`.
+so the agent can drive the Rerun Viewer through `rerun mcp`.
 
 ## What goes here, and what does not
 

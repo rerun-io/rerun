@@ -12,7 +12,7 @@ use h264_reader::nal::UnitType;
 use re_log::debug_assert;
 use re_quota_channel::{Receiver, SendError, Sender};
 
-use super::ivf::write_chunk_to_ivf_stream;
+use super::ivf::IvfStream;
 use super::version::FFmpegVersionParseError;
 use crate::decode::ffmpeg_cli::{
     FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR, FFmpegVersion,
@@ -1114,24 +1114,8 @@ enum CodecMeta {
         state: AnnexBStreamState,
     },
 
-    /// VP8 / VP9: wrap each chunk in an IVF file/frame header, since their raw bitstream
-    /// has no self-delimiting framing and `FFmpeg` has no `vp8`/`vp9` raw demuxer.
-    /// See <https://wiki.multimedia.cx/index.php/IVF>.
-    Ivf {
-        /// `b"VP80"` for VP8, `b"VP90"` for VP9.
-        fourcc: [u8; 4],
-        width: u16,
-        height: u16,
-
-        /// Whether we already wrote the 32-byte file header to `FFmpeg`'s stdin.
-        file_header_written: bool,
-
-        /// Frame counter used as the per-frame IVF PTS.
-        ///
-        /// `FFmpeg` is run with `-fps_mode passthrough`, so absolute PTS values
-        /// are immaterial as long as they are monotonically increasing.
-        frame_idx: u64,
-    },
+    /// VP8 / VP9: wrap each chunk in an IVF file/frame header.
+    Ivf(IvfStream),
 }
 
 impl CodecMeta {
@@ -1147,13 +1131,7 @@ impl CodecMeta {
                     *b"VP90"
                 };
                 let [width, height] = encoding_details.map_or([0, 0], |e| e.coded_dimensions);
-                Self::Ivf {
-                    fourcc,
-                    width,
-                    height,
-                    file_header_written: false,
-                    frame_idx: 0,
-                }
+                Self::Ivf(IvfStream::new(fourcc, width, height))
             }
             _ => encoding_details
                 .and_then(|e| e.stsd.as_ref())
@@ -1174,20 +1152,12 @@ impl CodecMeta {
                     state: AnnexBStreamState::default(),
                 })
             }
-            re_mp4::StsdBoxContent::Vp08(vp8) => Some(Self::Ivf {
-                fourcc: *b"VP80",
-                width: vp8.width,
-                height: vp8.height,
-                file_header_written: false,
-                frame_idx: 0,
-            }),
-            re_mp4::StsdBoxContent::Vp09(vp9) => Some(Self::Ivf {
-                fourcc: *b"VP90",
-                width: vp9.width,
-                height: vp9.height,
-                file_header_written: false,
-                frame_idx: 0,
-            }),
+            re_mp4::StsdBoxContent::Vp08(vp8) => {
+                Some(Self::Ivf(IvfStream::new(*b"VP80", vp8.width, vp8.height)))
+            }
+            re_mp4::StsdBoxContent::Vp09(vp9) => {
+                Some(Self::Ivf(IvfStream::new(*b"VP90", vp9.width, vp9.height)))
+            }
             _ => None,
         }
     }
@@ -1204,27 +1174,13 @@ impl CodecMeta {
                 write_hevc_chunk_to_nalu_stream(hvcc, out, chunk, state).map_err(Error::from)
             }
 
-            Self::Ivf {
-                fourcc,
-                width,
-                height,
-                file_header_written,
-                frame_idx,
-            } => write_chunk_to_ivf_stream(
-                fourcc,
-                width,
-                height,
-                file_header_written,
-                frame_idx,
-                out,
-                chunk,
-            ),
+            Self::Ivf(ivf) => ivf.write_frame(out, &chunk.data),
         }
     }
 
     fn write_end_of_stream(&self, out: &mut dyn std::io::Write) -> Result<(), Error> {
         match self {
-            Self::Ivf { .. } => Ok(()),
+            Self::Ivf(_) => Ok(()),
             Self::RawBytestream | Self::Avc { .. } | Self::Hevc { .. } => {
                 // Try to flush out the last frames from ffmpeg with EndSequence/EndStream NAL units.
                 // Unfortunately this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073

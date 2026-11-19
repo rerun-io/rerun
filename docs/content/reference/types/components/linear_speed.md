@@ -16,7 +16,7 @@ Float64
 
 ## API reference links
  * 🌊 [C++ API docs for `LinearSpeed`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1LinearSpeed.html)
- * 🐍 [Python API docs for `LinearSpeed`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.LinearSpeed)
+ * 🐍 [Python API docs for `LinearSpeed`](https://ref.rerun.io/docs/python/stable/components#rerun.components.LinearSpeed)
  * 🦀 [Rust API docs for `LinearSpeed`](https://docs.rs/rerun/latest/rerun/components/struct.LinearSpeed.html)
 
 

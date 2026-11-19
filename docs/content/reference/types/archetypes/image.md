@@ -37,7 +37,7 @@ row-major, interleaved-pixel image format.
 
 ## API reference links
  * 🌊 [C++ API docs for `Image`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Image.html)
- * 🐍 [Python API docs for `Image`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Image)
+ * 🐍 [Python API docs for `Image`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Image)
  * 🦀 [Rust API docs for `Image`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Image.html)
 
 ## Examples

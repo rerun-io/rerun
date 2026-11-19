@@ -1,7 +1,12 @@
+mod chunk_segments;
 mod legacy_candidates;
 mod projection;
 mod segment_stream_common;
 
+pub use self::chunk_segments::ChunkSegments;
+// Outside this module only the native fetch paths name the attributed chunks.
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::chunk_segments::ChunksWithSegment;
 pub(crate) use self::segment_stream_common::{
     PlanSummary, compute_chunk_info_aggregates, group_chunk_infos_by_segment_id,
     prepend_string_column_schema, schema_with_array_datatypes, segment_belongs_to_partition,
@@ -1926,7 +1931,7 @@ mod tests {
                 calls: Arc::clone(&calls),
             };
 
-            let rt = tokio::runtime::Builder::new_multi_thread() // NOLINT: test needs to create a runtime explicitly
+            let rt = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .expect("test runtime builds");

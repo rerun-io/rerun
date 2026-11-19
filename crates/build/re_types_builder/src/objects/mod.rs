@@ -234,8 +234,31 @@ pub enum State {
     Deprecated { since: String, notice: String },
 }
 
+/// Why the [`RerunAttr::State`] attribute of an object is invalid.
+#[derive(Debug, thiserror::Error)]
+pub enum StateAttrError {
+    /// The [`RerunAttr::State`] attribute is missing.
+    #[error("Missing attribute `{}`", RerunAttr::State)]
+    Missing,
+
+    /// The [`RerunAttr::State`] attribute has an unknown value.
+    #[error("Unknown value for `{attr}`: {value}", attr = RerunAttr::State)]
+    UnknownValue {
+        /// The unrecognized value.
+        value: String,
+    },
+
+    /// A deprecated object lacks a deprecation version or notice.
+    #[error(
+        "Deprecated object must have `{}` and `{}` set",
+        RerunAttr::DeprecatedSince,
+        RerunAttr::DeprecatedNotice
+    )]
+    MissingDeprecationInfo,
+}
+
 impl State {
-    pub fn from_attrs(attrs: &Attributes) -> Result<Self, String> {
+    pub fn from_attrs(attrs: &Attributes) -> Result<Self, StateAttrError> {
         if let Some(state) = attrs.get_string(RerunAttr::State) {
             match state.as_str() {
                 "unstable" => Ok(Self::Unstable),
@@ -250,20 +273,15 @@ impl State {
                             notice: notice.clone(),
                         })
                     } else {
-                        Err(format!(
-                            "Deprecated object must have `{}` and `{}` set",
-                            RerunAttr::DeprecatedSince,
-                            RerunAttr::DeprecatedNotice
-                        ))
+                        Err(StateAttrError::MissingDeprecationInfo)
                     }
                 }
-                unknown => Err(format!(
-                    "Unknown value for `{}`: {unknown}",
-                    RerunAttr::State
-                )),
+                unknown => Err(StateAttrError::UnknownValue {
+                    value: unknown.to_owned(),
+                }),
             }
         } else {
-            Err(format!("Missing attribute `{}`", RerunAttr::State))
+            Err(StateAttrError::Missing)
         }
     }
 

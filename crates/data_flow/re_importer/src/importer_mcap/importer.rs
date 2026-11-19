@@ -337,10 +337,10 @@ impl McapImporter {
 
         if send_crossbeam(
             tx,
-            ImportedData::LogMsg(
-                MCAP_IMPORTER_NAME.to_owned(),
-                re_log_msg::LogMsg::SetStoreInfo(store_info(store_id.clone())),
-            ),
+            ImportedData::LogMsg {
+                importer_name: MCAP_IMPORTER_NAME.to_owned(),
+                msg: re_log_msg::LogMsg::SetStoreInfo(store_info(store_id.clone())),
+            },
         )
         .is_err()
         {
@@ -379,7 +379,11 @@ fn apply_timestamp_offset(mut chunk: re_chunk::Chunk, offset_ns: Option<i64>) ->
 fn send_chunk_to_channel(tx: &Sender<ImportedData>, store_id: &StoreId, chunk: re_chunk::Chunk) {
     if send_crossbeam(
         tx,
-        ImportedData::Chunk(MCAP_IMPORTER_NAME.to_owned(), store_id.clone(), chunk),
+        ImportedData::Chunk {
+            importer_name: MCAP_IMPORTER_NAME.to_owned(),
+            store_id: store_id.clone(),
+            chunk,
+        },
     )
     .is_err()
     {

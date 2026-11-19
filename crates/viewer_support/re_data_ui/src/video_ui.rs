@@ -760,16 +760,31 @@ impl StreamKind {
 }
 
 pub enum VideoUi {
-    Stream(
-        Result<SharablePlayableVideoStream, VideoStreamProcessingError>,
-        ComponentIdentifier,
-        StreamKind,
-    ),
-    Asset(
-        Arc<Result<re_renderer::video::Video, VideoLoadError>>,
-        Option<VideoTimestamp>,
-        re_sdk_types::encodings::Blob,
-    ),
+    /// A video or image sequence logged sample by sample.
+    Stream {
+        /// The stream decoded from the entity's samples, or why that failed.
+        video_stream_result: Result<SharablePlayableVideoStream, VideoStreamProcessingError>,
+
+        /// The component that holds the samples.
+        sample_component: ComponentIdentifier,
+
+        /// Whether the samples are video frames or images.
+        stream_kind: StreamKind,
+    },
+
+    /// A complete video file stored in a blob.
+    Asset {
+        /// The parsed video, or why parsing failed.
+        video_result: Arc<Result<re_renderer::video::Video, VideoLoadError>>,
+
+        /// The frame to show.
+        ///
+        /// If `None`, the video loops over time.
+        timestamp: Option<VideoTimestamp>,
+
+        /// The encoded video file.
+        blob: re_sdk_types::encodings::Blob,
+    },
 }
 
 impl VideoUi {
@@ -808,7 +823,11 @@ impl VideoUi {
             return None;
         }
 
-        Some(Self::Asset(result, video_timestamp, blob.clone()))
+        Some(Self::Asset {
+            video_result: result,
+            timestamp: video_timestamp,
+            blob: blob.clone(),
+        })
     }
 
     pub fn from_components(
@@ -846,9 +865,11 @@ impl VideoUi {
                     [codec_component],
                 );
 
-                let codec_chunk = query_result
-                    .get_required(codec_component)
-                    .map_err(|_err| VideoStreamProcessingError::MissingCodec)?;
+                let codec_chunk = query_result.get(codec_component).ok_or(
+                    VideoStreamProcessingError::MissingCodec {
+                        component: codec_component,
+                    },
+                )?;
 
                 let last_codec = codec_chunk
                     .component_mono::<MediaType>(codec_component)
@@ -902,16 +923,20 @@ impl VideoUi {
             return None;
         };
 
-        Some(Self::Stream(
+        Some(Self::Stream {
             video_stream_result,
             sample_component,
             stream_kind,
-        ))
+        })
     }
 
     pub fn data_ui(&self, ctx: &StoreViewContext<'_>, ui: &mut egui::Ui, ui_layout: UiLayout) {
         match self {
-            Self::Stream(video_stream_result, sample_component, stream_kind) => {
+            Self::Stream {
+                video_stream_result,
+                sample_component,
+                stream_kind,
+            } => {
                 video_stream_result_ui(ui, ui_layout, video_stream_result, *stream_kind);
 
                 let storage_engine = ctx.db.storage_engine();
@@ -934,7 +959,11 @@ impl VideoUi {
                     );
                 }
             }
-            Self::Asset(video_result, timestamp, blob) => {
+            Self::Asset {
+                video_result,
+                timestamp,
+                blob,
+            } => {
                 video_asset_result_ui(ui, ui_layout, video_result);
 
                 // Show a mini video player for video blobs:

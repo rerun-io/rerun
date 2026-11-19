@@ -21,7 +21,7 @@ FixedSizeList(4 x non-null Float32)
 
 ## API reference links
  * 🌊 [C++ API docs for `Plane3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Plane3D.html)
- * 🐍 [Python API docs for `Plane3D`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Plane3D)
+ * 🐍 [Python API docs for `Plane3D`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.Plane3D)
  * 🦀 [Rust API docs for `Plane3D`](https://docs.rs/rerun/latest/rerun/encodings/struct.Plane3D.html)
 
 

@@ -59,7 +59,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TensorData.html)
- * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.TensorData)
+ * 🐍 [Python API docs for `TensorData`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.TensorData)
  * 🦀 [Rust API docs for `TensorData`](https://docs.rs/rerun/latest/rerun/encodings/struct.TensorData.html)
 
 

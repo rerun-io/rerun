@@ -428,7 +428,7 @@ impl QuotedObject {
                 )),
                 ObjectKind::View => {
                     // TODO(#5521): Implement view codegen for C++.
-                    unimplemented!();
+                    unimplemented!("view codegen for C++");
                 }
             },
             ObjectClass::Enum(_) => {

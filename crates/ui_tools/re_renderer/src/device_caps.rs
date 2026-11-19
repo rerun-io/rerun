@@ -60,7 +60,7 @@ impl DeviceCapabilityTier {
 
     pub fn support_bgra_textures(&self) -> bool {
         match self {
-            // TODO(wgpu#3583): Incorrectly reported by wgpu right now.
+            // TODO(gfx-rs/wgpu#3583): Incorrectly reported by wgpu right now.
             // GLES2 does not support BGRA textures!
             Self::Limited => false,
             Self::FullWebGpuSupport => true,
@@ -430,6 +430,23 @@ pub async fn select_testing_adapter(instance: &wgpu::Instance) -> wgpu::Adapter 
     adapter
 }
 
+/// Why [`select_adapter`] found no usable graphics adapter.
+#[derive(thiserror::Error, Debug)]
+pub enum SelectAdapterError {
+    /// No adapter exists for the enabled backends.
+    #[error(
+        "No graphics adapter was found for the enabled graphics backends ({enabled_backends:?})"
+    )]
+    NoAdapter {
+        /// The backends that were searched.
+        enabled_backends: wgpu::Backends,
+    },
+
+    /// No adapter can present to the given surface.
+    #[error("No graphics adapter was found that is compatible with the surface.")]
+    NoSurfaceCompatibleAdapter,
+}
+
 /// Tries to select an adapter.
 ///
 /// This is very similar to wgpu-core's implementation of `DynInstance::enumerate_adapters`.
@@ -437,11 +454,9 @@ pub fn select_adapter(
     adapters: &[wgpu::Adapter],
     enabled_backends: wgpu::Backends,
     surface: Option<&wgpu::Surface<'_>>,
-) -> Result<wgpu::Adapter, String> {
+) -> Result<wgpu::Adapter, SelectAdapterError> {
     if adapters.is_empty() {
-        return Err(format!(
-            "No graphics adapter was found for the enabled graphics backends ({enabled_backends:?})"
-        ));
+        return Err(SelectAdapterError::NoAdapter { enabled_backends });
     }
 
     let mut adapters = adapters.to_vec();
@@ -461,9 +476,7 @@ pub fn select_adapter(
             }
         });
         if adapters.is_empty() {
-            return Err(
-                "No graphics adapter was found that is compatible with the surface.".to_owned(),
-            );
+            return Err(SelectAdapterError::NoSurfaceCompatibleAdapter);
         }
     }
 
@@ -580,14 +593,14 @@ pub fn validate_graphics_backend_applicability(backend: wgpu::Backend) -> Result
         }
         wgpu::Backend::Dx12 => {
             // We don't have DX12 enabled right now, but someone could.
-            // TODO(wgpu#5166): But if we get this wrong we might crash.
-            // TODO(wgpu#5167): And we also can't query the config.
+            // TODO(gfx-rs/wgpu#5166): But if we get this wrong we might crash.
+            // TODO(gfx-rs/wgpu#5167): And we also can't query the config.
             return Err("DX12 backend is currently not supported.");
         }
         wgpu::Backend::Gl => {
             // Using Angle Mac might actually run GL, but we don't enable this.
-            // TODO(wgpu#5166): But if we get this wrong we might crash.
-            // TODO(wgpu#5167): And we also can't query the config.
+            // TODO(gfx-rs/wgpu#5166): But if we get this wrong we might crash.
+            // TODO(gfx-rs/wgpu#5167): And we also can't query the config.
             if cfg!(target_os = "macos") {
                 return Err("Cannot run with GL backend on Mac.");
             }

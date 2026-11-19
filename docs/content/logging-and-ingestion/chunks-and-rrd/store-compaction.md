@@ -11,21 +11,23 @@ The compaction is triggered by both number of rows and number of bytes threshold
 
 This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](../sinks-and-modes/micro-batching.md).
 
+## Configuration
+
 You can configure these thresholds using the following environment variables:
 
-#### RERUN_CHUNK_MAX_BYTES
+### RERUN_CHUNK_MAX_BYTES
 
 Sets the threshold, in bytes, after which a `Chunk` cannot be compacted any further.
 
 Defaults to `RERUN_CHUNK_MAX_BYTES=393216` (384KiB).
 
-#### RERUN_CHUNK_MAX_ROWS
+### RERUN_CHUNK_MAX_ROWS
 
 Sets the threshold, in rows, after which a `Chunk` cannot be compacted any further.
 
 Defaults to `RERUN_CHUNK_MAX_ROWS=4096`.
 
-#### RERUN_CHUNK_MAX_ROWS_IF_UNSORTED
+### RERUN_CHUNK_MAX_ROWS_IF_UNSORTED
 
 Sets the threshold, in rows, after which a `Chunk` cannot be compacted any further.
 Applies specifically to _non_ time-sorted chunks, which can be slower to query.

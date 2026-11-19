@@ -70,7 +70,7 @@ fn test_forced_component_types() {
     let test_thread = std::thread::Builder::new()
         .name("main".to_owned())
         .spawn(|| {
-            let runtime = tokio::runtime::Builder::new_multi_thread() // NOLINT: owned by this dedicated test thread
+            let runtime = tokio::runtime::Builder::new_multi_thread()
                 .enable_all()
                 .build()
                 .expect("test runtime should build");
@@ -235,7 +235,7 @@ async fn run_forced_component_types_test() {
 #[test]
 fn test_schema_editable_column() {
     // Editable cells require a multi-threaded Tokio runtime for blocking credential access.
-    let runtime = tokio::runtime::Builder::new_multi_thread() // NOLINT: owned by this test
+    let runtime = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
         .expect("test runtime should build");

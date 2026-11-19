@@ -106,22 +106,8 @@ impl Executor {
 
                 PlanUnit::Drop(_) => {}
 
-                PlanUnit::GopRun {
-                    entity_path,
-                    codec,
-                    inputs,
-                    timeline,
-                    gop_chunking,
-                    keyframes,
-                } => {
-                    self.run = Some(RunState::Gop(Box::new(GopRunState::new(
-                        entity_path,
-                        inputs,
-                        codec,
-                        timeline,
-                        gop_chunking,
-                        keyframes,
-                    ))));
+                PlanUnit::GopRun(run) => {
+                    self.run = Some(RunState::Gop(Box::new(GopRunState::new(run))));
                 }
             }
         }

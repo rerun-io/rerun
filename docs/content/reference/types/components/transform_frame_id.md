@@ -24,7 +24,7 @@ Utf8
 
 ## API reference links
  * 🌊 [C++ API docs for `TransformFrameId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TransformFrameId.html)
- * 🐍 [Python API docs for `TransformFrameId`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TransformFrameId)
+ * 🐍 [Python API docs for `TransformFrameId`](https://ref.rerun.io/docs/python/stable/components#rerun.components.TransformFrameId)
  * 🦀 [Rust API docs for `TransformFrameId`](https://docs.rs/rerun/latest/rerun/components/struct.TransformFrameId.html)
 
 

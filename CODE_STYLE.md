@@ -58,6 +58,9 @@ Run these commands from `rerun/` to enforce some of the rules (also done by CI):
 
 ## Rust code
 
+`relint`, our custom linter, checks many of the rules below that `clippy` cannot.
+Run `pixi run relint` from `rerun/` or `dataplatform/`, and see [`scripts/relint/README.md`](scripts/relint/README.md) for details.
+
 ### Avoid `unsafe`
 `unsafe` code should be only used when necessary, and should be carefully scrutinized during PR reviews.
 
@@ -106,6 +109,11 @@ We log problems using our own `re_log` crate (which is currently a wrapper aroun
 * Don't drop an error with `.map_err(|_err| …)` unless you log it or wrap it first.
 * Use `warn_once!`/`error_once!` for messages that would otherwise repeat every frame.
 * Invalid configuration (env vars, CLI args, config files) is an error, not a silent fallback to the default.
+* `unwrap_or(…)` and `unwrap_or_default()` on a `Result` silently drop the error: log it or propagate it, unless ignoring it is intended.
+* An error message says what failed, the offending value (sensitive values last, see below), and, when it can, what the user should do instead.
+* Classify a failure by who caused it.
+  If a server logs a rejected request, it uses `DEBUG` or `INFO`, never `ERROR`: `ERROR` is for our own failures.
+  Only blame the client for what you validated as its fault: errors from deeper layers (storage, I/O, dependencies) may be our bugs, and misclassifying them as client errors hides them from alerting.
 
 Strive to encode code invariants and contracts in the type system as much as possible. So if a vector cannot be empty, consider using [`vec1`](https://crates.io/crates/vec1). [Parse, don’t validate](https://lexi-lambda.github.io/blog/2019/11/05/parse-don-t-validate/).
 
@@ -166,6 +174,14 @@ This is a level you opt-in to to debug either an application or a library. These
 This is the last-resort log level, and mostly for debugging libraries or the use of libraries. Here any and all spam goes, logging low-level operations.
 
 The distinction between `DEBUG` and `TRACE` is the least clear. Here we use a rule of thumb: if it generates a lot of continuous logging (e.g. each frame), it should go to `TRACE`.
+
+
+### Untrusted input
+Requests, files, and anything else from outside the process can be malicious or degenerate.
+* Bound every size or count that the input controls, e.g. cap list lengths in requests.
+* Use `saturating_*` or `checked_*` arithmetic on sizes and offsets that the input controls.
+* Check that responses built from the input stay within transport limits (e.g. the gRPC message size).
+* Don't check for a file and then act on it (TOCTOU): do the operation and handle the error.
 
 
 ### Warning reporter pattern
@@ -242,6 +258,8 @@ This also makes the compiler tell you when a new field is added that you may hav
 
 If you use a type or function more than twice in a file, add a `use` for it at the top of the file instead of spelling out its full path each time.
 
+Put types and constants at the top of the file, before the functions that use them.
+
 Keep hand-written lists sorted alphabetically, unless the order carries meaning.
 This includes enum variants, match arms, Cargo features, `clippy.toml` entries, `.gitattributes` lines, and tables in docs.
 
@@ -251,17 +269,23 @@ For UI, prefer a runtime check (e.g. a disabled button on web) over compile-time
 
 Add `re_tracing::profile_function!()` (or `profile_scope!`) to functions that may be slow, e.g. I/O, encoding and decoding, opening or closing devices, and large loops.
 
+Don't `await` independent I/O one at a time in a loop: run it concurrently, with a concurrency limit.
+Don't issue one query or request per item when one call can fetch them all.
+
 Don't wrap code in a closure that is called immediately, and don't extract a helper that is only called once unless it names a concept.
 
 Avoid catch-all `_ =>` arms when matching on our own enums, so that the compiler flags every `match` that needs updating when a variant is added.
 
 Prefer `if let … else` over a `match … pattern => …, _ => …` when possible.
 
+Don't negate a parenthesized boolean expression: write `!a || !b` instead of `!(a && b)`.
+
 Every new timeout, size limit, or threshold needs a reason: say where the number comes from, or reuse an existing constant.
 Refer to metadata keys and column names through their constants, never through a string literal.
 
 ### API design
 * Prefer constructors and associated functions over free functions.
+* Put general or context parameters first and specific ones last, e.g. `fn entity_ui(ctx: &ViewerContext, ui: &mut Ui, entity_path: &EntityPath)`.
 * Avoid global state (`static FOO: LazyLock<…>`); let the caller own it.
 * Instead of `fn should_do_x(x) -> bool` + `fn do_x(x)`, write a single `fn do_x(x) -> Option<…>`.
 * Keep items private by default, and make only the intended API `pub`.
@@ -270,6 +294,8 @@ Refer to metadata keys and column names through their constants, never through a
   Small items like constants are fine there too; move functions and types with real logic into their own modules.
 * Don't add traits, public methods, or hooks to production code only so that tests can use them.
 * Don't add code "for later", or backwards compatibility that nothing needs.
+  Nothing needs compatibility with a feature that has not shipped or been announced.
+* Don't add an abstraction (trait, builder, env var, config knob) with a single implementation or value, unless it encodes an invariant the compiler then checks.
 * Before writing a helper, look for an existing one in this repo or in a dependency we maintain (egui, emath, quiver, …).
   If it is missing there, add it upstream instead of working around it locally.
 
@@ -293,6 +319,8 @@ A wrong comment is worse than no comment: after changing or renaming code, check
 When you must remember to do something before merging a PR, write `TODO` or `FIXME` in any file. The CI will not be green until you either remove them or rewrite them as `TODO(yourname)`.
 
 For work that is left for a later PR, prefer linking an issue, e.g. `TODO(rerun-io/rerun#1234)` or `TODO(RR-1234)`, so it doesn't get lost.
+Every temporary workaround and every deprecation gets such a `TODO` linking the issue for its removal.
+Keep the `TODO` text short and high-level; the details go in the issue.
 
 You can also use the `todo()!` macro during development, but again it won't pass CI until you rewrite it as `todo!("more details")`. Of course, we should try to avoid `todo!` macros in our code.
 
@@ -301,6 +329,10 @@ You can also use the `todo()!` macro during development, but again it won't pass
 Use debug-formatting (`{:?}`) when logging strings in logs and error messages. This will surround the string with quotes and escape newlines, tabs, etc. For instance: `re_log::warn!("Unknown key: {key:?}");`.
 
 Use `{:#}` or `re_error::format(err)` when displaying an error - NOT `Debug`/`{:?}`.
+
+Name error variables `err`, not `e`: `Err(err) => …`, `.map_err(|err| …)`.
+
+Inline simple variables in format strings: `format!("{name}")`, not `format!("{}", name)`.
 
 Derive egui ids from the parent `Ui` with `ui.make_persistent_id(…)`, so that two instances of the same widget don't collide.
 Hash a tuple rather than building an id with `format!`: `ui.make_persistent_id(("plot_legend", view_id))`.
@@ -433,6 +465,8 @@ Name things for what they are, not for what they are used for.
 Don't repeat the type in the name: `age`, not `age_integer`.
 
 Use one name for one concept, everywhere.
+Before naming a new public item, look at its siblings (other methods on the type, the same concept in the other SDKs or the proto) and reuse their nouns and verbs.
+Don't coin a new term for something that already has a name.
 
 For UI functions (functions taking an `&mut egui::Ui` argument), we use the name `ui` or `_ui` suffix, e.g. `blueprint_ui(…)` or `blueprint.ui(…)`.
 

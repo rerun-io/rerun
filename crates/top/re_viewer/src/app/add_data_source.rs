@@ -403,7 +403,8 @@ impl AppCore {
                 }
                 Err(err) => {
                     re_log::error!(
-                        "Failed to reload segment, leaving it as it is: {}\nSegment: {uri}",
+                        segment = %uri,
+                        "Failed to reload segment, leaving it as it is: {}",
                         re_error::format(err)
                     );
                 }

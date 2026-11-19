@@ -4,7 +4,9 @@ order: 100
 description: How the catalog organizes datasets, segments, and entries
 ---
 
-This page covers the catalog server's object model. For logging and recording basics, see [Recordings](../../logging-and-ingestion/data-model/recordings.md). For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/).
+This page covers the catalog server's object model.
+For logging and recording basics, see [Recordings](../../logging-and-ingestion/data-model/recordings.md).
+For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/catalog/).
 
 
 ## Catalog
@@ -64,15 +66,16 @@ Dataset entries model a collection of Rerun data organized in episodes such as r
 These episodes within datasets are called _segments_, which are identified by a segment ID.
 
 Segments are added to datasets by the process of _registering_ a [recording](../../logging-and-ingestion/data-model/recordings.md) (typically stored in some object store such as S3) to the dataset using the Catalog SDK.
-The recording ID of the `.rrd` file is used as its segment ID.
+By default, the recording ID of the `.rrd` file is used as its segment ID.
+To register it under another segment ID, pass `segment_id` to `register()`: see [How can I register a recording under another segment ID?](layers.md#how-can-i-register-a-recording-under-another-segment-id).
 Keep one recording per registered `.rrd` file.
 Rerun Hub registers each file as a single segment, named after the first recording in it.
 
 Recordings registered to a given segment are organized by layers, identified by a layer name.
 By default, the `"base"` layer name is used.
-Registering two `.rrd` files with the same recording ID (that is, with the same segment ID) to the same dataset, and using the same layer name, throws an error by default.
+Registering two `.rrd` files under the same segment ID to the same dataset, and using the same layer name, throws an error by default.
 Pass `on_duplicate=OnDuplicateSegmentLayer.REPLACE` to `register()` to overwrite the existing layer, or `SKIP` to leave it in place.
-Additive registration can be achieved by using different layer names for different `.rrd`s with the same recording ID/segment ID.
+Additive registration can be achieved by using different layer names for different `.rrd`s registered under the same segment ID.
 
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/6a9690740962bcda73b78a847c04862ba646461a_d2.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
@@ -80,9 +83,9 @@ Additive registration can be achieved by using different layer names for differe
 </div>
 
 Layers are immutable and can only be overwritten by registering a new `.rrd` file. In other words, datasets support the following mutation operations:
-- _create segment_: by registering a `.rrd` with a "new" recording ID
-- _append to segment_: by registering a `.rrd` with a matching recording ID to a new layer name
-- _overwrite segment layer_: by registering a `.rrd` with a matching recording ID to an existing layer name, with `on_duplicate=OnDuplicateSegmentLayer.REPLACE`
+- _create segment_: by registering a `.rrd` under a "new" segment ID
+- _append to segment_: by registering a `.rrd` under a matching segment ID to a new layer name
+- _overwrite segment layer_: by registering a `.rrd` under a matching segment ID to an existing layer name, with `on_duplicate=OnDuplicateSegmentLayer.REPLACE`
 
 ### Managing segment layers with the Python catalog API
 
@@ -142,11 +145,11 @@ Such an occurrence is rare, and practically impossible when using standard Rerun
 
 A dataset can be assigned a blueprint.
 This is done by registering a `.rbl` blueprint file typically stored in object storage to the dataset.
-A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
+A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
 In that case, the blueprint is applied to all segments of the dataset when visualized in the Rerun Viewer.
 
 A separate **table blueprint** can be used to configure the segment table itself: columns, card layouts, and embedded segment previews.
-See [Configure table layouts and segment previews](../../viewer/blueprints-and-views/configure-table-blueprints.md) for the complete save-and-register workflow.
+See [Configure table layouts and segment previews](../../viewer/blueprints/configure-table-blueprints.md) for the complete save-and-register workflow.
 
 
 ### Assets
@@ -157,7 +160,7 @@ Registering it once as an asset means it does not have to be copied into every r
 Like blueprints, assets live in their own dataset, owned by the dataset they belong to.
 Deleting the dataset also deletes its asset dataset and the asset storage.
 
-Assets are registered from a `.rrd` file that the server can read, using [`DatasetEntry.register_asset()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.register_asset):
+Assets are registered from a `.rrd` file that the server can read, using [`DatasetEntry.register_asset()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_asset):
 
 ```python
 client = rr.catalog.CatalogClient(…)
@@ -196,8 +199,8 @@ segment_only = dataset.segment_store(segment_id, include_assets=False)
 Fetching an asset's manifest costs one request per asset, so `include_assets=False` is worth it when you only care about the segment's own data.
 
 The [dataframe query APIs](../dataframes/dataframe-queries.md) are the exception: they stay on the dataset's own segments, so assets never show up there.
-[`DatasetEntry.schema()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.schema), [`DatasetEntry.segment_ids()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_ids), [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.segment_table) and [`DatasetEntry.reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.reader) all ignore the asset dataset.
-The asset dataset is hidden, so it is also left out of [`CatalogClient.datasets()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.CatalogClient.datasets) unless you pass `include_hidden=True`.
+[`DatasetEntry.schema()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.schema), [`DatasetEntry.segment_ids()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_ids), [`DatasetEntry.segment_table()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.segment_table) and [`DatasetEntry.reader()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.reader) all ignore the asset dataset.
+The asset dataset is hidden, so it is also left out of [`CatalogClient.datasets()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.CatalogClient.datasets) unless you pass `include_hidden=True`.
 
 To query asset data, target the asset dataset itself, which is a regular dataset with one segment per registered asset:
 

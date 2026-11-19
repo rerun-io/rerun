@@ -44,17 +44,17 @@ with rr.server.Server(
 When multiple recordings are loaded into a dataset, each gets mapped to a separate segment whose ID is the corresponding recording ID.
 
 You can also start a longer running server in a separate process and connect to it by its local address.
-In one file or terminal launch the server and print its address,
+In one file or terminal, launch the server on a fixed port and keep the process running:
 
 ```python
-server = rr.server.Server()
-print(server.url())
+server = rr.server.Server(port=51234)
+input("Server running, press Enter to stop it")
 ```
 
-in a separate file or terminal connect to that url
+In a separate file or terminal, connect to it:
 
 ```python
-client = rr.catalog.CatalogClient(server.url())
+client = rr.catalog.CatalogClient("rerun+http://127.0.0.1:51234")
 ```
 
 ## Adding new datasets
@@ -160,7 +160,7 @@ In general, datasets can be arbitrarily large, and it is often useful to query o
 # Filter by entity paths
 selection = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
 
-# Filter by segment IDs (recording IDs)
+# Filter by segment IDs
 selection = dataset.filter_segments(["recording_001", "recording_002"])
 
 # Chain filters

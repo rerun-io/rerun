@@ -23,7 +23,7 @@ To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/l
 
 ## API reference links
  * 🌊 [C++ API docs for `CoordinateFrame`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1CoordinateFrame.html)
- * 🐍 [Python API docs for `CoordinateFrame`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.CoordinateFrame)
+ * 🐍 [Python API docs for `CoordinateFrame`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.CoordinateFrame)
  * 🦀 [Rust API docs for `CoordinateFrame`](https://docs.rs/rerun/latest/rerun/archetypes/struct.CoordinateFrame.html)
 
 ## Examples

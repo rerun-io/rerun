@@ -29,7 +29,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorDimensionIndexSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TensorDimensionIndexSelection.html)
- * 🐍 [Python API docs for `TensorDimensionIndexSelection`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.TensorDimensionIndexSelection)
+ * 🐍 [Python API docs for `TensorDimensionIndexSelection`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.TensorDimensionIndexSelection)
  * 🦀 [Rust API docs for `TensorDimensionIndexSelection`](https://docs.rs/rerun/latest/rerun/encodings/struct.TensorDimensionIndexSelection.html)
 
 

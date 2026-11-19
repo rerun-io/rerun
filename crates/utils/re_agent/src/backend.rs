@@ -116,7 +116,7 @@ pub enum AgentEvent {
         responder: Responder<CreateElicitationResponse>,
     },
 
-    TurnFinished(Result<StopReason, String>),
+    TurnFinished(Result<StopReason, TurnError>),
 
     Log {
         direction: LineDirection,
@@ -127,6 +127,21 @@ pub enum AgentEvent {
 
     /// The agent is gone. No more events will follow.
     Disconnected,
+}
+
+/// Why an agent turn failed.
+#[derive(Debug, thiserror::Error)]
+pub enum TurnError {
+    /// The agent answered the prompt with an error.
+    #[error("{message}")]
+    Agent {
+        /// The agent's error, described for the user.
+        message: String,
+    },
+
+    /// The model API failed.
+    #[error(transparent)]
+    ModelApi(crate::ModelApiError),
 }
 
 /// Whether [`AgentEvent::SessionStarted`] started a new session or loaded an earlier one.

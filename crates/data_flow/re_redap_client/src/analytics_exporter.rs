@@ -21,6 +21,7 @@ const EXPORT_PATH: &str = "/opentelemetry.proto.collector.trace.v1.TraceService/
 #[derive(Clone, Debug, re_byte_size::SizeBytes)]
 pub struct ConnectionAnalyticsExporter {
     origin: Origin,
+
     #[size_bytes(ignore)]
     service: crate::grpc::RedapClientStack,
 }

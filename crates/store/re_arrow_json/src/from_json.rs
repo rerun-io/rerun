@@ -54,6 +54,7 @@ pub enum ValueFromJsonError {
     #[error("could not decode as Arrow type {datatype}: {err}")]
     Decode {
         datatype: DataType,
+
         #[source]
         err: ArrowError,
     },
@@ -62,6 +63,7 @@ pub enum ValueFromJsonError {
     #[error("could not build an Arrow array of type {datatype}: {err}")]
     BuildArray {
         datatype: DataType,
+
         #[source]
         err: ArrowError,
     },
@@ -69,6 +71,7 @@ pub enum ValueFromJsonError {
     #[error("could not encode as a batch of {component_type}: {err}")]
     ToArrow {
         component_type: ComponentType,
+
         #[source]
         err: re_sdk_types::SerializationError,
     },
@@ -76,6 +79,7 @@ pub enum ValueFromJsonError {
     #[error("not a valid batch of {component_type}: {err}")]
     Invalid {
         component_type: ComponentType,
+
         #[source]
         err: re_sdk_types::DeserializationError,
     },

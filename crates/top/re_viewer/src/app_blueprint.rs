@@ -286,10 +286,10 @@ impl AppBlueprint<'_> {
 
             let chunk = get_panel_state_chunk(panel_name, timepoint, value);
 
-            command_sender.send_system(SystemCommand::AppendToStore(
-                blueprint_db.store_id().clone(),
-                vec![chunk],
-            ));
+            command_sender.send_system(SystemCommand::AppendToStore {
+                store_id: blueprint_db.store_id().clone(),
+                chunks: vec![chunk],
+            });
         } else {
             // No blueprint to write to; persist in egui memory instead so the
             // change survives across frames.

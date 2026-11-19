@@ -29,13 +29,13 @@ A [vision-language-action policy](https://en.wikipedia.org/wiki/Vision-language-
   <img src="https://rerun.io/blog/data-layer-tax/vla.jpg" alt="A single training sample for a VLA model with camera, task, state, and action columns aligned at the current row">
 </picture>
 
-The dataloader assembles those samples on demand from the per-recording [chunks](https://rerun.io/docs/logging-and-ingestion/chunks-and-rrd/chunks) in a Rerun [catalog](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#catalog), while the PyTorch `DataLoader` drives batching, shuffling, and worker parallelism.
+The dataloader assembles those samples on demand from the per-recording [chunks](../logging-and-ingestion/chunks-and-rrd/chunks.md) in a Rerun [catalog](../query-and-transform/catalog/catalog-object-model.md#catalog), while the PyTorch `DataLoader` drives batching, shuffling, and worker parallelism.
 
 ## How to use it
 
 ### Register data with a catalog
 
-The dataloader reads from a Rerun catalog, so you must first register [RRDs](https://rerun.io/docs/logging-and-ingestion/data-model/recordings/#storage-formats). Start the OSS server in a separate terminal:
+The dataloader reads from a Rerun catalog, so you must first register [RRDs](../logging-and-ingestion/data-model/recordings.md#storage-formats). Start the OSS server in a separate terminal:
 
 ```bash
 rerun server
@@ -51,11 +51,27 @@ The example's [`prepare_dataset.py`](https://github.com/rerun-io/rerun/blob/main
 
 A Rerun dataset is built from three things:
 
-- a `DataSource`: the catalog dataset and an optional segment filter
+- a `DataSource`: the catalog dataset or filtered selection, with an optional curation
 - an `index`: the timeline that defines what "one sample" means (e.g. `"real_time"` or `"frame_index"`)
 - a dict of `Field`s: what each sample should contain
 
 snippet: howto/dataloader[describe_sample]
+
+`DataSource` accepts a dataset or a `DatasetSelection` created by filtering it.
+Plain loading uses either directly; a curation is optional.
+For a whole dataset, a filtered view, or a resolved curation created below:
+
+```python
+whole_source = DataSource(dataset)
+view = dataset.filter_segments(source.segments).filter_contents(["/observation/**", "/action/**"])
+view_source = DataSource(view)
+curated_source = DataSource(dataset, curation=curation)
+```
+
+Resolve recording and interval selections with `Curation.from_source` before saving a training manifest.
+Content filters restrict visible fields without narrowing recording-wide ranges and remain loader configuration, alongside `fields`.
+An empty curation produces an empty loader.
+The loader rejects a curation whose dataset, timeline, or timeline type does not match its source and `index`.
 
 Each `Field.path` is a column name from the dataset's catalog schema.
 The decoder turns that column into a training value:
@@ -68,12 +84,12 @@ The dict keys (`"state"`, `"action"`, …) in `fields` become the keys of each s
 For timestamp or duration timelines, pass `timeline_sampling=FixedRateSampling(rate_hz=…)` to define the sampling grid.
 For integer timelines, omit `timeline_sampling`.
 The sampling choice must match the timeline type; `shuffle_strategy` controls the order of the resulting samples.
+Dataset construction checks the timeline and requested columns against the source's content-filtered schema without reading recording data.
 
 #### Action chunks and history via `window`
 
 `Field(window=(offset, …))` returns one value per explicit offset relative to the current index, instead of a single value.
 Integer timelines use integral index-step offsets. Timestamp and duration timelines use seconds, which the dataloader converts to nanoseconds internally; callers never need to match the Arrow timestamp storage unit.
-`Field(max_staleness=…)` uses the same convention when limiting the age of the nearest value during manifest generation.
 
 <picture>
   <img src="https://rerun.io/blog/data-layer-tax/vla-with-history.jpg" alt="Sample with non-uniform history showing the current row plus a windowed slice of preceding rows">
@@ -119,7 +135,6 @@ If your recordings do not have it, run [`rerun rrd optimize`](../reference/cli.m
 During live loading, keyframe discovery starts near each requested window and expands backward only until it finds the nearest preceding keyframe or reaches the recording's start.
 This supports variable GOP lengths without requiring a scan of each recording's entire history for every fetch.
 If no preceding keyframe exists, the video field is unresolved and live iterable loading applies the same `max_consecutive_skipped_samples` policy as other missing values.
-Explicit manifest generation still scans the keyframe history to determine valid samples in advance.
 
 For aligned data with known video keyframes, pass `timeline_sampling=TimeAlignedSampling(keyframe_interval=10)` to the dataset.
 This uses exact-index reads for all fields instead of latest-at filling and calculates video decode starts using the declared interval.
@@ -172,6 +187,67 @@ for batch in loader:
 
 Call `to_rgb` in the training process rather than inside a `DataLoader` worker when converting on CUDA.
 
+### Train on selected spans
+
+Dataset-level curation chooses recordings; span-level curation chooses intervals within them.
+Resolve either selection into a `Curation` before sampling, then save its Arrow coordinates as the training manifest.
+To curate whole recordings, pass a dataset selection without an annotation table:
+
+```python
+from rerun.experimental.dataloader import BlockShuffle, DataSource, FixedRateSampling, RerunIterableDataset
+from rerun.experimental.spans import Curation
+
+dataset_entry = source.dataset
+recording_view = dataset_entry.filter_segments(source.segments)
+curation = Curation.from_source(recording_view, index="real_time")
+```
+
+SQL can select recordings through the catalog's DataFusion context.
+For example, if recordings have an `episode.success` property:
+
+```python
+ctx = dataset_entry.catalog.ctx
+ctx.register_view("recordings", dataset_entry.segment_table())
+selected_recordings = ctx.sql('SELECT rerun_segment_id FROM recordings WHERE "property:episode:success"[1] = true')
+recording_view = dataset_entry.filter_segments(selected_recordings)
+curation = Curation.from_source(recording_view, index="real_time")
+```
+
+To combine the recording selection with annotated intervals, pass exported span coordinates or another `Curation` as `spans` to `from_source`; see [Select spans for training](../query-and-transform/dataframes/spans.md#select-spans-for-training).
+The resolved intervals are the intersection of the selected recordings' ranges and the selected spans.
+Without `spans`, the curation contains the selected recordings' full timeline ranges.
+
+Save the resolved output, then reload it against the full same dataset without reconstructing the recording-selection view:
+
+```python
+Curation.save(dataset_entry, curation.to_arrow(), tag="training-v1")
+curation = Curation.open(dataset_entry, tag="training-v1")
+source = DataSource(dataset_entry, curation=curation)
+
+dataset = RerunIterableDataset(
+    source=source,
+    index="real_time",
+    fields=fields,
+    timeline_sampling=FixedRateSampling(rate_hz=30),
+    shuffle_strategy=BlockShuffle(),
+    seed=0,
+)
+```
+
+Resolving a curation reads recording metadata, without fetching or validating training fields.
+Intervals select sample anchor times; field windows may read earlier or later data in the same recording.
+Content filters remain loader configuration and are not stored in the manifest.
+Overlapping selections do not duplicate anchors, and video decoding may also read an earlier keyframe.
+For local persistence, use `curation.write_parquet("training.parquet")` and `Curation.from_parquet(dataset_entry, "training.parquet")`.
+Both dataset styles accept `DataSource(dataset_or_selection, curation=curation)` through their normal constructors.
+Their `from_curation()` methods remain convenience wrappers.
+The sampling choice must match the curation's timeline, just as it does for live loading.
+
+The iterable loader computes sample order and rank/worker assignments deterministically from the curation and run settings.
+Reproducing them requires unchanged source data, loader version, sampling and shuffle settings, seed, epoch, and rank/worker counts.
+Use `set_epoch()` to change the shuffle between epochs.
+Keep `DataLoader(persistent_workers=False)` so workers receive the updated epoch when iteration restarts.
+
 ### Iterable vs. Map-style
 
 The dataloader provides both PyTorch dataset styles:
@@ -186,7 +262,7 @@ snippet: howto/dataloader[dataloader]
 For DDP, the iterable dataset partitions the index list across ranks automatically. With the map dataset, swap in `sampler=DistributedSampler(ds)` and call `sampler.set_epoch(epoch)` each epoch.
 
 > [!WARNING]
-> When a finite live `RerunIterableDataset` is consumed to exhaustion under DDP, wrap the training loop in [`DistributedDataParallel.join()`](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join):
+> When a finite `RerunIterableDataset` is consumed to exhaustion under DDP, wrap the training loop in [`DistributedDataParallel.join()`](https://docs.pytorch.org/docs/stable/generated/torch.nn.parallel.DistributedDataParallel.html#torch.nn.parallel.DistributedDataParallel.join):
 >
 > ```python
 > with model.join():
@@ -204,16 +280,16 @@ For DDP, the iterable dataset partitions the index list across ranks automatical
 
 ### Missing values
 
-The live `RerunIterableDataset` drops a sample when any decoder returns `None` and warns once for each missing field.
+`RerunIterableDataset` drops a sample when any decoder returns `None` and warns once for each missing field.
 `None` is the decoder contract for unresolved data; a valid zero-sized tensor is still yielded.
 Null source rows and expected encoded-image or video decode failures are converted to `None`; a corrupt video GOP does not prevent later GOPs in the fetch block from decoding.
 Custom decoders should return `None` for recoverable data errors; exceptions still propagate as decoder failures.
 Set `max_consecutive_skipped_samples` to bound how many such samples each rank and `DataLoader` worker may skip in a row; a valid sample resets the count, and exceeding the limit raises with total and per-field counts.
 The default is 1000; pass `None` to apply no limit.
 
-Live samples are partitioned across workers and DDP ranks before decoding, so uneven missing data can make their yielded sample counts differ.
-Use the DDP `join()` pattern above when consuming the live dataset to exhaustion.
-For deterministic multi-rank training, generate a `Manifest` with the appropriate `required_fields`: invalid samples are removed before sharding, and replay raises if a required field has disappeared or no longer decodes instead of silently changing the frozen epoch.
+Samples are partitioned across workers and DDP ranks before decoding, so uneven missing data can make their yielded sample counts differ.
+Skipping does not replace samples or redistribute them between workers.
+Use the DDP `join()` pattern above when consuming the dataset to exhaustion.
 
 `RerunMapDataset` cannot skip a missing item without changing its stable index mapping, so its sample dictionary may contain `None` for an unresolved field.
 
@@ -266,7 +342,7 @@ Fetch wait measures only latency that background lookahead did not hide.
 The merge factor describes only the direct HTTP path; requests per sample combines direct and gRPC chunk fetches and is omitted when neither path issued a request.
 Fetched sample targets are counted when their fetch block completes, so shuffle buffers, DataLoader prefetching, skipped outputs, and early iterator termination do not bias the denominator.
 Video decode amplification counts actual codec output; contiguous block fetching should approach `1.0`, while uniformly sampled positions in a GOP of length 10 average approximately `5.5`.
-Skipped samples are counted once even when multiple fields are unresolved, and manifest replay does not increment the metric because it raises for missing required fields instead of skipping them.
+Skipped samples are counted once even when multiple fields are unresolved.
 
 ### Shuffling and fetch locality
 

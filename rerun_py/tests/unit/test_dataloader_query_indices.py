@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from types import SimpleNamespace
-from typing import cast
+from typing import TYPE_CHECKING, cast
 
 import numpy as np
 import pyarrow as pa
@@ -12,8 +12,6 @@ import torch
 from rerun.experimental.dataloader import (
     DataSource,
     Field,
-    FixedRateSampling,
-    Manifest,
     NoShuffle,
     RerunIterableDataset,
     RerunMapDataset,
@@ -40,6 +38,9 @@ from rerun.experimental.dataloader._utils import (
     _resolve_decode_requests_in_block,
 )
 from rerun.experimental.dataloader.decoders import ImageDecoder, NumericDecoder, VideoFrameDecoder
+
+if TYPE_CHECKING:
+    from rerun.catalog import DatasetEntry
 
 
 def _segment(segment_id: str, index_start: int, num_samples: int, ns_per_sample: int) -> SegmentMetadata:
@@ -534,13 +535,13 @@ def test_only_regular_live_sampling_discovers_keyframes(
     module = iterable_dataset if dataset_type is RerunIterableDataset else map_dataset
     sample_index = SampleIndex([_segment("a", 9, 3, 1)])
     fields = {"video": Field("/camera:VideoStream:sample", decode=VideoFrameDecoder())}
-    source = cast(
-        "DataSource",
-        SimpleNamespace(
-            dataset=SimpleNamespace(
-                catalog=SimpleNamespace(url="rerun+http://fake", _internal=SimpleNamespace(token=None)), name="ds"
-            )
-        ),
+    source = DataSource(
+        cast(
+            "DatasetEntry",
+            SimpleNamespace(
+                catalog=SimpleNamespace(url="rerun+http://fake", _internal=SimpleNamespace(token=None)), id="ds"
+            ),
+        )
     )
     discovery_calls = []
     plans_seen: list[QueryPlan] = []
@@ -554,6 +555,7 @@ def test_only_regular_live_sampling_discovers_keyframes(
         return []
 
     monkeypatch.setattr(SampleIndex, "build", lambda *_args, **_kwargs: sample_index)
+    monkeypatch.setattr(module, "_validate_source_schema", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(module._WorkerConnection, "ensure", lambda _self: (None, {}))
     monkeypatch.setattr(module, "_discover_prior_keyframes", discover)
     monkeypatch.setattr(module, "_fetch_queries_parallel", fetch)
@@ -580,100 +582,3 @@ def test_only_regular_live_sampling_discovers_keyframes(
     else:
         assert plan.query_indices == {}
         assert plan.query_ranges == {"a": [(0, 11)]}
-
-
-@pytest.mark.parametrize("dataset_type", [RerunIterableDataset, RerunMapDataset])
-@pytest.mark.parametrize(
-    ("timeline_sampling", "error"),
-    [
-        (None, None),
-        (FixedRateSampling(rate_hz=1), None),
-        (FixedRateSampling(rate_hz=2), "sampling rate"),
-        (TimeAlignedSampling(keyframe_interval=10), "integer timeline"),
-    ],
-)
-def test_manifest_sampling_preserves_the_recorded_time_grid(
-    dataset_type: type[RerunIterableDataset] | type[RerunMapDataset],
-    timeline_sampling: TimeAlignedSampling | FixedRateSampling | None,
-    error: str | None,
-) -> None:
-    manifest = Manifest._from_arrow(
-        pa.table({}).replace_schema_metadata({
-            "index_name": "time",
-            "ns_dtype": "datetime64[ns]",
-            "ns_per_sample": "1000000000",
-        })
-    )
-    source = cast(
-        "DataSource",
-        SimpleNamespace(
-            dataset=SimpleNamespace(
-                catalog=SimpleNamespace(url="unused", _internal=SimpleNamespace(token=None)), name="unused"
-            )
-        ),
-    )
-
-    if error is not None:
-        with pytest.raises(ValueError, match=error):
-            dataset_type.from_manifest(manifest, source, {}, timeline_sampling=timeline_sampling)
-    else:
-        dataset = dataset_type.from_manifest(manifest, source, {}, timeline_sampling=timeline_sampling)
-        assert dataset.sample_index.ns_dtype == "datetime64[ns]"
-        assert dataset.sample_index.ns_per_sample == 1_000_000_000
-
-
-@pytest.mark.parametrize("dataset_type", [RerunIterableDataset, RerunMapDataset])
-def test_manifest_decode_anchors_are_preserved_with_an_aligned_layout(
-    monkeypatch: pytest.MonkeyPatch,
-    dataset_type: type[RerunIterableDataset] | type[RerunMapDataset],
-) -> None:
-    fields = {
-        "video": Field("/camera:VideoStream:sample", decode=VideoFrameDecoder(), window=(-2, 0)),
-        "state": Field("/state:Scalars:scalars", decode=NumericDecoder()),
-    }
-    rows = pa.table({
-        "rank": [0],
-        "worker": [0],
-        "fetch_group": [0],
-        "emit_rank": [0],
-        "segment_id": ["a"],
-        "anchor": [8],
-        "video": [{"lo": 3, "hi": 8}],
-        "state": [{"lo": 8, "hi": 8}],
-    })
-    manifest = Manifest._from_arrow(rows.replace_schema_metadata({"index_name": "frame"}))
-    source = cast(
-        "DataSource",
-        SimpleNamespace(
-            dataset=SimpleNamespace(
-                catalog=SimpleNamespace(url="unused", _internal=SimpleNamespace(token=None)), name="unused"
-            )
-        ),
-    )
-    module = iterable_dataset if dataset_type is RerunIterableDataset else map_dataset
-    monkeypatch.setattr(module._WorkerConnection, "ensure", lambda _: (None, {}))
-    captured: list[QueryPlan] = []
-
-    def capture_queries(plans: list[QueryPlan], **_: object) -> list[FetchedGroup]:
-        captured.extend(plans)
-        raise RuntimeError("query captured before catalog I/O")
-
-    monkeypatch.setattr(module, "_fetch_queries_parallel", capture_queries)
-    timeline_sampling = TimeAlignedSampling(keyframe_interval=10)
-    with pytest.raises(RuntimeError, match="query captured before catalog I/O"):
-        if dataset_type is RerunIterableDataset:
-            list(RerunIterableDataset.from_manifest(manifest, source, fields, timeline_sampling=timeline_sampling))
-        else:
-            RerunMapDataset.from_manifest(manifest, source, fields, timeline_sampling=timeline_sampling)[0]
-
-    (plan,) = [plan for plan in captured if "video" in plan.fields]
-    (state_plan,) = [plan for plan in captured if "state" in plan.fields]
-    (request,) = plan.fetch_requests["video"]
-    assert request.decode_index_range == (3, 8)
-    assert request.output_index_values == (6, 8)
-    assert request.starts_at_keyframe
-    assert plan.query_ranges == {}
-    assert plan.query_indices["a"].tolist() == [3, 4, 5, 6, 7, 8]
-    assert state_plan.fill_latest_at is False
-    assert state_plan.fetch_requests["state"][0].fill_latest_at is False
-    assert state_plan.query_indices["a"].tolist() == [8]

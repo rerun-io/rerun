@@ -129,7 +129,11 @@ mod web {
         web_sys::window()
             .ok_or(NoLocalStorage)?
             .local_storage()
-            .map_err(|_err| NoLocalStorage)?
+            .map_err(|err| {
+                let err = re_web::Error::from(err);
+                re_log::debug!("Failed to access local storage: {err}");
+                NoLocalStorage
+            })?
             .ok_or(NoLocalStorage)
     }
 

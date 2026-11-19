@@ -76,6 +76,7 @@ pub static EXTERNAL_IMPORTER_PATHS: LazyLock<Vec<PathBuf>> = LazyLock::new(|| {
 
             if is_executable(&filepath) && (is_new_prefix || is_legacy_prefix) {
                 if is_legacy_prefix {
+                    // relint: allow(log_sensitive_inline): `*_once` macros cannot take structured fields
                     re_log::warn_once!(
                         "Found external loader with deprecated `rerun-loader-` prefix: {filename_str}. \
                          Please rename it to use the `rerun-importer-` prefix instead. \
@@ -346,7 +347,10 @@ fn decode_and_stream(
             }
         };
 
-        let data = ImportedData::LogMsg(ExternalImporter::name(&ExternalImporter), msg);
+        let data = ImportedData::LogMsg {
+            importer_name: ExternalImporter::name(&ExternalImporter),
+            msg,
+        };
         if re_quota_channel::send_crossbeam(tx, data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }

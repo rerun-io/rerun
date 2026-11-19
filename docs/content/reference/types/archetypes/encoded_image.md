@@ -29,7 +29,7 @@ For images that refer to video frames see [`archetypes.VideoFrameReference`](htt
 
 ## API reference links
  * 🌊 [C++ API docs for `EncodedImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1EncodedImage.html)
- * 🐍 [Python API docs for `EncodedImage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.EncodedImage)
+ * 🐍 [Python API docs for `EncodedImage`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.EncodedImage)
  * 🦀 [Rust API docs for `EncodedImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.EncodedImage.html)
 
 ## Example

@@ -55,6 +55,7 @@ export default class WebViewer extends React.Component {
         "checkForUpdatesOnStartup",
         "manifestUrl",
         "renderBackend",
+        "analytics",
         "hide_welcome_screen",
         "check_for_updates_on_startup",
         "manifest_url",
@@ -135,6 +136,7 @@ function startViewer(handle, parent, getProps) {
       checkForUpdatesOnStartup:
         props.checkForUpdatesOnStartup ?? props.check_for_updates_on_startup,
       // oxlint-enable typescript/no-deprecated
+      analytics: props.analytics,
       theme: props.theme,
 
       // NOTE: `width`, `height` intentionally ignored, they will

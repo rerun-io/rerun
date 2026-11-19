@@ -1,0 +1,37 @@
+[package]
+name = "relint"
+version = "0.1.0"
+authors = ["rerun.io <opensource@rerun.io>"]
+edition = "2024"
+license = "MIT OR Apache-2.0"
+publish = false
+rust-version = "1.98"
+description = "Rerun's custom syntax-aware linter for Rust source code."
+
+# A separate workspace, so that `ra_ap_*` (breaking releases every week) never touches the main `Cargo.lock`.
+[workspace]
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+elided_lifetimes_in_paths = "warn"
+nonstandard_style = { level = "warn", priority = -1 }
+rust_2018_idioms = { level = "warn", priority = -1 }
+unused_qualifications = "warn"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+dbg_macro = "warn"
+expect_used = "warn"
+unwrap_used = "warn"
+
+[lints]
+workspace = true
+
+[dependencies]
+ra_ap_syntax = "=0.0.331"
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.19"
+toml = { version = "1.1.2", default-features = false, features = ["parse", "serde"] }

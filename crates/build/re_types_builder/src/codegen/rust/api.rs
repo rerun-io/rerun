@@ -299,7 +299,7 @@ fn quote_struct(
 
     let quoted_fields = fields
         .iter()
-        .map(|obj_field| ObjectFieldTokenizer(reporter, obj, obj_field).quoted(objects));
+        .map(|obj_field| quote_object_field(reporter, objects, obj, obj_field));
 
     let quoted_deprecation_summary = if let Some(deprecation_summary) = obj.deprecation_summary() {
         quote!(#[deprecated(note = #deprecation_summary)])
@@ -618,25 +618,25 @@ fn quote_enum(
 
 // --- Code generators ---
 
-struct ObjectFieldTokenizer<'a>(&'a Reporter, &'a Object, &'a ObjectField);
+fn quote_object_field(
+    reporter: &Reporter,
+    objects: &Objects,
+    obj: &Object,
+    obj_field: &ObjectField,
+) -> TokenStream {
+    let quoted_docs = quote_field_docs(reporter, objects, obj_field);
+    let name = format_ident!("{}", &obj_field.name);
+    let quoted_type = quote_field_type_from_object_field(obj, obj_field);
 
-impl ObjectFieldTokenizer<'_> {
-    fn quoted(&self, objects: &Objects) -> TokenStream {
-        let Self(reporter, obj, obj_field) = self;
-        let quoted_docs = quote_field_docs(reporter, objects, obj_field);
-        let name = format_ident!("{}", &obj_field.name);
-        let quoted_type = quote_field_type_from_object_field(obj, obj_field);
-
-        if is_tuple_struct_from_obj(obj) {
-            quote! {
-                #quoted_docs
-                pub #quoted_type
-            }
-        } else {
-            quote! {
-                #quoted_docs
-                pub #name: #quoted_type
-            }
+    if is_tuple_struct_from_obj(obj) {
+        quote! {
+            #quoted_docs
+            pub #quoted_type
+        }
+    } else {
+        quote! {
+            #quoted_docs
+            pub #name: #quoted_type
         }
     }
 }

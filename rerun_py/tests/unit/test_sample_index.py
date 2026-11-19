@@ -211,6 +211,25 @@ def test_build_fixed_rate_mapping_is_independent_of_range_row_order() -> None:
     )
 
 
+@pytest.mark.parametrize("index_type", [pa.timestamp("ns"), pa.duration("ns")])
+def test_live_temporal_sampling_keeps_the_window_trimmed_segment_origin(index_type: pa.DataType) -> None:
+    table = pa.table({
+        "rerun_segment_id": ["segment-a"],
+        "frame:start": pa.array([250_000_000], type=index_type),
+        "frame:end": pa.array([450_000_000], type=index_type),
+    })
+    source = DataSource(dataset=cast("DatasetEntry", _DatasetWithIndexRanges(table)))
+    fields = {"state": Field("/state:Scalars:scalars", decode=NumericDecoder(), window=(-0.1, 0))}
+
+    sample_index = SampleIndex.build(source, "frame", fields, timeline_sampling=FixedRateSampling(rate_hz=1))
+
+    assert sample_index.total_samples == 1
+    segment, anchor = sample_index.global_to_local(0)
+    assert segment.index_start == segment.index_end == 350_000_000
+    assert isinstance(anchor, (np.datetime64, np.timedelta64))
+    assert int(anchor.astype(np.int64)) == 350_000_000
+
+
 def test_global_to_local_integer_single_segment() -> None:
     seg = _integer_segment("seg-a", index_start=10, index_end=14)
     sample_index = SampleIndex([seg])
@@ -220,12 +239,6 @@ def test_global_to_local_integer_single_segment() -> None:
         assert resolved_seg is seg
         assert value == 10 + pos
         assert isinstance(value, int)
-
-
-@pytest.mark.parametrize("max_staleness", [-1, float("inf"), float("nan")])
-def test_field_rejects_invalid_max_staleness(max_staleness: float) -> None:
-    with pytest.raises(ValueError, match=r"Field\.max_staleness"):
-        Field("/state:Scalars:scalars", decode=NumericDecoder(), max_staleness=max_staleness)
 
 
 def test_global_to_local_integer_multiple_segments() -> None:

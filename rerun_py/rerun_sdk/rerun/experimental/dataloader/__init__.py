@@ -28,7 +28,6 @@ if TYPE_CHECKING:
         NumericDecoder,
         VideoFrameDecoder,
     )
-    from .manifest._manifest import Manifest
 
 __all__ = [
     "BlockShuffle",
@@ -41,7 +40,6 @@ __all__ = [
     "FixedRateSampling",
     "ImageDecoder",
     "IndexValue",
-    "Manifest",
     "NoShuffle",
     "NumericDecoder",
     "PooledBatchCollator",
@@ -75,11 +73,11 @@ _LAZY_SUBMODULES = {
     "Yuv420Frame": "._yuv",
     "RerunIterableDataset": "._iterable_dataset",
     "RerunMapDataset": "._map_dataset",
-    "Manifest": ".manifest._manifest",
 }
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     submodule = _LAZY_SUBMODULES.get(name)
     if submodule is None:
         raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

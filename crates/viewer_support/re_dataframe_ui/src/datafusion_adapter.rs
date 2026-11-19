@@ -92,19 +92,8 @@ pub struct DataFusionQueryResult {
     /// The record batches to display.
     pub sorbet_batches: Vec<SorbetBatch>,
 
-    /// The schema of the record batches.
-    pub original_schema: SchemaRef,
-
-    /// The migrated schema of the record batches (useful when the list of batches is empty).
-    pub sorbet_schema: re_sorbet::SorbetSchema,
-
-    /// The error of each filter that the query left out, by the filter's SQL.
-    pub filter_errors: FilterErrors,
-
-    /// The sort column, if the table has no column with that name.
-    ///
-    /// The query leaves out a sort on a missing column.
-    pub missing_sort_column: Option<ColumnName>,
+    /// The schemas of the record batches, and the filters and sort that the query left out.
+    pub schema: QuerySchema,
 
     pub finished: bool,
 }
@@ -200,10 +189,20 @@ fn plan_filter(
     Ok(expr)
 }
 
-/// Check that `sql` is a filter that a table with `schema` can run.
+/// A filter that a table cannot run.
 ///
-/// The error is the message the filter bar shows for the filter.
-pub fn check_filter(schema: SchemaRef, sql: &str) -> Result<(), String> {
+/// Its message is the one the filter bar shows for the filter.
+#[derive(Debug, thiserror::Error)]
+#[error("{}", query_error_message(.error))]
+pub struct InvalidFilter {
+    /// Why the filter could not be planned.
+    ///
+    /// Not a `#[source]`: the message already is this error, formatted for the filter bar.
+    pub error: DataFusionError,
+}
+
+/// Check that `sql` is a filter that a table with `schema` can run.
+pub fn check_filter(schema: SchemaRef, sql: &str) -> Result<(), InvalidFilter> {
     let plan = || -> Result<Expr, DataFusionError> {
         let mut session_state = SessionContext::new().state();
         set_filter_time_zone(&mut session_state);
@@ -217,7 +216,9 @@ pub fn check_filter(schema: SchemaRef, sql: &str) -> Result<(), String> {
             sql,
         )
     };
-    plan().map(|_| ()).map_err(|err| query_error_message(&err))
+    plan()
+        .map(|_| ())
+        .map_err(|err| InvalidFilter { error: err })
 }
 
 /// Relative timestamp filters, such as "today", use the session time zone. With a time zone,
@@ -451,10 +452,12 @@ impl DataFusionQuery {
                                 } else {
                                     sent_schemas = true;
                                     QueryEvent::Schema {
-                                        original_schema: Arc::clone(&schema),
-                                        sorbet_schema: batch.sorbet_schema().clone(),
-                                        filter_errors: Arc::clone(&filter_errors),
-                                        missing_sort_column: missing_sort_column.clone(),
+                                        schema: QuerySchema {
+                                            original_schema: Arc::clone(&schema),
+                                            sorbet_schema: batch.sorbet_schema().clone(),
+                                            filter_errors: Arc::clone(&filter_errors),
+                                            missing_sort_column: missing_sort_column.clone(),
+                                        },
                                         first_batch: Some(batch),
                                     }
                                 };
@@ -485,10 +488,12 @@ impl DataFusionQuery {
                                 send_crossbeam(
                                     &tx,
                                     QueryEvent::Schema {
-                                        original_schema: schema,
-                                        sorbet_schema,
-                                        filter_errors,
-                                        missing_sort_column,
+                                        schema: QuerySchema {
+                                            original_schema: schema,
+                                            sorbet_schema,
+                                            filter_errors,
+                                            missing_sort_column,
+                                        },
                                         first_batch: None,
                                     },
                                 )
@@ -526,6 +531,24 @@ pub struct DataFusionQueryError {
     pub filter_errors: FilterErrors,
 }
 
+/// The schema of a query, sent together with its first batch.
+#[derive(Debug, Clone)]
+pub struct QuerySchema {
+    /// The schema of the record batches.
+    pub original_schema: SchemaRef,
+
+    /// The migrated schema of the record batches (useful when the list of batches is empty).
+    pub sorbet_schema: re_sorbet::SorbetSchema,
+
+    /// The error of each filter that the query left out, by the filter's SQL.
+    pub filter_errors: FilterErrors,
+
+    /// The sort column, if the table has no column with that name.
+    ///
+    /// The query leaves out a sort on a missing column.
+    pub missing_sort_column: Option<ColumnName>,
+}
+
 /// A event produced during the streaming execution of a datafusion query.
 ///
 /// It's guaranteed that the first event is either [`QueryEvent::Schema`] or [`QueryEvent::Error`].
@@ -536,10 +559,7 @@ pub enum QueryEvent {
     /// The first batch travels with the schema so a receiver that polls between events never
     /// sees a query with rows as an empty table.
     Schema {
-        original_schema: SchemaRef,
-        sorbet_schema: re_sorbet::SorbetSchema,
-        filter_errors: FilterErrors,
-        missing_sort_column: Option<ColumnName>,
+        schema: QuerySchema,
         first_batch: Option<SorbetBatch>,
     },
 
@@ -629,20 +649,14 @@ impl DataFusionAdapter {
             loop {
                 match rx.try_recv() {
                     Ok(QueryEvent::Schema {
-                        sorbet_schema,
-                        original_schema,
-                        filter_errors,
-                        missing_sort_column,
+                        schema,
                         first_batch,
                     }) => {
                         if first_batch.is_some() {
                             adapter.last_query_results = None;
                         }
                         adapter.results = Some(Ok(DataFusionQueryResult {
-                            original_schema,
-                            sorbet_schema,
-                            filter_errors,
-                            missing_sort_column,
+                            schema,
                             sorbet_batches: first_batch.into_iter().collect(),
                             finished: false,
                         }));
@@ -793,6 +807,7 @@ pub fn cell_from_edited_value(
 fn update_columns(results: &mut DataFusionQueryResult, changes: &[CellChangeEvent]) {
     for change in changes {
         let Some(col_idx) = results
+            .schema
             .original_schema
             .fields()
             .iter()
@@ -954,7 +969,10 @@ mod tests {
 
         for filter in filters {
             assert_eq!(
-                check_filter(Arc::clone(&schema), filter).err().as_ref(),
+                check_filter(Arc::clone(&schema), filter)
+                    .err()
+                    .map(|err| err.to_string())
+                    .as_ref(),
                 filter_errors.get(filter),
                 "{filter}"
             );

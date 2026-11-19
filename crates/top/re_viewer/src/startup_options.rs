@@ -113,6 +113,11 @@ pub struct StartupOptions {
     /// * notebooks & native: use rerun.io/viewer with the crate's last known stable version
     /// * web viewers: use the url of the page it is embedded in
     pub viewer_base_url: Option<String>,
+
+    /// Whether the application embedding the viewer allows analytics.
+    ///
+    /// Has no effect unless the `analytics` feature is compiled in.
+    pub analytics_mode: re_analytics::AnalyticsMode,
 }
 
 impl StartupOptions {
@@ -202,6 +207,8 @@ impl Default for StartupOptions {
             login: None,
 
             viewer_base_url: None,
+
+            analytics_mode: re_analytics::AnalyticsMode::default(),
         }
     }
 }

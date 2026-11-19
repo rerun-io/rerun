@@ -19,7 +19,7 @@ FixedSizeList(3 x non-null Float32)
 
 ## API reference links
  * 🌊 [C++ API docs for `VoxelSize`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VoxelSize.html)
- * 🐍 [Python API docs for `VoxelSize`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VoxelSize)
+ * 🐍 [Python API docs for `VoxelSize`](https://ref.rerun.io/docs/python/stable/components#rerun.components.VoxelSize)
  * 🦀 [Rust API docs for `VoxelSize`](https://docs.rs/rerun/latest/rerun/components/struct.VoxelSize.html)
 
 

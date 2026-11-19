@@ -17,6 +17,7 @@ Find out its location by running `rerun analytics config`.
 
 ### Opting out
 Run `rerun analytics disable` to opt out of all usage data collection.
+You can also turn off "Send usage data to Rerun" in the Viewer's settings; in a web viewer, this applies to that website in that browser.
 
 In debug builds, analytics is off by default. Turn it on by setting the environment variable `FORCE_RERUN_ANALYTICS=1`.
 

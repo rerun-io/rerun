@@ -1,5 +1,5 @@
 //! The agent panel: a chat with an agent that runs next to the viewer and drives it, through
-//! `rerun viewer-mcp` for an agent harness, or through the viewer-control tools for a model-API
+//! `rerun mcp` for an agent harness, or through the viewer-control tools for a model-API
 //! agent.
 //!
 //! This crate holds everything that ties the agent to the Rerun Viewer: the preambles, the

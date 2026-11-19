@@ -20,7 +20,7 @@ Utf8
 
 ## API reference links
  * 🌊 [C++ API docs for `Url`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Url.html)
- * 🐍 [Python API docs for `Url`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Url)
+ * 🐍 [Python API docs for `Url`](https://ref.rerun.io/docs/python/stable/components#rerun.components.Url)
  * 🦀 [Rust API docs for `Url`](https://docs.rs/rerun/latest/rerun/components/struct.Url.html)
 
 

@@ -6,7 +6,7 @@ description: See the structure of your blueprint and change the Viewer layout
 
 The Blueprint Panel shows the hierarchical structure of your current blueprint and provides controls for modifying the Viewer layout.
 
-For a complete understanding of blueprints, see [Blueprints](../blueprints-and-views/blueprints.md). For hands-on tutorials on configuring the Viewer, see [Configure the Viewer](../tutorial/navigating-the-viewer.md).
+For a complete understanding of blueprints, see [Blueprints](../blueprints.md).
 
 <picture>
   <img src="https://static.rerun.io/blueprint-example/24fe3f15c15dc8c74e1feec879cab624a34136e6/full.png" alt="Blueprint panel showing view hierarchy">
@@ -22,7 +22,7 @@ The reset button in the blueprint panel header provides two reset options:
 
 - **Reset to Heuristic Blueprint**: Generates a new blueprint automatically based on your current data. The Viewer analyzes your logged data and creates an appropriate layout using built-in heuristics.
 
-If no default blueprint has been set, the reset button uses the heuristic blueprint. See [Reset Behavior](../blueprints-and-views/blueprints.md#reset-behavior-heuristic-vs-default) for more details.
+If no default blueprint has been set, the reset button uses the heuristic blueprint. See [Reset Behavior](../blueprints.md#reset-behavior-heuristic-vs-default) for more details.
 
 ### Add view
 The "+" button allows you to add new views or containers.
@@ -41,7 +41,7 @@ Hovering over any item reveals controls for:
 - **Eye icon**: Show or hide the item
 - **"-" button**: Remove the item from the blueprint
 
-Right-click any item for a context menu with additional operations. See [Configure the Viewer](../tutorial/navigating-the-viewer.md#interactive-configuration) for details on all interactive operations.
+Right-click any item for a context menu with additional operations.
 
 ### Data blueprints
 
@@ -58,6 +58,6 @@ To add or re-add an entity to a view:
 2. Click the button in the [Selection Panel](selection.md) to open the entity picker
 3. Select entities to add (only compatible entities for that view type are shown)
 
-See [Entity Queries](../blueprints-and-views/entity-queries.md) for information on how view content is determined.
+See [Entity path filter](../view-concepts/entity-path-filter.md) for information on how view content is determined.
 
-For more information about configuring the viewer, see [Configure the Viewer](../tutorial/navigating-the-viewer.md).
+For more information about configuring the viewer, see [Blueprints](../blueprints.md).

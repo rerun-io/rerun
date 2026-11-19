@@ -28,6 +28,7 @@ re_async.workspace = true
 
 # External:
 rand.workspace = true
+thiserror.workspace = true
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]

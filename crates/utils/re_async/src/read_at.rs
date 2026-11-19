@@ -132,7 +132,7 @@ mod tests {
         let mut tmp = tempfile::NamedTempFile::new().unwrap();
         tmp.write_all(b"hello").unwrap();
         let file = std::fs::File::open(tmp.path()).unwrap();
-        let rt = tokio::runtime::Builder::new_current_thread() // NOLINT: the test owns this runtime
+        let rt = tokio::runtime::Builder::new_current_thread()
             .build()
             .unwrap();
 

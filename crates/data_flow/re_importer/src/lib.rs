@@ -435,6 +435,7 @@ pub enum ImporterError {
     #[error("{source}\nFile path: {path}")]
     File {
         path: String,
+
         #[source]
         source: Box<Self>,
     },
@@ -482,9 +483,38 @@ impl ImporterError {
 /// full-on [`LogMsg`]s.
 #[derive(Debug)]
 pub enum ImportedData {
-    Chunk(ImporterName, re_log_types::StoreId, Chunk),
-    ArrowMsg(ImporterName, re_log_types::StoreId, ArrowMsg),
-    LogMsg(ImporterName, LogMsg),
+    /// A chunk for a store.
+    Chunk {
+        /// The name of the [`Importer`] that produced this data.
+        importer_name: ImporterName,
+
+        /// The store (recording or blueprint) the chunk belongs to.
+        store_id: re_log_types::StoreId,
+
+        /// The imported data.
+        chunk: Chunk,
+    },
+
+    /// A chunk for a store, already encoded as an Arrow message.
+    ArrowMsg {
+        /// The name of the [`Importer`] that produced this data.
+        importer_name: ImporterName,
+
+        /// The store (recording or blueprint) the message belongs to.
+        store_id: re_log_types::StoreId,
+
+        /// The imported data.
+        msg: ArrowMsg,
+    },
+
+    /// A complete log message, which carries its own store id.
+    LogMsg {
+        /// The name of the [`Importer`] that produced this data.
+        importer_name: ImporterName,
+
+        /// The imported message, for example data or store info.
+        msg: LogMsg,
+    },
 }
 
 impl ImportedData {
@@ -492,7 +522,9 @@ impl ImportedData {
     #[inline]
     pub fn importer_name(&self) -> &ImporterName {
         match self {
-            Self::Chunk(name, ..) | Self::ArrowMsg(name, ..) | Self::LogMsg(name, ..) => name,
+            Self::Chunk { importer_name, .. }
+            | Self::ArrowMsg { importer_name, .. }
+            | Self::LogMsg { importer_name, .. } => importer_name,
         }
     }
 
@@ -500,22 +532,22 @@ impl ImportedData {
     #[inline]
     pub fn into_log_msg(self) -> ChunkResult<LogMsg> {
         match self {
-            Self::Chunk(_name, store_id, chunk) => {
-                Ok(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
-            }
+            Self::Chunk {
+                store_id, chunk, ..
+            } => Ok(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?)),
 
-            Self::ArrowMsg(_name, store_id, msg) => Ok(LogMsg::ArrowMsg(store_id, msg)),
+            Self::ArrowMsg { store_id, msg, .. } => Ok(LogMsg::ArrowMsg(store_id, msg)),
 
-            Self::LogMsg(_name, msg) => Ok(msg),
+            Self::LogMsg { msg, .. } => Ok(msg),
         }
     }
 
     /// Convert the data into a [`Chunk`], ignoring all non-chunk-related things.
     pub fn into_chunk(self) -> Option<Chunk> {
         match self {
-            Self::Chunk(_name, _store_id, chunk) => Some(chunk),
-            Self::ArrowMsg(_name, _store_id, arrow_msg) => Chunk::from_arrow_msg(&arrow_msg).ok(),
-            Self::LogMsg(_name, msg) => match msg {
+            Self::Chunk { chunk, .. } => Some(chunk),
+            Self::ArrowMsg { msg, .. } => Chunk::from_arrow_msg(&msg).ok(),
+            Self::LogMsg { msg, .. } => match msg {
                 LogMsg::ArrowMsg(_store_id, arrow_msg) => Chunk::from_arrow_msg(&arrow_msg).ok(),
                 LogMsg::SetStoreInfo { .. } | LogMsg::BlueprintActivationCommand { .. } => None,
             },

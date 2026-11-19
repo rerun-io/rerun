@@ -384,7 +384,7 @@ impl ChunkStoreDiffAddition {
         #[expect(clippy::match_same_arms)] // the explicitness is important
         match self.direct_lineage {
             ChunkDirectLineageReport::CompactedFrom(_) => &self.chunk_before_processing,
-            ChunkDirectLineageReport::SplitFrom(_, _) => &self.chunk_after_processing,
+            ChunkDirectLineageReport::SplitFrom { .. } => &self.chunk_after_processing,
             _ => &self.chunk_before_processing,
         }
     }

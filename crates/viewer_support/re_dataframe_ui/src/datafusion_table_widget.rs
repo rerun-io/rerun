@@ -33,7 +33,7 @@ use crate::cards_view::CellChangeEvent;
 use crate::column_sorting::{SortBy, SortDirection, SortDirectionUiExt as _};
 use crate::datafusion_adapter::{
     DataFusionAdapter, DataFusionQueryData, DataFusionQueryError, DataFusionQueryResult,
-    EntryLinksSpec, SegmentLinksSpec, check_filter, query_error_message,
+    EntryLinksSpec, InvalidFilter, SegmentLinksSpec, check_filter, query_error_message,
 };
 use crate::display_record_batch::DisplayColumn;
 use crate::filters::{ColumnFilter, FilterState};
@@ -383,6 +383,9 @@ pub struct DataFusionTableWidget<'a> {
     /// If provided, the toolbar on top of the table shows this as its title.
     title: Option<String>,
 
+    /// Header of the loading screen shown before the first results arrive.
+    loading_header: String,
+
     /// If provided, the toolbar on top of the table shows this at its left end.
     toolbar_summary_fn: Option<ToolbarSummaryFn<'a>>,
 
@@ -440,13 +443,12 @@ impl<'a> DataFusionTableWidget<'a> {
 
     /// Check that `sql` is a filter the table can run, against the columns it last showed.
     ///
-    /// The error is the message the filter bar shows for the filter. `None` if the table has not
-    /// been shown yet.
+    /// `None` if the table has not been shown yet.
     pub fn check_filter(
         egui_ctx: &egui::Context,
         table_ref: &TableReference,
         sql: &str,
-    ) -> Option<Result<(), String>> {
+    ) -> Option<Result<(), InvalidFilter>> {
         let schema =
             egui_ctx.data(|data| data.get_temp::<ShownTableSchema>(table_schema_id(table_ref)))?;
         Some(check_filter(schema.arrow_schema, sql))
@@ -478,6 +480,7 @@ impl<'a> DataFusionTableWidget<'a> {
             datafusion_table_ref: datafusion_table_ref.into(),
 
             title: None,
+            loading_header: "Loading table".to_owned(),
             toolbar_summary_fn: None,
             additional_column_heuristics: Box::new(|_, _, column| column),
             initial_query_data: Default::default(),
@@ -486,6 +489,13 @@ impl<'a> DataFusionTableWidget<'a> {
 
     pub fn title(mut self, title: impl Into<String>) -> Self {
         self.title = Some(title.into());
+
+        self
+    }
+
+    /// Overrides the default loading screen header, e.g. when the table is a dataset.
+    pub fn loading_header(mut self, loading_header: impl Into<String>) -> Self {
+        self.loading_header = loading_header.into();
 
         self
     }
@@ -654,7 +664,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 .map_err(|err| re_error::format_ref(&err))
                 .err();
             ui.loading_screen(
-                "Loading table",
+                self.loading_header.as_str(),
                 self.display_name().as_ref(),
                 error_string.as_deref(),
                 None,
@@ -717,7 +727,12 @@ impl<'a> DataFusionTableWidget<'a> {
                 // still processing, nothing yet to show
                 //TODO(ab): it can happen that we're stuck in the state. We should detect it and
                 //produce an error
-                ui.loading_screen("Loading table", self.display_name().as_ref(), None, None);
+                ui.loading_screen(
+                    self.loading_header.as_str(),
+                    self.display_name().as_ref(),
+                    None,
+                    None,
+                );
                 return TableStatus::InitialLoading;
             }
         };
@@ -803,7 +818,7 @@ impl<'a> DataFusionTableWidget<'a> {
 
         // Without a schema every filter shows as a custom filter.
         let last_schema = match &table_state.last_query_results {
-            Some(Ok(last_query_result)) => Some(&last_query_result.original_schema),
+            Some(Ok(last_query_result)) => Some(&last_query_result.schema.original_schema),
             _ => None,
         };
         let schema = err
@@ -939,8 +954,10 @@ impl<'a> DataFusionTableWidget<'a> {
             .map(|record_batch| record_batch.num_rows() as u64)
             .sum();
 
-        let data_columns =
-            DataColumns::from(&query_result.sorbet_schema, &query_result.original_schema);
+        let data_columns = DataColumns::from(
+            &query_result.schema.sorbet_schema,
+            &query_result.schema.original_schema,
+        );
 
         let blueprint_ctx = table_blueprints.blueprint_context_for(ctx, &self.table_ref);
         let blueprint = TableBlueprint::load_and_resolve(
@@ -949,7 +966,7 @@ impl<'a> DataFusionTableWidget<'a> {
             &self.additional_column_heuristics,
             self.initial_query_data.sort_by.as_ref(),
         );
-        self.store_table_schema(ui.ctx(), &blueprint, &query_result.original_schema);
+        self.store_table_schema(ui.ctx(), &blueprint, &query_result.schema.original_schema);
         let mut column_display_mode = blueprint.column_display_mode;
 
         query_data.filters.clone_from(&blueprint.filters);
@@ -962,7 +979,7 @@ impl<'a> DataFusionTableWidget<'a> {
         // A missing sort from the table blueprint shows as a pill that removes it. A missing
         // default sort only logs a warning.
         let missing_sort_by = blueprint.sort_by.as_ref().filter(|sort_by| {
-            query_result.missing_sort_column.as_ref() == Some(&sort_by.sort_by().column_name)
+            query_result.schema.missing_sort_column.as_ref() == Some(&sort_by.sort_by().column_name)
         });
         let missing_blueprint_sort_column = match missing_sort_by {
             Some(ResolvedSortBy::Blueprint(sort_by)) => Some(&sort_by.column_name),
@@ -981,7 +998,7 @@ impl<'a> DataFusionTableWidget<'a> {
             ui.ctx(),
             session_id,
             &blueprint.filters,
-            &query_result.original_schema,
+            &query_result.schema.original_schema,
         );
 
         let mut layout_kind = blueprint.layout();
@@ -995,6 +1012,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 // TODO(andreas): seems brittle with sorbet migrations?
                 DisplayRecordBatch::try_new(itertools::izip!(
                     query_result
+                        .schema
                         .sorbet_schema
                         .columns()
                         .iter()
@@ -1095,7 +1113,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 .iter_visible_columns(layout_kind)
                 .filter_map(|column| {
                     let index = data_columns.index_by_physical_name(column.physical_name())?;
-                    let field = &query_result.original_schema.fields()[index];
+                    let field = &query_result.schema.original_schema.fields()[index];
                     ColumnFilter::default_for_column(Arc::clone(field)).map(|column_filter| {
                         crate::filters::FilterableColumn {
                             display_name: column.display_name(),
@@ -1109,7 +1127,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 .filter(|column| !column.is_visible(layout_kind))
                 .filter_map(|column| {
                     let index = data_columns.index_by_physical_name(column.physical_name())?;
-                    let field = &query_result.original_schema.fields()[index];
+                    let field = &query_result.schema.original_schema.fields()[index];
                     ColumnFilter::default_for_column(Arc::clone(field)).map(|column_filter| {
                         crate::filters::FilterableColumn {
                             display_name: column.display_name(),
@@ -1123,7 +1141,7 @@ impl<'a> DataFusionTableWidget<'a> {
         let filter_bar = filter_state.filter_bar_ui(
             ui,
             ctx.app_options.timestamp_format,
-            &query_result.filter_errors,
+            &query_result.schema.filter_errors,
             Some(&filter_controls),
             missing_blueprint_sort_column,
         );
@@ -1144,6 +1162,7 @@ impl<'a> DataFusionTableWidget<'a> {
             && query_data.filters == applied_filters;
 
         let migrated_fields = query_result
+            .schema
             .sorbet_schema
             .columns()
             .arrow_fields(re_sorbet::BatchType::Dataframe);
@@ -1159,7 +1178,7 @@ impl<'a> DataFusionTableWidget<'a> {
                 &blueprint,
                 layout_kind,
                 &data_columns,
-                &query_result.original_schema,
+                &query_result.schema.original_schema,
                 potentially_writable_remote_table.as_ref(),
                 ctx.connection_registry,
             )
@@ -1783,6 +1802,7 @@ fn upsert_batch(
     row: u64,
 ) -> Option<arrow::array::RecordBatch> {
     let value_col_idx = results
+        .schema
         .original_schema
         .index_of(column.physical_name.as_str())
         .ok()?;
@@ -1976,7 +1996,7 @@ impl egui_table::TableDelegate for DataFusionTableDelegate<'_> {
         let table_style = self.table_style;
         let col_index = cell.group_index;
         if let Some(data_column) = self.columns.columns.get(col_index) {
-            let column_field = &self.query_result.original_schema.fields[col_index];
+            let column_field = &self.query_result.schema.original_schema.fields[col_index];
 
             let Some(column) = self
                 .blueprint

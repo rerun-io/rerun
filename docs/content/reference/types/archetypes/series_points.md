@@ -30,7 +30,7 @@ Dimensionality of the scalar arrays logged at each time point is assumed to be t
 
 ## API reference links
  * 🌊 [C++ API docs for `SeriesPoints`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesPoints.html)
- * 🐍 [Python API docs for `SeriesPoints`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SeriesPoints)
+ * 🐍 [Python API docs for `SeriesPoints`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.SeriesPoints)
  * 🦀 [Rust API docs for `SeriesPoints`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SeriesPoints.html)
 
 ## Example

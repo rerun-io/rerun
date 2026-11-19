@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Iterable, Iterator, Sequence
+from contextvars import ContextVar
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
@@ -185,7 +186,7 @@ class SchemaInternal:
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
     ) -> ComponentColumnDescriptor: ...
-    def __arrow_c_schema__(self) -> Any: ...
+    def __arrow_c_schema__(self) -> object: ...
 
 class ChunkIndexingPolicyInternal:
     @staticmethod
@@ -990,7 +991,9 @@ def new_entity_path(parts: list[str]) -> str:
 def new_property_entity_path(parts: list[str]) -> str:
     """Create a property entity path."""
 
-def asset_video_read_frame_timestamps_nanos(video_bytes_arrow_array: Any, media_type: str | None = None) -> list[int]:
+def asset_video_read_frame_timestamps_nanos(
+    video_bytes_arrow_array: pa.Array, media_type: str | None = None
+) -> list[int]:
     """
     Reads the timestamps of all frames in a video asset.
 
@@ -1130,6 +1133,7 @@ class DatasetEntryInternal:
         kind: Literal["segment", "blueprint", "asset"],
         layer: str,
         on_duplicate: str,
+        segment_id: str | None = None,
     ) -> WriteOperationInternal: ...
     def write_path(
         self,
@@ -1138,6 +1142,7 @@ class DatasetEntryInternal:
         kind: Literal["segment", "blueprint", "asset"],
         layer: str,
         on_duplicate: str,
+        segment_id: str | None = None,
     ) -> WriteOperationInternal: ...
     def register(
         self,
@@ -1145,6 +1150,7 @@ class DatasetEntryInternal:
         recording_layers: list[str],
         on_duplicate: str,
         *,
+        segment_ids: list[str] | None = None,
         storage_location: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def register_prefix(
@@ -1229,7 +1235,7 @@ class SegmentInternal:
 class SegmentUrlUdfInternal:
     """Rust-backed ScalarUDF for building segment URLs."""
 
-    def __datafusion_scalar_udf__(self) -> Any:
+    def __datafusion_scalar_udf__(self) -> object:
         """Scalar UDF pycapsule."""
 
 class DatasetSelectionInternal:
@@ -1284,7 +1290,7 @@ class TableEntryInternal:
 
     # ---
 
-    def __datafusion_table_provider__(self, session: Any) -> Any: ...
+    def __datafusion_table_provider__(self, session: object) -> object: ...
     def reader(self) -> dfn.DataFrame: ...
     def to_arrow_reader(self) -> pa.RecordBatchReader: ...
 
@@ -1419,7 +1425,7 @@ class _IndexValuesLikeInternal:
 class TableProviderAdapterInternal:
     """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
 
-    def __datafusion_table_provider__(self, session: Any) -> Any: ...
+    def __datafusion_table_provider__(self, session: object) -> object: ...
 
 class BearerTokenObjectStoreAuth:
     """
@@ -1540,7 +1546,7 @@ class SelectorInternal:
     def __init__(self, query: str) -> None: ...
     def execute(self, source: pa.Array) -> pa.Array | None: ...
     def execute_per_row(self, source: pa.Array) -> pa.Array | None: ...
-    def pipe(self, func: Any) -> SelectorInternal: ...
+    def pipe(self, func: SelectorInternal | Callable[[pa.Array], pa.Array | None]) -> SelectorInternal: ...
     def try_to_string(self) -> str | None: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
@@ -1663,6 +1669,9 @@ class Credentials:
 def get_credentials() -> Credentials | None:
     """Returns the credentials for the current user."""
 
+def analytics_allowed() -> bool:
+    """Whether this machine's analytics config allows analytics, as set by `rerun analytics`."""
+
 def logout() -> str | None:
     """
     Log out by clearing stored credentials.
@@ -1674,7 +1683,7 @@ def logout() -> str | None:
 
     """
 
-def _get_trace_context_var() -> Any:
+def _get_trace_context_var() -> ContextVar[dict[str, str]] | None:
     """
     Return the `ContextVar` that Python uses to pass trace headers to Rust.
 
@@ -1685,7 +1694,7 @@ def _get_trace_context_var() -> Any:
     Returns `None` when `perf_telemetry` is disabled.
     """
 
-def _get_tracing_session_var() -> Any:
+def _get_tracing_session_var() -> ContextVar[str] | None:
     """
     Return the `ContextVar` carrying the active rerun session id.
 
@@ -2065,7 +2074,7 @@ class LazyChunkStreamInternal:
     def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod
-    def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+    def from_iter(iterable: Iterable[ChunkInternal]) -> LazyChunkStreamInternal: ...
     def send_to_recording(self, recording: PyRecordingStream | None = None) -> None:
         """
         Drain this stream into a recording stream.

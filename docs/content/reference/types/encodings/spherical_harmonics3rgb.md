@@ -33,7 +33,7 @@ FixedSizeList(15 x non-null FixedSizeList(3 x non-null Float16))
 
 ## API reference links
  * 🌊 [C++ API docs for `SphericalHarmonics3Rgb`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1SphericalHarmonics3Rgb.html)
- * 🐍 [Python API docs for `SphericalHarmonics3Rgb`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.SphericalHarmonics3Rgb)
+ * 🐍 [Python API docs for `SphericalHarmonics3Rgb`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.SphericalHarmonics3Rgb)
  * 🦀 [Rust API docs for `SphericalHarmonics3Rgb`](https://docs.rs/rerun/latest/rerun/encodings/struct.SphericalHarmonics3Rgb.html)
 
 

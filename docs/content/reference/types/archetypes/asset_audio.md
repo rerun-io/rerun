@@ -33,7 +33,7 @@ To plot the raw signal instead of playing it, log the samples as [`archetypes.Sc
 
 ## API reference links
  * 🌊 [C++ API docs for `AssetAudio`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetAudio.html)
- * 🐍 [Python API docs for `AssetAudio`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.AssetAudio)
+ * 🐍 [Python API docs for `AssetAudio`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.AssetAudio)
  * 🦀 [Rust API docs for `AssetAudio`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetAudio.html)
 
 ## Example

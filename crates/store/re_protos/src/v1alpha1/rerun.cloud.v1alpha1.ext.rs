@@ -23,6 +23,7 @@ use crate::cloud::v1alpha1::{
 use crate::common::v1alpha1::ext as common_ext;
 use crate::common::v1alpha1::ext::{DatasetHandle, IfDuplicateBehavior, SegmentId};
 use crate::common::v1alpha1::{DataframePart, TaskId};
+use crate::protocol_level::ProtocolLevel;
 pub use crate::storage_location::{
     InvalidStorageStringValue, StorageBucketName, StoragePrefix, StorageRegion,
 };
@@ -935,6 +936,9 @@ pub struct DatasetEntry {
     pub details: EntryDetails,
     pub dataset_details: DatasetDetails,
     pub handle: DatasetHandle,
+
+    /// The lowest protocol level a client needs to read this dataset. Server-managed.
+    pub required_client_protocol_level: ProtocolLevel,
 }
 
 impl TryFrom<crate::cloud::v1alpha1::DatasetEntry> for DatasetEntry {
@@ -963,6 +967,7 @@ impl TryFrom<crate::cloud::v1alpha1::DatasetEntry> for DatasetEntry {
                     "handle"
                 ))?
                 .try_into()?,
+            required_client_protocol_level: value.required_client_protocol_level.into(),
         })
     }
 }
@@ -973,6 +978,7 @@ impl From<DatasetEntry> for crate::cloud::v1alpha1::DatasetEntry {
             details: Some(value.details.into()),
             dataset_details: Some(value.dataset_details.into()),
             dataset_handle: Some(value.handle.into()),
+            required_client_protocol_level: value.required_client_protocol_level.as_u32(),
         }
     }
 }
@@ -1067,6 +1073,7 @@ pub struct CreateTableEntryRequest {
 
 impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(value: CreateTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name.to_string(),
@@ -1081,6 +1088,7 @@ impl TryFrom<CreateTableEntryRequest> for crate::cloud::v1alpha1::CreateTableEnt
 
 impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(
         value: &crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
@@ -1106,6 +1114,7 @@ impl TryFrom<&crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEn
 
 impl TryFrom<crate::cloud::v1alpha1::CreateTableEntryRequest> for CreateTableEntryRequest {
     type Error = TypeConversionError;
+
     fn try_from(
         value: crate::cloud::v1alpha1::CreateTableEntryRequest,
     ) -> Result<Self, Self::Error> {
@@ -1122,6 +1131,7 @@ pub struct CreateTableEntryResponse {
 
 impl TryFrom<CreateTableEntryResponse> for crate::cloud::v1alpha1::CreateTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: CreateTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table.try_into()?),
@@ -1208,11 +1218,13 @@ impl UpdateDatasetEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateDatasetEntryRequest> for crate::cloud::v1alpha1::UpdateDatasetEntryRequest {
     fn from(value: UpdateDatasetEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             dataset_details: Some(value.dataset_details.into()),
+            ..Default::default()
         }
     }
 }
@@ -1324,6 +1336,7 @@ impl TryFrom<crate::cloud::v1alpha1::ApplyDatasetPolicyResponse> for ApplyDatase
 impl TryFrom<crate::cloud::v1alpha1::DeleteEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
+    #[expect(deprecated, reason = "reads the body id that old clients send")]
     fn try_from(value: crate::cloud::v1alpha1::DeleteEntryRequest) -> Result<Self, Self::Error> {
         Ok(value
             .id
@@ -1392,11 +1405,13 @@ impl UpdateEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateEntryRequest> for crate::cloud::v1alpha1::UpdateEntryRequest {
     fn from(value: UpdateEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             entry_details_update: Some(value.entry_details_update.into()),
+            ..Default::default()
         }
     }
 }
@@ -1437,6 +1452,7 @@ impl From<UpdateEntryResponse> for crate::cloud::v1alpha1::UpdateEntryResponse {
 impl TryFrom<crate::cloud::v1alpha1::ReadTableEntryRequest> for re_log_types::EntryId {
     type Error = TypeConversionError;
 
+    #[expect(deprecated, reason = "reads the body id that old clients send")]
     fn try_from(value: crate::cloud::v1alpha1::ReadTableEntryRequest) -> Result<Self, Self::Error> {
         Ok(value
             .id
@@ -1457,6 +1473,7 @@ pub struct ReadTableEntryResponse {
 
 impl TryFrom<ReadTableEntryResponse> for crate::cloud::v1alpha1::ReadTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: ReadTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table_entry.try_into()?),
@@ -1510,11 +1527,13 @@ impl UpdateTableEntryRequest {
     }
 }
 
+/// The entry id is not part of the message: the caller must send it in the `x-rerun-entry-id`
+/// header.
 impl From<UpdateTableEntryRequest> for crate::cloud::v1alpha1::UpdateTableEntryRequest {
     fn from(value: UpdateTableEntryRequest) -> Self {
         Self {
-            id: Some(value.id.into()),
             table_details: Some(value.table_details.into()),
+            ..Default::default()
         }
     }
 }
@@ -1528,6 +1547,7 @@ pub struct UpdateTableEntryResponse {
 
 impl TryFrom<UpdateTableEntryResponse> for crate::cloud::v1alpha1::UpdateTableEntryResponse {
     type Error = TypeConversionError;
+
     fn try_from(value: UpdateTableEntryResponse) -> Result<Self, Self::Error> {
         Ok(Self {
             table: Some(value.table_entry.try_into()?),
@@ -1563,6 +1583,7 @@ pub struct RegisterTableRequest {
 
 impl TryFrom<RegisterTableRequest> for crate::cloud::v1alpha1::RegisterTableRequest {
     type Error = TypeConversionError;
+
     fn try_from(value: RegisterTableRequest) -> Result<Self, Self::Error> {
         Ok(Self {
             name: value.name.to_string(),
@@ -1621,6 +1642,7 @@ pub struct TableEntry {
 
 impl TryFrom<TableEntry> for crate::cloud::v1alpha1::TableEntry {
     type Error = TypeConversionError;
+
     fn try_from(value: TableEntry) -> Result<Self, Self::Error> {
         Ok(Self {
             details: Some(value.details.into()),
@@ -1666,6 +1688,7 @@ pub enum ProviderDetails {
 
 impl TryFrom<&prost_types::Any> for ProviderDetails {
     type Error = TypeConversionError;
+
     fn try_from(value: &prost_types::Any) -> Result<Self, Self::Error> {
         if value.type_url == crate::cloud::v1alpha1::LanceTable::type_url() {
             let as_proto = value.to_msg::<crate::cloud::v1alpha1::LanceTable>()?;
@@ -1688,6 +1711,7 @@ impl TryFrom<&prost_types::Any> for ProviderDetails {
 
 impl TryFrom<&ProviderDetails> for prost_types::Any {
     type Error = TypeConversionError;
+
     fn try_from(value: &ProviderDetails) -> Result<Self, Self::Error> {
         match value {
             ProviderDetails::SystemTable(table) => {
@@ -2015,6 +2039,17 @@ impl GetDatasetSchemaResponse {
                 TypeConversionError::missing_field::<GetDatasetSchemaResponse>("schema")
             })?
             .try_into()?)
+    }
+}
+
+// --- ClientMeta ---
+
+impl crate::cloud::v1alpha1::ClientMeta {
+    /// The metadata of this build, as a client.
+    pub fn current() -> Self {
+        Self {
+            protocol_level: ProtocolLevel::CURRENT.as_u32(),
+        }
     }
 }
 
@@ -2351,6 +2386,7 @@ pub struct StorageLocation {
     pub alias: StorageLocationAlias,
     pub display_name: Option<String>,
     pub region: StorageRegion,
+
     /// Bucket name, without a URI scheme or object path.
     pub bucket_name: StorageBucketName,
     pub prefix: Option<StoragePrefix>,
@@ -2517,6 +2553,7 @@ impl From<GetWriteAccessGrantRequest> for crate::cloud::v1alpha1::GetWriteAccess
 pub enum UrlSigning {
     /// Server-signed URLs, usable without client-managed object-store credentials.
     Signed,
+
     /// Unsigned URLs that the client authorizes with its own object-store credentials.
     Unsigned,
 }
@@ -2601,8 +2638,10 @@ pub struct AccessGrant {
     /// Storage may reject HTTP requests earlier. Confirming publication and abort remain valid
     /// after the session deadline; publishing an unfinished upload does not.
     pub expires_at: jiff::Timestamp,
+
     /// The server-selected mechanism; clients must support it before consuming the source.
     pub redemption: Redemption,
+
     /// Effective signing mode, including for renewed part requests. Must match the request.
     pub signing: UrlSigning,
 }
@@ -2612,6 +2651,7 @@ pub struct AccessGrant {
 pub enum Redemption {
     /// An HTTP request the caller performs directly.
     HttpRequest(HttpRequest),
+
     /// A multipart session whose bytes are uploaded directly to storage.
     MultipartSession(MultipartSession),
 }
@@ -2621,10 +2661,13 @@ pub enum Redemption {
 pub struct MultipartSession {
     /// Bearer token for part grants, completion, and abort. Return unchanged; do not log it.
     pub upload_token: prost::bytes::Bytes,
+
     /// Size of each part except the last, which may be smaller.
     pub part_size_bytes: std::num::NonZeroU64,
+
     /// Requests for consecutive parts starting at 1, in part-number order.
     pub part_requests: Vec<HttpRequest>,
+
     /// Maximum part count, including the final part. Absence selects the legacy 10,000-part limit.
     pub max_part_count: Option<NonZeroU32>,
 }
@@ -3043,10 +3086,28 @@ pub struct DataSource {
     /// Deserializes as `None` when absent, so serialized sources that predate it still load.
     #[serde(default)]
     pub store_id: Option<re_log_types::StoreId>,
+
+    /// The segment to register this source as, instead of the recording id of its store.
+    ///
+    /// Must be `None` when `is_prefix` is `true`.
+    ///
+    /// Servers without the [`crate::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE`] capability
+    /// ignore it.
+    ///
+    /// Deserializes as `None` when absent, so serialized sources that predate it still load.
+    #[serde(default)]
+    pub segment_id_override: Option<SegmentId>,
 }
 
 impl DataSource {
     pub const DEFAULT_LAYER: &str = LayerName::DEFAULT_STR;
+
+    /// Registers this source as `segment_id` instead of its store's recording id.
+    #[must_use]
+    pub fn with_segment_id_override(mut self, segment_id: SegmentId) -> Self {
+        self.segment_id_override = Some(segment_id);
+        self
+    }
 
     pub fn new_rrd(
         storage_url: impl AsRef<str>,
@@ -3059,6 +3120,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         })
     }
 
@@ -3073,6 +3135,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         })
     }
 
@@ -3088,6 +3151,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         })
     }
 
@@ -3103,6 +3167,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         })
     }
 
@@ -3117,6 +3182,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         }
     }
 
@@ -3131,6 +3197,7 @@ impl DataSource {
             kind: DataSourceKind::Rrd,
             storage_location,
             store_id: None,
+            segment_id_override: None,
         }
     }
 }
@@ -3145,6 +3212,7 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
             kind,
             storage_location,
             store_id,
+            segment_id_override,
         } = value;
 
         crate::cloud::v1alpha1::DataSource {
@@ -3155,6 +3223,7 @@ impl From<DataSource> for crate::cloud::v1alpha1::DataSource {
             storage_location: storage_location.clone().map(String::from),
             object_store_config: storage_location.map(String::from),
             store_id: store_id.map(Into::into),
+            segment_id: segment_id_override.map(Into::into),
         }
     }
 }
@@ -3217,6 +3286,28 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             ));
         }
 
+        let segment_id_override = data_source
+            .segment_id
+            .map(SegmentId::try_from)
+            .transpose()?;
+        if prefix && segment_id_override.is_some() {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "segment_id",
+                "a prefix data source cannot set a segment id",
+            ));
+        }
+        if segment_id_override
+            .as_ref()
+            .is_some_and(|segment_id| segment_id.as_str().is_empty())
+        {
+            return Err(invalid_field!(
+                crate::cloud::v1alpha1::DataSource,
+                "segment_id",
+                "the segment id must not be empty",
+            ));
+        }
+
         Ok(Self {
             storage_url,
             is_prefix: prefix,
@@ -3224,6 +3315,7 @@ impl TryFrom<crate::cloud::v1alpha1::DataSource> for DataSource {
             kind,
             storage_location: storage_location.or(object_store_config),
             store_id,
+            segment_id_override,
         })
     }
 }
@@ -3239,6 +3331,7 @@ fn datasource_layer_from_proto() {
         object_store_config: Some("custom".to_owned()),
         storage_location: None,
         store_id: None,
+        segment_id: None,
     };
 
     let data_source = DataSource::try_from(proto(None)).unwrap();
@@ -3278,6 +3371,36 @@ fn datasource_store_id_from_proto() {
     assert!(
         DataSource::try_from(proto(true)).is_err(),
         "a prefix must not select a store"
+    );
+}
+
+#[test]
+fn datasource_segment_id_roundtrip() {
+    let segment_id = SegmentId::from("my_segment");
+    let data_source = DataSource::new_rrd("s3://bucket/file.rrd", None)
+        .unwrap()
+        .with_segment_id_override(segment_id.clone());
+
+    let proto = crate::cloud::v1alpha1::DataSource::from(data_source);
+    let data_source = DataSource::try_from(proto.clone()).unwrap();
+    assert_eq!(data_source.segment_id_override, Some(segment_id));
+
+    let prefix = crate::cloud::v1alpha1::DataSource {
+        prefix: true,
+        ..proto.clone()
+    };
+    assert!(
+        DataSource::try_from(prefix).is_err(),
+        "a prefix must not set a segment id"
+    );
+
+    let empty = crate::cloud::v1alpha1::DataSource {
+        segment_id: Some(String::new().into()),
+        ..proto
+    };
+    assert!(
+        DataSource::try_from(empty).is_err(),
+        "a segment id must not be empty"
     );
 }
 
@@ -3438,6 +3561,7 @@ pub struct VersionResponse {
     pub version: String,
     pub cloud_provider: Option<String>,
     pub cloud_region: Option<String>,
+
     /// Server-supported feature flags. See `crate::cloud::v1alpha1::features`
     /// for known feature names. An empty list means the server is older than
     /// the client and feature-gated paths must fall back.

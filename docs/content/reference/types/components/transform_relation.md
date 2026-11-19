@@ -28,7 +28,7 @@ UInt8
 
 ## API reference links
  * 🌊 [C++ API docs for `TransformRelation`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
- * 🐍 [Python API docs for `TransformRelation`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TransformRelation)
+ * 🐍 [Python API docs for `TransformRelation`](https://ref.rerun.io/docs/python/stable/components#rerun.components.TransformRelation)
  * 🦀 [Rust API docs for `TransformRelation`](https://docs.rs/rerun/latest/rerun/components/enum.TransformRelation.html)
 
 

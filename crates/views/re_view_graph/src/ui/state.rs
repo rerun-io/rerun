@@ -15,6 +15,7 @@ use crate::layout::{ForceLayoutParams, ForceLayoutProvider, Layout, LayoutReques
 pub struct GraphViewState {
     pub layout_state: LayoutState,
     pub visual_bounds: Option<VisualBounds2D>,
+
     #[size_bytes(ignore)]
     pending_reset: AtomicBool,
 }

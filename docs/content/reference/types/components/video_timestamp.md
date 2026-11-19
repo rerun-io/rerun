@@ -16,7 +16,7 @@ Int64
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VideoTimestamp.html)
- * 🐍 [Python API docs for `VideoTimestamp`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VideoTimestamp)
+ * 🐍 [Python API docs for `VideoTimestamp`](https://ref.rerun.io/docs/python/stable/components#rerun.components.VideoTimestamp)
  * 🦀 [Rust API docs for `VideoTimestamp`](https://docs.rs/rerun/latest/rerun/components/struct.VideoTimestamp.html)
 
 

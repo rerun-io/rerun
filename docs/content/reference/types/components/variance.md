@@ -19,7 +19,7 @@ Float64
 
 ## API reference links
  * 🌊 [C++ API docs for `Variance`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Variance.html)
- * 🐍 [Python API docs for `Variance`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Variance)
+ * 🐍 [Python API docs for `Variance`](https://ref.rerun.io/docs/python/stable/components#rerun.components.Variance)
  * 🦀 [Rust API docs for `Variance`](https://docs.rs/rerun/latest/rerun/components/struct.Variance.html)
 
 

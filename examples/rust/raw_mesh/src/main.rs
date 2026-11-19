@@ -97,6 +97,7 @@ fn log_node(rec: &RecordingStream, node: GltfNode) -> anyhow::Result<()> {
 #[derive(Debug, Clone, Copy, clap::ValueEnum)]
 enum Scene {
     Buggy,
+
     #[value(name("brain_stem"))]
     BrainStem,
     Lantern,

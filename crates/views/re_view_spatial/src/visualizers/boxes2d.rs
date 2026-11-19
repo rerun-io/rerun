@@ -10,7 +10,7 @@ use re_viewer_context::{
     VisualizerSystem, typed_fallback_for,
 };
 
-use super::utilities::{LabeledBatch, process_labels};
+use super::utilities::{LabeledBatch, process_labels_2d, spatial_view_kind_from_view_class};
 use super::{SpatialViewVisualizerData, process_radius_slice};
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::UiLabelTarget;
@@ -100,13 +100,13 @@ impl Boxes2DVisualizer {
                 world_from_obj,
             );
 
-            view_data.ui_labels.extend(process_labels(
+            view_data.ui_labels.extend(process_labels_2d(
                 LabeledBatch {
                     entity_path,
                     visualizer_instruction: ent_context.visualizer_instruction,
                     num_instances,
-                    overall_position: UiLabelTarget::Point2D(
-                        <[f32; 2]>::from(obj_space_bounding_box.center().truncate()).into(),
+                    overall_position: UiLabelTarget::from(
+                        obj_space_bounding_box.center().truncate(),
                     ),
                     instance_positions: std::iter::zip(
                         data.half_sizes.iter().copied(),
@@ -115,10 +115,8 @@ impl Boxes2DVisualizer {
                     .map(|(half_size, center)| {
                         let min = half_size.box_min(center);
                         let max = half_size.box_max(center);
-                        UiLabelTarget::Rect(egui::Rect::from_min_max(
-                            egui::pos2(min.x, min.y),
-                            egui::pos2(max.x, max.y),
-                        ))
+                        egui::Rect::from_min_max(egui::pos2(min.x, min.y), egui::pos2(max.x, max.y))
+                            .into()
                     }),
                     labels: &data.labels,
                     colors: &colors,
@@ -126,7 +124,8 @@ impl Boxes2DVisualizer {
                         typed_fallback_for(ctx, Boxes2D::descriptor_show_labels().component)
                     }),
                 },
-                std::convert::identity,
+                world_from_obj,
+                spatial_view_kind_from_view_class(ent_context.view_class_identifier),
             ));
         }
     }

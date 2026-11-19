@@ -6,7 +6,7 @@ description: Set playback speed, timeline, and time cursor from code
 
 ## Configure playback in the blueprint
 
-The time panel of the [blueprint](../blueprints-and-views/blueprints.md) controls playback:
+The time panel of the [blueprint](../blueprints.md) controls playback:
 
 ```python
 import rerun as rr
@@ -82,7 +82,7 @@ viewer.set_time_ctrl(timeline="frame", sequence=120, play=True)
 
 ## In the web Viewer
 
-The [JavaScript `WebViewer`](../../integrations/embed-web.md#reading-and-driving-the-viewer) has `set_time`:
+The [JavaScript `WebViewer`](../integrations/embed-web.md#reading-and-driving-the-viewer) has `set_time`:
 
 ```ts
 await viewer.set_time({ timeline: "frame", sequence: 42, play_state: "playing" });

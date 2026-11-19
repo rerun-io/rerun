@@ -20,6 +20,7 @@ use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
 use re_protos::common::v1alpha1::ext::{
     DatasetHandle, DatasetKind, IfDuplicateBehavior, SegmentId,
 };
+use re_protos::protocol_level::ProtocolLevel;
 use re_sorbet::ColumnKind;
 use re_sorbet::metadata::RERUN_KIND;
 use re_types_core::LayerName;
@@ -56,6 +57,9 @@ pub struct Dataset {
     created_at: jiff::Timestamp,
     inner: Tracked<DatasetInner>,
 
+    /// The lowest protocol level a client needs to read this dataset.
+    required_client_protocol_level: ProtocolLevel,
+
     /// Mutable per-segment properties, written and read without registering anything.
     ///
     /// Kept outside `inner`: these are not part of the layer model, and rewriting them must not
@@ -86,9 +90,23 @@ impl Dataset {
                 details,
                 segments: Default::default(),
             }),
+            required_client_protocol_level: ProtocolLevel::BASELINE,
             segment_properties: Default::default(),
             cached_schema: Mutex::new(None),
         }
+    }
+
+    /// The lowest protocol level a client needs to read this dataset.
+    #[inline]
+    pub fn required_client_protocol_level(&self) -> ProtocolLevel {
+        self.required_client_protocol_level
+    }
+
+    /// Raises the lowest protocol level a client needs to read this dataset to at least `level`.
+    ///
+    /// Never lowers it: whatever made a level necessary stays in the dataset.
+    pub fn raise_required_client_protocol_level(&mut self, level: ProtocolLevel) {
+        self.required_client_protocol_level = self.required_client_protocol_level.max(level);
     }
 
     #[inline]
@@ -268,6 +286,8 @@ impl Dataset {
                 dataset_kind: self.dataset_kind,
                 url: url::Url::parse(&format!("memory:///{}", self.id)).expect("valid url"),
             },
+
+            required_client_protocol_level: self.required_client_protocol_level,
         }
     }
 

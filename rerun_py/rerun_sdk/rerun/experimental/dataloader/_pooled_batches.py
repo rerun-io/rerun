@@ -21,7 +21,7 @@ from torch.utils.data import default_collate, get_worker_info
 from ._yuv import ColorRange, ColorSpace, Yuv420Frame
 
 if TYPE_CHECKING:
-    from collections.abc import Iterable
+    from collections.abc import Callable, Iterable
 
 _FieldKey = str | tuple[str, int]
 
@@ -237,13 +237,18 @@ class _SerializableBatch:
         self.release_connection = release_connection
         self.sent = False
 
-    def __reduce__(self) -> Any:
+    def __reduce__(
+        self,
+    ) -> tuple[
+        Callable[[pytree.TreeSpec, list[_FieldTransfer]], dict[str, Any]],
+        tuple[pytree.TreeSpec, list[_FieldTransfer]],
+    ]:
         from multiprocessing.reduction import DupFd
 
         if self.sent:
             raise RuntimeError("A pooled batch can be serialized only once")
         self.sent = True
-        fields = []
+        fields: list[_FieldTransfer] = []
         for slot, metadata, pooled in self.fields:
             buffer_fd, buffer_size_bytes = slot.storage._share_fd_cpu_()
             release = None
@@ -374,7 +379,8 @@ class PooledBatchCollator:
             self._busy_slots[slot.token] = slot
         return slot, pooled
 
-    def __call__(self, samples: list[dict[str, Any]]) -> Any:
+    # The batch mirrors the samples' pytree, like `default_collate`, which is also typed `Any`.
+    def __call__(self, samples: list[dict[str, Any]]) -> Any:  # noqa: ANN401
         """Collate samples, pooling shared storage only inside supported DataLoader workers."""
         if not samples or not isinstance(samples[0], dict):
             return default_collate(samples)

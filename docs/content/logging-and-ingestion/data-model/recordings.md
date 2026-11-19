@@ -29,10 +29,9 @@ This implicit merging semantics also implies that, from the perspective of the V
 This enables the [distributed logging workflows](#distributed-recordings) described below.
 
 In its UI, the Viewer presents (logical) recordings sharing the same application ID as related.
-In particular, they share the same [blueprint](../../viewer/blueprints-and-views/blueprints.md).
+In particular, they share the same [blueprint](../../viewer/blueprints.md).
 
 
-<!-- NOLINT -->
 ### Recordings on a catalog server
 
 A catalog server has a slightly different object model, so the terminology changes once recordings are registered into a Rerun catalog.
@@ -40,7 +39,7 @@ You can read more about it in [Catalog object model](../../query-and-transform/c
 
 Datasets are top-level objects that group semantically related episodes of data, which we call _segments_.
 Populating a dataset happens by registering recordings using the Catalog SDK.
-Its recording ID becomes the segment ID, and its application ID is discarded.
+By default, its recording ID becomes the segment ID, and its application ID is discarded.
 For example, it can be multiple recordings of the same robotic task.
 Blueprints can optionally be assigned to datasets, so all segments in a dataset share the same blueprint.
 
@@ -79,7 +78,7 @@ You can learn more about this in the [shared recordings guide](../sinks-and-mode
 ### View several recordings
 
 The Viewer can have many recordings open, but it shows one active recording at a time.
-Switch between them in the recording panel on the left.
+Switch between them in the Sources panel on the left.
 Recordings that share an application ID are grouped together and use the same blueprint.
 
 To combine several `.rrd` files:
@@ -93,7 +92,7 @@ To log several recordings from one process, see [Log to several recordings from 
 
 ### Storage formats
 
-Rerun recordings are stored in `.rrd` files. [Blueprints](../../viewer/blueprints-and-views/blueprints.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.
+Rerun recordings are stored in `.rrd` files. [Blueprints](../../viewer/blueprints.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.
 
 
 ## Application IDs
@@ -106,7 +105,6 @@ Unsupported characters and dots in application IDs are normalized to hyphens, an
 
 snippet: tutorials/custom-application-id
 
-<!-- NOLINT -->
 ### When application IDs matter
 
 Application IDs are used by the Viewer when loading recordings directly (not via a catalog server):
@@ -118,9 +116,9 @@ Application IDs are used by the Viewer when loading recordings directly (not via
 As stated above, application IDs are discarded when registering recordings to a catalog server. See [Recordings on a catalog server](#recordings-on-a-catalog-server) above.
 
 Check out the API to learn more about SDK initialization:
-- [🐍 Python](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init)
+- [🐍 Python](https://ref.rerun.io/docs/python/stable/rerun/#rerun.init)
 - [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new)
-- [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#abda6202900fa439fe5c27f7aa0d1105a)
+- [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a5fcc5c8fbf051c148165eb3e0464a4c5)
 
 
 ## Recording IDs
@@ -133,5 +131,4 @@ You can override the default recording ID when initializing the SDK (or the reco
 snippet: tutorials/custom-recording-id
 
 This enables the distributed logging workflow described above, as well as assigning specific segment ID for recordings to be registered to datasets.
-
-<!-- TODO(RR-2168): update this section when segment id override is available -->
+A recording can also be registered under another segment ID without changing its recording ID: see [How can I register a recording under another segment ID?](../../query-and-transform/catalog/layers.md#how-can-i-register-a-recording-under-another-segment-id).

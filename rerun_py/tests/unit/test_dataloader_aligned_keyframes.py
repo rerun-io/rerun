@@ -8,7 +8,7 @@ import pyarrow as pa
 import pytest
 import torch
 from rerun.experimental.dataloader import Field, NumericDecoder, TimeAlignedSampling, VideoFrameDecoder, _utils as utils
-from rerun.experimental.dataloader._iterable_dataset import _raise_if_incomplete, _skip_incomplete
+from rerun.experimental.dataloader._iterable_dataset import _skip_incomplete
 from rerun.experimental.dataloader._sample_index import SampleIndex, SegmentMetadata
 from rerun.experimental.dataloader._utils import (
     FetchedBlock,
@@ -148,7 +148,7 @@ def test_true_marker_with_missing_start_data_cannot_shift_to_a_later_frame(value
 @pytest.mark.filterwarnings("ignore::RuntimeWarning")
 def test_each_camera_and_segment_requires_its_own_marker_before_skip_policy() -> None:
     fields = {key: Field(f"/{key}:VideoStream:sample", decode=VideoFrameDecoder()) for key in ("left", "right")}
-    targets, prepared = _prepare(
+    _, prepared = _prepare(
         fields,
         [("a", 11), ("b", 11), ("a", 20)],
         [(segment, index) for segment in ("a", "b") for index in range(21)],
@@ -165,9 +165,6 @@ def test_each_camera_and_segment_requires_its_own_marker_before_skip_policy() ->
     assert len(kept) == 1 and kept[0] is samples[2]
     with pytest.raises(RuntimeError, match="max_consecutive_skipped_samples=1"):
         list(_skip_incomplete((sample for sample in samples), max_consecutive_skipped_samples=1))
-    with pytest.raises(RuntimeError, match="Required fields decoded to nothing: right"):
-        _raise_if_incomplete(samples[0], targets[0], {"left", "right"})
-    _raise_if_incomplete(samples[0], targets[0], {"left"})
 
 
 def test_hidden_marker_aliases_cannot_shadow_user_fields_or_the_index() -> None:

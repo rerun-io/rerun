@@ -13,7 +13,7 @@ use re_viewer_context::{
     VisualizerExecutionOutput, VisualizerQueryInfo, VisualizerSystem, typed_fallback_for,
 };
 
-use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use super::{SpatialViewVisualizerData, UiLabel, UiLabelStyle};
 use crate::contexts::TransformTreeContext;
 use crate::visualizers::utilities::format_transform_info_result;
 
@@ -152,7 +152,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         && src.as_entity_path_hash() == entity_path.hash() => {}
 
                 _ => {
-                    if let Err(err_msg) = format_transform_info_result(
+                    if let Err(err) = format_transform_info_result(
                         entity_path,
                         transforms,
                         coordinate_frame_transform_result,
@@ -160,7 +160,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         output.report_unspecified_source(
                             instruction.id,
                             ViewerReportSeverity::Error,
-                            err_msg,
+                            err.to_string(),
                         );
                     }
                 }
@@ -219,9 +219,7 @@ impl VisualizerSystem for TransformAxes3DVisualizer {
                         data.ui_labels.push(UiLabel {
                             text: frame_id.to_string(),
                             style: UiLabelStyle::Default,
-                            target: UiLabelTarget::Position3D(
-                                world_from_obj.transform_point3(glam::Vec3::ZERO),
-                            ),
+                            target: world_from_obj.transform_point3(glam::Vec3::ZERO).into(),
                             labeled_instance: InstancePathHash::entity_all(
                                 &data_result.entity_path,
                             ),

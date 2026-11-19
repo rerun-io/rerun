@@ -26,6 +26,12 @@ const WIDTH_IN_R: f32 = OUTSIDE_PADDING_IN_R
 /// We may go below this if pressed for space, but never above.
 const DEFAULT_DOT_RADIUS: f32 = 3.0;
 
+/// The size of the indicator when it has room for full-size dots.
+pub const DEFAULT_SIZE: Vec2 = Vec2::new(
+    DEFAULT_DOT_RADIUS * WIDTH_IN_R,
+    DEFAULT_DOT_RADIUS * HEIGHT_IN_R,
+);
+
 /// A loading indicator widget.
 ///
 /// `reason` describes why we are loading. In debug builds, it is shown on hover.

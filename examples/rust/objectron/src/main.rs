@@ -273,6 +273,7 @@ enum Recording {
     Book,
     Bottle,
     Camera,
+
     #[value(name("cereal_box"))]
     CerealBox,
     Chair,

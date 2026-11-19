@@ -14,9 +14,7 @@
 
 use std::sync::Arc;
 
-use re_dataframe::external::re_chunk::Chunk;
 use re_redap_client::{ApiError, ApiResult};
-use re_types_core::SegmentId;
 use tokio_util::task::AbortOnDropHandle;
 use tracing::Instrument as _;
 
@@ -24,9 +22,9 @@ use super::plan::{FetchTransport, PlannedBatch};
 use super::window::{IssuanceWindow, WindowLease};
 use crate::analytics::{QueryErrorKind, TaskFetchStats};
 use crate::chunk_fetcher::{
-    ChunksWithSegment, ObjectStoreAuthenticator, fetch_batch_direct, fetch_batch_group_via_grpc,
+    ObjectStoreAuthenticator, fetch_batch_direct, fetch_batch_group_via_grpc,
 };
-use crate::dataframe_query_common::DataframeClientAPI;
+use crate::dataframe_query_common::{ChunksWithSegment, DataframeClientAPI};
 use crate::metrics_capture::{InflightFetchGuard, QueryMetrics};
 
 /// One completed fetch: the planned batch, the window bytes it holds, and
@@ -35,7 +33,7 @@ pub struct Delivered {
     /// The issuance-window bytes acquired for this batch. The driver splits
     /// per-chunk shares into segment ledgers and drops the residual.
     pub lease: WindowLease,
-    pub chunks: Vec<(Chunk, Option<SegmentId>)>,
+    pub chunks: ChunksWithSegment,
 }
 
 /// Which batch the driver is currently blocked on.

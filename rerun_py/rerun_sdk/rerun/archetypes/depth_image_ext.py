@@ -12,9 +12,12 @@ from ..encodings import ChannelDatatype, Float32Like
 from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
+    import pyarrow as pa
+
     from rerun.encodings.range1d import Range1DLike
 
     from .. import components
+    from .._baseclasses import BaseBatch
     from . import DepthImage, EncodedDepthImage
 
     ImageLike = (
@@ -33,7 +36,7 @@ if TYPE_CHECKING:
     )
 
 
-def _as_arrow_or_none(batch: Any) -> Any:
+def _as_arrow_or_none(batch: BaseBatch[Any] | None) -> pa.Array | None:
     """Extract arrow array from a batch, or return None."""
     return batch.as_arrow_array() if batch is not None else None
 

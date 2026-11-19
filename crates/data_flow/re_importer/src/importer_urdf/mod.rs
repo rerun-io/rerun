@@ -83,7 +83,11 @@ impl Importer for UrdfImporter {
             if send_error.is_none() {
                 send_error = re_quota_channel::send_crossbeam(
                     &tx,
-                    ImportedData::Chunk(Self.name(), store_id.clone(), chunk),
+                    ImportedData::Chunk {
+                        importer_name: Self.name(),
+                        store_id: store_id.clone(),
+                        chunk,
+                    },
                 )
                 .err();
             }
@@ -128,7 +132,11 @@ impl Importer for UrdfImporter {
             if send_error.is_none() {
                 send_error = re_quota_channel::send_crossbeam(
                     &tx,
-                    ImportedData::Chunk(Self.name(), store_id.clone(), chunk),
+                    ImportedData::Chunk {
+                        importer_name: Self.name(),
+                        store_id: store_id.clone(),
+                        chunk,
+                    },
                 )
                 .err();
             }

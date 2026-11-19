@@ -50,7 +50,8 @@ from ._unregistration_handle import (
 )
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
     if name == "RegistrationHandle":
         import warnings

@@ -38,6 +38,8 @@ class ChunkIndex:
         """The raw chunk index, verbatim, for pandas/polars users."""
         return self._batch
 
+    # TODO(RR-5531): a segment's store (`DatasetEntry.segment_store`) can be backed by multiple stores (one per layer),
+    # so this need to either return None or a list.
     @property
     def store_id(self) -> str:
         """The id of the store this index describes."""

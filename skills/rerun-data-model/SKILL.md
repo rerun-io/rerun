@@ -32,10 +32,11 @@ Dataset → Segment → Layer → Recording → Entity → Component → Chunk
 ```
 
 - **Entity** = a thing, named by a path (`/robot/arm/camera`).
-  **Component** = one typed field on it (positions, image, a scalar).
-  **Archetype** = a standard bundle of components that log and render together (`Points3D`, `Image`, `Transform3D`).
+- **Component** = one typed field on it (positions, image, a scalar).
+- **Archetype** = a standard bundle of components that log and render together (`Points3D`, `Image`, `Transform3D`).
 - Every value you log sits on two axes: **where** (entity path + component) and **when** (which timeline, or _static_ = all time).
-- **Segment** = one episode; on registration its `recording_id` becomes the `segment_id`. **Layer** = an extra `.rrd` on top of a segment. It attaches by matching the segment's `recording_id` and nothing else: that shared id is the whole layering mechanism.
+- **Segment** = one episode; on registration its `recording_id` becomes the `segment_id`, unless `register(…, segment_id=[…])` names another one (needs Rerun 0.44 or Rerun Hub 0.21, and SDKs and viewers older than 0.44 can then no longer read the dataset).
+- **Layer** = an extra `.rrd` on top of a segment. It attaches by registering under the segment's `segment_id` and nothing else: that shared id is the whole layering mechanism.
 
 ## The decisions
 
@@ -82,9 +83,9 @@ Keep them separate `.rrd`s.
 ## Gotchas that cause real failures
 
 1. Component columns come back as `ListArray` in queries: index `[0]`/`[0][0]` (0-based DataFrame, 1-based SQL). See `rerun-catalog-queries`.
-2. A layer must share the segment's `recording_id`, or it won't attach. `application_id` is discarded on registration.
+2. A layer must share the segment's `recording_id`, or be registered with `register(…, segment_id=[…])`, or it won't attach. `application_id` is discarded on registration.
 3. `send_columns`/`send_chunks` add no `log_time`/`log_tick`; only the timelines you pass exist.
 4. Static shadows all temporal data of that component for all time; static is overwritten in the viewer but every write stays on disk until `rerun rrd optimize`.
 5. One `Transform3D`/`Pinhole` relation per frame pair; logging the same relation on a second entity is rejected.
 6. Entity paths are not file paths (`..` is meaningless, `__` is reserved).
-7. A catalog **layer** written with a default `RecordingStream` injects a `/__properties` (`RecordingInfo`) chunk that can collide with the base segment's properties when the catalog merges layers by `recording_id`; the dataset's default blueprint then stops applying on open. Construct the layer's stream with `send_properties=False`.
+7. A catalog **layer** written with a default `RecordingStream` injects a `/__properties` (`RecordingInfo`) chunk that can collide with the base segment's properties when the catalog merges layers into one segment; the dataset's default blueprint then stops applying on open. Construct the layer's stream with `send_properties=False`.

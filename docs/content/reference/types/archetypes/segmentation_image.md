@@ -30,7 +30,7 @@ Use [`archetypes.AnnotationContext`](https://rerun.io/docs/reference/types/arche
 
 ## API reference links
  * 🌊 [C++ API docs for `SegmentationImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SegmentationImage.html)
- * 🐍 [Python API docs for `SegmentationImage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SegmentationImage)
+ * 🐍 [Python API docs for `SegmentationImage`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.SegmentationImage)
  * 🦀 [Rust API docs for `SegmentationImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SegmentationImage.html)
 
 ## Example

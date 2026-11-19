@@ -450,19 +450,18 @@ pub(crate) async fn connect_grpc_client(
 }
 
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
+///
+/// The chunks do not say which segment they belong to: the recording id in their `store_id` is
+/// that of the store they were logged to, which is not always the segment they were registered
+/// as. The caller knows the segment from the rows it requested.
 //
 // TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-// TODO(cmc): we should compute contiguous runs of the same segment here, and return a `(SegmentId, Vec<Chunk>)`
-// instead. Because of how the server performs the computation, this will very likely work out well
-// in practice.
-pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
-
 #[tracing::instrument(level = "debug", skip_all)]
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fetch_chunks_response_to_chunk_and_segment_id(
+pub fn fetch_chunks_response_to_chunks(
     response: crate::FetchChunksResponseStream,
     decode_time_us: Option<Arc<AtomicU64>>,
-) -> crate::ApiResponseStream<ChunksWithSegment> {
+) -> crate::ApiResponseStream<Vec<Chunk>> {
     let origin = response.origin().clone();
     let trace_id = response.trace_id();
 
@@ -496,17 +495,11 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                     // Time the decode loop from inside the blocking task so we
                     // capture true CPU time, not scheduling wait.
                     let decode_start = web_time::Instant::now();
-                    let result: Result<ChunksWithSegment, ApiError> = r
+                    let result: Result<Vec<Chunk>, ApiError> = r
                         .chunks
                         .into_iter()
                         .map(|arrow_msg| {
-                            re_tracing::profile_scope!(
-                                "fetch_chunks_response_to_chunk_and_segment_id"
-                            );
-                            let segment_id = arrow_msg
-                                .store_id
-                                .clone()
-                                .map(|id| SegmentId::from(id.recording_id));
+                            re_tracing::profile_scope!("fetch_chunks_response_to_chunks");
 
                             use re_log_encoding::ToApplication as _;
                             let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
@@ -518,17 +511,14 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                             )
                         })?;
 
-                            let chunk =
-                                re_chunk::Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
-                                    ApiError::deserialization_with_source(
-                                        &origin,
-                                        trace_id,
-                                        err,
-                                        "failed to parse item in /FetchChunks response stream",
-                                    )
-                                })?;
-
-                            Ok((chunk, segment_id))
+                            re_chunk::Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
+                                ApiError::deserialization_with_source(
+                                    &origin,
+                                    trace_id,
+                                    err,
+                                    "failed to parse item in /FetchChunks response stream",
+                                )
+                            })
                         })
                         .try_collect();
                     if let Some(acc) = &decode_time_us {
@@ -557,10 +547,10 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
-pub fn fetch_chunks_response_to_chunk_and_segment_id(
+pub fn fetch_chunks_response_to_chunks(
     response: crate::FetchChunksResponseStream,
     decode_time_us: Option<Arc<std::sync::atomic::AtomicU64>>,
-) -> crate::ApiResponseStream<ChunksWithSegment> {
+) -> crate::ApiResponseStream<Vec<Chunk>> {
     let origin = response.origin().clone();
     let trace_id = response.trace_id();
     let stream = response.map({
@@ -574,15 +564,10 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                     .entered();
 
             let decode_start = web_time::Instant::now();
-            let result: Result<ChunksWithSegment, ApiError> = resp
+            let result: Result<Vec<Chunk>, ApiError> = resp
                 .chunks
                 .into_iter()
                 .map(|arrow_msg| {
-                    let segment_id = arrow_msg
-                        .store_id
-                        .clone()
-                        .map(|id| SegmentId::from(id.recording_id));
-
                     use re_log_encoding::ToApplication as _;
                     let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
                         ApiError::deserialization_with_source(
@@ -593,16 +578,14 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                         )
                     })?;
 
-                    let chunk = re_chunk::Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
+                    re_chunk::Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
                         ApiError::deserialization_with_source(
                             &origin,
                             trace_id,
                             err,
                             "failed to parse item in /FetchChunks response stream",
                         )
-                    })?;
-
-                    Ok((chunk, segment_id))
+                    })
                 })
                 .try_collect();
             if let Some(acc) = &decode_time_us {
@@ -1149,10 +1132,10 @@ async fn stream_manifest(
         let rrd_manifest = Arc::new(rrd_manifest);
 
         if tx
-            .send(DataSourceMessage::RrdManifest(
-                store_id.clone(),
-                rrd_manifest.clone(),
-            ))
+            .send(DataSourceMessage::RrdManifest {
+                store_id: store_id.clone(),
+                manifest: rrd_manifest.clone(),
+            })
             .is_err()
         {
             re_log::debug!("Receiver disconnected");
@@ -1335,14 +1318,14 @@ async fn load_small_chunk_batch(
 ) -> ApiResult<(ControlFlow<()>, u64)> {
     // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream, None);
+    let mut chunk_stream = fetch_chunks_response_to_chunks(chunk_stream, None);
     let trace_id = chunk_stream.trace_id();
 
     let mut batch_bytes: u64 = 0;
     let mut num_chunks_received: u64 = 0;
 
     while let Some(chunks) = chunk_stream.next().await {
-        for (chunk, _partition_id) in chunks? {
+        for chunk in chunks? {
             batch_bytes += chunk.heap_size_bytes();
             num_chunks_received += 1;
 

@@ -50,11 +50,10 @@ pub struct AgentHarnessConfig {
     /// Ranked model-name fallbacks used when no saved model selection is available
     /// or the agent no longer offers it.
     ///
-    /// Each entry is matched, case-insensitively, as a substring of the id and the name of every
-    /// model the agent offers over ACP; the first hit is selected before the session takes its
-    /// first prompt. An agent that offers no model selector, or nothing that matches, keeps
+    /// The first matching preference selects a model before the session takes its first prompt.
+    /// An agent that offers no model selector, or nothing that matches, keeps
     /// whatever model it would use on its own.
-    pub model_preferences: Vec<String>,
+    pub model_preferences: Vec<crate::ModelPreference>,
 
     /// Saved selections, restored only when offered by the agent.
     /// A saved model takes precedence over `model_preferences`.

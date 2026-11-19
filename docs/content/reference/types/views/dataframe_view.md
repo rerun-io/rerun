@@ -25,7 +25,7 @@ Query of the dataframe.
 * `auto_scroll`: Whether to auto-scroll to track the time cursor.
 
 ## API reference links
- * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.DataframeView)
+ * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/blueprint_views#rerun.blueprint.views.DataframeView)
 
 ## Example
 

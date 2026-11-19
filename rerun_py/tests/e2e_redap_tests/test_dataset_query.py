@@ -77,8 +77,9 @@ def test_static_overlay_layer_fills_every_row(entry_factory: EntryFactory, tmp_p
     column is simply empty for the rows that went out early.
 
     The local server plans this dataset as a single fetch batch, so the chunks arrive
-    together and this cannot *force* the late-arrival ordering; that case is covered
-    deterministically by `late_static_chunk_holds_back_every_row` in `re_datafusion`.
+    together and this cannot *force* the late-arrival ordering; the gate that holds rows
+    back while a static chunk is outstanding is covered by
+    `pretime_outstanding_gates_all_emission` in `re_datafusion` (`pipeline/segment.rs`).
     What this test covers is the realistic segment shape end-to-end, over the wire.
 
     It runs under whichever pipeline `RERUN_DATAFRAME_PIPELINE` selects.

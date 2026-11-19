@@ -723,7 +723,7 @@ export type BlueprintTarget =
 
 /**
  * A whole blueprint, keyed by blueprint entity path, then archetype, then field.
- * See [Blueprints](https://rerun.io/docs/viewer/blueprints-and-views/blueprints).
+ * See [Blueprints](https://rerun.io/docs/viewer/blueprints).
  *
  * An integer is a `number` if a `number` holds it exactly, and a `bigint` if not, such as most nanosecond times.
  * So the same field can be either, depending on its value: handle both, e.g. with `BigInt(value)`.
@@ -1308,6 +1308,20 @@ export interface WebViewerOptions {
    * If not set, the viewer uses the previously persisted theme preference or defaults to "system".
    */
   theme?: "dark" | "light" | "system";
+
+  /**
+   * Whether the viewer sends usage data to Rerun.
+   *
+   * - `"on"`: send usage data, and show a one-time notice about it in this browser.
+   *   Nothing is sent during the first visit, so users can turn it off first.
+   * - `"off"`: send nothing.
+   *
+   * Users can always turn usage data off in the viewer's settings, which overrides `"on"`.
+   * If you leave it on, consider mentioning Rerun in your privacy policy.
+   *
+   * Defaults to `"on"`.
+   */
+  analytics?: "on" | "off";
 
   /**
    * Enable OAuth login in the viewer.

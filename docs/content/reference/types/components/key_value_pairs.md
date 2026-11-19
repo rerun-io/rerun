@@ -20,7 +20,7 @@ List(non-null Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `KeyValuePairs`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1KeyValuePairs.html)
- * 🐍 [Python API docs for `KeyValuePairs`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.KeyValuePairs)
+ * 🐍 [Python API docs for `KeyValuePairs`](https://ref.rerun.io/docs/python/stable/components#rerun.components.KeyValuePairs)
  * 🦀 [Rust API docs for `KeyValuePairs`](https://docs.rs/rerun/latest/rerun/components/struct.KeyValuePairs.html)
 
 

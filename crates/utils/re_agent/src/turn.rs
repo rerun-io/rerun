@@ -18,18 +18,46 @@ pub struct TurnStart {
     pub transcript_start: usize,
     pub permissions_requested: u32,
     pub permissions_rejected: u32,
+    waiting_since: Option<Instant>,
+    waited: Duration,
 }
 
 impl TurnStart {
-    #[cfg(any(test, feature = "testing"))]
-    pub fn testing(transcript_start: usize) -> Self {
+    pub fn new(prompt: String, transcript_start: usize) -> Self {
         Self {
-            prompt: String::new(),
+            prompt,
             started: Instant::now(),
             transcript_start,
             permissions_requested: 0,
             permissions_rejected: 0,
+            waiting_since: None,
+            waited: Duration::ZERO,
         }
+    }
+
+    #[cfg(any(test, feature = "testing"))]
+    pub fn testing(transcript_start: usize) -> Self {
+        Self::new(String::new(), transcript_start)
+    }
+
+    pub fn set_waiting(&mut self, waiting: bool, now: Instant) {
+        match (waiting, self.waiting_since) {
+            (true, None) => self.waiting_since = Some(now),
+            (false, Some(since)) => {
+                self.waited += now.saturating_duration_since(since);
+                self.waiting_since = None;
+            }
+            _ => {}
+        }
+    }
+
+    /// Time since the turn started, minus the time spent waiting on the user, as of `now`.
+    pub fn working_time(&self, now: Instant) -> Duration {
+        let waiting_now = self
+            .waiting_since
+            .map_or(Duration::ZERO, |since| now.saturating_duration_since(since));
+        now.saturating_duration_since(self.started)
+            .saturating_sub(self.waited + waiting_now)
     }
 }
 
@@ -131,5 +159,25 @@ pub fn describe_failed_tool_call(call: &ToolCallState) -> String {
     match output {
         Some(output) => format!("{}: {output}", call.title),
         None => call.title.clone(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn waiting_on_the_user_is_not_working_time() {
+        let mut turn = TurnStart::testing(1);
+        let start = turn.started;
+        let secs = |n| start + Duration::from_secs(n);
+
+        turn.set_waiting(true, secs(10));
+        turn.set_waiting(true, secs(20));
+        turn.set_waiting(false, secs(70));
+        assert_eq!(turn.working_time(secs(100)), Duration::from_secs(40));
+
+        turn.set_waiting(true, secs(100));
+        assert_eq!(turn.working_time(secs(130)), Duration::from_secs(40));
     }
 }

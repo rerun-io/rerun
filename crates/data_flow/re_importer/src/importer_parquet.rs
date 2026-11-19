@@ -100,7 +100,10 @@ fn forward_chunks(
     let store_info_msg = crate::prepare_store_info(store_id, re_log_msg::FileSource::Sdk);
     if send_crossbeam(
         tx,
-        ImportedData::LogMsg(PARQUET_IMPORTER_NAME.to_owned(), store_info_msg),
+        ImportedData::LogMsg {
+            importer_name: PARQUET_IMPORTER_NAME.to_owned(),
+            msg: store_info_msg,
+        },
     )
     .is_err()
     {
@@ -112,7 +115,11 @@ fn forward_chunks(
             Ok(chunk) => {
                 if send_crossbeam(
                     tx,
-                    ImportedData::Chunk(PARQUET_IMPORTER_NAME.to_owned(), store_id.clone(), chunk),
+                    ImportedData::Chunk {
+                        importer_name: PARQUET_IMPORTER_NAME.to_owned(),
+                        store_id: store_id.clone(),
+                        chunk,
+                    },
                 )
                 .is_err()
                 {

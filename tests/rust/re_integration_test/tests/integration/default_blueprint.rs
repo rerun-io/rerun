@@ -177,7 +177,7 @@ fn registrations(payloads: &[SmartMessagePayload]) -> Vec<&DefaultBlueprintRegis
 fn manifests(payloads: &[SmartMessagePayload], kind: StoreKind) -> Vec<&StoreId> {
     data(payloads)
         .filter_map(|message| match message {
-            DataSourceMessage::RrdManifest(store_id, _) if store_id.kind() == kind => {
+            DataSourceMessage::RrdManifest { store_id, .. } if store_id.kind() == kind => {
                 Some(store_id)
             }
             _ => None,

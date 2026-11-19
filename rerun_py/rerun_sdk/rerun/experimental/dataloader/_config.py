@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from rerun.catalog._entry import DatasetEntry
+    from rerun.catalog._entry import DatasetEntry, DatasetSelection
     from rerun.chunk._selector import Selector
+    from rerun.experimental.spans import Curation
 
     from .decoders._base import ColumnDecoder, DecodedValue
 
@@ -67,8 +68,11 @@ class FixedRateSampling:
     """
     Sample a timestamp or duration timeline on a fixed grid at `rate_hz` samples per second.
 
-    Grid spacing is rounded to nanoseconds. Samples use the latest available
-    values at or before each requested time; field windows remain in seconds.
+    Live grids start at each recording's first time that accommodates all field windows.
+    Curated grids start at timeline zero.
+    Spacing is rounded to nanoseconds.
+    Samples use the latest available values at or before each requested time;
+    field windows remain in seconds.
     """
 
     rate_hz: float
@@ -122,19 +126,6 @@ class Field:
         `VideoFrameDecoder(output_format="yuv420p")` instead yields a
         [`Yuv420Frame`][rerun.experimental.dataloader.Yuv420Frame]. Both are bootstrapped from the keyframe preceding
         the earliest output.
-    max_staleness
-        Optional maximum age of the data backing a sample, using the same unit
-        convention as `window`: integral index steps for integer timelines and
-        seconds for timestamp or duration timelines. When set, a required
-        sample is dropped if the nearest value at or before a queried point is
-        older than this. `None` (the default) applies no staleness limit.
-        Enforced only during manifest construction, not by the streaming
-        dataloader.
-
-        For compressed video, manifests conservatively measure age from the
-        latest prior keyframe because sparse keyframe metadata does not expose
-        non-keyframe timestamps. A sample may therefore be dropped even when a
-        fresher non-keyframe exists.
 
     """
 
@@ -142,18 +133,12 @@ class Field:
     decode: ColumnDecoder[DecodedValue]
     select: Selector | None = None
     window: tuple[int | float, ...] | None = None
-    max_staleness: int | float | None = None
 
     def __post_init__(self) -> None:
         if self.window is not None and not self.window:
             raise ValueError("Field.window must contain at least one offset")
         if self.window is not None and any(not math.isfinite(offset) for offset in self.window):
             raise ValueError(f"Field.window offsets must be finite, got {self.window!r}")
-        if self.max_staleness is not None:
-            if not math.isfinite(self.max_staleness):
-                raise ValueError(f"Field.max_staleness must be finite, got {self.max_staleness!r}")
-            if self.max_staleness < 0:
-                raise ValueError(f"Field.max_staleness must be non-negative, got {self.max_staleness!r}")
 
     @property
     def prior_keyframe_path(self) -> str | None:
@@ -165,39 +150,67 @@ class Field:
         """Whether server queries for this field use latest-at filling."""
         return self.decode.fill_latest_at
 
-    def to_recipe(self) -> dict[str, Any]:
-        """
-        A JSON-serializable snapshot of this field's spec, for a manifest's provenance header.
 
-        Kept on `Field` so it stays in sync as the spec evolves. `decode` / `select`
-        are captured via `repr` — a human-readable record, not a round-trippable form.
-        """
-        return {
-            "path": self.path,
-            "window": list(self.window) if self.window is not None else None,
-            "max_staleness": self.max_staleness,
-            "decoder": repr(self.decode),
-            "select": repr(self.select) if self.select is not None else None,
-        }
-
-
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class DataSource:
     """
-    An immutable reference to a dataset with an optional segment filter.
+    A dataset or filtered selection, optionally restricted to curated intervals.
 
     Parameters
     ----------
     dataset
-        The remote dataset to read from.
+        The remote dataset or selection to read from.
     segments
-        Optional list of segment IDs to restrict to.
+        Optional segment IDs, intersected with any segment filter on the selection.
+    curation
+        Optional curated intervals, intersected with the selected recordings and their timeline ranges.
 
     """
 
     dataset: DatasetEntry
     segments: list[str] | None = None
+    curation: Curation | None = None
+    _content_filters: tuple[str, ...] = field(default=(), init=False, repr=False)
+
+    def __init__(
+        self,
+        dataset: DatasetEntry | DatasetSelection,
+        segments: list[str] | None = None,
+        *,
+        curation: Curation | None = None,
+    ) -> None:
+        from rerun.catalog import DatasetSelection
+
+        content_filters: tuple[str, ...] = ()
+        if isinstance(dataset, DatasetSelection):
+            view_segments = dataset._internal.filtered_segment_ids
+            if view_segments is not None:
+                segments = sorted(view_segments if segments is None else view_segments.intersection(segments))
+            expressions = dataset._internal.content_filters
+            content_filters = () if expressions is None else tuple(expressions)
+            dataset = dataset.dataset
+        object.__setattr__(self, "dataset", dataset)
+        object.__setattr__(self, "segments", None if segments is None else list(segments))
+        object.__setattr__(self, "curation", curation)
+        object.__setattr__(self, "_content_filters", content_filters)
+
+    def _selection(self, *, include_segments: bool = True) -> DatasetEntry | DatasetSelection:
+        selection: DatasetEntry | DatasetSelection = self.dataset
+        for expression in self._content_filters:
+            selection = selection.filter_contents(expression)
+        if include_segments and self.segments is not None:
+            selection = selection.filter_segments(self.segments)
+        return selection
 
     def filter_segments(self, segment_ids: list[str]) -> DataSource:
-        """Return a new DataSource narrowed to *segment_ids*."""
-        return replace(self, segments=segment_ids)
+        """Return a new DataSource narrowed to `segment_ids`, preserving its contents and curation."""
+        segments = segment_ids
+        if self.segments is not None:
+            allowed = set(self.segments)
+            segments = [segment_id for segment_id in segment_ids if segment_id in allowed]
+        return DataSource(self._selection(include_segments=False), segments=segments, curation=self.curation)
+
+    def _with_curation(self, curation: Curation) -> DataSource:
+        if self.curation is not None:
+            raise ValueError("The source already has a curation")
+        return DataSource(self._selection(include_segments=False), segments=self.segments, curation=curation)

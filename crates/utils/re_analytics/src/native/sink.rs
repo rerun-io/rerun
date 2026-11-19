@@ -3,6 +3,16 @@ use std::sync::Arc;
 use super::AbortSignal;
 use crate::{AnalyticsEvent, PostHogBatch, PostHogEvent};
 
+/// Failed to send analytics events.
+#[derive(Debug, thiserror::Error)]
+enum SendError {
+    #[error("Failed to serialize analytics events: {0}")]
+    Serialize(#[source] serde_json::Error),
+
+    #[error("HTTP request failed: {0}")]
+    Http(String),
+}
+
 #[derive(Default, Debug, Clone)]
 pub(crate) struct PostHogSink {}
 
@@ -23,7 +33,7 @@ impl PostHogSink {
             let analytics_id = analytics_id.clone();
             let session_id = session_id.clone();
             let abort_signal = abort_signal.clone();
-            move |result: Result<ehttp::Response, String>| match result {
+            move |result: Result<ehttp::Response, SendError>| match result {
                 Ok(response) => {
                     if !response.ok {
                         let err = format!(
@@ -59,9 +69,12 @@ impl PostHogSink {
 
         let json = match serde_json::to_string_pretty(&batch) {
             Ok(json) => json,
-            Err(err) => return on_done(Err(err.to_string())),
+            Err(err) => return on_done(Err(SendError::Serialize(err))),
         };
         re_log::trace!("Sending analytics: {json}");
-        ehttp::fetch(ehttp::Request::post(Self::URL, json.into_bytes()), on_done);
+        ehttp::fetch(
+            ehttp::Request::post(Self::URL, json.into_bytes()),
+            move |result| on_done(result.map_err(SendError::Http)),
+        );
     }
 }
