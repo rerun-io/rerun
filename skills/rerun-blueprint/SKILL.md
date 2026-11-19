@@ -99,6 +99,12 @@ that fails. A column's entry sits at `/table/layouts/table/columns/<column name>
 with each `:` and space in the name escaped as `\:` and `\ `, which JSON writes
 as `\\:` and `\\ `.
 
+Cards and previews need a dataset's segment table.
+A plain table, such as a catalog table entry, has no card layout.
+To tell which one is open, read the `location` from `viewer_get_state`: `/dataset/<id>` is a dataset.
+For `/entry/<id>`, find that id in the `url` of the `servers` entries and read its `kind`: `ENTRY_KIND_DATASET` or `ENTRY_KIND_TABLE`.
+When a plain table is open, say so in one line.
+
 For a vague request such as "table with previews", don't ask first.
 Write cards with one 2D preview of the first camera entity, then offer to change it.
 Take the entity from `viewer_get_dataset_schema`.

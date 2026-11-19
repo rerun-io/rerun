@@ -108,6 +108,10 @@ impl Preamble<'_> {
                 agent_dir.join(SKILLS_SUBDIR).display()
             )
             .ok();
+            text.push_str(
+                "- To change how a table looks (previews, cards, columns, filters), read the `rerun-blueprint` skill \
+                 and call `viewer_set_blueprint`. Do not click through the UI.\n",
+            );
             writeln!(
                 text,
                 "- The Rerun documentation (the source of rerun.io/docs) and its code snippets are in `{}`. \
