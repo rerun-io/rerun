@@ -118,6 +118,7 @@ re_viewport_blueprint = { path = "crates/viewer_support/re_viewport_blueprint", 
 
 # crates/store_app:
 re_catalog_client = { path = "crates/store_app/re_catalog_client", version = "=0.44.0-alpha.1", default-features = false }
+re_catalog_tools = { path = "crates/store_app/re_catalog_tools", version = "=0.44.0-alpha.1", default-features = false }
 re_dataframe = { path = "crates/store_app/re_dataframe", version = "=0.44.0-alpha.1", default-features = false }
 re_datafusion = { path = "crates/store_app/re_datafusion", version = "=0.44.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store_app/re_entity_db", version = "=0.44.0-alpha.1", default-features = false }

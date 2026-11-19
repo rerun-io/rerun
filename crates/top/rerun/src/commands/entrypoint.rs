@@ -20,6 +20,8 @@ use crate::commands::DownloadCommand;
 use crate::commands::DumpPuffinCommand;
 #[cfg(feature = "importers")]
 use crate::commands::McapCommands;
+#[cfg(feature = "native_viewer")]
+use crate::commands::McpCommand;
 use crate::commands::RrdCommands;
 
 use super::cli_data_source::local_recordings_for_assets;
@@ -671,7 +673,7 @@ enum Command {
     #[command(subcommand)]
     Mcap(McapCommands),
 
-    /// Run an MCP server that controls a running Rerun Viewer.
+    /// Run an MCP server that lets an agent drive a running Rerun Viewer and read a catalog.
     ///
     /// Register it with your agent using `claude mcp add rerun -- rerun mcp` or
     /// `codex mcp add rerun -- rerun mcp`, or add an `mcp.json` entry with
@@ -680,20 +682,7 @@ enum Command {
     /// See <https://rerun.io/docs/viewer/extend/mcp> for details.
     #[cfg(feature = "native_viewer")]
     #[command(name = "mcp")]
-    Mcp {
-        /// gRPC endpoint of the viewer to connect to on startup, e.g. `http://127.0.0.1:9876`.
-        ///
-        /// Without it, the server starts unconnected and the agent picks a viewer with its
-        /// `connect` tool.
-        #[arg(long)]
-        endpoint: Option<url::Url>,
-
-        /// Marks a server started by the viewer's agent panel.
-        ///
-        /// Only analytics reads it, the server behaves the same either way.
-        #[arg(long, hide = true)]
-        from_agent_panel: bool,
-    },
+    Mcp(McpCommand),
 
     /// Reset the memory of the Rerun Viewer.
     ///
@@ -859,12 +848,7 @@ where
             Command::Mcap(mcap) => mcap.run(),
 
             #[cfg(feature = "native_viewer")]
-            Command::Mcp {
-                endpoint,
-                from_agent_panel: _,
-            } => tokio_runtime.block_on(re_rerun_mcp::serve(re_rerun_mcp::Config {
-                viewer: Some(re_rerun_mcp::ViewerConfig { endpoint }),
-            })),
+            Command::Mcp(mcp) => mcp.run(&tokio_runtime),
 
             #[cfg(feature = "native_viewer")]
             Command::Reset => re_viewer::reset_viewer_persistence(),
@@ -2150,11 +2134,10 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
 
     let mcp_launcher = cfg_select! {
         feature = "native_viewer" => match command {
-            Some(Command::Mcp {
-                from_agent_panel: true,
-                ..
-            }) => Some(re_analytics::event::McpLauncher::AgentPanel),
-            Some(Command::Mcp { .. }) => Some(re_analytics::event::McpLauncher::Unknown),
+            Some(Command::Mcp(mcp)) if mcp.from_agent_panel => {
+                Some(re_analytics::event::McpLauncher::AgentPanel)
+            }
+            Some(Command::Mcp(_)) => Some(re_analytics::event::McpLauncher::Unknown),
             _ => None,
         },
         _ => None,
@@ -2198,7 +2181,7 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
         }
 
         #[cfg(feature = "native_viewer")]
-        Some(Command::Mcp { .. }) => ("mcp", None),
+        Some(Command::Mcp(_)) => ("mcp", None),
 
         Some(Command::Download(_)) => ("download", None),
 
@@ -2375,33 +2358,7 @@ mod cli_data_source_tests {
 mod tests {
     use super::*;
 
-    use std::assert_matches;
-
     use clap::Parser as _;
-
-    #[test]
-    fn mcp_parses_from_agent_panel() {
-        let args = Args::try_parse_from(["rerun", "mcp", "--from-agent-panel"]).unwrap();
-        assert_matches!(
-            args.command,
-            Some(Command::Mcp {
-                from_agent_panel: true,
-                ..
-            })
-        );
-    }
-
-    #[test]
-    fn mcp_is_not_from_agent_panel_by_default() {
-        let args = Args::try_parse_from(["rerun", "mcp"]).unwrap();
-        assert_matches!(
-            args.command,
-            Some(Command::Mcp {
-                from_agent_panel: false,
-                ..
-            })
-        );
-    }
 
     #[test]
     fn detach_relaunches_a_native_viewer_exactly_once() {

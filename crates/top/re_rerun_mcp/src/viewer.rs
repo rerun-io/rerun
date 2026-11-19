@@ -34,8 +34,8 @@ use url::Url;
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
 use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
 use re_protos::viewer_control::v1alpha1::{
-    EguiInspectRequest, GetLogsRequest, UnexpectedResponseKind, ViewerControlOp, ViewerLogEntry,
-    viewer_control_service_client::ViewerControlServiceClient,
+    EguiInspectRequest, GetLogsRequest, GetStateRequest, UnexpectedResponseKind, ViewerControlOp,
+    ViewerLogEntry, viewer_control_service_client::ViewerControlServiceClient,
 };
 use re_viewer_control_tools::ScreenshotDelivery;
 
@@ -69,9 +69,22 @@ const UI_REQUEST_TIMEOUT: Duration = Duration::from_secs(10);
 /// otherwise has to infer.
 const INSTRUCTIONS: &str = include_str!("viewer_instructions.md");
 
+/// Why the catalog server of the connected viewer is unknown.
+#[derive(Debug, thiserror::Error)]
+pub enum ViewerCatalogError {
+    #[error("Not connected to a viewer")]
+    NotConnected,
+
+    #[error("Failed to read the viewer's state: {source}")]
+    ReadState { source: ExecuteError },
+
+    #[error("The viewer reported an invalid catalog URL: {source}. URL: {url:?}")]
+    InvalidUrl { source: re_uri::Error, url: String },
+}
+
 /// Why a viewer-control operation got no usable answer.
 #[derive(Debug, thiserror::Error)]
-enum ExecuteError {
+pub enum ExecuteError {
     #[error("The viewer did not answer within {REQUEST_TIMEOUT:?}")]
     Timeout,
 
@@ -375,6 +388,39 @@ impl ViewerToolset {
         Ok(result)
     }
 
+    /// The catalog server the connected viewer serves, if it serves one.
+    pub async fn catalog_url(&self) -> Result<Option<re_uri::Origin>, ViewerCatalogError> {
+        let conn = self
+            .conn
+            .lock()
+            .clone()
+            .ok_or(ViewerCatalogError::NotConnected)?;
+        let mut client = conn.client.clone();
+        let state = execute(&mut client, GetStateRequest {})
+            .await
+            .map_err(|source| ViewerCatalogError::ReadState { source })?;
+        state
+            .catalog_url
+            .map(|url| {
+                url.parse()
+                    .map_err(|source| ViewerCatalogError::InvalidUrl { source, url })
+            })
+            .transpose()
+    }
+
+    /// Whether the connected viewer runs on this machine.
+    pub fn is_on_this_machine(&self) -> bool {
+        self.conn
+            .lock()
+            .as_ref()
+            .is_some_and(|conn| match conn.viewer_endpoint.host() {
+                Some(url::Host::Domain(domain)) => domain == "localhost",
+                Some(url::Host::Ipv4(ip)) => ip.is_loopback(),
+                Some(url::Host::Ipv6(ip)) => ip.is_loopback(),
+                None => false,
+            })
+    }
+
     /// Appends the viewer log entries since the previous tool call to `result`,
     /// so the agent sees warnings and errors as they happen.
     async fn append_new_logs(&self, result: &mut CallToolResult) {
@@ -412,6 +458,8 @@ impl ViewerToolset {
     /// disconnected.
     pub fn tools(&self) -> Vec<Tool> {
         let mut tools = self.tool_router.list_all();
+        // TODO(rerun-io/egui_crates#205): serve the viewer tools through `toolbox` too, once the
+        // egui tools are an `AgentToolbox`.
         tools.extend(
             re_viewer_control_tools::tools(SCREENSHOT_DELIVERY)
                 .into_iter()

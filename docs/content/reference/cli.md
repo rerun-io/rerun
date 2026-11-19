@@ -25,7 +25,7 @@ The Rerun command-line interface:
 * `dump-puffin`: Dump a puffin profiler recording (`.puffin` file) as JSON.
 * `man`: Generates the Rerun CLI manual (markdown).
 * `mcap`: Manipulate the contents of .mcap files.
-* `mcp`: Run an MCP server that controls a running Rerun Viewer.
+* `mcp`: Run an MCP server that lets an agent drive a running Rerun Viewer and read a catalog.
 * `reset`: Reset the memory of the Rerun Viewer.
 * `rrd`: Manipulate the contents of .rrd and .rbl files.
 * `server`: Local Rerun catalog server.
@@ -518,7 +518,7 @@ Reports timelines that disagree on row ordering, whole-topic ordering conflicts,
 
 ## rerun mcp
 
-Run an MCP server that controls a running Rerun Viewer.
+Run an MCP server that lets an agent drive a running Rerun Viewer and read a catalog.
 
 Register it with your agent using `claude mcp add rerun -- rerun mcp` or `codex mcp add rerun -- rerun mcp`, or add an `mcp.json` entry with `"command": "rerun"` and `"args": ["mcp"]`.
 
@@ -531,7 +531,17 @@ See <https://rerun.io/docs/viewer/extend/mcp> for details.
 * `--endpoint <ENDPOINT>`
 > gRPC endpoint of the viewer to connect to on startup, e.g. `http://127.0.0.1:9876`.
 >
-> Without it, the server starts unconnected and the agent picks a viewer with its `connect` tool.
+> Without it, the server starts unconnected and the agent picks a viewer with its `viewer_connect` tool.
+
+* `--catalog-url <CATALOG_URL>`
+> URL of the catalog server for the catalog tools, e.g. `rerun+http://127.0.0.1:51234`.
+>
+> Without it, they act on the catalog of the connected viewer if it runs on this machine, until the agent picks another one with its `catalog_connect` tool.
+
+* `--toolsets <TOOLSETS>`
+> The toolsets to offer, comma-separated.
+>
+> [Default: `viewer`, `catalog`]
 
 ## rerun rrd
 

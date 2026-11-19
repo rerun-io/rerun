@@ -62,13 +62,13 @@ Acting and verifying:
 
 Reading the data itself:
 - `viewer_get_recording_schema` names every entity of an open recording, the components logged on each, and their Arrow datatypes, whatever the recording was loaded from. Read it before you write a query, a blueprint, or a sentence describing the data.
-- That is the schema, not the values: it says what was logged at some point, not what is there at the current time. These tools drive the UI and do not read values — the viewer hosts a catalog server, so read the real values through the Python API.
-- `viewer_get_state` reports that server as `catalog_url`. Hand it straight to `CatalogClient`; do not hardcode a port, since a viewer may serve on any of them.
-- A recording's `store_id` is the string `{kind}:{application_id}:{recording_id}`. The kind runs to the first colon, the application id to the next colon not preceded by a backslash, and the recording id is the rest; a colon inside the application id is escaped as `\:` (and a backslash as `\\`). The application id is the catalog dataset's **id** (not its name) and the recording id is the segment id, so look the dataset up by id:
+- That is the schema, not the values: it says what was logged at some point, not what is there at the current time. These tools drive the UI and do not read values — the viewer hosts a catalog server, so read the real values from it.
+- `viewer_get_state` reports that server as `catalog_url`; for Python, hand it straight to `CatalogClient`. Do not hardcode a port, since a viewer may serve on any of them.
+- A recording's `store_id` is the string `{kind}:{application_id}:{recording_id}`. The kind runs to the first colon, the application id to the next colon not preceded by a backslash, and the recording id is the rest; a colon inside the application id is escaped as `\:` (and a backslash as `\\`). The application id is the catalog dataset's **id** (not its name) and the recording id is the segment id. In Python, use
   `CatalogClient(catalog_url).get_dataset(id=application_id)`, then `.schema().entity_paths()` for the schema and `.segment_store(recording_id)` for the data.
 - Only local `.rrd` and `.rbl` files are registered, so a recording streamed from an SDK, opened from an `http(s)` URL, or imported from a directory or another file format is absent from the catalog, and its application id is the plain application id rather than a dataset id. Read those from the source instead (`rerun.chunk.RrdReader(path).store(...).schema()` and friends), fetching a URL to a temporary file first.
 - `viewer_close` only closes recordings in the viewer; registered recordings stay in the catalog and can still be read and reopened afterwards.
-- More complex dataset queries may require the Python query SDK, which is separate from this MCP server. Before using it, read the `rerun-catalog-queries` skill if available and inspect the schema/metadata. Query only the necessary segments, columns, and time range; avoid costly scans across the full dataset, and clarify the scope with the user before running a potentially expensive query if it is unclear.
+- Dataset queries may require the Python query SDK, which is separate from this MCP server. Before using it, read the `rerun-catalog-queries` skill if available and inspect the schema/metadata. Query only the necessary segments, columns, and time range; avoid costly scans across the full dataset, and clarify the scope with the user before running a potentially expensive query if it is unclear.
 
 Telling Rerun what let you down:
 - When a Rerun tool, doc, or API lets you down (an error you cannot explain, a feature you need that is missing, docs that are wrong), call `viewer_submit_feedback` once, after you have tried to work around it. Write only about Rerun, never about the user's data, and name the tool in `surface`. If it fails with `FAILED_PRECONDITION`, analytics is turned off: carry on and do not retry.
@@ -76,6 +76,13 @@ Telling Rerun what let you down:
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.
 
+Catalog tools (`catalog_*`) describe the contents of a Rerun catalog server (does not need nor affect a viewer): its datasets, their segments (one per recording), schemas, and segment properties.
+
+- Start with `catalog_list_entries` for the dataset names, then `catalog_get_dataset_info` for an overview. Name a dataset by its name or its id.
+- Never guess an entity path or a component name: read them with `catalog_get_dataset_schema`.
+- If no server matches what the user names, ask for the URL rather than guessing one.
+- Until you call `catalog_connect`, the catalog tools act on the catalog of the connected viewer (its `catalog_url`) when that viewer runs on this machine. Call `catalog_connect` to read another server, e.g. one from the `servers` that `viewer_get_state` lists.
+- A recording's `store_id` in `viewer_get_state` names its dataset id and segment id: pass them as `dataset` and `segment_id`.
 
 # Tools
 
@@ -122,6 +129,215 @@ Conventions:
     "readOnlyHint": false,
     "destructiveHint": true,
     "idempotentHint": false,
+    "openWorldHint": false
+  }
+}
+
+## catalog_connect
+
+{
+  "name": "catalog_connect",
+  "description": "Connect to a Rerun catalog server, replacing any previous catalog connection. The other catalog tools act on this catalog. Returns the server's version.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "URL of the catalog server, e.g. `rerun+http://127.0.0.1:51234`. `http(s)://` works too."
+      }
+    },
+    "required": [
+      "url"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}
+
+## catalog_get_dataset_info
+
+{
+  "name": "catalog_get_dataset_info",
+  "description": "Summarize a dataset without reading its data: number of segments, total size, layers, timelines with their time ranges, number of entities and component columns, and the segment property columns.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dataset": {
+        "type": "string",
+        "description": "The dataset's name or id, from `catalog_list_entries`."
+      }
+    },
+    "required": [
+      "dataset"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_get_dataset_schema
+
+{
+  "name": "catalog_get_dataset_schema",
+  "description": "The entities of a dataset and their archetypes, merged over all its segments, 200 at a time (page on with `offset`). Pass `entity_path` for the components of one entity, with their Arrow datatypes. Entities under `/__properties` hold the static properties logged with each recording.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dataset": {
+        "type": "string",
+        "description": "The dataset's name or id, from `catalog_list_entries`."
+      },
+      "entity_path": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "One entity to describe in full, e.g. `/camera/image`.",
+        "default": null
+      },
+      "offset": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0,
+        "description": "Without `entity_path`: how many entities to skip, to list those past the first 200.",
+        "default": 0
+      }
+    },
+    "required": [
+      "dataset"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_get_segment_properties
+
+{
+  "name": "catalog_get_segment_properties",
+  "description": "The properties stored on the catalog for one segment, as `property:<key>:<component>` columns. Unlike the `/__properties` entities, these can change after the recording was registered.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dataset": {
+        "type": "string",
+        "description": "The dataset's name or id, from `catalog_list_entries`."
+      },
+      "segment_id": {
+        "type": "string",
+        "description": "The segment's id, from `catalog_list_segments`."
+      }
+    },
+    "required": [
+      "dataset",
+      "segment_id"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_list_entries
+
+{
+  "name": "catalog_list_entries",
+  "description": "List the datasets and tables in the catalog, sorted by name, a page at a time, with their ids and names, and the catalog they are on.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "kind": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "enum": [
+          "dataset",
+          "table",
+          null
+        ],
+        "description": "Only list entries of this kind. Lists datasets and tables when left out."
+      },
+      "offset": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0,
+        "description": "How many entries to skip.",
+        "default": 0
+      },
+      "limit": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0,
+        "description": "How many entries to return: 100 by default, at most 1000.",
+        "default": 100
+      }
+    }
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_list_segments
+
+{
+  "name": "catalog_list_segments",
+  "description": "List the ids of a dataset's segments (its recordings), sorted, a page at a time.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dataset": {
+        "type": "string",
+        "description": "The dataset's name or id, from `catalog_list_entries`."
+      },
+      "offset": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0,
+        "description": "How many segments to skip.",
+        "default": 0
+      },
+      "limit": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0,
+        "description": "How many segment ids to return: 100 by default, at most 1000.",
+        "default": 100
+      }
+    },
+    "required": [
+      "dataset"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
     "openWorldHint": false
   }
 }

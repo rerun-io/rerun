@@ -166,6 +166,11 @@ impl AgentToolbox for ViewerToolbox {
     }
 
     fn requires_approval(&self, name: &str, arguments: &Map<String, Value>) -> bool {
+        // An agent harness's `rerun mcp` serves the catalog tools too, and asks the panel about
+        // them.
+        if let Some(tool) = re_catalog_tools::CatalogTool::from_name(name) {
+            return tool.requires_approval();
+        }
         let operation = name.strip_prefix(TOOL_NAME_PREFIX);
         if operation == Some(RUN_COMMAND_OPERATION) {
             // An unknown command fails in the viewer anyway, but asking costs nothing.
@@ -265,6 +270,15 @@ mod tests {
         assert!(
             !toolbox.requires_approval(&format!("{TOOL_NAME_PREFIX}set_location"), &Map::new())
         );
+    }
+
+    #[test]
+    fn read_only_catalog_tools_need_no_approval() {
+        let (calls_tx, _calls_rx) = crossbeam::channel::bounded(MAX_WAITING_CALLS);
+        let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
+        assert!(!toolbox.requires_approval("catalog_list_entries", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_connect", &Map::new()));
+        assert!(toolbox.requires_approval("some_other_tool", &Map::new()));
     }
 
     #[test]

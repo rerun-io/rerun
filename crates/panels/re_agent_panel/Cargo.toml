@@ -46,6 +46,7 @@ re_agent_tools.workspace = true
 re_agent_ui.workspace = true
 re_analytics.workspace = true
 re_async.workspace = true
+re_catalog_tools.workspace = true
 re_log.workspace = true
 re_log_channel.workspace = true
 re_protos.workspace = true

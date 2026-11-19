@@ -1,7 +1,7 @@
 ---
 title: MCP server
 order: 300
-description: Let agents such as Claude or Codex drive a running Viewer over MCP
+description: Let agents such as Claude or Codex drive a running Viewer and browse a catalog over MCP
 ---
 
 The Rerun CLI includes an [MCP](https://modelcontextprotocol.io/) server that lets agents such as Codex or Claude interact with a running Viewer.
@@ -21,7 +21,7 @@ See [Reading and writing the blueprint](#reading-and-writing-the-blueprint).
 ## Setup
 
 The server is the `mcp` subcommand of the `rerun` binary, speaking MCP over stdio.
-It connects to a separate, already-running Viewer over gRPC, so an MCP client only needs to know how to launch `rerun mcp`.
+It connects to a separate Viewer over gRPC, and to catalog servers, so an MCP client only needs to know how to launch `rerun mcp`.
 
 Add it to **Claude Code**:
 
@@ -59,6 +59,11 @@ To bind the server to one Viewer up front, pass its gRPC address: `rerun mcp --e
 The server then connects on startup, so the agent can skip `viewer_connect`.
 If the Viewer is not running yet, the server tells the agent to call `viewer_connect` instead.
 
+The catalog tools act on the catalog of the connected Viewer by default, if that Viewer runs on the same machine.
+To use another catalog server, pass its URL, `rerun mcp --catalog-url rerun+http://127.0.0.1:51234`, or let the agent call `catalog_connect`.
+To offer only some of the tools, pass `--toolsets viewer` or `--toolsets catalog`.
+A server with only the catalog tools needs no Viewer.
+
 To check whether an address is a Rerun Viewer before connecting, use [gRPC server reflection](../../reference/grpc.md): `grpcurl -plaintext 127.0.0.1:9876 list` names the services it speaks.
 
 ## Headless usage
@@ -66,9 +71,10 @@ To check whether an address is a Rerun Viewer before connecting, use [gRPC serve
 The MCP server works against a headless Viewer too, which is convenient for agents running in the background, in CI, or on a server without a display.
 Ask the agent to launch the Viewer headless or in the background, and it will start it with `rerun --headless`.
 
-## Two families of tools
+## Three families of tools
 
-The tool name says which family it belongs to, and the agent is told to prefer the high-level one.
+The tool name says which family it belongs to.
+The `catalog_*` tools are described in [Reading a catalog](#reading-a-catalog); of the two families that drive the Viewer, the agent is told to prefer the high-level one.
 
 The `viewer_*` tools (`viewer_get_state`, `viewer_get_recording_schema`, `viewer_set_time_cursor`, `viewer_open`, `viewer_close`, `viewer_save_screenshot`, …) are high level: each names a Viewer action and carries it out in one call.
 They are generated from `viewer_control.proto`, so they cover exactly what that service can do, and they travel on its `ViewerControl` endpoint.
@@ -127,8 +133,14 @@ The transform graph tool described below can return transform values, but for ge
 The Viewer hosts a catalog server, and `viewer_get_state` reports its address as `catalog_url`, along with each recording's `store_id`.
 That `store_id` is a `{kind}:{application_id}:{recording_id}` string, whose application id and recording id are its dataset id and segment id in that catalog.
 Both ids may contain a colon, so the application id's are escaped as `\:`: the kind runs to the first colon, the application id to the next unescaped one, and the recording id is the rest.
-The server instructions tell the agent to query that server with the Python `rerun.catalog` API for entity paths, components, and values rather than guessing them.
+The server instructions tell the agent to read entity paths and components from that server with the [catalog tools](#reading-a-catalog), and values with the Python `rerun.catalog` API, rather than guessing them.
 For a recording that is not in the catalog, such as one streamed from an SDK or imported from another file format, the agent is told to read the file directly with `rerun.chunk.RrdReader` instead.
+
+## Reading a catalog
+
+The `catalog_*` tools describe the contents of a Rerun catalog server directly, without opening anything in the Viewer: `catalog_list_entries`, `catalog_get_dataset_info`, `catalog_get_dataset_schema`, `catalog_list_segments`, and `catalog_get_segment_properties`.
+They read datasets, segments, schemas, and segment properties, but not the logged values.
+They work against `rerun server` and Rerun Hub, with the credentials of `rerun auth login` or the `REDAP_TOKEN` environment variable.
 
 ## Inspecting transforms
 

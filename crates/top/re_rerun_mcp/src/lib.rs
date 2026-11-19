@@ -13,10 +13,14 @@
 //! - The viewer toolset drives a running viewer through its `ViewerControlService`
 //!   (`re_protos`' `viewer_control.proto`), which the viewer serves on the same port as its SDK
 //!   connections.
+//! - The catalog toolset describes the datasets of a Rerun catalog server through
+//!   `re_catalog_tools`, with or without a viewer.
 //!
 //! The server is exposed two ways — the standalone `rerun-mcp` binary and the
 //! `rerun mcp` CLI subcommand.
 
+mod catalog;
+mod toolbox;
 mod viewer;
 
 use std::sync::Arc;
@@ -35,7 +39,9 @@ use rmcp::{
 use url::Url;
 
 use re_agent_tools::ToolEffect;
+use re_catalog_tools::CatalogTool;
 
+use self::catalog::CatalogToolset;
 use self::viewer::ViewerToolset;
 
 /// How long a client may treat the tool list as fresh.
@@ -51,12 +57,16 @@ const TOOL_LIST_TTL: Duration = Duration::from_mins(5);
 pub struct Config {
     /// The viewer toolset, or `None` to leave it out.
     pub viewer: Option<ViewerConfig>,
+
+    /// The catalog toolset, or `None` to leave it out.
+    pub catalog: Option<CatalogConfig>,
 }
 
 impl Default for Config {
     fn default() -> Self {
         Self {
             viewer: Some(ViewerConfig::default()),
+            catalog: Some(CatalogConfig::default()),
         }
     }
 }
@@ -74,6 +84,16 @@ pub struct ViewerConfig {
     pub endpoint: Option<Url>,
 }
 
+/// How the catalog toolset starts.
+#[derive(Clone, Debug, Default)]
+pub struct CatalogConfig {
+    /// The catalog server the tools act on until the agent calls `catalog_connect`.
+    ///
+    /// When `None`, the tools act on the catalog of the connected viewer, if it runs on this
+    /// machine, until the agent calls `catalog_connect`.
+    pub origin: Option<re_uri::Origin>,
+}
+
 /// A recoverable tool failure (not connected, a bad endpoint, a bridge or gRPC error, …), carried
 /// as a plain message string.
 ///
@@ -86,34 +106,88 @@ type ToolError = String;
 /// The result of a tool handler — see [`ToolError`].
 type ToolResult<T> = Result<T, ToolError>;
 
+/// Why the MCP server could not start, or stopped with an error.
+#[derive(Debug, thiserror::Error)]
+pub enum ServeError {
+    #[error("The MCP server must run inside a Tokio runtime: {source}")]
+    NoRuntime { source: re_async::AsyncRuntimeError },
+
+    #[error("Failed to start serving MCP over stdio: {source}")]
+    Start {
+        source: Box<rmcp::service::ServerInitializeError>,
+    },
+
+    #[error("The MCP server stopped unexpectedly: {source}")]
+    Stopped { source: tokio::task::JoinError },
+}
+
 /// The MCP server: the enabled toolsets behind one tool list.
 #[derive(Clone)]
 struct RerunMcpServer {
     viewer: Option<Arc<ViewerToolset>>,
+    catalog: Option<Arc<CatalogToolset>>,
 }
 
 impl RerunMcpServer {
-    fn new(config: Config) -> Self {
-        let Config { viewer } = config;
-        Self {
+    /// Must be called inside the Tokio runtime the server runs on.
+    fn new(config: Config) -> Result<Self, ServeError> {
+        let Config { viewer, catalog } = config;
+        let catalog = catalog
+            .map(|CatalogConfig { origin }| CatalogToolset::new(origin).map(Arc::new))
+            .transpose()?;
+        Ok(Self {
             viewer: viewer.map(|ViewerConfig { endpoint }| Arc::new(ViewerToolset::new(endpoint))),
-        }
+            catalog,
+        })
     }
 
     /// Every tool of every enabled toolset.
     fn all_tools(&self) -> Vec<Tool> {
-        let Self { viewer } = self;
-        viewer.iter().flat_map(|viewer| viewer.tools()).collect()
+        let Self { viewer, catalog } = self;
+        let viewer = viewer.iter().flat_map(|viewer| viewer.tools());
+        let catalog = catalog.iter().flat_map(|catalog| catalog.tools());
+        std::iter::chain(viewer, catalog).collect()
     }
 
     /// The MCP `instructions`: one section per enabled toolset.
     fn instructions(&self) -> String {
-        let Self { viewer } = self;
-        viewer
+        let Self { viewer, catalog } = self;
+        let catalog = catalog
             .iter()
-            .map(|viewer| viewer.instructions())
+            .map(|catalog| catalog.instructions(viewer.is_some()));
+        let viewer = viewer.iter().map(|viewer| viewer.instructions());
+        std::iter::chain(viewer, catalog)
+            .map(|section| section.trim().to_owned())
             .collect::<Vec<_>>()
             .join("\n\n")
+    }
+
+    /// Run a catalog tool, first connecting to the connected viewer's catalog server, if the
+    /// catalog tools default to it (see [`CatalogToolset::defaults_to_viewer_catalog`]).
+    async fn call_catalog(
+        &self,
+        catalog: &CatalogToolset,
+        request: CallToolRequestParams,
+    ) -> CallToolResult {
+        if asks_the_viewer_for_its_catalog(&request.name, catalog)
+            && let Some(viewer) = &self.viewer
+        {
+            match viewer.catalog_url().await {
+                Ok(Some(origin)) if viewer.is_on_this_machine() => {
+                    catalog.connect_to_viewer_catalog(origin);
+                }
+                Ok(_) => {}
+                Err(err) if catalog.origin().is_none() => {
+                    return text_error(format!(
+                        "No catalog to act on. {err}: call `viewer_connect` to use the viewer's \
+                         catalog, or `{}` with a catalog URL.",
+                        CatalogTool::Connect.name()
+                    ));
+                }
+                Err(err) => re_log::debug!("Keeping the current catalog: {err}"),
+            }
+        }
+        catalog.call(request).await
     }
 
     /// `name` must be the tool name from the request.
@@ -124,6 +198,14 @@ impl RerunMcpServer {
             "unknown".to_owned()
         }
     }
+}
+
+/// Whether calling the catalog tool `name` first asks the viewer for its catalog server.
+///
+/// Not for `catalog_connect`, which picks a server itself and must work without a viewer.
+fn asks_the_viewer_for_its_catalog(name: &str, catalog: &CatalogToolset) -> bool {
+    CatalogTool::from_name(name) != Some(CatalogTool::Connect)
+        && catalog.defaults_to_viewer_catalog()
 }
 
 /// The MCP hints for a tool, telling the agent harness what it can change.
@@ -201,9 +283,12 @@ impl ServerHandler for RerunMcpServer {
         context: RequestContext<RoleServer>,
     ) -> Result<CallToolResponse, McpError> {
         let name = request.name.clone();
-        let result = match &self.viewer {
-            Some(viewer) => viewer.call(request, context).await?,
-            None => text_error(format!("unknown tool `{name}`")),
+        let result = match (&self.viewer, &self.catalog) {
+            (_, Some(catalog)) if CatalogToolset::owns(&name) => {
+                self.call_catalog(catalog, request).await
+            }
+            (Some(viewer), _) => viewer.call(request, context).await?,
+            (None, _) => text_error(format!("unknown tool `{name}`")),
         };
 
         let is_error = result.is_error == Some(true);
@@ -219,13 +304,26 @@ impl ServerHandler for RerunMcpServer {
 ///
 /// Must run inside a Tokio runtime, and assumes logging is already set up.
 /// Both the `rerun mcp` subcommand and the standalone `rerun-mcp` binary call this.
-pub async fn serve(config: Config) -> anyhow::Result<()> {
-    let server = RerunMcpServer::new(config);
+pub async fn serve(config: Config) -> Result<(), ServeError> {
+    // The catalog tools may reach `https` servers.
+    rustls::crypto::ring::default_provider()
+        .install_default()
+        .ok();
+
+    let server = RerunMcpServer::new(config)?;
     if let Some(viewer) = &server.viewer {
         viewer.connect_on_startup().await;
     }
-    let running = server.serve(transport::stdio()).await?;
-    let _reason = running.waiting().await?;
+    let running = server
+        .serve(transport::stdio())
+        .await
+        .map_err(|source| ServeError::Start {
+            source: Box::new(source),
+        })?;
+    let _reason = running
+        .waiting()
+        .await
+        .map_err(|source| ServeError::Stopped { source })?;
     Ok(())
 }
 
@@ -233,20 +331,29 @@ pub async fn serve(config: Config) -> anyhow::Result<()> {
 mod tests {
     use std::fmt::Write as _;
 
+    use strum::VariantArray as _;
+
     use super::*;
 
-    #[test]
-    fn analytics_names_only_listed_tools() {
-        let server = RerunMcpServer::new(Config::default());
-        assert_eq!(
-            server.tool_name_for_analytics("viewer_connect"),
-            "viewer_connect"
-        );
-        assert_eq!(
-            server.tool_name_for_analytics("viewer_get_state"),
-            "viewer_get_state"
-        );
-        assert_eq!(server.tool_name_for_analytics("click"), "click");
+    fn server(viewer: Option<ViewerConfig>, catalog: Option<CatalogConfig>) -> RerunMcpServer {
+        RerunMcpServer::new(Config { viewer, catalog }).expect("server")
+    }
+
+    fn default_server() -> RerunMcpServer {
+        RerunMcpServer::new(Config::default()).expect("server")
+    }
+
+    #[tokio::test]
+    async fn analytics_names_only_listed_tools() {
+        let server = default_server();
+        for name in [
+            "viewer_connect",
+            "viewer_get_state",
+            "click",
+            "catalog_list_entries",
+        ] {
+            assert_eq!(server.tool_name_for_analytics(name), name);
+        }
         assert_eq!(server.tool_name_for_analytics("connect"), "unknown");
         assert_eq!(
             server.tool_name_for_analytics("/home/me/data.rrd"),
@@ -254,20 +361,154 @@ mod tests {
         );
     }
 
-    #[test]
-    fn no_toolsets_means_no_tools() {
-        let server = RerunMcpServer::new(Config { viewer: None });
+    #[tokio::test]
+    async fn no_toolsets_means_no_tools() {
+        let server = server(None, None);
         assert!(server.all_tools().is_empty());
         assert_eq!(server.get_info().instructions, None);
+    }
+
+    #[tokio::test]
+    async fn a_catalog_only_server_has_no_viewer_tools() {
+        let server = server(None, Some(CatalogConfig::default()));
+        let names: Vec<String> = server
+            .all_tools()
+            .into_iter()
+            .map(|tool| tool.name.into_owned())
+            .collect();
+        assert_eq!(
+            names,
+            CatalogTool::VARIANTS
+                .iter()
+                .map(|tool| tool.name().to_owned())
+                .collect::<Vec<_>>()
+        );
+
+        let result = server
+            .call_catalog(
+                server.catalog.as_ref().expect("catalog toolset"),
+                CallToolRequestParams::new("catalog_list_entries"),
+            )
+            .await;
+        assert_eq!(result.is_error, Some(true));
+    }
+
+    #[tokio::test]
+    async fn without_a_viewer_or_catalog_the_error_names_both_ways_out() {
+        let server = default_server();
+        let result = server
+            .call_catalog(
+                server.catalog.as_ref().expect("catalog toolset"),
+                CallToolRequestParams::new("catalog_list_entries"),
+            )
+            .await;
+        assert_eq!(result.is_error, Some(true));
+        let text = serde_json::to_string(&result.content).expect("serialize");
+        assert!(text.contains("viewer_connect"), "{text}");
+        assert!(text.contains("catalog_connect"), "{text}");
+    }
+
+    #[tokio::test]
+    async fn a_configured_catalog_is_not_replaced_by_the_viewers() {
+        let server = RerunMcpServer::new(Config {
+            viewer: Some(ViewerConfig::default()),
+            catalog: Some(CatalogConfig {
+                origin: Some("rerun+http://127.0.0.1:51234".parse().expect("valid")),
+            }),
+        })
+        .expect("server");
+        let catalog = server.catalog.as_ref().expect("catalog toolset");
+        assert!(!catalog.defaults_to_viewer_catalog());
+        let instructions = server.instructions();
+        assert!(
+            instructions.contains("acting on the catalog at `rerun+http://127.0.0.1:51234`"),
+            "{instructions}"
+        );
+    }
+
+    #[tokio::test]
+    async fn only_a_local_viewer_catalog_is_used() {
+        let server = default_server();
+        let catalog = server.catalog.as_ref().expect("catalog toolset");
+        catalog.connect_to_viewer_catalog("rerun+http://example.com:51234".parse().expect("valid"));
+        assert_eq!(catalog.origin(), None);
+        catalog.connect_to_viewer_catalog("rerun+http://127.0.0.1:51234".parse().expect("valid"));
+        assert_eq!(
+            catalog.origin().map(|origin| origin.to_string()),
+            Some("rerun+http://127.0.0.1:51234".to_owned())
+        );
+    }
+
+    #[tokio::test]
+    async fn only_default_catalog_calls_ask_the_viewer() {
+        let default = default_server();
+        let catalog = default.catalog.as_ref().expect("catalog toolset");
+        assert!(asks_the_viewer_for_its_catalog(
+            "catalog_list_entries",
+            catalog
+        ));
+        assert!(!asks_the_viewer_for_its_catalog("catalog_connect", catalog));
+
+        let configured = server(
+            Some(ViewerConfig::default()),
+            Some(CatalogConfig {
+                origin: Some("rerun+http://127.0.0.1:51234".parse().expect("valid")),
+            }),
+        );
+        let catalog = configured.catalog.as_ref().expect("catalog toolset");
+        assert!(!asks_the_viewer_for_its_catalog(
+            "catalog_list_entries",
+            catalog
+        ));
+    }
+
+    /// `catalog_connect` picks a server itself, so it fails on that server, not on the missing
+    /// viewer.
+    #[tokio::test(flavor = "multi_thread")]
+    async fn catalog_connect_does_not_need_a_viewer() {
+        let server = default_server();
+        let mut request = CallToolRequestParams::new("catalog_connect");
+        request.arguments = Some(
+            serde_json::json!({ "url": "rerun+http://127.0.0.1:2" })
+                .as_object()
+                .expect("object")
+                .clone(),
+        );
+        let result = server
+            .call_catalog(server.catalog.as_ref().expect("catalog toolset"), request)
+            .await;
+        let text = serde_json::to_string(&result.content).expect("serialize");
+        assert_eq!(result.is_error, Some(true));
+        assert!(text.contains("connect to the catalog"), "{text}");
+        assert!(!text.contains("viewer_connect"), "{text}");
+    }
+
+    #[tokio::test]
+    async fn instructions_match_the_toolsets() {
+        let both = default_server().instructions();
+        assert!(both.contains("catalog of the connected viewer"), "{both}");
+        assert!(!both.contains("\n\n\n"), "{both}");
+
+        let catalog_only = server(None, Some(CatalogConfig::default())).instructions();
+        assert!(!catalog_only.contains("viewer_"), "{catalog_only}");
+        assert!(
+            catalog_only.ends_with("Call `catalog_connect` with the catalog's URL first."),
+            "{catalog_only}"
+        );
+
+        let viewer_only = server(Some(ViewerConfig::default()), None).instructions();
+        for tool in CatalogTool::VARIANTS {
+            assert!(!viewer_only.contains(tool.name()), "{viewer_only}");
+        }
     }
 
     /// Snapshot of the documentation the llm will see when loading the mcp tools.
     ///
     /// It's useful to look at the snapshot output to check how much llm context the tool
     /// definitions will use.
-    #[test]
-    fn agent_surface_snapshot() {
-        let server = RerunMcpServer::new(Config::default());
+    #[tokio::test]
+    async fn agent_surface_snapshot() {
+        let server = default_server();
 
         let mut surface = String::new();
         surface.push_str("# Server instructions\n\n");
@@ -284,7 +525,7 @@ mod tests {
         let mut tools = server.all_tools();
         tools.sort_by(|a, b| a.name.cmp(&b.name));
         for tool in &tools {
-            write!(surface, "\n## {}\n\n", tool.name).unwrap();
+            write!(surface, "\n## {}\n\n", tool.name).expect("write to a string");
             surface.push_str(&serde_json::to_string_pretty(tool).expect("serialize tool"));
             surface.push('\n');
         }
@@ -294,9 +535,9 @@ mod tests {
 
     /// The Anthropic and `OpenAI` APIs reject a tool schema with a top-level `oneOf`, `anyOf`, or
     /// `allOf`, and some agents pass our schemas through to them unchanged.
-    #[test]
-    fn no_top_level_schema_combinators() {
-        for tool in RerunMcpServer::new(Config::default()).all_tools() {
+    #[tokio::test]
+    async fn no_top_level_schema_combinators() {
+        for tool in default_server().all_tools() {
             for keyword in ["allOf", "anyOf", "oneOf"] {
                 assert!(
                     !tool.input_schema.contains_key(keyword),
@@ -307,9 +548,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn tool_list_carries_both_cache_hints() {
-        let server = RerunMcpServer::new(Config::default());
+    #[tokio::test]
+    async fn tool_list_carries_both_cache_hints() {
+        let server = default_server();
         let result = serde_json::to_value(tool_list(server.all_tools())).expect("serialize");
         assert!(
             result["ttlMs"].is_u64(),

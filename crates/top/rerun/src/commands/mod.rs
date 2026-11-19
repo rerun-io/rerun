@@ -30,6 +30,8 @@ mod dump_puffin;
 mod entrypoint;
 #[cfg(feature = "importers")]
 mod mcap;
+#[cfg(feature = "native_viewer")]
+mod mcp;
 mod rrd;
 mod stdio;
 #[cfg(feature = "importers")]
@@ -45,6 +47,8 @@ pub use self::dump_puffin::DumpPuffinCommand;
 pub use self::entrypoint::run;
 #[cfg(feature = "importers")]
 pub use self::mcap::McapCommands;
+#[cfg(feature = "native_viewer")]
+pub use self::mcp::McpCommand;
 pub use self::rrd::RrdCommands;
 pub use self::stdio::{
     InputSource, read_raw_rrd_streams_from_file_or_stdin, read_rrd_streams_from_file_or_stdin,

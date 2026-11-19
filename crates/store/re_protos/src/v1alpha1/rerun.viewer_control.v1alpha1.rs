@@ -1556,8 +1556,8 @@ pub struct GetStateResponse {
     pub recordings: ::prost::alloc::vec::Vec<ViewerRecording>,
     /// Origin of the catalog server the viewer hosts, e.g. `rerun+<http://127.0.0.1:9876`.>
     ///
-    /// Clients (notably `re_rerun_mcp`) hand this to the Python `CatalogClient` to read the data
-    /// behind the open recordings, which this service deliberately does not serve itself.
+    /// Clients read the data behind the open recordings from it, e.g. `re_rerun_mcp`'s catalog
+    /// tools or the Python `CatalogClient`, since this service deliberately does not serve it.
     /// Unset if the viewer has no catalog, which on native is only the case before it starts up.
     #[prost(string, optional, tag = "4")]
     pub catalog_url: ::core::option::Option<::prost::alloc::string::String>,
