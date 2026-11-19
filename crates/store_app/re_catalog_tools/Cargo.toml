@@ -22,11 +22,13 @@ all-features = true
 re_agent_tools.workspace = true
 re_arrow_util.workspace = true
 re_async.workspace = true
+re_auth = { workspace = true, features = ["oauth"] }
 re_catalog_client.workspace = true
 re_chunk_store.workspace = true
 re_datafusion.workspace = true
 re_error.workspace = true
 re_format.workspace = true
+re_log.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
 re_redap_client.workspace = true
@@ -53,6 +55,7 @@ re_server.workspace = true
 insta = { workspace = true, features = ["json"] }
 tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
+tonic.workspace = true
 
 [target.'cfg(rerun_workspace_hack)'.dependencies]
 re_workspace_hack.workspace = true

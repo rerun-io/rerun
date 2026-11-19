@@ -204,8 +204,13 @@ pub fn model_api_text() -> String {
          - Your `catalog_*` tools read datasets and tables on a Rerun catalog server, by default \
          this viewer's own catalog (`catalog_url` in `viewer_get_state`), which holds the `.rrd` \
          files it opened. Recordings missing there are only in the viewer. Use `catalog_connect` \
-         for another server. Read values with `catalog_query_dataset` rather than asking for code \
-         to run.\n\
+         for another server",
+    );
+    if cfg!(not(target_arch = "wasm32")) {
+        text.push_str(", and `catalog_login` when it needs a login");
+    }
+    text.push_str(
+        ". Read values with `catalog_query_dataset` rather than asking for code to run.\n\
          - Ask for clarification in chat when needed. Provide code for the user to run when a \
          task needs their local files or Python environment.\n",
     );

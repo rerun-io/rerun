@@ -9,6 +9,8 @@
 mod args;
 mod catalog_tools;
 mod error;
+#[cfg(not(target_arch = "wasm32"))]
+mod login;
 mod metadata;
 mod query;
 mod tool;

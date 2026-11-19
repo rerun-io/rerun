@@ -202,9 +202,9 @@ impl RerunMcpServer {
 
 /// Whether calling the catalog tool `name` first asks the viewer for its catalog server.
 ///
-/// Not for `catalog_connect`, which picks a server itself and must work without a viewer.
+/// Only for tools that act on a catalog: the others must work without a viewer.
 fn asks_the_viewer_for_its_catalog(name: &str, catalog: &CatalogToolset) -> bool {
-    CatalogTool::from_name(name) != Some(CatalogTool::Connect)
+    CatalogTool::from_name(name).is_some_and(CatalogTool::acts_on_catalog)
         && catalog.defaults_to_viewer_catalog()
 }
 
@@ -481,6 +481,19 @@ mod tests {
         assert_eq!(result.is_error, Some(true));
         assert!(text.contains("connect to the catalog"), "{text}");
         assert!(!text.contains("viewer_connect"), "{text}");
+    }
+
+    #[tokio::test]
+    async fn only_tools_that_act_on_a_catalog_ask_the_viewer() {
+        let server = default_server();
+        let catalog = server.catalog.as_ref().expect("catalog toolset");
+        let asking: Vec<_> = CatalogTool::available()
+            .filter(|tool| asks_the_viewer_for_its_catalog(tool.name(), catalog))
+            .collect();
+        let expected: Vec<_> = CatalogTool::available()
+            .filter(|tool| !matches!(tool, CatalogTool::Connect | CatalogTool::Login))
+            .collect();
+        assert_eq!(asking, expected);
     }
 
     #[tokio::test]

@@ -83,6 +83,7 @@ Catalog tools (`catalog_*`) describe and read the contents of a Rerun catalog se
 - Read values with `catalog_query_dataset`: pick the `index` timeline, the `segments`, and the `entity_paths` you need, and aggregate in its `sql` rather than reading many rows. Large values such as images come back cut short or left out.
 - Narrow queries to the segments, entities, and time range you need. Ask the user before scanning a whole large dataset if the scope is unclear.
 - If no server matches what the user names, ask for the URL rather than guessing one.
+- If `catalog_connect` says the server needs a login, call `catalog_login`, show the user its link, call `catalog_login` again to wait until they are done, then retry `catalog_connect`.
 - Until you call `catalog_connect`, the catalog tools act on the catalog of the connected viewer (its `catalog_url`) when that viewer runs on this machine. It holds the recordings the viewer loaded from files: read their values with `catalog_query_dataset` rather than the Python API. Call `catalog_connect` to read another server, e.g. one from the `servers` that `viewer_get_state` lists.
 - A recording's `store_id` in `viewer_get_state` names its dataset id and segment id: pass them as `dataset` and `segment_id`.
 
@@ -340,6 +341,24 @@ Catalog tools (`catalog_*`) describe and read the contents of a Rerun catalog se
     "readOnlyHint": true,
     "destructiveHint": false,
     "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_login
+
+{
+  "name": "catalog_login",
+  "description": "Log the user in on this machine, for a catalog server that needs a login. The first call returns a link: show it to the user and ask them to open it. Call again to wait until they are done, then call `catalog_connect` again. Returns `logged_in` at once if the user is already logged in.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
     "openWorldHint": false
   }
 }

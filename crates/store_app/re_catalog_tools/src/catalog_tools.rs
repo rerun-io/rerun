@@ -6,15 +6,18 @@ use futures::future::BoxFuture;
 use parking_lot::Mutex;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
-use strum::VariantArray as _;
 
 use re_agent_tools::{AgentToolbox, ToolDefinition, ToolError, ToolOutput};
 use re_async::AsyncRuntimeHandle;
 use re_catalog_client::CatalogClient;
-use re_redap_client::{ConnectionRegistryHandle, Credentials};
+use re_redap_client::{
+    ApiError, ApiErrorKind, ClientCredentialsError, ConnectionRegistryHandle, Credentials,
+};
 use re_uri::Origin;
 
-use crate::args::ConnectArgs;
+use crate::args::{ConnectArgs, LoginArgs};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::login::Login;
 use crate::metadata::{
     get_dataset_info, get_dataset_schema, get_segment_properties, list_entries, list_segments,
 };
@@ -33,6 +36,9 @@ pub struct CatalogTools {
     registry: ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
     state: Arc<Mutex<State>>,
+
+    #[cfg(not(target_arch = "wasm32"))]
+    login: Arc<Login>,
 }
 
 /// Which catalog the tools act on.
@@ -64,6 +70,8 @@ impl CatalogTools {
             .map(|origin| CatalogClient::new(registry.connection_handle(origin), runtime.clone()));
         Self {
             registry,
+            #[cfg(not(target_arch = "wasm32"))]
+            login: Arc::new(Login::new(runtime.clone())),
             runtime,
             state: Arc::new(Mutex::new(State {
                 catalog,
@@ -74,9 +82,7 @@ impl CatalogTools {
 
     /// Every catalog tool, as the toolbox offers them, without needing an instance.
     pub fn definitions() -> Vec<ToolDefinition> {
-        CatalogTool::VARIANTS
-            .iter()
-            .copied()
+        CatalogTool::available()
             .map(CatalogTool::definition)
             .collect()
     }
@@ -139,6 +145,15 @@ impl CatalogTools {
                 let ConnectArgs { url } = parse_args(arguments)?;
                 self.connect(&url).await
             }
+            CatalogTool::Login => {
+                let LoginArgs {} = parse_args(arguments)?;
+                cfg_select! {
+                    target_arch = "wasm32" => Err(CatalogToolError::UnknownTool {
+                        name: tool.name().to_owned(),
+                    }),
+                    _ => self.login.run().await,
+                }
+            }
             CatalogTool::ListEntries => {
                 list_entries(&self.catalog()?, parse_args(arguments)?).await
             }
@@ -181,12 +196,27 @@ impl CatalogTools {
             state.latest_connect
         };
         let used_stored_login = self.try_stored_login(&origin);
+        let credentials = self.registry.credentials(&origin);
         let catalog = self.client_for(origin.clone());
         let result = Self::catalog_version(&catalog).await;
         if result.is_err() && used_stored_login {
             self.registry.remove_credentials(&origin);
         }
-        let version = result?;
+        let version = result.map_err(|err| {
+            let can_log_in = login_can_help(
+                &err,
+                self.registry.should_use_stored_credentials(),
+                credentials.as_ref(),
+                is_logged_in,
+            );
+            if can_log_in {
+                CatalogToolError::LoginRequired {
+                    source: Box::new(err),
+                }
+            } else {
+                CatalogToolError::catalog(CONNECTING, err)
+            }
+        })?;
         let mut state = self.state.lock();
         if state.latest_connect != this_connect {
             return Err(CatalogToolError::ConnectSuperseded {
@@ -217,15 +247,52 @@ impl CatalogTools {
         }
     }
 
-    async fn catalog_version(catalog: &CatalogClient) -> Result<String, CatalogToolError> {
-        let version = catalog
-            .client()
-            .await
-            .map_err(|err| CatalogToolError::catalog(CONNECTING, err))?
-            .version_info()
-            .await
-            .map_err(|err| CatalogToolError::catalog(CONNECTING, err))?;
-        Ok(version.version)
+    async fn catalog_version(catalog: &CatalogClient) -> Result<String, ApiError> {
+        Ok(catalog.client().await?.version_info().await?.version)
+    }
+}
+
+/// Whether logging in on this machine can fix the failed connect `err`.
+///
+/// Only where the connections use the saved login (`uses_stored_credentials`). `credentials` are
+/// those the connect used. A login cannot replace an explicit token, nor fix a login the server
+/// rejects although the user is logged in (`is_logged_in`).
+fn login_can_help(
+    err: &ApiError,
+    uses_stored_credentials: bool,
+    credentials: Option<&Credentials>,
+    is_logged_in: impl FnOnce() -> bool,
+) -> bool {
+    if err.kind != ApiErrorKind::Unauthenticated
+        || !uses_stored_credentials
+        || matches!(credentials, Some(Credentials::Token(_)))
+    {
+        return false;
+    }
+    let source = err
+        .source
+        .as_deref()
+        .and_then(|source| source.downcast_ref::<ClientCredentialsError>());
+    match source {
+        Some(
+            ClientCredentialsError::UnauthenticatedMissingToken(_)
+            | ClientCredentialsError::NotAuthorized
+            | ClientCredentialsError::SessionExpired
+            | ClientCredentialsError::RefreshError(_),
+        ) => true,
+        Some(ClientCredentialsError::UnauthenticatedBadToken { .. }) => !is_logged_in(),
+        Some(ClientCredentialsError::HostMismatch(_)) | None => false,
+    }
+}
+
+/// Whether the user has a login saved on this machine, or in this browser.
+fn is_logged_in() -> bool {
+    match re_auth::oauth::load_credentials() {
+        Ok(credentials) => credentials.is_some(),
+        Err(err) => {
+            re_log::debug!("Failed to load the saved login: {err}");
+            false
+        }
     }
 }
 
@@ -278,4 +345,126 @@ fn parse_args<Args: DeserializeOwned>(
 ) -> Result<Args, CatalogToolError> {
     serde_json::from_value(Value::Object(arguments))
         .map_err(|source| CatalogToolError::InvalidArguments { source })
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod tests {
+    use re_redap_client::{CredentialSource, SourcedCredentials};
+
+    use super::*;
+
+    fn unauthenticated(source: ClientCredentialsError) -> ApiError {
+        ApiError::credentials_with_source(&Origin::http_local_host(1), None, source, "connect")
+    }
+
+    fn rejected_token() -> ClientCredentialsError {
+        ClientCredentialsError::UnauthenticatedBadToken {
+            status: tonic::Status::unauthenticated("bad token").into(),
+            credentials: SourcedCredentials {
+                source: CredentialSource::PerOrigin,
+                credentials: Credentials::Stored,
+            },
+        }
+    }
+
+    #[test]
+    fn login_helps_without_a_login() {
+        let err = unauthenticated(ClientCredentialsError::NotAuthorized);
+        assert!(login_can_help(
+            &err,
+            true,
+            Some(&Credentials::Stored),
+            || false
+        ));
+    }
+
+    #[test]
+    fn login_helps_when_no_login_is_saved() {
+        assert!(login_can_help(
+            &unauthenticated(rejected_token()),
+            true,
+            Some(&Credentials::Stored),
+            || false
+        ));
+    }
+
+    #[test]
+    fn login_does_not_help_when_the_server_rejects_the_saved_login() {
+        assert!(!login_can_help(
+            &unauthenticated(rejected_token()),
+            true,
+            Some(&Credentials::Stored),
+            || true
+        ));
+    }
+
+    #[test]
+    fn login_does_not_help_a_token_for_another_host() {
+        let err = unauthenticated(ClientCredentialsError::HostMismatch(
+            re_auth::HostMismatchError {
+                host: "example.com".to_owned(),
+            },
+        ));
+        assert!(!login_can_help(
+            &err,
+            true,
+            Some(&Credentials::Stored),
+            || false
+        ));
+    }
+
+    #[test]
+    fn login_does_not_replace_an_explicit_token() {
+        let err = unauthenticated(ClientCredentialsError::NotAuthorized);
+        let jwt = re_auth::Jwt::try_from(
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.e30.c2lnbmF0dXJl".to_owned(),
+        )
+        .expect("a JWT");
+        let token = Credentials::Token(jwt);
+        assert!(!login_can_help(&err, true, Some(&token), || false));
+    }
+
+    #[test]
+    fn login_helps_an_expired_session() {
+        let err = unauthenticated(ClientCredentialsError::SessionExpired);
+        assert!(login_can_help(
+            &err,
+            true,
+            Some(&Credentials::Stored),
+            || true
+        ));
+    }
+
+    #[test]
+    fn login_helps_when_the_login_cannot_be_refreshed() {
+        let err = unauthenticated(ClientCredentialsError::RefreshError(
+            tonic::Status::unauthenticated("refresh token expired").into(),
+        ));
+        assert!(login_can_help(
+            &err,
+            true,
+            Some(&Credentials::Stored),
+            || true
+        ));
+    }
+
+    #[test]
+    fn login_helps_when_no_token_was_sent() {
+        let err = unauthenticated(ClientCredentialsError::UnauthenticatedMissingToken(
+            tonic::Status::unauthenticated("missing token").into(),
+        ));
+        assert!(login_can_help(&err, true, None, || false));
+    }
+
+    #[test]
+    fn login_does_not_help_without_stored_credentials() {
+        let err = unauthenticated(ClientCredentialsError::NotAuthorized);
+        assert!(!login_can_help(&err, false, None, || false));
+    }
+
+    #[test]
+    fn login_does_not_help_other_failures() {
+        let err = ApiError::connection(&Origin::http_local_host(1), "connection refused");
+        assert!(!login_can_help(&err, true, None, || false));
+    }
 }

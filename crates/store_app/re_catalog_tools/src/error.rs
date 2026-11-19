@@ -7,6 +7,13 @@ use datafusion::error::DataFusionError;
 use re_log_types::{EntityPath, InvalidTimelineNameError, TimelineName};
 use re_redap_client::ApiError;
 
+/// What the agent should do about a catalog that needs a login.
+const LOGIN_NEXT_STEP: &str = if cfg!(target_arch = "wasm32") {
+    "Ask the user to log in from the viewer, then call `catalog_connect` again."
+} else {
+    "Call `catalog_login`, show the user the link it returns, then call `catalog_connect` again."
+};
+
 /// Why a catalog tool call failed.
 ///
 /// The messages are read by the agent, so they say what to do next where there is something to do.
@@ -14,6 +21,21 @@ use re_redap_client::ApiError;
 pub enum CatalogToolError {
     #[error("Not connected to a catalog. Call `catalog_connect` with the catalog's URL first.")]
     NotConnected,
+
+    #[error(
+        "{}",
+        re_error::format_with_details(
+            format!("The catalog needs a login. {LOGIN_NEXT_STEP}"),
+            source.to_string(),
+        )
+    )]
+    LoginRequired { source: Box<ApiError> },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Failed to log in: {source}")]
+    Login {
+        source: std::sync::Arc<re_auth::callback_server::Error>,
+    },
 
     #[error("Unknown tool {name:?}")]
     UnknownTool { name: String },

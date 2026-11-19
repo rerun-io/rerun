@@ -11,6 +11,10 @@ pub struct ConnectArgs {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct LoginArgs {}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum EntryKindArg {
     Dataset,

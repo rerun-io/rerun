@@ -7,7 +7,7 @@ use strum::VariantArray as _;
 use re_agent_tools::{ToolDefinition, ToolEffect};
 
 use crate::args::{
-    ConnectArgs, DatasetArgs, DatasetSchemaArgs, ListEntriesArgs, ListSegmentsArgs,
+    ConnectArgs, DatasetArgs, DatasetSchemaArgs, ListEntriesArgs, ListSegmentsArgs, LoginArgs,
     QueryDatasetArgs, QueryTablesArgs, SegmentPropertiesArgs,
 };
 
@@ -18,6 +18,9 @@ use crate::args::{
 pub enum CatalogTool {
     /// Pick the catalog server the other tools act on.
     Connect,
+
+    /// Log the user in, for a catalog server that needs it.
+    Login,
 
     /// List the catalog's datasets and tables.
     ListEntries,
@@ -48,6 +51,7 @@ impl CatalogTool {
     pub fn name(self) -> &'static str {
         match self {
             Self::Connect => "catalog_connect",
+            Self::Login => "catalog_login",
             Self::ListEntries => "catalog_list_entries",
             Self::GetDatasetInfo => "catalog_get_dataset_info",
             Self::GetDatasetSchema => "catalog_get_dataset_schema",
@@ -58,12 +62,19 @@ impl CatalogTool {
         }
     }
 
-    /// The tool the agent calls `name`, if any.
+    /// The tool the agent calls `name`, if it is available here.
     pub fn from_name(name: &str) -> Option<Self> {
+        Self::available().find(|tool| tool.name() == name)
+    }
+
+    /// The tools available on this platform, in the order an agent should meet them.
+    ///
+    /// `login` needs a local web server for the login callback, which the browser cannot start.
+    pub fn available() -> impl Iterator<Item = Self> {
         Self::VARIANTS
             .iter()
             .copied()
-            .find(|tool| tool.name() == name)
+            .filter(|tool| cfg!(not(target_arch = "wasm32")) || *tool != Self::Login)
     }
 
     /// The tool's definition, as the agent sees it.
@@ -76,12 +87,20 @@ impl CatalogTool {
         }
     }
 
+    /// Whether the tool acts on the catalog the tools are connected to.
+    ///
+    /// `connect` picks a catalog itself, and `login` logs the user in for any catalog.
+    pub fn acts_on_catalog(self) -> bool {
+        !matches!(self, Self::Connect | Self::Login)
+    }
+
     /// Whether the user is asked before the agent runs the tool.
     ///
     /// `connect` asks although it is not destructive: it reaches any server the agent names,
-    /// with the user's credentials.
+    /// with the user's credentials. `login` asks because it saves new credentials on the machine,
+    /// once the user logs in through their browser.
     pub fn requires_approval(self) -> bool {
-        self == Self::Connect || self.effect().requires_approval()
+        matches!(self, Self::Connect | Self::Login) || self.effect().requires_approval()
     }
 
     fn description(self) -> &'static str {
@@ -89,6 +108,12 @@ impl CatalogTool {
             Self::Connect => {
                 "Connect to a Rerun catalog server, replacing any previous catalog connection. \
                  The other catalog tools act on this catalog. Returns the server's version."
+            }
+            Self::Login => {
+                "Log the user in on this machine, for a catalog server that needs a login. The \
+                 first call returns a link: show it to the user and ask them to open it. Call \
+                 again to wait until they are done, then call `catalog_connect` again. Returns \
+                 `logged_in` at once if the user is already logged in."
             }
             Self::ListEntries => {
                 "List the datasets and tables in the catalog, sorted by name, a page at a time, \
@@ -132,8 +157,7 @@ impl CatalogTool {
 
     fn effect(self) -> ToolEffect {
         match self {
-            // Changes only which catalog the tools act on.
-            Self::Connect => ToolEffect::NonDestructive,
+            Self::Connect | Self::Login => ToolEffect::NonDestructive,
             Self::ListEntries
             | Self::GetDatasetInfo
             | Self::GetDatasetSchema
@@ -147,6 +171,7 @@ impl CatalogTool {
     fn input_schema(self) -> Map<String, Value> {
         match self {
             Self::Connect => schema_for::<ConnectArgs>(),
+            Self::Login => schema_for::<LoginArgs>(),
             Self::ListEntries => schema_for::<ListEntriesArgs>(),
             Self::GetDatasetInfo => schema_for::<DatasetArgs>(),
             Self::GetDatasetSchema => schema_for::<DatasetSchemaArgs>(),
@@ -175,6 +200,10 @@ fn schema_for<Args: JsonSchema>() -> Map<String, Value> {
     };
     input_schema.remove("$schema");
     input_schema.remove("title");
+    // Some function-calling APIs reject an object schema without `properties`.
+    input_schema
+        .entry("properties")
+        .or_insert_with(|| Value::Object(Map::new()));
     input_schema
 }
 
@@ -183,13 +212,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_connect_asks_first() {
+    fn only_connect_and_login_ask_first() {
         let asking: Vec<_> = CatalogTool::VARIANTS
             .iter()
             .copied()
             .filter(|tool| tool.requires_approval())
             .collect();
-        assert_eq!(asking, [CatalogTool::Connect]);
+        assert_eq!(asking, [CatalogTool::Connect, CatalogTool::Login]);
     }
 
     /// The agent-facing surface: names, descriptions, input schemas, and effects.

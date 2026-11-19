@@ -22,6 +22,16 @@ expression: definitions
     "effect": "NonDestructive"
   },
   {
+    "name": "catalog_login",
+    "description": "Log the user in on this machine, for a catalog server that needs a login. The first call returns a link: show it to the user and ask them to open it. Call again to wait until they are done, then call `catalog_connect` again. Returns `logged_in` at once if the user is already logged in.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "effect": "NonDestructive"
+  },
+  {
     "name": "catalog_list_entries",
     "description": "List the datasets and tables in the catalog, sorted by name, a page at a time, with their ids and names, and the catalog they are on.",
     "input_schema": {
