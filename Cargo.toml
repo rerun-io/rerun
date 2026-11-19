@@ -261,8 +261,8 @@ egui_tiles = "0.18.0" # https://github.com/rerun-io/egui_crates
 walkers = { package = "re_walkers", version = "0.63.1", default-features = false } # Temporary fork until https://github.com/podusowski/walkers/pull/643 is released.
 
 # All of our direct external dependencies should be found here:
-agent-client-protocol = "2.1"
-agent-client-protocol-schema = "1.9.1" # The version `agent-client-protocol` pins, so that both name the same types.
+agent-client-protocol = "5.4"
+agent-client-protocol-schema = "1.19.0" # The version `agent-client-protocol` pins, so that both name the same types.
 ahash = "0.8.12"
 anyhow = { version = "1.0", default-features = false }
 argh = "0.1.19"
