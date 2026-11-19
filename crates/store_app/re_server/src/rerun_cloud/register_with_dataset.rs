@@ -43,20 +43,22 @@ pub struct RegisterWithDatasetResult {
 /// A data source that has been validated (paths confirmed to exist, duplicates checked)
 /// but not yet loaded into memory.
 enum ValidatedSource {
-    File {
-        rrd_path: PathBuf,
-        layer_info: Arc<LayerInfo>,
-        storage_url: url::Url,
-
-        /// Set only for a file holding exactly one store of the dataset's kind.
-        segment_id_override: Option<SegmentId>,
-    },
+    File(ValidatedFileSource),
     Memory {
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
         segment_id: SegmentId,
         layer_info: Arc<LayerInfo>,
     },
+}
+
+/// One store of an RRD file, to register as one segment.
+struct ValidatedFileSource {
+    rrd_path: PathBuf,
+    layer_info: Arc<LayerInfo>,
+    storage_url: url::Url,
+    store_id: StoreId,
+    segment_id: SegmentId,
 }
 
 /// A data source that has been fully loaded and is ready to be added to the dataset.
@@ -76,8 +78,8 @@ pub async fn do_register_with_dataset(
     data_sources: Vec<ext::DataSource>,
     on_duplicate: IfDuplicateBehavior,
 ) -> tonic::Result<RegisterWithDatasetResult> {
-    let (store_kind, validated) = validate_sources(store, dataset_id, data_sources).await?;
-    let ready = load_sources(validated, store_kind).await?;
+    let validated = validate_sources(store, dataset_id, data_sources).await?;
+    let ready = load_sources(validated).await?;
     register_sources(store, dataset_id, ready, on_duplicate).await
 }
 
@@ -86,13 +88,12 @@ pub async fn do_register_with_dataset(
 /// Phase 1: validate each data source, resolve memory URLs, and check for
 /// intra-request duplicates.
 ///
-/// Returns the dataset's [`StoreKind`] alongside the validated sources, since
-/// callers need it to filter stores when loading files.
+/// Decides which stores each file registers and the segment each one becomes.
 async fn validate_sources(
     store: &InMemoryStore,
     dataset_id: EntryId,
     data_sources: Vec<ext::DataSource>,
-) -> tonic::Result<(StoreKind, Vec<ValidatedSource>)> {
+) -> tonic::Result<Vec<ValidatedSource>> {
     // `seen` tracks (layer_name, segment_id) → URLs to detect intra-request dups.
     // The `on_duplicate` flag only applies to cross-request conflicts.
     let mut seen: BTreeMap<(LayerName, SegmentId), Vec<url::Url>> = BTreeMap::new();
@@ -150,22 +151,21 @@ async fn validate_sources(
             continue;
         }
 
-        if let Some(file_source) = validate_file_source(
-            store_kind,
-            &storage_url,
-            layer_info,
-            segment_id_override,
-            &mut seen,
-        )
-        .await?
-        {
-            validated.push(file_source);
-        }
+        validated.extend(
+            validate_file_source(
+                store_kind,
+                &storage_url,
+                layer_info,
+                segment_id_override,
+                &mut seen,
+            )
+            .await?,
+        );
     }
 
     check_intra_request_duplicates(&seen)?;
 
-    Ok((store_kind, validated))
+    Ok(validated)
 }
 
 fn validate_memory_source(
@@ -200,17 +200,17 @@ fn validate_memory_source(
     })
 }
 
-/// Returns `None` if the file's store kind doesn't match (silently skipped).
+/// Returns one source per store of the dataset's kind in the file, in store id order.
 ///
-/// A file registers every store of the dataset's kind, so a segment id override requires the file
-/// to hold exactly one.
+/// A file with no such store is silently skipped. A file registers every store of the dataset's
+/// kind, so a segment id override requires the file to hold exactly one.
 async fn validate_file_source(
     store_kind: StoreKind,
     storage_url: &url::Url,
     layer_info: Arc<LayerInfo>,
     segment_id_override: Option<SegmentId>,
     seen: &mut BTreeMap<(LayerName, SegmentId), Vec<url::Url>>,
-) -> tonic::Result<Option<ValidatedSource>> {
+) -> tonic::Result<Vec<ValidatedSource>> {
     let rrd_path = rrd_path_from_url(storage_url)?;
     let metadata = fs::metadata(&rrd_path)
         .await
@@ -234,10 +234,6 @@ async fn validate_file_source(
         .filter(|store_id| store_id.kind() == store_kind)
         .collect();
 
-    if store_ids.is_empty() {
-        return Ok(None);
-    }
-
     if let Some(segment_id) = &segment_id_override
         && store_ids.len() > 1
     {
@@ -248,21 +244,24 @@ async fn validate_file_source(
         )));
     }
 
-    for store_id in &store_ids {
+    let mut validated = Vec::with_capacity(store_ids.len());
+    for store_id in store_ids {
         let segment_id = segment_id_override
             .clone()
             .unwrap_or_else(|| SegmentId::from(store_id.recording_id()));
-        seen.entry((layer_info.name.clone(), segment_id))
+        seen.entry((layer_info.name.clone(), segment_id.clone()))
             .or_default()
             .push(storage_url.clone());
+        validated.push(ValidatedSource::File(ValidatedFileSource {
+            rrd_path: rrd_path.clone(),
+            layer_info: layer_info.clone(),
+            storage_url: storage_url.clone(),
+            store_id,
+            segment_id,
+        }));
     }
 
-    Ok(Some(ValidatedSource::File {
-        rrd_path,
-        layer_info,
-        storage_url: storage_url.clone(),
-        segment_id_override,
-    }))
+    Ok(validated)
 }
 
 fn rrd_path_from_url(storage_url: &url::Url) -> tonic::Result<PathBuf> {
@@ -339,10 +338,7 @@ fn check_intra_request_duplicates(
 // ---
 
 /// Phase 2: load file-backed sources and unify them with already-registered sources.
-async fn load_sources(
-    validated: Vec<ValidatedSource>,
-    store_kind: StoreKind,
-) -> tonic::Result<Vec<ReadySource>> {
+async fn load_sources(validated: Vec<ValidatedSource>) -> tonic::Result<Vec<ReadySource>> {
     let mut ready: Vec<ReadySource> = Vec::new();
 
     for source in validated {
@@ -366,28 +362,31 @@ async fn load_sources(
                 });
             }
 
-            ValidatedSource::File {
+            ValidatedSource::File(ValidatedFileSource {
                 rrd_path,
                 layer_info,
                 storage_url,
-                segment_id_override,
-            } => {
+                store_id,
+                segment_id,
+            }) => {
                 re_log::info!("Loading {rrd_path:?}…");
 
-                let stores = ResolvedStore::load_rrd_file(&rrd_path, store_kind).await?;
+                let resolved = ResolvedStore::load_rrd_store(&rrd_path, &store_id)
+                    .await?
+                    .ok_or_else(|| {
+                        tonic::Status::internal(format!(
+                            "store {store_id:?} was found when validating the RRD, but not when \
+                             loading it\nFile path: {rrd_path:?}"
+                        ))
+                    })?;
 
-                for (store_id, resolved) in stores {
-                    let segment_id = segment_id_override
-                        .clone()
-                        .unwrap_or_else(|| SegmentId::new(store_id.recording_id().to_string()));
-                    ready.push(ReadySource {
-                        store_slot_id: StoreSlotId::new(),
-                        resolved,
-                        segment_id,
-                        layer_info: layer_info.clone(),
-                        storage_url: storage_url.clone(),
-                    });
-                }
+                ready.push(ReadySource {
+                    store_slot_id: StoreSlotId::new(),
+                    resolved,
+                    segment_id,
+                    layer_info,
+                    storage_url,
+                });
             }
         }
     }
