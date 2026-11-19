@@ -8,7 +8,7 @@ At its core, Rerun is a database.
 The OSS server is a local catalog that keeps catalog metadata in memory and reads data from RRDs with a footer on demand.
 It can therefore serve datasets larger than RAM, while Rerun Hub provides managed persistent storage for production use.
 
-In this three-part guide, we explore a query workflow by implementing an "open jaw detector" on top of our [face tracking example](https://rerun.io/examples/video-image/face_tracking). This process is split into three steps:
+In this three-part guide, we explore a query workflow by implementing an "open jaw detector" on top of our [face tracking example](https://github.com/rerun-io/rerun/tree/main/examples/python/face_tracking). This process is split into three steps:
 
 1. [Explore a recording with the dataframe view](tutorial/explore-as-dataframe.md)
 2. [Export the dataframe](tutorial/export-dataframe.md)

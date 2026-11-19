@@ -39,7 +39,6 @@ any data will be kept in memory until you call one of these.
 
 ## Examples
 
-As general entry point for Rerun examples check the [examples page](https://www.rerun.io/examples) on our website.
 All C++ examples can be found [directly in the Rerun repository](https://github.com/rerun-io/rerun/tree/latest/examples/cpp).
 Additionally, each [archetype's documentation](https://www.rerun.io/docs/reference/types) comes with at least one small self-contained code example.
 
