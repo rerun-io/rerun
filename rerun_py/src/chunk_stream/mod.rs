@@ -21,6 +21,7 @@ pub mod chunk_store;
 mod engine;
 pub mod error;
 mod hdf5_reader;
+pub mod kinematic_tree_stream;
 pub mod lazy_store;
 mod lerobot_reader;
 mod mcap_reader;
@@ -31,7 +32,6 @@ mod py_stream;
 pub mod rrd_reader;
 pub mod stream;
 mod summary;
-pub mod urdf_tree_stream;
 
 use std::sync::Arc;
 

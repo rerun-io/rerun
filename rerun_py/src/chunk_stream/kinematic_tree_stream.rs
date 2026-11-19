@@ -2,19 +2,19 @@ use std::sync::Arc;
 
 use re_chunk::Chunk;
 use re_log_types::TimePoint;
-use re_sdk::external::re_importer::UrdfTree;
+use re_sdk::external::re_importer::KinematicTree;
 
 use super::error::ChunkPipelineError;
 use super::{ChunkStream, ChunkStreamFactory};
 
-/// Factory for creating chunk streams from an already parsed URDF tree.
-pub(crate) struct UrdfTreeStreamFactory {
-    tree: Arc<UrdfTree>,
+/// Factory for creating chunk streams from an already parsed robot model.
+pub(crate) struct KinematicTreeStreamFactory {
+    tree: Arc<dyn KinematicTree>,
     include_joint_transforms: bool,
 }
 
-impl UrdfTreeStreamFactory {
-    pub(crate) fn new(tree: Arc<UrdfTree>, include_joint_transforms: bool) -> Self {
+impl KinematicTreeStreamFactory {
+    pub(crate) fn new(tree: Arc<dyn KinematicTree>, include_joint_transforms: bool) -> Self {
         Self {
             tree,
             include_joint_transforms,
@@ -22,7 +22,7 @@ impl UrdfTreeStreamFactory {
     }
 }
 
-impl ChunkStreamFactory for UrdfTreeStreamFactory {
+impl ChunkStreamFactory for KinematicTreeStreamFactory {
     fn create(&self) -> Result<Box<dyn ChunkStream>, ChunkPipelineError> {
         let (tx, rx) = crossbeam::channel::bounded::<Result<Arc<Chunk>, ChunkPipelineError>>(
             super::CHUNK_CHANNEL_CAPACITY,
@@ -31,8 +31,9 @@ impl ChunkStreamFactory for UrdfTreeStreamFactory {
         let tree = Arc::clone(&self.tree);
         let include_joint_transforms = self.include_joint_transforms;
 
+        let format = tree.model_format();
         std::thread::Builder::new()
-            .name("urdf-chunk-source".into())
+            .name(format!("{format}-chunk-source").to_lowercase())
             .spawn(move || {
                 let result = tree.emit(
                     &mut |chunk| {
@@ -45,24 +46,25 @@ impl ChunkStreamFactory for UrdfTreeStreamFactory {
                 if let Err(err) = result {
                     re_quota_channel::send_crossbeam(
                         &tx,
-                        Err(ChunkPipelineError::Urdf {
-                            reason: format!("Failed to stream URDF: {err}"),
+                        Err(ChunkPipelineError::RobotModel {
+                            format,
+                            reason: format!("{err:#}"),
                         }),
                     )
                     .ok();
                 }
             })
-            .expect("Failed to spawn URDF emit thread");
+            .expect("Failed to spawn robot model emit thread");
 
-        Ok(Box::new(UrdfTreeStream { rx }))
+        Ok(Box::new(KinematicTreeStream { rx }))
     }
 }
 
-struct UrdfTreeStream {
+struct KinematicTreeStream {
     rx: crossbeam::channel::Receiver<Result<Arc<Chunk>, ChunkPipelineError>>,
 }
 
-impl ChunkStream for UrdfTreeStream {
+impl ChunkStream for KinematicTreeStream {
     fn next(&mut self) -> Result<Option<Arc<Chunk>>, ChunkPipelineError> {
         match self.rx.recv() {
             Ok(Ok(chunk)) => Ok(Some(chunk)),

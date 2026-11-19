@@ -20,10 +20,11 @@ use re_sdk_types::archetypes::{Asset3D, CoordinateFrame, InstancePoses3D, Transf
 use re_sdk_types::components::Color;
 use re_sdk_types::encodings::{Rgba32, Vec3D};
 use re_sdk_types::external::glam;
-use re_sdk_types::{AsComponents, Component as _, ComponentDescriptor};
+use re_sdk_types::{Component as _, ComponentDescriptor};
 use urdf_rs::{Geometry, Joint, Vec3, Vec4};
 
-use crate::{ImportedData, Importer, ImporterError};
+use crate::kinematic_tree::emit_archetype;
+use crate::{ImportedData, Importer, ImporterError, KinematicTree as _};
 
 fn is_urdf_file(path: impl AsRef<Path>) -> bool {
     path.as_ref()
@@ -34,22 +35,6 @@ fn is_urdf_file(path: impl AsRef<Path>) -> bool {
 fn emit_chunk_builder(emit: &mut dyn FnMut(Chunk), chunk: ChunkBuilder) -> anyhow::Result<()> {
     emit(chunk.build()?);
     Ok(())
-}
-
-fn emit_archetype(
-    emit: &mut dyn FnMut(Chunk),
-    entity_path: EntityPath,
-    timepoint: &TimePoint,
-    archetype: &impl AsComponents,
-) -> anyhow::Result<()> {
-    emit_chunk_builder(
-        emit,
-        ChunkBuilder::new(ChunkId::new(), entity_path).with_archetype(
-            RowId::new(),
-            timepoint.clone(),
-            archetype,
-        ),
-    )
 }
 
 /// An [`Importer`] for [URDF](https://en.wikipedia.org/wiki/URDF) (Unified Robot Description Format),

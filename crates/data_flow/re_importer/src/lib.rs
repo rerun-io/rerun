@@ -25,6 +25,7 @@ mod importer_puffin;
 mod importer_rrd;
 #[cfg(feature = "urdf")]
 mod importer_urdf;
+mod kinematic_tree;
 
 // This importer currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
@@ -53,6 +54,9 @@ pub use self::importer_puffin::PuffinImporter;
 pub use self::importer_rrd::RrdImporter;
 #[cfg(feature = "urdf")]
 pub use self::importer_urdf::{UrdfImporter, UrdfTree, joint_transform as urdf_joint_transform};
+pub use self::kinematic_tree::{
+    JointTransform, KinematicTree, ModelFormat, MultiDofJointType, UnsupportedJointType,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     import_file::import_from_path,

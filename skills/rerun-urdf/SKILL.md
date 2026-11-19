@@ -68,7 +68,7 @@ urdf = UrdfTree.from_file_path(
   (defaults to `/tf_static`).
 
 The tree is also introspectable (full surface in `help(UrdfTree)`)
-For one-off, non-stream use there are `joint.compute_transform(value)`, `joint.compute_transform_columns(values)` (feeds `rr.send_columns`), and `urdf.log_urdf_to_recording()` to log the whole model through the classic logging API (the `animated_urdf` example, `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf`, is that style).
+For one-off, non-stream use there are `joint.compute_transform(value)`, `joint.compute_transform_columns(values)` (feeds `rr.send_columns`), and `urdf.log_to_recording()` to log the whole model through the classic logging API (the `animated_urdf` example, `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf`, is that style).
 
 For pipelines, a `UrdfTree` does two things.
 
@@ -346,7 +346,7 @@ Without a catalog, the same split still pays: write the model RRD once and open 
 ## References
 
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing` (FK two-lens pattern, two robots + scene URDFs, prefixes, recoloring, calibration offsets)
-- `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf` (classic logging API: `log_urdf_to_recording`, per-joint `compute_transform`)
+- `https://github.com/rerun-io/rerun/tree/main/examples/python/animated_urdf` (classic logging API: `log_to_recording`, per-joint `compute_transform`)
 - [Catalog object model: assets](https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets) (`register_asset`, the limits, and how assets are read back)
 - `rerun-data-model` (the mapping table this skill consumes)
 - the importer skill for your joint-state source format (making the source readable)

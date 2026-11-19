@@ -82,6 +82,7 @@ parking_lot.workspace = true
 puffin = { workspace = true, features = ["serialization"], optional = true }
 rayon.workspace = true
 serde.workspace = true
+strum = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 urdf-rs = { workspace = true, optional = true }
 walkdir.workspace = true

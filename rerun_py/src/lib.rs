@@ -29,6 +29,7 @@ mod catalog;
 mod chunk;
 mod chunk_stream;
 mod formatting;
+mod kinematic_tree;
 mod lenses;
 mod python_bridge;
 mod query_metrics;

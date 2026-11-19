@@ -9,6 +9,8 @@ import rerun as rr
 import rerun.urdf as rru
 from rerun.chunk import Chunk, DeriveLens, LazyChunkStream, RrdReader, Selector, StreamingReader
 
+from .kinematics_helpers import assert_quat_equivalent, assert_translation_expected
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 URDF_PATH = REPO_ROOT / "examples" / "rust" / "animated_urdf" / "data" / "so100.urdf"
 
@@ -161,11 +163,11 @@ def test_urdf_tree_log() -> None:
     rec.memory_recording()
 
     tree = rru.UrdfTree.from_file_path(URDF_PATH)
-    tree.log_urdf_to_recording(rec)
+    tree.log_to_recording(rec)
 
     # Also test with frame_prefix
     tree_prefixed = rru.UrdfTree.from_file_path(URDF_PATH, frame_prefix="left/")
-    tree_prefixed.log_urdf_to_recording(rec)
+    tree_prefixed.log_to_recording(rec)
 
 
 def test_urdf_tree_custom_static_transform_entity_path(tmp_path: Path) -> None:
@@ -179,7 +181,7 @@ def test_urdf_tree_custom_static_transform_entity_path(tmp_path: Path) -> None:
         rec.save(rrd_path)
 
         tree = rru.UrdfTree.from_file_path(URDF_PATH, static_transform_entity_path="custom_tf_static")
-        tree.log_urdf_to_recording(rec)
+        tree.log_to_recording(rec)
 
     paths = RrdReader(rrd_path).stream().collect().schema().entity_paths()
 
@@ -317,19 +319,6 @@ def test_urdf_transform_batches_in_lens_pipeline() -> None:
         [f"{frame_prefix}{joint2.child_link}"],
         [f"{frame_prefix}{joint1.child_link}"],
     ]
-
-
-def assert_quat_equivalent(actual: rr.components.RotationQuatBatch, expected: list[float]) -> None:
-    actual_values = actual.pa_array.to_pylist()[0]
-    dot = sum(a * b for a, b in zip(actual_values, expected, strict=False))
-    if dot < 0.0:
-        expected = [-value for value in expected]
-    assert actual_values == pytest.approx(expected)
-
-
-def assert_translation_expected(actual: rr.components.Translation3DBatch, expected: tuple[float, float, float]) -> None:
-    actual_values = actual.pa_array.to_pylist()[0]
-    assert actual_values == pytest.approx(expected)
 
 
 def _euler_to_quat(roll: float, pitch: float, yaw: float) -> list[float]:

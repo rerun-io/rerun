@@ -10166,6 +10166,7 @@ dependencies = [
  "re_tracing",
  "re_workspace_hack",
  "serde",
+ "strum 0.26.3",
  "tempfile",
  "thiserror 2.0.19",
  "urdf-rs",
