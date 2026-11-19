@@ -9432,6 +9432,37 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_catalog_tools"
+version = "0.44.0-alpha.1+dev"
+dependencies = [
+ "arrow",
+ "futures",
+ "insta",
+ "parking_lot",
+ "re_agent_tools",
+ "re_async",
+ "re_build_info",
+ "re_catalog_client",
+ "re_error",
+ "re_log_types",
+ "re_protos",
+ "re_redap_client",
+ "re_redap_tests",
+ "re_server",
+ "re_sorbet",
+ "re_types_core",
+ "re_uri",
+ "re_workspace_hack",
+ "schemars 1.2.2",
+ "serde",
+ "serde_json",
+ "strum 0.26.3",
+ "tempfile",
+ "thiserror 2.0.19",
+ "tokio",
+]
+
+[[package]]
 name = "re_cdr"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
