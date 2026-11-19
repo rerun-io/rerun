@@ -105,22 +105,19 @@ pub fn asset_data_source(
 }
 
 impl CatalogClient {
-    /// Get the asset dataset that applies to a dataset, and the asset segments within it.
+    /// Get the asset segments within an asset dataset.
     ///
     /// `segment_id` narrows the result to the assets that apply to that segment, honoring each
     /// asset's mode and segment list. When it is `None`, the per-asset defaults apply with no
     /// segment-specific opt-out/opt-in overrides.
-    ///
-    /// Returns `None` if the dataset has no asset dataset, which means no assets were ever
-    /// registered for it.
     pub async fn get_assets_for_segment(
         &self,
-        dataset_id: EntryId,
-        segment_id: Option<SegmentId>,
-    ) -> ApiResult<Option<(EntryId, Vec<SegmentId>)>> {
+        asset_dataset: EntryId,
+        segment_id: Option<&SegmentId>,
+    ) -> ApiResult<Vec<SegmentId>> {
         self.client()
             .await?
-            .get_assets_for_segment(dataset_id, segment_id)
+            .get_assets_for_segment(asset_dataset, segment_id)
             .await
     }
 
@@ -354,7 +351,7 @@ impl CatalogClient {
 
         let schemas = assets.into_iter().map(|asset| async move {
             let schema = self
-                .get_segment_schema(asset_dataset, asset.id.clone(), false)
+                .get_segment_schema(asset_dataset, asset.id.clone(), None)
                 .await?;
             Ok((asset.id, schema))
         });

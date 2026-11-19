@@ -109,8 +109,7 @@ async fn fetch_chunk_ids(
 }
 
 /// A dataset gets its asset dataset on creation, so before anything is registered the client
-/// reports that asset dataset with no segments in it. `None` is reserved for datasets created
-/// before asset datasets existed, which have no asset dataset at all.
+/// reports no segments in it.
 #[tokio::test(flavor = "multi_thread")]
 async fn get_assets_for_segment_returns_no_segments_before_any_asset_is_registered() {
     let (server, _) = TestServer::spawn()
@@ -122,15 +121,14 @@ async fn get_assets_for_segment_returns_no_segments_before_any_asset_is_register
     let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
 
     let assets = client
-        .get_assets_for_segment(dataset_id(), None)
+        .get_assets_for_segment(asset_dataset, None)
         .await
         .expect("Failed to get assets");
 
-    assert_eq!(assets, Some((asset_dataset, vec![])));
+    assert!(assets.is_empty(), "expected no assets, got {assets:?}");
 }
 
-/// Once an asset is registered, the client reports the dataset's asset dataset along with every
-/// asset segment in it.
+/// Once an asset is registered, the client reports every asset segment in the asset dataset.
 #[tokio::test(flavor = "multi_thread")]
 async fn get_assets_for_segment_returns_the_registered_assets() {
     let (server, _) = TestServer::spawn()
@@ -155,14 +153,12 @@ async fn get_assets_for_segment_returns_the_registered_assets() {
     }
     expected_segments.sort();
 
-    let (entry, mut segments) = client
-        .get_assets_for_segment(dataset_id(), None)
+    let mut segments = client
+        .get_assets_for_segment(asset_dataset, None)
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     segments.sort();
 
-    assert_eq!(entry, asset_dataset);
     assert_eq!(segments, expected_segments);
 }
 
@@ -193,13 +189,13 @@ async fn register_asset_registers_with_the_datasets_asset_dataset() {
         .await
         .expect("Failed to register asset");
 
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
     let assets = client
-        .get_assets_for_segment(dataset_id(), None)
+        .get_assets_for_segment(asset_dataset, None)
         .await
         .expect("Failed to get assets");
 
-    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
-    assert_eq!(assets, Some((asset_dataset, vec![segment_id])));
+    assert_eq!(assets, vec![segment_id]);
 }
 
 /// Registering the same asset a second time replaces the one already there, leaving the dataset
@@ -240,11 +236,11 @@ async fn register_asset_replaces_an_already_registered_asset() {
 
     assert_eq!(first, second);
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), None)
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let segments = client
+        .get_assets_for_segment(asset_dataset, None)
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
 
     assert_eq!(segments, vec![second]);
 }
@@ -293,18 +289,17 @@ async fn register_asset_stores_the_coverage_it_is_given() {
         }
     );
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(segment_id))
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&segment_id))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert_eq!(segments, vec![asset_segment_id]);
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&SegmentId::from("another_segment")))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert!(segments.is_empty());
 }
 
@@ -352,18 +347,17 @@ async fn upload_asset_registers_an_uploaded_copy_with_its_coverage() {
         "the asset should be registered from the uploaded copy, got {layers:?}"
     );
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(segment_id))
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&segment_id))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert_eq!(segments, vec![asset_id]);
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&SegmentId::from("another_segment")))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert!(segments.is_empty());
 }
 
@@ -517,11 +511,10 @@ async fn an_asset_without_a_stored_coverage_applies_to_every_segment() {
     assert_eq!(stored, AssetCoverage::default());
     assert_eq!(revision, 0);
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(segment_id.clone()))
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&segment_id))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert_eq!(segments, vec![asset_segment_id.clone()]);
 
     let coverage = AssetCoverage {
@@ -588,11 +581,11 @@ async fn unregister_asset_drops_the_asset() {
         .await
         .expect("Failed to unregister asset");
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), None)
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let segments = client
+        .get_assets_for_segment(asset_dataset, None)
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset keeps its asset dataset after its last asset is dropped");
+        .expect("Failed to get assets");
 
     assert!(
         segments.is_empty(),

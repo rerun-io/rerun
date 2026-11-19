@@ -122,6 +122,10 @@ impl PyDatasetEntryInternal {
         self.entry_details.id
     }
 
+    pub fn asset_dataset_id(&self) -> Option<EntryId> {
+        self.dataset_details.asset_dataset
+    }
+
     /// An overview of what `selection`, a selection of this dataset, keeps.
     pub fn selection_info(
         &self,
@@ -317,9 +321,13 @@ impl PyDatasetEntryInternal {
         segment_id: String,
     ) -> PyResult<Vec<String>> {
         let _span = read_trace_context_from_python(py, "DatasetEntry.assets_for_segment").entered();
+        let Some(asset_dataset) = self_.dataset_details.asset_dataset else {
+            // Any dataset that holds assets is guaranteed to have an associated asset_dataset
+            return Ok(Vec::new());
+        };
         let connection = self_.client.borrow(py).connection().clone();
 
-        connection.get_assets_for_segment(py, self_.entry_details.id, segment_id)
+        connection.get_assets_for_segment(py, asset_dataset, segment_id)
     }
 
     /// One segment's mutable properties as a single-row `RecordBatch`, plus its revision.
@@ -1026,12 +1034,18 @@ impl PyDatasetEntryInternal {
         let dataset_id = self_.entry_details.id;
         let segment_id = SegmentId::from(segment_id);
 
+        let asset_dataset_id = if include_assets {
+            self_.dataset_details.asset_dataset
+        } else {
+            None
+        };
+
         let provider = wait_for_future(py, async {
             SegmentChunkProvider::try_new(
                 connection.inner().connection().clone(),
                 dataset_id,
                 segment_id,
-                include_assets,
+                asset_dataset_id,
             )
             .await
             .map_err(to_py_err)

@@ -252,19 +252,18 @@ impl PyConnectionHandle {
     pub fn get_assets_for_segment(
         &self,
         py: Python<'_>,
-        entry_id: EntryId,
+        asset_dataset: EntryId,
         segment_id: String,
     ) -> PyResult<Vec<String>> {
         wait_for_future(py, async {
             Ok(self
                 .inner
-                .get_assets_for_segment(entry_id, Some(SegmentId::from(segment_id)))
+                .get_assets_for_segment(asset_dataset, Some(&SegmentId::from(segment_id)))
                 .await
                 .map_err(to_py_err)?
-                .map(|(_asset_dataset_id, segment_ids)| {
-                    segment_ids.iter().map(|id| id.to_string()).collect()
-                })
-                .unwrap_or_default())
+                .iter()
+                .map(|id| id.to_string())
+                .collect())
         })
     }
 

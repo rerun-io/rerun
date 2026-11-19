@@ -21,7 +21,7 @@ use re_types_core::SegmentId;
 use re_uri::Origin;
 use tokio_stream::StreamExt as _;
 
-use crate::asset::{AssetSegments, asset_manifest, asset_segments};
+use crate::asset::{asset_manifest, asset_segments};
 use crate::{
     ApiError, ApiResult, BoxedRedapClientStack, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
 };
@@ -687,7 +687,7 @@ async fn stream_blueprint_segment(
         blueprint_store_info,
         tx,
         blueprint_dataset,
-        DatasetKind::Blueprint,
+        None,
         blueprint_segment,
         re_uri::Fragment::default(),
         &StreamingOptions::default(),
@@ -973,12 +973,19 @@ pub async fn stream_blueprint_and_segment_from_server(
             store_version: None,
         };
 
+        // Only recording datasets have assets, so a blueprint or asset dataset has none to look up.
+        let asset_dataset = if dataset_kind == DatasetKind::Recording {
+            dataset_entry.dataset_details.asset_dataset
+        } else {
+            None
+        };
+
         if stream_segment_from_server(
             &mut client,
             store_info,
             &tx,
             dataset_id,
-            dataset_kind,
+            asset_dataset,
             segment_id,
             fragment,
             &options,
@@ -999,7 +1006,7 @@ async fn stream_segment_from_server(
     store_info: StoreInfo,
     tx: &re_log_channel::LogSender,
     dataset_id: EntryId,
-    dataset_kind: DatasetKind,
+    asset_dataset: Option<EntryId>,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
     options: &StreamingOptions,
@@ -1040,19 +1047,13 @@ async fn stream_segment_from_server(
         }
     }
 
-    // Only recording datasets have assets, so a blueprint or asset dataset has none to look up.
-    if dataset_kind == DatasetKind::Recording
-        && let Some(AssetSegments {
-            dataset_id: asset_dataset_id,
-            segment_ids: asset_segment_ids,
-        }) = asset_segments(client, dataset_id, &segment_id).await
-    {
+    if let Some(asset_dataset) = asset_dataset {
         // Only assets that apply to the opened segment are streamed.
-        for asset_segment_id in asset_segment_ids {
+        for asset_segment_id in asset_segments(client, asset_dataset, &segment_id).await {
             // TODO(RR-5399): Cache asset manifests?
             // We don't support assets without manifests.
             let streamed = match client
-                .get_rrd_manifest_stream(asset_dataset_id, asset_segment_id.clone())
+                .get_rrd_manifest_stream(asset_dataset, asset_segment_id.clone())
                 .await
             {
                 Ok(manifest_stream) => {

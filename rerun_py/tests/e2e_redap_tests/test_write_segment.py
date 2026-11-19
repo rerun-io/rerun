@@ -68,8 +68,7 @@ def test_write_and_register(
     elif write_kind == "asset":
         assert result.segment_ids == [recording_id]
         target = dataset.asset_dataset()
-        # TODO(RR-6454): Re-enable once a write is visible to `assets_for_segment` right after it finishes.
-        # assert dataset.assets_for_segment("any_segment") == [recording_id]
+        assert dataset.assets_for_segment("any_segment") == [recording_id]
     else:
         assert result.segment_ids == [recording_id]
         target = dataset
