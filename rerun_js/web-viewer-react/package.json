@@ -52,9 +52,9 @@
   "devDependencies": {
     "dts-buddy": "^0.8.3",
     "typedoc": "^0.28.20",
-    "typedoc-github-theme": "^0.3.0",
-    "typescript": "^6.0.3",
-    "@types/react": "^19.0.0",
-    "react": "^19.0.0"
+    "typedoc-github-theme": "^0.4.0",
+    "typescript": "^7.0.2",
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1"
   }
 }
