@@ -19,7 +19,7 @@ List(non-null UInt8)
 
 ## API reference links
  * 🌊 [C++ API docs for `Thumbnail`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Thumbnail.html)
- * 🐍 [Python API docs for `Thumbnail`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Thumbnail)
+ * 🐍 [Python API docs for `Thumbnail`](https://ref.rerun.io/docs/python/stable/components#rerun.components.Thumbnail)
  * 🦀 [Rust API docs for `Thumbnail`](https://docs.rs/rerun/latest/rerun/components/struct.Thumbnail.html)
 
 

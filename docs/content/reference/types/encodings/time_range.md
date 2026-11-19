@@ -37,7 +37,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `TimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TimeRange.html)
- * 🐍 [Python API docs for `TimeRange`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.TimeRange)
+ * 🐍 [Python API docs for `TimeRange`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.TimeRange)
  * 🦀 [Rust API docs for `TimeRange`](https://docs.rs/rerun/latest/rerun/encodings/struct.TimeRange.html)
 
 

@@ -16,7 +16,7 @@ pub enum TensorUploadError {
     TensorCastError(#[from] TensorCastError),
 
     #[error("Expected a 2D slice")]
-    Not2D,
+    Not2D(#[source] ndarray::ShapeError),
 }
 
 pub fn colormapped_texture(
@@ -144,7 +144,7 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     let slice = selected_tensor_slice(slice_selection, tensor);
     let slice = slice
         .into_dimensionality::<ndarray::Ix2>()
-        .map_err(|_err| TensorUploadError::Not2D)?;
+        .map_err(TensorUploadError::Not2D)?;
 
     let (height, width) = slice.raw_dim().into_pattern();
     let mut pixels: Vec<To> = vec![To::zeroed(); height * width];

@@ -67,13 +67,16 @@ async fn legacy_dataset_without_asset_dataset() {
     );
 
     let updated: ext::DatasetEntry = handler
-        .update_dataset_entry(tonic::Request::new(
-            UpdateDatasetEntryRequest {
-                id: dataset_id,
-                dataset_details: Default::default(),
-            }
-            .into(),
-        ))
+        .update_dataset_entry(
+            tonic::Request::new(
+                UpdateDatasetEntryRequest {
+                    id: dataset_id,
+                    dataset_details: Default::default(),
+                }
+                .into(),
+            )
+            .with_entry_id(dataset_id),
+        )
         .await
         .expect("updating the entry should succeed")
         .into_inner()

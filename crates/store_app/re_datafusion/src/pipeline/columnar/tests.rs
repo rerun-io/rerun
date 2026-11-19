@@ -845,22 +845,25 @@ const RANDOM_TIMES: std::ops::RangeInclusive<i64> = 1..=6;
 /// One logged row of a random segment, kept so the generator can count
 /// which edge cases a case contains.
 enum RandomRow {
-    Data {
-        entity: EntityPath,
-        component: ComponentDescriptor,
-        time: Option<i64>,
-
-        /// Neither null nor an empty list.
-        has_value: bool,
-
-        /// The same row also logs a `Clear` on `entity`.
-        with_clear: bool,
-    },
+    Data(RandomDataRow),
     Clear {
         entity: EntityPath,
         time: Option<i64>,
         recursive: bool,
     },
+}
+
+/// A logged row of a random segment that holds a component value.
+struct RandomDataRow {
+    entity: EntityPath,
+    component: ComponentDescriptor,
+    time: Option<i64>,
+
+    /// Neither null nor an empty list.
+    has_value: bool,
+
+    /// The same row also logs a `Clear` on `entity`.
+    with_clear: bool,
 }
 
 struct RandomSegment {
@@ -955,13 +958,13 @@ fn random_segment(rng: &mut SplitMix) -> (RandomSegment, Vec<RandomRow>) {
                         (clear_descr.clone(), with_clear.then(|| flag(recursive))),
                     ],
                 );
-                rows.push(RandomRow::Data {
+                rows.push(RandomRow::Data(RandomDataRow {
                     entity: entity.clone(),
                     component: component.clone(),
                     time,
                     has_value,
                     with_clear,
-                });
+                }));
                 if with_clear {
                     rows.push(RandomRow::Clear {
                         entity: entity.clone(),
@@ -1003,13 +1006,13 @@ fn random_segment(rng: &mut SplitMix) -> (RandomSegment, Vec<RandomRow>) {
     let mut logged: Vec<ComponentColumnSelector> = rows
         .iter()
         .filter_map(|row| match row {
-            RandomRow::Data {
+            RandomRow::Data(RandomDataRow {
                 entity,
                 component,
                 has_value: true,
                 ..
-            } => Some(column(&entity.to_string(), component)),
-            RandomRow::Data { .. } | RandomRow::Clear { .. } => None,
+            }) => Some(column(&entity.to_string(), component)),
+            RandomRow::Data(_) | RandomRow::Clear { .. } => None,
         })
         .collect();
     logged.sort_by_key(|c| (c.entity_path.clone(), c.component.clone()));
@@ -1093,12 +1096,12 @@ fn edge_cases(segment: &RandomSegment, rows: &[RandomRow]) -> Vec<&'static str> 
     let mut times_per_column: BTreeMap<(&EntityPath, &str), Vec<i64>> = BTreeMap::new();
     let mut has_static = BTreeSet::new();
     for row in rows {
-        if let RandomRow::Data {
+        if let RandomRow::Data(RandomDataRow {
             entity,
             component,
             time,
             ..
-        } = row
+        }) = row
         {
             let key = (entity, component.component.as_str());
             match time {
@@ -1140,7 +1143,7 @@ fn edge_cases(segment: &RandomSegment, rows: &[RandomRow]) -> Vec<&'static str> 
             .iter()
             .any(|key| has_static.contains(key) && times_per_column.contains_key(key)),
         rows.iter().any(|row| {
-            matches!(row, RandomRow::Data { entity, component, with_clear: true, .. }
+            matches!(row, RandomRow::Data(RandomDataRow { entity, component, with_clear: true, .. })
                 if selected.contains(&(entity, component.component.as_str())))
         }),
         segment.rq.filtered_is_not_null.is_some(),

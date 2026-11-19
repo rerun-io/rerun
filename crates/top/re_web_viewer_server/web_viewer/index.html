@@ -532,6 +532,7 @@
           notebook: Option<bool>,
           persist: Option<bool>,
           theme: Option<String>,
+          analytics: Option<String>,
         */
         const options = {
           url: query.getAll("url"),
@@ -546,6 +547,11 @@
           persist: get_query_bool(query, "persist", true),
           fallbackToken: query.get("token"),
           theme: query.get("theme"),
+          // A local server (`rerun --web-viewer`) sets the mode in a meta tag, which survives
+          // reloads; otherwise the `analytics` query parameter, else the viewer's default.
+          analytics:
+            document.querySelector('meta[name="rerun-analytics"]')?.content ??
+            query.get("analytics"),
           login: {
             signedInUrl: location.origin + "/signed-in",
             signedOutUrl: location.origin + "/signed-out",

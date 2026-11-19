@@ -426,7 +426,7 @@ class RecordingStream:
 
             # At this point if there aren't other references to this recording, it's considered
             # orphaned. Do a sweep to clean up any orphaned recordings.
-            self._disconnect_orphaned_recordings()  # NOLINT
+            self._disconnect_orphaned_recordings()
 
     # any free function taking a `RecordingStream` as the first argument can also be a method
     binary_stream = binary_stream
@@ -1492,9 +1492,9 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
 
     def decorator(func: _TFunc) -> _TFunc:
         if inspect.isgeneratorfunction(func):
-
+            # Cast back to `_TFunc` below, so callers never see this return type.
             @functools.wraps(func)
-            def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
+            def generator_wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
                 # The following code is structured to avoid leaking the recording stream
                 # context when yielding from the generator.
                 # See: https://github.com/rerun-io/rerun/issues/6238
@@ -1517,9 +1517,9 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
 
             return cast("_TFunc", generator_wrapper)
         else:
-
+            # Cast back to `_TFunc` below, so callers never see this return type.
             @functools.wraps(func)
-            def wrapper(*args: Any, **kwargs: Any) -> Any:
+            def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
                 with RecordingStream(application_id, recording_id=uuid.uuid4()):
                     gen = func(*args, **kwargs)
                     return gen
@@ -1562,9 +1562,9 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
 
     """
     if inspect.isgeneratorfunction(func):
-
+        # Cast back to `_TFunc` below, so callers never see this return type.
         @functools.wraps(func)
-        def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
+        def generator_wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
             # The following code is structured to avoid leaking the recording stream
             # context when yielding from the generator.
             # See: https://github.com/rerun-io/rerun/issues/6238

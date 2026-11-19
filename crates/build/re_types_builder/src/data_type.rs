@@ -112,11 +112,13 @@ pub enum DataType {
 
     List(Arc<Field>),
 
+    // relint: allow(positional_fields): mirrors `arrow::datatypes::DataType`
     FixedSizeList(Arc<Field>, usize),
 
     Struct(Vec<Field>),
 
     /// The placement in the list is also its identifier.
+    // relint: allow(positional_fields): mirrors `arrow::datatypes::DataType`
     Union(Vec<Field>, UnionMode),
 
     /// A datatype together with the name of the definition it came from.

@@ -250,7 +250,7 @@ pub(crate) fn warn_about_unsupported_properties(
         let path_suffix = filepath.map_or_else(String::new, |filepath| {
             format!("\nFile path: {}", filepath.display())
         });
-        re_log::warn_once!("Ignored properties of .ply file: {unsupported:?}{path_suffix}"); // NOLINT path at end
+        re_log::warn_once!("Ignored properties of .ply file: {unsupported:?}{path_suffix}"); // relint: allow(log_sensitive_inline): path at end
     }
 }
 

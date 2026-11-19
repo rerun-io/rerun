@@ -2,8 +2,9 @@
 
 use std::sync::Arc;
 
+use re_agent::ModelApiProvider;
 use re_agent::acp::schema::v1::{SessionConfigId, SessionConfigOption, SessionConfigOptionValue};
-use re_agent::{AgentToolbox, ModelApiProvider};
+use re_agent_tools::AgentToolbox;
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_error::StructuredError;
 use re_ui::alert::Alert;
@@ -1124,8 +1125,13 @@ mod tests {
             .map(|profile| {
                 let installed = matches!(profile.id.as_str(), "claude" | "codex");
                 AgentEntry {
-                    executable: installed
-                        .then(|| std::path::PathBuf::from("/usr/local/bin").join(&profile.command)),
+                    install: if installed {
+                        re_agent::AgentInstall::Ready(
+                            std::path::PathBuf::from("/usr/local/bin").join(&profile.command),
+                        )
+                    } else {
+                        re_agent::AgentInstall::NotInstalled
+                    },
                     profile,
                 }
             })

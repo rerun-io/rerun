@@ -34,6 +34,7 @@ pub(crate) fn capability_names() -> Vec<String> {
         _ => {
             vec![
                 re_protos::capabilities::catalog_write_register("file"),
+                re_protos::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE.to_owned(),
                 re_protos::capabilities::CATALOG_WRITE_STAGING.to_owned(),
                 re_protos::capabilities::DATASET_FIND_CHUNKS.to_owned(),
             ]
@@ -66,5 +67,6 @@ mod tests {
 
         assert_eq!(capabilities.register_schemes(), vec!["file"]);
         assert!(capabilities.has(re_protos::capabilities::CATALOG_WRITE_STAGING));
+        assert!(capabilities.has(re_protos::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE));
     }
 }

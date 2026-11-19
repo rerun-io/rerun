@@ -19,6 +19,7 @@ use re_protos::cloud::v1alpha1::ext::{
 #[derive(Clone)]
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
+
     #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
     LanceDataset(Arc<lance::Dataset>),
 }

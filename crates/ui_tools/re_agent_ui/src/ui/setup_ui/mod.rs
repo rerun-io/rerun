@@ -54,7 +54,13 @@ pub fn setup_ui(
                             available_model_apis,
                             agent_harness::agent_choice_ui,
                         ),
-                        _ => setup_ui_inner(ui, settings, agents, available_model_apis, web_choice_ui),
+                        _ => setup_ui_inner(
+                            ui,
+                            settings,
+                            agents,
+                            available_model_apis,
+                            web_choice_ui,
+                        ),
                     };
                 });
         });
@@ -83,6 +89,8 @@ fn setup_ui_inner(
     // The provider toggle already names a model API.
     let label = if settings.profile_id.model_api_provider().is_some() {
         "Start".to_owned()
+    } else if matches!(ready, Err(AgentNotReady::NotInstalled { .. })) {
+        "Finish setup to start".to_owned()
     } else {
         format!(
             "Start {}",
@@ -100,11 +108,12 @@ fn setup_ui_inner(
     if clicked {
         next_screen = Screen::Chat;
     }
-    // A missing key is already shown next to the provider toggle.
-    if let Err(problem) = ready
+    // A missing key is already shown next to the provider toggle, and a missing agent under it.
+    if let Err(err) = ready
         && settings.profile_id.model_api_provider().is_none()
+        && !matches!(err, AgentNotReady::NotInstalled { .. })
     {
-        ui.error_label(problem);
+        ui.error_label(err.to_string());
     }
 
     ui.add_space(4.0);
@@ -316,6 +325,34 @@ pub fn agent_name(profile_id: &AgentProfileId, agents: &[AgentEntry]) -> Option<
         .map(|agent| agent.profile.name.clone())
 }
 
+/// Why the selected agent cannot be started.
+#[derive(Debug, thiserror::Error)]
+pub enum AgentNotReady {
+    /// The custom agent has no command line.
+    #[error("Enter the command that starts your agent")]
+    EmptyCustomCommand,
+
+    /// The selected model API cannot be launched.
+    #[error(transparent)]
+    Launch(re_agent::AgentLaunchError),
+
+    /// No known agent has the selected profile.
+    #[error("Select an agent")]
+    NoAgentSelected,
+
+    /// The selected agent's executable was not found.
+    #[error("{name} needs {command}, which was not found. {install_hint}")]
+    NotInstalled {
+        /// Display name of the agent.
+        name: String,
+
+        command: String,
+
+        /// How to install the agent.
+        install_hint: String,
+    },
+}
+
 /// Whether the selected agent can be started, or why not.
 ///
 /// `available_model_apis` are the providers whose API key was found.
@@ -323,10 +360,10 @@ pub fn selected_agent_ready(
     settings: &AgentSettings,
     agents: &[AgentEntry],
     available_model_apis: &[ModelApiProvider],
-) -> Result<(), String> {
+) -> Result<(), AgentNotReady> {
     if settings.profile_id == AgentProfileId::CUSTOM {
         if settings.custom_command_line.trim().is_empty() {
-            return Err("Enter the command that starts your agent".to_owned());
+            return Err(AgentNotReady::EmptyCustomCommand);
         }
         return Ok(());
     }
@@ -335,7 +372,9 @@ pub fn selected_agent_ready(
         return if model_apis_with_key(settings, available_model_apis).contains(&provider) {
             Ok(())
         } else {
-            Err(re_agent::AgentLaunchError::missing_api_key(provider).to_string())
+            Err(AgentNotReady::Launch(
+                re_agent::AgentLaunchError::missing_api_key(provider),
+            ))
         };
     }
 
@@ -343,13 +382,14 @@ pub fn selected_agent_ready(
         .iter()
         .find(|agent| agent.profile.id == settings.profile_id)
     else {
-        return Err("Select an agent".to_owned());
+        return Err(AgentNotReady::NoAgentSelected);
     };
-    if agent.executable.is_none() {
-        return Err(format!(
-            "{} is not installed. {}",
-            agent.profile.name, agent.profile.install_hint
-        ));
+    if agent.executable().is_none() {
+        return Err(AgentNotReady::NotInstalled {
+            name: agent.profile.name.clone(),
+            command: agent.profile.command.clone(),
+            install_hint: agent.profile.install_hint.clone(),
+        });
     }
     Ok(())
 }

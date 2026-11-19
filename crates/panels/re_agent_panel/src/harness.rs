@@ -1,5 +1,5 @@
 //! The parts of the agent panel that only exist where agent harnesses (Claude Code, Codex, …)
-//! can run: the `rerun viewer-mcp` server they drive the viewer through, the skills and docs we
+//! can run: the `rerun mcp` server they drive the viewer through, the skills and docs we
 //! unpack for them, and self-improvement.
 
 use std::path::Path;
@@ -47,9 +47,9 @@ pub struct Harness {
 
 impl Harness {
     /// A new agent panel that can also run agent harnesses, which drive this viewer through
-    /// `rerun viewer-mcp` and read the skills and docs we unpack for them.
+    /// `rerun mcp` and read the skills and docs we unpack for them.
     ///
-    /// `viewer_endpoint` is the gRPC address of this viewer, which `rerun viewer-mcp` connects to.
+    /// `viewer_endpoint` is the gRPC address of this viewer, which `rerun mcp` connects to.
     /// `cache_dir` is where the skills are unpacked for the agent to read.
     /// `is_in_rerun_workspace` marks one of our own development builds; see [`Self::user_like_cwd`].
     pub fn new_panel(
@@ -232,17 +232,17 @@ pub fn record_mcp_startup_failures(reports: &[re_agent::McpStartupReport]) {
     }
 }
 
-/// `rerun viewer-mcp`, pointed at this viewer.
+/// `rerun mcp`, pointed at this viewer.
 ///
 /// Prefers the running executable, so that the agent drives the viewer it is embedded in rather
 /// than some other version that happens to be installed.
 ///
 /// The name check keeps this honest: `re_viewer` is a library, so the running executable may be a
-/// custom viewer or one of our examples, and only the `rerun` binary has a `viewer-mcp` subcommand.
+/// custom viewer or one of our examples, and only the `rerun` binary has an `mcp` subcommand.
 /// It is case-insensitive because the macOS bundle names the executable `Rerun`.
 fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
     let current_exe = std::env::current_exe();
-    let mut args = vec!["viewer-mcp".to_owned()];
+    let mut args = vec!["mcp".to_owned()];
     let rerun = match &current_exe {
         Ok(exe)
             if exe

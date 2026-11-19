@@ -18,7 +18,7 @@ Formatting options for the raw data view.
 * `style`: How densely the rows are packed.
 
 ## API reference links
- * 🐍 [Python API docs for `RawDataView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.RawDataView)
+ * 🐍 [Python API docs for `RawDataView`](https://ref.rerun.io/docs/python/stable/blueprint_views#rerun.blueprint.views.RawDataView)
 
 ## Example
 

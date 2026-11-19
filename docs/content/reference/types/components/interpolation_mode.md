@@ -32,7 +32,7 @@ UInt8
 
 ## API reference links
  * 🌊 [C++ API docs for `InterpolationMode`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
- * 🐍 [Python API docs for `InterpolationMode`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.InterpolationMode)
+ * 🐍 [Python API docs for `InterpolationMode`](https://ref.rerun.io/docs/python/stable/components#rerun.components.InterpolationMode)
  * 🦀 [Rust API docs for `InterpolationMode`](https://docs.rs/rerun/latest/rerun/components/enum.InterpolationMode.html)
 
 

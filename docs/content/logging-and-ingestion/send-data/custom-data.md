@@ -10,7 +10,7 @@ For Python and Rust we have helpers for this, called `AnyValues`, allowing you t
 For C++ a similar thing can be accomplished without the helpers.
 You find the documentation for these helpers here:
 
--   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.AnyValues)
+-   [`AnyValues` in Python](https://ref.rerun.io/docs/python/main/rerun/#rerun.AnyValues)
 -   [`AnyValues` in Rust](https://docs.rs/rerun/latest/rerun/struct.AnyValues.html)
 
 snippet: tutorials/any_values
@@ -19,12 +19,29 @@ If your values should be grouped together and that grouping isn't referred to fr
 
 You find the documentation for these helpers here:
 
--   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/common/custom_data/#rerun.DynamicArchetype)
+-   [`DynamicArchetype` in Python](https://ref.rerun.io/docs/python/main/rerun/#rerun.DynamicArchetype)
 -   [`DynamicArchetype` in Rust](https://docs.rs/rerun/latest/rerun/struct.DynamicArchetype.html)
 
 snippet: tutorials/dynamic_archetype
 
 You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
+
+## Logging custom data
+
+Use `DynamicArchetype` to send data with custom component names alongside regular Rerun data.
+Flat arrays and Arrow `StructArray`s are both supported.
+
+The example below logs scalar and nested data to an entity named `/plot`.
+This is how its components appear in the Viewer:
+
+<picture style="zoom: 0.5">
+  <img src="https://static.rerun.io/component-mapping-data-overview/e42dc535b06c41e193b7b29f2e88aadd6506cafc/full.png" alt="Data overview for the /plot entity showing scalar, custom, and nested components">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/component-mapping-data-overview/e42dc535b06c41e193b7b29f2e88aadd6506cafc/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/component-mapping-data-overview/e42dc535b06c41e193b7b29f2e88aadd6506cafc/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/component-mapping-data-overview/e42dc535b06c41e193b7b29f2e88aadd6506cafc/1024w.png">
+</picture>
+
+snippet: howto/component_mapping[custom_data]
 
 ## Remapping to a Rerun archetype
 
@@ -78,8 +95,8 @@ snippet: tutorials/custom_data
 ## Creating/augmenting visualizations from custom data
 
 All components can be mapped to arbitrary slots of visualizers.
-For general information on component mapping see [component mappings](../../viewer/blueprints-and-views/component-mappings.md),
-for the common case of plotting see [plot any scalar](../../viewer/plots-and-maps/plot-any-scalar.md)
+For general information on component mapping see [component mappings](../../viewer/view-concepts/component-mappings.md),
+for the common case of plotting see [plot any scalar](../../viewer/view-types/time-series.md#plot-any-scalar)
 
 > [!NOTE]
 > Complex mappings e.g. from scalars to colors are not yet possible, but will be supported in future versions

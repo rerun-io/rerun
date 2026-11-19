@@ -51,7 +51,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `ImageFormat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ImageFormat.html)
- * 🐍 [Python API docs for `ImageFormat`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ImageFormat)
+ * 🐍 [Python API docs for `ImageFormat`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.ImageFormat)
  * 🦀 [Rust API docs for `ImageFormat`](https://docs.rs/rerun/latest/rerun/encodings/struct.ImageFormat.html)
 
 

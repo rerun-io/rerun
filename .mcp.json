@@ -1,7 +1,7 @@
 {
   "mcpServers": {
     "rerun": {
-      "command": "./target/debug/re-viewer-mcp",
+      "command": "./target/debug/rerun-mcp",
       "args": []
     },
     "egui": {

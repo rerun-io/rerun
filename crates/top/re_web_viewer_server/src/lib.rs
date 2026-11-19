@@ -374,16 +374,46 @@ impl Display for WebViewerServerPort {
     }
 }
 
+/// Error returned when parsing a [`WebViewerServerPort`] from a string.
+#[derive(thiserror::Error, Clone, Debug, PartialEq, Eq)]
+#[error("Failed to parse port: {0}")]
+pub struct InvalidWebViewerServerPortError(#[source] std::num::ParseIntError);
+
 // Needed for clap
 impl FromStr for WebViewerServerPort {
-    type Err = String;
+    type Err = InvalidWebViewerServerPortError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.parse::<u16>() {
-            Ok(port) => Ok(Self(port)),
-            Err(err) => Err(format!("Failed to parse port: {err}")),
-        }
+        s.parse::<u16>()
+            .map(Self)
+            .map_err(InvalidWebViewerServerPortError)
     }
+}
+
+/// Add the analytics mode to `index.html`, which reads it before the `analytics` query parameter.
+///
+/// A query parameter alone would be lost on reload, because the viewer rewrites the address bar
+/// on startup.
+#[cfg(not(disable_web_viewer_server))]
+fn with_analytics_mode(index_html: &[u8], mode: re_analytics::AnalyticsMode) -> Vec<u8> {
+    let meta = format!(
+        r#"<meta name="rerun-analytics" content="{}" />"#,
+        mode.as_str()
+    );
+    const HEAD_END: &[u8] = b"</head>";
+    let Some(head_end) = index_html
+        .windows(HEAD_END.len())
+        .position(|window| window == HEAD_END)
+    else {
+        re_log::warn_once!("index.html has no </head>; serving it without the analytics mode");
+        return index_html.to_vec();
+    };
+    let mut html = Vec::with_capacity(index_html.len() + meta.len() + 1);
+    html.extend_from_slice(&index_html[..head_end]);
+    html.extend_from_slice(meta.as_bytes());
+    html.push(b'\n');
+    html.extend_from_slice(&index_html[head_end..]);
+    html
 }
 
 /// HTTP host for the Rerun Web Viewer application
@@ -401,6 +431,10 @@ struct WebViewerServerInner {
 
     #[cfg(not(disable_web_viewer_server))]
     data: WebViewerData,
+
+    /// `data`'s `index.html`, with this process's analytics mode added.
+    #[cfg(not(disable_web_viewer_server))]
+    index_html: Vec<u8>,
 }
 
 impl WebViewerServer {
@@ -467,6 +501,11 @@ impl WebViewerServer {
             server,
             shutdown,
             num_wasm_served: Default::default(),
+            #[cfg(not(disable_web_viewer_server))]
+            index_html: with_analytics_mode(
+                data.index_html(),
+                re_analytics::AnalyticsMode::for_web_viewer_served_by_this_process(),
+            ),
             #[cfg(not(disable_web_viewer_server))]
             data,
         });
@@ -580,7 +619,7 @@ impl WebViewerServerInner {
 
         let data = &self.data;
         let (mime, bytes): (&str, &[u8]) = match path {
-            "/" | "/index.html" => ("text/html", data.index_html()),
+            "/" | "/index.html" => ("text/html", &self.index_html),
             "/favicon.ico" => ("image/x-icon", data.favicon()),
             "/apple-touch-icon.png" => ("image/png", data.apple_touch_icon()),
             "/sw.js" => ("text/javascript", data.sw_js()),
@@ -631,6 +670,25 @@ mod tests {
 
         assert_eq!(server.bound_url(), format!("http://0.0.0.0:{port}"));
         assert_eq!(server.server_url(), format!("http://127.0.0.1:{port}"));
+    }
+
+    #[cfg(not(disable_web_viewer_server))]
+    #[test]
+    fn analytics_mode_is_added_to_the_head() {
+        let html = with_analytics_mode(
+            b"<html><head><title>x</title></head><body></body></html>",
+            re_analytics::AnalyticsMode::Off,
+        );
+        assert_eq!(
+            String::from_utf8(html).unwrap(),
+            "<html><head><title>x</title><meta name=\"rerun-analytics\" content=\"off\" />\n</head><body></body></html>"
+        );
+
+        // Without a head, the page is served unchanged.
+        assert_eq!(
+            with_analytics_mode(b"index.html", re_analytics::AnalyticsMode::Off),
+            b"index.html"
+        );
     }
 
     #[cfg(not(disable_web_viewer_server))]

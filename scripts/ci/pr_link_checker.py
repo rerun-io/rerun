@@ -124,7 +124,7 @@ def get_added_lines_with_links(
 
     try:
         result = subprocess.run(
-            ["git", "diff", "--no-ext-diff", "--no-merges", "--diff-filter=AM", f"{base_ref}...HEAD"],  # NOLINT
+            ["git", "diff", "--no-ext-diff", "--no-merges", "--diff-filter=AM", f"{base_ref}...HEAD"],
             capture_output=True,
             text=True,
             check=True,

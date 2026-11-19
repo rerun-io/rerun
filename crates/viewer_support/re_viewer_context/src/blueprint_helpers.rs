@@ -100,10 +100,10 @@ pub trait BlueprintContext {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+            .send_system(SystemCommand::AppendToStore {
+                store_id: blueprint.store_id().clone(),
+                chunks: vec![chunk],
+            });
     }
 
     fn save_blueprint_component(
@@ -154,10 +154,10 @@ pub trait BlueprintContext {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+            .send_system(SystemCommand::AppendToStore {
+                store_id: blueprint.store_id().clone(),
+                chunks: vec![chunk],
+            });
     }
 
     fn save_serialized_blueprint_component(
@@ -210,7 +210,10 @@ pub trait BlueprintContext {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::AppendToStore(store_id, vec![chunk]));
+            .send_system(SystemCommand::AppendToStore {
+                store_id,
+                chunks: vec![chunk],
+            });
     }
 
     fn save_static_blueprint_array(
@@ -234,10 +237,10 @@ pub trait BlueprintContext {
         };
 
         self.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+            .send_system(SystemCommand::AppendToStore {
+                store_id: blueprint.store_id().clone(),
+                chunks: vec![chunk],
+            });
     }
 
     fn latest_at_in_current_blueprint(
@@ -332,10 +335,10 @@ pub trait BlueprintContext {
         match chunk {
             Ok(chunk) => self
                 .command_sender()
-                .send_system(SystemCommand::AppendToStore(
-                    blueprint.store_id().clone(),
-                    vec![chunk],
-                )),
+                .send_system(SystemCommand::AppendToStore {
+                    store_id: blueprint.store_id().clone(),
+                    chunks: vec![chunk],
+                }),
             Err(err) => {
                 re_log::error_once!("Failed to create Chunk for blueprint component: {err}");
             }
@@ -377,10 +380,10 @@ pub trait BlueprintContext {
         match chunk {
             Ok(chunk) => self
                 .command_sender()
-                .send_system(SystemCommand::AppendToStore(
-                    blueprint.store_id().clone(),
-                    vec![chunk],
-                )),
+                .send_system(SystemCommand::AppendToStore {
+                    store_id: blueprint.store_id().clone(),
+                    chunks: vec![chunk],
+                }),
             Err(err) => {
                 re_log::error_once!("Failed to create Chunk for blueprint component: {err}");
             }

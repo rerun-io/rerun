@@ -224,6 +224,12 @@ pub mod components {
     pub use re_types_core::components::*;
 
     pub use self::_components::*;
+
+    /// Error returned when converting an image sequence into a [`VideoCodec`].
+    #[cfg(feature = "video")]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+    #[error("Not a real video")]
+    pub struct ImageSequenceIsNotAVideoCodecError;
 }
 
 /// The low-level encodings that [`components`] are built from.

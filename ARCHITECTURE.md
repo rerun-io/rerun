@@ -144,9 +144,9 @@ Pass `--edges all` to `scripts/generate_crate_graph.py` for a version with every
 
 | Crate                | Description                                                                        |
 | -------------------- | ---------------------------------------------------------------------------------- |
+| re_rerun_mcp         | MCP server that lets LLM agents use Rerun.                                         |
 | re_sdk               | Rerun logging SDK                                                                  |
 | re_viewer            | The Rerun viewer                                                                   |
-| re_viewer_mcp        | MCP server that allows llm agents to use the Rerun Viewer.                         |
 | re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                              |
 | rerun                | The Rerun Rust SDK: log images, point clouds, etc, and visualize them effortlessly |
 | rerun-cli            | The Rerun command-line tool: the `rerun` binary, including the native Viewer       |
@@ -211,15 +211,16 @@ A sibling of `crates/views`: neither depends on the other.
 
 [`crates/store_app`](./crates/store_app) — the queryable state a viewer or a server works with.
 
-| Crate             | Description                             |
-| ----------------- | --------------------------------------- |
-| re_catalog_client | High-level client for Rerun catalogs    |
-| re_dataframe      | High-level query APIs                   |
-| re_datafusion     | High-level query APIs                   |
-| re_entity_db      | In-memory storage of Rerun entities     |
-| re_query          | High-level query APIs                   |
-| re_server         | An ephemeral local Rerun catalog server |
-| re_tf             | Rerun spatial transform processing      |
+| Crate             | Description                                       |
+| ----------------- | ------------------------------------------------- |
+| re_catalog_client | High-level client for Rerun catalogs              |
+| re_catalog_tools  | Rerun catalog operations as tools for LLM agents. |
+| re_dataframe      | High-level query APIs                             |
+| re_datafusion     | High-level query APIs                             |
+| re_entity_db      | In-memory storage of Rerun entities               |
+| re_query          | High-level query APIs                             |
+| re_server         | An ephemeral local Rerun catalog server           |
+| re_tf             | Rerun spatial transform processing                |
 
 ### Data flow
 
@@ -297,6 +298,7 @@ Nothing Rerun-specific in here.
 | Crate               | Description                                                                                                                                                                |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | re_agent            | Talk to a coding agent (Claude Code, Codex, …) over the Agent Client Protocol, or run an agent loop against a model API                                                    |
+| re_agent_tools      | The interface between an LLM agent and the tools a host offers it.                                                                                                         |
 | re_analytics        | Rerun's analytics SDK                                                                                                                                                      |
 | re_arrow_util       | Helpers for working with arrow.                                                                                                                                            |
 | re_async            | Async runtime abstractions for native and WebAssembly targets.                                                                                                             |

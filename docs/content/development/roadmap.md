@@ -22,7 +22,7 @@ This page gives a high-level overview of ongoing and planned work.
 
 ### Near term
 - The agent panel: chat with a coding agent that can inspect and drive the Viewer through the [Rerun MCP server](../viewer/extend/mcp.md)
-    - You can try it today in the native Viewer: enable **Settings → Experimental → Agent panel**
+    - You can try it today: click the agent button in the top right corner of the Viewer
     - We are working on making it a stable, non-experimental feature
 - A refreshed look and feel for the Viewer
 - Greater capabilities around sharing links to data
@@ -30,19 +30,19 @@ This page gives a high-level overview of ongoing and planned work.
 ### Medium term
 - Better blueprint management, such as several blueprints per dataset
 - A composable Viewer toolkit, for building your own viewer from Rerun's UI building blocks
-- More mature data loaders, and more ready-made conversions of open robotics datasets
-- Richer filtering in the dataframe view (table views already have [filters](../viewer/blueprints-and-views/configure-table-blueprints.md#filtering-rows))
+- A more mature training dataloader, and more ready-made conversions of open robotics datasets
+- Richer filtering in the dataframe view (table views already have [filters](../viewer/blueprints/configure-table-blueprints.md#filtering-rows))
 - Dataset views that give zero-copy modified views into large datasets
 
 ### Longer term
 - Interactive applications built with Rerun, such as UI for tweaking configs or custom data annotation tools
     - Today you can [react to Viewer events](../viewer/extend/callbacks.md) in the web Viewer, in notebooks, and from Rust, but the native Viewer has no user widgets or callbacks for Python
 - Official ROS 2 bridge
-    - Today you can [import ROS 2 bags in MCAP format](../logging-and-ingestion/import/mcap/working-with-mcap.md) and re-log live topics yourself, as shown in the [ROS 2 example](../integrations/ros2-nav-turtlebot.md)
+    - Today you can [import ROS 2 bags in MCAP format](../logging-and-ingestion/import/mcap/working-with-mcap.md) and re-log live topics yourself, as shown in the [ROS 2 example](../logging-and-ingestion/integrations/ros2-nav-turtlebot.md)
 - Extensibility of all parts of the stack
 
 ### Recently shipped
-- Configurable data interpretation, for example MCAP files with custom messages: see [Lenses](../query-and-transform/lenses.md) and [component mappings](../viewer/blueprints-and-views/component-mappings.md)
+- Configurable data interpretation, for example MCAP files with custom messages: see [Lenses](../query-and-transform/lenses.md) and [component mappings](../viewer/view-concepts/component-mappings.md)
 - Callbacks for Viewer events: see [React to events in the Viewer](../viewer/extend/callbacks.md)
 - Driving the Viewer from code: `rerun.experimental.ViewerClient` in Python and the `WebViewer` API in JavaScript
 - Data format stability: the `.rrd` framing is stable, and recordings from Rerun 0.23 and later are migrated automatically on load (see [RRD format stability](../logging-and-ingestion/chunks-and-rrd/rrd-format.md#stability))
@@ -59,8 +59,6 @@ This section lists features that users often ask for, with the best workaround w
 - User widgets (buttons, sliders) and callbacks into Python from the native Viewer. Workaround: use [callbacks](../viewer/extend/callbacks.md) in the web Viewer, in notebooks, or from Rust, or [extend the Viewer in Rust](../viewer/extend/extend-ui.md).
     - We are working on adding web views to the Viewer.
     - [#2691](https://github.com/rerun-io/rerun/issues/2691), [#3087](https://github.com/rerun-io/rerun/issues/3087)
-- Reading the current selection from Python: `rerun.experimental.ViewerClient.get_state()` has no selection. Workaround: selection events in the web Viewer and notebooks.
-    - [#12990](https://github.com/rerun-io/rerun/issues/12990)
 - Locking the 3D camera against user input, or limiting zoom and orbit.
     - [#2497](https://github.com/rerun-io/rerun/issues/2497)
 - Linking or highlighting different entities across views. Only the same entity path and instance link today.
@@ -139,7 +137,7 @@ This section lists features that users often ask for, with the best workaround w
 - Per-client sessions in the `serve_grpc` proxy: every connected Viewer gets the same stream. Workaround: one recording and port per client.
 - Watching a folder for new files, and registering data from object stores (S3, GCS) in the open-source `rerun server`. It only registers local files, either at startup with `--dataset` or later with `register`.
 - Live streams larger than RAM. Data streamed from the SDK to the Viewer is kept in memory, and the oldest data is dropped at the memory limit. Workaround: save to an `.rrd` file and open the file, which is read on demand (see [Limit memory usage](../viewer/performance/limit-ram.md)).
-- More memory in the web Viewer. It runs as 32-bit Wasm and is limited to about 2 GiB in practice. Workaround: use the native Viewer. Large local `.rrd` files are read on demand through the Viewer catalog (**Load files via Viewer catalog**, on by default), but `.rrd` files opened over HTTP are streamed into memory.
+- More memory in the web Viewer. It runs as 32-bit Wasm, which caps memory at 4 GiB, and browsers often allow less; by default the Viewer limits itself to 2.5 GB. Workaround: use the native Viewer. Large local `.rrd` files are read on demand through the Viewer catalog (**Load files via Viewer catalog**, on by default), but `.rrd` files opened over HTTP are streamed into memory.
 
 ### Integrations
 - A first-party Bevy integration. [Revy](https://github.com/rerun-io/revy) is a proof of concept.

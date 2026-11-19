@@ -32,6 +32,7 @@ impl TryFrom<&MetadataValue<Ascii>> for Jwt {
     type Error = Error;
 
     fn try_from(value: &MetadataValue<Ascii>) -> Result<Self, Self::Error> {
+        // relint: allow(map_err_dropped): tonic's `ToStrError` carries no information
         let token = value.to_str().map_err(|_err| Error::MalformedToken)?;
         let token = token
             .strip_prefix(TOKEN_PREFIX)

@@ -284,6 +284,10 @@ lint-cpp-files = { cmd = "run-clang-tidy -p build/debug -config-file rerun_cpp/.
   "lint-clang-tidy-config",
 ] }
 lint-rerun = "python scripts/lint.py"
+# Syntax-aware lints for Rust code. See `scripts/relint/README.md`.
+relint = "cargo run --quiet --locked --release --manifest-path scripts/relint/Cargo.toml --"
+# Format, clippy, and test `relint` itself: it is its own workspace, so the main checks don't cover it.
+relint-self-check = "cargo fmt --check --manifest-path scripts/relint/Cargo.toml && cargo clippy --quiet --locked --release --all-targets --manifest-path scripts/relint/Cargo.toml -- --deny warnings && cargo test --quiet --locked --release --manifest-path scripts/relint/Cargo.toml"
 lint-rs-files = "rustfmt --edition 2024 --check"
 lint-rs-all = "cargo fmt --check"
 
@@ -432,6 +436,8 @@ py-third-party-notices = { cmd = "cargo -Zscript scripts/ci/third_party_notices.
 
 # Check that each crate has at most one integration test binary (opt-out via `[package.metadata.rerun] test-binaries`).
 check-test-binaries = "python scripts/ci/check_test_binaries.py"
+
+check-test-targets = "python scripts/ci/check_test_targets.py"
 
 # Download a specific artifact from gcloud.
 #

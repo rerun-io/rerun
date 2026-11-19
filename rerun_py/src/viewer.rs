@@ -28,6 +28,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 pub struct PyViewerClientInternal {
     conn: ViewerConnectionHandle,
 }
+
 #[pymethods]
 impl PyViewerClientInternal {
     #[new]

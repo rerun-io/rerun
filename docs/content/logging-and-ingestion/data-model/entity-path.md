@@ -58,7 +58,7 @@ Path hierarchy plays an important role in a number of different functions within
 
  * With the [Transform System](transforms.md), a `Transform3D` logged to an entity without explicit `parent_frame`/`child_frame` describes
 the relationship between that entity and its direct parent.
- * When resolving the meaning of [`ClassId`](../../reference/types/components/class_id.md) and [`KeypointId`](../../reference/types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](../../viewer/blueprints-and-views/annotation-context.md) from the nearest ancestor in the hierarchy.
+ * When resolving the meaning of [`ClassId`](../../reference/types/components/class_id.md) and [`KeypointId`](../../reference/types/components/keypoint_id.md) components, Rerun uses the [Annotation Context](../../viewer/view-concepts/annotation-context.md) from the nearest ancestor in the hierarchy.
  * When adding data to [Blueprints](../../viewer/ui/blueprint-panel.md), it is common to add a path and all of its descendants.
  * When using `rr.log("entity/path", rr.Clear(recursive=True))`, it marks an entity *and all of its descendants* as being cleared.
  * In the future, it will also be possible to use path-hierarchy to set default-values for descendants
@@ -67,7 +67,7 @@ the relationship between that entity and its direct parent.
 ### Entity path filters
 
 An entity path filter selects entities with a list of expressions.
-Rerun uses them for [view contents](../../viewer/blueprints-and-views/entity-queries.md), `filter_contents()` on [datasets](../../query-and-transform/dataframes/dataframe-queries.md), and the `content` argument of the [chunk processing API](../import/chunk-processing-api.md).
+Rerun uses them for [view contents](../../viewer/view-concepts/entity-path-filter.md), `filter_contents()` on [datasets](../../query-and-transform/dataframes/dataframe-queries.md), and the `content` argument of the [chunk processing API](../import/chunk-processing-api.md).
 
 Each expression is either an inclusion, which starts with an optional `+`, or an exclusion, which always starts with a `-`.
 

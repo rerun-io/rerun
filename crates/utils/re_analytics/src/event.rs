@@ -528,7 +528,7 @@ impl Properties for AgentStartup {
 /// Which MCP server an [`AgentMcpStartupFailure`] is about.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Server {
-    /// `rerun viewer-mcp`, through which the agent drives the viewer.
+    /// `rerun mcp`, through which the agent drives the viewer.
     Rerun,
 
     /// Any other server, e.g. one the user configured.
@@ -1091,7 +1091,7 @@ pub struct CliCommandInvoked {
     pub detach_process: bool,
     pub test_receive: bool,
 
-    /// `Some` only for the `viewer-mcp` command.
+    /// `Some` only for the `mcp` command.
     pub mcp_launcher: Option<McpLauncher>,
 }
 
@@ -1141,7 +1141,7 @@ impl Properties for CliCommandInvoked {
     }
 }
 
-/// What started a `rerun viewer-mcp` process.
+/// What started a `rerun mcp` process.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum McpLauncher {
     /// The process got `--from-agent-panel`, which only the viewer's agent panel passes.
@@ -1165,14 +1165,14 @@ impl McpLauncher {
 
 // -----------------------------------------------
 
-/// Sent by `rerun viewer-mcp` for each tool call it answers with a tool result.
+/// Sent by `rerun mcp` for each tool call it answers with a tool result.
 ///
 /// Only calls to this server's own tools are sent.
 /// An agent calls other MCP servers, such as a Linear integration, directly, so those calls never reach this event.
 /// A tool call that ends in a JSON-RPC error sends no event.
 /// This event contains no tool arguments, tool output, or error text.
 pub struct McpToolCalled {
-    /// A name from [`ViewerMcpServer::all_tools`](https://github.com/rerun-io/rerun/blob/main/crates/top/re_viewer_mcp/src/lib.rs), or `unknown`.
+    /// A name from [`RerunMcpServer::all_tools`](https://github.com/rerun-io/rerun/blob/main/crates/top/re_rerun_mcp/src/lib.rs), or `unknown`.
     ///
     /// A client can send any text as a tool name, so other names are replaced.
     pub tool: String,
@@ -1273,8 +1273,8 @@ mod tests {
     }
 
     #[test]
-    fn viewer_mcp_reports_its_launcher() {
-        let event = cli_event("viewer-mcp", Some(McpLauncher::AgentPanel));
+    fn mcp_reports_its_launcher() {
+        let event = cli_event("mcp", Some(McpLauncher::AgentPanel));
         assert_matches!(&event.props["mcp_launcher"],
             Property::String(launcher) if launcher == "agent_panel");
     }
@@ -1341,13 +1341,13 @@ mod tests {
         let event = product_event(ProductFeedback {
             category: Some(FeedbackCategory::DocsMismatch),
             severity: None,
-            surface: Some("rerun_set_blueprint".to_owned()),
+            surface: Some("viewer_set_blueprint".to_owned()),
             content: None,
         });
         assert!(matches!(&event.props["subject"], Property::String(s) if s == "product"));
         assert!(matches!(&event.props["category"], Property::String(s) if s == "docs_mismatch"));
         assert!(
-            matches!(&event.props["surface"], Property::String(s) if s == "rerun_set_blueprint")
+            matches!(&event.props["surface"], Property::String(s) if s == "viewer_set_blueprint")
         );
         assert!(!event.props.contains_key("severity"));
         assert!(!event.props.contains_key("title"));

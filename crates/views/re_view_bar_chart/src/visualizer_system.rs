@@ -83,8 +83,10 @@ impl VisualizerSystem for BarChartVisualizerSystem {
                     .get_mono_with_fallback(BarChart::descriptor_color().component);
 
                 // TODO(andreas): use this all the way.
-                let results =
-                    BlueprintResolvedResults::LatestAt(timeline_query.clone(), latest_at_results);
+                let results = BlueprintResolvedResults::LatestAt {
+                    query: timeline_query.clone(),
+                    results: latest_at_results,
+                };
                 let results =
                     VisualizerInstructionQueryResults::new(instruction, &results, &output);
 

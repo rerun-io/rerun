@@ -4,6 +4,8 @@ order: 200
 description: Add the Rerun C++ SDK to your project with CMake FetchContent or Bazel
 ---
 
+You'll additionally need to install the [Viewer](./viewer.md).
+
 If you're using CMake you can add the SDK to your project using `FetchContent`:
 
 ```cmake
@@ -20,8 +22,6 @@ The SDK is also available as the `librerun-sdk` conda package and the `rerun-sdk
 
 There is no official Bazel support.
 A community-maintained example is available at [kyle-figure/bazel-minimal-rerun](https://github.com/kyle-figure/bazel-minimal-rerun).
-
-You'll additionally need to install the [Viewer](./viewer.md).
 
 ## Next steps
 

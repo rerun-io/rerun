@@ -1,5 +1,5 @@
 ---
-title: Extend and automate
+title: Extend and control
 order: 500
 description: Callbacks, playback control, screenshots, and the MCP server
 index: true

@@ -110,10 +110,10 @@ fn prepare_episode_chunks(
 
     for episode in episodes {
         let store_id = StoreId::recording(application_id.clone(), format!("episode_{}", episode.0));
-        let set_store_info = ImportedData::LogMsg(
-            loader_name.to_owned(),
-            prepare_store_info(&store_id, re_log_msg::FileSource::Sdk),
-        );
+        let set_store_info = ImportedData::LogMsg {
+            importer_name: loader_name.to_owned(),
+            msg: prepare_store_info(&store_id, re_log_msg::FileSource::Sdk),
+        };
 
         if send_crossbeam(tx, set_store_info).is_err() {
             break;
@@ -162,11 +162,11 @@ fn load_and_stream(
                 for result in std::iter::chain(std::iter::once(Ok(initial)), chunks) {
                     match result {
                         Ok(chunk) => {
-                            let data = ImportedData::Chunk(
-                                loader_name.to_owned(),
-                                store_id.clone(),
+                            let data = ImportedData::Chunk {
+                                importer_name: loader_name.to_owned(),
+                                store_id: store_id.clone(),
                                 chunk,
-                            );
+                            };
 
                             if send_crossbeam(tx, data).is_err() {
                                 break;
@@ -192,6 +192,7 @@ fn load_and_stream(
     }
     diagnostics.log_summaries();
 }
+
 #[cfg(test)]
 mod tests {
     use std::collections::BTreeMap;
@@ -205,7 +206,10 @@ mod tests {
     #[derive(Debug)]
     enum Event {
         StoreInfo(StoreId),
-        Chunk(StoreId, String),
+        Chunk {
+            store_id: StoreId,
+            entity_path: String,
+        },
     }
 
     fn fixture(name: &str) -> PathBuf {
@@ -227,12 +231,16 @@ mod tests {
 
         rx.into_iter()
             .filter_map(|data| match data {
-                ImportedData::LogMsg(_, LogMsg::SetStoreInfo(info)) => {
-                    Some(Event::StoreInfo(info.info.store_id))
-                }
-                ImportedData::Chunk(_, store_id, chunk) => {
-                    Some(Event::Chunk(store_id, chunk.entity_path().to_string()))
-                }
+                ImportedData::LogMsg {
+                    msg: LogMsg::SetStoreInfo(info),
+                    ..
+                } => Some(Event::StoreInfo(info.info.store_id)),
+                ImportedData::Chunk {
+                    store_id, chunk, ..
+                } => Some(Event::Chunk {
+                    store_id,
+                    entity_path: chunk.entity_path().to_string(),
+                }),
                 _ => None,
             })
             .collect()
@@ -259,7 +267,7 @@ mod tests {
                 .expect("at least one SetStoreInfo");
             let first_chunk = events
                 .iter()
-                .position(|event| matches!(event, Event::Chunk(..)))
+                .position(|event| matches!(event, Event::Chunk { .. }))
                 .expect("at least one chunk");
             assert!(
                 last_store_info < first_chunk,
@@ -271,7 +279,7 @@ mod tests {
                 .iter()
                 .filter_map(|event| match event {
                     Event::StoreInfo(store_id) => Some(store_id),
-                    Event::Chunk(..) => None,
+                    Event::Chunk { .. } => None,
                 })
                 .collect();
             assert_eq!(
@@ -289,7 +297,11 @@ mod tests {
             // Each recording starts with its properties chunk and contains the expected entities.
             let mut entity_paths_by_recording = BTreeMap::<String, Vec<&str>>::new();
             for event in &events {
-                if let Event::Chunk(store_id, entity_path) = event {
+                if let Event::Chunk {
+                    store_id,
+                    entity_path,
+                } = event
+                {
                     entity_paths_by_recording
                         .entry(store_id.recording_id().as_str().to_owned())
                         .or_default()

@@ -38,7 +38,7 @@ Orienting and placing ellipsoids/spheres forms a separate transform that is appl
 
 ## API reference links
  * 🌊 [C++ API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Ellipsoids3D.html)
- * 🐍 [Python API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Ellipsoids3D)
+ * 🐍 [Python API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Ellipsoids3D)
  * 🦀 [Rust API docs for `Ellipsoids3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Ellipsoids3D.html)
 
 ## Example

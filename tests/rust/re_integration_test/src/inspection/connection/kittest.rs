@@ -33,7 +33,7 @@ impl InProcessConnection {
                 // We only get here when no ambient runtime exists, and the viewer takes its
                 // `AsyncRuntimeHandle` from `Handle::current`, so this harness has to own one on
                 // the test's behalf.
-                tokio::runtime::Builder::new_multi_thread() // NOLINT: owned by the test harness
+                tokio::runtime::Builder::new_multi_thread()
                     .worker_threads(2)
                     .enable_all()
                     .build()

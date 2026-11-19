@@ -47,8 +47,9 @@ pub fn set_url_parameter_and_refresh(key: &str, value: &str) -> Result<(), crate
 /// Returns false on native targets and for unrecognized browsers.
 pub fn is_chromium() -> bool {
     cfg_select! {
-        target_arch = "wasm32" => window()
-            .is_ok_and(|window| is_chromium_navigator(window.navigator().as_ref())),
+        target_arch = "wasm32" => {
+            window().is_ok_and(|window| is_chromium_navigator(window.navigator().as_ref()))
+        }
         _ => false,
     }
 }
@@ -91,7 +92,9 @@ fn is_android_webview_user_agent(user_agent: &str) -> bool {
 /// Use it for workarounds for WebKit bugs and limits.
 pub fn is_webkit() -> bool {
     cfg_select! {
-        target_arch = "wasm32" => user_agent().is_some_and(|user_agent| is_webkit_user_agent(&user_agent)),
+        target_arch = "wasm32" => {
+            user_agent().is_some_and(|user_agent| is_webkit_user_agent(&user_agent))
+        }
         _ => false,
     }
 }
@@ -108,8 +111,9 @@ fn is_webkit_user_agent(user_agent: &str) -> bool {
 /// Whether the current browser is Firefox.
 pub fn is_firefox() -> bool {
     cfg_select! {
-        target_arch = "wasm32" => user_agent()
-            .is_some_and(|user_agent| user_agent.to_lowercase().contains("firefox")),
+        target_arch = "wasm32" => {
+            user_agent().is_some_and(|user_agent| user_agent.to_lowercase().contains("firefox"))
+        }
         _ => false,
     }
 }

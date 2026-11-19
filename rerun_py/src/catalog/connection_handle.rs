@@ -437,31 +437,56 @@ impl PyConnectionHandle {
     /// * If shorter than `recording_uris`, `recording_layers` will be extended by repeating its last value.
     ///   I.e. an empty `recording_layers` will result in `"base"` begin repeated `len(recording_layers)` times.
     ///
+    /// `segment_ids`, when set, must have the same length as `recording_uris`.
+    ///
     /// NOTE: The server may pool multiple registrations into a single task. The result always has
     /// the same length as the output, so task ids may be duplicated.
     #[tracing::instrument(level = "info", skip_all)]
+    #[expect(clippy::too_many_arguments)]
     pub fn register_with_dataset(
         &self,
         py: Python<'_>,
         dataset_id: EntryId,
         recording_uris: Vec<String>,
         recording_layers: Vec<LayerName>,
+        segment_ids: Option<Vec<SegmentId>>,
         on_duplicate: IfDuplicateBehavior,
         storage_location: Option<StorageLocationAlias>,
     ) -> PyResult<RegistrationHandle> {
+        if let Some(segment_ids) = &segment_ids
+            && segment_ids.len() != recording_uris.len()
+        {
+            return Err(PyValueError::new_err(format!(
+                "`segment_id` must have the same length as `recording_uri`, got {} and {}",
+                segment_ids.len(),
+                recording_uris.len(),
+            )));
+        }
+
         let last_layer = recording_layers
             .last()
             .cloned()
             .unwrap_or_else(LayerName::base);
 
-        let data_sources = std::iter::zip(
+        let segment_ids: Vec<Option<SegmentId>> = match segment_ids {
+            Some(ids) => ids.into_iter().map(Some).collect(),
+            None => vec![None; recording_uris.len()],
+        };
+
+        let data_sources = itertools::izip!(
             &recording_uris,
             std::iter::chain(
                 recording_layers,
                 std::iter::repeat_with(|| last_layer.clone()),
             ),
+            segment_ids,
         )
-        .map(|(url, layer)| DataSource::new_rrd_layer(layer, url, storage_location.clone()))
+        .map(|(url, layer, segment_id)| {
+            DataSource::new_rrd_layer(layer, url, storage_location.clone()).map(|ds| DataSource {
+                segment_id_override: segment_id,
+                ..ds
+            })
+        })
         .try_collect()
         .map_err(to_py_err)?;
 

@@ -198,7 +198,7 @@ impl AppCore {
             // side effects (like `set_opened(true)` for `OpenAndSelect`) fire regardless of which message type
             // happens to come first.
             let msg_store_id = match &msg {
-                DataSourceMessage::RrdManifest(store_id, _)
+                DataSourceMessage::RrdManifest { store_id, .. }
                 | DataSourceMessage::RrdManifestComplete(store_id) => Some(store_id.clone()),
                 DataSourceMessage::LogMsg(log_msg) => Some(log_msg.store_id().clone()),
                 DataSourceMessage::DefaultBlueprintRegistration(_)
@@ -223,9 +223,9 @@ impl AppCore {
             }
 
             match msg {
-                DataSourceMessage::RrdManifest(store_id, rrd_manifest) => {
+                DataSourceMessage::RrdManifest { store_id, manifest } => {
                     let entity_db = store_hub.entity_db_entry(&store_id);
-                    let store_events = entity_db.add_rrd_manifest_message(rrd_manifest);
+                    let store_events = entity_db.add_rrd_manifest_message(manifest);
 
                     if let Some((entity_db, cache)) =
                         store_hub.entity_db_and_cache(&store_id, &self.registries.view_classes)
@@ -294,7 +294,7 @@ impl AppCore {
 
         let blueprint_id = match msg {
             DataSourceMessage::LogMsg(log_msg) => log_msg.store_id(),
-            DataSourceMessage::RrdManifest(store_id, _)
+            DataSourceMessage::RrdManifest { store_id, .. }
             | DataSourceMessage::RrdManifestComplete(store_id) => store_id,
             DataSourceMessage::DefaultBlueprintRegistration(registration) => {
                 &registration.blueprint_id

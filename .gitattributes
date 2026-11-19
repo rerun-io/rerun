@@ -1,7 +1,11 @@
 * text=auto eol=lf
 *.zip -text diff
 Cargo.lock linguist-generated=false
+crates/ui_tools/re_renderer/src/workspace_shaders.rs linguist-generated=true
 crates/utils/re_workspace_hack/Cargo.toml linguist-generated=true
+docs/content/reference/cli.md linguist-generated=true
+examples/python/objectron/objectron/proto/objectron/proto.py linguist-generated=true
+examples/rust/objectron/src/objectron.rs linguist-generated=true
 pixi.lock linguist-generated=true
 rerun_js/web-viewer/proto/** linguist-generated=true
 # git-lfs:

@@ -1029,7 +1029,7 @@ fn entity_path_filter_ui(
     }
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
-        // `NOLINT`: `EntityPath`'s debug impl doesn't quote the result.
+        // NOLINT: `EntityPath`'s debug impl doesn't quote the result.
         ui.warning_label(
             format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."), // NOLINT
         );

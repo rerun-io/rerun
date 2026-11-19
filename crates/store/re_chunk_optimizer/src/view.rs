@@ -318,14 +318,18 @@ fn components_per_chunk(
         let Some(component) = RawRrdManifest::get_component(field) else {
             continue;
         };
-        let component = ComponentIdentifier::try_new(component).map_err(|_err| {
-            Error::malformed_component_column(field.name(), "empty component identifier")
+        let component = ComponentIdentifier::try_new(component).map_err(|source| {
+            Error::InvalidComponentIdentifier {
+                column: field.name().clone(),
+                source,
+            }
         })?;
         let component_type = RawRrdManifest::get_component_type(field)
             .map(ComponentType::try_new)
             .transpose()
-            .map_err(|_err| {
-                Error::malformed_component_column(field.name(), "empty component type")
+            .map_err(|source| Error::InvalidComponentType {
+                column: field.name().clone(),
+                source,
             })?;
 
         // Only the rows with data are visited: for a `:start` column those are its valid rows, for a

@@ -9,5 +9,5 @@ The Rerun Viewer displays recordings and datasets, live or from disk.
 This section covers its interface, how blueprints and views control what is shown, and how to tune, embed, and extend it.
 
 New to the Viewer?
-Start with the [Viewer tutorial](viewer/tutorial.md).
-To embed it in a notebook or web page, see [Integrations](integrations.md).
+Start with the [Viewer overview](viewer/ui/overview.md).
+To embed it in a notebook or web page, see [Integrations](viewer/integrations.md).

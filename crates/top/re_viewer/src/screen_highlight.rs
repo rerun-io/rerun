@@ -1,7 +1,7 @@
 //! A pulsing outline painted on top of the whole viewer, to point the user at something on
 //! screen.
 //!
-//! Can be used by agents to point users to UI elements via `re_viewer_mcp`.
+//! Can be used by agents to point users to UI elements via `re_rerun_mcp`.
 
 use egui::{FontId, Id, LayerId, Order, Rect, Stroke, StrokeKind, Ui};
 

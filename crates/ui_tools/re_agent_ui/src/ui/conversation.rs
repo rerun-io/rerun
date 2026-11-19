@@ -6,9 +6,9 @@ use std::sync::Arc;
 
 use re_agent::{
     AgentEntry, AgentLaunch, AgentPreferences, AgentProfileId, AgentSession, AgentSettings,
-    AgentToolbox, ModelApiProvider, Phase, Prompt, SavedConversation, SessionContext,
-    SessionReports,
+    ModelApiProvider, Phase, Prompt, SavedConversation, SessionContext, SessionReports,
 };
+use re_agent_tools::AgentToolbox;
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use re_ui::UiExt as _;
 use web_time::SystemTime;

@@ -15,7 +15,7 @@ Audio plays while time is playing on a temporal timeline, starting from the time
 Playback settings, such as volume and muting.
 
 ## API reference links
- * 🐍 [Python API docs for `AudioView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.AudioView)
+ * 🐍 [Python API docs for `AudioView`](https://ref.rerun.io/docs/python/stable/blueprint_views#rerun.blueprint.views.AudioView)
 
 ## Example
 

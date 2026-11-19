@@ -482,6 +482,9 @@ impl AppContext<'_> {
         };
 
         self.command_sender
-            .send_system(SystemCommand::AppendToStore(store_id, vec![chunk]));
+            .send_system(SystemCommand::AppendToStore {
+                store_id,
+                chunks: vec![chunk],
+            });
     }
 }

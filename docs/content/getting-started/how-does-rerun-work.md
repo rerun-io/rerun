@@ -28,9 +28,11 @@ The Viewer visualizes your data. It comes in two forms:
 
 The viewer includes a [**Chunk Store**](../logging-and-ingestion/chunks-and-rrd/chunks.md) (in-memory database for logged data) and a **gRPC endpoint** that accepts streamed data from the SDK.
 
-The Web Viewer has performance limitations compared to the native viewer. It runs as 32-bit Wasm and is limited to ~2 GiB memory in practice, limiting the amount of data that can be visualized simultaneously. It also runs single-threaded, making it generally slower than native.
+The Web Viewer has performance limitations compared to the native viewer.
+It runs as 32-bit Wasm, which caps memory at 4 GiB, and browsers often allow less, limiting the amount of data that can be visualized simultaneously.
+It also runs single-threaded, making it generally slower than native.
 
-Both viewers can be extended: the Native Viewer through its [Rust API](../viewer/extend/extend-ui.md), and the Web Viewer can be [embedded in web applications](../integrations/embed-web.md) or [Jupyter notebooks](../integrations/embed-notebooks.md).
+Both viewers can be extended: the Native Viewer through its [Rust API](../viewer/extend/extend-ui.md), and the Web Viewer can be [embedded in web applications](../viewer/integrations/embed-web.md) or [Jupyter notebooks](../viewer/integrations/embed-notebooks.md).
 
 ### Catalog server
 
@@ -102,7 +104,7 @@ $ rerun /tmp/my_recording.rrd
 Best for: sharing recordings, offline analysis, archiving.
 
 ## Visualize
-Rerun provides an open source pre-built [viewer](../viewer/ui/overview.md) that is [adjustable](../viewer/tutorial.md) and [extensible](../integrations/extend.md).
+Rerun provides an open source pre-built [viewer](../viewer/ui/overview.md) that is [adjustable](../viewer/ui/overview.md) and [extensible](../viewer/integrations/extend.md).
 You can log directly to the viewer, [open](../logging-and-ingestion/import/open-any-file.md) a range of file formats to get data into the viewer, or even connect the viewer to a Rerun [catalog](../query-and-transform/catalog/catalog-object-model.md).
 
 <div class="d2-diagram">

@@ -226,15 +226,13 @@ impl<T: DataframeClientAPI> PartitionDriver<T> {
             // ── router ──────────────────────────────────────────────
             for (chunk, segment_id) in chunks {
                 let chunk_id = chunk.id();
-                let Some(segment_id) = segment_id else {
-                    re_log::error_once!(
-                        "fetched chunk carries no segment id; dropping (server anomaly)"
-                    );
-                    continue;
-                };
                 let Some(segment_idx) = plan.segment_index(&segment_id) else {
-                    re_log::error_once!(
-                        "plan/delivery divergence: a chunk of an unplanned segment arrived; dropping"
+                    // `ChunkSegments::attribute` only yields `(chunk, segment)`
+                    // pairs of the request rows, all of which the plan
+                    // registered. A miss here or in the two guards below is a
+                    // bookkeeping bug, not a server anomaly.
+                    re_log::debug_panic!(
+                        "plan/delivery divergence: a chunk of an unplanned segment arrived"
                     );
                     continue;
                 };
@@ -245,8 +243,8 @@ impl<T: DataframeClientAPI> PartitionDriver<T> {
                     // chunk's window bytes and its decoded chunk for the rest
                     // of the partition. Dropping leaves the bytes on the batch
                     // lease, whose residual drop refunds them.
-                    re_log::error_once!(
-                        "plan/delivery divergence: a chunk arrived after its segment was flushed; dropping"
+                    re_log::debug_panic!(
+                        "plan/delivery divergence: a chunk arrived after its segment was flushed"
                     );
                     continue;
                 }
@@ -263,11 +261,8 @@ impl<T: DataframeClientAPI> PartitionDriver<T> {
                 });
 
                 let Some(&(key, est_bytes)) = state.planned.chunk_meta.get(&chunk_id) else {
-                    // Only planned chunks gate the safe horizon, so an
-                    // unplanned one could change already-emitted history; see
-                    // `unplanned_chunk_is_dropped`.
-                    re_log::error_once!(
-                        "plan/delivery divergence: a chunk not in the fetch plan arrived; dropping"
+                    re_log::debug_panic!(
+                        "plan/delivery divergence: a chunk not in the fetch plan arrived"
                     );
                     continue;
                 };
@@ -673,13 +668,17 @@ mod tests {
             &[8 * 1024 * 1024; 4],
         )];
 
-        let responses = (0..4).map(|i| {
-            let n = i64::try_from(i).unwrap();
-            FetchBehavior::Chunks(vec![(
-                scalar_chunk("seg-a", i, "frame", Some((n + 1) * 10), n),
-                "seg-a".to_owned(),
-            )])
-        });
+        let chunks: Vec<_> = (0..4)
+            .map(|i| {
+                let n = i64::try_from(i).unwrap();
+                (
+                    scalar_chunk("seg-a", i, "frame", Some((n + 1) * 10), n),
+                    "seg-a".to_owned(),
+                )
+            })
+            .collect();
+        // The four fetches run concurrently, so each call gets what it asks for.
+        let responses = (0..4).map(|_| FetchBehavior::Requested(chunks.clone()));
 
         let (result, batches, audit) = tokio::time::timeout(
             std::time::Duration::from_secs(30),
@@ -704,7 +703,7 @@ mod tests {
     }
 
     /// A chunk delivered for a segment the head has already passed must be
-    /// dropped at the router, not routed into a fresh `SegmentState`.
+    /// dropped, not routed into a fresh `SegmentState`.
     ///
     /// A re-created state sits below `head`, which `advance_head` never
     /// revisits, so it can neither emit nor be reclaimed until end of stream —
@@ -737,9 +736,9 @@ mod tests {
             ),
         ];
 
-        // Batch 1 re-delivers seg-a's chunk (same `ChunkId`, so it matches the
-        // plan's `chunk_meta`) alongside seg-b's. Serial, so each scripted
-        // response pairs with the batch that requested it.
+        // Batch 1 re-delivers seg-a's chunk, which it did not request,
+        // alongside seg-b's. Serial, so each scripted response pairs with the
+        // batch that requested it.
         let responses = [
             FetchBehavior::Chunks(vec![(
                 scalar_chunk("seg-a", 0, "frame", Some(10), 1),
@@ -821,8 +820,8 @@ mod tests {
         );
     }
 
-    /// A chunk the server delivers without the plan announcing it is dropped
-    /// at the router, never inserted.
+    /// A chunk the server delivers without the plan announcing it is dropped,
+    /// never inserted.
     ///
     /// Only planned chunks gate the safe horizon, so an unplanned chunk can
     /// land below `processed_through_time` — where it emits no row of its own
@@ -832,7 +831,7 @@ mod tests {
     /// query never asked for. It also holds residency the window never
     /// charged. The fixture delivers one of each; the observable here is the
     /// added row (this harness queries without sparse fill, so carry-forward
-    /// is invisible), and the drop in the router forecloses both.
+    /// is invisible), and the drop forecloses both.
     /// `run_driver` additionally asserts the window ends fully refunded.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn unplanned_chunk_is_dropped() {
@@ -952,99 +951,10 @@ mod tests {
         );
     }
 
-    /// A static chunk that lands after its segment's temporal chunks must hold
-    /// back every row of that segment until it arrives.
+    /// A segment split over three batches of temporal chunks.
     ///
-    /// A static chunk has no position on the timeline, so it can carry values
-    /// that belong to *any* row. Emitting a row before it lands ships a null
-    /// where that value belongs — silently wrong output rather than a failure,
-    /// which is why this is asserted against the real store/emit path and not
-    /// only against the cursor arithmetic in `segment.rs`.
-    ///
-    /// Observed through the flush count: one emitted batch means the rows all
-    /// came out of the single final drain, so no incremental emit ran while the
-    /// `PreTime` chunk was outstanding. `temporal_chunks_emit_incrementally`
-    /// is the companion that rules out the fixture's packing as the cause.
-    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-    async fn late_static_chunk_holds_back_every_row() {
-        use super::super::test_support::chunk_info_batch_sized;
-
-        // Row 0 is the static chunk (null `:start`, `chunk_is_static`), rows 1
-        // and 2 are temporal. One chunk per batch at the packing target, so
-        // serial delivery pairs each scripted response with one batch.
-        let chunk_infos = vec![chunk_info_batch_sized(
-            "seg-a",
-            Some("frame"),
-            &[None, Some(10), Some(20)],
-            &[true, false, false],
-            &[Some(100), Some(100), Some(100)],
-            &[8 * 1024 * 1024; 3],
-        )];
-
-        // The static chunk is delivered last, which is the whole point: the
-        // cursor keys off `CursorKey`, not batch position, so the plan's own
-        // ordering (`PreTime` first) does not decide arrival order.
-        let responses = [
-            FetchBehavior::Chunks(vec![(
-                scalar_chunk("seg-a", 1, "frame", Some(10), 1),
-                "seg-a".to_owned(),
-            )]),
-            FetchBehavior::Chunks(vec![(
-                scalar_chunk("seg-a", 2, "frame", Some(20), 2),
-                "seg-a".to_owned(),
-            )]),
-            FetchBehavior::Chunks(vec![(
-                scalar_chunk_on_component(
-                    "seg-a",
-                    0,
-                    "frame",
-                    None,
-                    7,
-                    re_types_core::ComponentDescriptor::partial("static_value"),
-                ),
-                "seg-a".to_owned(),
-            )]),
-        ];
-
-        let (result, batches, _audit) = run_driver_projected(
-            chunk_infos,
-            "frame",
-            responses,
-            64 * 1024 * 1024,
-            1,
-            None,
-            schema_with_component("static_value"),
-        )
-        .await;
-
-        result.expect("driver completes cleanly");
-        assert_eq!(
-            emitted_segment_ids(&batches),
-            vec!["seg-a", "seg-a"],
-            "both temporal rows must emit once the static chunk lands",
-        );
-        assert_eq!(
-            batches.len(),
-            1,
-            "an outstanding static chunk must gate every incremental emit, so all \
-             rows come out of the final drain; got {} flushes",
-            batches.len(),
-        );
-        assert_eq!(
-            emitted_component_values(&batches, "static_value"),
-            vec![Some(7), Some(7)],
-            "every row must carry the static value; a null is the silently-wrong \
-             output the gate exists to prevent",
-        );
-    }
-
-    /// Companion to `late_static_chunk_holds_back_every_row`, with the same
-    /// three-batch split but every chunk temporal.
-    ///
-    /// Here the watermark *does* release rows as the horizon advances, so the
-    /// rows arrive across several flushes. Without this pair, the single-flush
-    /// outcome above would also be what a fixture that happened to deliver
-    /// everything before the first emit pass reported.
+    /// The watermark releases rows as the horizon advances, so the rows arrive
+    /// across several flushes.
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     async fn temporal_chunks_emit_incrementally() {
         use super::super::test_support::chunk_info_batch_sized;

@@ -38,7 +38,7 @@ List(non-null Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `AnnotationContext`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AnnotationContext.html)
- * 🐍 [Python API docs for `AnnotationContext`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.AnnotationContext)
+ * 🐍 [Python API docs for `AnnotationContext`](https://ref.rerun.io/docs/python/stable/components#rerun.components.AnnotationContext)
  * 🦀 [Rust API docs for `AnnotationContext`](https://docs.rs/rerun/latest/rerun/components/struct.AnnotationContext.html)
 
 

@@ -12,6 +12,10 @@ use crate::list_item::{self, LabelContent};
 use crate::{ContextExt as _, DesignTokens, Icon, Size, Variant, icons};
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
+
+/// Extra space between the rows of a loading screen.
+const LOADING_SCREEN_ROW_SPACING: f32 = 8.0;
+
 pub static RESIZABLE_CONTAINER_TAG: &str = "rerun_resizable_container";
 
 fn error_label_bg_color(fg_color: Color32) -> Color32 {
@@ -751,6 +755,9 @@ pub trait UiExt {
         response.response
     }
 
+    /// Centers the given contents with a loading indicator below them.
+    ///
+    /// `reason` labels the indicator for screen readers and tests.
     fn loading_screen_ui<R>(
         &mut self,
         reason: &str,
@@ -761,8 +768,14 @@ pub trait UiExt {
         let reason = reason.to_owned();
         ui.center("loading indicator", |ui| {
             ui.vertical_centered(|ui| {
-                ui.loading_indicator(&reason);
-                add_contents(ui)
+                let inner = add_contents(ui);
+                ui.add_space(LOADING_SCREEN_ROW_SPACING);
+                // `center` lays us out in a single-row horizontal ui, so there is no height
+                // left for the indicator to size itself after.
+                ui.allocate_ui(crate::loading_indicator::DEFAULT_SIZE, |ui| {
+                    ui.loading_indicator(&reason);
+                });
+                inner
             })
             .inner
         })
@@ -799,10 +812,11 @@ pub trait UiExt {
             })
         } else {
             // Names the indicator (and is shown on hover in debug builds). Includes the source
-            // so it does not collide with the header label right below it.
+            // so it does not collide with the header label right above it.
             let reason = format!("{} {}", header.text(), source.text());
             self.loading_screen_ui(&reason, |ui| {
                 ui.label(header.heading().color(ui.style().visuals.weak_text_color()));
+                ui.add_space(LOADING_SCREEN_ROW_SPACING);
                 ui.strong(source);
             });
 
@@ -1490,43 +1504,45 @@ fn hyperlink(
     always_new_tab: bool,
     placement: HyperlinkPlacement,
 ) -> egui::Response {
-    ui.scope(|ui| {
-        let tokens = ui.tokens();
-        let style = ui.style_mut();
-        style.visuals.button_frame = false;
+    let tokens = ui.tokens();
 
-        // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
-        // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
-        let button = match placement {
-            HyperlinkPlacement::OnItsOwn => {
-                crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text)
-            }
-            HyperlinkPlacement::InText => {
-                let color = tokens.inline_link_color;
-                egui::Button::new((
-                    text.into().color(color),
-                    crate::icons::EXTERNAL_LINK.as_image().tint(color),
-                ))
-                // As tall as the text around it, so it stays on the line of text.
-                .size(Size::custom(0.0))
-            }
-        };
-        let response = ui
-            .add(button)
-            .on_hover_cursor(egui::CursorIcon::PointingHand);
-
-        if response.clicked_with_open_in_background() {
-            ui.open_url(egui::OpenUrl::new_tab(url.into()));
-        } else if response.clicked() {
-            ui.open_url(egui::OpenUrl {
-                url: url.into(),
-                new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
-            });
+    // At the top of [`Ui::data_label_impl`] we make assumptions on the spacing and
+    // icon size of re_hyperlink, if we adjust this we need to check if the workaround still works
+    let button = match placement {
+        HyperlinkPlacement::OnItsOwn => {
+            crate::icons::EXTERNAL_LINK.as_button_with_label(tokens, text)
         }
+        HyperlinkPlacement::InText => {
+            let color = tokens.inline_link_color;
+            egui::Button::new((
+                text.into().color(color),
+                crate::icons::EXTERNAL_LINK.as_image().tint(color),
+            ))
+            // As tall as the text around it, so it stays on the line of text.
+            .size(Size::custom(0.0))
+            // A link wrapping inside itself would cover two rows, cutting off the text after it.
+            // Unwrapped, a wrapping layout moves it to the next row whole.
+            .wrap_mode(egui::TextWrapMode::Extend)
+        }
+    };
 
-        response
-    })
-    .inner
+    // Set on `ui` itself, not in a child scope: a scope is laid out before its size is known, so a
+    // wrapping layout could not move the link to the next row.
+    let button_frame = std::mem::replace(&mut ui.visuals_mut().button_frame, false);
+    let response = ui.add(button);
+    ui.visuals_mut().button_frame = button_frame;
+    let response = response.on_hover_cursor(egui::CursorIcon::PointingHand);
+
+    if response.clicked_with_open_in_background() {
+        ui.open_url(egui::OpenUrl::new_tab(url.into()));
+    } else if response.clicked() {
+        ui.open_url(egui::OpenUrl {
+            url: url.into(),
+            new_tab: always_new_tab || ui.input(|i| i.modifiers.any()),
+        });
+    }
+
+    response
 }
 
 /// Paints a gradient rectangle that transitions from `color_from` to `color_to`

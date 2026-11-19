@@ -22,7 +22,7 @@ Supports raw text and markdown.
 
 ## API reference links
  * 🌊 [C++ API docs for `TextDocument`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextDocument.html)
- * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextDocument)
+ * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.TextDocument)
  * 🦀 [Rust API docs for `TextDocument`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TextDocument.html)
 
 ## Example

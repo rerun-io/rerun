@@ -67,7 +67,7 @@ class GeoLineStringExt:
             # .. otherwise assume that it's several strips.
             else:
 
-                def to_dvec2D_batch(strip: Any) -> DVec2DBatch:
+                def to_dvec2D_batch(strip: GeoLineStringLike) -> DVec2DBatch:
                     if isinstance(strip, GeoLineString):
                         return DVec2DBatch(strip.lat_lon)
                     else:

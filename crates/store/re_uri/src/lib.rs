@@ -61,7 +61,7 @@ pub use self::endpoints::entry::EntryUri;
 pub use self::endpoints::folder::FolderUri;
 pub use self::endpoints::proxy::ProxyUri;
 pub use self::error::Error;
-pub use self::fragment::Fragment;
+pub use self::fragment::{Fragment, FragmentParseError};
 pub use self::origin::Origin;
 pub use self::redap_uri::RedapUri;
 pub use self::scheme::Scheme;

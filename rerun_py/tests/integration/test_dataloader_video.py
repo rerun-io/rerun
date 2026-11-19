@@ -11,15 +11,18 @@ from __future__ import annotations
 import pathlib
 import pickle
 from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
+import pyarrow as pa
 import pytest
 import rerun as rr
 import torch
 from rerun.experimental.dataloader import (
     DataSource,
     Field,
+    FixedRateSampling,
     NoShuffle,
     NumericDecoder,
     RerunIterableDataset,
@@ -33,9 +36,9 @@ from rerun.experimental.dataloader._utils import (
     QueryPlan,
     _discover_prior_keyframes,
     _fetch_keyframe_ranges,
-    _fetch_prior_keyframes,
     _fetch_query,
 )
+from rerun.experimental.spans import Curation, SpanTable
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -126,15 +129,13 @@ def test_live_keyframe_discovery_preserves_off_grid_temporal_markers(tmp_path: P
         adaptive = _discover_prior_keyframes(
             view=dataset, index="time", fields=fields, located=[(segment, anchor)], sample_index=sample_index
         )
-        full = _fetch_prior_keyframes(
-            view=dataset, index="time", fields=fields, located=[(segment, anchor)], sample_index=sample_index
-        )
 
     assert adaptive["video"]["off-grid"].tolist() == [3001]
-    assert full["video"]["off-grid"].tolist() == [7, 3001]
 
 
-def _build_h264_rrd(rrd_path: Path, *, log_is_keyframe: bool, dense_keyframes: bool = False) -> list[int]:
+def _build_h264_rrd(
+    rrd_path: Path, *, log_is_keyframe: bool, dense_keyframes: bool = False, log_duration: bool = False
+) -> list[int]:
     """
     Build an RRD with one VideoStream sample per demuxed packet on a sequence timeline.
 
@@ -167,19 +168,25 @@ def _build_h264_rrd(rrd_path: Path, *, log_is_keyframe: bool, dense_keyframes: b
     assert keyframe_indices, "test asset must contain at least one keyframe"
     assert keyframe_indices[0] == 0, "test asset's first packet must be a keyframe"
 
+    def indexes(values: list[int]) -> list[rr.TimeColumn]:
+        columns = [rr.TimeColumn("frame", sequence=values)]
+        if log_duration:
+            columns.append(rr.TimeColumn("time", duration=[float(value) for value in values]))
+        return columns
+
     with rr.RecordingStream("rerun_example_test_dataloader_video", recording_id="dataloader-video") as rec:
         rec.save(rrd_path)
         rec.log("/video", rr.VideoStream(codec=rr.VideoCodec.H264), static=True)
         rec.send_columns(
             "/video",
-            indexes=[rr.TimeColumn("frame", sequence=list(range(len(samples))))],
+            indexes=indexes(list(range(len(samples)))),
             columns=rr.VideoStream.columns(sample=samples),
         )
         # Companion scalar so tests cover the mixed-decoder query path
         # (`prior_keyframe_path` on a non-video decoder must return None, not raise).
         rec.send_columns(
             "/state",
-            indexes=[rr.TimeColumn("frame", sequence=list(range(len(samples))))],
+            indexes=indexes(list(range(len(samples)))),
             columns=rr.Scalars.columns(scalars=[float(i) for i in range(len(samples))]),
         )
         if log_is_keyframe:
@@ -187,7 +194,7 @@ def _build_h264_rrd(rrd_path: Path, *, log_is_keyframe: bool, dense_keyframes: b
             keyframe_set = set(keyframe_indices)
             rec.send_columns(
                 "/video",
-                indexes=[rr.TimeColumn("frame", sequence=markers)],
+                indexes=indexes(markers),
                 columns=rr.VideoStream.columns(is_keyframe=[index in keyframe_set for index in markers]),
             )
 
@@ -321,29 +328,21 @@ def test_missing_is_keyframe_column_raises(
     timeline_sampling: TimeAlignedSampling | None,
 ) -> None:
     """A video field without its sibling `is_keyframe` column is rejected before fetching samples."""
-    rrd_dir, keyframes = rrd_without_keyframes
-    target = keyframes[0] + 5
+    rrd_dir, _ = rrd_without_keyframes
 
     with rr.server.Server(datasets={"video": rrd_dir}) as server:
         ds = server.client().get_dataset("video")
         source = DataSource(ds)
-        dataset = dataset_type(
-            source,
-            "frame",
-            {
-                "image": Field(
-                    "/video:VideoStream:sample",
-                    decode=VideoFrameDecoder(codec="h264"),
-                ),
-                "state": Field("/state:Scalars:scalars", decode=NumericDecoder()),
-            },
-            timeline_sampling=timeline_sampling,
-        )
-        with pytest.raises(ValueError, match="require an is_keyframe column"):
-            if isinstance(dataset, RerunMapDataset):
-                dataset[target]
-            else:
-                next(iter(dataset))
+        with pytest.raises(ValueError, match="is_keyframe"):
+            dataset_type(
+                source,
+                "frame",
+                {
+                    "image": Field("/video:VideoStream:sample", decode=VideoFrameDecoder(codec="h264")),
+                    "state": Field("/state:Scalars:scalars", decode=NumericDecoder()),
+                },
+                timeline_sampling=timeline_sampling,
+            )
 
 
 @pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")
@@ -464,3 +463,61 @@ def test_aligned_sampling_does_not_fill_missing_numeric_values(tmp_path: Path) -
             assert state is None or isinstance(state, torch.Tensor)
             values.append(None if state is None else state.item())
         assert values == expected
+
+
+@pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")
+@pytest.mark.parametrize(
+    "index,timeline_sampling",
+    [
+        ("frame", None),
+        ("frame", TimeAlignedSampling(keyframe_interval=30)),
+        ("time", FixedRateSampling(rate_hz=1)),
+    ],
+)
+def test_curated_curation_matches_live_video_decode(
+    tmp_path: Path, index: str, timeline_sampling: TimeAlignedSampling | FixedRateSampling | None
+) -> None:
+    rrd = tmp_path / "curated.rrd"
+    _build_h264_rrd(rrd, log_is_keyframe=True, log_duration=index == "time")
+    fields = {
+        "image": Field("/video:VideoStream:sample", decode=VideoFrameDecoder(codec="h264"), window=(-1, 0)),
+        "state": Field("/state:Scalars:scalars", decode=NumericDecoder()),
+    }
+    with rr.server.Server(host="127.0.0.1", datasets={"curated": [rrd]}) as server:
+        entry = server.client().get_dataset("curated")
+        if index == "time":
+            annotations = SpanTable.create(entry, index="time")
+            annotations.append(segment_id="dataloader-video", start=timedelta(seconds=3), end=timedelta(seconds=8))
+            coordinates = annotations.to_curation_arrow(annotations.reader().to_arrow_table(), index="time")
+        else:
+            coordinates = pa.table(
+                {"segment_id": ["dataloader-video"], "start": [3], "end": [8]},
+                metadata={
+                    "manifest_format_version": "3",
+                    "dataset_id": str(entry.id),
+                    "index_name": "frame",
+                    "index_type": '{"kind":"sequence"}',
+                },
+            )
+        curation = Curation.from_arrow(entry, coordinates)
+        source = DataSource(entry)
+        streamed = list(
+            RerunIterableDataset.from_curation(
+                curation, source, fields, timeline_sampling=timeline_sampling, shuffle_strategy=NoShuffle()
+            )
+        )
+        selected = RerunMapDataset.from_curation(
+            curation, source, fields, timeline_sampling=timeline_sampling
+        ).__getitems__(list(range(6)))
+        live = RerunMapDataset(source, index, fields, timeline_sampling=timeline_sampling).__getitems__(
+            list(range(2, 8))
+        )
+        assert len(streamed) == len(selected) == len(live) == 6
+        for anchor, a, b, c in zip(range(3, 9), streamed, selected, live, strict=True):
+            state, image = a["state"], a["image"]
+            assert isinstance(state, torch.Tensor) and isinstance(image, torch.Tensor)
+            assert state.item() == anchor
+            for sample in (b, c):
+                other_image = sample["image"]
+                assert isinstance(other_image, torch.Tensor)
+                assert torch.equal(image, other_image)

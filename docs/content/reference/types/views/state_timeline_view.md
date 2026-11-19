@@ -23,7 +23,7 @@ If not specified, states are not filtered by time range.
 If a timeline is specified more than once, the first entry will be used.
 
 ## API reference links
- * 🐍 [Python API docs for `StateTimelineView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.StateTimelineView)
+ * 🐍 [Python API docs for `StateTimelineView`](https://ref.rerun.io/docs/python/stable/blueprint_views#rerun.blueprint.views.StateTimelineView)
 
 ## Example
 

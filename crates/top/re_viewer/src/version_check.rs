@@ -15,7 +15,12 @@ struct LatestRelease {
     tag_name: String,
 }
 
-type OnResponse = Box<dyn FnOnce(Result<Response, String>) + Send>;
+/// A failed HTTP request, as reported by [`ehttp`].
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+pub struct FetchError(pub String);
+
+type OnResponse = Box<dyn FnOnce(Result<Response, FetchError>) + Send>;
 
 /// Checks GitHub for a newer stable Rerun release without blocking viewer startup.
 ///
@@ -62,7 +67,7 @@ pub fn check_for_new_version(
 fn handle_response(
     current_version: CrateVersion<'static>,
     download_url: &'static str,
-    response: Result<Response, String>,
+    response: Result<Response, FetchError>,
 ) -> Option<Notification> {
     let response = match response {
         Ok(response) if response.ok => response,

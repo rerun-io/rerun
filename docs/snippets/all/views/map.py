@@ -13,7 +13,7 @@ rr.log(
     ),
 )
 
-# Create a map view to display the chart.
+# Create a map view to display the map.
 blueprint = rrb.Blueprint(
     rrb.MapView(
         origin="points",

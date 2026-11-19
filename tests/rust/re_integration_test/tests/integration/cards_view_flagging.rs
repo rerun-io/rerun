@@ -11,6 +11,7 @@ use re_integration_test::TestServer;
 use re_integration_test::ViewerHarnessExt as _;
 use re_protos::cloud::v1alpha1::ScanTableRequest;
 use re_protos::cloud::v1alpha1::ext::TableInsertMode;
+use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_sdk::RecordingStreamBuilder;
 use re_sdk_types::Component as _;
 use re_sdk_types::blueprint::archetypes::{CardLayout, TableColumn, TableLayout};
@@ -214,9 +215,7 @@ async fn scan_flag_value(
     let mut client = server.client().await.ok()?;
     let response = client
         .inner()
-        .scan_table(ScanTableRequest {
-            table_id: Some(table_id.into()),
-        })
+        .scan_table(tonic::Request::new(ScanTableRequest::default()).with_entry_id(table_id))
         .await
         .ok()?
         .into_inner();

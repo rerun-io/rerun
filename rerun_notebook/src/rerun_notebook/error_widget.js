@@ -4,7 +4,7 @@ void (async function () {
       `<div style="border:1px solid red;padding: 0 0.5em">`,
       `<span>Failed to fetch the following assets:</span>`,
       `<ul style="margin:0">`,
-      ...urls.map((url) => `<li>${url}</li>`) /* NOLINT */,
+      ...urls.map((url) => `<li>${url}</li>`),
       `</ul>`,
       `<div>`,
       `<span style="display:block">Please ensure they are accessible from your browser.</span>`,

@@ -85,7 +85,7 @@ client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))
 
 ## Using in Jupyter notebooks
 
-Rerun provides special support for Jupyter notebooks, see [Embed Rerun in notebooks](../../integrations/embed-notebooks.md).
+Rerun provides special support for Jupyter notebooks, see [Embed Rerun in notebooks](../../viewer/integrations/embed-notebooks.md).
 Note that this API makes use of `rr.notebook.Viewer`:
 
 ```python
@@ -106,15 +106,6 @@ viewer.send_table(
     "My Table",
     pa.RecordBatch.from_pydict({"Column A": [1, 2, 3], "Column B": ["https://www.rerun.io", "Hello", "World"]}),
 )
-```
-
-You can also send tables to a native Viewer instead of the notebook widget:
-
-```python
-from rerun.experimental import ViewerClient
-
-# Connect to a running Rerun Viewer
-client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
 ```
 
 ## Current limitations

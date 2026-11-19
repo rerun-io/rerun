@@ -52,6 +52,7 @@ itertools.workspace = true
 rfd = { workspace = true, features = ["file-handle-inner"] }
 serde_json.workspace = true
 serde.workspace = true
+thiserror.workspace = true
 url.workspace = true
 webbrowser.workspace = true
 

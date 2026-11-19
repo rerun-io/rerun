@@ -4,7 +4,7 @@ use egui::Vec2;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_agent_ui::AgentPanel;
 
-use super::chat_input::ready_panel;
+use super::chat_input::{connect_shown_conversation, ready_panel};
 
 const SIZE: Vec2 = Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0);
 
@@ -74,8 +74,8 @@ fn closing_a_row_removes_it() {
 #[test]
 fn the_add_button_opens_a_new_conversation() {
     let mut harness = harness();
-    // With setup done, the draft offers an input instead of the setup screen.
-    harness.state_mut().settings_mut().setup_done = true;
+    // Past its setup screen, the draft offers an input.
+    connect_shown_conversation(harness.state_mut());
     harness.run_steps(2);
     harness.get_by_label("More options").focus();
     harness.run_steps(2);
@@ -88,6 +88,10 @@ fn the_add_button_opens_a_new_conversation() {
     harness.get_by_label("Back to conversations");
     let input = harness.get_by_role(egui::accesskit::Role::MultilineTextInput);
     assert!(input.accesskit_node().is_focused());
+    assert!(
+        harness.state().is_ready(),
+        "the draft must keep its session, not launch an agent"
+    );
 }
 
 /// The running turn of a closed conversation still reaches the host, as aborted.

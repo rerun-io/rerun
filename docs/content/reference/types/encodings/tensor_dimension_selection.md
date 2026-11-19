@@ -27,7 +27,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1TensorDimensionSelection.html)
- * 🐍 [Python API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.TensorDimensionSelection)
+ * 🐍 [Python API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.TensorDimensionSelection)
  * 🦀 [Rust API docs for `TensorDimensionSelection`](https://docs.rs/rerun/latest/rerun/encodings/struct.TensorDimensionSelection.html)
 
 

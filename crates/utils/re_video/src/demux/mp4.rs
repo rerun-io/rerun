@@ -3,7 +3,6 @@ use std::io::Cursor;
 use cros_codecs::codec::h265::parser::{
     Nalu as H265Nalu, NaluType as H265NaluType, Parser as H265Parser,
 };
-use h264_reader::nal::{self, Nal as _};
 use itertools::Itertools as _;
 use re_int::SaturatingInto as _;
 use re_span::Span;
@@ -13,7 +12,7 @@ use crate::demux::{
     ChromaSubsamplingModes, SampleMetadataState, SamplesStatistics, VideoDeliveryMethod,
     VideoEncodingDetails,
 };
-use crate::h264::encoding_details_from_h264_sps;
+use crate::h264::encoding_details_from_h264_sps_nal;
 use crate::h265::encoding_details_from_h265_sps;
 use crate::nalu::ANNEXB_NAL_START_CODE;
 use crate::{FrameNumber, StableIndexDeque, Time, Timescale};
@@ -89,20 +88,43 @@ impl VideoDataDescription {
         let mut samples =
             StableIndexDeque::<SampleMetadataState>::with_capacity(track.samples.len());
         let mut keyframe_indices = Vec::new();
+        let mut is_truncated = false;
 
         {
             re_tracing::profile_scope!("copy samples & build gops");
 
             for sample in &track.samples {
-                if sample.is_sync {
-                    keyframe_indices.push(samples.next_index());
-                }
-
                 let decode_timestamp = Time::new(sample.decode_timestamp);
                 let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration.saturating_into());
 
+                // Invariant: every sample span lies within the source.
+                // A recording that was cut off keeps the samples that made it into the file.
+                if sample
+                    .offset
+                    .checked_add(sample.size)
+                    .is_none_or(|end| size < end)
+                {
+                    if samples.is_empty() {
+                        return Err(VideoLoadError::SampleOutOfBounds {
+                            sample_offset: sample.offset,
+                            sample_size: sample.size,
+                            file_size: size,
+                        });
+                    }
+                    re_log::error!(
+                        "Video is truncated or corrupt: keeping the first {} of {} samples, the rest lie past the end of the {size} byte file.\nVideo: {debug_name:?}",
+                        samples.num_elements(),
+                        track.samples.len(),
+                    );
+                    is_truncated = true;
+                    break;
+                }
                 let byte_span = Span::from_start_len(sample.offset, sample.size);
+
+                if sample.is_sync {
+                    keyframe_indices.push(samples.next_index());
+                }
 
                 samples.push_back(SampleMetadataState::Present(SampleMetadata {
                     is_sync: sample.is_sync,
@@ -113,6 +135,12 @@ impl VideoDataDescription {
                     source: crate::VideoSource::Span(byte_span),
                 }));
             }
+        }
+
+        if mp4.is_truncated && !is_truncated {
+            re_log::error!(
+                "Video is truncated: the file ends in the middle of a box, whose samples are lost.\nVideo: {debug_name:?}"
+            );
         }
 
         // VP8/VP9 MP4 files often have incorrect stss (sync sample) boxes,
@@ -199,13 +227,21 @@ impl VideoDataDescription {
 
         let samples_statistics = SamplesStatistics::new(&samples);
 
+        let mut duration = Time::new(track.duration.saturating_into());
+        if is_truncated {
+            let end_of_samples = samples
+                .iter()
+                .filter_map(|s| s.sample())
+                .map(|s| s.presentation_timestamp + s.duration.unwrap_or(Time::ZERO))
+                .max();
+            duration = end_of_samples.map_or(duration, |end| end.min(duration));
+        }
+
         let video_data_description = Self {
             codec,
             encoding_details: Some(codec_details_from_stds(track, stsd)?),
             timescale: Some(timescale),
-            delivery_method: VideoDeliveryMethod::Static {
-                duration: Time::new(track.duration.saturating_into()),
-            },
+            delivery_method: VideoDeliveryMethod::Static { duration },
             samples_statistics,
             keyframe_indices,
             samples,
@@ -240,11 +276,7 @@ fn codec_details_from_stds(
     match &stsd.contents {
         re_mp4::StsdBoxContent::Avc1(avcc_box) => {
             if let Some(sps_nal) = avcc_box.avcc.sequence_parameter_sets.first() {
-                let complete = true;
-                let sps_nal = nal::RefNal::new(sps_nal.bytes.as_slice(), &[], complete);
-
-                return nal::sps::SeqParameterSet::from_bits(sps_nal.rbsp_bits())
-                    .and_then(|sps| encoding_details_from_h264_sps(&sps))
+                return encoding_details_from_h264_sps_nal(&sps_nal.bytes)
                     .map_err(VideoLoadError::SpsParsingError)
                     .map(|details| VideoEncodingDetails {
                         stsd: Some(stsd),
@@ -271,7 +303,7 @@ fn codec_details_from_stds(
                         if let Ok(nalu) = H265Nalu::next(&mut rdr) {
                             let sps_ref = parser
                                 .parse_sps(&nalu)
-                                .map_err(|_err| VideoLoadError::NoVideoTrack)?;
+                                .map_err(VideoLoadError::H265SpsParsingError)?;
                             let details = encoding_details_from_h265_sps(sps_ref);
 
                             return Ok(VideoEncodingDetails {

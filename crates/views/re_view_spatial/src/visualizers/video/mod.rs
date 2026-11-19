@@ -25,7 +25,7 @@ use re_viewer_context::{
 pub use video_frame_reference::VideoFrameReferenceVisualizer;
 pub use video_stream::VideoStreamVisualizer;
 
-use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget};
+use super::{LoadingIndicator, SpatialViewVisualizerData, UiLabel, UiLabelStyle};
 use crate::SpaceKind;
 use crate::contexts::EntityDepthOffsets;
 use crate::eye::ExtendedEyeFrustum;
@@ -554,7 +554,7 @@ fn video_stream_processing_issue(
             VideoPlaybackIssueSeverity::Loading,
         ),
         VideoStreamProcessingError::InvalidVideoSampleType(_)
-        | VideoStreamProcessingError::MissingCodec
+        | VideoStreamProcessingError::MissingCodec { .. }
         | VideoStreamProcessingError::FailedReadingCodec(_)
         | VideoStreamProcessingError::OutOfOrderSamples
         | VideoStreamProcessingError::UnexpectedChunkChanges => (
@@ -663,8 +663,13 @@ fn show_video_frame(
         if let Some(texture) = texture {
             has_rendered_texture = true;
             let animated_valid_frame = ctx.egui_ctx().animate_bool(
-                egui::Id::unique((entity_path, "video loading indicator"))
-                    .with(visualizer_instruction),
+                egui::Id::unique((
+                    entity_path,
+                    "video loading indicator",
+                    ctx.store_id(),
+                    ctx.view_id,
+                    visualizer_instruction,
+                )),
                 issue.is_none() && !show_loading_indicator,
             );
             depth_offset = frame.depth_offset;
@@ -801,7 +806,7 @@ fn show_video_frame(
     visualizer_data.ui_labels.push(UiLabel {
         text: issue.message,
         style,
-        target: UiLabelTarget::Rect(label_target_rect),
+        target: label_target_rect.into(),
         labeled_instance: re_entity_db::InstancePathHash::entity_all(entity_path),
         visualizer_instruction,
     });

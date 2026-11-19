@@ -15,6 +15,7 @@ use egui::{NumExt as _, Widget as _};
 use jiff::Timestamp;
 pub use re_log::Level;
 
+use crate::button::{ButtonExt as _, Size};
 use crate::{UiExt as _, icons};
 
 /// How many earlier occurrences of a repeated notification keep their details.
@@ -520,7 +521,9 @@ fn split_bare_urls(text: &str) -> Vec<TextSegment<'_>> {
 /// Show `text`, rendering embedded URLs and Markdown links as inline hyperlinks.
 fn label_with_inline_links(ui: &mut egui::Ui, text: &str) {
     ui.horizontal_wrapped(|ui| {
-        ui.spacing_mut().item_spacing.x = 0.0;
+        // A row started by a widget that did not fit gets the vertical item spacing, but the wrapped
+        // lines of a label do not. With no spacing, all lines are the same distance apart.
+        ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
         for segment in split_links(text) {
             match segment {
                 TextSegment::Text(text) => {
@@ -944,6 +947,9 @@ const MAX_SHOWN_OCCURRENCES: usize = 10;
 /// Room to leave around a toast, so a wide one doesn't touch the edges of the viewport.
 const TOAST_MARGIN: f32 = 32.0;
 
+/// Fixed, so the action row knows how far a button's label sits inside it.
+const ACTION_BUTTON_SIZE: Size = Size::Tiny;
+
 fn show_notification(
     ui: &mut egui::Ui,
     notification: &Notification,
@@ -1067,14 +1073,24 @@ fn show_notification(
                             |ui| {
                                 let mut action_clicked = false;
                                 if !actions.is_empty() {
-                                    // Line the buttons up with the text, not the level icon.
-                                    ui.add_space(text_left - ui.cursor().left());
+                                    // Line the button labels up with the text, not the level icon.
+                                    ui.add_space(
+                                        text_left
+                                            - ui.cursor().left()
+                                            - ACTION_BUTTON_SIZE.padding().x,
+                                    );
                                 }
                                 if let Some(link) = link {
                                     link.ui(ui);
                                 }
                                 for action in actions {
-                                    if ui.button(&action.label).clicked() {
+                                    if ui
+                                        .add(
+                                            egui::Button::new(&action.label)
+                                                .size(ACTION_BUTTON_SIZE),
+                                        )
+                                        .clicked()
+                                    {
                                         (action.on_click)();
                                         action_clicked = true;
                                     }

@@ -427,7 +427,10 @@ impl Drop for ChunkBatcherInner {
 #[derive(re_byte_size::SizeBytes)]
 enum Command {
     AppendChunk(Chunk),
-    AppendRow(EntityPath, PendingRow),
+    AppendRow {
+        entity_path: EntityPath,
+        row: PendingRow,
+    },
     Flush {
         #[size_bytes(ignore)]
         on_done: crossbeam::channel::Sender<()>,
@@ -538,7 +541,7 @@ impl ChunkBatcherInner {
     }
 
     fn push_row(&self, entity_path: EntityPath, row: PendingRow) {
-        self.send_cmd(Command::AppendRow(entity_path, row));
+        self.send_cmd(Command::AppendRow { entity_path, row });
     }
 
     fn flush_async(&self) {
@@ -697,7 +700,7 @@ fn batching_thread(
                             tx_chunk.send(chunk).ok();
                         }
                     },
-                    Command::AppendRow(entity_path, row) => {
+                    Command::AppendRow { entity_path, row } => {
                         let acc = accs.entry(entity_path.clone())
                             .or_insert_with(|| Accumulator::new(entity_path));
                         do_push_row(acc, row);

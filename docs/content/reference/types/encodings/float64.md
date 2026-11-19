@@ -13,7 +13,7 @@ Float64
 
 ## API reference links
  * 🌊 [C++ API docs for `Float64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Float64.html)
- * 🐍 [Python API docs for `Float64`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Float64)
+ * 🐍 [Python API docs for `Float64`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.Float64)
  * 🦀 [Rust API docs for `Float64`](https://docs.rs/rerun/latest/rerun/encodings/struct.Float64.html)
 
 

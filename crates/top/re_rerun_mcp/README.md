@@ -1,0 +1,15 @@
+# re_rerun_mcp
+
+Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
+
+![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
+![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
+
+MCP server that lets LLM agents use Rerun. See the [docs](https://rerun.io/docs/viewer/extend/mcp) for more info.
+
+## Development
+
+There is a `.mcp.json` that Claude should pick up in the Rerun repository root.
+
+Use `cargo build -p re_rerun_mcp` to build the updated mcp server, and then within claude use `/mcp` and select `rerun` and
+then reconnect, and it'll use the updated mcp (or reboot the cli).

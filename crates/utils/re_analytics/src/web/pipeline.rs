@@ -21,6 +21,9 @@ pub enum PipelineError {
 pub struct Pipeline {
     analytics_id: Arc<str>,
     session_id: Arc<str>,
+
+    /// Drop every event, see [`Config::is_first_run`].
+    is_first_run: bool,
 }
 
 impl Pipeline {
@@ -31,10 +34,15 @@ impl Pipeline {
         Ok(Some(Self {
             analytics_id: config.analytics_id.as_str().into(),
             session_id: config.session_id.to_string().into(),
+            is_first_run: config.is_first_run(),
         }))
     }
 
     pub fn record(&self, event: AnalyticsEvent) {
+        if self.is_first_run {
+            return;
+        }
+
         // send all events immediately, ignore all errors
 
         let analytics_id = self.analytics_id.clone();

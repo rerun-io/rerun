@@ -83,6 +83,41 @@ fn grouped_models_resolve_aliases_and_recommend_reruns_default() {
     );
 }
 
+/// The newer model is recommended even when an older version is listed first.
+#[test]
+fn model_menu_recommends_the_newest_matching_version() {
+    let mut panel = super::chat_input::ready_panel_for_profile(AgentProfileId::new("opencode"));
+    panel
+        .session_mut()
+        .handle_event(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
+            ConfigOptionUpdate::new(vec![
+                SessionConfigOption::select(
+                    "model",
+                    "Model",
+                    "old",
+                    vec![
+                        SessionConfigSelectOption::new("old", "openai/GPT-5.6 Terra"),
+                        SessionConfigSelectOption::new("new", "openai/GPT-6.1 Terra"),
+                    ],
+                )
+                .category(SessionConfigOptionCategory::Model),
+            ]),
+        )));
+    let mut harness = re_ui::testing::new_harness(
+        re_ui::testing::TestOptions::Gui,
+        Vec2::new(re_agent_ui::RECOMMENDED_WIDTH, 800.0),
+    )
+    .build_ui_state(|ui, panel| panel.ui(ui), panel);
+    harness.run_steps(3);
+    super::open_settings_submenu(&mut harness, "openai/GPT-5.6 Terra", "Model");
+    harness.get_by_label("recommended").click();
+    harness.run_steps(2);
+    assert_eq!(
+        launched_model(harness.state()),
+        Some(SessionConfigValueId::new("new"))
+    );
+}
+
 #[test]
 fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload() {
     let mut panel = ready_panel();
@@ -175,7 +210,7 @@ fn selected_model_is_preserved_for_new_conversations_and_after_settings_reload()
         .into_iter()
         .map(|profile| AgentEntry {
             profile,
-            executable: None,
+            install: re_agent::AgentInstall::NotInstalled,
         })
         .collect();
     let mut reopened = AgentPanel::with_agents(restored, None, agents, Vec::new());

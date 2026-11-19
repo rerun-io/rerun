@@ -5,6 +5,7 @@ use futures::StreamExt as _;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::cloud::v1alpha1::watch_events_response::Kind;
 use re_protos::cloud::v1alpha1::{DeleteEntryRequest, WatchEventsRequest};
+use re_protos::headers::RerunHeadersInjectorExt as _;
 
 use super::common::RerunCloudServiceExt as _;
 
@@ -49,9 +50,10 @@ pub async fn watch_events_entry_deleted(service: impl RerunCloudService) -> Resu
     let mut stream = std::pin::pin!(stream);
 
     service
-        .delete_entry(tonic::Request::new(DeleteEntryRequest {
-            id: Some(dataset_entry.details.id.into()),
-        }))
+        .delete_entry(
+            tonic::Request::new(DeleteEntryRequest::default())
+                .with_entry_id(dataset_entry.details.id),
+        )
         .await
         .context("failed to delete entry")?;
 

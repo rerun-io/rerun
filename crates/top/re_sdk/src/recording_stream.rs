@@ -1110,6 +1110,7 @@ enum Command {
     SwapSink {
         #[size_bytes(ignore)]
         new_sink: Box<dyn LogSink>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },
@@ -1118,6 +1119,7 @@ enum Command {
     Flush {
         #[size_bytes(ignore)]
         on_done: Sender<FlushResult>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },
@@ -1129,6 +1131,7 @@ enum Command {
     FinalizeDeferredSinks {
         #[size_bytes(ignore)]
         on_done: Sender<()>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },
@@ -2741,7 +2744,7 @@ impl RecordingStream {
     /// Example:
     /// ```no_run
     /// # mod rerun { pub use re_sdk::*; }
-    /// # let rec: rerun::RecordingStream = unimplemented!();
+    /// # let rec: rerun::RecordingStream = unimplemented!("only type-checked");
     /// rec.set_time("frame_nr", rerun::TimeCell::from_sequence(42));
     /// rec.set_time("duration", std::time::Duration::from_millis(123));
     /// rec.set_time("capture_time", std::time::SystemTime::now());

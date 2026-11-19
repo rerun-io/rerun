@@ -143,6 +143,24 @@ impl std::fmt::Display for BuildInfo {
 
 use crate::CrateVersion;
 
+/// Failed to parse a [`CrateVersion`] from a [`BuildInfo`] string.
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum BuildInfoParseError {
+    /// The string does not contain a version.
+    #[error("{build_info:?} is not a valid BuildInfo string")]
+    MissingVersion {
+        /// The string that was parsed.
+        build_info: String,
+    },
+
+    /// The version in the string is not a valid [`CrateVersion`].
+    #[error("{reason}")]
+    InvalidVersion {
+        /// Why the version is invalid.
+        reason: &'static str,
+    },
+}
+
 impl CrateVersion<'_> {
     /// Attempts to parse a [`CrateVersion`] from a [`BuildInfo`]'s string representation (`rerun --version`).
     ///
@@ -151,12 +169,17 @@ impl CrateVersion<'_> {
     /// ```ignore
     /// <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
     /// ```
-    pub fn try_parse_from_build_info_string(s: &str) -> Result<CrateVersion<'_>, String> {
+    pub fn try_parse_from_build_info_string(
+        s: &str,
+    ) -> Result<CrateVersion<'_>, BuildInfoParseError> {
         let parts = s.split_whitespace().collect::<Vec<_>>();
         if parts.len() < 2 {
-            return Err(format!("{s:?} is not a valid BuildInfo string"));
+            return Err(BuildInfoParseError::MissingVersion {
+                build_info: s.to_owned(),
+            });
         }
-        CrateVersion::try_parse(parts[1]).map_err(ToOwned::to_owned)
+        CrateVersion::try_parse(parts[1])
+            .map_err(|reason| BuildInfoParseError::InvalidVersion { reason })
     }
 }
 

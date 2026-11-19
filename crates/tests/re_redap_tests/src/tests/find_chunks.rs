@@ -66,7 +66,7 @@ pub fn range_request(
     }
 }
 
-fn samples_request(
+pub fn samples_request(
     timeline: &'static str,
     segments: BTreeMap<SegmentId, BTreeSet<TimeInt>>,
     fill_mode: FillMode,
@@ -102,7 +102,7 @@ async fn find_chunks_batches_wire<T: RerunCloudService>(
         .await
 }
 
-async fn find_chunks_batches<T: RerunCloudService>(
+pub async fn find_chunks_batches<T: RerunCloudService>(
     service: &T,
     dataset_name: &str,
     request: FindChunksRequest,
@@ -158,7 +158,7 @@ fn simple_recording_chunk_ids(tuid_prefix: u64, entity_count: usize) -> Vec<(Chu
 
 /// Chunk ids `create_simple_recording_one_chunk_per_frame` assigns for its one entity: four
 /// temporal chunks (frame offsets 10, 20, 30, 40, in that order) plus one static chunk.
-fn one_chunk_per_frame_ids(tuid_prefix: u64) -> ([ChunkId; 4], ChunkId) {
+pub fn one_chunk_per_frame_ids(tuid_prefix: u64) -> ([ChunkId; 4], ChunkId) {
     let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
     let temporal = [
         next_chunk_id(),

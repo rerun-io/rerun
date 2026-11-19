@@ -9,6 +9,10 @@ publish = false
 [lints]
 workspace = true
 
+[[bin]]
+name = "test_image_memory"
+test = false
+
 [dependencies]
 re_format.workspace = true
 re_memory.workspace = true

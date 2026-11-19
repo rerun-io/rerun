@@ -16,7 +16,7 @@ def test_storage_location_descriptors() -> None:
                 "display_name": "Read-only storage",
                 "region": "eu-west-1",
                 "bucket_name": "eu-bucket",
-                "prefix": "recordings/",
+                "prefix": "recordings",
                 "read_only": True,
             },
             {
@@ -35,7 +35,7 @@ def test_storage_location_descriptors() -> None:
     locations = client._get_storage_locations()
     assert locations == StorageLocations(
         locations=[
-            StorageLocation("robot-storage-eu", "Read-only storage", "eu-west-1", "eu-bucket", "recordings/", True),
+            StorageLocation("robot-storage-eu", "Read-only storage", "eu-west-1", "eu-bucket", "recordings", True),
             StorageLocation("robot-storage-us", None, "us-east-1", "us-bucket", None, False),
         ],
         default_alias="robot-storage-us",
@@ -48,7 +48,7 @@ def test_storage_locations_repr() -> None:
     locations = StorageLocations(
         locations=[
             StorageLocation("west", None, "us-west-1", "uploads", None, False),
-            StorageLocation("east", "Archive", "us-east-1", "archive", "rrd/", True),
+            StorageLocation("east", "Archive", "us-east-1", "archive", "rrd", True),
         ],
         default_alias="west",
     )
@@ -57,7 +57,7 @@ def test_storage_locations_repr() -> None:
 StorageLocations
   Alias           Name     Region     Bucket   Prefix  Access
   --------------  -------  ---------  -------  ------  ----------
-  east            Archive  us-east-1  archive  rrd/    read-only
+  east            Archive  us-east-1  archive  rrd     read-only
   west (default)           us-west-1  uploads          read-write\
 """)
     # NOLINT_END

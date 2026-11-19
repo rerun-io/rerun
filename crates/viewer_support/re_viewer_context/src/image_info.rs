@@ -55,14 +55,17 @@ pub fn resolution_of_image_at(
         let video = ctx
             .store_context
             .memoizer(|c: &mut crate::VideoStreamCache| {
+                let codec_component = archetypes::EncodedImage::descriptor_media_type().component;
                 let codec = entity_db
                     .latest_at_component::<components::VideoCodec>(
                         entity_path,
                         query,
-                        archetypes::EncodedImage::descriptor_media_type().component,
+                        codec_component,
                     )
                     .map(|(_, c)| re_video::VideoCodec::from(c))
-                    .ok_or(crate::VideoStreamProcessingError::MissingCodec);
+                    .ok_or(crate::VideoStreamProcessingError::MissingCodec {
+                        component: codec_component,
+                    });
                 let codec = codec?;
 
                 c.entry(

@@ -207,7 +207,10 @@ pub fn components_section_ui(
                     if solo {
                         toggled = Some(Toggled::Only(descr.component));
                     } else if !is_last_visible {
-                        toggled = Some(Toggled::One(descr.component, visible));
+                        toggled = Some(Toggled::One {
+                            component: descr.component,
+                            visible,
+                        });
                     }
                 }
 
@@ -239,7 +242,10 @@ fn is_shown(configured: Option<&[ComponentIdentifier]>, component: ComponentIden
 #[derive(Clone, Copy)]
 enum Toggled {
     /// Show or hide this one component, leaving the rest as they were.
-    One(ComponentIdentifier, bool),
+    One {
+        component: ComponentIdentifier,
+        visible: bool,
+    },
 
     /// Solo this component, or show all if it is already the only visible component.
     Only(ComponentIdentifier),
@@ -267,8 +273,11 @@ fn toggled_rows(
     Some(
         available
             .filter(|&component| match toggled {
-                Toggled::One(toggled, visible) if component == toggled => visible,
-                Toggled::One(..) => was_shown(component),
+                Toggled::One {
+                    component: toggled,
+                    visible,
+                } if component == toggled => visible,
+                Toggled::One { .. } => was_shown(component),
                 Toggled::Only(solo) => component == solo,
             })
             .collect(),
@@ -312,7 +321,10 @@ mod tests {
         let rows = toggled_rows(
             Some(&components(&["c"])),
             available(),
-            Toggled::One("a".into(), true),
+            Toggled::One {
+                component: "a".into(),
+                visible: true,
+            },
         );
         assert_eq!(
             rows,

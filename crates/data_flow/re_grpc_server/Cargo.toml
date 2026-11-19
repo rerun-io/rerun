@@ -27,6 +27,7 @@ bin = ["re_log/setup"]
 [[bin]]
 name = "re_grpc_server"
 required-features = ["bin"]
+test = false
 
 [dependencies]
 re_byte_size.workspace = true

@@ -596,9 +596,12 @@ impl ChunkStream for MapStream {
                 .map_fn
                 .call1(py, (py_chunk,))
                 .map_err(py_callable_err)?;
-            let result_ref: PyRef<'_, crate::chunk::PyChunkInternal> = result
-                .extract(py)
-                .map_err(|e: pyo3::pyclass::PyClassGuardError<'_, '_>| py_callable_err(e.into()))?;
+            let result_ref: PyRef<'_, crate::chunk::PyChunkInternal> =
+                result
+                    .extract(py)
+                    .map_err(|err: pyo3::pyclass::PyClassGuardError<'_, '_>| {
+                        py_callable_err(err.into())
+                    })?;
             Ok(Some(Arc::clone(result_ref.inner())))
         })
     }
@@ -637,8 +640,8 @@ impl ChunkStream for FlatMapStream {
                     let item = item.map_err(py_callable_err)?;
                     let chunk_ref: PyRef<'_, crate::chunk::PyChunkInternal> = item
                         .extract()
-                        .map_err(|e: pyo3::pyclass::PyClassGuardError<'_, '_>| {
-                            py_callable_err(e.into())
+                        .map_err(|err: pyo3::pyclass::PyClassGuardError<'_, '_>| {
+                            py_callable_err(err.into())
                         })?;
                     self.buffer.push_back(Arc::clone(chunk_ref.inner()));
                 }

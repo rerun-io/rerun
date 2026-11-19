@@ -36,6 +36,7 @@ pub enum ParquetError {
     #[error("Invalid timeline name for index column '{column}': {source}")]
     InvalidTimelineName {
         column: String,
+
         #[source]
         source: re_log_types::InvalidTimelineNameError,
     },

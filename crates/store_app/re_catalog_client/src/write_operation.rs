@@ -152,6 +152,7 @@ impl WriteOperation {
             state
                 .changed()
                 .await
+                // relint: allow(map_err_dropped): `watch::error::RecvError` only says the sender was dropped
                 .map_err(|_err| WriteOperationError::WorkerStopped)?;
         }
     }

@@ -352,6 +352,7 @@ pub struct GetDeviceAuthUrl<'a> {
 pub struct GetDeviceAuthUrlResponse {
     pub device_code: String,
     pub expires_in: i64,
+
     #[serde(rename = "interval")]
     pub interval_seconds: i64,
     pub user_code: String,

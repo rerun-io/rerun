@@ -228,7 +228,10 @@ fn decode_and_stream(
             msg
         };
 
-        let data = ImportedData::LogMsg(RrdImporter::name(&RrdImporter), msg);
+        let data = ImportedData::LogMsg {
+            importer_name: RrdImporter::name(&RrdImporter),
+            msg,
+        };
         if re_quota_channel::send_crossbeam(tx, data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
@@ -281,7 +284,7 @@ mod tests {
 
         rx.into_iter()
             .map(|data| match data {
-                ImportedData::LogMsg(_, msg) => msg,
+                ImportedData::LogMsg { msg, .. } => msg,
                 other => panic!("rrd import should only produce log messages, got {other:?}"),
             })
             .collect()

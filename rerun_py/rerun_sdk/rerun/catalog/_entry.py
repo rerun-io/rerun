@@ -112,7 +112,8 @@ def _property_column(key: str, component: str) -> str:
     return f"property:{key}:{component}"
 
 
-def _first_str(cell: Any) -> str | None:
+# `cell` comes from `pa.Array.to_pylist()`, which is untyped.
+def _first_str(cell: Any) -> str | None:  # noqa: ANN401
     """The first string of a list-wrapped property cell, or the value itself if not wrapped."""
     if cell is None:
         return None
@@ -121,7 +122,8 @@ def _first_str(cell: Any) -> str | None:
     return str(cell)
 
 
-def _str_list(cell: Any) -> list[str]:
+# `cell` comes from `pa.Array.to_pylist()`, which is untyped.
+def _str_list(cell: Any) -> list[str]:  # noqa: ANN401
     """The strings of a list-wrapped property cell, dropping nulls."""
     if cell is None:
         return []
@@ -414,7 +416,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         See [`RegisteredBlueprint.name`][rerun.catalog.RegisteredBlueprint.name] for how names work.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints)
         for examples of saving and registering table blueprints with local or remote storage.
 
         The associated blueprint dataset is owned by this dataset for lifecycle purposes.
@@ -962,8 +964,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
 
         return self._internal.segment_url(segment_id, timeline, start, end)
 
-    # TODO(RR-2168): Allow selecting an arbitrary recording from the RRD and add a segment_id
-    # parameter once registration supports overriding encoded recording IDs.
+    # TODO(RR-6283): Allow selecting an arbitrary recording from the RRD.
     @with_tracing("DatasetEntry._write_segments")
     def _write_segments(
         self,
@@ -971,13 +972,17 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         storage_prefix: str | None = None,
         *,
         layer_name: str = "base",
+        segment_id: str | None = None,
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
     ) -> WriteOperation:
         """
         Upload a complete RRD and register its first recording.
 
         Experimental API. Only the first recording in the RRD is registered.
-        Its recording ID becomes the segment ID; selecting another recording is not yet supported.
+        It is registered as `segment_id` when set, and under its recording ID otherwise;
+        selecting another recording is not yet supported.
+        Setting `segment_id` requires a server running Rerun 0.44 or Rerun Hub 0.21 or later; with older servers,
+        the call fails before uploading.
         Duplicate handling follows `register()`.
         `storage_prefix` is relative to catalog storage.
         An invalid `storage_prefix` raises `ValueError` immediately.
@@ -987,7 +992,12 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         Call `wait()` on the returned operation to confirm registration or raise the failure.
         """
         return self._write_recording(
-            source, storage_prefix, "segment", layer_name=layer_name, on_duplicate=on_duplicate
+            source,
+            storage_prefix,
+            "segment",
+            layer_name=layer_name,
+            on_duplicate=on_duplicate,
+            segment_id=segment_id,
         )
 
     @with_tracing("DatasetEntry._write_blueprint")
@@ -1049,12 +1059,13 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         *,
         layer_name: str,
         on_duplicate: OnDuplicateSegmentLayer,
+        segment_id: str | None = None,
     ) -> WriteOperation:
         from ._write_operation import WriteOperation
 
         if isinstance(source, (str, Path)):
             return WriteOperation(
-                self._internal.write_path(str(source), storage_prefix, kind, layer_name, on_duplicate)
+                self._internal.write_path(str(source), storage_prefix, kind, layer_name, on_duplicate, segment_id)
             )
         elif isinstance(source, (bytes, bytearray, memoryview)):
             data = bytes(source)
@@ -1065,16 +1076,18 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         else:
             # TODO(RR-6198): Pass sequential sources through the bounded streaming upload path.
             data = b"".join(source)
-        return WriteOperation(self._internal.write_bytes(data, storage_prefix, kind, layer_name, on_duplicate))
+        return WriteOperation(
+            self._internal.write_bytes(data, storage_prefix, kind, layer_name, on_duplicate, segment_id)
+        )
 
-    # TODO(RR-2168): Allow selecting an arbitrary recording from each RRD and add a segment_id
-    # parameter once registration supports overriding encoded recording IDs.
+    # TODO(RR-6283): Allow selecting an arbitrary recording from each RRD.
     @overload
     def register(
         self,
         recording_uri: list[str],
         *,
         layer_name: str | Sequence[str] = "base",
+        segment_id: list[str] | None = None,
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
         storage_location: str | None = None,
     ) -> RegistrationOperation: ...
@@ -1087,6 +1100,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         recording_uri: list[str],
         *,
         layer_name: str | Sequence[str] = "base",
+        segment_id: list[str] | None = None,
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
         object_store_config: str | None,
     ) -> RegistrationOperation: ...
@@ -1098,6 +1112,7 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         recording_uri: list[str],
         *,
         layer_name: str | Sequence[str] = "base",
+        segment_id: list[str] | None = None,
         on_duplicate: OnDuplicateSegmentLayer = OnDuplicateSegmentLayer.ERROR,
         storage_location: str | None = None,
         object_store_config: str | None = None,
@@ -1108,8 +1123,9 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
         This method initiates the registration of recordings to the dataset, and returns
         a handle that can be used to wait for completion or iterate over results.
 
-        Only the first recording in each RRD is registered.
-        Its recording ID becomes the segment ID; selecting another recording is not yet supported.
+        Only the first recording store in each RRD is registered.
+        Selecting another recording store is not yet supported.
+        Its recording ID becomes the segment ID, unless `segment_id` names another one.
 
         Prefer batching many URIs into a single `register` call rather than calling
         `register` repeatedly in a loop, which is much slower.
@@ -1124,6 +1140,14 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             Can be a single layer name (applied to all recordings) or a sequence of layer names
             (must match the length of `recording_uri`).
             Defaults to `"base"`.
+
+        segment_id:
+            The segment ID each recording is registered as, instead of its recording ID.
+            Must match the length of `recording_uri`.
+            The same recording may be registered under several segment IDs, for example to add one layer to many
+            segments.
+            Requires a server running Rerun 0.44 or Rerun Hub 0.21 or later; with older servers, this call fails.
+            Once a dataset has such a segment, the server refuses to serve its data to SDKs and viewers older than 0.44.
 
         on_duplicate:
             How to handle a segment layer that already exists in the dataset.
@@ -1178,11 +1202,20 @@ class DatasetEntry(Entry[DatasetEntryInternal]):
             if len(layer_names) != len(recording_uris):
                 raise ValueError("`layer_name` must be the same length as `recording_uri`")
 
+        segment_ids: list[str] | None = None
+        if segment_id is not None:
+            if isinstance(segment_id, str):
+                raise TypeError("`segment_id` must be a list of strings, one per `recording_uri`")
+            segment_ids = list(segment_id)
+            if len(segment_ids) != len(recording_uris):
+                raise ValueError("`segment_id` must be the same length as `recording_uri`")
+
         return RegistrationOperation(
             self._internal.register(
                 recording_uris,
                 recording_layers=layer_names,
                 on_duplicate=on_duplicate,
+                segment_ids=segment_ids,
                 storage_location=storage_location,
             )
         )
@@ -2173,7 +2206,7 @@ class TableEntry(Entry[TableEntryInternal]):
     Note: this object acts as a table provider for DataFusion.
     """
 
-    def __datafusion_table_provider__(self, session: Any) -> Any:
+    def __datafusion_table_provider__(self, session: object) -> object:
         """Returns a DataFusion table provider capsule."""
 
         return self._internal.__datafusion_table_provider__(session)
@@ -2243,7 +2276,7 @@ class TableEntry(Entry[TableEntryInternal]):
         See [`RegisteredBlueprint.name`][rerun.catalog.RegisteredBlueprint.name] for how names work.
 
         The URI is read by the server; this method does not upload a local file.
-        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints-and-views/configure-table-blueprints)
+        See [Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints)
         for examples of configuring columns, cards, and previews, then saving and registering the result.
 
         The associated blueprint dataset is owned by this table for lifecycle purposes.

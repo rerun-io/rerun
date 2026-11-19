@@ -19,7 +19,7 @@ List(non-null Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `ChannelMessageCounts`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ChannelMessageCounts.html)
- * 🐍 [Python API docs for `ChannelMessageCounts`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ChannelMessageCounts)
+ * 🐍 [Python API docs for `ChannelMessageCounts`](https://ref.rerun.io/docs/python/stable/components#rerun.components.ChannelMessageCounts)
  * 🦀 [Rust API docs for `ChannelMessageCounts`](https://docs.rs/rerun/latest/rerun/components/struct.ChannelMessageCounts.html)
 
 

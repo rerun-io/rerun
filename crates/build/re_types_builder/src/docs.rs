@@ -299,12 +299,28 @@ mod doclink_translation {
         })
     }
 
-    fn normalized_object_path(doclink_tokens: &[&str]) -> Result<String, String> {
+    /// Why a doclink could not be translated.
+    #[derive(Debug, thiserror::Error)]
+    enum DoclinkError {
+        #[error("Expected a rustdoc link")]
+        NotARustdocLink,
+
+        #[error("No object found for doclink")]
+        ObjectNotFound,
+
+        #[error("Found doclink to deprecated object '{fqname}': {deprecation_summary}")]
+        DeprecatedObject {
+            fqname: String,
+            deprecation_summary: String,
+        },
+    }
+
+    fn normalized_object_path(doclink_tokens: &[&str]) -> Result<String, DoclinkError> {
         let original_doclink = doclink_tokens.join("");
         let object_path = original_doclink
             .strip_prefix('[')
             .and_then(|link| link.strip_suffix(']'))
-            .ok_or("Expected a rustdoc link")?;
+            .ok_or(DoclinkError::NotARustdocLink)?;
         let object_path = object_path
             .strip_prefix('`')
             .and_then(|link| link.strip_suffix('`'))
@@ -318,7 +334,7 @@ mod doclink_translation {
         objects: &Objects,
         doclink_tokens: &[&str],
         target: Target,
-    ) -> Result<String, String> {
+    ) -> Result<String, DoclinkError> {
         let object_fqname = normalized_object_path(doclink_tokens)?;
         let (object, field_or_enum_name) = if let Some(object) = objects.get(&object_fqname) {
             (object, None)
@@ -327,7 +343,7 @@ mod doclink_translation {
         {
             (object, Some(field_or_enum_name))
         } else {
-            return Err("No object found for doclink".to_owned());
+            return Err(DoclinkError::ObjectNotFound);
         };
 
         let kind = object.kind.plural_snake_case();
@@ -335,10 +351,10 @@ mod doclink_translation {
         let scope = object.scope().unwrap_or_default();
 
         if let Some(deprecation_summary) = object.deprecation_summary() {
-            return Err(format!(
-                "Found doclink to deprecated object '{}': {deprecation_summary}",
-                object.fqname,
-            ));
+            return Err(DoclinkError::DeprecatedObject {
+                fqname: object.fqname.clone(),
+                deprecation_summary,
+            });
         }
 
         Ok(match target {

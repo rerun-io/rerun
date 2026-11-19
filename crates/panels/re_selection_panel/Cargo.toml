@@ -41,6 +41,7 @@ nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive"] }
 smallvec.workspace = true
 static_assertions.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }

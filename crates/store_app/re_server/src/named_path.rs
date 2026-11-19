@@ -17,7 +17,7 @@ pub struct NamedPathCollection {
 }
 
 impl FromStr for NamedPath {
-    type Err = String;
+    type Err = std::convert::Infallible;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some((name, path)) = s.split_once('=') {

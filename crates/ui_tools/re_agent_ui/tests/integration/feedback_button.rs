@@ -19,7 +19,9 @@ fn panel(feedback_enabled: bool) -> AgentPanel {
     let agents = AgentProfile::builtin()
         .into_iter()
         .map(|profile| AgentEntry {
-            executable: Some(PathBuf::from("/a/fake/path/bin").join(&profile.command)),
+            install: re_agent::AgentInstall::Ready(
+                PathBuf::from("/a/fake/path/bin").join(&profile.command),
+            ),
             profile,
         })
         .collect();

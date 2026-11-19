@@ -185,6 +185,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
 
     _fallback_token = traitlets.Unicode(allow_none=True).tag(sync=True)
     _theme = traitlets.Unicode(default_value=None, allow_none=True).tag(sync=True)
+    _analytics = traitlets.Unicode(default_value=None, allow_none=True).tag(sync=True)
 
     def __init__(
         self,
@@ -195,6 +196,7 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         panel_states: Mapping[Panel, PanelState] | None = None,
         fallback_token: str | None = None,
         theme: Literal["dark", "light", "system"] | None = None,
+        analytics: Literal["on", "off"] | None = None,
         **kwargs: Any,
     ) -> None:
         super().__init__(**kwargs)
@@ -216,7 +218,11 @@ class Viewer(anywidget.AnyWidget):  # type: ignore[misc]
         if theme:
             self._theme = theme
 
-        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:
+        if analytics:
+            self._analytics = analytics
+
+        # anywidget passes untyped message payloads; `content` is narrowed below.
+        def handle_msg(widget: Any, content: Any, buffers: list[bytes]) -> None:  # noqa: ANN401
             if isinstance(content, str):
                 if content == "ready":
                     self._on_ready()

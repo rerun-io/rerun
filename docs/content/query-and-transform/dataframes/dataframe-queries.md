@@ -18,7 +18,7 @@ Dataframe queries are designed to bridge this gap. They allow you to query arbit
 Dataframe queries can be used in three contexts:
 
 - **Interactively in the Viewer**: The [dataframe view](../../reference/types/views/dataframe_view.md) displays query results as a table, useful for inspecting raw values and debugging.
-- **Programmatically using the Catalog SDK**: The [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry) object provides API to filter and query datasets and turn them into dataframes.
+- **Programmatically using the Catalog SDK**: The [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry) object provides API to filter and query datasets and turn them into dataframes.
 - **On a single recording, without a server**: [`ChunkStore.reader()`](../../logging-and-ingestion/import/chunk-processing-api.md) runs the same query over a recording loaded from an `.rrd` file.
 
 
@@ -172,11 +172,11 @@ For a complete example, see the [Time-align data](time_alignment.md) how-to.
 
 ## Additional resources
 
-- [🐍 Python Catalog SDK reference](https://ref.rerun.io/docs/python/stable/common/catalog/)
-  - [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry)
-  - [`DatasetSelection`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetSelection)
-  - [`reader()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetSelection.reader)
-  - [`filter_contents()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.filter_contents)
-  - [`filter_segments()`](https://ref.rerun.io/docs/python/stable/common/catalog/#rerun.catalog.DatasetEntry.filter_segments)
+- [🐍 Python Catalog SDK reference](https://ref.rerun.io/docs/python/stable/catalog/)
+  - [`DatasetEntry`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry)
+  - [`DatasetSelection`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetSelection)
+  - [`reader()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetSelection.reader)
+  - [`filter_contents()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.filter_contents)
+  - [`filter_segments()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.filter_segments)
 - [Dataframe view](../../reference/types/views/dataframe_view.md) for visualizing query results in the Viewer
 - [Query semantics & partial updates](../../logging-and-ingestion/data-model/latest-at.md) for understanding latest-at and range queries

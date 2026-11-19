@@ -53,7 +53,7 @@ impl FeedbackModal {
 
     /// Must be called every frame, also when the modal is closed.
     ///
-    /// Sending needs analytics to be enabled, and the Send button is disabled otherwise.
+    /// Sending needs [`re_analytics::can_send`], and the Send button is disabled otherwise.
     pub fn ui(&mut self, ctx: &egui::Context) {
         crate::agent_analytics::update_redactor(&mut self.redactor, ctx);
 
@@ -68,11 +68,14 @@ impl FeedbackModal {
                         .desired_rows(5)
                         .desired_width(f32::INFINITY),
                 );
-                let can_send = re_analytics::is_enabled();
+                let can_send = re_analytics::can_send();
                 ui.weak(if can_send {
                     "Your feedback is sent to Rerun together with the agent trace: \
                      your prompts, the agent's answers, and its tool calls. \
                      Another agent session redacts any sensitive information first."
+                } else if re_analytics::is_enabled() {
+                    "Feedback is sent with analytics, and nothing is sent during your first \
+                     session. You can send feedback from your next session."
                 } else {
                     "Feedback is sent with analytics, and analytics is turned off."
                 });

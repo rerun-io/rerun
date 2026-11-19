@@ -13,7 +13,7 @@ FixedSizeList(3 x non-null Float32)
 
 ## API reference links
  * 🌊 [C++ API docs for `Vec3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Vec3D.html)
- * 🐍 [Python API docs for `Vec3D`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Vec3D)
+ * 🐍 [Python API docs for `Vec3D`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.Vec3D)
  * 🦀 [Rust API docs for `Vec3D`](https://docs.rs/rerun/latest/rerun/encodings/struct.Vec3D.html)
 
 

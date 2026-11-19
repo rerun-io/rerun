@@ -146,7 +146,7 @@ fn prepend_request_trace_id(err: PyErr, request_trace_id: Option<&TraceId>) -> P
 }
 
 /// Iterator that wraps the gRPC completion stream.
-#[pyclass( // NOLINT: ignore[py-cls-eq]
+#[pyclass( // relint: allow(pyclass_eq): an iterator has no meaningful equality
     name = "RegistrationIterator",
     module = "rerun_bindings.rerun_bindings"
 )]
@@ -157,7 +157,7 @@ pub struct PyRegistrationIterator {
     rx: Arc<Mutex<mpsc::Receiver<PyResult<RegistrationResult>>>>,
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods] // relint: allow(pymethods_str): not in the Python API stubs
 impl PyRegistrationIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf

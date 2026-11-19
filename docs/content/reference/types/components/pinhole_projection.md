@@ -26,7 +26,7 @@ FixedSizeList(9 x non-null Float32)
 
 ## API reference links
  * 🌊 [C++ API docs for `PinholeProjection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PinholeProjection.html)
- * 🐍 [Python API docs for `PinholeProjection`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PinholeProjection)
+ * 🐍 [Python API docs for `PinholeProjection`](https://ref.rerun.io/docs/python/stable/components#rerun.components.PinholeProjection)
  * 🦀 [Rust API docs for `PinholeProjection`](https://docs.rs/rerun/latest/rerun/components/struct.PinholeProjection.html)
 
 

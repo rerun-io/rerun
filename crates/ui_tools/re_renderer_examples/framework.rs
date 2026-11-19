@@ -150,7 +150,6 @@ impl<E: Example + 'static> Application<E> {
             let enabled_backends = re_renderer::device_caps::default_backends();
             let adapters = instance.enumerate_adapters(enabled_backends).await;
             re_renderer::device_caps::select_adapter(&adapters, enabled_backends, Some(&surface))
-                .map_err(anyhow::Error::msg)
                 .context("failed to find an appropriate adapter")?
         };
 

@@ -16,6 +16,24 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewBlueprint;
 
+/// Why no more component defaults can be added to a view.
+#[derive(Debug, thiserror::Error)]
+enum CannotAddDefaults {
+    #[error("No components to visualize")]
+    NoComponents,
+
+    #[error("All components already have active defaults")]
+    AllHaveDefaults,
+
+    #[error(
+        "Rerun lacks edit UI for: {}",
+        .missing_editors.iter().map(|c| c.display_name()).join(", ")
+    )]
+    MissingEditors {
+        missing_editors: Vec<ComponentDescriptor>,
+    },
+}
+
 /// Entry that we can show in the defaults ui.
 #[derive(Clone, Debug)]
 struct DefaultOverrideEntry {
@@ -58,7 +76,10 @@ pub fn view_components_defaults_section_ui(
 
     let components_to_show_in_add_menu =
         components_to_show_in_add_menu(ctx, &visualized_components_by_archetype, &active_defaults);
-    let reason_we_cannot_add_more = components_to_show_in_add_menu.as_ref().err().cloned();
+    let reason_we_cannot_add_more = components_to_show_in_add_menu
+        .as_ref()
+        .err()
+        .map(ToString::to_string);
 
     let mut add_button_is_open = false;
     let mut add_button = ui
@@ -261,9 +282,9 @@ fn components_to_show_in_add_menu(
     ctx: &ViewContext<'_>,
     visualized_components_by_archetype: &BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>,
     active_defaults: &BTreeMap<ComponentIdentifier, ArrayRef>,
-) -> Result<BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>, String> {
+) -> Result<BTreeMap<ArchetypeName, Vec<DefaultOverrideEntry>>, CannotAddDefaults> {
     if visualized_components_by_archetype.is_empty() {
-        return Err("No components to visualize".to_owned());
+        return Err(CannotAddDefaults::NoComponents);
     }
 
     let mut components_to_show_in_add_menu = visualized_components_by_archetype.clone();
@@ -276,7 +297,7 @@ fn components_to_show_in_add_menu(
         components_to_show_in_add_menu.retain(|_, components| !components.is_empty());
 
         if components_to_show_in_add_menu.is_empty() {
-            return Err("All components already have active defaults".to_owned());
+            return Err(CannotAddDefaults::AllHaveDefaults);
         }
     }
     {
@@ -303,10 +324,7 @@ fn components_to_show_in_add_menu(
         components_to_show_in_add_menu.retain(|_, components| !components.is_empty());
 
         if components_to_show_in_add_menu.is_empty() {
-            return Err(format!(
-                "Rerun lacks edit UI for: {}",
-                missing_editors.iter().map(|c| c.display_name()).join(", ")
-            ));
+            return Err(CannotAddDefaults::MissingEditors { missing_editors });
         }
     }
 
@@ -387,10 +405,10 @@ fn add_new_default(
         Ok(chunk) => {
             ctx.viewer_ctx
                 .command_sender()
-                .send_system(SystemCommand::AppendToStore(
-                    ctx.blueprint_db().store_id().clone(),
-                    vec![chunk],
-                ));
+                .send_system(SystemCommand::AppendToStore {
+                    store_id: ctx.blueprint_db().store_id().clone(),
+                    chunks: vec![chunk],
+                });
         }
         Err(err) => {
             re_log::warn!("Failed to create Chunk for blueprint component: {err}");

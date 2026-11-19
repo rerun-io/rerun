@@ -90,7 +90,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 1,
                 r"Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. See [Entities and Components](../../logging-and-ingestion/data-model/entity-component.md) and
-[Visualizers and Overrides](../../viewer/blueprints-and-views/customize-views.md) for more information.
+[Visualizers and Overrides](../../viewer/view-concepts/customize-views.md) for more information.
 
 This page lists all built-in archetypes.",
                 &archetypes,
@@ -330,7 +330,7 @@ fn list_links(page: &mut String, object: &Object) {
         // More complicated link due to scope
         putln!(
             page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}_{}#rerun.{}.{}.{})",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/{}_{}#rerun.{}.{}.{})",
             object.name,
             object.scope().unwrap_or_default(),
             object.kind.plural_snake_case(),
@@ -364,7 +364,7 @@ fn list_links(page: &mut String, object: &Object) {
 
         putln!(
             page,
-            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/common/{}#rerun.{}.{})",
+            " * 🐍 [Python API docs for `{}`](https://ref.rerun.io/docs/python/stable/{}#rerun.{}.{})",
             object.name,
             object.module_name().replace('/', "_"), // E.g. `blueprint_archetypes`
             object.module_name().replace('/', "."), // E.g. `blueprint.archetypes`
