@@ -239,6 +239,10 @@ fn undo_redo_shortcuts_preserve_text_editing() {
 fn check_for_clashing_command_shortcuts() {
     use egui::os::OperatingSystem;
 
+    #[expect(
+        clippy::disallowed_fields,
+        reason = "Compares the raw modifier flags of two shortcuts"
+    )]
     fn clashes(a: KeyboardShortcut, b: KeyboardShortcut) -> bool {
         if a.logical_key != b.logical_key {
             return false;

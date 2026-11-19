@@ -314,9 +314,12 @@ impl AppContext<'_> {
                 .iter()
                 .all(|(item, _)| selected_items.contains_item(item));
 
-            let is_cmd_held = response.ctx.input(|i| i.modifiers.command);
+            let is_toggle_held = response.ctx.input(|i| {
+                i.modifiers
+                    .matches_logically(re_ui::SELECTION_TOGGLE_MODIFIER)
+            });
 
-            let dragged_items = if !is_already_selected && is_cmd_held {
+            let dragged_items = if !is_already_selected && is_toggle_held {
                 selected_items.extend(interacted_items);
                 self.command_sender
                     .send_system(SystemCommand::set_selection(selected_items.clone()));
@@ -363,8 +366,8 @@ impl AppContext<'_> {
 
             let modifiers = response.ctx.input(|i| i.modifiers);
 
-            if !modifiers.shift {
-                if modifiers.command {
+            if !modifiers.contains(re_ui::SELECTION_RANGE_MODIFIER) {
+                if modifiers.matches_logically(re_ui::SELECTION_TOGGLE_MODIFIER) {
                     let mut toggle_items_set: HashMap<_, _> = interacted_items
                         .iter()
                         .map(|(item, ctx)| (item.clone(), ctx.clone()))

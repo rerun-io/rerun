@@ -34,6 +34,9 @@ type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePer
 
 const VIEW_SPACING: f32 = 2.0;
 
+/// Hold this to act on all previews at once: scrub them all, or play/pause them all.
+const ALL_PREVIEWS_MODIFIER: egui::Modifiers = egui::Modifiers::COMMAND;
+
 /// View widths follow their preferred aspect ratios at a shared height.
 /// Missing, non-finite, and non-positive ratios fall back to the golden ratio.
 pub struct PreviewLayout {
@@ -713,7 +716,7 @@ fn preview_playback_ui(
     let button = button.on_hover_ui(|ui| {
         ui.label(action);
         egui::WidgetAtom::new((
-            re_ui::IconText::from_modifiers(ui.ctx().os(), egui::Modifiers::COMMAND),
+            re_ui::IconText::from_modifiers(ui.ctx().os(), ALL_PREVIEWS_MODIFIER),
             if playing {
                 "+ click to pause all previews"
             } else {
@@ -726,7 +729,7 @@ fn preview_playback_ui(
     if body.clicked() || button.clicked() {
         playing = !playing;
         // If holding command, play all previews
-        if ui.input(|input| input.modifiers.command) {
+        if ui.input(|input| input.modifiers.matches_logically(ALL_PREVIEWS_MODIFIER)) {
             play_pause_all = Some(playing);
         } else {
             preview.play_override = Some(playing);
@@ -864,8 +867,12 @@ fn preview_timeline(
     // Used to know if we should always show the hint or not.
     let mem_id = egui::Id::unique("preview-has_multi_dragged");
 
-    let command_pressed = ui.input(|i| i.modifiers.command);
-    if command_pressed || was_active || (views_rect != egui::Rect::NOTHING && row_hovered) {
+    let all_previews_modifier_held =
+        ui.input(|i| i.modifiers.matches_logically(ALL_PREVIEWS_MODIFIER));
+    if all_previews_modifier_held
+        || was_active
+        || (views_rect != egui::Rect::NOTHING && row_hovered)
+    {
         let height = egui::lerp(
             TIMELINE_HEIGHT..=TIMELINE_HEIGHT_ACTIVE,
             ui.animate_bool(id, was_active),
@@ -898,7 +905,7 @@ fn preview_timeline(
             tooltip.show(|ui| {
                 egui::WidgetAtom::new((
                     "Hold",
-                    re_ui::IconText::from_modifiers(ui.ctx().os(), egui::Modifiers::COMMAND),
+                    re_ui::IconText::from_modifiers(ui.ctx().os(), ALL_PREVIEWS_MODIFIER),
                     "to scrub all previews",
                 ))
                 .show(ui);
@@ -925,7 +932,7 @@ fn preview_timeline(
 
                 needs_repaint = needs_repaint.or(res.needs_repaint);
 
-                if command_pressed {
+                if all_previews_modifier_held {
                     // Remember that the user has done the multidrag action to not show the hint anymore.
                     ui.memory_mut(|mem| {
                         mem.data.insert_persisted(mem_id, true);
@@ -1144,7 +1151,7 @@ mod tests {
             .get_all_by_label(label)
             .next()
             .unwrap_or_else(|| panic!("no button labelled {label:?}"))
-            .click_modifiers(egui::Modifiers::COMMAND);
+            .click_modifiers(ALL_PREVIEWS_MODIFIER);
         harness.run();
     }
 

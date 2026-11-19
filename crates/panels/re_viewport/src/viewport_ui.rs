@@ -36,7 +36,8 @@ const TAB_BAR_PADDING: f32 = 2.0;
 fn is_toggle_maximize_view_pressed(input: &mut egui::InputState) -> bool {
     // Check if CTRL+SHIFT+M is pressed instead, which is used to open the dev panel.
     // `consume_shortcut` intentionally ignores extra Shift and Alt modifiers.
-    !input.modifiers.shift && input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW)
+    !input.modifiers.contains(egui::Modifiers::SHIFT)
+        && input.consume_shortcut(&TOGGLE_MAXIMIZE_VIEW)
 }
 
 /// Defines the UI and layout of the Viewport.

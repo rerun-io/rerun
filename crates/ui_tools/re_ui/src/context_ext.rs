@@ -211,9 +211,13 @@ pub trait ContextExt {
 
     /// Whether to show extra information in the UI, e.g. in tooltips.
     ///
-    /// This is controlled by holding the `Alt` key down.
+    /// This is controlled by holding [`crate::SHOW_EXTRAS_MODIFIER`].
     fn show_extras(&self) -> bool {
-        self.ctx().input(|input| input.modifiers.alt)
+        self.ctx().input(|input| {
+            input
+                .modifiers
+                .matches_logically(crate::SHOW_EXTRAS_MODIFIER)
+        })
     }
 }
 

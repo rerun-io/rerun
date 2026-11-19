@@ -196,7 +196,7 @@ pub fn components_section_ui(
             let is_last_visible = visible && num_visible == 1;
 
             ui.list_item_flat_noninteractive(list_item::CustomContent::new(|ui, _| {
-                let solo = ui.input(|i| i.modifiers.alt);
+                let solo = ui.input(|i| i.modifiers.matches_logically(re_ui::SOLO_MODIFIER));
                 let response = ui
                     .add_enabled_ui(!is_last_visible || solo, |ui| {
                         ui.checkbox(&mut visible, descr.archetype_field_name())

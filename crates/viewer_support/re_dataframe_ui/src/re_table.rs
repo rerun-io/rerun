@@ -315,7 +315,11 @@ impl egui_table::TableDelegate for ReTable<'_> {
         ui.style_mut().interaction.selectable_labels = false;
         if self.selection.selected_rows.contains(&row_nr) {
             fill = Some(ui.tokens().table_interaction_row_selection_fill);
-            let modifiers_pressed = ui.input(|i| i.modifiers.shift || i.modifiers.command);
+            let modifiers_pressed = ui.input(|i| {
+                i.modifiers.contains(re_ui::SELECTION_RANGE_MODIFIER)
+                    || i.modifiers
+                        .matches_logically(re_ui::SELECTION_TOGGLE_MODIFIER)
+            });
             let any_selection = ui
                 .ctx()
                 .with_plugin::<LabelSelectionState, bool>(|p| p.has_selection())
