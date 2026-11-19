@@ -16,6 +16,7 @@ from ._send_dataframe import AUTO_INDEX, _AutoIndex
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from datetime import datetime, timedelta
+    from os import PathLike
     from pathlib import Path
     from types import TracebackType
 
@@ -1135,25 +1136,23 @@ class RecordingStream:
 
     def log_file_from_path(
         self,
-        file_path: str | Path,
+        file_path: str | PathLike[str] | Iterable[str | PathLike[str]],
         *,
         entity_path_prefix: str | None = None,
         static: bool = False,
     ) -> None:
         r"""
-        Logs the file at the given `path` using all `Importer`s available.
+        Import one or more local files using the available importers.
 
-        A single `path` might be handled by more than one importer.
-
-        This method blocks until either at least one `Importer` starts
-        streaming data in or all of them fail.
+        Pass multiple MCAP paths to import the files into this recording with their original timestamps.
+        For each path, the call waits until an importer starts streaming data or all importers fail.
 
         See <https://www.rerun.io/docs/logging-and-ingestion/import/open-any-file> for more information.
 
         Parameters
         ----------
         file_path:
-            Path to the file to be logged.
+            A path or an iterable of paths to the files to import.
 
         entity_path_prefix:
             What should the logged entity paths be prefixed with?

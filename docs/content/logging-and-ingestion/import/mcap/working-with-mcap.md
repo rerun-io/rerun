@@ -33,7 +33,7 @@ snippet: howto/load_mcap
 
 ### Opening multiple MCAP files as one recording
 
-For camera and telemetry MCAPs from the same session, use the Python SDK to log each file to a single recording.
+Pass the paths of camera and telemetry MCAPs from the same session to `RecordingStream.log_file_from_path` in one call.
 The imported topics share the `message_log_time` timeline and a single playhead.
 For synchronized playback, the files must use the same clock.
 
@@ -43,13 +43,11 @@ import rerun as rr
 recording = rr.RecordingStream("mcap_session")
 recording.spawn()
 
-for path in ("camera.mcap", "telemetry.mcap"):
-    recording.log_file_from_path(path)
-
+recording.log_file_from_path(["camera.mcap", "telemetry.mcap"])
 recording.flush()
 ```
 
-To use a saved Blueprint with this recording, call `recording.log_file_from_path("layout.rbl")` before flushing.
+To apply a saved Blueprint, include its path in the same list.
 
 ### Python `McapReader`
 
