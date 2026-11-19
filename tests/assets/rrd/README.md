@@ -1,6 +1,7 @@
 `.rrd` files that are checked in to `git lfs`. We use this to ensure we can still load old `.rrd` files.
 
-We don't yet guarantee backwards compatibility, but we at least check it so that we _know_ if/when we break it.
+We guarantee that `.rrd` files from Rerun 0.23 and later load in any newer version, and these files check that we keep that promise.
+See [RRD file backwards compatibility](../../../docs/content/logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility).
 
 ### Verifying
 To verify that they all still load, run:

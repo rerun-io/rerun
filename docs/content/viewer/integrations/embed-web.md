@@ -31,7 +31,7 @@ For instance:
 ```
 
 Choose a Viewer version that can read your recordings.
-RRD files written by Rerun 0.23 or later can be opened by newer Viewers, but compatibility is only guaranteed across adjacent minor versions (see [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility)).
+RRD files written by Rerun 0.23 or later can be opened by any newer Viewer (see [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility)).
 `latest` changes with every release, so pin a version if the files you show will not be regenerated.
 
 ### Matching the host page's theme
@@ -54,8 +54,7 @@ Various packages are available:
 
 > [!NOTE]
 > The package version matches the Rerun SDK version.
-> The Viewer in the package reads data from the same version, and from older versions as described in [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility).
-> To be safe, use the same version for the package and for the SDK that writes your data.
+> The Viewer in the package reads `.rrd` files written by the same SDK version, or by any older version from 0.23 on, as described in [RRD file backwards compatibility](../../logging-and-ingestion/tutorial.md#rrd-file-backwards-compatibility).
 
 ### Basic example
 
