@@ -222,6 +222,7 @@ pub fn dataset_blueprint_dropdown_ui(
             }
 
             let heuristic_item = BlueprintItem {
+                row_id: ui.make_persistent_id("heuristic_blueprint"),
                 name: Some(HEURISTIC_BLUEPRINT_NAME),
                 is_active: is_heuristic,
                 is_loading: false,
@@ -270,6 +271,7 @@ fn dataset_blueprint_items_ui(
         let segment = &blueprint.segment_id;
         let is_shown = shown_segment == Some(segment);
         let item = BlueprintItem {
+            row_id: ui.make_persistent_id(("dataset_blueprint", segment)),
             name: blueprint.name.as_ref().map(BlueprintName::as_str),
             is_active: is_shown,
             is_loading: is_shown && is_loading,
@@ -339,6 +341,11 @@ fn paint_blueprint_icon(ui: &mut egui::Ui, rect: Rect, tint: Color32, is_loading
 
 /// One blueprint in the open dropdown.
 struct BlueprintItem<'a> {
+    /// The id of the row.
+    ///
+    /// It only depends on the blueprint, and not on what the dropdown shows above the row.
+    row_id: egui::Id,
+
     /// `None` for a blueprint without a stored name.
     name: Option<&'a str>,
 
@@ -421,6 +428,7 @@ impl BlueprintItem<'_> {
             .gap(ICON_GAP)
             .min_size(Vec2::new(0.0, ROW_HEIGHT))
             .wrap_mode(TextWrapMode::Truncate)
+            .id(self.row_id)
             .sense(Sense::click())
             .allocate(ui);
         if self.is_active {
@@ -449,6 +457,7 @@ impl BlueprintItem<'_> {
             // The active row is filled with the fill of `Variant::Opened`.
             let mut button_ui = ui.new_child(
                 egui::UiBuilder::new()
+                    .scope_id(self.row_id.with("actions_button"))
                     .max_rect(button_rect)
                     .layout(egui::Layout::right_to_left(egui::Align::Center))
                     .with_class(re_ui::theme::class::ON_OPENED),
