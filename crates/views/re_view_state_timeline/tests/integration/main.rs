@@ -2,6 +2,7 @@
 mod common;
 
 mod basic;
+mod context_menu;
 mod entity_drop;
 mod selection;
 mod state_casting;
