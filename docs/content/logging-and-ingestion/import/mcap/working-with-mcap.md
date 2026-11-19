@@ -31,6 +31,26 @@ You can also drag and drop MCAP files into the Rerun Viewer or load them using t
 
 snippet: howto/load_mcap
 
+### Opening multiple MCAP files as one recording
+
+For camera and telemetry MCAPs from the same session, use the Python SDK to log each file to a single recording.
+The imported topics share the `message_log_time` timeline and a single playhead.
+For synchronized playback, the files must use the same clock.
+
+```python
+import rerun as rr
+
+recording = rr.RecordingStream("mcap_session")
+recording.spawn()
+
+for path in ("camera.mcap", "telemetry.mcap"):
+    recording.log_file_from_path(path)
+
+recording.flush()
+```
+
+To use a saved Blueprint with this recording, call `recording.log_file_from_path("layout.rbl")` before flushing.
+
 ### Python `McapReader`
 
 For custom ingestion or processing pipelines, use the Python [`McapReader`](https://ref.rerun.io/docs/python/stable/chunk#rerun.chunk.McapReader) to read an MCAP file into a [`LazyChunkStream`](https://ref.rerun.io/docs/python/stable/chunk/#rerun.chunk.LazyChunkStream) that can be used to build custom data wrangling pipelines.
