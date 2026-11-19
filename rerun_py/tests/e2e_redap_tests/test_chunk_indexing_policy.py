@@ -50,6 +50,8 @@ def test_invalid_policies_are_rejected(catalog_client: CatalogClient, entry_fact
         ds.set_chunk_indexing_policy(ChunkIndexingPolicy(["-/robot"], []))
 
 
+@pytest.mark.hub_only
+@pytest.mark.min_hub_version("0.21.0")
 def test_default_policy_is_everything_and_can_be_reset(entry_factory: EntryFactory) -> None:
     ds = entry_factory.create_dataset("dataset")
     assert ds.chunk_indexing_policy == ChunkIndexingPolicy("all", "all")

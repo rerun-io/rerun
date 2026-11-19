@@ -103,6 +103,11 @@ def pytest_configure(config: pytest.Config) -> None:
 
     config.addinivalue_line(
         "markers",
+        "hub_only: skip when running against the local OSS server (the 'local' profile)",
+    )
+
+    config.addinivalue_line(
+        "markers",
         "requires_server_feature(name, …): skip unless the server advertises all named features "
         "in its version info (see `VersionResponse.features` in the protocol)",
     )
@@ -136,6 +141,12 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         for item in items:
             if "local_only" in item.keywords:
                 item.add_marker(skip_marker)
+
+    if profile_name == "local":
+        skip_hub_only = pytest.mark.skip(reason="Hub-only test skipped against the OSS server")
+        for item in items:
+            if "hub_only" in item.keywords:
+                item.add_marker(skip_hub_only)
 
     if profile_name == "dpf-docker":
         skip_uploads = pytest.mark.skip(reason="write access grants are not configured in Docker")

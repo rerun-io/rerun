@@ -53,6 +53,7 @@ The oldest-supported hub version and per-leg test deselections are pinned in a c
 
 Tests marked `@pytest.mark.local_only` are skipped in both CI profiles (they require writing local `.rrd` files).
 Tests marked `@pytest.mark.cloud_only` only run against cloud stacks (`dpf-stack`).
+Tests marked `@pytest.mark.hub_only` are skipped against the local OSS server (`local` profile).
 
 ## Version compatibility gating
 
