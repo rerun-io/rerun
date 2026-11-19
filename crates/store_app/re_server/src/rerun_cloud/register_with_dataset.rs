@@ -422,6 +422,7 @@ async fn register_sources(
                     source.store_slot_id,
                     source.resolved,
                     source.storage_url.clone(),
+                    jiff::Timestamp::now(),
                     on_duplicate,
                 )
                 .await;

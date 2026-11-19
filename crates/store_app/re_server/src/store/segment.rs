@@ -164,3 +164,53 @@ impl Segment {
             .sum()
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use re_chunk_store::{ChunkStore, ChunkStoreConfig, ChunkStoreHandle};
+    use re_log_types::{StoreId, StoreKind};
+    use re_protos::cloud::v1alpha1::ext::DataSourceKind;
+
+    use super::*;
+    use crate::store::{LayerInfo, ResolvedStore, StoreSlotId};
+
+    fn test_source(layer_name: &'static str, registration_time_secs: i64) -> Arc<Source> {
+        let store = ChunkStore::new(
+            StoreId::new(StoreKind::Recording, "test", "test"),
+            ChunkStoreConfig::CHANGELOG_DISABLED,
+        );
+        let source = Source::new(
+            StoreSlotId::new(),
+            ResolvedStore::Eager(ChunkStoreHandle::new(store)),
+            DataSourceKind::Rrd,
+            url::Url::parse("memory:///store/test").expect("valid url"),
+            Arc::new(LayerInfo {
+                name: LayerName::from_static_str(layer_name),
+            }),
+            jiff::Timestamp::from_second(registration_time_secs).expect("valid timestamp"),
+        )
+        .expect("failed to create test source");
+
+        Arc::new(source)
+    }
+
+    /// Layers iterate by the registration time they were given, whatever the order they were
+    /// inserted in and whatever their names.
+    #[test]
+    fn layers_iterate_in_registration_order() {
+        let mut segment = Segment::default();
+
+        for source in [test_source("a", 2), test_source("b", 1)] {
+            let outcome = segment
+                .insert_source(source, IfDuplicateBehavior::Error)
+                .expect("failed to insert test source");
+            assert_eq!(outcome, SourceInsertOutcome::Inserted);
+        }
+
+        let layer_names: Vec<&str> = segment
+            .iter_sources()
+            .map(|(layer_name, _source)| layer_name.as_str())
+            .collect();
+        assert_eq!(layer_names, ["b", "a"]);
+    }
+}

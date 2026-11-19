@@ -51,6 +51,7 @@ impl Source {
         data_source_kind: DataSourceKind,
         storage_url: Url,
         layer_info: Arc<LayerInfo>,
+        registration_time: jiff::Timestamp,
     ) -> Result<Self, ArrowError> {
         let schema_sha256 =
             RawRrdManifest::compute_sorbet_schema_sha256(&schema_of_store(&resolved))?;
@@ -58,7 +59,7 @@ impl Source {
         Ok(Self {
             store_slot_id,
             resolved,
-            registration_time: jiff::Timestamp::now(),
+            registration_time,
             data_source_kind,
             storage_url,
             layer_info,
@@ -396,6 +397,7 @@ mod tests {
             DataSourceKind::Rrd,
             Url::parse("memory:///store/eager").expect("valid url"),
             test_layer_info.clone(),
+            jiff::Timestamp::UNIX_EPOCH,
         )
         .expect("failed to create eager test layer");
 
@@ -422,6 +424,7 @@ mod tests {
             DataSourceKind::Rrd,
             Url::from_file_path(&rrd_path).expect("test RRD path should be absolute"),
             test_layer_info,
+            jiff::Timestamp::UNIX_EPOCH,
         )
         .expect("failed to create lazy test layer");
 
