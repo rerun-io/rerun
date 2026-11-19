@@ -11,7 +11,7 @@ use strum::VariantArray as _;
 use re_agent_tools::{AgentToolbox, ToolDefinition, ToolError, ToolOutput};
 use re_async::AsyncRuntimeHandle;
 use re_catalog_client::CatalogClient;
-use re_redap_client::ConnectionRegistryHandle;
+use re_redap_client::{ConnectionRegistryHandle, Credentials};
 use re_uri::Origin;
 
 use crate::args::ConnectArgs;
@@ -180,14 +180,13 @@ impl CatalogTools {
             state.latest_connect += 1;
             state.latest_connect
         };
+        let used_stored_login = self.try_stored_login(&origin);
         let catalog = self.client_for(origin.clone());
-        let version = catalog
-            .client()
-            .await
-            .map_err(|err| CatalogToolError::catalog(CONNECTING, err))?
-            .version_info()
-            .await
-            .map_err(|err| CatalogToolError::catalog(CONNECTING, err))?;
+        let result = Self::catalog_version(&catalog).await;
+        if result.is_err() && used_stored_login {
+            self.registry.remove_credentials(&origin);
+        }
+        let version = result?;
         let mut state = self.state.lock();
         if state.latest_connect != this_connect {
             return Err(CatalogToolError::ConnectSuperseded {
@@ -199,8 +198,34 @@ impl CatalogTools {
         drop(state);
         Ok(json!({
             "connected": origin.to_string(),
-            "server_version": version.version,
+            "server_version": version,
         }))
+    }
+}
+
+impl CatalogTools {
+    /// Try the login the user saved on this machine for `origin`, unless it has credentials.
+    ///
+    /// Returns whether it did, so that a failed connect can undo it.
+    fn try_stored_login(&self, origin: &Origin) -> bool {
+        let uses_stored = self.registry.should_use_stored_credentials();
+        if uses_stored && self.registry.credentials(origin).is_none() {
+            self.registry.set_credentials(origin, Credentials::Stored);
+            true
+        } else {
+            false
+        }
+    }
+
+    async fn catalog_version(catalog: &CatalogClient) -> Result<String, CatalogToolError> {
+        let version = catalog
+            .client()
+            .await
+            .map_err(|err| CatalogToolError::catalog(CONNECTING, err))?
+            .version_info()
+            .await
+            .map_err(|err| CatalogToolError::catalog(CONNECTING, err))?;
+        Ok(version.version)
     }
 }
 
