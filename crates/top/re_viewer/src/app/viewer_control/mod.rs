@@ -1665,10 +1665,10 @@ impl AppCore {
         chunks: Vec<re_chunk::Chunk>,
     ) {
         self.command_sender
-            .send_system(SystemCommand::AppendToStore(
-                blueprint_db.store_id().clone(),
+            .send_system(SystemCommand::AppendToStore {
+                store_id: blueprint_db.store_id().clone(),
                 chunks,
-            ));
+            });
     }
 
     /// The active blueprint of `target`.

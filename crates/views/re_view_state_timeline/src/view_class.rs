@@ -47,23 +47,30 @@ enum RenderItem<'a> {
     },
 
     /// Two or more consecutive narrow visible phases collapsed into one region.
-    Merged {
-        x_start: f32,
-        x_end: f32,
-        start_time: i64,
+    Merged(MergedPhases),
+}
 
-        /// End time of the last phase in the group, if known.
-        end_time: Option<i64>,
-        count: usize,
-    },
+/// Where a [`RenderItem::Merged`] region is drawn, and which phases it covers.
+#[derive(Debug)]
+struct MergedPhases {
+    x_start: f32,
+    x_end: f32,
+
+    /// Start time of the first phase in the group.
+    start_time: i64,
+
+    /// End time of the last phase in the group, if known.
+    end_time: Option<i64>,
+
+    /// The number of phases in the group.
+    count: usize,
 }
 
 impl RenderItem<'_> {
     fn x_range(&self) -> (f32, f32) {
         match self {
-            Self::Single { x_start, x_end, .. } | Self::Merged { x_start, x_end, .. } => {
-                (*x_start, *x_end)
-            }
+            Self::Single { x_start, x_end, .. }
+            | Self::Merged(MergedPhases { x_start, x_end, .. }) => (*x_start, *x_end),
         }
     }
 }
@@ -661,13 +668,13 @@ fn compute_render_items<'a>(
                     end_time: first.end_time,
                 });
             } else {
-                items.push(RenderItem::Merged {
+                items.push(RenderItem::Merged(MergedPhases {
                     x_start: first.x_start,
                     x_end: self.last_x_end,
                     start_time: first.phase.start_time,
                     end_time: self.last_end_time,
                     count,
-                });
+                }));
             }
         }
     }
@@ -1025,12 +1032,12 @@ fn show_group(
                         });
                     }
                 }
-                RenderItem::Merged {
+                RenderItem::Merged(MergedPhases {
                     start_time,
                     end_time,
                     count,
                     ..
-                } => {
+                }) => {
                     let fill = if hovered {
                         merged_fill_hovered
                     } else {
@@ -1217,12 +1224,12 @@ fn show_item_tooltip(
                 phase.start_time,
                 *end_time,
             ),
-            RenderItem::Merged {
+            RenderItem::Merged(MergedPhases {
                 start_time,
                 end_time,
                 count,
                 ..
-            } => (
+            }) => (
                 format!("{count} states (zoom in to see details)"),
                 *start_time,
                 *end_time,
@@ -1328,7 +1335,7 @@ mod tests {
     fn is_merged(item: &RenderItem<'_>, expected_start: i64, expected_count: usize) -> bool {
         matches!(
             item,
-            RenderItem::Merged { start_time, count, .. }
+            RenderItem::Merged(MergedPhases { start_time, count, .. })
                 if *start_time == expected_start && *count == expected_count
         )
     }
@@ -1445,7 +1452,7 @@ mod tests {
         assert_eq!(items.len(), 2, "{items:?}");
         match &items[0] {
             RenderItem::Single { end_time, .. } => assert_eq!(*end_time, Some(50)),
-            item @ RenderItem::Merged { .. } => {
+            item @ RenderItem::Merged(_) => {
                 panic!("expected first item to be Single, got {item:?}")
             }
         }
@@ -1468,7 +1475,7 @@ mod tests {
         assert_eq!(items.len(), 1, "{items:?}");
         match &items[0] {
             RenderItem::Single { end_time, .. } => assert_eq!(*end_time, Some(70)),
-            item @ RenderItem::Merged { .. } => panic!("expected Single, got {item:?}"),
+            item @ RenderItem::Merged(_) => panic!("expected Single, got {item:?}"),
         }
     }
 

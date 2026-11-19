@@ -1132,10 +1132,10 @@ async fn stream_manifest(
         let rrd_manifest = Arc::new(rrd_manifest);
 
         if tx
-            .send(DataSourceMessage::RrdManifest(
-                store_id.clone(),
-                rrd_manifest.clone(),
-            ))
+            .send(DataSourceMessage::RrdManifest {
+                store_id: store_id.clone(),
+                manifest: rrd_manifest.clone(),
+            })
             .is_err()
         {
             re_log::debug!("Receiver disconnected");

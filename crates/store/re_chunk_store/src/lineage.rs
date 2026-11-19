@@ -61,9 +61,13 @@ pub enum ChunkDirectLineage {
     /// When looking at a [`crate::ChunkStoreDiff`], that means that a `chunk_before_processing` is
     /// always the unsplit original chunk, while `chunk_after_processing` is always the split
     /// chunk at depth=1.
-    ///
-    /// Value: `(parent_id, sibling_ids)`.
-    SplitFrom(ChunkId, Box<[ChunkId]>),
+    SplitFrom {
+        /// The chunk that was split.
+        parent_id: ChunkId,
+
+        /// The other chunks that resulted from the same split.
+        sibling_ids: Box<[ChunkId]>,
+    },
 
     /// This chunk resulted from the compaction of these other chunks.
     ///
@@ -104,8 +108,11 @@ pub enum ChunkDirectLineage {
 impl std::fmt::Debug for ChunkDirectLineage {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SplitFrom(chunk_id, sibling_ids) => f.write_fmt(format_args!(
-                "split-from:{chunk_id} siblings:[{}]",
+            Self::SplitFrom {
+                parent_id,
+                sibling_ids,
+            } => f.write_fmt(format_args!(
+                "split-from:{parent_id} siblings:[{}]",
                 sibling_ids.iter().map(|id| id.to_string()).join(",")
             )),
 
@@ -136,9 +143,10 @@ impl From<&ChunkDirectLineageReport> for ChunkDirectLineage {
     /// This is *not* recursive.
     fn from(report: &ChunkDirectLineageReport) -> Self {
         match report {
-            ChunkDirectLineageReport::SplitFrom(chunk, siblings) => {
-                Self::SplitFrom(chunk.id(), siblings.iter().map(|c| c.id()).collect())
-            }
+            ChunkDirectLineageReport::SplitFrom { parent, siblings } => Self::SplitFrom {
+                parent_id: parent.id(),
+                sibling_ids: siblings.iter().map(|c| c.id()).collect(),
+            },
 
             ChunkDirectLineageReport::CompactedFrom(chunks) => {
                 Self::CompactedFrom(chunks.keys().copied().collect())
@@ -164,7 +172,10 @@ impl ChunkDirectLineage {
     /// It will return `None` otherwise.
     pub fn to_report(&self, store: &ChunkStore) -> Option<ChunkDirectLineageReport> {
         match self {
-            Self::SplitFrom(chunk_id, sibling_ids) => {
+            Self::SplitFrom {
+                parent_id,
+                sibling_ids,
+            } => {
                 let mut siblings = Vec::new();
                 for sibling_id in sibling_ids {
                     siblings.push(
@@ -174,10 +185,10 @@ impl ChunkDirectLineage {
                             .cloned()?,
                     );
                 }
-                Some(ChunkDirectLineageReport::SplitFrom(
-                    store.physical_chunks_per_chunk_id.get(chunk_id).cloned()?,
+                Some(ChunkDirectLineageReport::SplitFrom {
+                    parent: store.physical_chunks_per_chunk_id.get(parent_id).cloned()?,
                     siblings,
-                ))
+                })
             }
 
             Self::CompactedFrom(chunk_ids) => {
@@ -205,7 +216,7 @@ impl ChunkDirectLineage {
 
     pub fn iter_referenced_chunks(&self) -> impl Iterator<Item = &ChunkId> {
         match self {
-            Self::SplitFrom(chunk_id, _) => Some(Either::Left(std::iter::once(chunk_id))),
+            Self::SplitFrom { parent_id, .. } => Some(Either::Left(std::iter::once(parent_id))),
             Self::CompactedFrom(chunks) => Some(Either::Right(chunks.iter())),
             Self::RootFromManifest { .. } | Self::Volatile => None,
         }
@@ -239,9 +250,13 @@ pub enum ChunkDirectLineageReport {
     /// When looking at a [`crate::ChunkStoreDiff`], that means that a `chunk_before_processing` is
     /// always the unsplit original chunk, while `chunk_after_processing` is always the split
     /// chunk at depth=1.
-    ///
-    /// Value: `(parent, siblings)`.
-    SplitFrom(Arc<Chunk>, Vec<Arc<Chunk>>),
+    SplitFrom {
+        /// The chunk that was split.
+        parent: Arc<Chunk>,
+
+        /// The other chunks that resulted from the same split.
+        siblings: Vec<Arc<Chunk>>,
+    },
 
     /// This chunk resulted from the compaction of these other chunks.
     ///
@@ -281,7 +296,7 @@ pub enum ChunkDirectLineageReport {
 impl std::fmt::Debug for ChunkDirectLineageReport {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::SplitFrom(parent, siblings) => f
+            Self::SplitFrom { parent, siblings } => f
                 .debug_struct("SplitFrom")
                 .field("parent", &parent.id())
                 .field("siblings", &siblings.iter().map(|c| c.id()).format(", "))
@@ -343,7 +358,7 @@ impl ChunkStore {
             let width = (depth + 1) * 4;
 
             let sibling_ids = match lineage {
-                Some(ChunkDirectLineage::SplitFrom(_, sibling_ids)) => &**sibling_ids,
+                Some(ChunkDirectLineage::SplitFrom { sibling_ids, .. }) => &**sibling_ids,
                 _ => &[],
             };
 
@@ -355,11 +370,11 @@ impl ChunkStore {
                     "{chunk_id} (status:{status} static:{is_static} siblings:[{sibling_ids}])\n"
                 )
             }) + &match lineage {
-                Some(ChunkDirectLineage::SplitFrom(id, _sibling_ids)) => {
+                Some(ChunkDirectLineage::SplitFrom { parent_id, .. }) => {
                     format!(
                         "{:width$}split-from: {}",
                         "",
-                        recurse(store, id, depth + 1),
+                        recurse(store, parent_id, depth + 1),
                         width = width
                     )
                 }
@@ -420,8 +435,8 @@ impl ChunkStore {
     pub fn collect_root_ids(&self, chunk_id: &ChunkId, roots: &mut Vec<ChunkId>) {
         let lineage = self.chunks_lineage.get(chunk_id).map(|l| &l.lineage);
         match lineage {
-            Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
-                self.collect_root_ids(chunk_id, roots);
+            Some(ChunkDirectLineage::SplitFrom { parent_id, .. }) => {
+                self.collect_root_ids(parent_id, roots);
             }
 
             Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
@@ -457,8 +472,8 @@ impl ChunkStore {
     fn collect_root_manifest_chunks(&self, chunk_id: &ChunkId, roots: &mut Vec<ChunkId>) {
         let lineage = self.chunks_lineage.get(chunk_id).map(|l| &l.lineage);
         match lineage {
-            Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
-                self.collect_root_manifest_chunks(chunk_id, roots);
+            Some(ChunkDirectLineage::SplitFrom { parent_id, .. }) => {
+                self.collect_root_manifest_chunks(parent_id, roots);
             }
 
             Some(ChunkDirectLineage::CompactedFrom(chunk_ids)) => {
@@ -539,7 +554,7 @@ impl ChunkStore {
             fn recurse(store: &ChunkStore, chunk_id: &ChunkId, compaction_found: bool) -> bool {
                 let lineage = store.chunks_lineage.get(chunk_id).map(|l| &l.lineage);
                 match lineage {
-                    Some(ChunkDirectLineage::SplitFrom(_chunk_id, _sibling_ids)) => {
+                    Some(ChunkDirectLineage::SplitFrom { .. }) => {
                         re_log::debug_assert!(
                             !compaction_found,
                             "Chunk {chunk_id} mixes compaction and splitting in its lineage tree"
@@ -577,8 +592,8 @@ impl ChunkStore {
         fn recurse(store: &ChunkStore, chunk_id: &ChunkId, split_found: bool) -> bool {
             let lineage = store.chunks_lineage.get(chunk_id).map(|l| &l.lineage);
             match lineage {
-                Some(ChunkDirectLineage::SplitFrom(chunk_id, _sibling_ids)) => {
-                    recurse(store, chunk_id, true)
+                Some(ChunkDirectLineage::SplitFrom { parent_id, .. }) => {
+                    recurse(store, parent_id, true)
                 }
 
                 Some(ChunkDirectLineage::CompactedFrom(_chunk_ids)) => {
@@ -664,10 +679,10 @@ mod tests {
         for chunk in &chunks {
             let events = store.insert_chunk(chunk).unwrap();
             for diff in events.iter().filter_map(|event| event.to_addition()) {
-                if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
+                if let ChunkDirectLineageReport::SplitFrom { parent, .. } = &diff.direct_lineage {
                     assert_eq!(
                         diff.chunk_before_processing.id(),
-                        src.id(),
+                        parent.id(),
                         "splits are guaranteed flat, and therefore the origin of a split should always match the unprocessed chunk",
                     );
                 }
@@ -758,10 +773,10 @@ mod tests {
                 .filter_map(|event| event.to_addition())
                 .skip(1)
             {
-                if let ChunkDirectLineageReport::SplitFrom(src, _siblings) = &diff.direct_lineage {
+                if let ChunkDirectLineageReport::SplitFrom { parent, .. } = &diff.direct_lineage {
                     assert_eq!(
                         diff.chunk_before_processing.id(),
-                        src.id(),
+                        parent.id(),
                         "splits are guaranteed flat, and therefore the origin of a split should always match the unprocessed chunk",
                     );
                 }
@@ -842,7 +857,10 @@ mod tests {
                 .map(|e| e.delta_chunk().unwrap().clone())
                 .collect_vec();
             assert_eq!(
-                ChunkDirectLineageReport::SplitFrom(chunk.clone(), siblings),
+                ChunkDirectLineageReport::SplitFrom {
+                    parent: chunk.clone(),
+                    siblings,
+                },
                 event.to_addition().unwrap().direct_lineage,
             );
         }

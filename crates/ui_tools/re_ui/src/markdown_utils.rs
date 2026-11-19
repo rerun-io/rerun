@@ -16,19 +16,6 @@ impl Display for MouseButtonMarkdown {
     }
 }
 
-/// Newtype over [`egui::Modifiers`] which provides a [`Display`] implementation suitable for
-/// markdown.
-///
-/// Note: it needs a [`egui::Context`] reference in order to properly handle OS-specific modifiers.
-pub struct ModifiersMarkdown<'a>(pub egui::Modifiers, pub &'a egui::Context);
-
-impl Display for ModifiersMarkdown<'_> {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        let Self(modifiers, ctx) = self;
-        write!(f, "`{}`", ctx.format_modifiers(*modifiers))
-    }
-}
-
 /// Newtype over [`egui::Key`] which provides a [`Display`] implementation suitable for markdown.
 pub struct KeyMarkdown(pub egui::Key);
 

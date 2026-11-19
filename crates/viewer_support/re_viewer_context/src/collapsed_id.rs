@@ -79,7 +79,10 @@ impl CollapseScope {
     /// Create a [`CollapsedId`] for a data result in this scope.
     pub fn data_result(self, view_id: ViewId, entity_path: EntityPath) -> CollapsedId {
         CollapsedId {
-            item: CollapseItem::DataResult(view_id, entity_path),
+            item: CollapseItem::DataResult {
+                view_id,
+                entity_path,
+            },
             scope: self,
         }
     }
@@ -99,7 +102,13 @@ impl CollapseScope {
 pub enum CollapseItem {
     Container(ContainerId),
     View(ViewId),
-    DataResult(ViewId, EntityPath),
+    DataResult {
+        /// The view that shows the data result.
+        view_id: ViewId,
+
+        /// The entity of the data result.
+        entity_path: EntityPath,
+    },
     Entity(EntityPath),
 }
 

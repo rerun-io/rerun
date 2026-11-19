@@ -916,7 +916,7 @@ impl TestContext {
                         handled = false;
                     }
                 }
-                SystemCommand::AppendToStore(store_id, chunks) => {
+                SystemCommand::AppendToStore { store_id, chunks } => {
                     let mut store_hub = self
                         .store_hub
                         .try_lock()
@@ -932,7 +932,10 @@ impl TestContext {
                     egui_ctx.request_repaint();
                 }
 
-                SystemCommand::DropEntity(store_id, entity_path) => {
+                SystemCommand::DropEntity {
+                    store_id,
+                    entity_path,
+                } => {
                     let mut store_hub = self
                         .store_hub
                         .try_lock()

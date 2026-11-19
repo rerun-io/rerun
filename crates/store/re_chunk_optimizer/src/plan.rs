@@ -160,25 +160,35 @@ pub enum PlanUnit {
 
     /// Decide the stream's codec, sort the inputs' rows by `timeline`, cut at detected keyframes,
     /// pack whole GoPs, and generate the `is_keyframe` column.
-    GopRun {
-        entity_path: EntityPath,
+    GopRun(GopRun),
+}
 
-        /// Slices used to determine the stream's codec.
-        ///
-        /// These are read-only, so not used to assess plan completeness. A single static codec chunk
-        /// is produced instead.
-        codec: CodecSource,
+/// The inputs and settings of a [`PlanUnit::GopRun`].
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct GopRun {
+    /// The entity of the video stream.
+    pub entity_path: EntityPath,
 
-        /// One per sample-carrying chunk of the entity, in range-start order on `timeline`. Each
-        /// slice is the chunk's `VideoStream:sample` column, plus its `VideoStream:codec` column,
-        /// if any, when the stream's codec is temporal (see [`CodecSource::Temporal`]): the run
-        /// checks each of those codec cells against the stream's codec.
-        inputs: Vec<MergeInput>,
+    /// Slices used to determine the stream's codec.
+    ///
+    /// These are read-only, so not used to assess plan completeness. A single static codec chunk
+    /// is produced instead.
+    pub codec: CodecSource,
 
-        timeline: TimelineName,
-        gop_chunking: GopChunkingConfig,
-        keyframes: KeyframePlacementConfig,
-    },
+    /// One per sample-carrying chunk of the entity, in range-start order on `timeline`. Each
+    /// slice is the chunk's `VideoStream:sample` column, plus its `VideoStream:codec` column,
+    /// if any, when the stream's codec is temporal (see [`CodecSource::Temporal`]): the run
+    /// checks each of those codec cells against the stream's codec.
+    pub inputs: Vec<MergeInput>,
+
+    /// The timeline the samples are sorted by.
+    pub timeline: TimelineName,
+
+    /// How the samples are packed into chunks.
+    pub gop_chunking: GopChunkingConfig,
+
+    /// Where the `is_keyframe` column goes.
+    pub keyframes: KeyframePlacementConfig,
 }
 
 /// The slices a GoP run decides its stream's codec from.
@@ -376,7 +386,7 @@ fn plan_group(
 ///
 /// # Samples
 ///
-/// The sample slices of one entity are gathered into a single [`PlanUnit::GopRun`]. They must
+/// The sample slices of one entity are gathered into a single [`GopRun`]. They must
 /// share one timeline set. If they don't, GoP batching of the entity is skipped with a warning
 /// (enforced by [`resolve_gop_entities`]). The run detects keyframes from the samples, cuts at
 /// them, and packs whole GoPs per [`GopChunkingConfig`].
@@ -454,14 +464,14 @@ fn plan_gop_entity(
             ChunkSlice::only(idx, columns)
         })
     });
-    units.push(PlanUnit::GopRun {
+    units.push(PlanUnit::GopRun(GopRun {
         entity_path: entity_path.clone(),
         codec: gop.codec.clone(),
         inputs,
         timeline: *timeline.name(),
         gop_chunking: gop.gop_chunking,
         keyframes: gop.keyframes,
-    });
+    }));
 }
 
 /// Whether any chunk of the group carries a `VideoStream:sample` column.
@@ -894,7 +904,7 @@ pub fn plan_covers_view(view: &ChunkIndexView, units: &[PlanUnit]) -> bool {
                 }
             }
 
-            PlanUnit::GopRun { inputs, .. } => {
+            PlanUnit::GopRun(GopRun { inputs, .. }) => {
                 if inputs.is_empty() {
                     return false;
                 }
@@ -959,7 +969,7 @@ mod tests {
     use re_types_core::{Component as _, ComponentBatch as _, ComponentDescriptor};
 
     use super::{
-        ChunkSlice, CodecSource, GopChunkingConfig, KeyframePlacementConfig, PlanUnit,
+        ChunkSlice, CodecSource, GopChunkingConfig, GopRun, KeyframePlacementConfig, PlanUnit,
         codec_column, keyframe_column, plan, plan_covers_view, sample_column,
     };
     use crate::view::{ChunkIdx, ChunkIndexView};
@@ -1583,7 +1593,7 @@ mod tests {
                 .filter(|unit| match unit {
                     PlanUnit::Passthrough(slice) => is_colors_of_1(slice),
                     PlanUnit::MergeSplitRun { inputs, .. } => inputs.iter().any(is_colors_of_1),
-                    PlanUnit::Drop(_) | PlanUnit::GopRun { .. } => false,
+                    PlanUnit::Drop(_) | PlanUnit::GopRun(_) => false,
                 })
                 .collect();
             render_plan(&view, &units)
@@ -2025,14 +2035,14 @@ mod tests {
                     lines.push(format!("merge_split ({})", target(run_target)));
                     lines.extend(inputs.iter().map(|s| format!("  {}", slice(s))));
                 }
-                PlanUnit::GopRun {
+                PlanUnit::GopRun(GopRun {
                     entity_path,
                     codec,
                     inputs,
                     timeline,
                     gop_chunking,
                     keyframes,
-                } => {
+                }) => {
                     let (source, codec_slices) = match codec {
                         CodecSource::Static(slices) => ("static", slices),
                         CodecSource::Temporal(slices) => ("temporal", slices),
@@ -2079,7 +2089,7 @@ mod tests {
     fn gop_runs(units: &[PlanUnit]) -> Vec<&PlanUnit> {
         units
             .iter()
-            .filter(|unit| matches!(unit, PlanUnit::GopRun { .. }))
+            .filter(|unit| matches!(unit, PlanUnit::GopRun(_)))
             .collect()
     }
 
@@ -2456,11 +2466,11 @@ mod tests {
             let units = plan(&view, &with_gop_rules(settings.clone(), vec![rule]));
             match gop_runs(&units).as_slice() {
                 [
-                    PlanUnit::GopRun {
+                    PlanUnit::GopRun(GopRun {
                         gop_chunking,
                         keyframes,
                         ..
-                    },
+                    }),
                 ] => (*gop_chunking, *keyframes),
                 other => panic!("expected one GoP run, got {other:?}"),
             }

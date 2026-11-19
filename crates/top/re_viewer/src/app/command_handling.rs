@@ -590,7 +590,7 @@ impl AppCore {
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
 
-            SystemCommand::AppendToStore(store_id, chunks) => {
+            SystemCommand::AppendToStore { store_id, chunks } => {
                 re_log::trace!(
                     "{}:{} Update {} entities: {}",
                     sent_from.file(),
@@ -699,8 +699,11 @@ impl AppCore {
                 }
             }
 
-            SystemCommand::DropEntity(blueprint_id, entity_path) => {
-                let blueprint_db = store_hub.entity_db_entry(&blueprint_id);
+            SystemCommand::DropEntity {
+                store_id,
+                entity_path,
+            } => {
+                let blueprint_db = store_hub.entity_db_entry(&store_id);
                 blueprint_db.drop_entity_path_recursive(&entity_path);
             }
 

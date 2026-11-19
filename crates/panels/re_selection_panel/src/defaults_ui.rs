@@ -405,10 +405,10 @@ fn add_new_default(
         Ok(chunk) => {
             ctx.viewer_ctx
                 .command_sender()
-                .send_system(SystemCommand::AppendToStore(
-                    ctx.blueprint_db().store_id().clone(),
-                    vec![chunk],
-                ));
+                .send_system(SystemCommand::AppendToStore {
+                    store_id: ctx.blueprint_db().store_id().clone(),
+                    chunks: vec![chunk],
+                });
         }
         Err(err) => {
             re_log::warn!("Failed to create Chunk for blueprint component: {err}");

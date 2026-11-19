@@ -137,10 +137,16 @@ pub enum SystemCommand {
     ///
     /// Edit recordings with case: we generally regard recordings as immutable.
     ///
-    /// For blueprints,the [`StoreId`] should generally be the currently selected blueprint.
-    ///
     /// Instead of using this directly, consider using `save_blueprint_archetype` or similar.
-    AppendToStore(StoreId, Vec<Chunk>),
+    AppendToStore {
+        /// The store to append to.
+        ///
+        /// For blueprints, this should generally be the currently selected blueprint.
+        store_id: StoreId,
+
+        /// The chunks to append.
+        chunks: Vec<Chunk>,
+    },
 
     UndoBlueprint {
         blueprint_id: StoreId,
@@ -152,11 +158,17 @@ pub enum SystemCommand {
     /// Drop a specific entity from a store.
     ///
     /// Also drops all recursive children.
-    ///
-    /// The [`StoreId`] should generally be the currently selected blueprint
-    /// but is tracked manually to ensure self-consistency if the blueprint
-    /// is both modified and changed in the same frame.
-    DropEntity(StoreId, EntityPath),
+    DropEntity {
+        /// The store to drop the entity from.
+        ///
+        /// This should generally be the currently selected blueprint
+        /// but is tracked manually to ensure self-consistency if the blueprint
+        /// is both modified and changed in the same frame.
+        store_id: StoreId,
+
+        /// The entity to drop.
+        entity_path: EntityPath,
+    },
 
     /// Show a timeline of the blueprint data.
     #[cfg(debug_assertions)]

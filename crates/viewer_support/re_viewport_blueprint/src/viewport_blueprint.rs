@@ -641,7 +641,10 @@ impl ViewportBlueprint {
             return;
         }
 
-        self.enqueue_command(ViewportCommand::SetContainerKind(container_id, kind));
+        self.enqueue_command(ViewportCommand::SetContainerKind {
+            container_id,
+            container_kind: kind,
+        });
     }
 
     /// Simplify the container tree with the provided options.
@@ -650,10 +653,10 @@ impl ViewportBlueprint {
         container_id: &ContainerId,
         simplification_options: SimplificationOptions,
     ) {
-        self.enqueue_command(ViewportCommand::SimplifyContainer(
-            *container_id,
-            simplification_options,
-        ));
+        self.enqueue_command(ViewportCommand::SimplifyContainer {
+            container_id: *container_id,
+            options: simplification_options,
+        });
     }
 
     /// Make all children of the given container the same size.
@@ -1051,7 +1054,10 @@ fn apply_viewport_command(
             }
         }
 
-        ViewportCommand::SetContainerKind(container_id, container_kind) => {
+        ViewportCommand::SetContainerKind {
+            container_id,
+            container_kind,
+        } => {
             if let Some(egui_tiles::Tile::Container(container)) = bp
                 .tree
                 .tiles
@@ -1107,7 +1113,10 @@ fn apply_viewport_command(
             }
         }
 
-        ViewportCommand::SimplifyContainer(container_id, options) => {
+        ViewportCommand::SimplifyContainer {
+            container_id,
+            options,
+        } => {
             re_log::trace!("Simplifying tree with options: {options:?}");
             let tile_id = blueprint_id_to_tile_id(&container_id);
             bp.tree.simplify_children_of_tile(tile_id, &options);

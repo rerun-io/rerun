@@ -652,7 +652,7 @@ async fn streaming_a_segment_delivers_its_asset_manifests() {
     let manifests: Vec<(StoreId, StoreId)> = messages
         .iter()
         .filter_map(|message| match message {
-            DataSourceMessage::RrdManifest(store_id, manifest) => {
+            DataSourceMessage::RrdManifest { store_id, manifest } => {
                 Some((store_id.clone(), manifest.store_id().clone()))
             }
             _ => None,
