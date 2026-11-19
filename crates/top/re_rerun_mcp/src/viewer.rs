@@ -88,7 +88,7 @@ pub enum ExecuteError {
     #[error("The viewer did not answer within {REQUEST_TIMEOUT:?}")]
     Timeout,
 
-    #[error("ViewerControl rpc failed: {source}")]
+    #[error("The ViewerControl request failed ({:?}): {}", .source.code(), .source.message())]
     Rpc { source: tonic::Status },
 
     #[error("{source}")]
@@ -316,9 +316,13 @@ impl ViewerToolset {
             },
         )
         .await
-        .ok()
-        .and_then(|response| response.entries.last().map(|e| e.sequence))
-        .unwrap_or(0);
+        .map_or_else(
+            |err| {
+                re_log::warn!("Failed to read the viewer log; new tool results may repeat old log entries: {err}");
+                0
+            },
+            |response| response.entries.last().map_or(0, |entry| entry.sequence),
+        );
         *self.conn.lock() = Some(Arc::new(Connection {
             ui: egui_mcp::UiServer::new(bridge),
             client,
@@ -430,15 +434,22 @@ impl ViewerToolset {
         };
         let after_sequence = conn.log_cursor.load(Ordering::Relaxed);
         let mut client = conn.client.clone();
-        let Ok(response) = execute(
+        let response = match execute(
             &mut client,
             GetLogsRequest {
                 after_sequence: Some(after_sequence),
             },
         )
         .await
-        else {
-            return;
+        {
+            Ok(response) => response,
+            Err(err) => {
+                re_log::warn!("Failed to read the viewer log: {err}");
+                result.content.push(ContentBlock::text(format!(
+                    "Could not read the viewer log: {err}"
+                )));
+                return;
+            }
         };
         let entries = response.entries;
         let Some(last) = entries.last() else {
