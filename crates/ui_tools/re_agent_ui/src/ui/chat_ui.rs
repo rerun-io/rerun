@@ -365,16 +365,7 @@ fn empty_state_content_ui(ui: &mut egui::Ui, input: &mut ChatInput, example_prom
         .wrap(),
     );
 
-    let tokens = ui.tokens();
-    egui::WidgetAtom::new(RichText::new("Experimental").small())
-        .frame(
-            egui::Frame::new()
-                .fill(tokens.example_tag_bg_fill)
-                .stroke(tokens.example_tag_stroke)
-                .corner_radius(tokens.normal_corner_radius())
-                .inner_margin(egui::Margin::symmetric(8, 2)),
-        )
-        .show(ui);
+    super::experimental_tag_ui(ui);
 
     ui.add_space(ui.spacing().item_spacing.y);
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
