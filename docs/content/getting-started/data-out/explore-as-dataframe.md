@@ -3,11 +3,11 @@ title: Explore a recording with the dataframe view
 order: 1
 ---
 
-In this first part of the guide, we run the [face tracking example](https://rerun.io/examples/video-image/face_tracking) and explore the data in the viewer.
+In this first part of the guide, we run the [face tracking example](https://github.com/rerun-io/rerun/tree/main/examples/python/face_tracking) and explore the data in the viewer.
 
 ## Create a recording
 
-The first step is to create a recording in the viewer using the face tracking example. Check the [face tracking installation instruction](https://rerun.io/examples/video-image/face_tracking#run-the-code) for more information on how to run this example.
+The first step is to create a recording in the viewer using the face tracking example. Check the [face tracking installation instruction](https://github.com/rerun-io/rerun/tree/main/examples/python/face_tracking#run-the-code) for more information on how to run this example.
 
 Here is such a recording:
 

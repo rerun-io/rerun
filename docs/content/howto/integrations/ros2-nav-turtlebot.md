@@ -41,7 +41,7 @@ If you're new to Rerun or wonder about differences to RViz, we recommend also to
 
 ## Install and run the example
 
-All steps that are required to install and run this example are explained in the example's description, which can be found [here](https://rerun.io/examples/robotics/ros_node) or in the [README.md](https://github.com/rerun-io/rerun/tree/main/examples/python/ros_node) of the example's source code.
+All steps that are required to install and run this example are explained in the [README.md](https://github.com/rerun-io/rerun/tree/main/examples/python/ros_node) of the example's source code.
 
 ## Code explanation
 

@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Training a model on the LeRobot dataset"
+steps = ["train"]
 description = "Train a LeRobot policy on Hugging Face's `pusht` dataset and watch the training progress live in Rerun."
 tags = ["2D", "Hugging Face", "Imitation learning"]
 source = "https://github.com/rerun-io/lerobot"

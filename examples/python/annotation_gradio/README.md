@@ -1,5 +1,6 @@
 <!--[metadata]
 title = "Interactive 3D annotation app with Rerun and Gradio"
+steps = ["prepare"]
 description = "Interactive 3D annotation app built with Gradio and SAM 2. Track objects in monocular video, or fuse masks across multi-view RGB-D."
 tags = ["2D", "3D", "Pinhole camera", "Time series", "SAM", "Segmentation"]
 source = "https://github.com/rerun-io/annotation-example"

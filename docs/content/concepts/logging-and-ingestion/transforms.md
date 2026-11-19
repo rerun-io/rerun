@@ -165,7 +165,7 @@ With the right setup, pinholes allow a bunch of powerful visualizations:
 * the pinhole glyph itself in 3D views
 * 2D in 3D: all 2D content that is part of the pinhole's transform subtree
 * 3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
-    * Both the [nuscenes](https://rerun.io/examples/robotics/nuscenes_dataset) and [arkit](https://rerun.io/examples/spatial-computing/arkit_scenes) examples make use of this
+    * Both the [nuscenes](https://github.com/rerun-io/rerun/tree/main/examples/python/nuscenes_dataset) and [arkit](https://github.com/rerun-io/rerun/tree/main/examples/python/arkit_scenes) examples make use of this
 
 A transform frame relationship can have both a `Pinhole` and a regular `Transform3D` (in this context often regarded as the camera extrinsics).
 Both are used: the `Transform3D` places the camera in the parent space, and the `Pinhole` projects from the camera's 3D space onto the 2D image.
@@ -225,7 +225,7 @@ This orientation does not change logged transforms.
 For a [`Pinhole`](https://rerun.io/docs/reference/types/archetypes/pinhole), `camera_xyz` controls the camera orientation and projection direction.
 The default is `RDF`: +X is right, +Y is down, and +Z is forward.
 Changing `camera_xyz` reorients the camera frustum, projected depth data, and the projection of 3D content into the camera view.
-See the [`open_photogrammetry_format`](https://rerun.io/examples/3d-reconstruction/open_photogrammetry_format) example for a non-default camera orientation.
+See the [`Pinhole` reference](../../reference/types/archetypes/pinhole.md) for an example with a non-default camera orientation.
 
 For 2D spaces and other entities, view coordinates currently have currently no effect ([#1387](https://github.com/rerun-io/rerun/issues/1387)).
 

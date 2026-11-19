@@ -28,8 +28,9 @@ fn intro() -> String {
 
 /// The end of the instructions, the same for every backend.
 const OUTRO: &str = "- Rerun is open source, and its examples are worth reading and worth linking: \
-     <https://rerun.io/examples> shows each one, and its code is under `examples/` in \
-     <https://github.com/rerun-io/rerun>. Larger applications — SLAM, gaussian splatting, \
+     their code is under `examples/` in <https://github.com/rerun-io/rerun>, and \
+     <https://rerun.io/examples> walks through collecting, preparing, and training on robot \
+     data. Larger applications — SLAM, gaussian splatting, \
      segmentation, depth — are one runnable package each in the Pixi workspace at \
      <https://github.com/rerun-io/examples-monorepo>. Point the user at the example that \
      matches what they are building rather than describing one in prose.\n\
