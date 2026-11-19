@@ -118,6 +118,16 @@ enum WindowDecorationsRequest {
     Custom,
 }
 
+/// The latest stream of a blueprint from a catalog server.
+struct BlueprintStream {
+    source: re_log_channel::LogSource,
+
+    /// Whether the stream has sent all of the blueprint.
+    ///
+    /// A stream that fails part-way ends without this being set.
+    is_complete: bool,
+}
+
 /// The Rerun Viewer as an [`eframe`] application.
 ///
 /// The [`StoreHub`] lives beside [`AppCore`] rather than inside it,
@@ -257,10 +267,18 @@ pub struct AppCore {
 
     pub(crate) table_blueprints: re_dataframe_ui::TableBlueprints,
 
-    /// For each blueprint streamed from a catalog server, the source of its latest stream.
+    /// For each blueprint streamed from a catalog server, its latest stream.
     ///
     /// Only that stream writes to the blueprint's store.
-    latest_blueprint_streams: ahash::HashMap<StoreId, re_log_channel::LogSource>,
+    latest_blueprint_streams: ahash::HashMap<StoreId, BlueprintStream>,
+
+    /// For each app, the dataset blueprint that becomes its active blueprint once the stream of
+    /// that blueprint ends.
+    ///
+    /// The entry of an app is the blueprint that the user picked last, if the viewer is still
+    /// streaming it. The stream of any other blueprint from a catalog server ends without a
+    /// change to the active blueprint.
+    pub(crate) blueprints_to_activate: ahash::HashMap<ApplicationId, StoreId>,
 
     /// Notification panel.
     pub(crate) notifications: notifications::NotificationUi,
@@ -673,6 +691,7 @@ impl App {
             background_tasks: Default::default(),
             table_blueprints: Default::default(),
             latest_blueprint_streams: Default::default(),
+            blueprints_to_activate: Default::default(),
             notifications: notifications::NotificationUi::new(creation_context.egui_ctx.clone()),
             viewer_control: Default::default(),
 

@@ -9,7 +9,8 @@ use re_renderer::WgpuResourcePoolStatistics;
 use re_ui::ButtonExt as _;
 use re_ui::{ContextExt as _, Size, UICommand, UICommandSender as _, UiExt as _, icons};
 use re_viewer_context::{
-    ActiveStoreContext, RecordingCommandKind, StoreHub, SystemCommand, SystemCommandSender as _,
+    ActiveStoreContext, RecordingCommandKind, Route, StoreHub, SystemCommand,
+    SystemCommandSender as _,
 };
 
 use crate::AppCore;
@@ -246,7 +247,7 @@ fn top_bar_ui(
                 ui.add_space(extra_margin);
             }
 
-            panel_buttons_r2l(app, app_blueprint, ui, store_hub);
+            panel_buttons_r2l(app, app_blueprint, ui, store_context, store_hub);
 
             if show_top_bar_diagnostics && !app.is_screenshotting() && !app.app_env().is_test() {
                 connection_status_ui(
@@ -658,6 +659,7 @@ fn panel_buttons_r2l(
     app: &mut AppCore,
     app_blueprint: &AppBlueprint<'_>,
     ui: &mut egui::Ui,
+    store_context: Option<&ActiveStoreContext<'_>>,
     store_hub: &StoreHub,
 ) {
     // Square icon buttons already leave room around their icons, so the toggles sit closer
@@ -677,6 +679,22 @@ fn panel_buttons_r2l(
     if response.clicked() {
         app.toggle_agent_panel();
     }
+
+    user_menu_ui(app, ui);
+
+    app.notifications.notification_toggle_button(ui);
+
+    let selection = app.selection_state.selected_items();
+    let time_ctrl = app
+        .active_recording_id()
+        .and_then(|id| app.stores.time_controls.get(id));
+    app.modals.share.button_ui(
+        ui,
+        store_hub,
+        app.navigation.routes.current(),
+        time_ctrl,
+        selection,
+    );
 
     let route = app.navigation.routes.current();
 
@@ -751,22 +769,15 @@ fn panel_buttons_r2l(
         },
     );
 
-    app.notifications.notification_toggle_button(ui);
-
     ui.spacing_mut().item_spacing.x = item_spacing;
 
-    let selection = app.selection_state.selected_items();
-    let time_ctrl = app
-        .active_recording_id()
-        .and_then(|id| app.stores.time_controls.get(id));
-    app.modals.share.button_ui(
-        ui,
-        store_hub,
-        app.navigation.routes.current(),
-        time_ctrl,
-        selection,
-    );
+    if let Some(store_context) = store_context {
+        blueprint_dropdown_if_from_dataset_ui(app, ui, store_context, store_hub);
+    }
+}
 
+/// The button with the logged in user, which opens a menu to log out.
+fn user_menu_ui(app: &AppCore, ui: &mut egui::Ui) {
     if let Some(auth) = &app.connections.auth
         && !app.is_screenshotting()
     {
@@ -811,6 +822,49 @@ fn panel_buttons_r2l(
                     });
                 }
             });
+    }
+}
+
+/// The blueprint dropdown, for a recording that comes from a catalog dataset.
+///
+/// Opening the dropdown asks the server for the dataset's blueprints again.
+fn blueprint_dropdown_if_from_dataset_ui(
+    app: &AppCore,
+    ui: &mut egui::Ui,
+    store_context: &ActiveStoreContext<'_>,
+    store_hub: &StoreHub,
+) {
+    if !matches!(
+        app.navigation.routes.current(),
+        Route::LocalRecording { .. }
+    ) {
+        return;
+    }
+    let Some(uri) = store_context
+        .recording
+        .redap_uri()
+        .filter(|uri| uri.resource == re_uri::DatasetResource::Segments)
+    else {
+        return;
+    };
+    let redap_servers = &app.state.redap_servers;
+    let Some(dataset_blueprints) =
+        redap_servers.dataset_blueprints(ui.ctx(), &uri.origin, uri.dataset_id.into())
+    else {
+        return;
+    };
+
+    let opened = re_redap_browser::dataset_blueprint_dropdown_ui(
+        ui,
+        store_context,
+        store_hub,
+        &app.command_sender,
+        &dataset_blueprints,
+        app.blueprints_to_activate
+            .get(store_context.application_id()),
+    );
+    if opened {
+        redap_servers.refresh_dataset_blueprints(&uri.origin, uri.dataset_id.into());
     }
 }
 

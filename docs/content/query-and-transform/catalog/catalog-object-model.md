@@ -143,10 +143,11 @@ Such an occurrence is rare, and practically impossible when using standard Rerun
 
 ### Blueprints
 
-A dataset can be assigned a blueprint.
-This is done by registering a `.rbl` blueprint file typically stored in object storage to the dataset.
+You can add blueprints to a dataset by registering `.rbl` blueprint files, typically stored in object storage.
 A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
-In that case, the blueprint is applied to all segments of the dataset when visualized in the Rerun Viewer.
+You can also set one as the default, which is then loaded with each segment of the dataset.
+
+The registered blueprints show up in the Viewer in a [dropdown in the top bar](../../viewer/ui/blueprint-panel.md#dataset-blueprints).
 
 A separate **table blueprint** can be used to configure the segment table itself: columns, card layouts, and embedded segment previews.
 See [Configure table layouts and segment previews](../../viewer/blueprints/configure-table-blueprints.md) for the complete save-and-register workflow.

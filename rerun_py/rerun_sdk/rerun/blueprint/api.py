@@ -759,13 +759,13 @@ class Blueprint:
         make_active:
             Immediately make this the active blueprint for the associated `app_id`.
             Note that setting this to `false` does not mean the blueprint may not still end
-            up becoming active. In particular, if `make_default` is true and there is no other
-            currently active blueprint.
+            up becoming active. In particular, if `make_default` is true and the user has not
+            edited the active blueprint.
         make_default:
             Make this the default blueprint for the `app_id`.
             The default blueprint will be used as the template when the user resets the
-            blueprint for the app. It will also become the active blueprint if no other
-            blueprint is currently active.
+            blueprint for the app. It also replaces the active blueprint, unless the user has
+            edited the active blueprint.
 
         """
         blueprint_stream = RecordingStream._from_native(

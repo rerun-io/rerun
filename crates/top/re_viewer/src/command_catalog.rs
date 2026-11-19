@@ -98,6 +98,7 @@ impl MenuGroup {
                 Command(Recording(RecordingCommand::OpenAddViewOrContainerDialog)),
                 Command(Recording(RecordingCommand::ResetBlueprintToDefault)),
                 Command(Recording(RecordingCommand::ResetBlueprintToHeuristic)),
+                Command(Recording(RecordingCommand::ResetBlueprint)),
                 Command(Table(TableCommandKind::ResetBlueprintToDefault)),
                 #[cfg(not(target_arch = "wasm32"))]
                 Separator,

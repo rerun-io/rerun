@@ -256,7 +256,7 @@ impl StoreHub {
     ///
     /// If `source_id` is a dataset blueprint with a cached copy, that cached copy becomes active.
     /// Otherwise a new clone of `source_id` becomes active.
-    fn activate_blueprint(&mut self, source_id: &StoreId) -> anyhow::Result<()> {
+    pub fn activate_blueprint(&mut self, source_id: &StoreId) -> anyhow::Result<()> {
         if let Some(segment) = self.dataset_blueprint_segment(source_id)
             && self.try_activate_cached_blueprint(
                 source_id.application_id(),
@@ -340,6 +340,69 @@ impl StoreHub {
             // next frame.
             self.blueprints.set_should_enable_heuristics(app_id.clone());
         }
+    }
+
+    /// Makes the blueprint with the [`CachedBlueprintSource::Local`] cache entry of `app_id`
+    /// the active blueprint, from the store bundle or from persisted storage. If there is none,
+    /// the heuristics generate a new blueprint.
+    ///
+    /// The heuristics also generate a new blueprint if the active blueprint has the local
+    /// cache entry and isn't the heuristic blueprint. No cache entry is deleted.
+    pub fn activate_heuristic_blueprint(&mut self, app_id: &ApplicationId) {
+        let heuristic_id = StoreId::heuristic_blueprint(app_id.clone());
+        let active_is_other_local_entry =
+            self.blueprints
+                .active_blueprint_id(app_id)
+                .is_some_and(|active_id| {
+                    *active_id != heuristic_id
+                        && self.blueprints.local_entry_blueprint(app_id) == Some(active_id)
+                });
+        if !active_is_other_local_entry
+            && self.try_activate_cached_blueprint(app_id, &CachedBlueprintSource::Local)
+        {
+            return;
+        }
+
+        self.store_bundle.blueprint_entry(&heuristic_id);
+        self.replace_active_blueprint(&heuristic_id);
+        self.blueprints.set_should_enable_heuristics(app_id.clone());
+    }
+
+    /// Discard all changes to the active blueprint.
+    ///
+    /// The active blueprint becomes a new clone of [`Self::active_blueprint_source`]. Without
+    /// one, the heuristics generate a new blueprint.
+    pub fn reset_active_blueprint(&mut self, route: &Route) {
+        let Some(app_id) = route.app_id() else {
+            return;
+        };
+
+        let source_id = self
+            .active_blueprint_source(app_id)
+            .map(|source| source.store_id().clone());
+
+        if let Some(source_id) = source_id {
+            if let Err(err) = self.set_cloned_blueprint_active_for_app(&source_id) {
+                re_log::warn!("Failed to reset blueprint: {err}");
+            }
+        } else {
+            self.clear_active_blueprint_and_generate(route);
+        }
+    }
+
+    /// The blueprint that the active blueprint of `app_id` is a copy of, if the hub has it.
+    ///
+    /// For a copy of a dataset blueprint that is the dataset blueprint, also when the copy was
+    /// loaded from its cache entry. For any other blueprint it is the one it was cloned from.
+    pub fn active_blueprint_source(&self, app_id: &ApplicationId) -> Option<&EntityDb> {
+        let active = self.active_blueprint_for_app(app_id)?;
+        let source_id = match self.copied_dataset_blueprint(active.store_id()) {
+            Some(segment) => {
+                re_redap_client::blueprint_store_id_for_segment(app_id.clone(), &segment)
+            }
+            None => active.cloned_from()?.clone(),
+        };
+        self.store_bundle.get(&source_id)
     }
 
     /// Clear active blueprints (in-memory and on disk) for all `app_ids` that have

@@ -392,10 +392,7 @@ async fn internal_catalog_load_rrd() {
 
         let loading_rrd_toast = format!("Loading {rrd_path:?}…");
         viewer_test_utils::step_until("loading toast gone", &mut harness, |harness| {
-            harness
-                .query_all_by_label_contains(&loading_rrd_toast)
-                .next()
-                .is_none()
+            !harness.has_label_contains(&loading_rrd_toast)
         });
 
         harness.set_time_panel_opened(false);

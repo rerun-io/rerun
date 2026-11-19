@@ -616,6 +616,14 @@
         },
         "type": "typography"
       },
+      "Body Medium": {
+        "value": {
+          "fontSize": "12.5px",
+          "fontWeight": "500",
+          "fontFamily": "Inter"
+        },
+        "type": "typography"
+      },
       "Small": {
         "value": {
           "fontSize": "10.5px",

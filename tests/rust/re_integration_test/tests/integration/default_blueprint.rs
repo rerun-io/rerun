@@ -284,7 +284,7 @@ async fn a_table_blueprint_stream_completes_whether_or_not_the_blueprint_loads()
             origin: origin(&server),
             entry_id: dataset_id(),
         };
-        let (tx, rx) = re_redap_client::table_blueprint_log_channel(
+        let (tx, rx) = re_redap_client::blueprint_log_channel(
             origin(&server),
             blueprint_dataset,
             &blueprint_segment,
@@ -362,7 +362,7 @@ async fn a_disconnected_receiver_ends_both_streams_cleanly() {
     .await
     .expect("a disconnected receiver should end the recording stream cleanly");
 
-    let (tx, rx) = re_redap_client::table_blueprint_log_channel(
+    let (tx, rx) = re_redap_client::blueprint_log_channel(
         origin(&server),
         blueprint_dataset,
         &blueprint_segment,

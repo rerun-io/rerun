@@ -87,6 +87,19 @@ pub enum SystemCommand {
     /// showing the recording does.
     EnsureRecordingBlueprint(StoreId),
 
+    /// Make a blueprint of a catalog dataset the active blueprint of an application.
+    ///
+    /// The blueprint is streamed from the server first if the viewer doesn't have all of it. A
+    /// streamed blueprint becomes active once its stream ends, unless another blueprint of the
+    /// application was picked or reset by then. The cached copy of the blueprint becomes active
+    /// if there is one, and otherwise a new clone of it.
+    ActivateDatasetBlueprint {
+        application_id: re_log_types::ApplicationId,
+        origin: re_uri::Origin,
+        blueprint_dataset: re_log_types::EntryId,
+        blueprint_segment: re_types_core::SegmentId,
+    },
+
     /// Activates the setting route.
     OpenSettings,
 
@@ -126,6 +139,18 @@ pub enum SystemCommand {
     /// The final outcome of this is to set the active blueprint to the heuristics. This command
     /// does not affect the default blueprint if any was set.
     ClearActiveBlueprintAndEnableHeuristics,
+
+    /// Make the heuristic blueprint the active blueprint of an application.
+    ///
+    /// The blueprint with the local cache entry of the application becomes active if there is
+    /// one, and otherwise the heuristics generate a new blueprint. No cache entry is deleted.
+    ActivateHeuristicBlueprint(re_log_types::ApplicationId),
+
+    /// Discard all changes to the active blueprint.
+    ///
+    /// The active blueprint becomes a new clone of the blueprint it was cloned from. If it wasn't
+    /// cloned from one, the heuristics generate a new blueprint.
+    ResetActiveBlueprint,
 
     /// Close a [`RecordingOrLocalTable`] and free its memory.
     CloseRecordingOrTable(RecordingOrLocalTable),

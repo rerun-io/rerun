@@ -1,10 +1,10 @@
 //! Blueprints registered in a blueprint dataset, and their names.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
 use arrow::array::RecordBatch;
-use re_log_types::EntryId;
+use re_log_types::{EntryId, Timestamp};
 use re_protos::cloud::v1alpha1::ext::{
     BlueprintKind, DataSource, DatasetEntry, StorageLocationAlias, TableEntry, read_blueprint_kind,
     read_blueprint_name, with_blueprint_kind, with_blueprint_name, without_blueprint_name,
@@ -12,7 +12,7 @@ use re_protos::cloud::v1alpha1::ext::{
 use re_protos::common::v1alpha1::ext::{IfDuplicateBehavior, SegmentId};
 use re_redap_client::{ApiError, ApiErrorKind, ApiResult};
 
-use crate::CatalogClient;
+use crate::{CatalogClient, ManifestSegment};
 
 /// The name of a blueprint, which is never empty.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -60,37 +60,63 @@ pub struct RegisteredBlueprint {
     pub name: Option<BlueprintName>,
 
     /// Whether this is a table blueprint or a recording blueprint.
-    pub kind: BlueprintKind,
+    ///
+    /// `None` if the blueprint has no stored kind.
+    pub kind: Option<BlueprintKind>,
+
+    /// When the first layer of the blueprint was registered.
+    ///
+    /// `None` if the blueprint dataset has no blueprint with this segment ID.
+    pub registration_time: Option<Timestamp>,
 }
 
 impl RegisteredBlueprint {
-    /// The blueprint with this segment ID, with the name and kind from its entry in `properties`.
-    fn new(segment_id: SegmentId, properties: &BTreeMap<SegmentId, (RecordBatch, u64)>) -> Self {
+    /// The blueprint with this segment ID, with the name and kind from its entry in `properties`,
+    /// and the registration time from its entry in `manifest`.
+    fn new(
+        segment_id: SegmentId,
+        properties: &BTreeMap<SegmentId, (RecordBatch, u64)>,
+        manifest: &[ManifestSegment],
+    ) -> Self {
         let properties = properties
             .get(&segment_id)
             .map(|(properties, _)| properties);
-        Self::from_properties(segment_id, properties)
+        Self::from_properties(segment_id, properties, manifest)
     }
 
     /// The blueprint with this segment ID, with the name and kind from its single-row
-    /// `properties`.
-    fn from_properties(segment_id: SegmentId, properties: Option<&RecordBatch>) -> Self {
-        let name = properties
-            .and_then(|properties| read_blueprint_name(properties, 0))
-            .and_then(|name| BlueprintName::try_new(name).ok());
-        let kind = properties
-            .map(|properties| read_blueprint_kind(properties, 0))
-            .unwrap_or_default();
+    /// `properties`, and the registration time from its entry in `manifest`.
+    ///
+    /// `manifest` is sorted by segment ID, as [`CatalogClient::scan_manifest`] returns it.
+    fn from_properties(
+        segment_id: SegmentId,
+        properties: Option<&RecordBatch>,
+        manifest: &[ManifestSegment],
+    ) -> Self {
+        let kind = properties.and_then(|properties| read_blueprint_kind(properties, 0));
+        let registration_time = manifest
+            .binary_search_by(|segment| segment.id.cmp(&segment_id))
+            .ok()
+            .map(|index| manifest[index].registered_at);
         Self {
             segment_id,
-            name,
+            name: stored_name(properties),
             kind,
+            registration_time,
         }
     }
 }
 
+/// The name in a blueprint's single-row `properties`, if it has one.
+fn stored_name(properties: Option<&RecordBatch>) -> Option<BlueprintName> {
+    let name = read_blueprint_name(properties?, 0)?;
+    BlueprintName::try_new(name).ok()
+}
+
 impl CatalogClient {
-    /// The blueprints of a blueprint dataset, in the order of its segment table.
+    /// The blueprints of a blueprint dataset, oldest registration first.
+    ///
+    /// Blueprints registered at the same time keep the order of the segment table.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_blueprints(
         &self,
@@ -100,11 +126,18 @@ impl CatalogClient {
         let properties = self
             .blueprint_properties(blueprint_dataset, segment_ids.clone())
             .await?;
+        let manifest = self.scan_manifest(blueprint_dataset, None).await?;
 
-        Ok(segment_ids
+        let mut blueprints: Vec<_> = segment_ids
             .into_iter()
-            .map(|segment_id| RegisteredBlueprint::new(segment_id, &properties))
-            .collect())
+            .map(|segment_id| RegisteredBlueprint::new(segment_id, &properties, &manifest))
+            .collect();
+        blueprints.sort_by_key(|blueprint| {
+            blueprint
+                .registration_time
+                .map(Timestamp::nanos_since_epoch)
+        });
+        Ok(blueprints)
     }
 
     /// The blueprint with this name, or `None` if no blueprint of the dataset has it.
@@ -140,7 +173,7 @@ impl CatalogClient {
     /// registered blueprint has no name.
     ///
     /// On a server that doesn't store blueprint names, `name` and `kind` are ignored with a
-    /// warning, and the returned blueprint is a recording blueprint without a name, the same as in
+    /// warning, and the returned blueprint has no name or kind, the same as in
     /// [`Self::get_blueprints`].
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn register_blueprint(
@@ -181,7 +214,7 @@ impl CatalogClient {
             // of an earlier registration of the same segment.
             let clear_name = !existing.contains(&segment_id);
 
-            let blueprint = match self
+            let properties = match self
                 .write_unnamed_blueprint_properties(
                     blueprint_dataset,
                     segment_id.clone(),
@@ -191,7 +224,7 @@ impl CatalogClient {
                 )
                 .await
             {
-                Ok(blueprint) => blueprint,
+                Ok(properties) => Some(properties),
 
                 Err(err) if err.kind == ApiErrorKind::Unimplemented => {
                     if kind != BlueprintKind::default() {
@@ -199,14 +232,20 @@ impl CatalogClient {
                             "The server doesn't store blueprint properties, so the blueprint kind is ignored"
                         );
                     }
-                    RegisteredBlueprint::from_properties(
-                        segment_id,
-                        stored.as_ref().map(|(properties, _)| properties),
-                    )
+                    stored.map(|(properties, _)| properties)
                 }
 
                 Err(err) => return Err(err),
             };
+
+            let manifest = self
+                .scan_manifest(
+                    blueprint_dataset,
+                    Some(&BTreeSet::from([segment_id.clone()])),
+                )
+                .await?;
+            let blueprint =
+                RegisteredBlueprint::from_properties(segment_id, properties.as_ref(), &manifest);
 
             if blueprint.name.is_none() {
                 warn_unnamed_blueprint();
@@ -226,18 +265,18 @@ impl CatalogClient {
 
         let added = !existing.contains(&segment_id);
 
-        let blueprint = match self
+        let properties = match self
             .write_blueprint_properties(blueprint_dataset, segment_id.clone(), name, Some(kind))
             .await
         {
-            Ok(blueprint) => blueprint,
+            Ok(properties) => Some(properties),
 
             Err(err) if err.kind == ApiErrorKind::Unimplemented => {
                 re_log::warn!(
                     "The server doesn't store blueprint names, so the name {:?} and the blueprint kind are ignored",
                     name.as_str()
                 );
-                RegisteredBlueprint::from_properties(segment_id.clone(), None)
+                None
             }
 
             Err(err) => {
@@ -265,7 +304,17 @@ impl CatalogClient {
             .await?;
         }
 
-        Ok(blueprint)
+        let manifest = self
+            .scan_manifest(
+                blueprint_dataset,
+                Some(&BTreeSet::from([segment_id.clone()])),
+            )
+            .await?;
+        Ok(RegisteredBlueprint::from_properties(
+            segment_id,
+            properties.as_ref(),
+            &manifest,
+        ))
     }
 
     /// Register one `.rbl` with a blueprint dataset, wait for the registration to finish, and
@@ -313,7 +362,8 @@ impl CatalogClient {
     /// table with the default table blueprint.
     ///
     /// Doesn't check that the blueprint dataset has a blueprint with the default segment ID, so a
-    /// segment ID it doesn't have comes back as a blueprint without a name.
+    /// segment ID it doesn't have comes back as a blueprint without a name, kind or registration
+    /// time.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_dataset_default_blueprint(
         &self,
@@ -332,7 +382,8 @@ impl CatalogClient {
     /// The default blueprint of a table, or `None` if it has none.
     ///
     /// Doesn't check that the blueprint dataset has a blueprint with the default segment ID, so a
-    /// segment ID it doesn't have comes back as a blueprint without a name.
+    /// segment ID it doesn't have comes back as a blueprint without a name, kind or registration
+    /// time.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn get_table_default_blueprint(
         &self,
@@ -355,8 +406,18 @@ impl CatalogClient {
         let properties = self
             .blueprint_properties(blueprint_dataset, vec![segment_id.clone()])
             .await?;
+        let manifest = self
+            .scan_manifest(
+                blueprint_dataset,
+                Some(&BTreeSet::from([segment_id.clone()])),
+            )
+            .await?;
 
-        Ok(Some(RegisteredBlueprint::new(segment_id, &properties)))
+        Ok(Some(RegisteredBlueprint::new(
+            segment_id,
+            &properties,
+            &manifest,
+        )))
     }
 
     /// Set the default `kind` blueprint of a dataset to the blueprint with this segment ID.
@@ -412,19 +473,33 @@ impl CatalogClient {
         segment_id: SegmentId,
         name: &BlueprintName,
     ) -> ApiResult<RegisteredBlueprint> {
-        self.write_blueprint_properties(blueprint_dataset, segment_id, name, None)
-            .await
+        let properties = self
+            .write_blueprint_properties(blueprint_dataset, segment_id.clone(), name, None)
+            .await?;
+        let manifest = self
+            .scan_manifest(
+                blueprint_dataset,
+                Some(&BTreeSet::from([segment_id.clone()])),
+            )
+            .await?;
+        Ok(RegisteredBlueprint::from_properties(
+            segment_id,
+            Some(&properties),
+            &manifest,
+        ))
     }
 
     /// Name a blueprint like [`Self::set_blueprint_name`], and set its kind if `kind` is `Some`.
     /// The other stored properties of the blueprint stay the same.
+    ///
+    /// Returns the properties written for the blueprint.
     async fn write_blueprint_properties(
         &self,
         blueprint_dataset: EntryId,
         segment_id: SegmentId,
         name: &BlueprintName,
         kind: Option<BlueprintKind>,
-    ) -> ApiResult<RegisteredBlueprint> {
+    ) -> ApiResult<RecordBatch> {
         let segment_ids = self.get_dataset_segment_ids(blueprint_dataset).await?;
         if !segment_ids.contains(&segment_id) {
             return Err(ApiError::not_found(
@@ -445,9 +520,7 @@ impl CatalogClient {
 
         let taken_by = segment_ids.into_iter().find(|other| {
             *other != segment_id
-                && RegisteredBlueprint::new(other.clone(), &properties)
-                    .name
-                    .as_ref()
+                && stored_name(properties.get(other).map(|(properties, _)| properties)).as_ref()
                     == Some(name)
         });
         if let Some(other) = taken_by {
@@ -479,10 +552,7 @@ impl CatalogClient {
         .await
         .map_err(|err| names_unsupported_error(self.origin(), err))?;
 
-        Ok(RegisteredBlueprint::from_properties(
-            segment_id,
-            Some(&properties),
-        ))
+        Ok(properties)
     }
 
     /// Set the kind of a blueprint without naming it, and clear its stored name if `clear_name`.
@@ -490,6 +560,8 @@ impl CatalogClient {
     ///
     /// `stored` are the blueprint's stored properties and their revision, if it has any. Fails
     /// with `FailedPrecondition` if the stored properties changed since they were read.
+    ///
+    /// Returns the properties written for the blueprint.
     async fn write_unnamed_blueprint_properties(
         &self,
         blueprint_dataset: EntryId,
@@ -497,7 +569,7 @@ impl CatalogClient {
         stored: Option<&(RecordBatch, u64)>,
         clear_name: bool,
         kind: BlueprintKind,
-    ) -> ApiResult<RegisteredBlueprint> {
+    ) -> ApiResult<RecordBatch> {
         let revision = stored.map_or(0, |(_, revision)| *revision);
         let properties = with_blueprint_kind(stored.map(|(batch, _)| batch), kind)
             .and_then(|properties| {
@@ -515,19 +587,11 @@ impl CatalogClient {
                 )
             })?;
 
-        self.set_segment_properties(
-            blueprint_dataset,
-            segment_id.clone(),
-            &properties,
-            Some(revision),
-        )
-        .await
-        .map_err(|err| names_unsupported_error(self.origin(), err))?;
+        self.set_segment_properties(blueprint_dataset, segment_id, &properties, Some(revision))
+            .await
+            .map_err(|err| names_unsupported_error(self.origin(), err))?;
 
-        Ok(RegisteredBlueprint::from_properties(
-            segment_id,
-            Some(&properties),
-        ))
+        Ok(properties)
     }
 
     /// The stored properties of the given blueprints.

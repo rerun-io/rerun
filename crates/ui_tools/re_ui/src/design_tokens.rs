@@ -613,6 +613,7 @@ pub struct DesignTokens {
 const INTER_FONT_NAME: &str = "Inter-Variable";
 const JETBRAINS_MONO_FONT_NAME: &str = "JetBrainsMono-Variable";
 const BODY_TYPOGRAPHY_NAME: &str = "Body";
+const BODY_MEDIUM_TYPOGRAPHY_NAME: &str = "Body Medium";
 const SMALL_TYPOGRAPHY_NAME: &str = "Small";
 const HEADING_1_TYPOGRAPHY_NAME: &str = "Heading 1";
 const HEADING_2_TYPOGRAPHY_NAME: &str = "Heading 2";
@@ -1186,6 +1187,13 @@ impl DesignTokens {
             .color(self.text_strong)
     }
 
+    /// Formats text in the "Body Medium" typography, body text with a heavier weight.
+    pub fn body_medium_text(&self, text: impl Into<String>) -> egui::RichText {
+        egui::RichText::new(text.into())
+            .size(self.typography.body_medium.font_size)
+            .variation("wght", self.typography.body_medium.font_weight)
+    }
+
     /// Margin on all sides of views.
     pub fn view_padding(&self) -> i8 {
         12
@@ -1659,6 +1667,10 @@ impl TryFrom<TypographyValue> for TypographyStyle {
 #[derive(Debug)]
 struct Typography {
     body: TypographyStyle,
+
+    /// Body text with a heavier weight, for emphasis within a list.
+    body_medium: TypographyStyle,
+
     small: TypographyStyle,
     heading_1: TypographyStyle,
     heading_2: TypographyStyle,
@@ -1679,6 +1691,7 @@ impl Typography {
 
         let typography = Self {
             body: load_style(BODY_TYPOGRAPHY_NAME)?,
+            body_medium: load_style(BODY_MEDIUM_TYPOGRAPHY_NAME)?,
             small: load_style(SMALL_TYPOGRAPHY_NAME)?,
             heading_1: load_style(HEADING_1_TYPOGRAPHY_NAME)?,
             heading_2: load_style(HEADING_2_TYPOGRAPHY_NAME)?,

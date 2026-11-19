@@ -44,25 +44,29 @@ This loose coupling between blueprints and recordings means:
 
 Think of the Application ID as the "key" that binds a blueprint to a specific type of recording. If you want recordings to share the same layout, give them the same Application ID.
 
-## Reset behavior: heuristic vs default
+## Blueprints of a catalog dataset
 
-The Viewer provides two types of blueprint reset, accessible from the blueprint panel:
+A catalog dataset can have several blueprints registered for its recordings, and one of them can be the dataset's default.
+See [Blueprints](../../query-and-transform/catalog/catalog-object-model.md#blueprints) for how to register them.
+A recording opened from the dataset starts with the dataset's default blueprint, if it has one.
+The [blueprint dropdown in the top bar](../ui/blueprint-panel.md#dataset-blueprints) switches between the dataset's blueprints and a heuristic blueprint.
 
-<picture>
-  <img src="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/full.png" alt="Blueprint panel menu with Add view or container, Reset to default blueprint, and Reset to heuristic blueprint">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint-reset/c52e124cc4d0109b672264357b0193f7f7c8d6c5/1200w.png">
-</picture>
+## Reset behavior
+
+The [reset button](../ui/blueprint-panel.md#reset-button) in the blueprint panel discards all changes made to the current blueprint.
+The **View** menu and the command palette have two more resets.
 
 ### Reset to heuristic blueprint
-This generates a new blueprint automatically based on your current data. The Viewer analyzes what you've logged and creates an appropriate layout using built-in heuristics. This is useful when you want to start fresh and let Rerun figure out a reasonable layout.
+This generates a new blueprint automatically based on your current data.
+The Viewer analyzes what you've logged and creates an appropriate layout using built-in heuristics.
+This is useful when you want to start over and let Rerun figure out a reasonable layout.
 
 ### Reset to default blueprint
-This returns to your programmatically specified blueprint (sent from code) or a saved blueprint file (`.rbl`). If you've sent a blueprint using `rr.send_blueprint()` or loaded a `.rbl` file, this becomes your "default." The reset button in the blueprint panel will restore this default whenever you need it.
+This returns to your programmatically specified blueprint (sent from code) or a saved blueprint file (`.rbl`).
+If you've sent a blueprint using `rr.send_blueprint()` or loaded a `.rbl` file, this becomes your "default."
+For a recording opened from a catalog dataset, the default is the dataset's default blueprint.
 
-When no default blueprint has been set, the reset button will use the heuristic blueprint instead.
+When no default blueprint has been set, this uses the heuristic blueprint instead.
 
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/fe1fcf086752f5d7cdd64b195fb3a6cb99c50737_current_default_heuristic.png" width="550px" alt="Current, default, and heuristic blueprints">

@@ -57,6 +57,9 @@ url.workspace = true
 webbrowser.workspace = true
 
 [dev-dependencies]
+re_entity_db.workspace = true
+re_log_channel.workspace = true
+re_test_context.workspace = true
 re_ui = { workspace = true, features = ["testing"] }
 tokio = { workspace = true, features = ["macros", "rt"] }
 

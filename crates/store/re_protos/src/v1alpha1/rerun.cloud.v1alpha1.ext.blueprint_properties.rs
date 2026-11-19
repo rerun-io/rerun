@@ -108,14 +108,11 @@ pub fn read_blueprint_name(batch: &RecordBatch, row: usize) -> Option<String> {
 
 /// Read a blueprint's kind from its `blueprint` property at `row`.
 ///
-/// Returns [`BlueprintKind::Recording`] if the property is absent, the row is null, or the value is
-/// not a known kind.
-pub fn read_blueprint_kind(batch: &RecordBatch, row: usize) -> BlueprintKind {
+/// Returns `None` if the property is absent, the row is null, or the value is not a known kind.
+pub fn read_blueprint_kind(batch: &RecordBatch, row: usize) -> Option<BlueprintKind> {
     let column = property_column(BLUEPRINT_PROPERTY, BLUEPRINT_KIND_COMPONENT);
-    list_values_at(batch, row, &column)
-        .and_then(|values| first_string(&values))
-        .and_then(|kind| BlueprintKind::parse(&kind))
-        .unwrap_or_default()
+    let values = list_values_at(batch, row, &column)?;
+    BlueprintKind::parse(&first_string(&values)?)
 }
 
 #[cfg(test)]
@@ -170,10 +167,13 @@ mod tests {
     #[test]
     fn reads_the_kind_it_wrote() {
         let table = with_blueprint_kind(None, BlueprintKind::Table).unwrap();
-        assert_eq!(read_blueprint_kind(&table, 0), BlueprintKind::Table);
+        assert_eq!(read_blueprint_kind(&table, 0), Some(BlueprintKind::Table));
 
         let recording = with_blueprint_kind(None, BlueprintKind::Recording).unwrap();
-        assert_eq!(read_blueprint_kind(&recording, 0), BlueprintKind::Recording);
+        assert_eq!(
+            read_blueprint_kind(&recording, 0),
+            Some(BlueprintKind::Recording)
+        );
     }
 
     /// Setting the kind of a named blueprint keeps its name, and renaming it keeps its kind.
@@ -182,19 +182,15 @@ mod tests {
         let named = with_blueprint_name(None, "overview").unwrap();
         let table = with_blueprint_kind(Some(&named), BlueprintKind::Table).unwrap();
         assert_eq!(read_blueprint_name(&table, 0).as_deref(), Some("overview"));
-        assert_eq!(read_blueprint_kind(&table, 0), BlueprintKind::Table);
+        assert_eq!(read_blueprint_kind(&table, 0), Some(BlueprintKind::Table));
 
         let renamed = with_blueprint_name(Some(&table), "detail").unwrap();
         assert_eq!(read_blueprint_name(&renamed, 0).as_deref(), Some("detail"));
-        assert_eq!(read_blueprint_kind(&renamed, 0), BlueprintKind::Table);
+        assert_eq!(read_blueprint_kind(&renamed, 0), Some(BlueprintKind::Table));
     }
 
-    /// A blueprint without the `blueprint` property is a recording blueprint.
     #[test]
-    fn blueprint_without_property_is_recording() {
-        assert_eq!(
-            read_blueprint_kind(&unrelated_properties(), 0),
-            BlueprintKind::Recording
-        );
+    fn blueprint_without_property_has_no_kind() {
+        assert_eq!(read_blueprint_kind(&unrelated_properties(), 0), None);
     }
 }

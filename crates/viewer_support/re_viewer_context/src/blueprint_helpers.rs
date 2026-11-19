@@ -1,7 +1,7 @@
 use arrow::array::ArrayRef;
 use re_chunk::{ComponentIdentifier, LatestAtQuery, RowId, TimelineName};
 use re_chunk_store::external::re_chunk::Chunk;
-use re_entity_db::EntityDb;
+use re_entity_db::{EntityDb, StoreBundle};
 use re_log_types::{EntityPath, StoreId, TimeInt, TimePoint, Timeline};
 use re_sdk_types::{AsComponents, ComponentBatch, ComponentDescriptor, SerializedComponentBatch};
 
@@ -54,6 +54,25 @@ fn static_write_row_id(blueprint: &EntityDb) -> RowId {
     blueprint
         .latest_row_id()
         .map_or_else(RowId::new, RowId::new_after)
+}
+
+/// Why resetting `active_blueprint` would change nothing, if it wouldn't.
+pub fn reset_blueprint_disabled_reason(
+    active_blueprint: &EntityDb,
+    store_bundle: &StoreBundle,
+) -> Option<&'static str> {
+    // Resetting a blueprint without a source reruns the heuristics, which is always enabled.
+    // Figuring out when rerunning the heuristics doesn't change anything is actually quite hard.
+    // There's a wide variety of things to consider that aren't easily caught:
+    // * does running view-generation/layout-generation change anything?
+    //    * these heuristics run incrementally, does rerunning them in bulk change anything?
+    // * any changes in overrides/defaults/view-property means that a reset would change something
+    let is_unmodified_clone = active_blueprint
+        .cloned_from()
+        .and_then(|source_id| store_bundle.get(source_id))
+        .is_some_and(|source| source.latest_row_id() == active_blueprint.latest_row_id());
+
+    is_unmodified_clone.then_some("No modifications have been made")
 }
 
 impl ActiveStoreContext<'_> {

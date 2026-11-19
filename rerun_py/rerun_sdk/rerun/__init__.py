@@ -360,9 +360,9 @@ def init(
         If unset, this can alternatively be overridden using the RERUN_STRICT environment variable.
         If not otherwise specified, the default behavior will be equivalent to `False`.
     default_blueprint
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        Optionally set a default blueprint to use for this application. If the user has edited
+        the active blueprint of the application, the new blueprint won't become active until
+        the user resets to the default blueprint. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     send_properties
             Immediately send the recording properties to the viewer (default: True)

@@ -7,7 +7,7 @@ use datafusion::prelude::{SessionConfig, SessionContext, col, lit};
 use datafusion::sql::TableReference;
 use egui::{Frame, Margin, RichText};
 use re_async::{AsyncRuntimeHandle, UiWaker};
-use re_catalog_client::{AssetLayer, AssetRegistrationError, CatalogClient};
+use re_catalog_client::{AssetRegistrationError, CatalogClient, ManifestLayer};
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_protos::cloud::v1alpha1::EntryKind;
@@ -761,7 +761,7 @@ pub enum Command {
         asset_id: SegmentId,
 
         /// One per layer of the asset, sorted by layer name.
-        layers: Vec<AssetLayer>,
+        layers: Vec<ManifestLayer>,
     },
 
     /// The server was asked to register an asset with a dataset.
@@ -983,6 +983,51 @@ impl RedapServers {
         entry_id: EntryId,
     ) -> Option<re_viewer_context::EntryKind> {
         self.servers.get(origin)?.find_entry(entry_id)?.route_kind()
+    }
+
+    /// The blueprints registered for a dataset, asking the server for them if nothing has yet.
+    ///
+    /// `None` if the dataset isn't loaded yet or has no blueprint dataset.
+    pub fn dataset_blueprints(
+        &self,
+        egui_ctx: &egui::Context,
+        origin: &re_uri::Origin,
+        dataset_id: EntryId,
+    ) -> Option<crate::DatasetBlueprints> {
+        let server = self.servers.get(origin)?;
+        let Ok(crate::entries::EntryInner::Dataset(dataset)) =
+            server.find_entry(dataset_id)?.inner()
+        else {
+            return None;
+        };
+        let details = &dataset.dataset_entry.dataset_details;
+        let blueprint_dataset = details.blueprint_dataset?;
+
+        let query = EntryMetaQuery {
+            client: &server.client,
+            egui_ctx,
+            dataset_id,
+        };
+        let blueprints = dataset.requests().blueprints(query, blueprint_dataset);
+
+        Some(crate::DatasetBlueprints {
+            origin: origin.clone(),
+            blueprint_dataset,
+            blueprints,
+            default_segment: details.default_blueprint_segment.clone(),
+        })
+    }
+
+    /// Asks the server for the blueprints registered for a dataset again.
+    ///
+    /// [`Self::dataset_blueprints`] gives the blueprints it had until the new ones arrive.
+    pub fn refresh_dataset_blueprints(&self, origin: &re_uri::Origin, dataset_id: EntryId) {
+        if let Some(server) = self.servers.get(origin)
+            && let Some(entry) = server.find_entry(dataset_id)
+            && let Ok(crate::entries::EntryInner::Dataset(dataset)) = entry.inner()
+        {
+            dataset.requests().refresh_blueprints();
+        }
     }
 
     /// Whether the catalog of `origin` might still tell us what an entry is.

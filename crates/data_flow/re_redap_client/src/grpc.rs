@@ -721,8 +721,8 @@ fn warn_blueprint_skipped(
     );
 }
 
-/// Create a log channel for streaming a table blueprint from a catalog server.
-pub fn table_blueprint_log_channel(
+/// Create a log channel for streaming a blueprint from a catalog server.
+pub fn blueprint_log_channel(
     origin: re_uri::Origin,
     blueprint_dataset: EntryId,
     blueprint_segment: &SegmentId,
@@ -753,17 +753,75 @@ pub fn table_blueprint_log_channel(
 /// stays in the viewer. It returns early without the quit marker only when the receiver
 /// disconnects.
 pub async fn stream_table_blueprint_segment_from_server(
-    mut client: ConnectionClient,
+    client: ConnectionClient,
     tx: re_log_channel::LogSender,
     blueprint_store_id: StoreId,
     table_ref: re_uri::TableReference,
     blueprint_dataset: EntryId,
     blueprint_segment: SegmentId,
 ) -> ApiResult {
+    let registration = DefaultBlueprintRegistration {
+        blueprint_id: blueprint_store_id.clone(),
+        target: BlueprintTarget::Table(table_ref),
+    };
+
+    stream_blueprint_segment_then_send(
+        client,
+        tx,
+        blueprint_store_id,
+        blueprint_dataset,
+        blueprint_segment,
+        registration.into(),
+    )
+    .await
+}
+
+/// Stream a registered `.rbl` blueprint segment into an existing log channel, and make it the
+/// active blueprint of its application.
+///
+/// The application's default blueprint stays the same.
+///
+/// Loading is best effort, the same way as for [`stream_table_blueprint_segment_from_server`].
+pub async fn stream_active_blueprint_segment_from_server(
+    client: ConnectionClient,
+    tx: re_log_channel::LogSender,
+    blueprint_store_id: StoreId,
+    blueprint_dataset: EntryId,
+    blueprint_segment: SegmentId,
+) -> ApiResult {
+    let activation = LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+        blueprint_id: blueprint_store_id.clone(),
+        make_active: true,
+        make_default: false,
+    });
+
+    stream_blueprint_segment_then_send(
+        client,
+        tx,
+        blueprint_store_id,
+        blueprint_dataset,
+        blueprint_segment,
+        activation.into(),
+    )
+    .await
+}
+
+/// Streams a blueprint segment, sends `on_loaded` once all of it is streamed, and then sends a
+/// successful quit marker.
+///
+/// If the blueprint fails to load, this logs a warning and skips `on_loaded`.
+async fn stream_blueprint_segment_then_send(
+    mut client: ConnectionClient,
+    tx: re_log_channel::LogSender,
+    blueprint_store_id: StoreId,
+    blueprint_dataset: EntryId,
+    blueprint_segment: SegmentId,
+    on_loaded: DataSourceMessage,
+) -> ApiResult {
     match stream_blueprint_segment(
         &mut client,
         &tx,
-        blueprint_store_id.clone(),
+        blueprint_store_id,
         blueprint_dataset,
         blueprint_segment.clone(),
     )
@@ -772,16 +830,7 @@ pub async fn stream_table_blueprint_segment_from_server(
         Ok(ControlFlow::Break(())) => return Ok(()),
 
         Ok(ControlFlow::Continue(())) => {
-            if tx
-                .send(
-                    DefaultBlueprintRegistration {
-                        blueprint_id: blueprint_store_id,
-                        target: BlueprintTarget::Table(table_ref),
-                    }
-                    .into(),
-                )
-                .is_err()
-            {
+            if tx.send(on_loaded).is_err() {
                 re_log::debug!("Receiver disconnected");
                 return Ok(());
             }

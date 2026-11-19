@@ -1,6 +1,6 @@
 //! Where an asset was registered from, opened from its card.
 
-use re_catalog_client::AssetLayer;
+use re_catalog_client::ManifestLayer;
 use re_log_types::external::re_types_core::SegmentId;
 use re_ui::modal::{ModalHandler, ModalWrapper};
 use re_ui::{ButtonExt as _, UiExt as _};
@@ -21,11 +21,11 @@ struct State {
     asset_id: SegmentId,
 
     /// One per layer of the asset, sorted by layer name.
-    layers: Vec<AssetLayer>,
+    layers: Vec<ManifestLayer>,
 }
 
 impl AssetSourceModal {
-    pub fn open(&mut self, asset_id: SegmentId, layers: Vec<AssetLayer>) {
+    pub fn open(&mut self, asset_id: SegmentId, layers: Vec<ManifestLayer>) {
         self.state = Some(State { asset_id, layers });
         self.modal.open();
     }
@@ -154,14 +154,14 @@ mod tests {
         run_test(vec![], "asset_source_modal__no_layers");
     }
 
-    fn layer(name: &str, storage_url: &str) -> AssetLayer {
-        AssetLayer {
+    fn layer(name: &str, storage_url: &str) -> ManifestLayer {
+        ManifestLayer {
             name: LayerName::try_new(name).expect("valid layer name"),
             storage_url: storage_url.to_owned(),
         }
     }
 
-    fn run_test(layers: Vec<AssetLayer>, snapshot_name: &str) {
+    fn run_test(layers: Vec<ManifestLayer>, snapshot_name: &str) {
         let mut modal = AssetSourceModal::default();
         modal.open(SegmentId::from("shared_mesh"), layers);
 

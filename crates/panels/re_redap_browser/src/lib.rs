@@ -6,6 +6,8 @@ mod asset_registration;
 mod asset_source_modal;
 mod breadcrumbs;
 mod context;
+mod dataset_blueprint_dropdown;
+mod dataset_blueprints;
 mod dataset_schema;
 mod entries;
 mod entry_meta;
@@ -19,6 +21,8 @@ mod upload_asset;
 
 pub use re_viewer_context::viewer_url::EXAMPLES_ORIGIN;
 
+pub use self::dataset_blueprint_dropdown::dataset_blueprint_dropdown_ui;
+pub use self::dataset_blueprints::DatasetBlueprints;
 pub use self::entries::{Entries, Entry, EntryInner};
 pub use self::servers::{AddServerCommand, Command, RedapServers, Server};
 pub use self::upload_asset::UploadAssetExt;

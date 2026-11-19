@@ -699,20 +699,22 @@ mod tests {
     }
 
     /// The user edits the copy of a dataset's default blueprint and restarts the viewer. Once the
-    /// dataset blueprint is streamed again, its edited copy becomes active, and further edits are
-    /// saved to the same cache entry.
+    /// dataset blueprint is streamed again, its edited copy becomes active with the same store id
+    /// and counts as a copy of that dataset blueprint. A save keeps the cache entry, and further
+    /// edits are saved to the same cache entry.
     #[test]
     fn restart_loads_cached_copies() {
         let persisted = Persisted::default();
         let app_id = ApplicationId::from("test_app");
 
-        let edited_row_id = {
+        let (edited_id, edited_row_id) = {
             let mut hub = hub_with_persistence(&persisted);
             add_dataset_blueprint(&mut hub, &app_id, "a");
             hub.ensure_active_blueprint_for_app(&app_id);
+            let edited_id = hub.active_blueprint_id_for_app(&app_id).unwrap().clone();
             let edited_row_id = edit_active_blueprint(&mut hub, &app_id);
             hub.save_app_blueprints().unwrap();
-            edited_row_id
+            (edited_id, edited_row_id)
         };
 
         let mut hub = hub_with_persistence(&persisted);
@@ -720,10 +722,36 @@ mod tests {
         add_dataset_blueprint(&mut hub, &app_id, "a");
         hub.ensure_active_blueprint_for_app(&app_id);
         assert_eq!(
+            hub.active_blueprint_id_for_app(&app_id),
+            Some(&edited_id),
+            "the edited copy should be active with its store id"
+        );
+        assert_eq!(
             active_latest_row_id(&hub, &app_id),
             edited_row_id,
-            "the edited copy should be active"
+            "the edited copy should have the edits"
         );
+        assert_eq!(
+            hub.copied_dataset_blueprint(&edited_id),
+            Some(SegmentId::from("a")),
+            "the edited copy should be a copy of the dataset blueprint"
+        );
+
+        hub.save_app_blueprints().unwrap();
+        {
+            let persisted = persisted.lock();
+            let cached = &persisted.blueprints[&dataset_key(&app_id, "a")];
+            assert_eq!(
+                cached.store_id(),
+                &edited_id,
+                "a save without new edits should keep the edited copy in the cache entry"
+            );
+            assert_eq!(
+                cached.latest_row_id(),
+                edited_row_id,
+                "a save without new edits should keep the edits in the cache entry"
+            );
+        }
 
         let new_edit_row_id = edit_active_blueprint(&mut hub, &app_id);
         hub.save_app_blueprints().unwrap();
@@ -736,6 +764,126 @@ mod tests {
             persisted.lock().blueprints[&dataset_key(&app_id, "a")].latest_row_id(),
             new_edit_row_id,
             "the cache entry should have the new edits"
+        );
+    }
+
+    /// The user edits the heuristic blueprint, then picks dataset blueprint `a` and edits it, then
+    /// picks dataset blueprint `b`.
+    /// Picking the heuristic blueprint again brings back its edits, and so does picking `a` again.
+    #[test]
+    fn activating_blueprint_again_keeps_edits() {
+        let mut hub = StoreHub::test_hub();
+        let app_id = ApplicationId::from("test_app");
+        let heuristic_id = StoreId::heuristic_blueprint(app_id.clone());
+
+        hub.ensure_active_blueprint_for_app(&app_id);
+        let heuristic_row_id = edit_active_blueprint(&mut hub, &app_id);
+        let a_id = add_dataset_blueprint(&mut hub, &app_id, "a");
+        let b_id = add_dataset_blueprint(&mut hub, &app_id, "b");
+
+        hub.activate_blueprint(&a_id).unwrap();
+        let a_copy_id = hub.active_blueprint_id_for_app(&app_id).unwrap().clone();
+        let a_row_id = edit_active_blueprint(&mut hub, &app_id);
+        hub.activate_blueprint(&b_id).unwrap();
+
+        hub.activate_heuristic_blueprint(&app_id);
+        assert_eq!(
+            hub.active_blueprint_id_for_app(&app_id),
+            Some(&heuristic_id),
+            "the heuristic blueprint should be active"
+        );
+        assert_eq!(
+            active_latest_row_id(&hub, &app_id),
+            heuristic_row_id,
+            "the heuristic blueprint should have its edits"
+        );
+
+        hub.activate_blueprint(&a_id).unwrap();
+        assert_eq!(
+            hub.active_blueprint_id_for_app(&app_id),
+            Some(&a_copy_id),
+            "the edited copy of the dataset blueprint should be active"
+        );
+        assert_eq!(
+            active_latest_row_id(&hub, &app_id),
+            a_row_id,
+            "the copy should have its edits"
+        );
+    }
+
+    /// The user edits the heuristic blueprint and restarts the viewer, and a copy of a dataset's
+    /// default blueprint becomes active. Activating the heuristic blueprint loads the edited
+    /// heuristic blueprint from its cache entry.
+    #[test]
+    fn activating_heuristic_loads_cached_heuristic_blueprint() {
+        let persisted = Persisted::default();
+        let app_id = ApplicationId::from("test_app");
+        let heuristic_id = StoreId::heuristic_blueprint(app_id.clone());
+
+        let edited_row_id = {
+            let mut hub = hub_with_persistence(&persisted);
+            hub.ensure_active_blueprint_for_app(&app_id);
+            let edited_row_id = edit_active_blueprint(&mut hub, &app_id);
+            hub.save_app_blueprints().unwrap();
+            edited_row_id
+        };
+
+        let mut hub = hub_with_persistence(&persisted);
+        let a_id = add_dataset_blueprint(&mut hub, &app_id, "a");
+        hub.ensure_active_blueprint_for_app(&app_id);
+        assert_eq!(
+            hub.active_blueprint_for_app(&app_id).unwrap().cloned_from(),
+            Some(&a_id),
+            "a copy of the dataset blueprint should be active after the restart"
+        );
+
+        hub.activate_heuristic_blueprint(&app_id);
+        assert_eq!(
+            hub.active_blueprint_id_for_app(&app_id),
+            Some(&heuristic_id),
+            "the heuristic blueprint should be active"
+        );
+        assert_eq!(
+            active_latest_row_id(&hub, &app_id),
+            edited_row_id,
+            "the heuristic blueprint should have the edits from its cache entry"
+        );
+    }
+
+    /// The SDK makes a blueprint active, the user edits it, and a save writes it to the local
+    /// cache entry. Activating the heuristic blueprint makes a new heuristic blueprint active
+    /// instead of the SDK blueprint, and keeps the local cache entry.
+    #[test]
+    fn activating_heuristic_over_sdk_blueprint_generates() {
+        let persisted = Persisted::default();
+        let mut hub = hub_with_persistence(&persisted);
+        let app_id = ApplicationId::from("test_app");
+        let heuristic_id = StoreId::heuristic_blueprint(app_id.clone());
+        let sdk_id = add_blueprint_with_data(&mut hub, &app_id);
+
+        hub.set_cloned_blueprint_active_for_app(&sdk_id).unwrap();
+        edit_active_blueprint(&mut hub, &app_id);
+        hub.save_app_blueprints().unwrap();
+
+        hub.activate_heuristic_blueprint(&app_id);
+        assert_eq!(
+            hub.active_blueprint_id_for_app(&app_id),
+            Some(&heuristic_id),
+            "the heuristic blueprint should be active"
+        );
+        assert_eq!(
+            active_latest_row_id(&hub, &app_id),
+            None,
+            "the heuristic blueprint should be empty"
+        );
+        assert!(
+            hub.blueprints.should_enable_heuristics(&app_id),
+            "the heuristics should generate the heuristic blueprint"
+        );
+        assert_eq!(
+            persisted_keys(&persisted),
+            HashSet::from([local_key(&app_id)]),
+            "the local cache entry should be kept"
         );
     }
 
@@ -1319,5 +1467,94 @@ mod tests {
                 "the edited copy should have the edits"
             );
         }
+    }
+
+    /// The user edits a clone of a blueprint and then resets it. The active blueprint becomes a
+    /// new clone of the same source without the edits.
+    #[test]
+    fn reset_active_blueprint_clones_source_again() {
+        let mut hub = StoreHub::test_hub();
+        let app_id = ApplicationId::from("test_app");
+        let source_id = add_blueprint_with_data(&mut hub, &app_id);
+
+        hub.set_cloned_blueprint_active_for_app(&source_id).unwrap();
+        let edited_id = hub.active_blueprint_id_for_app(&app_id).unwrap().clone();
+        edit_active_blueprint(&mut hub, &app_id);
+
+        hub.reset_active_blueprint(&recording_route(&app_id));
+
+        let active = hub.active_blueprint_for_app(&app_id).unwrap();
+        assert_ne!(
+            active.store_id(),
+            &edited_id,
+            "a new clone should replace the edited one"
+        );
+        assert_eq!(
+            active.cloned_from(),
+            Some(&source_id),
+            "the active blueprint should be a clone of the same source"
+        );
+        assert_eq!(
+            active.latest_row_id(),
+            hub.store_bundle.get(&source_id).unwrap().latest_row_id(),
+            "the clone should not have the edits"
+        );
+    }
+
+    /// The user edits the copy of a dataset blueprint and restarts the viewer, so the edited copy
+    /// is loaded from its cache entry. The user then resets it. The active blueprint becomes a new
+    /// clone of the dataset blueprint without the edits.
+    #[test]
+    fn reset_cached_copy_clones_dataset_blueprint() {
+        let persisted = Persisted::default();
+        let app_id = ApplicationId::from("test_app");
+
+        {
+            let mut hub = hub_with_persistence(&persisted);
+            add_dataset_blueprint(&mut hub, &app_id, "a");
+            hub.ensure_active_blueprint_for_app(&app_id);
+            edit_active_blueprint(&mut hub, &app_id);
+            hub.save_app_blueprints().unwrap();
+        }
+
+        let mut hub = hub_with_persistence(&persisted);
+        let a_id = add_dataset_blueprint(&mut hub, &app_id, "a");
+        hub.ensure_active_blueprint_for_app(&app_id);
+
+        hub.reset_active_blueprint(&recording_route(&app_id));
+
+        let active = hub.active_blueprint_for_app(&app_id).unwrap();
+        assert_eq!(
+            active.cloned_from(),
+            Some(&a_id),
+            "the active blueprint should be a clone of the dataset blueprint"
+        );
+        assert_eq!(
+            active.latest_row_id(),
+            hub.entity_db(&a_id).unwrap().latest_row_id(),
+            "the clone should not have the edits"
+        );
+    }
+
+    /// The active blueprint is a clone of a blueprint from the SDK whose source is gone.
+    /// Resetting generates a new blueprint with the heuristics.
+    #[test]
+    fn reset_active_blueprint_without_source_generates() {
+        let mut hub = StoreHub::test_hub();
+        let app_id = ApplicationId::from("test_app");
+        let source_id = add_blueprint_with_data(&mut hub, &app_id);
+
+        hub.set_cloned_blueprint_active_for_app(&source_id).unwrap();
+        hub.remove_store(&source_id);
+
+        hub.reset_active_blueprint(&recording_route(&app_id));
+        assert!(
+            hub.active_blueprint_id_for_app(&app_id).is_none(),
+            "no blueprint should be active before the heuristics run"
+        );
+        assert!(
+            hub.blueprints.should_enable_heuristics(&app_id),
+            "the heuristics should generate a new blueprint"
+        );
     }
 }

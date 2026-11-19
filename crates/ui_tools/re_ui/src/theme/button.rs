@@ -136,6 +136,19 @@ fn colors(args: &StyleArgs<'_>) -> Colors {
         };
     }
 
+    if args.has_class(class::ON_OPENED) {
+        let opened = Variant::Opened.visuals(tokens);
+        return Colors {
+            fill: match state {
+                WidgetState::Hovered => opened.fill_hovered,
+                WidgetState::Active => opened.fill_pressed,
+                WidgetState::Inactive | WidgetState::Noninteractive => Color32::TRANSPARENT,
+            },
+            text: opened.text,
+            stroke: Stroke::NONE,
+        };
+    }
+
     let visuals = visuals(args, tokens);
     let (fill_hovered, fill_pressed) = if args.has_class(class::ON_HOVERED) {
         (

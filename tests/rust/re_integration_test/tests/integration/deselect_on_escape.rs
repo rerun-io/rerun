@@ -69,7 +69,6 @@ pub async fn test_deselect_on_escape() {
 
     // Select view, open "add view or container" modal, escape, view remains selected
     harness.blueprint_tree().click_list_item("3D view");
-    harness.click_label("Open menu with more options");
     harness.click_label_contains("Add view or container");
     harness.snapshot_app("deselect_on_escape_4");
     harness.key_press(egui::Key::Escape);

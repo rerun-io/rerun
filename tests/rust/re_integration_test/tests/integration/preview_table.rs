@@ -114,12 +114,7 @@ pub async fn preview_table() {
     viewer_test_utils::step_until(
         "Opened recording shows the dataset blueprint",
         &mut harness,
-        |harness| {
-            harness
-                .query_all_by_label(DATASET_BLUEPRINT_VIEW_NAME)
-                .next()
-                .is_some()
-        },
+        |harness| harness.has_label(DATASET_BLUEPRINT_VIEW_NAME),
     );
 
     viewer_test_utils::step_until_with_custom_timeout(

@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
 use re_async::WasmNotSend;
-use re_catalog_client::{Asset, AssetCoverage, CatalogClient};
+use re_catalog_client::{AssetCoverage, CatalogClient, ManifestSegment, RegisteredBlueprint};
 use re_log_types::EntryId;
 use re_log_types::external::re_types_core::SegmentId;
 use re_mutex::Mutex;
@@ -31,7 +31,9 @@ pub struct EntryMetaQuery<'a> {
     pub dataset_id: EntryId,
 }
 
-pub type AssetsRef = Arc<Vec<Asset>>;
+pub type AssetsRef = Arc<Vec<ManifestSegment>>;
+
+pub type BlueprintsRef = Arc<Vec<RegisteredBlueprint>>;
 
 pub type SegmentIdsRef = Arc<SegmentIds>;
 
@@ -133,6 +135,9 @@ struct Requests {
     /// them.
     segment_ids: RequestedObject<SegmentIdsRef, ApiError>,
 
+    /// From the segment table and segment properties of the dataset's blueprint dataset.
+    blueprints: RequestedObject<BlueprintsRef, ApiError>,
+
     /// From the manifest of the dataset's asset dataset.
     assets: RequestedObject<AssetsRef, ApiError>,
 
@@ -170,6 +175,24 @@ impl DatasetRequests {
                     "dataset segment ids",
                     query.dataset_id,
                     segment_ids(query.client.clone(), query.dataset_id),
+                )
+            })
+    }
+
+    /// The blueprints registered for the dataset, asking for them if nothing has yet.
+    pub fn blueprints(
+        &self,
+        query: EntryMetaQuery<'_>,
+        blueprint_dataset: EntryId,
+    ) -> ServerValue<BlueprintsRef, ApiError> {
+        self.0
+            .lock()
+            .blueprints
+            .request_value(query.client.runtime(), query.egui_ctx, || {
+                warn_on_failure(
+                    "dataset blueprints",
+                    query.dataset_id,
+                    blueprints(query.client.clone(), blueprint_dataset),
                 )
             })
     }
@@ -238,17 +261,25 @@ impl DatasetRequests {
         let Requests {
             segment_count,
             segment_ids,
+            blueprints,
             assets,
             asset_coverage,
             schema,
         } = &mut *guard;
         segment_count.refresh();
         segment_ids.refresh();
+        blueprints.refresh();
         assets.refresh();
         for coverage in asset_coverage.values_mut() {
             coverage.refresh();
         }
         schema.refresh();
+    }
+
+    /// Fetch the blueprints again on the next access, keeping the ones we have until the new ones
+    /// arrive.
+    pub fn refresh_blueprints(&self) {
+        self.0.lock().blueprints.refresh();
     }
 
     /// Forget the assets we fetched, so the next access fetches them again.
@@ -341,6 +372,10 @@ async fn schema(client: CatalogClient, entry_id: EntryId) -> ApiResult<Arc<Datas
     })?;
 
     Ok(Arc::new(schema))
+}
+
+async fn blueprints(client: CatalogClient, blueprint_dataset: EntryId) -> ApiResult<BlueprintsRef> {
+    Ok(Arc::new(client.get_blueprints(blueprint_dataset).await?))
 }
 
 async fn assets(client: CatalogClient, asset_dataset: EntryId) -> ApiResult<AssetsRef> {

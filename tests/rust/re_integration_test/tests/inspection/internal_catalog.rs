@@ -85,7 +85,7 @@ async fn viewer_catalog_uses_rrd_fingerprint_layers() {
         harness.open_file(path);
         harness.step_until("recording entities loaded", |harness| {
             harness.query_by_label("_streams_tree").is_some()
-                && harness.query_all_by_label(entity).next().is_some()
+                && harness.has_label(entity)
                 && !harness.is_loading()
         });
     }

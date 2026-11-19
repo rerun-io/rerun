@@ -998,6 +998,8 @@ impl TestContext {
                 | SystemCommand::ReturnFromLoading
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
+                | SystemCommand::ActivateHeuristicBlueprint(_)
+                | SystemCommand::ResetActiveBlueprint
                 | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::ExpandFallbackBlueprintPanel
                 | SystemCommand::RefreshRedapServer(_)
@@ -1009,6 +1011,7 @@ impl TestContext {
                 | SystemCommand::Table(_)
                 | SystemCommand::EnsureTableBlueprint(_)
                 | SystemCommand::EnsureRecordingBlueprint(_)
+                | SystemCommand::ActivateDatasetBlueprint { .. }
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries

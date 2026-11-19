@@ -813,7 +813,7 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     viewer_test_utils::step_until_with_custom_timeout(
         "the registered asset shows up in the list",
         &mut harness,
-        |harness| harness.query_all_by_label_contains("robot_urdf").count() > 0,
+        |harness| harness.has_label_contains("robot_urdf"),
         Duration::from_millis(100),
         Duration::from_secs(10),
     );
@@ -1075,9 +1075,7 @@ async fn dataset_assets_tab() {
     });
 
     viewer_test_utils::step_until("both assets are listed", &mut harness, |harness| {
-        ASSET_IDS
-            .iter()
-            .all(|id| harness.query_all_by_label_contains(id).count() > 0)
+        ASSET_IDS.iter().all(|id| harness.has_label_contains(id))
     });
     harness.step_until_no_loading_indicator();
 
@@ -1152,7 +1150,7 @@ async fn open_asset_lists_it_under_owning_dataset() {
         &mut harness,
         |harness| {
             harness.query_by_label("Loading entries…").is_none()
-                && harness.query_all_by_label_contains("robot_data").count() > 0
+                && harness.has_label_contains("robot_data")
                 && {
                     let recording_panel = harness.recording_panel();
                     recording_panel

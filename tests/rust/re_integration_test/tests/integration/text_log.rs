@@ -122,9 +122,7 @@ async fn arrivals_preserve_manual_scroll_until_cursor_moves() {
         }
         seek(&mut harness, arrival);
         harness.step_until("seek to arriving row", |h| {
-            h.query_all_by_label(&format!("message {arrival}"))
-                .next()
-                .is_some()
+            h.has_label(&format!("message {arrival}"))
         });
     }
 }

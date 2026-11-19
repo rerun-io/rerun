@@ -451,7 +451,7 @@ fn start_streaming_segment_table_blueprint(
         entry_id: dataset_id,
     };
 
-    let (tx, rx) = re_redap_client::table_blueprint_log_channel(
+    let (tx, rx) = re_redap_client::blueprint_log_channel(
         origin.clone(),
         blueprint_dataset,
         &blueprint_segment,
@@ -549,7 +549,7 @@ fn start_registered_table_blueprint_stream(
         entry_id: table_entry_id,
     };
 
-    let (tx, rx) = re_redap_client::table_blueprint_log_channel(
+    let (tx, rx) = re_redap_client::blueprint_log_channel(
         origin.clone(),
         blueprint_dataset,
         &blueprint_segment,

@@ -562,6 +562,22 @@ impl AppCore {
                 store_hub.ensure_active_blueprint_for_app(store_id.application_id());
             }
 
+            SystemCommand::ActivateDatasetBlueprint {
+                application_id,
+                origin,
+                blueprint_dataset,
+                blueprint_segment,
+            } => {
+                self.activate_dataset_blueprint(
+                    store_hub,
+                    &application_id,
+                    origin,
+                    blueprint_dataset,
+                    blueprint_segment,
+                );
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
+            }
+
             SystemCommand::LoadDataSource(data_source) => {
                 self.load_data_source(store_hub, egui_ctx, &data_source);
             }
@@ -571,7 +587,20 @@ impl AppCore {
             SystemCommand::ResetViewer => self.reset_viewer(store_hub, egui_ctx),
             SystemCommand::ClearActiveBlueprintAndEnableHeuristics => {
                 re_log::debug!("Clear and generate new blueprint");
+                self.remove_blueprint_to_activate_for_current_app();
                 store_hub.clear_active_blueprint_and_generate(self.navigation.routes.current());
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
+            }
+            SystemCommand::ActivateHeuristicBlueprint(application_id) => {
+                re_log::debug!("Activate heuristic blueprint");
+                self.blueprints_to_activate.remove(&application_id);
+                store_hub.activate_heuristic_blueprint(&application_id);
+                egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
+            }
+            SystemCommand::ResetActiveBlueprint => {
+                re_log::debug!("Reset active blueprint");
+                self.remove_blueprint_to_activate_for_current_app();
+                store_hub.reset_active_blueprint(self.navigation.routes.current());
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::ClearActiveBlueprint => {
@@ -584,6 +613,7 @@ impl AppCore {
                         re_log::warn!("Failed to reset table blueprint: {err}");
                     }
                 } else {
+                    self.remove_blueprint_to_activate_for_current_app();
                     store_hub.clear_active_blueprint(self.navigation.routes.current());
                 }
 
@@ -1431,6 +1461,10 @@ impl AppCore {
             RecordingCommandKind::ResetBlueprintToHeuristic => {
                 self.command_sender
                     .send_system(SystemCommand::ClearActiveBlueprintAndEnableHeuristics);
+            }
+            RecordingCommandKind::ResetBlueprint => {
+                self.command_sender
+                    .send_system(SystemCommand::ResetActiveBlueprint);
             }
 
             RecordingCommandKind::ToggleTimePanel => {

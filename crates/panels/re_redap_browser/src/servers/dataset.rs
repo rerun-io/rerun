@@ -1,6 +1,8 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
-use re_catalog_client::{Asset, AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
+use re_catalog_client::{
+    AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT, ManifestSegment,
+};
 use re_dataframe_ui::TableLayoutKind;
 use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
@@ -613,7 +615,7 @@ impl Server {
         app_ctx: &AppContext<'_>,
         ctx: &Context<'_>,
         dataset: &Dataset,
-        asset: &Asset,
+        asset: &ManifestSegment,
         is_card_hovered: bool,
     ) {
         egui::Sides::new()
@@ -822,7 +824,7 @@ fn tab_meta_line_ui(ui: &mut egui::Ui, terms: &[MetaTerm<'_>]) {
 }
 
 /// Opens an asset, from its card or from its "Open" button.
-fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool) {
+fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &ManifestSegment, new_tab: bool) {
     let url = re_viewer_context::viewer_url::ViewerUrl::RedapDataset(re_uri::DatasetUri {
         origin: dataset.origin.clone(),
         dataset_id: dataset.id().id,
@@ -851,7 +853,7 @@ fn asset_size_text(egui_ctx: &egui::Context, size_bytes: f64) -> String {
     }
 }
 
-fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &Asset) {
+fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &ManifestSegment) {
     send_crossbeam(
         ctx.command_sender,
         Command::OpenAssetCoverageModal {
@@ -866,7 +868,7 @@ fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &Asset
 }
 
 /// Menu item opening [`crate::asset_source_modal::AssetSourceModal`] on an asset.
-fn asset_source_menu_ui(ui: &mut egui::Ui, ctx: &Context<'_>, asset: &Asset) {
+fn asset_source_menu_ui(ui: &mut egui::Ui, ctx: &Context<'_>, asset: &ManifestSegment) {
     if ui.button("Source URI details").clicked() {
         send_crossbeam(
             ctx.command_sender,
@@ -882,7 +884,7 @@ fn asset_source_menu_ui(ui: &mut egui::Ui, ctx: &Context<'_>, asset: &Asset) {
 }
 
 /// The line under an asset's name: when it was registered, and when it was last updated if that differs.
-fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
+fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &ManifestSegment) {
     ui.horizontal_wrapped(|ui| {
         let date_format = app_ctx.app_options.timestamp_format;
         ui.spacing_mut().item_spacing.x = 0.0;
@@ -1156,7 +1158,7 @@ fn failure_reason(err: &ApiError) -> String {
 }
 
 /// The color a card is outlined with when the server has yet to finish registering its asset.
-fn asset_outline_color(asset: &Asset, tokens: &DesignTokens) -> egui::Color32 {
+fn asset_outline_color(asset: &ManifestSegment, tokens: &DesignTokens) -> egui::Color32 {
     if asset.has_failed() {
         tokens.outlines.error
     } else {
@@ -1165,7 +1167,7 @@ fn asset_outline_color(asset: &Asset, tokens: &DesignTokens) -> egui::Color32 {
 }
 
 /// The color an asset is marked with when the server has yet to finish registering it.
-fn asset_fg_color(asset: &Asset, tokens: &DesignTokens) -> egui::Color32 {
+fn asset_fg_color(asset: &ManifestSegment, tokens: &DesignTokens) -> egui::Color32 {
     if asset.has_failed() {
         tokens.error_fg_color
     } else {

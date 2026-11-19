@@ -210,12 +210,7 @@ pub async fn dataset_folders() {
     viewer_test_utils::step_until(
         "table `perception.metrics` row appears",
         &mut table_harness,
-        |harness| {
-            harness
-                .query_all_by_label_contains("metrics-row")
-                .next()
-                .is_some()
-        },
+        |harness| harness.has_label_contains("metrics-row"),
     );
     assert_route_and_selection(&mut table_harness, &metrics_route);
 
@@ -224,7 +219,7 @@ pub async fn dataset_folders() {
     viewer_test_utils::step_until(
         "dataset `perception.summary` recording appears",
         &mut harness,
-        |harness| harness.query_all_by_label("rec_summary").next().is_some(),
+        |harness| harness.has_label("rec_summary"),
     );
     harness.step_until_no_loading_indicator();
     assert_route_and_selection(&mut harness, &summary_route);
