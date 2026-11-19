@@ -10,6 +10,7 @@ mod args;
 mod catalog_tools;
 mod error;
 mod metadata;
+mod query;
 mod tool;
 
 pub use self::catalog_tools::CatalogTools;

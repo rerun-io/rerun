@@ -154,6 +154,12 @@ impl CatalogTools {
             CatalogTool::GetSegmentProperties => {
                 get_segment_properties(&self.catalog()?, parse_args(arguments)?).await
             }
+            CatalogTool::QueryDataset => {
+                crate::query::query_dataset(&self.catalog()?, parse_args(arguments)?).await
+            }
+            CatalogTool::QueryTables => {
+                crate::query::query_tables(&self.catalog()?, parse_args(arguments)?).await
+            }
         }
     }
 

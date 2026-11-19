@@ -114,3 +114,50 @@ pub struct SegmentPropertiesArgs {
     /// The segment's id, from `catalog_list_segments`.
     pub segment_id: String,
 }
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct QueryTablesArgs {
+    /// A DataFusion SQL query over the catalog's table entries, by their names from
+    /// `catalog_list_entries`, e.g. `SELECT * FROM my_table WHERE score > 0.5`.
+    pub sql: String,
+
+    /// The most rows to return: 50 by default, at most 1000.
+    #[serde(default = "default_max_rows")]
+    pub max_rows: usize,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct QueryDatasetArgs {
+    /// The dataset's name or id, from `catalog_list_entries`.
+    pub dataset: String,
+
+    /// The timeline to index rows by, from `catalog_get_dataset_info`. May be left out when the
+    /// dataset has a single timeline. A dataset without timelines returns its static data.
+    #[serde(default)]
+    pub index: Option<String>,
+
+    /// The segments to query, from `catalog_list_segments`. All of them when left out.
+    #[serde(default)]
+    pub segments: Option<Vec<String>>,
+
+    /// The entities whose components become columns, from `catalog_get_dataset_schema`. All
+    /// entities when left out.
+    #[serde(default)]
+    pub entity_paths: Option<Vec<String>>,
+
+    /// A DataFusion SQL query over the result, as a table named `dataset`, e.g.
+    /// `SELECT rerun_segment_id, count(*) FROM dataset GROUP BY rerun_segment_id`.
+    /// Defaults to `SELECT * FROM dataset`.
+    #[serde(default)]
+    pub sql: Option<String>,
+
+    /// The most rows to return: 50 by default, at most 1000.
+    #[serde(default = "default_max_rows")]
+    pub max_rows: usize,
+}
+
+fn default_max_rows() -> usize {
+    crate::query::DEFAULT_MAX_ROWS
+}

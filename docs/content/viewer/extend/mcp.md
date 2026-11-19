@@ -133,13 +133,14 @@ The transform graph tool described below can return transform values, but for ge
 The Viewer hosts a catalog server, and `viewer_get_state` reports its address as `catalog_url`, along with each recording's `store_id`.
 That `store_id` is a `{kind}:{application_id}:{recording_id}` string, whose application id and recording id are its dataset id and segment id in that catalog.
 Both ids may contain a colon, so the application id's are escaped as `\:`: the kind runs to the first colon, the application id to the next unescaped one, and the recording id is the rest.
-The server instructions tell the agent to read entity paths and components from that server with the [catalog tools](#reading-a-catalog), and values with the Python `rerun.catalog` API, rather than guessing them.
+The server instructions tell the agent to read entity paths, components, and values from that server with the [catalog tools](#reading-a-catalog), or with the Python `rerun.catalog` API, rather than guessing them.
 For a recording that is not in the catalog, such as one streamed from an SDK or imported from another file format, the agent is told to read the file directly with `rerun.chunk.RrdReader` instead.
 
 ## Reading a catalog
 
-The `catalog_*` tools describe the contents of a Rerun catalog server directly, without opening anything in the Viewer: `catalog_list_entries`, `catalog_get_dataset_info`, `catalog_get_dataset_schema`, `catalog_list_segments`, and `catalog_get_segment_properties`.
-They read datasets, segments, schemas, and segment properties, but not the logged values.
+The `catalog_*` tools read a Rerun catalog server directly, without opening anything in the Viewer: `catalog_list_entries`, `catalog_get_dataset_info`, `catalog_get_dataset_schema`, `catalog_list_segments`, and `catalog_get_segment_properties`.
+`catalog_query_dataset` reads a dataset's data as a table, narrowed to a timeline, segments, and entities, with optional SQL over the result, and `catalog_query_tables` runs SQL over the catalog's table entries.
+Results are capped in rows and size, and long values such as images are cut short or left out, so the agent's context does not fill up.
 They work against `rerun server` and Rerun Hub, with the credentials of `rerun auth login` or the `REDAP_TOKEN` environment variable.
 
 ## Inspecting transforms

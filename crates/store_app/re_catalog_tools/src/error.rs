@@ -1,6 +1,10 @@
 //! [`CatalogToolError`]: why a catalog tool call failed.
 
-use re_log_types::EntityPath;
+use std::time::Duration;
+
+use datafusion::common::TableReference;
+use datafusion::error::DataFusionError;
+use re_log_types::{EntityPath, InvalidTimelineNameError, TimelineName};
 use re_redap_client::ApiError;
 
 /// Why a catalog tool call failed.
@@ -50,11 +54,92 @@ pub enum CatalogToolError {
     #[error("Unexpected dataset schema: {source}")]
     Schema { source: re_sorbet::SorbetError },
 
+    #[error("Invalid timeline name: {source}")]
+    InvalidTimeline { source: InvalidTimelineNameError },
+
+    #[error(
+        "Pass `index`, the timeline to index rows by: one of {}.",
+        names(timelines)
+    )]
+    AmbiguousIndex { timelines: Vec<TimelineName> },
+
+    #[error(
+        "The dataset has no timeline `{index}`. Its timelines: {}.",
+        names(timelines)
+    )]
+    NoSuchIndex {
+        index: TimelineName,
+        timelines: Vec<TimelineName>,
+    },
+
+    #[error("`segments` is empty. Leave it out to query every segment.")]
+    NoSegments,
+
+    #[error("`entity_paths` is empty. Leave it out to query every entity.")]
+    NoEntities,
+
+    #[error(
+        "The query returns {num_columns} columns, too many to list in a response. Select fewer \
+         columns."
+    )]
+    TooManyColumns { num_columns: usize },
+
+    #[error("Invalid query: {source}")]
+    InvalidQuery { source: DataFusionError },
+
+    #[error(
+        "Invalid query: quote table names that contain dots, e.g. `{:?}`.",
+        reference.to_string()
+    )]
+    DottedTableName { reference: TableReference },
+
+    #[error("The query names {num_tables} tables, but may name at most {max_tables}.")]
+    TooManyTables {
+        num_tables: usize,
+        max_tables: usize,
+    },
+
+    #[error("Failed to open the table `{table}`: {source}")]
+    OpenTable {
+        table: String,
+        source: DataFusionError,
+    },
+
+    #[error("Failed to set up the query: {source}")]
+    SetUpQuery { source: DataFusionError },
+
+    #[error("The query failed: {source}")]
+    QueryFailed { source: DataFusionError },
+
+    #[error(
+        "The query did not finish within {} s. {hint}",
+        timeout.as_secs()
+    )]
+    QueryTimedOut {
+        timeout: Duration,
+
+        /// What the agent can do about it, for the tool that timed out.
+        hint: &'static str,
+    },
+
     #[error("Failed to encode the result as JSON: {source}")]
     EncodeJson { source: arrow::error::ArrowError },
 
     #[error("Failed to read back the result as JSON: {source}")]
     DecodeJson { source: serde_json::Error },
+}
+
+/// `names`, comma-separated, or `none`.
+fn names(names: &[TimelineName]) -> String {
+    if names.is_empty() {
+        "none".to_owned()
+    } else {
+        names
+            .iter()
+            .map(ToString::to_string)
+            .collect::<Vec<_>>()
+            .join(", ")
+    }
 }
 
 impl CatalogToolError {

@@ -554,3 +554,202 @@ async fn works_as_an_agent_toolbox() {
         .expect_err("unknown tool");
     assert!(err.to_string().contains("catalog_nope"), "{err}");
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn queries_a_dataset() {
+    let (tools, _recordings, _storage) = connected_tools().await;
+
+    let info = tools
+        .run(
+            CatalogTool::GetDatasetInfo,
+            args(json!({ "dataset": DATASET })),
+        )
+        .await
+        .expect("info");
+    let timeline = info["timelines"][0]["name"].as_str().expect("a timeline");
+
+    let rows = tools
+        .run(
+            CatalogTool::QueryDataset,
+            args(json!({
+                "dataset": DATASET,
+                "index": timeline,
+                "entity_paths": ["/points"],
+                "max_rows": 2,
+            })),
+        )
+        .await
+        .expect("rows");
+    assert_eq!(rows["rows"].as_array().expect("rows").len(), 2, "{rows}");
+    assert!(rows["truncated"].is_string(), "{rows}");
+    assert!(
+        rows["columns"]
+            .as_array()
+            .expect("columns")
+            .contains(&json!("rerun_segment_id")),
+        "{rows}"
+    );
+
+    let per_segment = tools
+        .run(
+            CatalogTool::QueryDataset,
+            args(json!({
+                "dataset": DATASET,
+                "index": timeline,
+                "sql": "SELECT rerun_segment_id, count(*) AS n FROM dataset GROUP BY rerun_segment_id",
+            })),
+        )
+        .await
+        .expect("rows");
+    assert_eq!(
+        per_segment["rows"].as_array().expect("rows").len(),
+        2,
+        "{per_segment}"
+    );
+    assert!(per_segment.get("truncated").is_none(), "{per_segment}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn dataset_queries_apply_their_filters() {
+    let (tools, _recordings, _storage) = connected_tools().await;
+
+    // Without `index`: the dataset has one timeline, which becomes the index.
+    let one_segment = tools
+        .run(
+            CatalogTool::QueryDataset,
+            args(json!({
+                "dataset": DATASET,
+                "segments": ["segment_a"],
+                "sql": "SELECT DISTINCT rerun_segment_id FROM dataset",
+            })),
+        )
+        .await
+        .expect("rows");
+    assert_eq!(one_segment["rows"], json!([["segment_a"]]), "{one_segment}");
+
+    let points_only = tools
+        .run(
+            CatalogTool::QueryDataset,
+            args(json!({ "dataset": DATASET, "entity_paths": ["/points"], "max_rows": 1 })),
+        )
+        .await
+        .expect("rows");
+    let columns: Vec<&str> = points_only["columns"]
+        .as_array()
+        .expect("columns")
+        .iter()
+        .filter_map(Value::as_str)
+        .collect();
+    assert!(
+        columns.iter().any(|column| column.starts_with("/points")),
+        "{columns:?}"
+    );
+    assert!(
+        !columns.iter().any(|column| column.starts_with("/camera")),
+        "{columns:?}"
+    );
+
+    let err = tools
+        .run(
+            CatalogTool::QueryDataset,
+            args(json!({ "dataset": DATASET, "segments": ["segment_a", "nope"] })),
+        )
+        .await
+        .expect_err("unknown segment");
+    assert!(err.to_string().contains("\"nope\""), "{err}");
+
+    let err = tools
+        .run(
+            CatalogTool::QueryDataset,
+            args(json!({ "dataset": DATASET, "entity_paths": [] })),
+        )
+        .await
+        .expect_err("no entities");
+    assert!(err.to_string().contains("`entity_paths` is empty"), "{err}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn runs_sql_over_tables() {
+    let (tools, _recordings, _storage) = connected_tools().await;
+
+    let entries = tools
+        .run(
+            CatalogTool::QueryTables,
+            args(json!({ "sql": "SELECT * FROM __entries" })),
+        )
+        .await
+        .expect("rows");
+    assert!(
+        !entries["rows"].as_array().expect("rows").is_empty(),
+        "{entries}"
+    );
+
+    let err = tools
+        .run(
+            CatalogTool::QueryTables,
+            args(json!({ "sql": "SELECT 1 +" })),
+        )
+        .await
+        .expect_err("invalid SQL");
+    assert!(err.to_string().starts_with("Invalid query"), "{err}");
+
+    let err = tools
+        .run(
+            CatalogTool::QueryTables,
+            args(json!({ "sql": "SELECT * FROM nope" })),
+        )
+        .await
+        .expect_err("no such table");
+    assert!(err.to_string().contains("`nope`"), "{err}");
+
+    let series = tools
+        .run(
+            CatalogTool::QueryTables,
+            args(json!({ "sql": "SELECT * FROM generate_series(1, 3)" })),
+        )
+        .await
+        .expect("table functions need no catalog table");
+    assert_eq!(series["rows"].as_array().map(Vec::len), Some(3), "{series}");
+
+    let err = tools
+        .run(
+            CatalogTool::QueryTables,
+            args(json!({ "sql": "SELECT * FROM a.b" })),
+        )
+        .await
+        .expect_err("an unquoted dotted name");
+    assert!(err.to_string().contains("`\"a.b\"`"), "{err}");
+
+    let tables: Vec<String> = (0..17).map(|i| format!("t{i}")).collect();
+    let err = tools
+        .run(
+            CatalogTool::QueryTables,
+            args(json!({ "sql": format!("SELECT * FROM {}", tables.join(", ")) })),
+        )
+        .await
+        .expect_err("too many tables");
+    assert!(err.to_string().contains("17 tables"), "{err}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn dataset_queries_name_only_what_exists() {
+    let (tools, _recordings, _storage) = connected_tools().await;
+
+    let err = tools
+        .run(
+            CatalogTool::QueryDataset,
+            args(json!({ "dataset": DATASET, "index": "nope" })),
+        )
+        .await
+        .expect_err("no such timeline");
+    assert!(err.to_string().contains("no timeline `nope`"), "{err}");
+
+    let err = tools
+        .run(
+            CatalogTool::QueryDataset,
+            args(json!({ "dataset": DATASET, "entity_paths": ["/points", "/nope"] })),
+        )
+        .await
+        .expect_err("no such entity");
+    assert!(err.to_string().contains("`/nope`"), "{err}");
+}

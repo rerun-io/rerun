@@ -163,5 +163,93 @@ expression: definitions
       ]
     },
     "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_query_dataset",
+    "description": "Read the logged data of one dataset's recordings as a table: one row per index value per segment, with a `rerun_segment_id` column, the index column, and one column per component of the chosen entities. Narrow it with `segments`, `entity_paths`, and `sql`, which runs over that table. Rows are arrays in `columns` order; long values (images, point clouds) are cut short or left out. For the catalog's table entries, use `catalog_query_tables`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "index": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The timeline to index rows by, from `catalog_get_dataset_info`. May be left out when the\ndataset has a single timeline. A dataset without timelines returns its static data.",
+          "default": null
+        },
+        "segments": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "The segments to query, from `catalog_list_segments`. All of them when left out.",
+          "default": null
+        },
+        "entity_paths": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          },
+          "description": "The entities whose components become columns, from `catalog_get_dataset_schema`. All\nentities when left out.",
+          "default": null
+        },
+        "sql": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "A DataFusion SQL query over the result, as a table named `dataset`, e.g.\n`SELECT rerun_segment_id, count(*) FROM dataset GROUP BY rerun_segment_id`.\nDefaults to `SELECT * FROM dataset`.",
+          "default": null
+        },
+        "max_rows": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The most rows to return: 50 by default, at most 1000.",
+          "default": 50
+        }
+      },
+      "required": [
+        "dataset"
+      ]
+    },
+    "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_query_tables",
+    "description": "Run a read-only DataFusion SQL query over the catalog's table entries, by their names from `catalog_list_entries`, e.g. `__entries`, which lists every entry. Quote names with capitals or dots. Datasets are not table entries: read their data with `catalog_query_dataset`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "sql": {
+          "type": "string",
+          "description": "A DataFusion SQL query over the catalog's table entries, by their names from\n`catalog_list_entries`, e.g. `SELECT * FROM my_table WHERE score > 0.5`."
+        },
+        "max_rows": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0,
+          "description": "The most rows to return: 50 by default, at most 1000.",
+          "default": 50
+        }
+      },
+      "required": [
+        "sql"
+      ]
+    },
+    "effect": "ReadOnly"
   }
 ]

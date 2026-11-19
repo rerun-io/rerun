@@ -8,7 +8,7 @@ use re_agent_tools::{ToolDefinition, ToolEffect};
 
 use crate::args::{
     ConnectArgs, DatasetArgs, DatasetSchemaArgs, ListEntriesArgs, ListSegmentsArgs,
-    SegmentPropertiesArgs,
+    QueryDatasetArgs, QueryTablesArgs, SegmentPropertiesArgs,
 };
 
 /// One tool an agent can call.
@@ -33,6 +33,14 @@ pub enum CatalogTool {
 
     /// Read one segment's properties.
     GetSegmentProperties,
+
+    /// Read the logged data of a dataset's recordings, one row per index value per segment,
+    /// with optional SQL over that one table.
+    QueryDataset,
+
+    /// Run SQL over the catalog's table entries (plain Arrow tables, such as `__entries`), which
+    /// hold no recordings.
+    QueryTables,
 }
 
 impl CatalogTool {
@@ -45,6 +53,8 @@ impl CatalogTool {
             Self::GetDatasetSchema => "catalog_get_dataset_schema",
             Self::ListSegments => "catalog_list_segments",
             Self::GetSegmentProperties => "catalog_get_segment_properties",
+            Self::QueryDataset => "catalog_query_dataset",
+            Self::QueryTables => "catalog_query_tables",
         }
     }
 
@@ -103,6 +113,20 @@ impl CatalogTool {
                  `property:<key>:<component>` columns. Unlike the `/__properties` entities, these \
                  can change after the recording was registered."
             }
+            Self::QueryDataset => {
+                "Read the logged data of one dataset's recordings as a table: one row per index \
+                 value per segment, with a `rerun_segment_id` column, the index column, and one \
+                 column per component of the chosen entities. Narrow it with `segments`, \
+                 `entity_paths`, and `sql`, which runs over that table. Rows are arrays in \
+                 `columns` order; long values (images, point clouds) are cut short or left out. For the catalog's \
+                 table entries, use `catalog_query_tables`."
+            }
+            Self::QueryTables => {
+                "Run a read-only DataFusion SQL query over the catalog's table entries, by their \
+                 names from `catalog_list_entries`, e.g. `__entries`, which lists every entry. \
+                 Quote names with capitals or dots. Datasets are not table entries: read their \
+                 data with `catalog_query_dataset`."
+            }
         }
     }
 
@@ -114,7 +138,9 @@ impl CatalogTool {
             | Self::GetDatasetInfo
             | Self::GetDatasetSchema
             | Self::ListSegments
-            | Self::GetSegmentProperties => ToolEffect::ReadOnly,
+            | Self::GetSegmentProperties
+            | Self::QueryDataset
+            | Self::QueryTables => ToolEffect::ReadOnly,
         }
     }
 
@@ -126,6 +152,8 @@ impl CatalogTool {
             Self::GetDatasetSchema => schema_for::<DatasetSchemaArgs>(),
             Self::ListSegments => schema_for::<ListSegmentsArgs>(),
             Self::GetSegmentProperties => schema_for::<SegmentPropertiesArgs>(),
+            Self::QueryDataset => schema_for::<QueryDatasetArgs>(),
+            Self::QueryTables => schema_for::<QueryTablesArgs>(),
         }
     }
 }

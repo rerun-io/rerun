@@ -17,7 +17,7 @@ Getting oriented:
 - Use `viewer_get_transform_graph` when debugging 3D transforms (TF). Read its tool description for guidance on inspecting and interpreting transform trees.
 - To open a dataset or table on a Redap server, find it in the `servers` of `viewer_get_state` and pass its `url` to `viewer_open`. Match the user's server name against each `origin` host; if no server matches, ask for the URL rather than guessing one.
 - Never guess an entity path or a component name: `viewer_get_recording_schema` lists entities and their archetypes by default. For blueprint planning, start with this compact summary; check `omitted_entities` and use `entity_path` with `with_components: true` for focused component details.
-  `viewer_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. It lists the reserved `/__properties/…` entities too. They hold recording properties: static, per-segment metadata such as task or language under `/__properties/episode`, which views hide by default. Pass such an `entity_path` for their component names, then read the values with `CatalogClient` (see the `rerun-catalog-queries` skill). Without a `dataset_url` it describes the dataset on screen. It names the dataset's assets by id. An asset is static data such as robot meshes that the viewer shows as part of every segment it applies to, see <https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets>. `viewer_get_dataset_assets_schema` names the entities in each asset, so read it when an entity is missing from the segments. It names the entities in the segments and assets, not a table's columns: `viewer_get_table_schema` names those.
+  `viewer_get_dataset_schema` does the same for a whole dataset on a Redap server without opening any of it, so read it before deciding which segment to open or what a table's previews show. It lists the reserved `/__properties/…` entities too. They hold recording properties: static, per-segment metadata such as task or language under `/__properties/episode`, which views hide by default. Pass such an `entity_path` for their component names, then read the values from the viewer's catalog (see the `rerun-catalog-queries` skill). Without a `dataset_url` it describes the dataset on screen. It names the dataset's assets by id. An asset is static data such as robot meshes that the viewer shows as part of every segment it applies to, see <https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets>. `viewer_get_dataset_assets_schema` names the entities in each asset, so read it when an entity is missing from the segments. It names the entities in the segments and assets, not a table's columns: `viewer_get_table_schema` names those.
 - The viewer's log messages (INFO and above) since the previous tool call are appended to every tool result. Read them: a warning or error there usually explains what the user is seeing. `viewer_get_logs` fetches older messages.
 - Whenever the user asks where something is, answer with `viewer_highlight_rect` (below), not with prose about the layout.
 - If no viewer is running, launch one. If the user tells you to work in the background, or no desktop is available, use `--headless`.
@@ -76,12 +76,14 @@ Telling Rerun what let you down:
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.
 
-Catalog tools (`catalog_*`) describe the contents of a Rerun catalog server (does not need nor affect a viewer): its datasets, their segments (one per recording), schemas, and segment properties.
+Catalog tools (`catalog_*`) describe and read the contents of a Rerun catalog server (does not need nor affect a viewer): its datasets, their segments (one per recording), schemas, segment properties, and data.
 
 - Start with `catalog_list_entries` for the dataset names, then `catalog_get_dataset_info` for an overview. Name a dataset by its name or its id.
 - Never guess an entity path or a component name: read them with `catalog_get_dataset_schema`.
+- Read values with `catalog_query_dataset`: pick the `index` timeline, the `segments`, and the `entity_paths` you need, and aggregate in its `sql` rather than reading many rows. Large values such as images come back cut short or left out.
+- Narrow queries to the segments, entities, and time range you need. Ask the user before scanning a whole large dataset if the scope is unclear.
 - If no server matches what the user names, ask for the URL rather than guessing one.
-- Until you call `catalog_connect`, the catalog tools act on the catalog of the connected viewer (its `catalog_url`) when that viewer runs on this machine. Call `catalog_connect` to read another server, e.g. one from the `servers` that `viewer_get_state` lists.
+- Until you call `catalog_connect`, the catalog tools act on the catalog of the connected viewer (its `catalog_url`) when that viewer runs on this machine. It holds the recordings the viewer loaded from files: read their values with `catalog_query_dataset` rather than the Python API. Call `catalog_connect` to read another server, e.g. one from the `servers` that `viewer_get_state` lists.
 - A recording's `store_id` in `viewer_get_state` names its dataset id and segment id: pass them as `dataset` and `segment_id`.
 
 # Tools
@@ -332,6 +334,110 @@ Catalog tools (`catalog_*`) describe the contents of a Rerun catalog server (doe
     },
     "required": [
       "dataset"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_query_dataset
+
+{
+  "name": "catalog_query_dataset",
+  "description": "Read the logged data of one dataset's recordings as a table: one row per index value per segment, with a `rerun_segment_id` column, the index column, and one column per component of the chosen entities. Narrow it with `segments`, `entity_paths`, and `sql`, which runs over that table. Rows are arrays in `columns` order; long values (images, point clouds) are cut short or left out. For the catalog's table entries, use `catalog_query_tables`.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dataset": {
+        "type": "string",
+        "description": "The dataset's name or id, from `catalog_list_entries`."
+      },
+      "index": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "The timeline to index rows by, from `catalog_get_dataset_info`. May be left out when the\ndataset has a single timeline. A dataset without timelines returns its static data.",
+        "default": null
+      },
+      "segments": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "description": "The segments to query, from `catalog_list_segments`. All of them when left out.",
+        "default": null
+      },
+      "entity_paths": {
+        "type": [
+          "array",
+          "null"
+        ],
+        "items": {
+          "type": "string"
+        },
+        "description": "The entities whose components become columns, from `catalog_get_dataset_schema`. All\nentities when left out.",
+        "default": null
+      },
+      "sql": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "A DataFusion SQL query over the result, as a table named `dataset`, e.g.\n`SELECT rerun_segment_id, count(*) FROM dataset GROUP BY rerun_segment_id`.\nDefaults to `SELECT * FROM dataset`.",
+        "default": null
+      },
+      "max_rows": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0,
+        "description": "The most rows to return: 50 by default, at most 1000.",
+        "default": 50
+      }
+    },
+    "required": [
+      "dataset"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_query_tables
+
+{
+  "name": "catalog_query_tables",
+  "description": "Run a read-only DataFusion SQL query over the catalog's table entries, by their names from `catalog_list_entries`, e.g. `__entries`, which lists every entry. Quote names with capitals or dots. Datasets are not table entries: read their data with `catalog_query_dataset`.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "sql": {
+        "type": "string",
+        "description": "A DataFusion SQL query over the catalog's table entries, by their names from\n`catalog_list_entries`, e.g. `SELECT * FROM my_table WHERE score > 0.5`."
+      },
+      "max_rows": {
+        "type": "integer",
+        "format": "uint",
+        "minimum": 0,
+        "description": "The most rows to return: 50 by default, at most 1000.",
+        "default": 50
+      }
+    },
+    "required": [
+      "sql"
     ]
   },
   "annotations": {

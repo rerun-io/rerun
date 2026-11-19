@@ -74,6 +74,13 @@ pub async fn sleep(duration: Duration) {
     .expect("browser timer task should not be canceled while it is awaited");
 }
 
+/// Yields to the Tokio scheduler so other tasks can run.
+#[cfg(not(target_arch = "wasm32"))]
+#[inline]
+pub async fn yield_now() {
+    tokio::task::yield_now().await;
+}
+
 /// Yields to the browser event loop so other tasks can run.
 #[cfg(target_arch = "wasm32")]
 #[inline]

@@ -65,10 +65,12 @@ impl CatalogToolset {
             format!(
                 "Until you call `{connect}`, the catalog tools act on the catalog of the \
                  connected viewer (its `catalog_url`) when that viewer runs on this machine. \
-                 Call `{connect}` to read another server, e.g. one from the `servers` that \
-                 `viewer_get_state` lists.\n\
+                 It holds the recordings the viewer loaded from files: read their values with \
+                 `{query}` rather than the Python API. Call `{connect}` to read another server, \
+                 e.g. one from the `servers` that `viewer_get_state` lists.\n\
                  - A recording's `store_id` in `viewer_get_state` names its dataset id and \
-                 segment id: pass them as `dataset` and `segment_id`."
+                 segment id: pass them as `dataset` and `segment_id`.",
+                query = CatalogTool::QueryDataset.name(),
             )
         } else {
             format!("Call `{connect}` with the catalog's URL first.")
