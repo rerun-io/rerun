@@ -1,0 +1,105 @@
+---
+source: crates/panels/re_agent_panel/src/viewer_toolbox.rs
+expression: "format!(\"{description}\\n\\n{schema}\")"
+---
+Run a command palette command by id.
+
+Returns once queued; verify the effect with `GetState` or a screenshot.
+Commands that open a native modal are refused unless `allow_blocking_native_modal` is set.
+Ask the user before running a `destructive` command.
+
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Command id. `list_commands` says which commands can run right now, and describes them.",
+      "enum": [
+        "recording.close",
+        "recording.open_add_view_or_container_dialog",
+        "recording.print_blueprint_store",
+        "recording.print_chunk_store",
+        "recording.print_primary_cache",
+        "recording.redo_blueprint_edit",
+        "recording.reset_blueprint",
+        "recording.reset_blueprint_to_default",
+        "recording.reset_blueprint_to_heuristic",
+        "recording.save",
+        "recording.save_blueprint",
+        "recording.save_time_selection",
+        "recording.seek_backward_long",
+        "recording.seek_backward_short",
+        "recording.seek_forward_long",
+        "recording.seek_forward_short",
+        "recording.seek_to_end_and_follow",
+        "recording.seek_to_next_event",
+        "recording.seek_to_previous_event",
+        "recording.seek_to_start",
+        "recording.toggle_play_pause",
+        "recording.toggle_time_panel",
+        "recording.undo_blueprint_edit",
+        "server.copy_url_to_clipboard",
+        "server.open_edit_dialog",
+        "server.refresh",
+        "server.remove",
+        "table.redo_blueprint_edit",
+        "table.refresh",
+        "table.reset_blueprint_to_default",
+        "table.undo_blueprint_edit",
+        "ui.about",
+        "ui.capture_profile_trace",
+        "ui.close_all_recordings",
+        "ui.copy_direct_link_to_clipboard",
+        "ui.copy_entity_hierarchy_to_clipboard",
+        "ui.copy_screenshot_to_clipboard",
+        "ui.copy_time_selection_link_to_clipboard",
+        "ui.expand_blueprint_panel",
+        "ui.expand_selection_panel",
+        "ui.import_file_into_current_recording",
+        "ui.navigate_back_in_history",
+        "ui.navigate_forward_in_history",
+        "ui.open_add_server_dialog",
+        "ui.open_discord_website",
+        "ui.open_docs_website",
+        "ui.open_file",
+        "ui.open_profiler",
+        "ui.open_rerun_website",
+        "ui.open_settings",
+        "ui.open_share_dialog",
+        "ui.open_url_dialog",
+        "ui.quit",
+        "ui.reset_ui_zoom",
+        "ui.reset_viewer",
+        "ui.switch_to_next_recording",
+        "ui.switch_to_previous_recording",
+        "ui.toggle_agent_panel",
+        "ui.toggle_blueprint_panel",
+        "ui.toggle_chunk_store_browser",
+        "ui.toggle_command_palette",
+        "ui.toggle_dev_panel",
+        "ui.toggle_fullscreen",
+        "ui.toggle_panel_state_overrides",
+        "ui.toggle_selection_panel",
+        "ui.toggle_top_panel",
+        "ui.zoom_in_ui",
+        "ui.zoom_out_ui"
+      ]
+    },
+    "store_id": {
+      "type": "string",
+      "description": "Recording for a `recording` command. Defaults to the active one."
+    },
+    "server_origin": {
+      "type": "string",
+      "description": "Server for a `server` command, e.g. `rerun+http://127.0.0.1:51234`. Defaults to the selected one."
+    },
+    "allow_blocking_native_modal": {
+      "type": "boolean",
+      "description": "Allow a command that opens a native modal (see `ViewerCommand.blocking_native_modal`)."
+    }
+  },
+  "required": [
+    "id"
+  ],
+  "description": "Request for `RunCommand`."
+}

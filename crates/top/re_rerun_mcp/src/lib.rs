@@ -259,8 +259,13 @@ fn tool_list(tools: Vec<Tool>) -> ListToolsResult {
 
 impl ServerHandler for RerunMcpServer {
     fn get_info(&self) -> ServerConfig {
-        let config = ServerConfig::new(ServerCapabilities::builder().enable_tools().build())
-            .with_server_info(Implementation::new("rerun-mcp", env!("CARGO_PKG_VERSION")));
+        let config = ServerConfig::new(
+            ServerCapabilities::builder()
+                .enable_tools()
+                .enable_tool_list_changed()
+                .build(),
+        )
+        .with_server_info(Implementation::new("rerun-mcp", env!("CARGO_PKG_VERSION")));
         let instructions = self.instructions();
         if instructions.is_empty() {
             config

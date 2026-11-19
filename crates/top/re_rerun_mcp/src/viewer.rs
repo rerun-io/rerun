@@ -24,7 +24,7 @@ use rmcp::{
     ErrorData as McpError,
     handler::server::{router::tool::ToolRouter, tool::ToolCallContext, wrapper::Parameters},
     model::{CallToolRequestParams, CallToolResult, ContentBlock, Tool},
-    service::{RequestContext, RoleServer},
+    service::{Peer, RequestContext, RoleServer},
     tool, tool_router,
 };
 use serde::Deserialize;
@@ -34,8 +34,9 @@ use url::Url;
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
 use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
 use re_protos::viewer_control::v1alpha1::{
-    EguiInspectRequest, GetLogsRequest, GetStateRequest, UnexpectedResponseKind, ViewerControlOp,
-    ViewerLogEntry, viewer_control_service_client::ViewerControlServiceClient,
+    EguiInspectRequest, GetLogsRequest, GetStateRequest, ListCommandsRequest,
+    UnexpectedResponseKind, ViewerControlOp, ViewerLogEntry,
+    viewer_control_service_client::ViewerControlServiceClient,
 };
 use re_viewer_control_tools::ScreenshotDelivery;
 
@@ -237,6 +238,11 @@ struct Connection {
     /// Sequence number of the last viewer log entry appended to a tool result.
     /// Starts at the newest entry at connect time, so old logs are not replayed.
     log_cursor: AtomicU64,
+
+    /// Every command id the viewer knows, whether it can run right now or not.
+    ///
+    /// Asked for at connect time, so that `run_command` lists them. `None` if that request failed.
+    command_ids: Option<Vec<String>>,
 }
 
 /// Prefix on every tool this toolset defines, so a `viewer_*` name is a viewer-control operation and
@@ -323,14 +329,40 @@ impl ViewerToolset {
             },
             |response| response.entries.last().map_or(0, |entry| entry.sequence),
         );
+        let command_ids = execute(
+            &mut client,
+            ListCommandsRequest {
+                include_unavailable: Some(true),
+                ..Default::default()
+            },
+        )
+        .await
+        .inspect_err(|err| re_log::warn!("Failed to list the viewer's commands: {err}"))
+        .ok()
+        .map(|response| {
+            response
+                .commands
+                .into_iter()
+                .map(|command| command.id)
+                .collect()
+        });
         *self.conn.lock() = Some(Arc::new(Connection {
             ui: egui_mcp::UiServer::new(bridge),
             client,
             viewer_endpoint: endpoint.clone(),
             peer: peer.clone(),
             log_cursor: AtomicU64::new(newest_log),
+            command_ids,
         }));
         Ok(peer)
+    }
+
+    /// The connected viewer's command ids, if known. See [`Connection::command_ids`].
+    fn command_ids(&self) -> Option<Vec<String>> {
+        self.conn
+            .lock()
+            .as_ref()
+            .and_then(|conn| conn.command_ids.clone())
     }
 
     /// Connect to the endpoint the toolset was started for, if any.
@@ -466,13 +498,14 @@ impl ViewerToolset {
     /// `viewer_control.proto`, and the reusable egui UI tools.
     ///
     /// Both routers are independent of the connection, so their tools stay listed even while
-    /// disconnected.
+    /// disconnected. Only `run_command` depends on it: it lists the connected viewer's command ids.
     pub fn tools(&self) -> Vec<Tool> {
+        let command_ids = self.command_ids();
         let mut tools = self.tool_router.list_all();
         // TODO(rerun-io/egui_crates#205): serve the viewer tools through `toolbox` too, once the
         // egui tools are an `AgentToolbox`.
         tools.extend(
-            re_viewer_control_tools::tools(SCREENSHOT_DELIVERY)
+            re_viewer_control_tools::tools(SCREENSHOT_DELIVERY, command_ids.as_deref())
                 .into_iter()
                 .map(
                     |re_agent_tools::ToolDefinition {
@@ -569,6 +602,7 @@ impl ViewerToolset {
     async fn connect(
         &self,
         Parameters(args): Parameters<ConnectArgs>,
+        client: Peer<RoleServer>,
     ) -> ToolResult<CallToolResult> {
         let endpoint = args
             .endpoint
@@ -578,7 +612,11 @@ impl ViewerToolset {
                 || Url::parse(DEFAULT_VIEWER_ENDPOINT).map_err(|err| err.to_string()),
                 Ok,
             )?;
+        let command_ids_before = self.command_ids();
         let peer = self.connect_to(&endpoint).await?;
+        if self.command_ids() != command_ids_before {
+            notify_tool_list_changed(&client).await;
+        }
         Ok(CallToolResult::structured(serde_json::json!({
             "ok": true,
             "connected": endpoint,
@@ -597,8 +635,13 @@ impl ViewerToolset {
     async fn disconnect(
         &self,
         Parameters(_args): Parameters<EmptyArgs>,
+        client: Peer<RoleServer>,
     ) -> ToolResult<CallToolResult> {
-        if self.conn.lock().take().is_some() {
+        let conn = self.conn.lock().take();
+        if let Some(conn) = conn {
+            if conn.command_ids.is_some() {
+                notify_tool_list_changed(&client).await;
+            }
             Ok(CallToolResult::structured(
                 serde_json::json!({ "ok": true }),
             ))
@@ -606,6 +649,15 @@ impl ViewerToolset {
             Err("not connected".to_owned())
         }
     }
+}
+
+/// Tell the agent to list the tools again, since `run_command` now lists other command ids.
+async fn notify_tool_list_changed(client: &Peer<RoleServer>) {
+    client
+        .notify_tool_list_changed()
+        .await
+        .inspect_err(|err| re_log::warn!("Failed to tell the agent its tools changed: {err}"))
+        .ok();
 }
 
 /// One line per entry: `#sequence [LEVEL target] message`.

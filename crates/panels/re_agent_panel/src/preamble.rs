@@ -89,7 +89,7 @@ impl Preamble<'_> {
         text.push_str(
             " Use its tools to see what the user sees and to drive the viewer, instead of guessing. \
              Prefer the high-level `viewer_*` tools (`viewer_get_state`, `viewer_set_time_cursor`, …), \
-             and `viewer_list_commands` + `viewer_run_command` for anything the command palette can do; \
+             and `viewer_run_command` for anything the command palette can do (its `id` lists every command); \
              drop to the low-level widget tools (`widget_tree`, `click`, `screenshot`, …) only for what they do not cover. \
              The panel hands the `rerun` server to this session directly, so it never shows up in your own MCP \
              configuration, with tools as `viewer_*`.\n",
@@ -198,7 +198,7 @@ pub fn model_api_text() -> String {
     text.push_str(
         "- Your `viewer_*` tools act on this viewer directly and are ready to use. Start with \
          `viewer_get_state` to see the loaded recordings, timelines, and views. Use \
-         `viewer_list_commands` and `viewer_run_command` for anything the command palette can do.\n\
+         `viewer_run_command` for anything the command palette can do: its `id` lists every command.\n\
          - Use `viewer_save_screenshot` to inspect appearance and framing. The result is an image. \
          Check state with `viewer_get_state` or `viewer_get_blueprint` first. A full-window screenshot is large.\n\
          - Your `catalog_*` tools read datasets and tables on a Rerun catalog server, by default \

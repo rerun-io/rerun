@@ -127,7 +127,10 @@ impl ViewerToolbox {
         Arc::new(Self {
             calls_tx,
             waker,
-            tools: re_viewer_control_tools::tools(SCREENSHOT_DELIVERY),
+            tools: re_viewer_control_tools::tools(
+                SCREENSHOT_DELIVERY,
+                Some(&CommandKind::all().map(CommandKind::id).collect::<Vec<_>>()),
+            ),
         })
     }
 
@@ -295,6 +298,41 @@ mod tests {
             .filter_map(QueuedCall::into_call)
             .count();
         assert_eq!(calls, 1);
+    }
+
+    #[test]
+    fn run_command_tool() {
+        let (calls_tx, _calls_rx) = calls_channel();
+        let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
+
+        let ToolDefinition {
+            name: _,
+            description,
+            mut input_schema,
+            effect: _,
+        } = toolbox
+            .definitions()
+            .into_iter()
+            .find(|tool| tool.name == format!("{TOOL_NAME_PREFIX}{RUN_COMMAND_OPERATION}"))
+            .expect("the run_command tool");
+
+        // The same snapshot for debug and release builds.
+        cfg_select! {
+            debug_assertions => {
+                let ids = input_schema["properties"]["id"]["enum"]
+                    .as_array_mut()
+                    .expect("the listed command ids");
+                ids.retain(|id| {
+                    id.as_str()
+                        .and_then(CommandKind::from_id)
+                        .is_some_and(|kind| !kind.is_debug_only())
+                });
+            }
+            _ => {}
+        }
+
+        let schema = serde_json::to_string_pretty(&input_schema).expect("a JSON object");
+        insta::assert_snapshot!(format!("{description}\n\n{schema}"));
     }
 
     #[test]
