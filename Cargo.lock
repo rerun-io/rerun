@@ -9065,6 +9065,7 @@ dependencies = [
  "re_log",
  "re_log_channel",
  "re_protos",
+ "re_redap_client",
  "re_sdk_types",
  "re_tracing",
  "re_ui",
@@ -9073,8 +9074,10 @@ dependencies = [
  "re_workspace_hack",
  "serde",
  "serde_json",
+ "strum 0.26.3",
  "tempfile",
  "thiserror 2.0.19",
+ "tokio",
  "web-time",
 ]
 

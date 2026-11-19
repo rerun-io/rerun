@@ -201,6 +201,11 @@ pub fn model_api_text() -> String {
          `viewer_list_commands` and `viewer_run_command` for anything the command palette can do.\n\
          - Use `viewer_save_screenshot` to inspect appearance and framing. The result is an image. \
          Check state with `viewer_get_state` or `viewer_get_blueprint` first. A full-window screenshot is large.\n\
+         - Your `catalog_*` tools read datasets and tables on a Rerun catalog server, by default \
+         this viewer's own catalog (`catalog_url` in `viewer_get_state`), which holds the `.rrd` \
+         files it opened. Recordings missing there are only in the viewer. Use `catalog_connect` \
+         for another server. Read values with `catalog_query_dataset` rather than asking for code \
+         to run.\n\
          - Ask for clarification in chat when needed. Provide code for the user to run when a \
          task needs their local files or Python environment.\n",
     );
@@ -213,17 +218,24 @@ mod tests {
     #[test]
     fn model_api_instructions_name_available_tools() {
         let quoted = super::model_api_text();
-        let tool_names = quoted
+        // `catalog_url` is a field of `viewer_get_state`, not a tool.
+        let quoted_names = quoted
             .split('`')
             .skip(1)
             .step_by(2)
-            .filter_map(|name| name.strip_prefix(re_viewer_control_tools::TOOL_NAME_PREFIX))
             .filter(|name| name.chars().all(|c| c.is_ascii_lowercase() || c == '_'));
-        for name in tool_names {
-            assert!(
-                re_viewer_control_tools::is_operation(name),
-                "unknown tool: {name}"
-            );
+        for name in quoted_names {
+            if let Some(operation) = name.strip_prefix(re_viewer_control_tools::TOOL_NAME_PREFIX) {
+                assert!(
+                    re_viewer_control_tools::is_operation(operation),
+                    "unknown tool: {name}"
+                );
+            } else if name.starts_with("catalog_") && name != "catalog_url" {
+                assert!(
+                    re_catalog_tools::CatalogTool::from_name(name).is_some(),
+                    "unknown tool: {name}"
+                );
+            }
         }
     }
 }

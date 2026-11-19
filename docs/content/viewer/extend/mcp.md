@@ -142,6 +142,7 @@ The `catalog_*` tools read a Rerun catalog server directly, without opening anyt
 `catalog_query_dataset` reads a dataset's data as a table, narrowed to a timeline, segments, and entities, with optional SQL over the result, and `catalog_query_tables` runs SQL over the catalog's table entries.
 Results are capped in rows and size, and long values such as images are cut short or left out, so the agent's context does not fill up.
 They work against `rerun server` and Rerun Hub, with the credentials of `rerun auth login` or the `REDAP_TOKEN` environment variable.
+The Viewer's agent panel offers the same tools to a model-API agent, also in the web Viewer.
 
 ## Inspecting transforms
 

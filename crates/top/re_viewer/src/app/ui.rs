@@ -235,11 +235,6 @@ impl AppCore {
         ui: &mut egui::Ui,
         active_store_context: Option<&ActiveStoreContext<'_>>,
     ) {
-        let viewer_endpoint = self
-            .connections
-            .registry
-            .internal_origin()
-            .map(|origin| origin.as_url());
         let cache_dir = cfg_select! {
             target_arch = "wasm32" => None::<std::path::PathBuf>,
             _ => self.app_options().cache_directory.clone(),
@@ -265,6 +260,7 @@ impl AppCore {
             state,
             startup,
             async_runtime,
+            connections,
             ..
         } = self;
 
@@ -273,7 +269,7 @@ impl AppCore {
             &mut state.agent_panel_open,
             &mut state.agent_settings,
             async_runtime,
-            viewer_endpoint.as_deref(),
+            &connections.registry,
             cache_dir.as_deref(),
             startup.build_info.is_in_rerun_workspace,
             shown_content,

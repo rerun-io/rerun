@@ -1,6 +1,6 @@
 //! The agent panel: a chat with an agent that runs next to the viewer and drives it, through
-//! `rerun mcp` for an agent harness, or through the viewer-control tools for a model-API
-//! agent.
+//! `rerun mcp` for an agent harness, or through the viewer-control and catalog tools for a
+//! model-API agent.
 //!
 //! This crate holds everything that ties the agent to the Rerun Viewer: the preambles, the
 //! viewer-control toolbox, the harness setup, the embedded skills and docs, feedback, and
@@ -13,8 +13,10 @@ use std::sync::Arc;
 use parking_lot::Mutex;
 
 use re_agent::AgentSettings;
+use re_agent_tools::{AgentToolbox, CombinedToolbox};
 use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
+use re_redap_client::ConnectionRegistryHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
 mod agent_analytics;
@@ -217,7 +219,7 @@ impl ViewerAgentPanel {
         open: &mut bool,
         settings: &mut AgentSettings,
         async_runtime: &AsyncRuntimeHandle,
-        viewer_endpoint: Option<&str>,
+        connection_registry: &ConnectionRegistryHandle,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
         shown_content: ShownContent,
@@ -229,7 +231,7 @@ impl ViewerAgentPanel {
                 ui.ctx(),
                 settings.clone(),
                 async_runtime,
-                viewer_endpoint,
+                connection_registry,
                 cache_dir,
                 is_in_rerun_workspace,
             );
@@ -326,24 +328,29 @@ impl ViewerAgentPanel {
     /// Initialize the inner panel.
     ///
     /// `async_runtime` runs model-API agents, and `egui_ctx` is woken for their tool calls.
-    /// `viewer_endpoint`, `cache_dir`, and `is_in_rerun_workspace` only matter to agent
-    /// harnesses; see [`harness::Harness::new_panel`].
+    /// `connection_registry` reaches the catalogs for the catalog tools, and its internal catalog
+    /// is the viewer an agent harness connects to. `cache_dir` and `is_in_rerun_workspace` only
+    /// matter to agent harnesses; see [`harness::Harness::new_panel`].
     fn initialize(
         &mut self,
         egui_ctx: &egui::Context,
         settings: AgentSettings,
         async_runtime: &AsyncRuntimeHandle,
-        viewer_endpoint: Option<&str>,
+        connection_registry: &ConnectionRegistryHandle,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
     ) {
         re_tracing::profile_function!();
 
+        let viewer_endpoint = connection_registry
+            .internal_origin()
+            .map(|origin| origin.as_url());
+
         let mut panel = cfg_select! {
             agent_harness_backend => self.harness.new_panel(
                 settings,
                 async_runtime.clone(),
-                viewer_endpoint,
+                viewer_endpoint.as_deref(),
                 cache_dir,
                 is_in_rerun_workspace,
             ),
@@ -362,12 +369,63 @@ impl ViewerAgentPanel {
 
         let (calls_tx, calls_rx) = viewer_toolbox::calls_channel();
         self.viewer_control_calls = Some(calls_rx);
-        panel.set_toolbox(viewer_toolbox::ViewerToolbox::new(
-            calls_tx,
-            egui_ctx.ui_waker(),
+        let viewer_tools = viewer_toolbox::ViewerToolbox::new(calls_tx, egui_ctx.ui_waker());
+        panel.set_toolbox(model_api_toolbox(
+            viewer_tools,
+            connection_registry,
+            async_runtime,
         ));
 
         self.panel = Some(panel);
+    }
+}
+
+/// The tools of a model-API agent: the viewer-control tools, and the catalog tools on the
+/// viewer's own catalog.
+fn model_api_toolbox(
+    viewer_tools: Arc<viewer_toolbox::ViewerToolbox>,
+    connection_registry: &ConnectionRegistryHandle,
+    async_runtime: &AsyncRuntimeHandle,
+) -> Arc<dyn AgentToolbox> {
+    let catalog_tools = re_catalog_tools::CatalogTools::new(
+        connection_registry.clone(),
+        async_runtime.clone(),
+        connection_registry.internal_origin(),
+    );
+    Arc::new(CombinedToolbox::new(
+        Some(MCP_SERVER_NAME.to_owned()),
+        [
+            viewer_tools as Arc<dyn AgentToolbox>,
+            Arc::new(catalog_tools),
+        ],
+    ))
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod toolbox_tests {
+    use serde_json::Map;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn a_model_api_agent_gets_viewer_and_catalog_tools() {
+        let (calls_tx, _calls_rx) = viewer_toolbox::calls_channel();
+        let toolbox = model_api_toolbox(
+            viewer_toolbox::ViewerToolbox::new(calls_tx, re_async::UiWaker::noop()),
+            &re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
+            &AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime"),
+        );
+        let names: Vec<String> = toolbox
+            .definitions()
+            .into_iter()
+            .map(|definition| definition.name)
+            .collect();
+        assert!(names.iter().any(|name| name == "viewer_get_state"));
+        for tool in <re_catalog_tools::CatalogTool as strum::VariantArray>::VARIANTS {
+            assert!(names.iter().any(|name| name == tool.name()), "{tool:?}");
+        }
+        assert!(!toolbox.requires_approval("catalog_query_tables", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_connect", &Map::new()));
     }
 }
 
