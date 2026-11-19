@@ -12,6 +12,7 @@ use re_datafusion::{NoOpObjectStoreAuthenticator, ObjectStoreAuthenticator};
 
 use crate::catalog::chunk_indexing_policy::{PyNameSelection, to_policy};
 use crate::catalog::datafusion_catalog::PyDataFusionCatalogProviderList;
+use crate::catalog::errors::NotFoundError;
 use crate::catalog::{
     AnyObjectStoreAuthenticator, PyConnectionHandle, PyDatasetEntryInternal, PyEntryId,
     PyRerunHtmlTable, PyTableEntryInternal, to_py_err,
@@ -387,12 +388,13 @@ impl PyCatalogClientInternal {
                     EntryKind::Dataset | EntryKind::BlueprintDataset | EntryKind::AssetDataset
                 ) && (include_hidden || !details.name.is_hidden())
             })
-            .map(|details| {
-                let dataset_entry = connection.read_dataset(py, details.id)?;
-                Py::new(
+            .filter_map(|details| match connection.read_dataset(py, details.id) {
+                Ok(dataset_entry) => Some(Py::new(
                     py,
                     PyDatasetEntryInternal::new(self_.clone_ref(py), dataset_entry),
-                )
+                )),
+                Err(err) if err.is_instance_of::<NotFoundError>(py) => None,
+                Err(err) => Some(Err(err)),
             })
             .collect()
     }
@@ -419,11 +421,13 @@ impl PyCatalogClientInternal {
         entry_details
             .into_iter()
             .filter(|details| include_hidden || !details.name.is_hidden())
-            .map(|details| {
-                let table_entry = connection.read_table(py, details.id)?;
-                let table = PyTableEntryInternal::new(self_.clone_ref(py), table_entry);
-
-                Py::new(py, table)
+            .filter_map(|details| match connection.read_table(py, details.id) {
+                Ok(table_entry) => Some(Py::new(
+                    py,
+                    PyTableEntryInternal::new(self_.clone_ref(py), table_entry),
+                )),
+                Err(err) if err.is_instance_of::<NotFoundError>(py) => None,
+                Err(err) => Some(Err(err)),
             })
             .collect()
     }

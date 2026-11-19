@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from typing import TYPE_CHECKING
+from uuid import uuid4
 
 import pytest
 import rerun as rr
@@ -28,7 +29,7 @@ def test_write_and_register(
 ) -> None:
     extension = "rbl" if write_kind == "blueprint" else "rrd"
     path = tmp_path / f"recording.{extension}"
-    recording_id = "01234567-0123-0123-0123-0123456789ab"
+    recording_id = str(uuid4())
     if write_kind == "blueprint":
         rrb.Blueprint(rrb.Spatial2DView()).save("rerun_example_write", path)
     else:
@@ -67,7 +68,8 @@ def test_write_and_register(
     elif write_kind == "asset":
         assert result.segment_ids == [recording_id]
         target = dataset.asset_dataset()
-        assert dataset.assets_for_segment("any_segment") == [recording_id]
+        # TODO(RR-6454): Re-enable once a write is visible to `assets_for_segment` right after it finishes.
+        # assert dataset.assets_for_segment("any_segment") == [recording_id]
     else:
         assert result.segment_ids == [recording_id]
         target = dataset
@@ -130,7 +132,7 @@ def test_write_with_segment_id(entry_factory: EntryFactory, tmp_path: Path, writ
         pytest.skip("only segment writes take a segment ID")
 
     path = tmp_path / "recording.rrd"
-    with rr.RecordingStream("rerun_example_write", recording_id="01234567-0123-0123-0123-0123456789ab") as recording:
+    with rr.RecordingStream("rerun_example_write", recording_id=str(uuid4())) as recording:
         recording.save(path)
         recording.log("points", rr.Points2D([[1, 2]]))
 

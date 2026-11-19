@@ -47,7 +47,7 @@ In Rerun's internal CI, this suite runs in several OSS↔Hub compatibility confi
 | `e2e-tests`                | Current hub (Docker)                    | Current commit         | `dpf-docker` | Required |
 | `e2e-tests-oldest-hub`     | Oldest supported hub release (Docker)   | Current commit         | `dpf-docker` | Advisory |
 | `e2e-tests-released-client`| Current hub (Docker)                    | Latest hub release     | `dpf-docker` | Advisory |
-| cloud stacks               | Current hub (AWS/Azure stack)           | Current commit         | `dpf-stack`  | Manual dispatch only |
+| `e2e-tests-cloud`          | Current hub (AWS stack)                 | Current commit         | `dpf-stack`  | Nightly, on demand   |
 
 The oldest-supported hub version and per-leg test deselections are pinned in a compat file next to the hub sources (internal, `compat/e2e-compat.json`).
 
