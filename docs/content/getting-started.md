@@ -74,6 +74,11 @@ See the [training tutorial](./train/tutorial.md).
 
 snippet: tutorials/getting_started[train]
 
+## Work with an agent
+
+Coding agents such as Claude Code and Codex can log, convert, and inspect your data for you.
+See [Agents](./agents.md) for the Rerun skills, the MCP server, and the Viewer's agent panel.
+
 ## If you're stuck
 
 -   Check the [troubleshooting guide](./getting-started/install-rerun/troubleshooting.md).

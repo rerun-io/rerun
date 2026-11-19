@@ -1,6 +1,6 @@
 ---
 title: Query and Transform
-order: 4
+order: 5
 description: The catalog, dataframe queries, and reshaping data with lenses
 index: true
 ---

@@ -1,6 +1,6 @@
 ---
 title: Train
-order: 5
+order: 6
 description: Feed catalog recordings into training pipelines via export or PyTorch
 ---
 

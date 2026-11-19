@@ -1,6 +1,6 @@
 ---
 title: Hub
-order: 6
+order: 7
 index: true
 description: Guides for Rerun Hub, the managed offering for production deployments
 ---

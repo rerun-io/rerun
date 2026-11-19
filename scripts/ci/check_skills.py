@@ -60,9 +60,23 @@ def check_frontmatter(skill_dir: Path) -> list[str]:
     return errors
 
 
+def check_listed_in_readme(skill_dir: Path) -> list[str]:
+    """Verify the skill is linked from the README next to the skill directories"""
+    readme = skill_dir.parent / "README.md"
+    if not readme.is_file():
+        return []
+
+    link = f"]({skill_dir.name}/SKILL.md)"
+    if link not in readme.read_text(encoding="utf-8"):
+        return [f"not listed in {readme.name}: add a table row that links to `{skill_dir.name}/SKILL.md`"]
+
+    return []
+
+
 # Each check takes a skill directory and returns one message per problem found (empty = pass).
 CHECKS: list[Callable[[Path], list[str]]] = [
     check_frontmatter,
+    check_listed_in_readme,
 ]
 
 

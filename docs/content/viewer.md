@@ -1,6 +1,6 @@
 ---
 title: Viewer
-order: 3
+order: 4
 description: The Rerun Viewer's interface, blueprints, views, and extension points
 index: true
 ---

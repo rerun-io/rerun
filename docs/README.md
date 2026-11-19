@@ -37,6 +37,7 @@ Markdown files with YAML frontmatter, organized hierarchically:
 docs/content/
   index.md                        # Entry point, redirects to getting-started
   getting-started/                # Quick start, install, project setup, how Rerun works
+  agents.md                       # Using Rerun with coding agents: skills, MCP server, agent panel
   logging-and-ingestion/          # Product area: tutorial, data model, sending data, sinks, video and audio, chunks and RRD files, importing
   viewer/                         # Product area: Viewer UI, blueprints, view types, shared view concepts, performance, extending
   query-and-transform/            # Product area: tutorial, catalog, dataframes, images and video, lenses

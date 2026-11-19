@@ -97,6 +97,7 @@ npx skills add rerun-io/rerun
 ```
 
 The skills themselves live in [`skills/`](./skills) if you want to read them directly.
+See [Agents](https://www.rerun.io/docs/agents) for the MCP server and the Viewer's agent panel.
 
 
 ## Status
