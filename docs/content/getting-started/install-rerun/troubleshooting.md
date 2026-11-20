@@ -40,7 +40,7 @@ Check these, in order:
    Check the version with `pip --version`.
    If you're running a version of pip 20 or older, you should upgrade it with `pip install --upgrade pip`.
 
-> [!WARNING]
+> [!NOTE]
 > Depending on your system configuration this may upgrade the pip installation aliased by `pip3` instead of `pip`.
 
 If `import rerun` fails after a successful install, make sure that you have NumPy 2 or newer installed, and that you run the same Python environment that you installed into.

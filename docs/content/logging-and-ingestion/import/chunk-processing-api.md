@@ -4,9 +4,8 @@ order: 100
 description: Pipelines for ingesting, transforming, and converting chunks
 ---
 
-The Chunk Processing API is a flexible, [chunk](../chunks-and-rrd/chunks.md)-centric API for data ingestion, transformation, and conversion pipelines.
-It covers I/O from common robotics file formats, powerful declarative data wrangling primitives, and a multithreaded, native engine for pipeline execution.
-The API is designed to support distributed execution in the future.
+The Chunk Processing API is a [chunk](../chunks-and-rrd/chunks.md)-centric API for data ingestion, transformation, and conversion pipelines.
+It covers I/O from common robotics file formats, declarative data wrangling primitives, and a multithreaded, native engine for pipeline execution.
 
 > [!NOTE]
 > The core Chunk Processing API, including `McapReader` and `RrdReader`, is available in the Python SDK under `rerun.chunk`.
@@ -189,7 +188,7 @@ The two are interoperable:
 - **Logging → chunk processing:** save a `RecordingStream` to an `.rrd`, then re-open it with `RrdReader` to get a `LazyChunkStream`.
 
   > [!NOTE]
-  > This roundtrip-via-file will be smoothed out in the future for better ergonomics and performance.
+  > There is no direct conversion from a `RecordingStream` to a `LazyChunkStream`: the data has to go through an `.rrd` file.
 - **Chunk processing → logging:** `rerun.send_chunks(chunks, recording=...)` feeds chunks into an active `RecordingStream` (useful for streaming to a viewer, for example).
 - **Building chunks by hand:** `Chunk.from_columns` mirrors `rr.send_columns` and accepts the same `rr.<Archetype>.columns(...)` helpers, so any data that can be logged with `rr.send_columns` can also be packaged as a `Chunk` and injected into a processing pipeline.
   Likewise, `Chunk.from_record_batch` (for a single `RecordBatch`) and `Chunk.from_dataframe` (a multi-batch `Table`, `RecordBatchReader`, or `datafusion.DataFrame`) mirror `rr.send_record_batch` and `rr.send_dataframe`.

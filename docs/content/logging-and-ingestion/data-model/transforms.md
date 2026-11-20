@@ -111,7 +111,7 @@ snippet: concepts/transform_frames[implicit_as_if]
 #### Mixing named and implicit transform frames
 
 We generally do not recommend mixing named and implicit transform frames since it can get confusing,
-but doing so works seamlessly and can be useful if necessary.
+but it is supported.
 
 Example:
 
@@ -132,7 +132,7 @@ This unified approach allows the Viewer to handle both traditional 3D-to-3D tran
 The [`Pinhole`](../../reference/types/archetypes/pinhole.md) archetype defines this projection relationship through its intrinsic matrix (`image_from_camera`) and resolution.
 Both implicit & named coordinate frames are supported, exactly as on [`Transform3D`](../../reference/types/archetypes/transform3d.md).
 
-With the right setup, pinholes allow a bunch of powerful visualizations:
+With the right setup, pinholes enable these visualizations:
 * the pinhole glyph itself in 3D views
 * 2D in 3D: all 2D content that is part of the pinhole's transform subtree
 * 3D in 2D: if the pinhole is at the origin of the view, 3D objects can be projected through pinhole camera into the view.
@@ -276,8 +276,7 @@ This allows to view the tree structure of the transforms, including potentially 
 The UI supports horizontal and vertical tree layout and you can filter by transform type (e.g. static or temporal).
 
 > [!NOTE]
-> This UI is currently a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
-> We are open to making this a dedicated view in the future — let us know if you have any [feedback](../../development.md)!
+> This UI is a tab in the dev panel (accessible via "Toggle dev panel" in the menu or ctrl/cmd+shift+m).
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/cc6c41138eeeabb31fb2ec988eefdcd8da446c86_transform_dev_panel_teaser.mp4" type="video/mp4" />

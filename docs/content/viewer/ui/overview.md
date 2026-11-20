@@ -32,7 +32,7 @@ Use the buttons at the top right corner to hide/show parts of the viewer.
 
 Command Palette
 ----------------------------
-The command palette is a powerful tool to reach arbitrary actions from anywhere via a simple text search.
+The command palette lets you run any action from anywhere by searching for it by name.
 You reach it with `cmd/ctrl + K` or via the menu.
 
 <picture>

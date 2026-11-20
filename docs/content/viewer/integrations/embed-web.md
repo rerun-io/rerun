@@ -10,7 +10,7 @@ Integrating the Rerun Viewer into your web application can be accomplished eithe
 
 ## Embedding `app.rerun.io` using an `<iframe>`
 
-This approach is straightforward and requires minimal setup. However, the drawback is that it lacks programmable control over the web viewer.
+An iframe needs only a URL, but your page cannot control the web viewer from code.
 
 ```html
 <iframe src="https://app.rerun.io/version/{RERUN_VERSION}/index.html?url={RRD_URL}"></iframe>

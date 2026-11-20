@@ -14,7 +14,7 @@ See the [`TimeSeriesView` reference](../../reference/types/views/time_series_vie
 Rerun can plot numerical data as a time series, even data that wasn't logged with Rerun semantics.
 By remapping where a visualizer reads its inputs from, you can separate how you _model_ your data from how you _visualize_ it.
 This is useful for plotting custom messages from MCAPs, or data logged via `AnyValues` and `DynamicArchetype`.
-As a bonus, logging multiple scalars to the same entity can drastically reduce `.rrd` file sizes.
+Logging multiple scalars to the same entity also makes `.rrd` files smaller than logging each scalar to its own entity.
 
 Each visualizer takes components as input and determines their values from various sources.
 By configuring _component mappings_, you can control exactly where each input comes from.

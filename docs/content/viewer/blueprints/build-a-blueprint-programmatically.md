@@ -4,8 +4,8 @@ order: 600
 description: Lay out the Viewer from Python or Rust code with the Blueprint API
 ---
 
-For maximum control and automation, you can define [Blueprints](../blueprints.md) in code using the Blueprint API in Python or Rust.
-This is ideal for:
+You can define [Blueprints](../blueprints.md) in code using the Blueprint API in Python or Rust.
+Use it for:
 
 -   Creating layouts dynamically based on your data
 -   Ensuring consistent views for specific debugging scenarios

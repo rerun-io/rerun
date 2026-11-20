@@ -103,7 +103,7 @@ snippet: concepts/viscomp-component-override
 
 <!-- TODO(andreas): Should we start lighter and first introduce the concept without arbitrary semantics? -->
 
-A powerful mechanism that is built into visualizers is the option to source components from data that was logged on the same entity but might have arbitrary semantics.
+Visualizers can source their components from other data logged on the same entity, even data with arbitrary semantics.
 
 Within a view, a visualizer can pick up any component that has the same datatype as the builtin type that it expects.
 For example, the `SeriesLines` and `SeriesPoints` visualizers can pick up any numerical data for their [`Scalar`](../../reference/types/components/scalar.md) component.

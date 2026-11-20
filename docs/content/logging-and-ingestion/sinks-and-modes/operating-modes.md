@@ -143,7 +143,7 @@ Use [`RecordingStream::set_sinks`](https://ref.rerun.io/docs/cpp/stable/classrer
 
 ## Adding the standard flags to your programs
 
-We provide helpers for both Python & Rust to effortlessly add and properly handle all of these flags in your programs.
+We provide helpers for both Python & Rust to add and handle all of these flags in your programs.
 
 - For Python, check out [`rr.script_add_args`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.script_add_args), [`rr.script_setup`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.script_setup), and [`rr.script_teardown`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.script_teardown).
 - For Rust, check out our [`clap` integration](https://docs.rs/rerun/latest/rerun/clap/index.html).

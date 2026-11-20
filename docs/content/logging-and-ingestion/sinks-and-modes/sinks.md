@@ -26,7 +26,8 @@ snippet: concepts/file_sink
 
 ## Multiple sinks (Tee pattern)
 
-One of the most powerful features of Rerun's sink system is the ability to send data to multiple destinations simultaneously. This "tee" pattern lets you both visualize data live and save it to disk in a single run.
+Rerun's sink system can send data to multiple destinations simultaneously.
+This "tee" pattern lets you both visualize data live and save it to disk in a single run.
 
 snippet: howto/set_sinks
 

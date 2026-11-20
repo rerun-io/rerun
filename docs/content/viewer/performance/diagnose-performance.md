@@ -4,7 +4,7 @@ order: 200
 description: Find what is slow with the latency indicator and the built-in profiler
 ---
 
-Rerun is built to be fast, but sometimes it falls short. This guide is here to help you diagnose performance problems in the Viewer and during live streaming.
+This guide shows how to find the cause of slow frames and latency in the Viewer and during live streaming.
 
 ## Show performance metrics
 

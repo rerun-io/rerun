@@ -6,7 +6,7 @@ description: The components of Rerun, how they connect, and how you use them
 
 Rerun covers the whole journey from raw recordings to training, on a single unified data layer for multi-rate, multimodal robotics data. <!-- TODO(RR-6462): update this Rerun description to the new branding -->
 
-It's comprised of **Rerun SDK**: an open source library and tools for logging, storing, querying, visualizing, and training on multi-rate, multimodal data; and
+It consists of **Rerun SDK**: an open source library and tools for logging, storing, querying, visualizing, and training on multi-rate, multimodal data; and
 **[Rerun Hub](../hub.md)**: our commercial managed offering for production deployments, a data catalog and backend for large scale storage, access, and streaming of robotics data from object storage. <!-- TODO(RR-6462): update this Rerun and Rerun Hub description to the new branding -->
 
 This page explains the components, how they connect, and how you use them at each stage, from logging to training.

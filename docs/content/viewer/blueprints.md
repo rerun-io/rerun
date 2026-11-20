@@ -6,7 +6,8 @@ description: Define view layouts and visualization defaults programmatically
 
 ## What are Blueprints?
 
-When you work with the Rerun Viewer, understanding blueprints is important if you want to build consistency around your Viewer experience.
+A blueprint describes how the Viewer lays out and displays your data.
+This page covers what blueprints control, how they bind to recordings, and the ways to create and change them.
 
 *For a video overview, check out the [Blueprints video](https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw) on YouTube.*
 
@@ -22,7 +23,7 @@ Both pieces are crucial. Without a recording there is nothing to show. Without a
 
 ## What blueprints control
 
-Blueprints give you complete control over the Viewer's layout and configuration:
+Blueprints control the Viewer's layout and configuration:
 
 -   **Panel visibility**: Whether panels like the blueprint panel, selection panel, and time panel are expanded or collapsed
 -   **Layout structure**: How views are arranged using containers (Grid, Horizontal, Vertical, Tabs)
@@ -33,7 +34,7 @@ In general, if you can modify an aspect of how something looks through the Viewe
 
 ## Application IDs: binding blueprints to data
 
-The [Application ID](../logging-and-ingestion/data-model/recordings.md) is how blueprints connect to your data. This is a critical concept:
+The [Application ID](../logging-and-ingestion/data-model/recordings.md) is how blueprints connect to your data:
 
 **All recordings that share the same Application ID will use the same blueprint.**
 
@@ -103,7 +104,6 @@ Write blueprint code that configures the Viewer automatically:
 -   Define layouts in Python using `rerun.blueprint`, or in Rust using `rerun::blueprint`
 -   Send blueprints with `rr.send_blueprint()` or via `default_blueprint` parameter (Python), or `RecordingStreamBuilder::with_blueprint` and `Blueprint::send` (Rust)
 -   Generate layouts dynamically based on your data
--   Perfect for creating consistent views for specific debugging scenarios
 
 For example, you might send different blueprints automatically based on detected issues in your application (e.g., a robot enters an error state and surfaces the correct blueprint to help you debug that).
 
@@ -182,8 +182,7 @@ Under the hood, blueprints are just data. They are structured using the same [En
 
 -   **Anything you modify in the Viewer can be saved and shared** as a blueprint file
 -   **Blueprints can be produced programmatically** using just the Rerun SDK without depending on the Viewer
--   **Blueprint data is fully expressive**, enabling [blueprint overrides](view-concepts/customize-views.md#component-mappings) that are as powerful as logged data
--   **The full time-series nature** simplifies future features like snapshots and undo/redo
+-   **Blueprint data uses the same component types as logged data**, so [blueprint overrides](view-concepts/customize-views.md#component-mappings) can set any component a visualizer reads
 -   **Debugging tools for Rerun data** can inspect blueprint state just like recording data
 
 ### Viewer operation

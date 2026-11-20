@@ -38,7 +38,7 @@ To keep this under control:
 - **Limit the Viewer's memory** with `--memory-limit`; when it is reached, the Viewer drops the oldest data.
   See [Limit the Viewer's memory usage](../../viewer/performance/limit-ram.md).
 
-> [!WARNING]
+> [!NOTE]
 > Do not use compressed video if you need accurate pixel replication:
 > this is not only due to the obvious detail loss on encoding,
 > but also since the exact _display_ of the same video is not consistent across platforms and decoder versions.
@@ -114,7 +114,7 @@ Codec support varies in the web & native viewer:
 Details see below.
 
 When choosing a codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1),
-as it seems to have the best overall playback support while also having very high compression quality.
+which has broad playback support and very high compression quality.
 
 Since AV1 can have very long encoding times, it is often not suitable for streaming.
 In cases where encoding time matters, we recommend H.264/avc.
@@ -147,14 +147,14 @@ If you select a video that failed to play due to missing or incompatible `FFmpeg
 ### Web viewer
 Video playback in the Rerun Web Viewer is done using the browser's own video decoder, so the exact supported codecs depend on your browser.
 
-Overall, we recommend using Chrome or another Chromium-based browser, as it seems to have the best video support as of writing.
+Overall, we recommend using Chrome or another Chromium-based browser: it has the widest codec support in our tests, mainly on macOS (see the table below).
 
 For decoding video in the Web Viewer, we use the [WebCodecs API](https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API).
 This API enables us to take advantage of the browser's hardware accelerated video decoding capabilities.
 It is implemented by all modern browsers, but with varying levels of support for different codecs, and varying levels of quality.
 
 When it comes to codecs, we aim to support any codec which the browser supports, but
-we currently cannot guarantee that all of them will work. For more information about
+we cannot guarantee that all of them work. For more information about
 which codecs are supported by which browser, see [Video codecs on MDN](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#codec_details).
 
 We tested the following codecs in more detail:
@@ -179,7 +179,7 @@ Beyond this, for best compatibility we recommend:
 * keep resolutions at 8k & lower (see also [#3782](https://github.com/rerun-io/rerun/issues/3782))
 
 ## Other limitations
-There are still some limitations to encoded Video in Rerun which will be addressed in the future:
+Encoded video in Rerun has these limitations:
 
 * [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
 * Audio tracks inside video files are ignored. Log audio separately with [`AssetAudio`](../../reference/types/archetypes/asset_audio.md).

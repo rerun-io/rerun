@@ -9,10 +9,8 @@ They produce new component columns, entity paths, or timelines from existing dat
 
 ## Motivation
 
-The goal of Rerun is to handle all kinds and shapes of user data.
-In addition to the encodings defined by Rerun, it is also possible to load data with user-defined types into the viewer and into `.rrd` files.
-For example, [schema reflection](../logging-and-ingestion/import/mcap/message-formats.md#schema-reflection) can be used to import arbitrary Protobuf-based MCAP messages.
-Using an expressive API, Lenses allow you to:
+Rerun can load data with user-defined types into the viewer and into `.rrd` files, for example arbitrary Protobuf-based MCAP messages via [schema reflection](../logging-and-ingestion/import/mcap/message-formats.md#schema-reflection).
+Lenses let you:
 
 1. Reroute components to different entities
 2. Attach Rerun semantics to arbitrary data

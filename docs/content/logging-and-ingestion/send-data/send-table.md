@@ -7,14 +7,15 @@ description: Send tables as Arrow record batches and explore them in the Viewer
 > [!NOTE]
 > The `send_table` API is currently experimental and may change in future releases.
 
-Rerun now supports sending tabular data to the Rerun Viewer! This feature allows you to visualize and interact with dataframes (encoded as Arrow record batches) directly in the Rerun Viewer environment.
+This page shows how to send tabular data (dataframes encoded as Arrow record batches) to the Rerun Viewer, where you can view and interact with it.
 These tables are listed in the Sources panel, next to your recordings.
 To persist a table on a catalog server instead, see [Storing query results in catalog tables](../../query-and-transform/catalog/catalog-tables.md).
 To log a table as part of a recording, use [`rr.send_dataframe`](send-dataframe.md).
 
 ## Overview
 
-The `send_table` API provides a straightforward way to send tabular data to the Rerun Viewer. This is particularly useful for:
+The `send_table` API sends tabular data to the Rerun Viewer.
+This is useful for:
 
 - Debugging data processing pipelines
 - Presenting structured data in a readable format
@@ -86,13 +87,5 @@ viewer.send_table(
 As this is an experimental API, there are several limitations to be aware of:
 
 - Multiple record batches (or a DataFusion DataFrame) can be passed, but they are merged into a single record batch before sending
-- Tables can't be saved/loaded from files yet (unlike `.rrd` files for recordings)
-- Integration with the rest of the Rerun API is still in progress
-- Rust and C++ support will be added after the API stabilizes
-- The API may undergo significant changes as we iterate based on user feedback
-
-## What's next
-
-The `send_table` API is still evolving and we plan to tackle all of the limitations mentioned above.
-
-We welcome your [feedback and suggestions](https://rerun.io/feedback) as we continue to improve this feature!
+- Tables can't be saved to or loaded from files (unlike `.rrd` files for recordings)
+- Only the Python SDK can send tables; the Rust and C++ SDKs cannot

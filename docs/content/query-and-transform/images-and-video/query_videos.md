@@ -4,7 +4,8 @@ order: 200
 description: Query video streams from a catalog server and decode individual frames
 ---
 
-Video streams provide the best compression ratio for camera feeds, but require special handling when querying data back from a catalog server.
+Video streams use inter-frame encoding: most frames store only the changes from earlier frames.
+Decoding a single frame therefore needs the preceding frames back to the last keyframe, which takes special handling when querying data back from a catalog server.
 For more details about the different video types we support see our [video reference](../../logging-and-ingestion/media/video.md).
 
 > [!NOTE]

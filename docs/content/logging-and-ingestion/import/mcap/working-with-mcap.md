@@ -14,7 +14,7 @@ Here's a quick summary of Rerun's MCAP importer:
 * Other ROS 2 & Foxglove messages are decoded into queryable components via [reflection](message-formats.md#schema-reflection).
 
 For a detailed overview of Rerun's built-in MCAP support, please refer to our [Supported Message Formats](message-formats.md) page.
-We are continually expanding the supported MCAP message types and are [interested in your feedback](message-formats.md#adding-support-for-new-types).
+To request support for a new message type, see [Adding support for new types](message-formats.md#adding-support-for-new-types).
 
 ## Quick start
 

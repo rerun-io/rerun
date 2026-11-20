@@ -88,7 +88,7 @@ These are [_entity paths_](data-model/entity-component.md), which uniquely ident
 ### Component batches
 
 One final observation: notice how we're logging a whole batch of points and colors all at once.
-[Component batches](data-model/batches.md) are first-class citizens in Rerun and come with all sorts of performance benefits and dedicated features.
+Logging a [component batch](data-model/batches.md) at once is cheaper than logging each element separately, and batches come with dedicated features.
 You're looking at one of these dedicated features right now: notice how we're only logging a single radius for all these points, yet somehow it applies to all of them. We call this _clamping_.
 
 ---
@@ -135,7 +135,7 @@ Even so, if you look at your [Timeline View](../viewer/ui/timeline.md) right now
 Unfortunately, the logging time isn't particularly helpful to us in this case: we can't have our beads animate depending on the logging time, else they would move at different speeds depending on the performance of the logging process!
 For that, we need to introduce our own custom timeline that uses a deterministic clock which we control.
 
-Rerun has rich support for time: whether you want concurrent or disjoint timelines, out-of-order insertions or even data that lives _outside_ the timeline(s). You will find a lot of flexibility in there.
+Rerun supports concurrent or disjoint timelines, out-of-order insertions, and even data that lives _outside_ the timeline(s).
 
 Replace the section that logs the beads with a loop that logs them at different timestamps:
 
@@ -144,7 +144,7 @@ snippet: tutorials/dna[time_loop]
 A call to `set_time` (or `set_duration_secs` in Rust / `set_time_duration` in C++) creates our new `Timeline` and makes sure that any logging calls that follow get assigned that time.
 You can add as many timelines and timestamps as you want when logging data.
 
-> [!WARNING]
+> [!NOTE]
 > If you run this code as is, the result will be… surprising: the beads are animating as expected, but everything we've logged until that point is gone!
 
 <picture>
@@ -181,7 +181,7 @@ _Rerun always reasons in terms of "latest" data: for a given entity, it retrieve
 
 There's only one thing left: our original scene had the abacus rotate along its principal axis.
 
-As was the case with time, (hierarchical) space transformations are first-class citizens in Rerun.
+As with time, Rerun has built-in support for (hierarchical) space transformations.
 Now it's just a matter of combining the two: we need to log the transform of the scaffolding at each timestamp.
 
 Either expand the previous loop to include logging transforms or simply add a second loop like this:
@@ -233,7 +233,8 @@ The Rust SDK can host the Viewer directly inside your application via [`rerun::n
 
 ## Closing
 
-This closes our whirlwind tour of logging with Rerun. We've barely scratched the surface of what's possible, but this should have hopefully given you plenty of pointers to start experimenting.
+This closes our tour of logging with Rerun.
+It covers a small part of what's possible, but gives you pointers to start experimenting.
 
 As a next step, browse through our [example gallery](https://rerun.io/examples) for some more realistic example use-cases, browse the [Types](../reference/types.md) section for more simple examples of how to use the main encodings, or dig deeper into [querying your logged data](../query-and-transform/tutorial.md).
 

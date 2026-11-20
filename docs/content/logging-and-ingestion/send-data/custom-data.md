@@ -88,5 +88,5 @@ For general information on component mapping see [component mappings](../../view
 for the common case of plotting see [plot any scalar](../../viewer/view-types/time-series.md#plot-any-scalar)
 
 > [!NOTE]
-> Complex mappings e.g. from scalars to colors are not yet possible, but will be supported in future versions
-> by exposing more functionality from [Lenses](../../query-and-transform/lenses.md) directly in the Viewer.
+> The Viewer does not support complex mappings, e.g. from scalars to colors.
+> To reshape data like this, apply [Lenses](../../query-and-transform/lenses.md) in the SDK before the data reaches the Viewer.

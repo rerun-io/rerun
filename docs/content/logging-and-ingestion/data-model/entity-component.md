@@ -75,4 +75,6 @@ of one or more components associated with that entity.
 ## ECS systems
 
 There is a third concept we haven't touched on: *systems* are processes which operate on the entities based on the components they possess.
-Rerun is still settling on the exact form of formalized systems and outside of Rust Viewer code it is not yet possible to write your own systems. However, views work under the hood using a variety of systems. For more information see the [Extend the Viewer in Rust](../../viewer/extend/extend-ui.md) section.
+You can only write your own systems in Rust Viewer code.
+Views use a variety of systems under the hood.
+For more information see the [Extend the Viewer in Rust](../../viewer/extend/extend-ui.md) section.

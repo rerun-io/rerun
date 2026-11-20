@@ -242,12 +242,8 @@ Although there is a non-trivial amount of code, none of it is overly complicated
 operates independently of the others, processing an incoming message, adapting it to Rerun and then
 logging it again.
 
-There are several places where Rerun is currently missing support for primitives that will further
-simplify this implementation. We will continue to update this guide as new functionality becomes
-available.
-
-While this guide has only covered a small fraction of the possible ROS messages that could
-be sent to Rerun, hopefully, it has given you some tools to apply to your project.
+This guide covers a small fraction of the ROS messages that can be sent to Rerun.
+The same pattern of one callback per message type applies to the others.
 
 If you find that specific functionality is lacking for your use case, please provide more
 context in the existing issues or [open a new one](https://github.com/rerun-io/rerun/issues/new/choose) on GitHub.

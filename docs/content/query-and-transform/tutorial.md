@@ -15,6 +15,7 @@ In this three-part guide, we explore a query workflow by implementing an "open j
 3. [Analyze the data and send back the results](tutorial/analyze-and-send.md)
 
 > [!NOTE]
-> This guide uses the popular [Pandas](https://pandas.pydata.org) dataframe package. The same concept however applies for alternative dataframe packages such as [Polars](https://pola.rs) or using [Datafusion](https://datafusion.apache.org/python/) directly.
+> This guide uses the [Pandas](https://pandas.pydata.org) dataframe package.
+> The same concept applies for alternative dataframe packages such as [Polars](https://pola.rs) or using [Datafusion](https://datafusion.apache.org/python/) directly.
 
 If you just want to see the final result, jump to the [complete script](tutorial/analyze-and-send.md#complete-script) at the end of the third section.

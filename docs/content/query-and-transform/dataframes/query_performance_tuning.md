@@ -4,8 +4,7 @@ order: 700
 description: Considerations for keeping dataset queries fast as your data grows
 ---
 
-This is a loose collection of considerations when querying Rerun datasets.
-Over time baseline performance will improve, rendering some of these approaches unnecessary.
+This page lists ways to keep queries on Rerun datasets fast.
 Since Rerun depends on [DataFusion](https://datafusion.apache.org/), some of these approaches are observations from our own usage.
 
 > [!NOTE]

@@ -13,8 +13,6 @@ Rerun provides automatic visualization for common message types in MCAP files:
 
 This table shows an overview of the ROS 2 and Foxglove message schemas that are automatically converted to Rerun archetypes on import.
 
-We are continually adding support for more standard message types.
-
 | Modality | ROS 2 | Foxglove Protobuf | Rerun Archetypes |
 | --- | --- | --- | --- |
 | Raw image | `sensor_msgs/Image` | `RawImage` | [Image](../../../reference/types/archetypes/image.md), [DepthImage](../../../reference/types/archetypes/depth_image.md) |
@@ -43,7 +41,7 @@ For these messages, the heuristic blueprint sets up [component mappings](../../.
 * `sensor_msgs/Temperature`, `sensor_msgs/FluidPressure`, `sensor_msgs/RelativeHumidity`, `sensor_msgs/Illuminance`
 * `sensor_msgs/MagneticField`
 
-All other ROS 2 messages, and all Foxglove messages, currently still need conversion.
+All other ROS 2 messages, and all Foxglove messages, need conversion.
 
 ### Timelines
 

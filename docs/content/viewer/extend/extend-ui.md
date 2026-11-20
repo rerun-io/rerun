@@ -7,7 +7,7 @@ description: Add custom panels, visualizers, or views to the Viewer with Rust an
 There are three ways to extend the Rerun Viewer with custom Rust code, depending on how deep you need to go:
 embedding custom UI panels alongside the Viewer, adding a custom visualizer to a built-in view, or implementing an entirely new view class.
 
-> [!WARNING]
+> [!NOTE]
 > The interfaces for extending the Viewer are not yet stable. Expect code implementing custom extensions to break with every release of Rerun.
 
 
@@ -19,7 +19,7 @@ In the above screenshot you see the example [`extend_viewer_ui`](https://github.
 
 ### How to build it
 
-The Rerun Viewer is defined by the crate [`re_viewer`](https://github.com/rerun-io/rerun/tree/main/crates/top/re_viewer). It uses the popular Rust GUI library [`egui`](https://github.com/emilk/egui) (written by our CTO) and its framework [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe). To extend the UI you need to create your own `eframe` application and embed `re_viewer` inside of it. You can then use `egui` to add custom panels and windows.
+The Rerun Viewer is defined by the crate [`re_viewer`](https://github.com/rerun-io/rerun/tree/main/crates/top/re_viewer). It uses the Rust GUI library [`egui`](https://github.com/emilk/egui) and its framework [`eframe`](https://github.com/emilk/egui/tree/master/crates/eframe). To extend the UI you need to create your own `eframe` application and embed `re_viewer` inside of it. You can then use `egui` to add custom panels and windows.
 
 The best way to get started is by reading [the source code of the `extend_viewer_ui` example](https://github.com/rerun-io/rerun/tree/main/examples/rust/extend_viewer_ui).
 
@@ -68,11 +68,8 @@ meaning that any of the built-in Views can serve as an additional example on how
 
 The best way to get started is by reading [the source code of the `custom_view` example](https://github.com/rerun-io/rerun/tree/main/examples/rust/custom_view).
 
-## Future work
+## Limitations
 
-In the future we'll allow embedding your own GUI widgets inside existing views.
-
-Beyond that we want to open customizability to more languages and support adding ui elements with [callbacks](https://github.com/rerun-io/rerun/issues/2691)
-via blueprint definitions.
-
-For more information check https://github.com/rerun-io/rerun/issues/3087
+Extending the Viewer UI is only possible from Rust.
+You cannot embed your own GUI widgets inside existing views, and blueprints cannot add UI elements with [callbacks](https://github.com/rerun-io/rerun/issues/2691).
+See [#3087](https://github.com/rerun-io/rerun/issues/3087) for the state of Viewer extensibility.

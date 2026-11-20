@@ -24,12 +24,11 @@ Here is an example fix, where `DetectorModel` stands in for your detection model
 snippet: howto/clears[detector_fix]
 
 ## Log data with spans instead of timepoints
-In some cases you already know how long a piece of data will be valid at the time of logging. Rerun does **not yet support** associating logged data with spans like `(from_timepoint, to_timepoint)` or `(timepoint, time-to-live)`.
-
-Follow the issue [here](https://github.com/rerun-io/rerun/issues/3008).
+In some cases you already know how long a piece of data will be valid at the time of logging.
+Rerun does **not support** associating logged data with spans like `(from_timepoint, to_timepoint)` or `(timepoint, time-to-live)` ([#3008](https://github.com/rerun-io/rerun/issues/3008)).
 
 ### Workaround by manually clearing entities
-For now the best workaround is to manually clear data when it is no longer valid.
+The workaround is to manually clear data when it is no longer valid.
 
 snippet: howto/clears[manual_clear]
 

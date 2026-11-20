@@ -14,7 +14,7 @@ The Viewer can load files in 3 different ways:
 
 All these file loading methods support loading a single file, many files at once (e.g. `rerun myfiles/*`), or even folders.
 
-> [!WARNING]
+> [!NOTE]
 > Drag-and-drop of folders does [not yet work](https://github.com/rerun-io/rerun/issues/4528) on the web version of the Rerun Viewer.
 
 The following data types have built-in support in the Rerun Viewer and SDK:

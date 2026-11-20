@@ -5,6 +5,7 @@ description: Install Rerun, then log, visualize, query, and train on robotics da
 ---
 
 Rerun helps robotics and Physical AI teams iterate faster: log from any sensor, visualize in the Viewer, query with dataframes, and train with a dataloader tailored to robotic learning — across one recording or many. <!-- TODO(RR-6462): update this Rerun description to the new branding -->
+This page installs Rerun, opens the Viewer, and walks through each of those steps.
 
 ## Installation
 

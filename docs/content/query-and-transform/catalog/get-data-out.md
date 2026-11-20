@@ -4,7 +4,8 @@ order: 300
 description: Query Rerun data from code and load it into Pandas, Polars, or DuckDB
 ---
 
-Rerun comes with the ability to get data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
+This page gives an overview of the API for getting data out of Rerun from code.
+It also has recipes to load the data in packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
 > [!NOTE]
 > The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
@@ -121,7 +122,8 @@ print(df)
 Printing a DataFrame, whether with `print(df)` or `df.show()`, prints every byte of blob columns such as images and video.
 Exclude blob columns with `filter_contents()` or `select()` before printing.
 
-The returned object is a [`datafusion.DataFrame`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame). Rerun's query APIs heavily rely on [DataFusion](https://datafusion.apache.org), which offers a rich set of data filtering, manipulation, and conversion tools.
+The returned object is a [`datafusion.DataFrame`](https://datafusion.apache.org/python/autoapi/datafusion/dataframe/index.html#datafusion.dataframe.DataFrame).
+Rerun's query APIs rely on [DataFusion](https://datafusion.apache.org) for data filtering, manipulation, and conversion.
 
 When calling `reader()`, an index column must be specified. It can be any of the recording's timelines. Each row of the view will correspond to a unique value of the index column. It is also possible to query the dataset using `index=None`. In this case, only the `static=True` data will be returned.
 
@@ -159,7 +161,8 @@ print(df)
 
 ## Filtering with DataFusion
 
-DataFusion offers a rich set of filtering, projection, and joining capabilities. Check the [DataFusion Python documentation](https://datafusion.apache.org/python/) for details.
+DataFusion also supports filtering, projection, and joins.
+See the [DataFusion Python documentation](https://datafusion.apache.org/python/) for details.
 
 For illustration, here are a few simple examples:
 
@@ -192,7 +195,7 @@ You can also `JOIN` the views, for example on `rerun_segment_id` and the index c
 
 ## Converting to other formats
 
-Likewise, DataFusion offers a rich set of tools to convert a dataframe to various formats.
+DataFusion can also convert a dataframe to other formats.
 Converting executes the query and loads the full result into memory.
 Filter and aggregate in DataFusion first, so that only the rows you need are converted.
 See [Common Dataframe Operations](../dataframes/dataframe_operations.md) for aggregation examples.
