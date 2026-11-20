@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import tempfile
+import time
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
@@ -14,6 +15,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable, Iterator, Sequence
     from pathlib import Path
 
+    import datafusion
     from rerun.catalog import CatalogClient, DatasetEntry
 
     from e2e_redap_tests.conftest import EntryFactory
@@ -125,8 +127,8 @@ def other_process(
     """
     Mutate a dataset from a fresh client in a separate process, like an unrelated SDK user would.
 
-    Returns the dataset revision the server served to that process after the mutation, so once this process catches
-    up it can be checked against the exact revision instead of merely a newer one.
+    Returns the dataset revision the server served to that process after the mutation.
+    Background work such as maintenance can promote further revisions, so this process may later observe a newer one.
     """
     import subprocess
     import sys
@@ -154,6 +156,45 @@ def other_process(
         return int(completed.stdout.strip().splitlines()[-1])
 
     return run
+
+
+_CATCH_UP_TIMEOUT_S = 30.0
+
+
+def _catch_up(dataset: DatasetEntry, revision: int) -> None:
+    """
+    Query `dataset` until this process has observed at least `revision`.
+
+    A query is stamped with this process's watermark, so any querier at or past that watermark may serve it.
+    A write by another process reaches each querier asynchronously, so a single query is not always enough.
+    """
+    deadline = time.monotonic() + _CATCH_UP_TIMEOUT_S
+    while _dataset_revision(dataset) < revision:
+        if time.monotonic() > deadline:
+            pytest.fail(f"stuck at dataset revision {_dataset_revision(dataset)}, expected at least {revision}")
+        dataset.reader(index="time_3").collect()
+        time.sleep(0.2)
+
+
+def _reader_once_index_exists(dataset: DatasetEntry, index: str) -> datafusion.DataFrame:
+    """
+    Retry `dataset.reader(index=index)` until `index` appears in the dataset.
+
+    Only the schema refetch on a missing index sends a request here, so the loop makes progress only through it.
+    """
+    deadline = time.monotonic() + _CATCH_UP_TIMEOUT_S
+    while True:
+        try:
+            return dataset.reader(index=index)
+        except ValueError as err:
+            if "does not exist in the dataset" not in str(err):
+                raise
+            if time.monotonic() > deadline:
+                pytest.fail(
+                    f"index {index!r} still missing after {_CATCH_UP_TIMEOUT_S}s "
+                    f"at dataset revision {_dataset_revision(dataset)}"
+                )
+            time.sleep(0.2)
 
 
 def test_reader_schema_updates_after_register(entry_factory: EntryFactory, resource_prefix: str) -> None:
@@ -206,8 +247,8 @@ def test_reader_schema_catches_up_after_register_in_other_process(
     """
     A registration by another process is invisible until some response for the dataset advances the watermark.
 
-    The stale reader must still produce a correct snapshot of the old schema, and the query it runs must be enough
-    to refresh the next reader.
+    The stale reader must still produce a correct snapshot of the old schema, and queries on the dataset must
+    eventually advance the watermark and refresh the next reader.
     """
     dataset = entry_factory.create_dataset("test_reader_schema_catches_up_after_register_in_other_process")
 
@@ -228,8 +269,7 @@ def test_reader_schema_catches_up_after_register_in_other_process(
     assert sum(batch.num_rows for batch in batches) > 0
     assert SCHEMA_CHANGE_COMPONENT not in stale_reader.schema().names
 
-    # The query's first response carried the newer revision.
-    assert _dataset_revision(dataset) == after
+    _catch_up(dataset, after)
     assert SCHEMA_CHANGE_COMPONENT in _reader_columns(dataset)
 
 
@@ -252,13 +292,16 @@ def test_reader_schema_survives_unregister_in_other_process(
     assert SCHEMA_CHANGE_COMPONENT in stale_reader.schema().names
     assert _dataset_revision(dataset) == before
 
+    # The reader's schema is fixed when it is built, but its query requests are stamped when they are sent. Catching
+    # up first keeps a querier that has not yet applied the unregister from serving the dropped segment.
+    _catch_up(dataset, after)
+
     # The dropped column is projected from the stale schema but has no data left to fill it.
     table = pa.Table.from_batches(stale_reader.collect(), schema=stale_reader.schema())
     assert table.num_rows > 0
     assert table[SCHEMA_CHANGE_COMPONENT].null_count == table.num_rows
     assert SCHEMA_CHANGE_SEGMENT_ID not in table["rerun_segment_id"].to_pylist()
 
-    assert _dataset_revision(dataset) == after
     assert SCHEMA_CHANGE_COMPONENT not in _reader_columns(dataset)
 
 
@@ -286,9 +329,11 @@ def test_reader_on_index_registered_in_other_process(
     with pytest.raises(ValueError, match="does not exist in the dataset"):
         dataset.reader(index="no_such_index")
 
-    reader = dataset.reader(index=SCHEMA_CHANGE_NEW_INDEX)
+    reader = _reader_once_index_exists(dataset, SCHEMA_CHANGE_NEW_INDEX)
     assert SCHEMA_CHANGE_NEW_INDEX in reader.schema().names
-    assert _dataset_revision(dataset) == after
+    # Not `>= after`: the registration's own revision already has the index, and `after` may include later
+    # background promotions.
+    assert _dataset_revision(dataset) > before
     assert sum(batch.num_rows for batch in reader.collect()) > 0
 
 
