@@ -43,7 +43,8 @@ You reach it with `cmd/ctrl + K` or via the menu.
 
 Once it's open just start typing to filter and press `Enter` to execute the selected action or cancel with `Esc`.
 
-[TODO(#1132)](https://github.com/rerun-io/rerun/issues/1132): The command palette is too limited right now.
+The command palette does not yet cover every UI action ([#1132](https://github.com/rerun-io/rerun/issues/1132)).
+<!-- TODO(#1132): update this when the command palette covers all UI actions. -->
 
 Help icons
 ----------

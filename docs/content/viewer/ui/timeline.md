@@ -51,4 +51,5 @@ Rerun automatically detects discontinuities in the selected timeline and will sk
 This is particularly useful whenever you have large gaps in the timestamps of your data recordings.
 Detected discontinuities are visualized with a zigzag cut in the timeline.
 
-[TODO(#1150)](https://github.com/rerun-io/rerun/issues/1150): Allow adjusting or disabling the time-discontinuity collapsing.
+Discontinuity skipping cannot be adjusted or turned off yet ([#1150](https://github.com/rerun-io/rerun/issues/1150)).
+<!-- TODO(#1150): update this when skipping becomes configurable. -->

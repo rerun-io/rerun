@@ -9,7 +9,7 @@ Train PyTorch models directly from a Rerun server.
 > [!NOTE]
 > The examples on this page use a local open-source server and also run on [Rerun Hub](../hub.md) ([how to switch](../hub.md#run-the-examples-on-hub)).
 
-The experimental [`dataloader`](https://github.com/rerun-io/rerun/tree/main/rerun_py/rerun_sdk/rerun/experimental/dataloader) module exposes Rerun recordings as iterable or map-style PyTorch datasets, decoding compressed video (`h264`/`h265`/`av1`), images, and scalars on the fly. Random access, multi-worker prefetching, and [DDP](https://docs.pytorch.org/tutorials/beginner/ddp_series_theory.html) partitioning all work out of the box.
+The experimental [`dataloader`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/) module exposes Rerun recordings as iterable or map-style PyTorch datasets, decoding compressed video (`h264`/`h265`/`av1`), images, and scalars on the fly. Random access, multi-worker prefetching, and [DDP](https://docs.pytorch.org/tutorials/beginner/ddp_series_theory.html) partitioning all work out of the box.
 
 > [!WARNING]
 > **Experimental.** The API is provisional and will change between releases.
@@ -401,6 +401,6 @@ For large-scale training (hundreds of recordings, multi-node), consider [Rerun H
 ## References
 
 - [LeRobot ACT training example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader)
-- [`rerun.experimental.dataloader`](https://github.com/rerun-io/rerun/tree/main/rerun_py/rerun_sdk/rerun/experimental/dataloader) module source
+- [`rerun.experimental.dataloader`](https://ref.rerun.io/docs/python/stable/experimental_dataloader/) API reference
 - [The data layer tax in robot learning](https://rerun.io/blog/data-layer-tax) (figures used in this guide)
 - [Export recordings to LeRobot datasets](lerobot_export.md) (inverse: Rerun → LeRobot dataset)

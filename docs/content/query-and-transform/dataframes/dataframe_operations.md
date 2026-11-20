@@ -18,7 +18,7 @@ The dependencies in this example are contained in `rerun-sdk[all]`.
 ## Setup
 
 Perform initial import and spawn local server for demonstration.
-In practice you'll connect to your cloud instance.
+In practice you'll connect to your catalog server, such as Rerun Hub.
 
 snippet: howto/dataframe_operations[setup]
 

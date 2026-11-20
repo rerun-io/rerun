@@ -15,7 +15,7 @@ The dependencies in this example require `rerun-sdk[all]`.
 ## Setup
 
 Simplified setup to launch the local server for demonstration.
-In practice you'll connect to your cloud instance.
+In practice you'll connect to your catalog server, such as Rerun Hub.
 
 snippet: howto/query_images[setup]
 
