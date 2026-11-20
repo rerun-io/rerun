@@ -46,18 +46,7 @@ The range for the active timeline is used.
 
 To give one entity a different range than the rest of the view, add a `VisibleTimeRanges` override for its entity path:
 
-```python
-rrb.Spatial3DView(
-    origin="/",
-    overrides={
-        "/world/robot/trajectory": rrb.VisibleTimeRanges(
-            timeline="time",
-            start=rrb.TimeRangeBoundary.infinite(),
-            end=rrb.TimeRangeBoundary.cursor_relative(),
-        ),
-    },
-)
-```
+snippet: howto/visualization/blueprint_view_options[per_entity_time_range]
 
 Override paths must be full entity paths.
 They do not support `$origin` or wildcards.
@@ -97,23 +86,7 @@ In a `TimeSeriesView`, there are two different settings:
 
 This plot shows the last 10 seconds of data and keeps the X axis on that window:
 
-```python
-rrb.TimeSeriesView(
-    origin="/sensors",
-    time_ranges=rrb.VisibleTimeRange(
-        "time",
-        start=rrb.TimeRangeBoundary.cursor_relative(seconds=-10.0),
-        end=rrb.TimeRangeBoundary.cursor_relative(),
-    ),
-    axis_x=rrb.TimeAxis(
-        view_range=rrb.TimeRange(
-            start=rrb.TimeRangeBoundary.cursor_relative(seconds=-10.0),
-            end=rrb.TimeRangeBoundary.cursor_relative(),
-        ),
-        zoom_lock=True,
-    ),
-)
-```
+snippet: howto/visualization/blueprint_view_options[scrolling_plot]
 
 `zoom_lock=True` keeps the X axis on the window when you zoom.
 

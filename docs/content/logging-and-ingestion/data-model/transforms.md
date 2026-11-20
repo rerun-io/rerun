@@ -75,14 +75,7 @@ Since transforms are resolved for a single point in time, `first_parent` and `ch
 
 This structure can make expressing a transform with two natural parents a bit unintuitive. Typically, it is best to invert one of the two relationships instead and use `relation=ChildFromParent`:
 
-```python
-rr.log("tf", rr.Transform3D(parent_frame="first_parent", child_frame="child"))
-# Same values as the `second_parent` to `child` transform, expressed as `child` to `second_parent`:
-rr.log(
-    "tf",
-    rr.Transform3D(parent_frame="child", child_frame="second_parent", relation=rr.TransformRelation.ChildFromParent),
-)
-```
+snippet: concepts/transform_frames[two_parents]
 
 `first_parent` now stays connected and all three frames can be transformed into each other.
 
@@ -104,27 +97,12 @@ have implicit identity relationships.
 #### Example
 
 Given these entities:
-```python
-rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
-rr.log("robot/arm", rr.Transform3D(translation=[0, 1, 0]))
-rr.log("robot/arm/gripper", rr.Points3D([0, 0, 0]))
-```
+
+snippet: concepts/transform_frames[implicit]
 
 Rerun will interpret this _as-if_ it was logged with the named transform frames like so:
 
-```python
-rr.log(
-    "robot",
-    rr.CoordinateFrame("tf#/robot"),
-    rr.Transform3D(translation=[1, 0, 0], child_frame="tf#/robot", parent_frame="tf#/"),
-)
-rr.log(
-    "robot/arm",
-    rr.CoordinateFrame("tf#/robot/arm"),
-    rr.Transform3D(translation=[0, 1, 0], child_frame="tf#/robot/arm", parent_frame="tf#/robot"),
-)
-rr.log("robot/arm/gripper", rr.CoordinateFrame("tf#/robot/arm/gripper"), rr.Points3D([0, 0, 0]))
-```
+snippet: concepts/transform_frames[implicit_as_if]
 
 <picture>
   <img src="https://static.rerun.io/transform_graph_translated/869b741ecce84c6b9af183922d32226a32a500bc/480w.png" alt="Diagram linking entities /robot, /robot/arm and /robot/arm/gripper to implicit tf# frames chained from child to parent">
@@ -136,15 +114,8 @@ We generally do not recommend mixing named and implicit transform frames since i
 but doing so works seamlessly and can be useful if necessary.
 
 Example:
-```python
-rr.log("robot", rr.Transform3D(translation=[1, 0, 0]))
-rr.log(
-    "arm",
-    rr.Transform3D(translation=[0, 1, 0], parent_frame="tf#/robot", child_frame="arm_frame"),
-    rr.CoordinateFrame("arm_frame"),
-)
-rr.log("gripper", rr.Points3D([0, 0, 0]), rr.CoordinateFrame("arm_frame"))
-```
+
+snippet: concepts/transform_frames[mixed]
 
 <picture>
   <img src="https://static.rerun.io/transform_graph_mixed/f01d4a4a5fd39b072dd439e93885e46d9e808825/480w.png" alt="Diagram of /robot linked to implicit frame tf#/robot, with /arm and /gripper both linked to arm_frame, a child of tf#/robot">
@@ -181,12 +152,7 @@ The `Pinhole` archetype has three fields that only change how the camera looks i
 - `color`: the color of the frustum wireframe.
 - `line_width`: the width of the frustum wireframe lines.
 
-```python
-rr.log(
-    "world/camera",
-    rr.Pinhole(focal_length=500, width=640, height=480, image_plane_distance=0.5, color=[255, 128, 0], line_width=0.01),
-)
-```
+snippet: concepts/transform_frames[pinhole_frustum]
 
 You can also set these for all cameras in a view with a [view default](../../viewer/view-concepts/customize-views.md#per-view-component-default), e.g. `rrb.Spatial3DView(defaults=[rr.Pinhole.from_fields(image_plane_distance=0.5)])`.
 

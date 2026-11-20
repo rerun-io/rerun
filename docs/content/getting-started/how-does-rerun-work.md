@@ -138,13 +138,7 @@ Since Rerun indexes existing data in place, registration needs paths to RRDs to 
 
 Minimal example of creating a dataset and registering files:
 
-```python
-import rerun as rr
-
-client = rr.catalog.CatalogClient("rerun://api.example.cloud.rerun.io")
-dataset = client.create_dataset("my_data")
-dataset.register(["s3://my-rrd-files/recording1.rrd", "s3://my-rrd-files/recording2.rrd"])
-```
+snippet: concepts/how-does-rerun-work/use-catalog[prepare]
 
 Best for: large datasets, team collaboration, production pipelines.
 
@@ -162,15 +156,7 @@ Use the Catalog SDK to query data from a catalog server, process it, and write r
 
 Minimal example of querying a dataset:
 
-```python
-import datafusion as dfn
-import rerun as rr
-
-client = rr.catalog.CatalogClient("rerun://api.example.cloud.rerun.io")
-dataset = client.get_dataset("my_data")
-df = dataset.filter_contents("/obs").reader(index="log_time")  # `df` is a DataFusion dataframe
-df.filter(dfn.col("/obs:Scalars:scalars").is_not_null()).count()  # count observations in recording
-```
+snippet: concepts/how-does-rerun-work/use-catalog[query]
 
 Best for: data pipelines, batch processing, ML training data preparation.
 

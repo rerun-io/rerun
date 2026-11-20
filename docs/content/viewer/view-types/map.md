@@ -62,18 +62,7 @@ An access token may be freely obtained by creating a Mapbox account.
 
 Like other views, the map view can be configured using the [blueprint API](../blueprints.md#3-programmatically):
 
-```python
-import rerun.blueprint as rrb
-
-blueprint = rrb.Blueprint(
-    rrb.MapView(
-        origin="/robot/position",
-        name="map view",
-        zoom=16.0,
-        background=rrb.MapProvider.OpenStreetMap,
-    ),
-)
-```
+snippet: views/map
 
 Check the [map view](../../reference/types/views/map_view.md) reference for details.
 

@@ -93,14 +93,7 @@ Use `DatasetEntry.segment()` to get a handle to a segment, inspect its current l
 Call `delete_layer()` to unregister one layer from that segment, then wait for the returned handle to track completion.
 Unregistering removes catalog references but does not delete the underlying source objects.
 
-```python
-segment = dataset.segment(segment_id)
-print(segment.layers())
-print(segment.url)
-
-unregistration = segment.delete_layer("predictions")
-unregistration.wait()
-```
+snippet: concepts/query-and-transform/catalog_object_model[segment_layers]
 
 To inspect a named layer across the dataset, use `dataset.layer(name).segment_ids()`.
 The layer handle reads current membership on each call, including registrations and removals made after the handle was created.
@@ -122,13 +115,7 @@ Use `segment.schema()` to fetch a snapshot of one segment's schema across its re
 Referenced assets are excluded from the segment's schema.
 Use `dataset.layer(name).schema()` to fetch the union of one layer's schemas across the segments that contain it.
 
-```python
-segment_schema = dataset.segment(segment_id).schema()
-print(segment_schema)
-print(dataset.layer("base").schema())
-print(dataset.schema())
-print(dataset.schema().to_arrow())
-```
+snippet: concepts/query-and-transform/catalog_object_model[schema]
 
 <div class="d2-diagram">
   <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
@@ -163,15 +150,7 @@ Deleting the dataset also deletes its asset dataset and the asset storage.
 
 Assets are registered from a `.rrd` file that the server can read, using [`DatasetEntry.register_asset()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_asset):
 
-```python
-client = rr.catalog.CatalogClient(…)
-dataset = client.get_dataset("my_dataset")
-
-asset_id = dataset.register_asset("s3://bucket/robot_mesh.rrd")
-print(dataset.assets())
-
-dataset.unregister_asset(asset_id)
-```
+snippet: concepts/query-and-transform/catalog_object_model[assets]
 
 Asset datasets have some restrictions to keep them light, and the server rejects registrations that:
 - contain temporal data, since an asset may only contain static data
@@ -185,17 +164,7 @@ If the server accepts uploads, the viewer can also upload a `.rrd` from your mac
 
 Assets also show up in the [python chunk processing api](../../logging-and-ingestion/import/chunk-processing-api.md) if `include_assets` is `True`:
 
-```python
-segment_id = dataset.segment_ids()[0]
-
-# Covers the chunks of both the segment and the dataset's assets.
-store = dataset.segment_store(segment_id)
-for chunk in store.stream().to_chunks():
-    print(chunk.entity_path)
-
-# Covers only the segment, and no asset manifests are fetched.
-segment_only = dataset.segment_store(segment_id, include_assets=False)
-```
+snippet: concepts/query-and-transform/catalog_object_model[segment_store]
 
 Fetching an asset's manifest costs one request per asset, so `include_assets=False` is worth it when you only care about the segment's own data.
 
@@ -205,11 +174,4 @@ The asset dataset is hidden, so it is also left out of [`CatalogClient.datasets(
 
 To query asset data, target the asset dataset itself, which is a regular dataset with one segment per registered asset:
 
-```python
-asset_dataset = dataset.asset_dataset()
-
-print(asset_dataset.schema())
-
-# Assets only hold static data, so there is no index to read along.
-df = asset_dataset.reader(index=None)
-```
+snippet: concepts/query-and-transform/catalog_object_model[asset_dataset]

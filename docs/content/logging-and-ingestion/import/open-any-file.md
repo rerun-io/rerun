@@ -56,16 +56,7 @@ For other formats, read the file with your own code and log the data, or write a
 There is no CSV importer.
 Load the file with pandas (or polars), and log the table with [`rr.send_dataframe`](../send-data/send-dataframe.md):
 
-```python
-import pandas as pd
-import pyarrow as pa
-import rerun as rr
-
-rr.init("rerun_example_csv", spawn=True)
-
-df = pd.read_csv("data.csv")  # e.g. columns: frame, x, y
-rr.send_dataframe(pa.Table.from_pandas(df), index="frame", entity_path="/data")
-```
+snippet: howto/log_csv_and_hdf5[csv]
 
 To show the values as points, boxes, or other archetypes, log them with [`send_columns`](../send-data/send-columns.md) instead.
 
@@ -74,15 +65,7 @@ To show the values as points, boxes, or other archetypes, log them with [`send_c
 There is no built-in HDF5 importer.
 In Python, the experimental `rerun.experimental.Hdf5Reader` maps each HDF5 group to an entity and its datasets to components:
 
-```python
-import rerun as rr
-from rerun.experimental import Hdf5Reader
-
-rr.init("rerun_example_hdf5", spawn=True)
-
-reader = Hdf5Reader("episode.hdf5")
-rr.send_chunks(reader.stream())  # Rows are indexed on a generated `row_index` timeline.
-```
+snippet: howto/log_csv_and_hdf5[hdf5]
 
 All non-scalar datasets must have the same number of rows.
 Pass `index_column=` to `stream()` to use one of the datasets as the timeline (e.g. `IndexColumn.sequence("/frame_id")` from `rerun.chunk`), and `ignore_datasets=` to skip datasets that don't fit.

@@ -56,12 +56,13 @@ from rerun.experimental.dataloader import (
     RerunIterableDataset,
 )
 
+segment_ids = [
+    "ILIAD_50aee79f_2023_07_12_20h_55m_08s",
+    "ILIAD_5e938e3b_2023_07_20_10h_40m_10s",
+]
 source = DataSource(
     dataset=client.get_dataset("my_robot_data"),
-    segments=[
-        "ILIAD_50aee79f_2023_07_12_20h_55m_08s",
-        "ILIAD_5e938e3b_2023_07_20_10h_40m_10s",
-    ],
+    segments=segment_ids,
 )
 
 fields = {
@@ -169,3 +170,61 @@ for epoch in range(epochs):
         optimizer.step()
         optimizer.zero_grad()
 # endregion: train
+
+
+# region: data_source
+from rerun.experimental.spans import Curation
+
+whole_source = DataSource(dataset)
+view = dataset.filter_segments(segment_ids).filter_contents([
+    "/observation/**",
+    "/action/**",
+])
+view_source = DataSource(view)
+curation = Curation.from_source(view, index="real_time")
+curated_source = DataSource(dataset, curation=curation)
+# endregion: data_source
+
+
+# region: curate_recordings
+from rerun.experimental.dataloader import (
+    BlockShuffle,
+    DataSource,
+    FixedRateSampling,
+    RerunIterableDataset,
+)
+from rerun.experimental.spans import Curation
+
+dataset_entry = source.dataset
+recording_view = dataset_entry.filter_segments(segment_ids)
+curation = Curation.from_source(recording_view, index="real_time")
+# endregion: curate_recordings
+
+# region: curate_sql
+ctx = dataset_entry.catalog.ctx
+ctx.register_view("recordings", dataset_entry.segment_table())
+selected_recordings = ctx.sql(
+    "SELECT rerun_segment_id FROM recordings"
+    ' WHERE "property:episode:success"[1] = true'
+)
+recording_view = dataset_entry.filter_segments(selected_recordings)
+curation = Curation.from_source(recording_view, index="real_time")
+# endregion: curate_sql
+
+# region: save_curation
+Curation.save(dataset_entry, curation.to_arrow(), tag="training-v1")
+curation = Curation.open(dataset_entry, tag="training-v1")
+source = DataSource(dataset_entry, curation=curation)
+
+curated_ds = RerunIterableDataset(
+    source=source,
+    index="real_time",
+    fields=fields,
+    timeline_sampling=FixedRateSampling(rate_hz=30),
+    shuffle_strategy=BlockShuffle(),
+    seed=0,
+)
+# endregion: save_curation
+
+first_sample = next(iter(curated_ds))
+assert set(first_sample) == {"state", "action"}

@@ -18,31 +18,11 @@ The first step to query data is to start a catalog server and load it with a dat
 
 See the [catalog object model](catalog-object-model.md) docs for more details on how datasets are organized in Rerun.
 
-```python
-import rerun as rr
-
-# Start a server with one or more .rrd files
-with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
-    client = server.client()
-    dataset = client.get_dataset("my_dataset")
-```
+snippet: howto/get_data_out[start_server]
 
 The server can host multiple datasets. Each dataset maps to either a list of `.rrd` files or a directory (which will be scanned for `.rrd` files):
 
-```python
-with rr.server.Server(
-    datasets={
-        # Explicit list of RRD files
-        "dataset1": ["recording1.rrd", "recording2.rrd"],
-        # Directory containing RRD files
-        "dataset2": "/path/to/recordings_dir",
-    }
-) as server:
-    client = server.client()
-    # Access each dataset by name
-    ds1 = client.get_dataset("dataset1")
-    ds2 = client.get_dataset("dataset2")
-```
+snippet: howto/get_data_out[multiple_datasets]
 
 When multiple recordings are loaded into a dataset, each gets mapped to a separate segment whose ID is the corresponding recording ID.
 
@@ -159,16 +139,7 @@ See [Where a query runs](../dataframes/query_performance_tuning.md#where-a-query
 
 In general, datasets can be arbitrarily large, and it is often useful to query only a subset of it. This is achieved using `DatasetSelection` objects:
 
-```python
-# Filter by entity paths
-selection = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
-
-# Filter by segment IDs
-selection = dataset.filter_segments(["recording_001", "recording_002"])
-
-# Chain filters
-selection = dataset.filter_contents(["/world/**"]).filter_segments(["recording_001"])
-```
+snippet: howto/get_data_out[filter_selection]
 
 `filter_contents()` takes [entity path filter](../../logging-and-ingestion/data-model/entity-path.md#entity-path-filters) expressions.
 
@@ -176,23 +147,7 @@ Chained filters narrow the selection: an entity or segment is kept only if every
 To combine several subtrees, or includes with excludes, pass all the expressions to a single `filter_contents()` call.
 To exclude entities from an existing selection, start from everything and exclude from there.
 
-```python
-# Selects `/world/robot/arm/**` only
-selection = dataset.filter_contents("/world/robot/**").filter_contents("/world/robot/arm/**")
-
-# Selects nothing, since no entity is in both subtrees
-selection = dataset.filter_contents("/world/robot/**").filter_contents("/sensors/**")
-
-# Selects both subtrees
-selection = dataset.filter_contents(["/world/robot/**", "/sensors/**"])
-
-# Selects `/world/robot/**` without `/world/robot/debug/**`
-selection = dataset.filter_contents(["/world/robot/**", "-/world/robot/debug/**"])
-
-# Same, but narrowing an existing selection
-robot = dataset.filter_contents("/world/robot/**")
-selection = robot.filter_contents(ContentFilter.everything().exclude("/world/robot/debug/**"))
-```
+snippet: howto/get_data_out[filter_semantics]
 
 `DatasetSelection` instances have the exact same `reader()` method as the original dataset:
 
@@ -208,20 +163,7 @@ DataFusion offers a rich set of filtering, projection, and joining capabilities.
 
 For illustration, here are a few simple examples:
 
-```python
-from datafusion import col
-
-df = dataset.reader(index="frame_nr")
-
-# Filter by index range
-df = df.filter(col("frame_nr") >= 0).filter(col("frame_nr") <= 100)
-
-# Filter by column not null
-df = df.filter(col("/world/robot:Position3D:positions").is_not_null())
-
-# Select specific columns
-df = df.select("frame_nr", "/world/robot:Position3D:positions")
-```
+snippet: howto/get_data_out[datafusion_filter]
 
 ## Querying with SQL
 
@@ -243,17 +185,7 @@ Catalog tables can be queried by name without registering them, e.g. `SELECT * F
 
 Dataframes from different datasets on the same server share `client.ctx`, so you can register each one as a view and combine them in one SQL query:
 
-```python
-ctx = client.ctx
-ctx.register_view("run_a", client.get_dataset("run_a").reader(index="frame_nr"))
-ctx.register_view("run_b", client.get_dataset("run_b").reader(index="frame_nr"))
-
-df = ctx.sql("""
-    SELECT rerun_segment_id, frame_nr, "/robot/gripper/force:Scalars:scalars"[1] AS force FROM run_a
-    UNION ALL
-    SELECT rerun_segment_id, frame_nr, "/robot/gripper/force:Scalars:scalars"[1] AS force FROM run_b
-""")
-```
+snippet: howto/get_data_out[cross_datasets]
 
 `UNION ALL` needs the same columns on both sides, so select them explicitly.
 You can also `JOIN` the views, for example on `rerun_segment_id` and the index column.
@@ -267,34 +199,15 @@ See [Common Dataframe Operations](../dataframes/dataframe_operations.md) for agg
 
 ### Load data to a PyArrow `Table`
 
-```python
-import rerun as rr
-
-with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
-    dataset = server.client().get_dataset("my_dataset")
-    table = dataset.reader(index="frame_nr").to_arrow_table()
-```
+snippet: howto/get_data_out[to_arrow]
 
 ### Load data to a Pandas dataframe
 
-```python
-import rerun as rr
-
-with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
-    dataset = server.client().get_dataset("my_dataset")
-    df = dataset.reader(index="frame_nr").to_pandas()
-```
+snippet: howto/get_data_out[to_pandas]
 
 ### Load data to a Polars dataframe
 
-```python
-import rerun as rr
-import polars as pl
-
-with rr.server.Server(datasets={"my_dataset": ["recording.rrd"]}) as server:
-    dataset = server.client().get_dataset("my_dataset")
-    df = pl.from_arrow(dataset.reader(index="frame_nr").to_arrow_table())
-```
+snippet: howto/get_data_out[to_polars]
 
 ### Load data to a DuckDB relation
 
@@ -325,14 +238,7 @@ Exclude image and video columns, since their blobs can be very large.
 The [Chunk Processing API](../../logging-and-ingestion/import/chunk-processing-api.md) can read an `.rrd` file directly with `RrdReader`.
 Collect its chunks into a `ChunkStore`, and query that with the same `reader()` method as a dataset:
 
-```python
-from rerun.chunk import RrdReader
-
-store = RrdReader("recording.rrd").stream().collect()
-df = store.reader(index="frame_nr")
-
-print(df.to_pandas())
-```
+snippet: howto/get_data_out[rrd_reader]
 
 `collect()` loads the whole recording into memory.
 The result has no `rerun_segment_id` column, since there is only one recording.
@@ -342,33 +248,7 @@ If the file holds several recordings, pick one with `RrdReader(…).recordings()
 
 The Rust SDK can load an `.rrd` file and query it with `QueryEngine`, in the `rerun::dataframe` module (enabled by the default `dataframe` feature):
 
-```rust
-use rerun::ChunkStoreConfig;
-use rerun::dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, TimelineName};
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let engines = QueryEngine::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, "recording.rrd")?;
-
-    for (store_id, engine) in engines {
-        if !store_id.is_recording() {
-            continue;
-        }
-
-        let query = QueryExpression {
-            filtered_index: Some(TimelineName::from("frame_nr")),
-            sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
-            ..Default::default()
-        };
-
-        let mut query_handle = engine.query(query);
-        for batch in query_handle.batch_iter() {
-            println!("{batch:?}"); // An Arrow `RecordBatch`
-        }
-    }
-
-    Ok(())
-}
-```
+snippet: howto/query_rrd_file[query]
 
 `from_rrd_filepath` returns one engine per store in the file, including blueprints, which is why the loop skips everything but recordings.
 For a complete program, see the [`dataframe_query` example](https://github.com/rerun-io/rerun/tree/main/examples/rust/dataframe_query).

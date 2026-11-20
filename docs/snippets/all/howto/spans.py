@@ -137,6 +137,32 @@ def main() -> None:
 
             assert nested_grasps["rerun_span_id"].to_pylist() == [span_id]
 
+            # region: curation
+            from rerun.experimental.spans import Curation
+
+            ctx = dataset.catalog.ctx
+            ctx.register_view("training_recordings", dataset.segment_table())
+            recordings = ctx.sql(
+                "SELECT rerun_segment_id FROM training_recordings"
+                " WHERE rerun_segment_id = 'episode_1'"
+            )
+            view = dataset.filter_segments(recordings)
+
+            ctx.register_view("training_spans", annotations.reader())
+            curated = ctx.sql(
+                "SELECT * FROM training_spans"
+                " WHERE state = 'grasp' AND score >= 0.7"
+            ).to_arrow_table()
+            chosen = curated.take([0])
+            curation = Curation.from_source(
+                view,
+                index="time",
+                spans=annotations.to_curation_arrow(chosen, index="time"),
+            )
+            # endregion: curation
+
+            assert curation.to_arrow().num_rows == 1
+
             # region: delete
             annotations = SpanTable.open(dataset)
             annotations.delete()

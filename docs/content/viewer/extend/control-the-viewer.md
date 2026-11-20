@@ -8,23 +8,7 @@ description: Set playback speed, timeline, and time cursor from code
 
 The time panel of the [blueprint](../blueprints.md) controls playback:
 
-```python
-import rerun as rr
-import rerun.blueprint as rrb
-
-rr.send_blueprint(
-    rrb.Blueprint(
-        rrb.Spatial3DView(origin="/world"),
-        rrb.TimePanel(
-            timeline="frame",
-            playback_speed=2.0,
-            fps=30.0,
-            play_state="playing",
-            loop_mode="all",
-        ),
-    )
-)
-```
+snippet: howto/visualization/playback_blueprint[blueprint]
 
 | Parameter        | Meaning                                                                   |
 |------------------|---------------------------------------------------------------------------|
@@ -49,22 +33,13 @@ See [Viewer URLs](urls.md).
 `rerun.experimental.ViewerClient` connects to a running Viewer and controls it.
 This API is experimental and may change.
 
-```python
-from rerun.experimental import ViewerClient
-
-client = ViewerClient.connect()  # rerun+http://127.0.0.1:9876/proxy by default
-client.open("recording.rrd")
-client.set_time("frame", sequence=120, play_state="paused")
-client.set_time(play_state="playing")
-client.save_screenshot("viewer.png")  # The path is on the machine that runs the Viewer
-client.close("current")
-```
+snippet: howto/visualization/viewer_client_control
 
 Other useful methods:
 
 - `ViewerClient.spawn(headless=True)` starts a new Viewer, for example for screenshots in CI.
 - `get_state()` returns the open recordings, the time cursor, and the views.
-  It does not include the current selection.
+- `get_selection()` returns what the user has selected: entities and their instances, components, views, containers, and recordings.
 - `take_screenshot()` returns a PNG as bytes.
 - `get_blueprint()` and `set_blueprint()` read and replace the blueprint as a JSON-like dictionary.
 

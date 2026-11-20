@@ -70,35 +70,13 @@ These transforms can be directly sent to Rerun.
 
 Load a URDF file and access its structure:
 
-```python
-urdf_tree = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix=None)
-
-# Access properties
-robot_name = urdf_tree.name
-root_link = urdf_tree.root_link()
-joints = urdf_tree.joints()
-
-# Lookup by name
-urdf_tree.get_joint_by_name("shoulder")
-urdf_tree.get_link_by_name("base_link")
-
-# Get the entity paths of collision or visual geometries of a link.
-# This can be used for example to update the color / transparency during runtime:
-for visual_path in urdf_tree.get_visual_geometry_paths("gripper"):
-    rec.log(visual_path, rr.Asset3D.from_fields(albedo_factor=[255, 0, 0, 100]), static=True)
-```
+snippet: howto/urdf_utilities[urdf_tree]
 
 #### Frame prefix
 
 When loading the same URDF multiple times (e.g. a dual-arm setup), use `frame_prefix` to give each instance unique frame IDs and `entity_path_prefix` to separate their geometry in the entity tree. Use `log_to_recording()` to log the model with prefixed frame IDs:
 
-```python
-left = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix="left", frame_prefix="left/")
-right = rr.urdf.UrdfTree.from_file_path("robot.urdf", entity_path_prefix="right", frame_prefix="right/")
-
-left.log_to_recording()
-right.log_to_recording()
-```
+snippet: howto/urdf_utilities[frame_prefix]
 
 Transforms computed via `joint.compute_transform()` will automatically use the prefixed frame IDs (e.g. `"left/base"`, `"right/shoulder"`).
 
@@ -114,26 +92,14 @@ Each joint exposes properties from the URDF file:
 
 Use `compute_transform()` to get a [`Transform3D`](../../reference/types/archetypes/transform3d.md) with the correct `parent_frame` and `child_frame` already set:
 
-```python
-# For revolute/continuous joints: pass angle in radians
-# For prismatic joints: pass distance in meters
-transform = joint.compute_transform(angle)
-rec.log("transforms", transform)
-```
+snippet: howto/urdf_utilities[compute_transform]
 
 By default, values outside the joint limits are clamped, with a warning.
 Pass `clamp=False` to use the value as is: `joint.compute_transform(angle, clamp=False)`.
 
 To send many joint values at once, use `compute_transform_columns()` with [`send_columns`](../send-data/send-columns.md):
 
-```python
-angles = [0.0, 0.1, 0.2, 0.3]
-rec.send_columns(
-    "transforms",
-    indexes=[rr.TimeColumn("step", sequence=range(len(angles)))],
-    columns=joint.compute_transform_columns(angles),
-)
-```
+snippet: howto/urdf_utilities[compute_transform_columns]
 
 #### Mimic joints
 
@@ -144,7 +110,7 @@ Compute the value of the mimic joint from its driver joint yourself, then call `
 ```python
 if (mimic := joint.mimic) is not None:
     value = mimic.multiplier * driver_value + mimic.offset
-    rec.log("transforms", joint.compute_transform(value))
+    rr.log("transforms", joint.compute_transform(value))
 ```
 
 ### Streaming the model as chunks

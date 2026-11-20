@@ -49,11 +49,13 @@ snippet: howto/query_videos[decode_frame]
 ## Efficient random access with keyframe information
 
 The example above queries all samples from the start of the stream, which can be inefficient for long videos.
-For better performance with random access, you can add keyframe information as a layer.
+For better performance with random access, add keyframe information to the stream.
+
+The simplest way is to run [`rerun rrd optimize`](../../reference/cli.md#rerun-rrd-optimize) on the recordings before registering them: it adds the `VideoStream:is_keyframe` column, derived from the encoded samples.
 
 ### Adding keyframe information as a layer
 
-You can analyze your video data once to identify keyframes and register them as a separate layer:
+If you cannot rewrite the recordings, analyze the video once to identify keyframes and register them as a separate layer:
 
 snippet: howto/query_video_keyframes[add_keyframe_column]
 
@@ -93,7 +95,7 @@ snippet: howto/query_videos[export_mp4]
 
 Video streams often use inter-frame compression where most frames only store the difference from previous frames.
 
-`av` handles keyframe detection internally, but for efficient random access to specific frames, you may want to log keyframe indicators at recording time.
+`av` handles keyframe detection internally, but for efficient random access to specific frames, you need keyframe indicators: log them at recording time, or add them with `rerun rrd optimize`.
 [`VideoStream`](../../reference/types/archetypes/video_stream.md) has an optional `is_keyframe` component for this, which is queryable as the `VideoStream:is_keyframe` column.
 
 ### Timestamp handling

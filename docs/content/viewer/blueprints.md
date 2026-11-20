@@ -107,19 +107,7 @@ Write blueprint code that configures the Viewer automatically:
 
 For example, you might send different blueprints automatically based on detected issues in your application (e.g., a robot enters an error state and surfaces the correct blueprint to help you debug that).
 
-```python
-import rerun as rr
-import rerun.blueprint as rrb
-
-if robot_error:
-    # Show diagnostic views for debugging
-    blueprint = rrb.Grid(
-        rrb.Spatial3DView(name="Robot view", origin="/world/robot"),
-        rrb.TextLogView(name="Error Logs", origin="/diagnostics"),
-        rrb.TimeSeriesView(name="Sensor Data", origin="/sensors"),
-    )
-    rr.send_blueprint(blueprint, make_active=True)
-```
+snippet: howto/visualization/blueprint_view_options[send_on_error]
 
 See our guide on how to [build a blueprint programmatically](blueprints/build-a-blueprint-programmatically.md) for detailed examples.
 
@@ -162,15 +150,7 @@ A blueprint with no containers or views has `auto_views=True` by default; to cre
 There are four container kinds: `rrb.Horizontal`, `rrb.Vertical`, `rrb.Grid`, and `rrb.Tabs`.
 Use `active_tab` to choose which tab is shown first, by index or by name:
 
-```python
-rrb.Blueprint(
-    rrb.Tabs(
-        rrb.Spatial3DView(name="Scene", origin="/world"),
-        rrb.TimeSeriesView(name="Plots", origin="/metrics"),
-        active_tab="Plots",
-    )
-)
-```
+snippet: howto/visualization/blueprint_view_options[tabs]
 
 There is no scrollable container yet: all views in a container share the available space.
 See [missing features](../development/roadmap.md#missing-features).

@@ -18,17 +18,7 @@ Copying screenshots is not supported in Safari and other WebKit browsers, includ
 `rerun.experimental.ViewerClient` can take screenshots of a running Viewer.
 This API is experimental and may change.
 
-```python
-from rerun.experimental import ViewerClient
-
-client = ViewerClient.connect()
-
-# Save a PNG file on the machine that runs the Viewer:
-client.save_screenshot("viewer.png")
-
-# Get a PNG as bytes, without writing a file:
-png_bytes = client.take_screenshot(max_size=1024)
-```
+snippet: howto/visualization/viewer_client_screenshot
 
 Both methods take an optional `view_id` to capture only one view.
 `client.get_state().views` lists the views and their IDs.

@@ -62,14 +62,9 @@ snippet: howto/dataloader[describe_sample]
 
 `DataSource` accepts a dataset or a `DatasetSelection` created by filtering it.
 Plain loading uses either directly; a curation is optional.
-For a whole dataset, a filtered view, or a resolved curation created below:
+For a whole dataset, a filtered view, or a curation resolved from that view:
 
-```python
-whole_source = DataSource(dataset)
-view = dataset.filter_segments(source.segments).filter_contents(["/observation/**", "/action/**"])
-view_source = DataSource(view)
-curated_source = DataSource(dataset, curation=curation)
-```
+snippet: howto/dataloader[data_source]
 
 Resolve recording and interval selections with `Curation.from_source` before saving a training manifest.
 Content filters restrict visible fields without narrowing recording-wide ranges and remain loader configuration, alongside `fields`.
@@ -158,35 +153,11 @@ The default `timeline_sampling=None` preserves each field's filling behavior and
 To avoid CPU RGB conversion and reduce the size of decoded samples, keep video in YUV420 through collation.
 `Yuv420Collator` is an optional convenience for applications whose other fields can use PyTorch's default collation:
 
-```python
-from torch.utils.data import DataLoader
-
-from rerun.experimental.dataloader import Yuv420Collator
-
-loader = DataLoader(dataset, collate_fn=Yuv420Collator(), pin_memory=True)
-
-for batch in loader:
-    batch["video"] = batch["video"].to_rgb("cuda", non_blocking=True)
-```
+snippet: howto/dataloader_performance[yuv_collator]
 
 Applications can instead compose YUV handling into their own collator with `Yuv420Frame.stack`:
 
-```python
-from rerun.experimental.dataloader import Yuv420Frame
-
-
-def collate(samples):
-    return {
-        "video": Yuv420Frame.stack([sample["video"] for sample in samples]),
-        "state": custom_state_collation(samples),
-    }
-
-
-loader = DataLoader(dataset, collate_fn=collate, pin_memory=True)
-
-for batch in loader:
-    batch["video"] = batch["video"].to_rgb("cuda", non_blocking=True)
-```
+snippet: howto/dataloader_performance[custom_collate]
 
 Call `to_rgb` in the training process rather than inside a `DataLoader` worker when converting on CUDA.
 
@@ -196,25 +167,12 @@ Dataset-level curation chooses recordings; span-level curation chooses intervals
 Resolve either selection into a `Curation` before sampling, then save its Arrow coordinates as the training manifest.
 To curate whole recordings, pass a dataset selection without an annotation table:
 
-```python
-from rerun.experimental.dataloader import BlockShuffle, DataSource, FixedRateSampling, RerunIterableDataset
-from rerun.experimental.spans import Curation
-
-dataset_entry = source.dataset
-recording_view = dataset_entry.filter_segments(source.segments)
-curation = Curation.from_source(recording_view, index="real_time")
-```
+snippet: howto/dataloader[curate_recordings]
 
 SQL can select recordings through the catalog's DataFusion context.
 For example, if recordings have an `episode.success` property:
 
-```python
-ctx = dataset_entry.catalog.ctx
-ctx.register_view("recordings", dataset_entry.segment_table())
-selected_recordings = ctx.sql('SELECT rerun_segment_id FROM recordings WHERE "property:episode:success"[1] = true')
-recording_view = dataset_entry.filter_segments(selected_recordings)
-curation = Curation.from_source(recording_view, index="real_time")
-```
+snippet: howto/dataloader[curate_sql]
 
 To combine the recording selection with annotated intervals, pass exported span coordinates or another `Curation` as `spans` to `from_source`; see [Select spans for training](../query-and-transform/dataframes/spans.md#select-spans-for-training).
 The resolved intervals are the intersection of the selected recordings' ranges and the selected spans.
@@ -222,20 +180,7 @@ Without `spans`, the curation contains the selected recordings' full timeline ra
 
 Save the resolved output, then reload it against the full same dataset without reconstructing the recording-selection view:
 
-```python
-Curation.save(dataset_entry, curation.to_arrow(), tag="training-v1")
-curation = Curation.open(dataset_entry, tag="training-v1")
-source = DataSource(dataset_entry, curation=curation)
-
-dataset = RerunIterableDataset(
-    source=source,
-    index="real_time",
-    fields=fields,
-    timeline_sampling=FixedRateSampling(rate_hz=30),
-    shuffle_strategy=BlockShuffle(),
-    seed=0,
-)
-```
+snippet: howto/dataloader[save_curation]
 
 Resolving a curation reads recording metadata, without fetching or validating training fields.
 Intervals select sample anchor times; field windows may read earlier or later data in the same recording.
@@ -301,28 +246,7 @@ Use the DDP `join()` pattern above when consuming the dataset to exhaustion.
 Each Rerun dataset automatically collects cumulative fetch and decode metrics across its `DataLoader` workers.
 Use the standard PyTorch `DataLoader` and read the report from the dataset when needed.
 
-```python
-from rerun.experimental.dataloader import RerunIterableDataset
-
-
-dataset = RerunIterableDataset(
-    source=source,
-    index="frame_index",
-    fields=fields,
-)
-loader = DataLoader(
-    dataset,
-    batch_size=8,
-    num_workers=4,
-    multiprocessing_context="spawn",
-)
-
-for batch in loader:
-    train_step(batch)
-
-if report_metrics:
-    print(dataset.metrics.summary())
-```
+snippet: howto/dataloader_performance[metrics]
 
 `summary()` returns a flat dictionary containing the available cumulative metrics.
 It is an aggregate of completed worker measurements.
@@ -375,14 +299,7 @@ Only `BlockShuffle` accepts a buffer, because it is the only strategy whose fetc
 With `SampleShuffle` the fetch order is already fully random, so re-shuffling it on emission would cost memory without any benefit.
 With `NoShuffle` the buffer would only jumble nearby samples, which typically means reordering within a single segment, nowhere near the cross-segment mixing training needs.
 
-```python
-ds = RerunIterableDataset(
-    source=source,
-    index="frame_index",
-    fields=fields,
-    shuffle_strategy=BlockShuffle(buffer_size=4096),
-)
-```
+snippet: howto/dataloader_performance[block_shuffle]
 
 ### Train
 

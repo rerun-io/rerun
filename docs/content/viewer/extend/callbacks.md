@@ -34,5 +34,5 @@ For users extending the Viewer through the Rust [`re_viewer`](https://docs.rs/re
 
 The experimental `rerun.experimental.ViewerClient` connects to a running Viewer and controls it from Python.
 It can open and close recordings, move the time cursor, start and stop playback, read and replace the blueprint, and take screenshots.
-It can also read a snapshot of the Viewer state (open recordings, the time cursor, and the views), but not the current selection.
+It can also read a snapshot of the Viewer state (open recordings, the time cursor, and the views) and what the user has selected.
 See [Control playback and drive the Viewer from code](control-the-viewer.md).

@@ -29,7 +29,7 @@ Dataframe queries can be used in three contexts:
 
 Let's use an example to illustrate how dataframe queries work.
 
-Dataframe queries run against datasets stored on a [catalog server](../../getting-started/how-does-rerun-work.md#catalog-server).
+The example below runs the query against a dataset stored on a [catalog server](../../getting-started/how-does-rerun-work.md#catalog-server).
 We can create a demo recording and load it into a temporary local catalog using the following code:
 
 snippet: concepts/query-and-transform/dataframe_query_example[setup]
@@ -68,7 +68,7 @@ This should produce an output similar to:
 ```
 
 Let's unpack what happened here:
-- **Catalog required**: We use `rr.server.Server()` to spin up a temporary local catalog. In production, you might connect to a Rerun Hub deployment instead. We then obtain the dataset to be queried from the catalog.
+- **Catalog server**: We use `rr.server.Server()` to spin up a temporary local catalog. In production, you might connect to a Rerun Hub deployment instead. We then obtain the dataset to be queried from the catalog.
 - **Content filtering**: The `filter_contents()` method restricts the scope of the query to specific entities. This affects which columns are returned, but may also change which rows are returned since rows are only produced where at least one filtered column has data (see [How are rows produced?](#how-are-rows-produced-by-dataframe-queries)).
 - **Reader produces a lazy dataframe**: The `reader(index=…)` method returns a [DataFusion](https://datafusion.apache.org/) dataframe. The `index` parameter specifies which timeline drives row generation: a row is produced for each unique value of this index where data exists. The returned dataframe doesn't execute until it is collected.
 - **Filtering/aggregation/joining/etc.**: The standard suite of dataframe operations is provided by DataFusion. Here we use `filter()` to filter rows based on the data. Again, these are lazy operations that only build a query plan.

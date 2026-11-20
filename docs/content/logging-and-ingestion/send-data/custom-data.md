@@ -51,27 +51,16 @@ Let's start with a simple example where you have your own point cloud class that
 @dataclass
 class LabeledPoints:
     points: np.ndarray
-    labels: List[str]
+    labels: list[str]
 ```
 
 If you implement `as_component_batches()` on `LabeledPoints`, you can pass it directly to `rr.log`. The simplest possible way is to use the matching Rerun archetype’s `as_component_batches` method.
 
-```python
-import rerun as rr  # pip install rerun-sdk
+snippet: tutorials/remap_to_archetype[labeled_points]
 
-@dataclass
-class LabeledPoints:
-    points: np.ndarray
-    labels: List[str]
+Then pass it to `rr.log` like any archetype:
 
-    def as_component_batches(self) -> list[rr.DescribedComponentBatch]:
-        return rr.Points3D(positions=self.points,
-                           labels=self.labels).as_component_batches()
-…
-# Somewhere deep in your code
-classified = my_points_classifier(…)  # type: LabeledPoints
-rr.log("points/classified", classified)
-```
+snippet: tutorials/remap_to_archetype[log]
 
 ## Custom archetypes and components
 

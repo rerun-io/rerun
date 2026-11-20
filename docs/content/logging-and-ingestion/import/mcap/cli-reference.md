@@ -4,7 +4,8 @@ order: 500
 description: Command-line options for viewing, converting, and decoding MCAP files
 ---
 
-This reference guide covers all command-line options and workflows for working with MCAP files in Rerun.
+This guide covers the common command-line workflows for MCAP files in Rerun.
+For every option, see the [`rerun mcap` reference](../../../reference/cli.md#rerun-mcap).
 
 ## Basic commands
 

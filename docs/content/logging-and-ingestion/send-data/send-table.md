@@ -44,44 +44,17 @@ pip install rerun-sdk[notebook] pyarrow pandas numpy
 
 ### Connecting to the Viewer
 
-```python
-from rerun.experimental import ViewerClient
-
-# Connect to a running Rerun Viewer
-client = ViewerClient.connect(url="rerun+http://127.0.0.1:9876/proxy")
-```
+snippet: howto/send_table[connect]
 
 ### Sending a simple table
 
-```python
-import pyarrow as pa
-
-# Create a record batch from a Python dictionary
-record_batch = pa.RecordBatch.from_pydict({
-    "id": [1, 2, 3],
-    "url": ["https://www.rerun.io", "https://github.com/rerun-io/rerun", "https://crates.io/crates/rerun"],
-})
-
-# Send the table to the viewer with an identifier
-client.send_table("My Table", record_batch)
-```
+snippet: howto/send_table[simple_table]
 
 ### Using with Pandas dataframes
 
 You can also send Pandas dataframes by converting them to a record batch:
 
-```python
-import pandas as pd
-import numpy as np
-import pyarrow as pa
-
-# Create a sample DataFrame
-dates = pd.date_range("20230101", periods=6)
-df = pd.DataFrame(np.random.default_rng(0).standard_normal((6, 4)), index=dates, columns=list("ABCD"))
-
-# Convert to record batch and send to the viewer.
-client.send_table("Pandas DataFrame", pa.RecordBatch.from_pandas(df))
-```
+snippet: howto/send_table[pandas]
 
 ## Using in Jupyter notebooks
 

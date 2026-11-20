@@ -58,9 +58,8 @@ On duration timelines, use `datetime.timedelta` or `numpy.timedelta64` values.
 On timestamp timelines, use `datetime.datetime` or `numpy.datetime64` values; naive datetimes are treated as UTC.
 `append` generates and returns a span ID; `upsert` requires one.
 
-Pass column values through `data`:
-
-Here, `state` and `score` are separate columns matching the declared schema; undeclared data columns are rejected.
+Pass column values through `data`.
+In the example above, `state` and `score` are separate columns matching the declared schema; undeclared data columns are rejected.
 Upsert replaces the whole row, so omitted nullable fields become null; an unknown ID inserts a new span.
 
 Use `annotations.write(rows, mode="append")` for bulk Arrow writes; `"upsert"` and `"overwrite"` are also supported.
@@ -102,23 +101,7 @@ Span-level curation filters the annotation table to choose intervals within reco
 Dataset-level queries choose recordings; queries on the annotation table choose intervals within them.
 Combine both selections before saving the training manifest:
 
-```python
-from rerun.experimental.spans import Curation
-
-ctx = dataset.catalog.ctx
-ctx.register_view("training_recordings", dataset.segment_table())
-recordings = ctx.sql("SELECT rerun_segment_id FROM training_recordings WHERE rerun_segment_id = 'episode_1'")
-view = dataset.filter_segments(recordings)
-
-ctx.register_view("training_spans", annotations.reader())
-curated = ctx.sql("SELECT * FROM training_spans WHERE state = 'grasp' AND score >= 0.7").to_arrow_table()
-chosen = curated.take([0])
-curation = Curation.from_source(
-    view,
-    index="time",
-    spans=annotations.to_curation_arrow(chosen, index="time"),
-)
-```
+snippet: howto/spans[curation]
 
 `to_curation_arrow` exports recording IDs and typed boundaries, together with dataset and timeline identity.
 `Curation.from_source` resolves their intersection with the view's recording ranges before sampling, without fetching recording chunks.

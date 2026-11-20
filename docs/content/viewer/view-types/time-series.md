@@ -126,16 +126,7 @@ See [How `VisibleTimeRange` works](../view-concepts/visible-time-ranges.md#how-v
 
 ### Example syntax
 To create a trailing 5 second window plot, you can specify your `TimeSeriesView` like this:
-```python
-rrb.TimeSeriesView(
-    origin="plot_path",
-    time_ranges=rrb.VisibleTimeRange(
-        timeline="time",
-        start=rrb.TimeRangeBoundary.cursor_relative(seconds=-5.0),
-        end=rrb.TimeRangeBoundary.cursor_relative(),
-    ),
-)
-```
+snippet: howto/visualization/blueprint_view_options[fixed_window]
 
 ### Complete fixed-window example
 For a complete working example, you can run the following code:
@@ -180,13 +171,7 @@ See [Customize views](../view-concepts/customize-views.md).
 
 Use `ScalarAxis` for the Y axis, and `PlotLegend` for the legend:
 
-```python
-rrb.TimeSeriesView(
-    origin="/sensors",
-    axis_y=rrb.ScalarAxis(range=(-1.0, 1.0), zoom_lock=True),
-    plot_legend=rrb.PlotLegend(visible=False),
-)
-```
+snippet: howto/visualization/blueprint_view_options[axis_and_legend]
 
 The Y axis is always linear.
 There is no logarithmic axis yet: plot `log10` of your values instead.

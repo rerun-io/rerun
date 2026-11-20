@@ -109,8 +109,6 @@ Output:
 
 For another example of computing derived data, see the [Query video streams](../images-and-video/query_videos.md) page.
 
-In the next section, we will demonstrate that the data has indeed been added by querying the dataset again.
-
 ## Adding properties to segments using layers
 
 In addition to regular Rerun data, layers can be used to add [properties](properties-and-segments.md) to segments.
