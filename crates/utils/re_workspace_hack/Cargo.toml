@@ -177,6 +177,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tungstenite = { version = "0.29" }
 twox-hash = { version = "2" }
 typenum = { version = "1", default-features = false, features = ["const-generics"] }
+unicode-normalization = { version = "0.1" }
 ureq = { version = "3", features = ["json", "socks-proxy"] }
 url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["js", "serde", "v4"] }
@@ -343,6 +344,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tungstenite = { version = "0.29" }
 twox-hash = { version = "2" }
 typenum = { version = "1", default-features = false, features = ["const-generics"] }
+unicode-normalization = { version = "0.1" }
 ureq = { version = "3", features = ["json", "socks-proxy"] }
 url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["js", "serde", "v4"] }
