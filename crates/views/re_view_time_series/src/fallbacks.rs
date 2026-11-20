@@ -129,9 +129,8 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
                             source_selector,
                             i,
                         ))
-                        .hash64()
-                            % u16::MAX as u64;
-                        re_viewer_context::auto_color_egui(hash as u16).into()
+                        .hash64();
+                        re_sdk_types::components::Color::auto_from_hash(hash)
                     })
                     .collect()
             },
