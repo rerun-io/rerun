@@ -26,28 +26,40 @@ pub async fn dataset_id(
     catalog: &CatalogClient,
     dataset: &str,
 ) -> Result<EntryId, CatalogToolError> {
-    let datasets = EntryFilter::new().with_entry_kinds([EntryKind::Dataset]);
-    if let Ok(id) = dataset.parse::<EntryId>()
-        && let Some(id) = find_dataset(catalog, datasets.clone().with_id(id)).await?
-    {
-        return Ok(id);
-    }
-    find_dataset(catalog, datasets.with_name(dataset))
+    find_entry(catalog, dataset, &[EntryKind::Dataset])
         .await?
+        .map(|entry| entry.id)
         .ok_or_else(|| CatalogToolError::NoSuchDataset {
             dataset: dataset.to_owned(),
         })
 }
 
-/// The id of the one dataset matching `filter`, if any.
-async fn find_dataset(
+/// The entry of one of `kinds` that `entry` names, either by id or by name, if any.
+///
+/// Empty `kinds` means any kind.
+pub async fn find_entry(
+    catalog: &CatalogClient,
+    entry: &str,
+    kinds: &[EntryKind],
+) -> Result<Option<EntryDetails>, CatalogToolError> {
+    let filter = EntryFilter::new().with_entry_kinds(kinds.iter().copied());
+    if let Ok(id) = entry.parse::<EntryId>()
+        && let Some(details) = find_one(catalog, filter.clone().with_id(id)).await?
+    {
+        return Ok(Some(details));
+    }
+    find_one(catalog, filter.with_name(entry)).await
+}
+
+/// The first entry matching `filter`, if any.
+async fn find_one(
     catalog: &CatalogClient,
     filter: EntryFilter,
-) -> Result<Option<EntryId>, CatalogToolError> {
+) -> Result<Option<EntryDetails>, CatalogToolError> {
     match catalog.find_entries(filter).await {
-        Ok(entries) => Ok(entries.first().map(|entry| entry.id)),
+        Ok(entries) => Ok(entries.into_iter().next()),
         Err(err) if err.kind == ApiErrorKind::NotFound => Ok(None),
-        Err(err) => Err(CatalogToolError::catalog("look up the dataset", err)),
+        Err(err) => Err(CatalogToolError::catalog("look up the entry", err)),
     }
 }
 

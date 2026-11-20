@@ -9439,6 +9439,7 @@ dependencies = [
  "re_error",
  "re_format",
  "re_log",
+ "re_log_encoding",
  "re_log_types",
  "re_protos",
  "re_redap_client",
@@ -9457,6 +9458,7 @@ dependencies = [
  "thiserror 2.0.19",
  "tokio",
  "tonic",
+ "url",
 ]
 
 [[package]]

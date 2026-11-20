@@ -80,13 +80,6 @@ impl CatalogTools {
         }
     }
 
-    /// Every catalog tool, as the toolbox offers them, without needing an instance.
-    pub fn definitions() -> Vec<ToolDefinition> {
-        CatalogTool::available()
-            .map(CatalogTool::definition)
-            .collect()
-    }
-
     /// Parse a catalog URL, also accepting plain `http(s)://` for `rerun+http(s)://`.
     pub fn parse_url(url: &str) -> Result<Origin, CatalogToolError> {
         let trimmed = url.trim();
@@ -174,6 +167,25 @@ impl CatalogTools {
             }
             CatalogTool::QueryTables => {
                 crate::query::query_tables(&self.catalog()?, parse_args(arguments)?).await
+            }
+            CatalogTool::CreateDataset => {
+                crate::write::create_dataset(&self.catalog()?, parse_args(arguments)?).await
+            }
+            CatalogTool::RenameEntry => {
+                crate::write::rename_entry(&self.catalog()?, parse_args(arguments)?).await
+            }
+            CatalogTool::UploadRecording => cfg_select! {
+                target_arch = "wasm32" => Err(CatalogToolError::UnknownTool {
+                    name: tool.name().to_owned(),
+                }),
+                _ => crate::write::upload_recording(&self.catalog()?, parse_args(arguments)?).await,
+            },
+            CatalogTool::RegisterRecordings => {
+                crate::write::register_recordings(&self.catalog()?, parse_args(arguments)?).await
+            }
+            CatalogTool::RegisterTableBlueprint => {
+                crate::write::register_table_blueprint(&self.catalog()?, parse_args(arguments)?)
+                    .await
             }
         }
     }
@@ -298,7 +310,9 @@ fn is_logged_in() -> bool {
 
 impl AgentToolbox for CatalogTools {
     fn definitions(&self) -> Vec<ToolDefinition> {
-        Self::definitions()
+        CatalogTool::available()
+            .map(CatalogTool::definition)
+            .collect()
     }
 
     fn requires_approval(&self, name: &str, _arguments: &Map<String, Value>) -> bool {

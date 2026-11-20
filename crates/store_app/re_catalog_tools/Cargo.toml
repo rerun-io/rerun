@@ -29,6 +29,7 @@ re_datafusion.workspace = true
 re_error.workspace = true
 re_format.workspace = true
 re_log.workspace = true
+re_log_encoding.workspace = true
 re_log_types.workspace = true
 re_protos.workspace = true
 re_redap_client.workspace = true
@@ -46,6 +47,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 strum.workspace = true
 thiserror.workspace = true
+url.workspace = true
 
 [dev-dependencies]
 re_build_info.workspace = true

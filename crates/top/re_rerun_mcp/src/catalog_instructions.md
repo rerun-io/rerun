@@ -1,4 +1,4 @@
-Catalog tools (`catalog_*`) describe and read the contents of a Rerun catalog server (does not need nor affect a viewer): its datasets, their segments (one per recording), schemas, segment properties, and data.
+Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does not need nor affect a viewer): its datasets, their segments (one per recording), schemas, segment properties, and data.
 
 - Start with `catalog_list_entries` for the dataset names, then `catalog_get_dataset_info` for an overview. Name a dataset by its name or its id.
 - Never guess an entity path or a component name: read them with `catalog_get_dataset_schema`.

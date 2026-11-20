@@ -14,6 +14,7 @@ mod login;
 mod metadata;
 mod query;
 mod tool;
+mod write;
 
 pub use self::catalog_tools::CatalogTools;
 pub use self::error::CatalogToolError;

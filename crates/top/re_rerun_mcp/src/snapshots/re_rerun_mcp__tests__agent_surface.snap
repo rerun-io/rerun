@@ -76,7 +76,7 @@ Telling Rerun what let you down:
 Conventions:
 - Everything is in logical points, one shared coordinate frame: raw `pos`, `resize` dimensions, the `bounds` from `get_widget`, and a default (`pixels_per_point: 1.0`) `screenshot`. So a node's `bounds` center is exactly where to `click`, and a pixel in the screenshot is a logical point. There is no fixed screen size; use `resize` to set the viewport.
 
-Catalog tools (`catalog_*`) describe and read the contents of a Rerun catalog server (does not need nor affect a viewer): its datasets, their segments (one per recording), schemas, segment properties, and data.
+Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does not need nor affect a viewer): its datasets, their segments (one per recording), schemas, segment properties, and data.
 
 - Start with `catalog_list_entries` for the dataset names, then `catalog_get_dataset_info` for an overview. Name a dataset by its name or its id.
 - Never guess an entity path or a component name: read them with `catalog_get_dataset_schema`.
@@ -86,6 +86,7 @@ Catalog tools (`catalog_*`) describe and read the contents of a Rerun catalog se
 - If `catalog_connect` says the server needs a login, call `catalog_login`, show the user its link, call `catalog_login` again to wait until they are done, then retry `catalog_connect`.
 - Until you call `catalog_connect`, the catalog tools act on the catalog of the connected viewer (its `catalog_url`) when that viewer runs on this machine. It holds the recordings the viewer loaded from files: read their values with `catalog_query_dataset` rather than the Python API. Call `catalog_connect` to read another server, e.g. one from the `servers` that `viewer_get_state` lists.
 - A recording's `store_id` in `viewer_get_state` names its dataset id and segment id: pass them as `dataset` and `segment_id`.
+- `catalog_create_dataset` and the other write tools change the catalog for everyone using it. Confirm the server with the user before you change anything. Upload an `.rrd` file on this machine with `catalog_upload_recording`.
 
 # Tools
 
@@ -152,6 +153,32 @@ Catalog tools (`catalog_*`) describe and read the contents of a Rerun catalog se
     },
     "required": [
       "url"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}
+
+## catalog_create_dataset
+
+{
+  "name": "catalog_create_dataset",
+  "description": "Create an empty dataset in the catalog. Fill it with `catalog_upload_recording` or `catalog_register_recordings`.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "name": {
+        "type": "string",
+        "description": "The new dataset's name."
+      }
+    },
+    "required": [
+      "name"
     ]
   },
   "annotations": {
@@ -463,6 +490,175 @@ Catalog tools (`catalog_*`) describe and read the contents of a Rerun catalog se
     "readOnlyHint": true,
     "destructiveHint": false,
     "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_register_recordings
+
+{
+  "name": "catalog_register_recordings",
+  "description": "Register `.rrd` files that the catalog server can read, e.g. on S3, into a dataset, without copying them. Waits for the server to register their recordings as segments, and returns the segment ids, with `skip` also those already there. For a file on this machine, use `catalog_upload_recording`.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dataset": {
+        "type": "string",
+        "description": "The dataset's name or id, from `catalog_list_entries`."
+      },
+      "urls": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "URLs of `.rrd` files the server can read, e.g. `s3://bucket/run.rrd`, at most 1000. Each\nrecording in them becomes a segment, named by its recording id."
+      },
+      "layer": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "The layer to register the recordings as, e.g. `labels`. Left out, the base layer.",
+        "default": null
+      },
+      "on_duplicate": {
+        "type": "string",
+        "enum": [
+          "error",
+          "skip"
+        ],
+        "description": "What to do when a segment already has this layer: `error` (the default), or `skip` to\nleave it as it is."
+      }
+    },
+    "required": [
+      "dataset",
+      "urls"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}
+
+## catalog_register_table_blueprint
+
+{
+  "name": "catalog_register_table_blueprint",
+  "description": "Register an `.rbl` table blueprint that the catalog server can read, e.g. on S3, for a dataset's segment table, under a new name. With `set_default`, it also becomes the table's default for everyone who opens the dataset; the previous default stays registered. Never replaces a registered blueprint.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dataset": {
+        "type": "string",
+        "description": "The dataset's name or id, from `catalog_list_entries`."
+      },
+      "url": {
+        "type": "string",
+        "description": "URL of an `.rbl` table blueprint the server can read, e.g. `s3://bucket/segments.rbl`."
+      },
+      "name": {
+        "type": "string",
+        "description": "The name to register the blueprint under. It must be new in this dataset."
+      },
+      "set_default": {
+        "type": "boolean",
+        "description": "Make it the default blueprint of the dataset's segment table, so it opens for everyone\nwho opens the dataset. `false` (the default) only registers it.",
+        "default": false
+      }
+    },
+    "required": [
+      "dataset",
+      "url",
+      "name"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}
+
+## catalog_rename_entry
+
+{
+  "name": "catalog_rename_entry",
+  "description": "Rename a dataset or table in the catalog.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "entry": {
+        "type": "string",
+        "description": "The dataset's or table's name or id, from `catalog_list_entries`."
+      },
+      "new_name": {
+        "type": "string",
+        "description": "The name to give it."
+      }
+    },
+    "required": [
+      "entry",
+      "new_name"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
+    "openWorldHint": false
+  }
+}
+
+## catalog_upload_recording
+
+{
+  "name": "catalog_upload_recording",
+  "description": "Upload an `.rrd` file on this machine into a dataset, and wait for the server to register its recordings as segments. Returns the segment ids, with `skip` also those already there. A large file takes a while to upload.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "dataset": {
+        "type": "string",
+        "description": "The dataset's name or id, from `catalog_list_entries`."
+      },
+      "path": {
+        "type": "string",
+        "description": "Absolute path of an `.rrd` file on this machine. Each recording in it becomes a segment,\nnamed by its recording id."
+      },
+      "layer": {
+        "type": [
+          "string",
+          "null"
+        ],
+        "description": "The layer to register the recordings as, e.g. `labels`. Left out, the base layer.",
+        "default": null
+      },
+      "on_duplicate": {
+        "type": "string",
+        "enum": [
+          "error",
+          "skip"
+        ],
+        "description": "What to do when a segment already has this layer: `error` (the default), or `skip` to\nleave it as it is."
+      }
+    },
+    "required": [
+      "dataset",
+      "path"
+    ]
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": false,
+    "idempotentHint": false,
     "openWorldHint": false
   }
 }

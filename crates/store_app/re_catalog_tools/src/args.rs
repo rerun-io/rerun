@@ -165,3 +165,91 @@ pub struct QueryDatasetArgs {
 fn default_max_rows() -> usize {
     crate::query::DEFAULT_MAX_ROWS
 }
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct CreateDatasetArgs {
+    /// The new dataset's name.
+    pub name: String,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RenameEntryArgs {
+    /// The dataset's or table's name or id, from `catalog_list_entries`.
+    pub entry: String,
+
+    /// The name to give it.
+    pub new_name: String,
+}
+
+/// What to do with a recording whose segment is already in the dataset.
+#[derive(Clone, Copy, Debug, Default, Deserialize, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum OnDuplicateArg {
+    #[default]
+    Error,
+    Skip,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+#[cfg_attr(
+    target_arch = "wasm32",
+    expect(dead_code, reason = "the browser cannot read a local file")
+)]
+pub struct UploadRecordingArgs {
+    /// The dataset's name or id, from `catalog_list_entries`.
+    pub dataset: String,
+
+    /// Absolute path of an `.rrd` file on this machine. Each recording in it becomes a segment,
+    /// named by its recording id.
+    pub path: std::path::PathBuf,
+
+    /// The layer to register the recordings as, e.g. `labels`. Left out, the base layer.
+    #[serde(default)]
+    pub layer: Option<String>,
+
+    /// What to do when a segment already has this layer: `error` (the default), or `skip` to
+    /// leave it as it is.
+    #[serde(default)]
+    pub on_duplicate: OnDuplicateArg,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RegisterRecordingsArgs {
+    /// The dataset's name or id, from `catalog_list_entries`.
+    pub dataset: String,
+
+    /// URLs of `.rrd` files the server can read, e.g. `s3://bucket/run.rrd`, at most 1000. Each
+    /// recording in them becomes a segment, named by its recording id.
+    pub urls: Vec<String>,
+
+    /// The layer to register the recordings as, e.g. `labels`. Left out, the base layer.
+    #[serde(default)]
+    pub layer: Option<String>,
+
+    /// What to do when a segment already has this layer: `error` (the default), or `skip` to
+    /// leave it as it is.
+    #[serde(default)]
+    pub on_duplicate: OnDuplicateArg,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct RegisterTableBlueprintArgs {
+    /// The dataset's name or id, from `catalog_list_entries`.
+    pub dataset: String,
+
+    /// URL of an `.rbl` table blueprint the server can read, e.g. `s3://bucket/segments.rbl`.
+    pub url: String,
+
+    /// The name to register the blueprint under. It must be new in this dataset.
+    pub name: String,
+
+    /// Make it the default blueprint of the dataset's segment table, so it opens for everyone
+    /// who opens the dataset. `false` (the default) only registers it.
+    #[serde(default)]
+    pub set_default: bool,
+}

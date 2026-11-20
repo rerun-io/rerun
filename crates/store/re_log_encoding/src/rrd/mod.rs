@@ -84,6 +84,11 @@ pub const RRD_FOURCC: [u8; 4] = *b"RRF2";
 /// Previously used `FourCC`s for Rerun RRD files.
 pub const OLD_RRD_FOURCC: &[[u8; 4]] = &[*b"RRF0", *b"RRF1"];
 
+/// Whether `fourcc`, the first four bytes of a file, mark it as an RRD file of any version.
+pub fn is_rrd_fourcc(fourcc: [u8; 4]) -> bool {
+    fourcc == RRD_FOURCC || OLD_RRD_FOURCC.contains(&fourcc)
+}
+
 // ---
 
 /// Encodes transport-level types (i.e. Protobuf objects) into RRD bytes.

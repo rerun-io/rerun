@@ -66,6 +66,105 @@ pub enum CatalogToolError {
     )]
     ConnectSuperseded { url: String },
 
+    #[error("No dataset or table named {entry:?}. Call `catalog_list_entries` for the names.")]
+    NoSuchEntry { entry: String },
+
+    #[error("A dataset or table named {name:?} already exists. Pick another name.")]
+    EntryNameTaken { name: String },
+
+    #[error("{name:?} is one of Rerun's own entries, which start with `__`. Leave it as it is.")]
+    HiddenEntry { name: String },
+
+    #[error("Invalid name {name:?}: {source}")]
+    InvalidEntryName {
+        name: String,
+        source: re_log_types::InvalidEntryNameError,
+    },
+
+    #[error("{source}, got {layer:?}")]
+    InvalidLayer {
+        layer: String,
+        source: re_types_core::InvalidLayerNameError,
+    },
+
+    #[error(
+        "Invalid storage URL {url:?}: {source}. For a file on this machine, use \
+         `catalog_upload_recording`."
+    )]
+    InvalidStorageUrl {
+        url: String,
+        source: url::ParseError,
+    },
+
+    #[error("Invalid blueprint name: {source}")]
+    InvalidBlueprintName {
+        source: re_catalog_client::InvalidBlueprintNameError,
+    },
+
+    #[error("A blueprint named {name:?} is already registered in this dataset. Pick another name.")]
+    BlueprintNameTaken { name: String },
+
+    #[error("The dataset {dataset:?} has no blueprint dataset, so it cannot store blueprints.")]
+    NoBlueprintDataset { dataset: String },
+
+    #[error("`{field}` is empty.")]
+    EmptyList { field: &'static str },
+
+    #[error(
+        "`{field}` has {count} items, but may have at most {max}. Split them over several calls."
+    )]
+    TooManyItems {
+        field: &'static str,
+        count: usize,
+        max: usize,
+    },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("{path:?} is not the absolute path of an `.rrd` file.")]
+    NotAnRrdPath { path: std::path::PathBuf },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Failed to read {path:?}: {source}")]
+    ReadFile {
+        path: std::path::PathBuf,
+        source: std::io::Error,
+    },
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("Failed to upload {path:?}: {source}")]
+    Upload {
+        path: std::path::PathBuf,
+        source: Box<re_catalog_client::WriteError>,
+    },
+
+    #[error(
+        "This catalog server does not accept uploads. If it can read the file from storage, e.g. \
+         S3, use `catalog_register_recordings` with its URL."
+    )]
+    UploadsUnsupported,
+
+    #[error(
+        "Failed to register the recordings: {source}{}",
+        if *suggest_skip {
+            ". If a segment already has this layer, pass `on_duplicate` as `skip` to leave it as \
+             it is."
+        } else {
+            ""
+        }
+    )]
+    RegistrationFailed {
+        source: Box<ApiError>,
+
+        /// Whether `on_duplicate` was `error`, so that `skip` is worth suggesting.
+        suggest_skip: bool,
+    },
+
+    #[error(
+        "The server accepted the registration, but checking on it failed: {source}. Check with \
+         `catalog_list_segments`."
+    )]
+    RegistrationUnknown { source: Box<ApiError> },
+
     #[error("Failed to {operation}: {source}")]
     Catalog {
         /// What the tool was doing, e.g. `read the dataset schema`.

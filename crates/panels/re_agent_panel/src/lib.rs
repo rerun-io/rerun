@@ -450,6 +450,7 @@ mod toolbox_tests {
         }
         assert!(!toolbox.requires_approval("catalog_query_tables", &Map::new()));
         assert!(toolbox.requires_approval("catalog_connect", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_create_dataset", &Map::new()));
     }
 }
 

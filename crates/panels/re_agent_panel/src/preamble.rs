@@ -215,8 +215,12 @@ pub fn model_api_text() -> String {
         text.push_str(", and `catalog_login` when it needs a login");
     }
     text.push_str(
-        ". Read values with `catalog_query_dataset` rather than asking for code to run.\n\
-         - Ask for clarification in chat when needed. Provide code for the user to run when a \
+        ". Read values with `catalog_query_dataset` rather than asking for code to run.\n",
+    );
+    text.push_str("- ");
+    text.push_str(&re_catalog_tools::CatalogTool::write_guidance());
+    text.push_str(
+        "\n- Ask for clarification in chat when needed. Provide code for the user to run when a \
          task needs their local files or Python environment.\n",
     );
     text.push_str(OUTRO);

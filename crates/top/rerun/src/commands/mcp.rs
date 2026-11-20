@@ -35,7 +35,7 @@ enum McpToolset {
     /// Drive a running Rerun Viewer.
     Viewer,
 
-    /// Read a Rerun catalog server.
+    /// Read and add to a Rerun catalog server. Every change asks the user first.
     Catalog,
 }
 
@@ -93,7 +93,7 @@ mod tests {
     }
 
     #[test]
-    fn every_toolset_is_offered_by_default() {
+    fn viewer_and_catalog_are_offered_by_default() {
         assert_eq!(
             parse(&[]).toolsets,
             [McpToolset::Viewer, McpToolset::Catalog]

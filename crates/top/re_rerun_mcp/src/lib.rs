@@ -510,7 +510,7 @@ mod tests {
         let catalog_only = server(None, Some(CatalogConfig::default())).instructions();
         assert!(!catalog_only.contains("viewer_"), "{catalog_only}");
         assert!(
-            catalog_only.ends_with("Call `catalog_connect` with the catalog's URL first."),
+            catalog_only.contains("Call `catalog_connect` with the catalog's URL first."),
             "{catalog_only}"
         );
 

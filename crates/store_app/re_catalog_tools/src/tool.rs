@@ -7,8 +7,9 @@ use strum::VariantArray as _;
 use re_agent_tools::{ToolDefinition, ToolEffect};
 
 use crate::args::{
-    ConnectArgs, DatasetArgs, DatasetSchemaArgs, ListEntriesArgs, ListSegmentsArgs, LoginArgs,
-    QueryDatasetArgs, QueryTablesArgs, SegmentPropertiesArgs,
+    ConnectArgs, CreateDatasetArgs, DatasetArgs, DatasetSchemaArgs, ListEntriesArgs,
+    ListSegmentsArgs, LoginArgs, QueryDatasetArgs, QueryTablesArgs, RegisterRecordingsArgs,
+    RegisterTableBlueprintArgs, RenameEntryArgs, SegmentPropertiesArgs, UploadRecordingArgs,
 };
 
 /// One tool an agent can call.
@@ -44,6 +45,21 @@ pub enum CatalogTool {
     /// Run SQL over the catalog's table entries (plain Arrow tables, such as `__entries`), which
     /// hold no recordings.
     QueryTables,
+
+    /// Create an empty dataset.
+    CreateDataset,
+
+    /// Rename a dataset or table.
+    RenameEntry,
+
+    /// Upload a local `.rrd` file into a dataset.
+    UploadRecording,
+
+    /// Register `.rrd` files the server can already read into a dataset.
+    RegisterRecordings,
+
+    /// Register an `.rbl` table blueprint the server can read, optionally as the default.
+    RegisterTableBlueprint,
 }
 
 impl CatalogTool {
@@ -59,6 +75,11 @@ impl CatalogTool {
             Self::GetSegmentProperties => "catalog_get_segment_properties",
             Self::QueryDataset => "catalog_query_dataset",
             Self::QueryTables => "catalog_query_tables",
+            Self::CreateDataset => "catalog_create_dataset",
+            Self::RenameEntry => "catalog_rename_entry",
+            Self::UploadRecording => "catalog_upload_recording",
+            Self::RegisterRecordings => "catalog_register_recordings",
+            Self::RegisterTableBlueprint => "catalog_register_table_blueprint",
         }
     }
 
@@ -69,12 +90,27 @@ impl CatalogTool {
 
     /// The tools available on this platform, in the order an agent should meet them.
     ///
-    /// `login` needs a local web server for the login callback, which the browser cannot start.
+    /// `login` needs a local web server for the login callback, which the browser cannot start,
+    /// and `upload_recording` reads a local file, which the browser cannot do.
     pub fn available() -> impl Iterator<Item = Self> {
-        Self::VARIANTS
-            .iter()
-            .copied()
-            .filter(|tool| cfg!(not(target_arch = "wasm32")) || *tool != Self::Login)
+        Self::VARIANTS.iter().copied().filter(|tool| {
+            cfg!(not(target_arch = "wasm32"))
+                || !matches!(tool, Self::Login | Self::UploadRecording)
+        })
+    }
+
+    /// Whether the tool changes the catalog. These always ask the user first.
+    ///
+    /// None of them removes or replaces data, since a catalog has no way to undo that.
+    pub fn writes(self) -> bool {
+        matches!(
+            self,
+            Self::CreateDataset
+                | Self::RenameEntry
+                | Self::UploadRecording
+                | Self::RegisterRecordings
+                | Self::RegisterTableBlueprint
+        )
     }
 
     /// The tool's definition, as the agent sees it.
@@ -94,13 +130,31 @@ impl CatalogTool {
         !matches!(self, Self::Connect | Self::Login)
     }
 
+    /// What an agent that may call the write tools should know, for the host's instructions.
+    pub fn write_guidance() -> String {
+        let mut guidance = format!(
+            "`{create}` and the other write tools change the catalog for everyone using it. \
+             Confirm the server with the user before you change anything.",
+            create = Self::CreateDataset.name(),
+        );
+        if Self::available().any(|tool| tool == Self::UploadRecording) {
+            guidance.push_str(" Upload an `.rrd` file on this machine with `");
+            guidance.push_str(Self::UploadRecording.name());
+            guidance.push_str("`.");
+        }
+        guidance
+    }
+
     /// Whether the user is asked before the agent runs the tool.
     ///
     /// `connect` asks although it is not destructive: it reaches any server the agent names,
     /// with the user's credentials. `login` asks because it saves new credentials on the machine,
-    /// once the user logs in through their browser.
+    /// once the user logs in through their browser. Every tool that writes asks, since its
+    /// changes are shared with everyone using the catalog.
     pub fn requires_approval(self) -> bool {
-        matches!(self, Self::Connect | Self::Login) || self.effect().requires_approval()
+        matches!(self, Self::Connect | Self::Login)
+            || self.writes()
+            || self.effect().requires_approval()
     }
 
     fn description(self) -> &'static str {
@@ -152,12 +206,42 @@ impl CatalogTool {
                  Quote names with capitals or dots. Datasets are not table entries: read their \
                  data with `catalog_query_dataset`."
             }
+            Self::CreateDataset => {
+                "Create an empty dataset in the catalog. Fill it with `catalog_upload_recording` \
+                 or `catalog_register_recordings`."
+            }
+            Self::RenameEntry => "Rename a dataset or table in the catalog.",
+            Self::UploadRecording => {
+                "Upload an `.rrd` file on this machine into a dataset, and wait for the server \
+                 to register its recordings as segments. Returns the segment ids, with `skip` \
+                 also those already there. A large file takes a while to upload."
+            }
+            Self::RegisterRecordings => {
+                "Register `.rrd` files that the catalog server can read, e.g. on S3, into a \
+                 dataset, without copying them. Waits for the server to register their \
+                 recordings as segments, and returns the segment ids, with `skip` also those \
+                 already there. For a file on this machine, use `catalog_upload_recording`."
+            }
+            Self::RegisterTableBlueprint => {
+                "Register an `.rbl` table blueprint that the catalog server can read, e.g. on S3, \
+                 for a dataset's segment table, under a new name. With `set_default`, it also \
+                 becomes the table's default for everyone who opens the dataset; the previous \
+                 default stays registered. Never replaces a registered blueprint."
+            }
         }
     }
 
     fn effect(self) -> ToolEffect {
         match self {
-            Self::Connect | Self::Login => ToolEffect::NonDestructive,
+            // A rename is undone by renaming back, and uploading and registering add segments
+            // without replacing any.
+            Self::Connect
+            | Self::Login
+            | Self::CreateDataset
+            | Self::RenameEntry
+            | Self::UploadRecording
+            | Self::RegisterRecordings
+            | Self::RegisterTableBlueprint => ToolEffect::NonDestructive,
             Self::ListEntries
             | Self::GetDatasetInfo
             | Self::GetDatasetSchema
@@ -179,6 +263,11 @@ impl CatalogTool {
             Self::GetSegmentProperties => schema_for::<SegmentPropertiesArgs>(),
             Self::QueryDataset => schema_for::<QueryDatasetArgs>(),
             Self::QueryTables => schema_for::<QueryTablesArgs>(),
+            Self::CreateDataset => schema_for::<CreateDatasetArgs>(),
+            Self::RenameEntry => schema_for::<RenameEntryArgs>(),
+            Self::UploadRecording => schema_for::<UploadRecordingArgs>(),
+            Self::RegisterRecordings => schema_for::<RegisterRecordingsArgs>(),
+            Self::RegisterTableBlueprint => schema_for::<RegisterTableBlueprintArgs>(),
         }
     }
 }
@@ -212,13 +301,25 @@ mod tests {
     use super::*;
 
     #[test]
-    fn only_connect_and_login_ask_first() {
+    fn connect_login_and_the_writes_ask_first() {
         let asking: Vec<_> = CatalogTool::VARIANTS
             .iter()
             .copied()
             .filter(|tool| tool.requires_approval())
             .collect();
-        assert_eq!(asking, [CatalogTool::Connect, CatalogTool::Login]);
+        let writes: Vec<_> = CatalogTool::VARIANTS
+            .iter()
+            .copied()
+            .filter(|tool| tool.writes())
+            .collect();
+        assert_eq!(
+            asking,
+            [
+                [CatalogTool::Connect, CatalogTool::Login].as_slice(),
+                &writes
+            ]
+            .concat()
+        );
     }
 
     /// The agent-facing surface: names, descriptions, input schemas, and effects.

@@ -1,5 +1,6 @@
 //! The catalog toolset: the `re_catalog_tools` toolbox, served over MCP.
 
+use std::fmt::Write as _;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use rmcp::model::{CallToolRequestParams, CallToolResult, Tool};
@@ -75,7 +76,9 @@ impl CatalogToolset {
         } else {
             format!("Call `{connect}` with the catalog's URL first.")
         };
-        format!("{}\n- {start}", INSTRUCTIONS.trim_end())
+        let mut instructions = format!("{}\n- {start}", INSTRUCTIONS.trim_end());
+        write!(instructions, "\n- {}", CatalogTool::write_guidance()).ok();
+        instructions
     }
 
     /// Whether the catalog tools act on the catalog server of the connected viewer.

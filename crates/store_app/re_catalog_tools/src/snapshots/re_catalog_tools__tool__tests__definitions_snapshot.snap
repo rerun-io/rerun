@@ -261,5 +261,160 @@ expression: definitions
       ]
     },
     "effect": "ReadOnly"
+  },
+  {
+    "name": "catalog_create_dataset",
+    "description": "Create an empty dataset in the catalog. Fill it with `catalog_upload_recording` or `catalog_register_recordings`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The new dataset's name."
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_rename_entry",
+    "description": "Rename a dataset or table in the catalog.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "entry": {
+          "type": "string",
+          "description": "The dataset's or table's name or id, from `catalog_list_entries`."
+        },
+        "new_name": {
+          "type": "string",
+          "description": "The name to give it."
+        }
+      },
+      "required": [
+        "entry",
+        "new_name"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_upload_recording",
+    "description": "Upload an `.rrd` file on this machine into a dataset, and wait for the server to register its recordings as segments. Returns the segment ids, with `skip` also those already there. A large file takes a while to upload.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "path": {
+          "type": "string",
+          "description": "Absolute path of an `.rrd` file on this machine. Each recording in it becomes a segment,\nnamed by its recording id."
+        },
+        "layer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The layer to register the recordings as, e.g. `labels`. Left out, the base layer.",
+          "default": null
+        },
+        "on_duplicate": {
+          "type": "string",
+          "enum": [
+            "error",
+            "skip"
+          ],
+          "description": "What to do when a segment already has this layer: `error` (the default), or `skip` to\nleave it as it is."
+        }
+      },
+      "required": [
+        "dataset",
+        "path"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_register_recordings",
+    "description": "Register `.rrd` files that the catalog server can read, e.g. on S3, into a dataset, without copying them. Waits for the server to register their recordings as segments, and returns the segment ids, with `skip` also those already there. For a file on this machine, use `catalog_upload_recording`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "urls": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "URLs of `.rrd` files the server can read, e.g. `s3://bucket/run.rrd`, at most 1000. Each\nrecording in them becomes a segment, named by its recording id."
+        },
+        "layer": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "The layer to register the recordings as, e.g. `labels`. Left out, the base layer.",
+          "default": null
+        },
+        "on_duplicate": {
+          "type": "string",
+          "enum": [
+            "error",
+            "skip"
+          ],
+          "description": "What to do when a segment already has this layer: `error` (the default), or `skip` to\nleave it as it is."
+        }
+      },
+      "required": [
+        "dataset",
+        "urls"
+      ]
+    },
+    "effect": "NonDestructive"
+  },
+  {
+    "name": "catalog_register_table_blueprint",
+    "description": "Register an `.rbl` table blueprint that the catalog server can read, e.g. on S3, for a dataset's segment table, under a new name. With `set_default`, it also becomes the table's default for everyone who opens the dataset; the previous default stays registered. Never replaces a registered blueprint.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dataset": {
+          "type": "string",
+          "description": "The dataset's name or id, from `catalog_list_entries`."
+        },
+        "url": {
+          "type": "string",
+          "description": "URL of an `.rbl` table blueprint the server can read, e.g. `s3://bucket/segments.rbl`."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name to register the blueprint under. It must be new in this dataset."
+        },
+        "set_default": {
+          "type": "boolean",
+          "description": "Make it the default blueprint of the dataset's segment table, so it opens for everyone\nwho opens the dataset. `false` (the default) only registers it.",
+          "default": false
+        }
+      },
+      "required": [
+        "dataset",
+        "url",
+        "name"
+      ]
+    },
+    "effect": "NonDestructive"
   }
 ]
