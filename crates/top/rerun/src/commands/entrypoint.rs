@@ -757,7 +757,7 @@ enum Command {
     #[command(subcommand)]
     Analytics(AnalyticsCommands),
 
-    /// Authentication with the redap.
+    /// Log in to Rerun Hub and manage access tokens.
     #[cfg(feature = "auth")]
     #[command(subcommand)]
     Auth(AuthCommands),

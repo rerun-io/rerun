@@ -227,6 +227,16 @@ def docs_page_frontmatter(content: str) -> dict[str, Any]:
     return frontmatter if isinstance(frontmatter, dict) else {}
 
 
+@cache
+def documented_frontmatter_keys() -> frozenset[str]:
+    """The frontmatter keys listed in the first YAML block of the "Frontmatter" section of `docs/README.md`."""
+    readme = (Path(__file__).resolve().parent.parent / "docs" / "README.md").read_text(encoding="utf-8")
+    section = readme[readme.index("### Frontmatter") :]
+    block_start = section.index("```yaml\n") + len("```yaml\n")
+    block = section[block_start : section.index("```", block_start)]
+    return frozenset(re.findall(r"^(\w+):", block, re.MULTILINE))
+
+
 def mask_html_comments(line: str, in_comment: bool) -> tuple[str, bool]:
     """
     `line` with everything inside `<!-- … -->` comments replaced by spaces, and whether a comment is still open at its end.
@@ -269,6 +279,11 @@ def lint_docs_page(filepath: str, content: str) -> list[tuple[int, str]]:
         errors.append((0, "A hidden redirect page: move the redirect to `docs/content/_redirects.yaml` instead"))
 
     is_upcoming_changelog = "docs/content/changelog/upcoming/" in filepath
+
+    # Changelog entries have their own keys, documented in `changelog/upcoming/_template.md`.
+    if not is_upcoming_changelog:
+        for key in sorted(frontmatter.keys() - documented_frontmatter_keys()):
+            errors.append((0, f"Undocumented frontmatter key `{key}`: add it to the list in `docs/README.md`"))
 
     in_code_block = False
     in_html_comment = False
@@ -869,6 +884,11 @@ def test_lint_docs_redirect_links() -> None:
 def test_lint_docs_page() -> None:
     def num_errors(content: str, filepath: str = "docs/content/viewer/page.md") -> int:
         return len(lint_docs_page(filepath, content))
+
+    # Frontmatter keys must be listed in `docs/README.md`.
+    assert num_errors("---\ntitle: A\norder: 1\nindex: true\n---\n") == 0
+    assert num_errors("---\ntitle: A\nsidebar: false\n---\n") == 1
+    assert num_errors("---\ntitle: A\ntype: feature\n---\n", filepath="docs/content/changelog/upcoming/x.md") == 0
 
     # Absolute links to docs pages.
     assert num_errors("See [views](https://rerun.io/docs/viewer/views).\n") == 1

@@ -43,8 +43,6 @@ It organizes data into:
 - **Datasets**: Named collections of related recordings
 - **Segments**: Individual `.rrd` files registered to a dataset
 
-Data is served via the **redap** protocol (**Re**run **Da**ta **P**rotocol).
-
 The catalog server is available as:
 - Open-source server for local development (`rerun server`)
 - **[Rerun Hub](../hub.md)**, our commercial managed offering for production deployments <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->

@@ -64,6 +64,10 @@ Every page needs YAML frontmatter:
 ---
 title: Examples    # Required: navigation title
 order: 6           # Required: sort order in navigation
+description: …     # Optional: one-line summary for meta tags, link unfurls, and index cards (else the first paragraph, truncated)
+index: true        # Optional: render a card grid of every child page that is not `hidden` or a `redirect`, from its title and description
+sort_children: alphabetical  # Optional: sort child pages (and `index` cards) by title instead of `order`
+cards: true        # Optional: render a top-level `- [Title](url) — Description` list as cards
 redirect: <url>    # Optional: redirect to this URL
 hidden: true       # Optional: hide from navigation
 expand: true       # Optional: expand sub-items in nav
@@ -71,6 +75,8 @@ ogImageUrl: <url>  # Optional: open-graph thumbnail
 keywords: a, b     # Optional: search terms (comma-separated or a list), not shown on the page
 ---
 ```
+
+On a section landing page, use `index: true` instead of a hand-written list of its child pages, which goes stale as pages are added or removed.
 
 ### Previewing and updating the live site
 

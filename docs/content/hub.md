@@ -48,6 +48,8 @@ rerun auth generate-token --server rerun://api.<stack>.cloud.rerun.io --expirati
 
 Then set it in the `REDAP_TOKEN` environment variable, or pass it as `CatalogClient(url, token=…)`.
 
+The variable is named after redap (**Re**run **Da**ta **P**rotocol), the protocol that the SDK and the Viewer use to talk to a catalog server, either Rerun Hub or `rerun server`.
+
 To browse your catalog in the native Viewer, run:
 
 ```sh

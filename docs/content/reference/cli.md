@@ -20,7 +20,7 @@ The Rerun command-line interface:
 **Commands**
 
 * `analytics`: Configure the behavior of our analytics.
-* `auth`: Authentication with the redap.
+* `auth`: Log in to Rerun Hub and manage access tokens.
 * `download`: Download recordings and save them as .rrd files.
 * `dump-puffin`: Dump a puffin profiler recording (`.puffin` file) as JSON.
 * `man`: Generates the Rerun CLI manual (markdown).
@@ -315,7 +315,7 @@ Associate an email address with the current user.
 
 ## rerun auth
 
-Authentication with the redap.
+Log in to Rerun Hub and manage access tokens.
 
 **Usage**: `rerun auth <COMMAND>`
 
