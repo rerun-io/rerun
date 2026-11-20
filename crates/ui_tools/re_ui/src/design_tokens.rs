@@ -1029,6 +1029,8 @@ impl DesignTokens {
 
         egui_style.spacing.tooltip_width = 600.0;
 
+        egui_style.hover_highlight.delay = 0.0;
+
         egui_style.visuals.image_loading_spinners = false;
     }
 
@@ -1079,7 +1081,7 @@ impl DesignTokens {
         // that needs to look different from other interactive stuff..
         egui_style.visuals.extreme_bg_color = self.extreme_bg_color;
 
-        egui_style.visuals.code_bg_color = self.code_bg_color;
+        egui_style.visuals.code.bg_color = self.code_bg_color;
 
         egui_style.visuals.widgets.noninteractive.weak_bg_fill = self.panel_bg_color;
         egui_style.visuals.widgets.noninteractive.bg_fill = self.panel_bg_color;

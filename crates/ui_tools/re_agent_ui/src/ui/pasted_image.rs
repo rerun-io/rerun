@@ -19,13 +19,13 @@ const MIME_TYPE: &str = "image/png";
 pub fn encode(source: &egui::ColorImage) -> Option<(PromptImage, egui::ColorImage)> {
     re_tracing::profile_function!();
 
-    let [width, height] = source.size;
+    let [width, height] = source.resolution();
     let (width, height) = (u32::try_from(width).ok()?, u32::try_from(height).ok()?);
 
     // `ColorImage` holds premultiplied alpha, which PNG does not: unmultiply before encoding, or
     // every semi-transparent pixel darkens.
     let unmultiplied: Vec<u8> = source
-        .pixels
+        .pixels()
         .iter()
         .flat_map(|pixel| pixel.to_srgba_unmultiplied())
         .collect();

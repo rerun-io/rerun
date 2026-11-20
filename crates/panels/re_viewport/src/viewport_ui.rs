@@ -137,7 +137,10 @@ impl ViewportUi {
             let dragged_payload = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx());
             let released = ui.input(|i| i.pointer.any_released());
 
-            let mut hover_rects = Vec::new();
+            let selection_stroke = ui.selection_stroke();
+            let hover_stroke = ui.hover_stroke();
+
+            let mut hover_outlines = Vec::new();
             let mut selection_rects = Vec::new();
             let mut drop_target_rects = Vec::new();
 
@@ -196,8 +199,29 @@ impl ViewportUi {
 
                     if should_display_drop_destination_frame {
                         drop_target_rects.push(rect);
-                    } else if hovered {
-                        hover_rects.push(rect);
+                        continue;
+                    }
+
+                    // The outline covers a big part of the screen, so fade it in to avoid
+                    // flashing it while the pointer passes over the blueprint tree:
+                    let hover_strength = ui.delayed_highlight(
+                        ui.scope_id().with(("tile_hover_outline", tile_id)),
+                        egui::HighlightState::new(hovered, false),
+                        egui::FadeOut::Instant,
+                    );
+
+                    if 0.0 < hover_strength {
+                        let idle_stroke = if selected {
+                            selection_stroke
+                        } else {
+                            egui::Stroke::NONE
+                        };
+                        let stroke = egui::DelayedHighlight::fade_stroke(
+                            idle_stroke,
+                            hover_stroke,
+                            hover_strength,
+                        );
+                        hover_outlines.push((rect, stroke));
                     } else if selected {
                         selection_rects.push(rect);
                     }
@@ -212,15 +236,13 @@ impl ViewportUi {
             let painter = ui.painter().clone().with_layer_id(top_layer_id);
 
             // Draw selection outlines
-            let selection_stroke = ui.selection_stroke();
             for rect in selection_rects {
                 painter.rect_stroke(rect, 0.0, selection_stroke, egui::StrokeKind::Inside);
             }
 
             // Draw hover outlines
-            let hover_stroke = ui.hover_stroke();
-            for rect in hover_rects {
-                painter.rect_stroke(rect, 0.0, hover_stroke, egui::StrokeKind::Inside);
+            for (rect, stroke) in hover_outlines {
+                painter.rect_stroke(rect, 0.0, stroke, egui::StrokeKind::Inside);
             }
 
             // Draw drop target outlines
@@ -665,14 +687,12 @@ impl<'a> egui_tiles::Behavior<ViewId> for TilesDelegate<'a, '_> {
 
     fn resize_stroke(
         &self,
-        style: &egui::Style,
-        resize_state: egui_tiles::ResizeState,
+        ui: &egui::Ui,
+        resize_id: egui::Id,
+        resize_state: egui::HighlightState,
     ) -> egui::Stroke {
-        match resize_state {
-            egui_tiles::ResizeState::Idle => style.visuals.widgets.noninteractive.bg_stroke,
-            egui_tiles::ResizeState::Hovering => style.visuals.widgets.hovered.fg_stroke,
-            egui_tiles::ResizeState::Dragging => style.visuals.widgets.active.fg_stroke,
-        }
+        let idle_stroke = ui.visuals().widgets.noninteractive.bg_stroke;
+        ui.resize_line_stroke(resize_id, resize_state, idle_stroke)
     }
 
     /// When drag-and-dropping a tile, the candidate area is drawn with this stroke.

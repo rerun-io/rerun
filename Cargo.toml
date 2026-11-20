@@ -469,7 +469,7 @@ rig-core = { version = "0.45.0", default-features = false }
 rig-reqwest = { version = "0.45.0", default-features = false } # No `rustls` feature: it pulls in aws-lc-rs and the banned `cmake`. TLS goes through `reqwest013` with ring.
 rmcp = { version = "3.9", features = ["macros", "schemars", "server", "transport-io"] }
 ron = { version = "0.12.2", features = ["integer128"] }
-roxmltree = "0.20.0" # 0.21 would duplicate the 0.20 that `resvg` (via egui_extras) requires. Bump once egui_extras/resvg move to roxmltree 0.21.
+roxmltree = "0.21.1"
 ring = "0.17.14"
 rustls = { version = "0.23.45", default-features = false }
 schemars = "1.2"
@@ -993,6 +993,23 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # crates.io has an empty stub of this, used by anyone outside this workspace (see its Cargo.toml):
 re_workspace_hack = { path = "crates/utils/re_workspace_hack" }
 
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main" }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_glow = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_inspection = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_kittest = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_system_font_provider = { git = "https://github.com/emilk/egui.git", branch = "main" }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main" }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main" }
+epaint_default_fonts = { git = "https://github.com/emilk/egui.git", branch = "main" }
+
+egui_mcp = { git = "https://github.com/rerun-io/egui_crates.git", branch = "main" }
+egui_table = { git = "https://github.com/rerun-io/egui_crates.git", branch = "main" }
+egui_tiles = { git = "https://github.com/rerun-io/egui_crates.git", branch = "main" }
 
 # datafusion = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
 # datafusion-catalog = { git = "https://github.com/rerun-io/arrow-datafusion.git", branch = "tsaucer/52.3.0-inner-ffi" }
