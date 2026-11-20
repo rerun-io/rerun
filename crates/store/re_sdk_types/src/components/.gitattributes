@@ -23,6 +23,7 @@ fill_ratio.rs linguist-generated=true
 flag.rs linguist-generated=true
 gamma_correction.rs linguist-generated=true
 geo_line_string.rs linguist-generated=true
+geo_polygon.rs linguist-generated=true
 graph_edge.rs linguist-generated=true
 graph_node.rs linguist-generated=true
 graph_type.rs linguist-generated=true

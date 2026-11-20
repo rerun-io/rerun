@@ -197,6 +197,7 @@ pub struct LineDrawData {
     bind_group_all_lines: Option<GpuBindGroup>,
     bind_group_all_lines_outline_mask: Option<GpuBindGroup>,
     batches: Vec<LineStripBatch>,
+    sort_key: f32,
 }
 
 impl DrawData for LineDrawData {
@@ -214,8 +215,7 @@ impl DrawData for LineDrawData {
             collector.add_drawable(
                 batch.active_phases,
                 DrawDataDrawable {
-                    // TODO(andreas): Don't have distance information yet. For now just always draw lines last since they're quite expensive.
-                    distance_sort_key: f32::MAX,
+                    distance_sort_key: self.sort_key,
                     secondary_sort_key: 0.0,
                     draw_data_payload: batch_idx as _,
                 },
@@ -372,6 +372,16 @@ pub enum LineDrawDataError {
 }
 
 impl LineDrawData {
+    /// Give all batches a fixed sorting key.
+    ///
+    /// Larger values are drawn first in the transparent phase.
+    /// By default lines use `f32::MAX`; screen-space views can explicitly order their layers.
+    /// This does not change depth testing or ordering within a line batch.
+    pub fn with_sort_key(mut self, sort_key: f32) -> Self {
+        self.sort_key = sort_key;
+        self
+    }
+
     /// Transforms and uploads line strip data to be consumed by gpu.
     ///
     /// Try to bundle all line strips into a single draw data instance whenever possible.
@@ -396,6 +406,7 @@ impl LineDrawData {
                 bind_group_all_lines: None,
                 bind_group_all_lines_outline_mask: None,
                 batches: Vec::new(),
+                sort_key: f32::MAX,
             });
         }
 
@@ -576,6 +587,7 @@ impl LineDrawData {
             bind_group_all_lines: Some(bind_group_all_lines),
             bind_group_all_lines_outline_mask: Some(bind_group_all_lines_outline_mask),
             batches: batches_internal,
+            sort_key: f32::MAX,
         })
     }
 }

@@ -23,6 +23,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`EntityPath`](encodings/entity_path.md): A path to an entity in the `ChunkStore`.
 * [`Float32`](encodings/float32.md): A single-precision 32-bit IEEE 754 floating point number.
 * [`Float64`](encodings/float64.md): A double-precision 64-bit IEEE 754 floating point number.
+* [`GeoPolygonData`](encodings/geo_polygon_data.md): Flattened latitude/longitude rings for one geospatial polygon.
 * [`IVec3D`](encodings/ivec3d.md): An int32 vector in 3D space.
 * [`ImageFormat`](encodings/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`KeypointId`](encodings/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.

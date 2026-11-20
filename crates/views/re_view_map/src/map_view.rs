@@ -19,11 +19,12 @@ use walkers::{HttpTiles, Map, MapMemory, Tiles};
 use crate::map_overlays;
 use crate::visualizers::{
     GeoLineStringsOutput, GeoLineStringsVisualizer, GeoPointsOutput, GeoPointsVisualizer,
-    update_span,
+    GeoPolygonsDrawCache, GeoPolygonsOutput, GeoPolygonsVisualizer, update_span,
 };
 
 pub struct MapViewState {
     tiles: Option<HttpTiles>,
+    polygon_draw_cache: GeoPolygonsDrawCache,
     map_memory: MapMemory,
     selected_provider: MapProvider,
 
@@ -38,6 +39,7 @@ impl Default for MapViewState {
     fn default() -> Self {
         Self {
             tiles: None,
+            polygon_draw_cache: Default::default(),
             map_memory: Default::default(),
             selected_provider: Default::default(),
 
@@ -53,6 +55,7 @@ impl re_byte_size::SizeBytes for MapViewState {
     fn heap_size_bytes(&self) -> u64 {
         let Self {
             tiles,
+            polygon_draw_cache,
             map_memory: _,
             selected_provider,
             last_center_position: _,
@@ -75,7 +78,7 @@ impl re_byte_size::SizeBytes for MapViewState {
             (tile_cache + in_progress) as u64
         });
 
-        tiles + selected_provider.heap_size_bytes()
+        tiles + polygon_draw_cache.heap_size_bytes() + selected_provider.heap_size_bytes()
     }
 }
 
@@ -149,6 +152,7 @@ impl ViewClass for MapView {
     ) -> Result<(), ViewClassRegistryError> {
         system_registry.register_visualizer::<GeoPointsVisualizer>()?;
         system_registry.register_visualizer::<GeoLineStringsVisualizer>()?;
+        system_registry.register_visualizer::<GeoPolygonsVisualizer>()?;
 
         re_viewer_context::AnnotationContextStoreSubscriber::subscription_handle();
 
@@ -179,6 +183,7 @@ impl ViewClass for MapView {
             [
                 GeoPointsVisualizer::identifier(),
                 GeoLineStringsVisualizer::identifier(),
+                GeoPolygonsVisualizer::identifier(),
             ],
         )
     }
@@ -199,6 +204,8 @@ impl ViewClass for MapView {
 
         let geo_points_visualizer = system_output
             .visualizer_data_or_default::<GeoPointsOutput>(GeoPointsVisualizer::identifier())?;
+        let geo_polygons_visualizer = system_output
+            .visualizer_data_or_default::<GeoPolygonsOutput>(GeoPolygonsVisualizer::identifier())?;
         let geo_line_strings_visualizers = system_output
             .visualizer_data_or_default::<GeoLineStringsOutput>(
                 GeoLineStringsVisualizer::identifier(),
@@ -233,11 +240,13 @@ impl ViewClass for MapView {
 
         let mut span = None;
         update_span(&mut span, geo_points_visualizer.span());
+        update_span(&mut span, geo_polygons_visualizer.span());
         update_span(&mut span, geo_line_strings_visualizers.span());
 
         if let Some(span) = &span {
             state.last_center_position = span.center();
         }
+        let has_geo_data = span.is_some();
         let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
@@ -287,7 +296,10 @@ impl ViewClass for MapView {
         // Save Blueprint
         //
 
-        if Some(map_memory.zoom()) != blueprint_zoom_level {
+        // Initial queries can be empty while data is still loading. Do not pin that temporary
+        // fallback zoom in the blueprint before we can fit the incoming geographic data.
+        let user_changed_zoom = map_memory.zoom() != zoom_level;
+        if Some(map_memory.zoom()) != blueprint_zoom_level && (has_geo_data || user_changed_zoom) {
             map_zoom.save_blueprint_component(
                 ctx,
                 &MapZoom::descriptor_zoom(),
@@ -317,6 +329,13 @@ impl ViewClass for MapView {
             picking_config,
         )?;
 
+        geo_polygons_visualizer.queue_draw_data(
+            ctx.render_ctx(),
+            &mut view_builder,
+            &projector,
+            &query.highlights,
+            &mut state.polygon_draw_cache,
+        )?;
         geo_line_strings_visualizers.queue_draw_data(
             ctx.render_ctx(),
             &mut view_builder,
@@ -388,8 +407,8 @@ fn create_view_builder(
                 .any_outlines()
                 .then(|| re_view::outline_config(egui_ctx)),
 
-            // Make sure the map in the background is not completely overwritten
-            blend_with_background: re_renderer::BlendWithBackground::AlphaToCoverage,
+            // All map primitives use premultiplied alpha, including filled polygons.
+            blend_with_background: re_renderer::BlendWithBackground::Premultiplied,
 
             picking_config,
         },
@@ -635,3 +654,7 @@ fn picking_gpu(
 fn test_help_view() {
     re_test_context::TestContext::test_help_view(|ctx| MapView.help(ctx));
 }
+
+#[cfg(test)]
+#[path = "polygon_tests.rs"]
+mod polygon_tests;
