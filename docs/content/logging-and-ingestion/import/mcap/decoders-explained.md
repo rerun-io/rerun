@@ -6,6 +6,7 @@ description: How each MCAP decoder interprets and extracts data from the same fi
 
 MCAP processing in Rerun uses a decoder architecture where each decoder represents a different way to interpret and extract data from the same MCAP source.
 By default, all decoders are enabled, including the `foxglove` lenses and the `urdf` decoder; when converting, you can select a subset of them.
+The [`--decoder` option of `rerun mcap convert`](../../../reference/cli.md#rerun-mcap-convert) lists every decoder name.
 
 ## Understanding decoders with an example
 

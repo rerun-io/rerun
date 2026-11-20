@@ -16,18 +16,10 @@ Code written against the open-source server also runs against Hub (see [Run the 
 rerun server -d my_dataset=/path/to/recordings -t my_table=/path/to/table.lance
 ```
 
-You can run `rerun server` without any options.
-Without `-d` and `-t`, the server starts with an empty catalog, and you can create datasets from the SDK.
-
-- `-d, --dataset [NAME=]DIR` creates a dataset from every `.rrd` file in a directory.
-  Without `NAME=`, the dataset is named after the directory.
-  Can be repeated.
-- `-t, --table [NAME=]PATH` loads a Lance table.
-  Can be repeated.
-- `-p, --port` sets the port (default `51234`), and `--host` the address to listen on (default `0.0.0.0`).
-- `--cors-allow-origin` allows web Viewers on other origins than `localhost`, `127.0.0.1`, and `rerun.io` (and its subdomains).
-
-See the [CLI reference](../../reference/cli.md#rerun-server) for all options.
+`-d` creates a dataset from every `.rrd` file in a directory, and `-t` loads a Lance table.
+Both can be repeated.
+Without them, the server starts with an empty catalog, and you can create datasets from the SDK.
+See the [CLI reference](../../reference/cli.md#rerun-server) for the port, host, CORS, and all other options.
 
 In Python:
 

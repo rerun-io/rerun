@@ -166,10 +166,12 @@ Because it runs offline, the CLI compactor has full access to the dataset and no
 > [!NOTE]
 > `rerun rrd optimize` will automatically migrate the data to the latest version of the RRD protocol, if needed.
 
-Note that `rerun rrd optimize` ships two preset profiles, selected with `--profile`, that set sensible thresholds for two common targets:
+`rerun rrd optimize` ships two preset profiles, selected with `--profile`:
 
-* `object-store` *(default)* — large chunks (up to ~65k rows, ~2 MiB), tuned for object-store-backed datasets stored on catalog servers, where query throughput and network streaming matter most.
-* `live` — small chunks (up to ~4096 rows, ~384 KiB), tuned for the live-Viewer workflow where the time panel benefits from finer-grained resolution.
+* `object-store` *(default)* — large chunks, tuned for object-store-backed datasets stored on catalog servers, where query throughput and network streaming matter most.
+* `live` — small chunks, tuned for the live-Viewer workflow where the time panel benefits from finer-grained resolution.
+
+The [CLI reference](../../reference/cli.md#rerun-rrd-optimize) lists the row and size limits of each profile.
 
 Per-knob flags (`--max-rows`, `--max-size`, …) and the `RERUN_CHUNK_MAX_*` environment variables override the profile's values.
 

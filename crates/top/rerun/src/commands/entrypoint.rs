@@ -35,53 +35,108 @@ The Rerun command-line interface:
 * Inspect, edit and filter Rerun recordings.
 "#;
 
-// Place the important help _last_, to make it most visible in the terminal.
-const ENVIRONMENT_VARIABLES_AND_EXAMPLES: &str = r#"
-Environment variables:
-    RERUN_CHUNK_MAX_BYTES     Maximum chunk size threshold for the compactor.
-    RERUN_CHUNK_MAX_ROWS      Maximum chunk row count threshold for the compactor (sorted chunks).
-    RERUN_CHUNK_MAX_ROWS_IF_UNSORTED
-                              Maximum chunk row count threshold for the compactor (unsorted chunks).
-    RERUN_SHADER_PATH         The search path for shader/shader-imports. Only available in developer builds.
-    RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer.
-                              WARNING: slows down the viewer by a lot!
-    RERUN_MAPBOX_ACCESS_TOKEN The Mapbox access token to use the Mapbox-provided backgrounds in the map view.
-    RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
-    WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`.
-                              Default is `vulkan` everywhere except on Mac where we use `metal`. What is
-                              supported depends on your OS.
-    WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high`
-                              or `low`. (Default is `high`)
+/// `(name, description)` pairs, shown in `rerun --help` and in the generated CLI manual.
+///
+/// A description may span several lines; the manual joins them.
+const ENVIRONMENT_VARIABLES: &[(&str, &str)] = &[
+    (
+        "RERUN_CHUNK_MAX_BYTES",
+        "Maximum chunk size threshold for the compactor.",
+    ),
+    (
+        "RERUN_CHUNK_MAX_ROWS",
+        "Maximum chunk row count threshold for the compactor (sorted chunks).",
+    ),
+    (
+        "RERUN_CHUNK_MAX_ROWS_IF_UNSORTED",
+        "Maximum chunk row count threshold for the compactor (unsorted chunks).",
+    ),
+    (
+        "RERUN_SHADER_PATH",
+        "The search path for shader/shader-imports. Only available in developer builds.",
+    ),
+    (
+        "RERUN_TRACK_ALLOCATIONS",
+        "Track memory allocations to diagnose memory leaks in the viewer.\nWARNING: slows down the viewer by a lot!",
+    ),
+    (
+        "RERUN_MAPBOX_ACCESS_TOKEN",
+        "The Mapbox access token to use the Mapbox-provided backgrounds in the map view.",
+    ),
+    (
+        "RUST_LOG",
+        "Change the log level of the viewer, e.g. `RUST_LOG=debug`.",
+    ),
+    (
+        "WGPU_BACKEND",
+        "Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`.\nDefault is `vulkan` everywhere except on Mac where we use `metal`. What is\nsupported depends on your OS.",
+    ),
+    (
+        "WGPU_POWER_PREF",
+        "Overwrites the power setting used for choosing a graphics adapter, must be `high`\nor `low`. (Default is `high`)",
+    ),
+];
 
+/// `(description, command)` pairs, shown in `rerun --help` and in the generated CLI manual.
+const EXAMPLES: &[(&str, &str)] = &[
+    (
+        "Open a Rerun Viewer that listens for incoming SDK connections",
+        "rerun",
+    ),
+    (
+        "Load some files and show them in the Rerun Viewer",
+        "rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd",
+    ),
+    (
+        "Open an .rrd file and stream it to a Web Viewer",
+        "rerun recording.rrd --web-viewer",
+    ),
+    (
+        "Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serve the results",
+        "rerun --serve-web",
+    ),
+    (
+        "Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers",
+        "rerun --serve-web recording.rrd",
+    ),
+    (
+        "Host a Rerun gRPC server without spawning a Viewer",
+        "rerun --serve-grpc",
+    ),
+    (
+        "Open a Viewer connected to the default message proxy, while hosting its Viewer server on a free port",
+        "rerun --connect",
+    ),
+    (
+        "Connect to a Rerun Server",
+        "rerun rerun+http://localhost:9877/proxy",
+    ),
+    (
+        "Listen for incoming gRPC connections from the logging SDK and stream the results to disk",
+        "rerun --save new_recording.rrd",
+    ),
+];
 
-Examples:
-    Open a Rerun Viewer that listens for incoming SDK connections:
-        rerun
+fn environment_variables_and_examples() -> String {
+    const NAME_WIDTH: usize = 25;
+    let indent = " ".repeat(4 + NAME_WIDTH + 1);
 
-    Load some files and show them in the Rerun Viewer:
-        rerun recording.rrd mesh.obj image.png https://example.com/recording.rrd
+    let mut out = String::from("\nEnvironment variables:\n");
+    for (name, description) in ENVIRONMENT_VARIABLES {
+        let description = description.lines().join(&format!("\n{indent}"));
+        if name.len() <= NAME_WIDTH {
+            writeln!(out, "    {name:<NAME_WIDTH$} {description}").ok();
+        } else {
+            writeln!(out, "    {name}\n{indent}{description}").ok();
+        }
+    }
 
-    Open an .rrd file and stream it to a Web Viewer:
-        rerun recording.rrd --web-viewer
-
-    Host a Rerun gRPC server which listens for incoming connections from the logging SDK, buffer the log messages, and serve the results:
-        rerun --serve-web
-
-    Host a Rerun Server which serves a recording from a file over gRPC to any connecting Rerun Viewers:
-        rerun --serve-web recording.rrd
-
-    Host a Rerun gRPC server without spawning a Viewer:
-        rerun --serve-grpc
-
-    Open a Viewer connected to the default message proxy, while hosting its Viewer server on a free port:
-        rerun --connect
-
-    Connect to a Rerun Server:
-        rerun rerun+http://localhost:9877/proxy
-
-    Listen for incoming gRPC connections from the logging SDK and stream the results to disk:
-        rerun --save new_recording.rrd
-"#;
+    out += "\n\nExamples:\n";
+    for (description, command) in EXAMPLES {
+        write!(out, "    {description}:\n        {command}\n\n").ok();
+    }
+    out
+}
 
 const DEFAULT_VIEWER_SERVER_PORT: u16 = 9876;
 
@@ -139,7 +194,7 @@ impl std::str::FromStr for PortArg {
 #[clap(
     long_about = LONG_ABOUT,
     // Place most of the help last, as that is most visible in the terminal.
-    after_long_help = ENVIRONMENT_VARIABLES_AND_EXAMPLES
+    after_long_help = environment_variables_and_examples()
 )]
 struct Args {
     // Note: arguments are sorted lexicographically for nicer `--help` message.
@@ -478,6 +533,33 @@ impl Args {
             .trim()
             .to_owned();
 
+            // Flags like `bool` switches report `true`/`false` as possible values,
+            // but they take no value on the command line.
+            let possible_values = if arg.get_action().takes_values() {
+                arg.get_possible_values()
+                    .into_iter()
+                    .filter(|pv| !pv.is_hide_set())
+                    .collect_vec()
+            } else {
+                Vec::new()
+            };
+            let rendered = if possible_values.is_empty() {
+                rendered
+            } else {
+                let possible_values = possible_values
+                    .iter()
+                    .map(|pv| {
+                        if let Some(help) = pv.get_help() {
+                            format!("> * `{}`: {help}", pv.get_name())
+                        } else {
+                            format!("> * `{}`", pv.get_name())
+                        }
+                    })
+                    .collect_vec()
+                    .join("\n");
+                format!("{rendered}\n>\n> Possible values:\n>\n{possible_values}")
+            };
+
             let defaults = arg.get_default_values();
             if defaults.is_empty() {
                 rendered
@@ -617,11 +699,39 @@ impl Args {
                 format!("**Options**\n\n{options}")
             });
 
-            *out += &[Some(header), Some(usage), commands, positionals, floatings]
-                .into_iter()
-                .flatten()
-                .collect_vec()
-                .join("\n\n");
+            let is_root = full_name.len() == 1;
+
+            let environment_variables = is_root.then(|| {
+                let variables = ENVIRONMENT_VARIABLES
+                    .iter()
+                    .map(|(name, description)| {
+                        format!("* `{name}`: {}", description.lines().join(" "))
+                    })
+                    .join("\n");
+                format!("**Environment variables**\n\n{variables}")
+            });
+
+            let examples = is_root.then(|| {
+                let examples = EXAMPLES
+                    .iter()
+                    .map(|(description, command)| format!("# {description}\n{command}"))
+                    .join("\n\n");
+                format!("**Examples**\n\n```sh\n{examples}\n```")
+            });
+
+            *out += &[
+                Some(header),
+                Some(usage),
+                commands,
+                positionals,
+                floatings,
+                environment_variables,
+                examples,
+            ]
+            .into_iter()
+            .flatten()
+            .collect_vec()
+            .join("\n\n");
 
             *out += "\n\n";
 

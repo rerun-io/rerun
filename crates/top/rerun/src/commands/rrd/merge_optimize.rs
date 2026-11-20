@@ -86,13 +86,35 @@ fn parse_size(s: &str) -> Result<u64, ParseSizeError> {
 
 // ---
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy)]
 pub enum ProfileArg {
-    /// Small chunks tuned for the live Viewer workflow.
     Live,
-
-    /// Larger chunks tuned for object-store-backed query and streaming.
     ObjectStore,
+}
+
+/// Implemented by hand (not derived) so the help text can show each profile's limits.
+impl clap::ValueEnum for ProfileArg {
+    /// Must list every variant: one left out here can't be parsed or shown in `--help`.
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::Live, Self::ObjectStore]
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        let (name, purpose) = match self {
+            Self::Live => ("live", "Small chunks tuned for the live Viewer workflow"),
+            Self::ObjectStore => (
+                "object-store",
+                "Larger chunks tuned for object-store-backed query and streaming",
+            ),
+        };
+        let profile = self.to_profile();
+        let help = format!(
+            "{purpose} (at most {} rows and {} per chunk)",
+            re_format::format_uint(profile.chunk_max_rows),
+            re_format::format_bytes(profile.chunk_max_bytes as f64),
+        );
+        Some(clap::builder::PossibleValue::new(name).help(help))
+    }
 }
 
 impl ProfileArg {
