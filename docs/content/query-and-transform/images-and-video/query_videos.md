@@ -7,6 +7,9 @@ description: Query video streams from a catalog server and decode individual fra
 Video streams provide the best compression ratio for camera feeds, but require special handling when querying data back from a catalog server.
 For more details about the different video types we support see our [video reference](../../logging-and-ingestion/media/video.md).
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 This guide focuses on querying [`VideoStream`](../../reference/types/archetypes/video_stream.md) data from a catalog server,
 including how to decode individual frames and how to export entire streams to MP4 files.
 

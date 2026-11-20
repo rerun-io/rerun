@@ -37,9 +37,13 @@ rrd_paths = list(sample_5_path.glob("*.rrd"))
 
 # region: register
 client = rr.catalog.CatalogClient(server.url())
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 dataset = client.create_dataset("my_robot_data", exist_ok=True)
 
 uris = [f"file://{p.resolve()}" for p in rrd_paths]
+# On Rerun Hub, register from object storage:
+# dataset.register(["s3://bucket/episode_0.rrd"]).wait()
 dataset.register(uris).wait()
 # endregion: register
 

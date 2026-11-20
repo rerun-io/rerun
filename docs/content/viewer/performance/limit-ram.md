@@ -62,7 +62,7 @@ This works when you:
 
 * Open a local `.rrd` file in the native or web Viewer.
   Local `.rrd` files are loaded through the Viewer catalog by default (**Settings** → **Viewer catalog** → **Load files via Viewer catalog**).
-* Open a recording from a Rerun server, for example one started with `rerun server`.
+* Open a recording from a Rerun server, for example one started with `rerun server`, or from [Rerun Hub](../../hub.md).
 
 It does **not** work for data that streams in live from the SDK, or for `.rrd` files when you have turned off **Load files via Viewer catalog**.
 The Viewer loads that data fully into memory, and drops the oldest data when it reaches its memory limit.

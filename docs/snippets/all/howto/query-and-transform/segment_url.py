@@ -18,6 +18,8 @@ sample_5_path = (
 
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 client = server.client()
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 dataset = client.get_dataset(name="sample_dataset")
 
 # Pick 3 deterministic segment IDs and create a view filtered to them

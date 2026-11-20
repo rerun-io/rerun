@@ -21,6 +21,8 @@ assert example_rrd.exists(), f"Example RRD not found at {example_rrd}"
 server = rr.server.Server(datasets={"tutorial": [example_rrd]})
 
 client = rr.catalog.CatalogClient(server.url())
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 # endregion: launch_server
 
 # query the recording into a pandas dataframe

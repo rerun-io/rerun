@@ -3,7 +3,7 @@ title: Roadmap
 order: 0
 description: Planned work on Rerun, and features that are still missing
 ---
-Rerun is building a data management and visualization engine for multimodal data that changes over time.
+Rerun is building a data management and visualization engine for multimodal data that changes over time. <!-- TODO(RR-6462): update this Rerun description to the new branding -->
 We aim to make it fast, simple to use, and easy to adapt and integrate into your existing workflows.
 
 Open an issue or pull request on [GitHub](https://github.com/rerun-io/rerun) or join us on [Discord](https://discord.gg/Gcm8BbTaAj) to let the community know what you'd like to see.
@@ -15,7 +15,7 @@ This page gives a high-level overview of ongoing and planned work.
 - Performance improvements
 - UX & DX improvements
 - Supporting more data types
-- Rerun Hub features (commercial)
+- [Rerun Hub](../hub.md) features (commercial) <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
     - Get in touch on hi@rerun.io if you're interested in becoming a design partner
 
 ## Roadmap of major feature areas

@@ -6,6 +6,9 @@ description: Export dataframe view data to Pandas with the dataframe API of the 
 
 In the [previous section](explore-as-dataframe.md), we explored some face tracking data using the dataframe view. In this section, we will see how we can use the dataframe API of the Rerun SDK to export the same data into a [Pandas](https://pandas.pydata.org) dataframe to further inspect and process it.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 ## Load the recording
 
 The dataframe SDK loads data from an .RRD file.

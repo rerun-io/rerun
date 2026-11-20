@@ -31,6 +31,8 @@ sample_5_path = (
 
 server = rr.server.Server(datasets={"robot_dataset": sample_5_path})
 client = server.client()
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 dataset = client.get_dataset(name="robot_dataset")
 # endregion: setup
 

@@ -9,6 +9,9 @@ In order to more narrowly specify relevant content for further dataframe operati
 This view can filter on episode, time, column name etc.
 This example shows specific instances highlighting these capabilities.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 The dependencies in this example are contained in `rerun-sdk[all]`.
 
 ## Setup

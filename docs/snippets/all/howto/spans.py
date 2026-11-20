@@ -28,6 +28,8 @@ def main() -> None:
             host="127.0.0.1", datasets={"robot_recordings": paths}
         ) as server:
             catalog = server.client()
+            # On Rerun Hub, connect to your Hub instead:
+            # catalog = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 
             # region: create
             import pyarrow as pa

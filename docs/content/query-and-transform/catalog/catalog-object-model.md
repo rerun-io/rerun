@@ -4,7 +4,7 @@ order: 100
 description: How the catalog organizes datasets, segments, and entries
 ---
 
-This page covers the catalog server's object model.
+This page covers the catalog server's object model, which the open-source server and [Rerun Hub](../../hub.md) share; the page notes where they differ.
 For logging and recording basics, see [Recordings](../../logging-and-ingestion/data-model/recordings.md).
 For API details, see the [Catalog SDK reference](https://ref.rerun.io/docs/python/stable/catalog/).
 

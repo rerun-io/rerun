@@ -7,7 +7,8 @@ description: What the local rerun server does, what it persists, and how Hub dif
 `rerun server` (or `rr.server.Server` in Python) runs an open-source [catalog](catalog-object-model.md) server on your machine.
 It serves datasets of `.rrd` files and Lance tables to the Viewer and to the catalog SDK.
 It is meant for local development and small setups.
-For persistent, shared storage, use [Rerun Hub](../../hub.md).
+For persistent, shared storage, use [Rerun Hub](../../hub.md), our commercial managed offering for production deployments. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+Code written against the open-source server also runs against Hub (see [Run the examples on Hub](../../hub.md#run-the-examples-on-hub)).
 
 ## Starting the server
 
@@ -77,15 +78,4 @@ dataset.register([Path("recording.rrd").resolve().as_uri()]).wait()
 ```
 
 URIs for object stores, such as `s3://` or `gs://`, are not supported.
-To register recordings from object storage, use Rerun Hub, or download the files first.
-
-## Compared to Rerun Hub
-
-|                  | Open-source server                  | Rerun Hub                                 |
-| ---------------- | ----------------------------------- | ----------------------------------------- |
-| Catalog storage  | In memory, lost on restart          | Persistent                                |
-| Registration     | Local `file://` paths only          | Object storage, such as `s3://`           |
-| Authentication   | None                                | Login or token (see `rerun auth`)         |
-| Deployment       | One process that you run yourself   | Managed service                           |
-
-See [Rerun Hub](../../hub.md) for more.
+To register recordings from object storage, use [Rerun Hub](../../hub.md), or download the files first.

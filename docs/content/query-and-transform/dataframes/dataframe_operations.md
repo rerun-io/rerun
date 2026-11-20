@@ -10,6 +10,9 @@ This example performs a series of joins, filters, etc that highlight a variety o
 Because datafusion has a lazy execution model it is generally more performant to use datafusion for processing,
 however datafusion does allow conversion to dataframes for popular tools (pandas, polars, pyarrow).
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 The dependencies in this example are contained in `rerun-sdk[all]`.
 
 ## Setup

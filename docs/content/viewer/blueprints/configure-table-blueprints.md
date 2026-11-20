@@ -7,6 +7,8 @@ description: Order, rename, or hide columns and show previews in catalog tables
 Use table blueprints to order, rename, or hide columns, embed segment previews, and display rows as cards in catalog tables and dataset segment tables.
 
 > [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+>
 > The `rerun.blueprint.table` API is experimental and may change in future releases.
 
 Table blueprints are separate from [blueprints for individual recordings](build-a-blueprint-programmatically.md), though both are saved as `.rbl` files, and segment previews use the same view classes, such as `Spatial3DView`.

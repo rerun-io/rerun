@@ -9,6 +9,9 @@ Examples include per-segment metrics, evaluation results, annotations, and proce
 A common use case is to save these results so you can share them with colleagues, then inspect or update them later.
 Use [properties in a layer](layers.md#adding-properties-to-segments-using-layers) instead for values that belong to a specific segment and should appear as columns of its segment table.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 Catalog tables use Arrow schemas, and catalog query APIs return lazy DataFusion dataframes.
 Unlike datasets, tables use _schema-on-write_: you define the table's Arrow schema before writing rows.
 See the [catalog object model](catalog-object-model.md#table-entries) for how tables relate to other catalog entries.

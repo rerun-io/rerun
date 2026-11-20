@@ -4,10 +4,10 @@ order: 500
 description: The components of Rerun, how they connect, and how you use them
 ---
 
-Rerun covers the whole journey from raw recordings to training, on a single unified data layer for multi-rate, multimodal robotics data.
+Rerun covers the whole journey from raw recordings to training, on a single unified data layer for multi-rate, multimodal robotics data. <!-- TODO(RR-6462): update this Rerun description to the new branding -->
 
 It's comprised of **Rerun SDK**: an open source library and tools for logging, storing, querying, visualizing, and training on multi-rate, multimodal data; and
-**Rerun Hub**: a data catalog and backend for large scale storage, access, and streaming of robotics data from object storage.
+**[Rerun Hub](../hub.md)**: our commercial managed offering for production deployments, a data catalog and backend for large scale storage, access, and streaming of robotics data from object storage. <!-- TODO(RR-6462): update this Rerun and Rerun Hub description to the new branding -->
 
 This page explains the components, how they connect, and how you use them at each stage, from logging to training.
 
@@ -47,7 +47,7 @@ Data is served via the **redap** protocol (**Re**run **Da**ta **P**rotocol).
 
 The catalog server is available as:
 - Open-source server for local development (`rerun server`)
-- **Rerun Hub**, our managed offering for production deployments
+- **[Rerun Hub](../hub.md)**, our commercial managed offering for production deployments <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
 
 ### Catalog SDK
 
@@ -123,8 +123,8 @@ Ask questions across all your recordings at once, down to individual sensor read
 Results can link straight to the moment in the viewer.
 
 You can use the open source [catalog](../query-and-transform/catalog/catalog-object-model.md) server for running local [laptop scale examples](../query-and-transform/tutorial.md).
-We also offer **Rerun Hub**, a scalable catalog for robotic data, for teams that need collaborative dataset management, version control, and cloud storage ([reach out](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=docs) to learn more).
-These are API compatible so the only difference from our examples to **Rerun Hub** is that you connect to an existing server instead of launching your own.
+We also offer **[Rerun Hub](../hub.md)** for teams that need collaborative dataset management, version control, and cloud storage ([reach out](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ?typeform-source=docs) to learn more). <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+The two are API compatible, so to run our examples on **Rerun Hub** you connect to your Hub instead of launching a server, and register recordings from object storage instead of local paths (see [Run the examples on Hub](../hub.md#run-the-examples-on-hub)).
 
 ### Prepare catalog
 Before querying or viewing recordings on the catalog we have to register them.
@@ -141,7 +141,7 @@ Minimal example of creating a dataset and registering files:
 ```python
 import rerun as rr
 
-client = rr.catalog.CatalogClient("rerun://example.cloud.rerun.io")
+client = rr.catalog.CatalogClient("rerun://api.example.cloud.rerun.io")
 dataset = client.create_dataset("my_data")
 dataset.register(["s3://my-rrd-files/recording1.rrd", "s3://my-rrd-files/recording2.rrd"])
 ```
@@ -166,7 +166,7 @@ Minimal example of querying a dataset:
 import datafusion as dfn
 import rerun as rr
 
-client = rr.catalog.CatalogClient("rerun://example.cloud.rerun.io")
+client = rr.catalog.CatalogClient("rerun://api.example.cloud.rerun.io")
 dataset = client.get_dataset("my_data")
 df = dataset.filter_contents("/obs").reader(index="log_time")  # `df` is a DataFusion dataframe
 df.filter(dfn.col("/obs:Scalars:scalars").is_not_null()).count()  # count observations in recording

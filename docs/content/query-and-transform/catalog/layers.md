@@ -7,6 +7,9 @@ description: Append data to existing dataset segments by registering named layer
 In the [catalog object model](catalog-object-model.md#datasets), a dataset is a collection of segments, and each segment is a collection of named layers.
 Together, layers form one logical segment.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 See [Recordings on a catalog server](../../logging-and-ingestion/data-model/recordings.md#recordings-on-a-catalog-server) for how segments and layers relate to recordings.
 
 ## Why use layers?

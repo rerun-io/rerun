@@ -6,10 +6,13 @@ description: Stream Rerun recordings into a PyTorch DataLoader without an export
 
 Train PyTorch models directly from a Rerun server.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../hub.md) ([how to switch](../hub.md#run-the-examples-on-hub)).
+
 The experimental [`dataloader`](https://github.com/rerun-io/rerun/tree/main/rerun_py/rerun_sdk/rerun/experimental/dataloader) module exposes Rerun recordings as iterable or map-style PyTorch datasets, decoding compressed video (`h264`/`h265`/`av1`), images, and scalars on the fly. Random access, multi-worker prefetching, and [DDP](https://docs.pytorch.org/tutorials/beginner/ddp_series_theory.html) partitioning all work out of the box.
 
 > [!WARNING]
-> **Experimental.** The API is provisional and will change between releases. For large-scale training, [Rerun Hub](https://rerun.io) offers a higher-performance backend than the OSS catalog.
+> **Experimental.** The API is provisional and will change between releases.
 
 The full code for this guide lives in [`examples/python/dataloader/`](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader), which trains a [LeRobot ACT](https://tonyzhaozh.github.io/aloha/) policy from a HuggingFace dataset.
 
@@ -393,7 +396,7 @@ The full [LeRobot ACT example](https://github.com/rerun-io/rerun/tree/main/examp
 
 The module is **experimental**: expect breaking changes between releases as we iterate on the design.
 
-For large-scale training (hundreds of recordings, multi-node), consider [Rerun Hub](https://rerun.io), which offers a higher-performance backend than the OSS catalog.
+For large-scale training (hundreds of recordings, multi-node), consider [Rerun Hub](../hub.md), which offers a higher-performance backend than the OSS catalog. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
 
 ## References
 

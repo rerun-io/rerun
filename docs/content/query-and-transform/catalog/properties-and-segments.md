@@ -8,6 +8,9 @@ Properties are recording-level metadata that relates to an entire segment.
 When you query a [dataset](catalog-object-model.md#datasets), properties appear as columns in the segment table and can be used to filter, sort, and analyze your segments.
 Common use cases for properties include tagging recordings with capture location, data format version, environmental conditions, or any other custom metadata relevant to your workflow.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 ## Understanding properties
 
 Let's use an example to illustrate how properties work and how they can be retrieved and queried using a catalog server.

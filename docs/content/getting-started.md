@@ -4,7 +4,7 @@ order: 1
 description: Install Rerun, then log, visualize, query, and train on robotics data
 ---
 
-Rerun helps robotics and Physical AI teams iterate faster: log from any sensor, visualize in the Viewer, query with dataframes, and train with a dataloader tailored to robotic learning — across one recording or many.
+Rerun helps robotics and Physical AI teams iterate faster: log from any sensor, visualize in the Viewer, query with dataframes, and train with a dataloader tailored to robotic learning — across one recording or many. <!-- TODO(RR-6462): update this Rerun description to the new branding -->
 
 ## Installation
 
@@ -27,7 +27,7 @@ Also available in-browser at [rerun.io/viewer](https://rerun.io/viewer).
 ## Scale across many recordings
 
 Rerun's catalog organizes recordings as queryable [**segments**](./query-and-transform/catalog/catalog-object-model.md).
-The workflow: log (or convert) data to an `.rrd`, start a catalog server (or connect to an existing one if using the commercial Rerun Hub), register the `.rrd` as a segment, then visualize and query across recordings.
+The workflow: log (or convert) data to an `.rrd`, start a local catalog server (or connect to [Rerun Hub](./hub.md), our commercial managed offering for production deployments), register the `.rrd` as a segment, then visualize and query across recordings. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
 
 ### Log
 
@@ -37,7 +37,8 @@ If you already have data in another format see [Import existing data](./logging-
 snippet: tutorials/getting_started_log
 ### Start a catalog server
 
-`rerun server` starts a local catalog on port `51234` (use Rerun Hub for persistent, multi-user storage), then connect from your code:
+Start a local catalog on port `51234` with `rerun server`, then connect from your code.
+If you use [Rerun Hub](./hub.md), connect to it instead (see [Run the examples on Hub](./hub.md#run-the-examples-on-hub)).
 
 ```bash
 rerun server

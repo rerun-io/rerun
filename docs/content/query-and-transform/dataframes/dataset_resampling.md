@@ -8,6 +8,9 @@ This snippet demonstrates how to resample a dataset based on the time index of o
 within your data. This is particularly helpful when you have data that is produced at very
 different frequencies.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 First, load a dataset to use for evaluation:
 
 snippet: howto/dataset_resampling[get_dataset]

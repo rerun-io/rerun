@@ -6,6 +6,9 @@ description: Query Rerun data from code and load it into Pandas, Polars, or Duck
 
 Rerun comes with the ability to get data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 To read an `.rrd` file in Python, you can either load it into a local catalog server (described first on this page), or [read it without a server](#reading-an-rrd-file-without-a-server).
 To read it from Rust, see [Querying from Rust](#querying-from-rust).
 

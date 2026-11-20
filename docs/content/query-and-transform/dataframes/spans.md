@@ -6,6 +6,9 @@ description: Annotate, query, curate and train from time spans within recordings
 
 There are many ways to implement a data flywheel, we propose here an annotation, query, curation and training loop that operates on time spans.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 We consider that time spans are a different higher level concept with these properties:
 
 - Time spans are not necessarily contiguous, there can be gaps between two consecutive time spans.

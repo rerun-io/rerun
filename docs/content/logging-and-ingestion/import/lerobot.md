@@ -47,7 +47,7 @@ for episode in reader.episodes():
   H.264 or H.265 with B-frames is re-encoded, and a v3.0 episode that starts mid-GOP has its first GOP re-encoded.
   Both need `ffmpeg` on the `PATH`.
 
-Then load the folder into a local catalog with `rerun server -d my_dataset=rrd`, or register the files to an existing [dataset](../../query-and-transform/catalog/catalog-object-model.md#datasets).
+Then load the folder into a local catalog with `rerun server -d my_dataset=rrd`, or register the files to an existing [dataset](../../query-and-transform/catalog/catalog-object-model.md#datasets), for example on [Rerun Hub](../../hub.md).
 
 ## Data model
 

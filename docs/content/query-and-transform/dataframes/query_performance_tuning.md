@@ -8,6 +8,9 @@ This is a loose collection of considerations when querying Rerun datasets.
 Over time baseline performance will improve, rendering some of these approaches unnecessary.
 Since Rerun depends on [DataFusion](https://datafusion.apache.org/), some of these approaches are observations from our own usage.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 First, generate a DataFrame for comparison:
 
 snippet: howto/dataframe_performance[get_df]

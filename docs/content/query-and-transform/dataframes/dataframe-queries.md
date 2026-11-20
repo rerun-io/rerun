@@ -9,6 +9,9 @@ Robotic and sensor data is inherently messy:
 - Data is sparse: not every component has a value at every timestamp
 - Multiple timelines coexist: wall clock time, frame numbers, sensor ticks, etc.
 
+> [!NOTE]
+> The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
+
 Machine learning workloads, on the other hand, rely on aligned rows where each row represents one sample, with a consistent schema and a single index.
 
 Dataframe queries are designed to bridge this gap. They allow you to query arbitrary Rerun data and produce a dataframe as output.
