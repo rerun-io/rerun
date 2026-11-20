@@ -3,6 +3,7 @@
 //! The only entry point is [`create_component_ui_registry`], which registers all editors in the component UI registry.
 //! This should be called by `re_viewer` on startup.
 
+mod annotation_context;
 mod color;
 pub mod color_swatch;
 mod encoding_uis;
@@ -44,9 +45,9 @@ use re_sdk_types::blueprint::components::{
     PointsDisplay, RootContainer, TooltipMode, ViewDensity, ViewFit, ViewMaximized, Volume,
 };
 use re_sdk_types::components::{
-    AggregationPolicy, AlbedoFactor, AxisLength, Bool, CellSize, Color, DepthMeter, DrawOrder,
-    EntryKind, FillMode, FillRatio, Flag, GammaCorrection, GraphType, HalfSize3D,
-    ImagePlaneDistance, InterpolationMode, IsKeyframe, LayerName, Length, LinearSpeed,
+    AggregationPolicy, AlbedoFactor, AnnotationContext, AxisLength, Bool, CellSize, Color,
+    DepthMeter, DrawOrder, EntryKind, FillMode, FillRatio, Flag, GammaCorrection, GraphType,
+    HalfSize3D, ImagePlaneDistance, InterpolationMode, IsKeyframe, LayerName, Length, LinearSpeed,
     MagnificationFilter, MarkerSize, MeshFaceRendering, Name, Opacity, OpticalDensity,
     PointShading, Position2D, Position3D, Range1D, Scale3D, ShowLabels, SphericalHarmonicsDegree,
     StrokeWidth, Text, Thumbnail, Timestamp, TransformRelation, Translation3D, Unit, Url,
@@ -71,6 +72,9 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Color>(color::edit_rgba32);
     registry.add_singleline_array_edit_or_view::<Color>(color::edit_rgba32_array);
     registry.add_singleline_edit_or_view::<AlbedoFactor>(color::edit_rgba32);
+    registry.add_singleline_edit_or_view::<AnnotationContext>(
+        annotation_context::edit_or_view_annotation_context,
+    );
 
     // 0-inf float components:
     registry.add_singleline_edit_or_view::<AngularSpeed>(edit_f64_min_to_max_float);

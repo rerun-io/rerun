@@ -1,8 +1,8 @@
 use re_sdk_types::image::ImageKind;
 use re_sdk_types::{archetypes, blueprint, components};
-use re_view::DataResultQuery as _;
+use re_view::{AnnotationMapCache, DataResultQuery as _};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, QueryContext, ViewClass as _, ViewStateExt as _,
+    Annotations, IdentifiedViewSystem as _, QueryContext, ViewClass as _, ViewStateExt as _,
 };
 
 use crate::{SpatialViewState, visualizers};
@@ -38,6 +38,17 @@ pub fn register_fallbacks(system_registry: &mut re_viewer_context::ViewSystemReg
     system_registry.register_fallback_provider(
         archetypes::SegmentationImage::descriptor_opacity().component,
         opacity_fallback(ImageKind::Segmentation),
+    );
+
+    // The annotation context logged for the entity or its nearest ancestor.
+    system_registry.register_fallback_provider(
+        archetypes::AnnotationContext::descriptor_context().component,
+        |ctx| {
+            AnnotationMapCache::for_query(ctx.viewer_ctx(), &ctx.query)
+                .find(ctx.target_entity_path)
+                .map(Annotations::annotation_context)
+                .unwrap_or_default()
+        },
     );
 
     // Line radii for solid primitives (thinner than the global default).

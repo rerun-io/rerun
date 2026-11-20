@@ -1,9 +1,10 @@
+use re_chunk::RowId;
 use re_log_types::hash::Hash64;
 use re_sdk_types::ComponentIdentifier;
 use re_sdk_types::blueprint::components::VisualizerInstructionId;
 use re_viewer_context::{
-    QueryContext, ViewerDiagnostic, ViewerReportSeverity, VisualizerInstruction,
-    VisualizerInstructionReport, VisualizerReportContext,
+    QueryContext, ViewerDiagnostic, ViewerReportSeverity, VisualizerComponentSource,
+    VisualizerInstruction, VisualizerInstructionReport, VisualizerReportContext,
 };
 
 use crate::{
@@ -143,6 +144,52 @@ impl<'a> VisualizerInstructionQueryResults<'a> {
         };
 
         HybridResultsChunkIter::new(chunks_with_component, self.query_results.timeline())
+    }
+
+    /// Returns the value of `component` together with the [`RowId`] of the blueprint chunk holding it,
+    /// if the component resolves to a blueprint override or view default.
+    ///
+    /// The iterators discard blueprint row IDs, this keeps it as a cache key for what is derived from the value.
+    ///
+    /// Reports a warning if the value can't be deserialized.
+    pub fn blueprint_mono_with_row_id<C: re_types_core::Component>(
+        &self,
+        component: ComponentIdentifier,
+    ) -> Option<(RowId, C)> {
+        let (component_sources, overrides, view_defaults) = match self.query_results {
+            BlueprintResolvedResults::LatestAt(_, results) => (
+                &results.component_sources,
+                &results.overrides,
+                results.view_defaults,
+            ),
+            BlueprintResolvedResults::Range(_, results) => (
+                &results.component_sources,
+                &results.overrides,
+                results.view_defaults,
+            ),
+        };
+        let checked_source = component_sources.get(&component)?;
+        if checked_source.error().is_some() {
+            return None;
+        }
+        let unit_chunk = match checked_source.source() {
+            VisualizerComponentSource::Override => overrides.get(component)?,
+            VisualizerComponentSource::Default => view_defaults.get(component)?,
+            VisualizerComponentSource::AnnotationContext
+            | VisualizerComponentSource::SourceComponent { .. } => return None,
+        };
+
+        match unit_chunk.component_mono::<C>(component)? {
+            Ok(value) => Some((unit_chunk.row_id()?, value)),
+            Err(err) => {
+                self.report_for_component(
+                    component,
+                    ViewerReportSeverity::Warning,
+                    format!("{err:#}"),
+                );
+                None
+            }
+        }
     }
 
     #[inline]

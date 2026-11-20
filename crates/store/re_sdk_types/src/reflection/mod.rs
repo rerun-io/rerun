@@ -2623,7 +2623,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     display_name: "Context",
                     component_type: "rerun.components.AnnotationContext".into(),
                     docstring_md: "List of class descriptions, mapping class indices to class names, colors etc.",
-                    flags: ArchetypeFieldFlags::REQUIRED,
+                    flags: ArchetypeFieldFlags::REQUIRED | ArchetypeFieldFlags::UI_EDITABLE,
                 }],
             },
         ),
