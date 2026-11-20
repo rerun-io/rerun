@@ -15,15 +15,12 @@ These alternatives range on a scale of "simple, lossless, and big" to "complex, 
 
 If you want lossless encoded images (with no compression artifacts), then you should log each video frame as `Image`.
 This will use up a lot of space and bandwidth. You can also encode them as PNG and log them as `EncodedImage`,
-though it should be noted that PNG encoding usually does very little for the file size of photographic images.
+though PNG encoding usually does very little for the file size of photographic images.
 
 If you want to reduce bandwidth and storage cost, you can encode each frame as a JPEG and log it using `EncodedImage`. This can easily reduce the file sizes by almost two orders of magnitude with minimal perceptual loss.
 This is also very simple to do, and the Python logging SDK has built-in support for it using [`Image.compress`](https://ref.rerun.io/docs/python/stable/archetypes/#rerun.archetypes.Image.compress).
 
-Finally, for the best compression ratio, you can encode the images as an encoded video.
-There are two options to choose from:
-* Raw video frames [`VideoStream`](../../reference/types/archetypes/video_stream.md)
-* Video files using [`AssetVideo`](../../reference/types/archetypes/asset_video.md)
+For the best compression ratio, encode the images as video and log it as `VideoStream` or `AssetVideo`, both described below.
 
 ## Logging many images efficiently
 

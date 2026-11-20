@@ -21,13 +21,6 @@ This is useful for:
 - Presenting structured data in a readable format
 - Sorting and filtering tables interactively
 
-## References
-
-For complete examples of using `send_table`, please refer to:
-
-- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/send_table.ipynb)
-- [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)
-
 ## Prerequisites
 
 - Rerun SDK (Python)
@@ -89,3 +82,10 @@ As this is an experimental API, there are several limitations to be aware of:
 - Multiple record batches (or a DataFusion DataFrame) can be passed, but they are merged into a single record batch before sending
 - Tables can't be saved to or loaded from files (unlike `.rrd` files for recordings)
 - Only the Python SDK can send tables; the Rust and C++ SDKs cannot
+
+## References
+
+For complete examples of using `send_table`, please refer to:
+
+- [🐍 Jupyter Notebook](https://github.com/rerun-io/rerun/blob/main/examples/notebook/notebook/send_table.ipynb)
+- [🐍 Python SDK](https://github.com/rerun-io/rerun/blob/main/docs/snippets/all/howto/send_table.py)

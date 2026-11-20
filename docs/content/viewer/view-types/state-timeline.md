@@ -9,9 +9,7 @@ It is useful for inspecting robot modes, task phases, and other categorical even
 
 See the [`StateTimelineView` reference](../../reference/types/views/state_timeline_view.md) for properties and examples.
 
-The [StateTimelineView](../../reference/types/views/state_timeline_view.md) shows how entities transition between discrete states over time.
 Each entity becomes a group of horizontal lanes, one lane per instance of its `state` (most entities log one state, and get one lane), and each logged state is rendered as a colored band that runs until the next change.
-This is a good fit for state machines, mode transitions, sensor health, or any other piece of data that's better described as "what state am I in right now?" than as a numerical value.
 
 ## Logging state changes
 
@@ -88,7 +86,7 @@ snippet: howto/state_remapping[blueprint]
 
 ### Add data by dragging components
 
-You can set up the same mapping interactively: drag a component from the streams tree onto a State Timeline view. If the component is a compatible source (string, boolean, or numeric), a new lane is added that remaps `StateChange:state` from it. Incompatible components (e.g. a blob or tensor) are rejected, as is dropping a component that the view already visualizes.
+You can set up the same mapping interactively: drag a component from the streams panel onto a State Timeline view. If the component is a compatible source (string, boolean, or numeric), a new lane is added that remaps `StateChange:state` from it. Incompatible components (e.g. a blob or tensor) are rejected, as is dropping a component that the view already visualizes.
 
 ## Setting up the view via blueprint
 

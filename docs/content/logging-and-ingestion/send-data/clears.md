@@ -3,7 +3,7 @@ title: Clear out data using tombstones
 order: 700
 description: Use Clear to mark data as no longer valid after a point in time
 ---
-In order to create coherent views of streaming data, the Rerun Viewer shows the latest values for each visible entity at the current timepoint. But some data may not be valid for the entire recording even if there are no updated values. How do you tell Rerun that something you've logged should no longer be shown?
+In order to create coherent views of streaming data, the Rerun Viewer shows the latest values for each visible entity at the current timepoint. But some data may not be valid for the entire recording even if there are no updated values. This page shows how to tell Rerun that something you've logged should no longer be shown.
 
 ## Log entities as cleared
 The most straight forward option is to explicitly log that an entity has been cleared. Rerun allows you to do this by logging a special `Clear` to any path. The timepoint at which the `Clear` is logged is the time point after which that entity will no longer be visible in your views.

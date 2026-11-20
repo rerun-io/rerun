@@ -231,13 +231,13 @@ See [RRD format stability](chunks-and-rrd/rrd-format.md#stability) for details.
 
 The Rust SDK can host the Viewer directly inside your application via [`rerun::native_viewer::show`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.show.html), which expects a complete recording from memory rather than a live stream. This requires enabling the `native_viewer` feature in `Cargo.toml`. The Viewer blocks the main thread until closed; see the Rust API docs for details.
 
+### Opening files
+
+You can also open existing files (RRD, MCAP, images, video, point clouds, etc.) directly with the Viewer — see [Opening files](import/open-any-file.md).
+
 ## Closing
 
 This closes our tour of logging with Rerun.
 It covers a small part of what's possible, but gives you pointers to start experimenting.
 
 As a next step, browse through our [example gallery](https://rerun.io/examples) for some more realistic example use-cases, browse the [Types](../reference/types.md) section for more simple examples of how to use the main encodings, or dig deeper into [querying your logged data](../query-and-transform/tutorial.md).
-
-## Opening files
-
-You can also open existing files (RRD, MCAP, images, video, point clouds, etc.) directly with the Viewer — see [Opening files](import/open-any-file.md).

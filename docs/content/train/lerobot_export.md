@@ -79,7 +79,7 @@ Note, `root` is where the dataset files will be written, and LeRobot requires th
 
 ### Export the episode
 
-Convert the filtered data into a LeRobot episode. This is the core transformation step.
+Convert the filtered data into a LeRobot episode.
 
 snippet: howto/lerobot_export[export_episode]
 

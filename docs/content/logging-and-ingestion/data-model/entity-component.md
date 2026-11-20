@@ -36,7 +36,7 @@ Internally, this archetype builds a set of, in this case, two components:
 * `Points2D:colors` of type [`Color`](../../reference/types/components/color.md).
 Then, the `rr.log()` function records these two components and associates them with the `"my_point"` entity.
 
-Later, the View for spatial types queries the data store for all the entities that have a `Points2D:positions` component.
+Later, the View for spatial types queries the chunk store for all the entities that have a `Points2D:positions` component.
 In this case it would find the "my_point" entity. This query additionally returns the `Points2D:colors` component because that
 component is associated with the same entity. These two components are recognized as corresponding to the `Points2D` archetype (via metadata attached to the components), which informs the Viewer on how to display the corresponding entity.
 
@@ -45,7 +45,7 @@ See the [Types](../../reference/types.md) reference for a list of [archetypes](.
 
 ### Adding custom data
 
-Although both the SDKs' archetype objects and the view are based on the same archetype definition (and are actually implemented using code that is automatically generated based on that definition), they both operate on arbitrary collections
+Although both the SDKs' archetype objects and the view are based on the same archetype definition, they both operate on arbitrary collections
 of components. Neither the SDKs nor the Viewer enforce or require that an entity should contain a *specific* set of components.
 The Rerun Viewer will display any data in a generic form, but its views will only work on sets of components it can
 make sense of.

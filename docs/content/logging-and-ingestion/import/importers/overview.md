@@ -4,6 +4,9 @@ order: 50
 description: How importers load files into the Viewer and SDK, and how to write your own
 ---
 
+Importers load files into the Viewer and the SDK.
+This page explains how Rerun picks an importer for a file, and the two ways to add your own for file types Rerun does not support.
+
 Internally, the [`Importer`](https://docs.rs/re_importer/latest/re_importer/trait.Importer.html) trait takes care of loading files into the Viewer and/or SDK.
 
 There are 3 broad kinds of `Importer`s: _builtin_, _external_ and _custom_.

@@ -179,7 +179,7 @@ It's a great place to start exploring the examples.
 
 The `rerun` binary bundles multiple tools in one:
 - **Native Viewer** for visualization
-- **OSS catalog server** (via `rerun server`)
+- **Open-source server** (via `rerun server`)
 - **RRD tools** for file manipulation
 - **Web Viewer** (via `rerun --serve-web`)
 

@@ -59,6 +59,7 @@ When it stops, everything you created or registered while it ran is gone.
 
 The `.rrd` files themselves stay on disk.
 Files that have a footer index are read from disk on demand; files without one are loaded into memory in full.
+Run [`rerun rrd optimize`](../../reference/cli.md#rerun-rrd-optimize) on a file to add a footer before serving it.
 
 ## Directories are scanned once
 

@@ -5,12 +5,6 @@ description: Lay out the Viewer from Python or Rust code with the Blueprint API
 ---
 
 You can define [Blueprints](../blueprints.md) in code using the Blueprint API in Python or Rust.
-Use it for:
-
--   Creating layouts dynamically based on your data
--   Ensuring consistent views for specific debugging scenarios
--   Generating complex layouts that would be tedious to build manually
--   Sending different blueprints based on runtime conditions
 
 This guide configures the viewport for individual recordings.
 To configure catalog table columns or embedded segment previews instead, see [Configure table layouts and segment previews](configure-table-blueprints.md).
@@ -209,9 +203,7 @@ To send a blueprint to a stream that already exists, use `blueprint.send(&rec, B
 
 ## Youtube overview
 
-For a video introduction, watch the YouTube overview below.
+For a video introduction, watch the [blueprints overview on YouTube](https://www.youtube.com/watch?v=kxbkbFVAsBo).
 The code below is a simplified version of the video's example: it sends each blueprint in turn, so running it shows only the last one.
-
-<iframe width="560" height="315" src="https://www.youtube.com/embed/kxbkbFVAsBo?si=k2JPz3RbhR1--pcw" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 
 snippet: howto/visualization/blueprint_overview

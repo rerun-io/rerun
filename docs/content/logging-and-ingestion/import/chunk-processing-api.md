@@ -109,7 +109,7 @@ To recap:
 
 - A pipeline is a DAG rooted at one or more readers or stores and ending at a leaf node represented by a lazy stream.
 - Composition is cheap: building the DAG is metadata only, regardless of input size. This is done through `LazyChunkStream`'s APIs.
-- The actual execution of the pipeline is triggered by calling a terminal method of the lazy stream, for example `.write_rrd()`. Terminal calls are blocking, but execution is multithreaded and essentially GIL-free.
+- The actual execution of the pipeline is triggered by calling a terminal method of the lazy stream, for example `.write_rrd()`. Terminal calls are blocking, but execution is multithreaded and releases the GIL, except while it runs Python functions passed to `map` or `flat_map`.
 - Memory cost is bounded by what flows through a chunk at a time, not by the total recording size.
 
 #### Move semantics

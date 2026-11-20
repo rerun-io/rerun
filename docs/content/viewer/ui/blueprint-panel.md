@@ -57,9 +57,10 @@ Hovering over any item reveals controls for:
 
 Right-click any item for a context menu with additional operations.
 
-### Data blueprints
+### Entity settings per view
 
-Entities shown in the blueprint panel refer to their *data blueprints* — the entity plus its associated blueprint settings. Changes made here apply only to the specific view where the entity appears.
+Each entity in the blueprint panel carries its own [per-view settings](../view-concepts/customize-views.md), such as visualizers and component overrides.
+Changes made here apply only to the view where the entity appears.
 
 ### Groups
 
@@ -70,8 +71,6 @@ When entities are added to a view (manually or automatically), hierarchical grou
 To add or re-add an entity to a view:
 1. Select the target view in the blueprint panel
 2. Click the button in the [Selection Panel](selection.md) to open the entity picker
-3. Select entities to add (only compatible entities for that view type are shown)
+3. Select entities to add (only compatible entities for that view class are shown)
 
 See [Entity path filter](../view-concepts/entity-path-filter.md) for information on how view content is determined.
-
-For more information about configuring the viewer, see [Blueprints](../blueprints.md).

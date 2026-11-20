@@ -4,6 +4,8 @@ order: 100
 description: Set the Viewer's memory limit and open recordings that are larger than RAM
 ---
 
+This page shows how to cap the Viewer's memory use, and how to open recordings that are larger than RAM.
+
 ## --memory-limit
 
 The more data you log, the more RAM the Rerun Viewer uses.

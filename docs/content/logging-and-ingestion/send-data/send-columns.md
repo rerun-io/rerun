@@ -115,9 +115,6 @@ snippet: archetypes/arrows3d_column_updates
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/arrows3d_column_updates/3e14b35aac709e3f1352426bd905c635b1e13879/1200w.png">
 </picture>
 
-Each row in the component column can be a batch of data, e.g. a batch of positions.
-This lets you log the evolution of a set of arrows over time efficiently.
-
 
 ### Updating a transform over time, in a single operation
 

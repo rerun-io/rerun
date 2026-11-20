@@ -8,10 +8,10 @@ Making selections is one of the primary ways of exploring data in Rerun.
 The current selection can be changed with a mouse click on most elements of the Viewer —
 including the [Blueprint](blueprint-panel.md), [Viewport](viewport.md),
 [Timeline](timeline.md)
-and even the Selection view itself.
+and even the selection panel itself.
 
 
-Parts of the Selection view
+Parts of the selection panel
 ---------------------------
 
 <picture>
@@ -48,7 +48,7 @@ Once the cloud is selected, you can further refine that selection by clicking on
 Multi Selection
 ---------------
 By holding `cmd/ctrl` upon click, you can add or remove selections from the set of currently selected objects.
-The selection view shows all selected objects in the order they were added.
+The selection panel shows all selected objects in the order they were added.
 
 Linking views
 -------------

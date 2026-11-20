@@ -5,7 +5,7 @@ description: How entity paths organize logged data into a hierarchy you can quer
 ---
 
 ## Entity paths
-As mentioned in the [Entity Component](entity-component.md) overview, all entities within Rerun have a unique _entity path_.
+All entities within Rerun have a unique _entity path_ (see [Entity Component](entity-component.md)).
 
 The first argument to the `log()` function is this path. Each time you log to a specific entity path you will update the entity, i.e. log a new instance of it along the timeline.
 

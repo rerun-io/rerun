@@ -31,7 +31,7 @@ The outputs from each of these stages can be registered as separate layers — f
 
 A layer is immutable once created, but a segment can be enriched over time by registering additional layers under the same segment ID and a different layer name.
 
-Importantly, layers are natively understood by Rerun's visualization and query systems.
+Rerun's visualization and query systems understand layers.
 Viewing or querying a segment automatically includes all its layers, making it work as a single logical unit.
 
 ---

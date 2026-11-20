@@ -61,27 +61,22 @@ You can learn more about chunks and how they came to be in [this blog post](http
 
 ## Getting chunks into Rerun
 
-If you've used the Rerun SDK before, you know it doesn't actually force you to craft these chunks manually, which would be rather cumbersome!
-
-How does one create and store chunks in Rerun, then?
+You rarely build chunks by hand: each of the logging APIs below builds them for you from a different shape of input.
 
 
 ### The row-oriented logging: `log`
 
-The `log` API is generally [what we show in the getting-started guides](../tutorial.md#logging-our-first-points) since it's the easiest to use:
+The `log` API is [what we show in the getting-started guides](../tutorial.md#logging-our-first-points) since it's the easiest to use:
 
 snippet: archetypes/scalars_row_updates
 
-The `log` API makes it possible to send data into Rerun on a row-by-row basis, without requiring any extra effort.
-This row-oriented interface makes it very easy to integrate into existing codebase and just start logging data as it comes (hence the name).
+The `log` API sends data into Rerun row by row.
+This row-oriented interface makes it easy to integrate into an existing codebase and log data as it is produced.
 
 Reference:
 * [🐍 Python `log`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.log)
 * [🦀 Rust `log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log)
 * [🌊 C++ `log`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#abdd6ccd15ce0228cf5ccd9e49a8220af)
-
-But if you're handing a bunch of rows of data over to Rerun, how does it end up neatly packaged in columnar chunks?
-
 
 #### How are these rows turned into columns?
 

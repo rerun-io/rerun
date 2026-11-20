@@ -4,6 +4,8 @@ order: 100
 description: React to selection and time changes in the web Viewer, notebooks, or Rust
 ---
 
+This page shows how to react to Viewer events, such as selection and time changes, and the alternatives where the Viewer cannot call back into your code.
+
 ## Can I add buttons or sliders that call my Python script?
 
 Not in the native Viewer.

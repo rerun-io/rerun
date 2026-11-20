@@ -5,9 +5,9 @@ description: Run joins, filters, and aggregations on Rerun data with DataFusion
 ---
 
 Rerun provides a dataframe interface to your data via [DataFusion](https://datafusion.apache.org/python/).
-This example performs a series of joins, filters, etc that highlight a variety of common operations in context.
-Because datafusion has a lazy execution model it is generally more performant to use datafusion for processing,
-however datafusion does allow conversion to dataframes for other tools (pandas, polars, pyarrow).
+This example runs joins, filters, and aggregations on a recording.
+DataFusion executes lazily, so processing data in DataFusion is usually faster than converting it first.
+You can still convert to dataframes for other tools (pandas, polars, pyarrow).
 
 > [!NOTE]
 > The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).

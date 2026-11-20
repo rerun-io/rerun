@@ -4,7 +4,7 @@ order: 200
 description: Visualizers, overrides, and per-entity customization in views
 ---
 
-This section explains the process by which logged data is used to produce a visualization and how it can be customized via the user interface or code.
+This page explains how the Viewer turns logged data into a visualization, and how to change that per view, from the UI or from code.
 
 ## How are visualizations produced?
 
@@ -22,7 +22,7 @@ In the Rerun Viewer, visualizations happen within _views_, which are defined by 
 
 The first step for a view to display its content is to determine which entities are involved.
 This is determined by the [entity path filter](entity-path-filter.md), which is part of the view blueprint.
-The query is run against the data store to generate the list of view entities.
+The query is run against the chunk store to generate the list of view entities.
 
 Views rely on visualizers to display each of their entities.
 For example, [3D views](../../reference/types/views/spatial3d_view.md) use the `Points3D` visualizer to display 3D point clouds,
@@ -60,8 +60,7 @@ The next section describes how to precisely control what data each visualizer op
 
 ## Component mappings
 
-Each visualizer takes various components as input. Values are automatically sourced from the data store. When no matching data exists (except for required components like point cloud positions or plot scalars), the Viewer generates sensible default values.
-The exact way this is done depends on the type of View, but may be influenced by a variety of circumstances.
+Each visualizer takes various components as input. Values are automatically sourced from the chunk store. When no matching data exists (except for required components like point cloud positions or plot scalars), the Viewer generates sensible default values, which depend on the view class.
 
 Component mappings let you customize this behavior, for example to:
 
@@ -78,7 +77,7 @@ In the UI this can be done via the visualizer UI, by clicking and modifying the 
 When such a customization is defined, it automatically changes the component's source for this visualizer to point to this new custom value.
 
 The Source dropdown menu allows quick toggling between the different input representations.
-By clicking on "Add custom" you can create a new custom component override:
+By clicking on "Add custom" you can set a custom value:
 
 <picture>
   <img src="https://static.rerun.io/viscomp-add-custom/ac6e0df27139c7be2f446c17981bed74509c0b31/full.png" alt="Source dropdown for the Boxes2D colors component, listing Boxes2D:colors, View default and the highlighted Add custom option">

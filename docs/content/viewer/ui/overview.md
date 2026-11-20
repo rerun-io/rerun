@@ -5,18 +5,18 @@ description: The panels of the Rerun Viewer and where to find each piece of func
 ---
 The following sections give an overview of the basic UI concepts and where to find which functionality.
 
-Generally, the Viewer tries to be as self-explaining as possible - most items in the UI show a tooltip upon hovering which should give additional information.
-If you are missing a piece of information, don't hesitate to [file an issue](https://github.com/rerun-io/rerun/issues/new/choose)!
+Most items in the UI show a tooltip with more information when you hover them.
+If information is missing, [file an issue](https://github.com/rerun-io/rerun/issues/new/choose).
 
 Overview
 --------------------------
 ![screenshot of the Viewer with different parts annotated](https://static.rerun.io/a5e708e4bbd2c0b182f7f9103ab42c85e55f8982_viewer-overview.png)
 
 ### [Blueprint](blueprint-panel.md)
-The Blueprint view is where you see and edit the Blueprint for the whole viewer, i.e. what is shown in the Viewer (and how it is shown).
+The blueprint panel is where you see and edit the blueprint for the whole Viewer, i.e. what is shown in the Viewer (and how it is shown).
 
 ### [Selection](selection.md)
-The Selection view lets you see details and edit configurations of the current selection(s).
+The selection panel lets you see details and edit configurations of the current selection(s).
 
 ### [Timeline](timeline.md)
 The timeline panel gives you controls over what point in time you're looking at on which [timeline](../../logging-and-ingestion/data-model/timelines.md) for the rest of the viewer.

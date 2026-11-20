@@ -41,7 +41,6 @@ snippet: howto/query_videos[check_codec]
 
 ## Decoding a specific frame
 
-Unlike raw images, video frames are encoded using inter-frame compression.
 To decode a specific frame, you must decode from the beginning of the stream (or from the most recent keyframe) and iterate forward.
 `av` handles keyframe detection internally during decoding.
 
@@ -56,7 +55,7 @@ The simplest way is to run [`rerun rrd optimize`](../../reference/cli.md#rerun-r
 
 ### Adding keyframe information as a layer
 
-If you cannot rewrite the recordings, analyze the video once to identify keyframes and register them as a separate layer:
+If you cannot rewrite the recordings, analyze the video once to identify keyframes and register them as a separate [layer](../catalog/layers.md):
 
 snippet: howto/query_video_keyframes[add_keyframe_column]
 
@@ -76,13 +75,6 @@ significantly reducing the amount of data to fetch and decode:
 
 snippet: howto/query_video_keyframes[query_with_keyframes]
 
-This approach is especially beneficial for:
-
-- Long video sequences where decoding from the start is expensive
-- Random access patterns where you need to jump to arbitrary frames
-- High-resolution video where bandwidth and decode time are significant
-- Interactive applications that need to seek to specific timestamps
-
 ## Exporting to MP4 (remuxing)
 
 You can export video stream data to an MP4 file without re-encoding.
@@ -94,9 +86,7 @@ snippet: howto/query_videos[export_mp4]
 
 ### Keyframe handling
 
-Video streams often use inter-frame compression where most frames only store the difference from previous frames.
-
-`av` handles keyframe detection internally, but for efficient random access to specific frames, you need keyframe indicators: log them at recording time, or add them with `rerun rrd optimize`.
+For efficient random access to specific frames, you need keyframe indicators: log them at recording time, or add them with `rerun rrd optimize`.
 [`VideoStream`](../../reference/types/archetypes/video_stream.md) has an optional `is_keyframe` component for this, which is queryable as the `VideoStream:is_keyframe` column.
 
 ### Timestamp handling

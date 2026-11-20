@@ -67,8 +67,7 @@ See [limiting memory use](limit-ram.md) for how to cap it.
 
 ## Latency indicator
 
-Even though Rerun is not meant for teleoperation, having low latency when looking at live data is nice.
-Latency can come from many sources.
+Latency on live data can come from many sources.
 To figure out the bottleneck in your application, open the _developer panel_ (via the command palette, or by hitting `Ctrl` + `Shift` + `M`) and pick the "Latency" tab.
 You can also just click the latency indicator in the top bar, which is always shown when performance metrics are enabled, and otherwise appears on its own when the latency goes above one second.
 

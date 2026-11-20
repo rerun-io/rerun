@@ -15,7 +15,6 @@ We refer to the contents stored in a given catalog server as the _catalog_.
 The catalog contains top-level objects called _entries_.
 
 There are currently two types of entries: **tables** and **datasets**.
-Each is described in more detail below.
 
 Entries share a few common properties:
 - **id**: a globally unique identifier

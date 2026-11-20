@@ -57,7 +57,7 @@ The queried range is configurable per view and per entity, see [Visible time ran
 
 ## Partial updates
 
-As mentioned above, the query semantics that power the Rerun Viewer, coupled with our [chunk-based storage](../chunks-and-rrd/chunks.md), make it possible to log only the components that have changed in-between frames (or whatever atomic unit [your timeline](timelines.md) is using).
+The query semantics that power the Rerun Viewer, coupled with our [chunk-based storage](../chunks-and-rrd/chunks.md), make it possible to log only the components that have changed in-between frames (or whatever atomic unit [your timeline](timelines.md) is using).
 
 Here's an example of updating only some specific properties of a point cloud, over time:
 

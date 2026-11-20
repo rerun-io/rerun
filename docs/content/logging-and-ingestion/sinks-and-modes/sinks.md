@@ -6,11 +6,11 @@ description: Sinks are the destinations logged data goes to, such as files or a 
 
 Sinks control where your Rerun data goes. They are the output destinations for your logged data.
 
-When you log data with Rerun, that data needs to flow somewhere, whether that's to a live viewer, a file on disk, memory, or multiple destinations at once. Sinks provide this routing layer, giving you flexible control over how and where your recordings are stored and displayed.
+Data can go to a live Viewer, a file on disk, memory, or several destinations at once.
 
 ## Available sink types
 
-Rerun provides several built-in sink types, each designed for specific use cases:
+Rerun provides these built-in sink types:
 
 ### GrpcSink
 
@@ -26,20 +26,12 @@ snippet: concepts/file_sink
 
 ## Multiple sinks (Tee pattern)
 
-Rerun's sink system can send data to multiple destinations simultaneously.
-This "tee" pattern lets you both visualize data live and save it to disk in a single run.
+Pass several sinks to `set_sinks` to send data to all of them at once.
+For example, a `GrpcSink` and a `FileSink` let you view data live and save it to disk in the same run:
 
 snippet: howto/set_sinks
 
-This pattern is useful when:
-
-- You want to monitor a long-running process while archiving the data
-- You're debugging and want both live feedback and a recording to analyze later
-- You need to stream to multiple viewers or save to multiple files
-
-### Stream to a Viewer and save to a file at the same time (`tee`ing)
-
-Use `set_sinks` with both a `GrpcSink` and a `FileSink`, as in the snippet above.
+You can also stream to several Viewers or save to several files.
 
 Calling `rr.spawn()`, `rr.connect_grpc()`, or `rr.save()` replaces all existing sinks.
 To start a Viewer without touching your sinks, call `rr.spawn(connect=False)`: it only starts the Viewer process, and your `GrpcSink` can then connect to it.

@@ -5,4 +5,4 @@ description: Callbacks, playback control, screenshots, and the MCP server
 index: true
 ---
 
-Callbacks, playback control, screenshots, custom visualizations, Viewer URLs, and the MCP server.
+This section shows how to react to Viewer events, control the Viewer from code or from an agent, and extend it with your own UI.

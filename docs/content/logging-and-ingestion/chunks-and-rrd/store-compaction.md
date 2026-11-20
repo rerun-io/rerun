@@ -1,11 +1,11 @@
 ---
-title: Datastore compaction
+title: Chunk store compaction
 order: 500
-description: How the datastore compacts incoming chunks for speed and memory
+description: How the chunk store compacts incoming chunks for speed and memory
 ---
 
 
-The Rerun datastore continuously compacts data as it comes in, in order to find a sweet spot between ingestion speed, query performance and memory overhead.
+The Rerun chunk store continuously compacts data as it comes in, in order to find a sweet spot between ingestion speed, query performance and memory overhead.
 
 The compaction is triggered by both number of rows and number of bytes thresholds, whichever happens to trigger first.
 

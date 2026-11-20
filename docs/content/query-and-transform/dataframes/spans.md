@@ -4,7 +4,8 @@ order: 125
 description: Annotate, query, curate and train from time spans within recordings.
 ---
 
-There are many ways to implement a data flywheel, we propose here an annotation, query, curation and training loop that operates on time spans.
+Span tables attach properties to time spans of a dataset's segments.
+This page shows how to create, edit, and query span annotations, and how to use them to curate training data.
 
 > [!NOTE]
 > The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).
@@ -30,7 +31,7 @@ A span table is always related to a particular dataset, and has a semi fixed sch
 
 | Column | Arrow type | Contents |
 |---|---|---|
-| `rerun_segment_id` | `string` | ID of the recording containing the span |
+| `rerun_segment_id` | `string` | ID of the segment containing the span |
 | `rerun_span_id` | `string` | Unique ID of the span |
 | `<timeline>:start` | `int64`, `duration[ns]`, or `timestamp[ns]` | Required inclusive start |
 | `<timeline>:end` | Same type as start | Required inclusive end |
@@ -81,15 +82,15 @@ snippet: howto/spans[query]
 
 Rows with missing `state` or `score` values do not pass the filter above.
 Filters keep or discard whole spans without changing boundaries or subtracting overlaps.
-Selecting spans does not require loading the recordings.
+Selecting spans does not require loading the segments' data.
 
 ### Examples
 
-Filter the segment ID column to select spans from one recording:
+Filter the segment ID column to select spans from one segment:
 
 snippet: howto/spans[filter_segment]
 
-Add a `pick_and_place` task enclosing the `grasp` span above, then find grasps fully contained in a task from the same recording:
+Add a `pick_and_place` task enclosing the `grasp` span above, then find grasps fully contained in a task from the same segment:
 
 snippet: howto/spans[hierarchy]
 
@@ -97,16 +98,16 @@ Each matching grasp is returned once, even if multiple tasks contain it.
 
 ## Select spans for training
 
-Span-level curation filters the annotation table to choose intervals within recordings.
-Dataset-level queries choose recordings; queries on the annotation table choose intervals within them.
+Span-level curation filters the annotation table to choose intervals within segments.
+Dataset-level queries choose segments; queries on the annotation table choose intervals within them.
 Combine both selections before saving the training manifest:
 
 snippet: howto/spans[curation]
 
-`to_curation_arrow` exports recording IDs and typed boundaries, together with dataset and timeline identity.
-`Curation.from_source` resolves their intersection with the view's recording ranges before sampling, without fetching recording chunks.
+`to_curation_arrow` exports segment IDs and typed boundaries, together with dataset and timeline identity.
+`Curation.from_source` resolves their intersection with the view's segment ranges before sampling, without fetching segment data.
 `Curation` removes duplicate intervals and leaves overlapping intervals distinct.
-Without `spans`, `Curation.from_source(view, index="time")` curates the selected recordings' full ranges without requiring a span table.
+Without `spans`, `Curation.from_source(view, index="time")` curates the selected segments' full ranges without requiring a span table.
 Pass it through `DataSource(dataset, curation=curation)` to either dataloader; see [Train on selected spans](../../train/dataloader.md#train-on-selected-spans).
 Intervals select sample anchors; field windows may extend beyond them. That means depending on the observation history, some observations for given anchors may fall outside of the specified time spans.
 The resolved Arrow rows are the training manifest; the original recording-selection view is not needed to reload it.
@@ -134,7 +135,7 @@ For local persistence, use `curation.write_parquet("training.parquet")` and `Cur
 
 ## Delete the annotation table
 
-Delete the annotations without deleting the dataset or its recordings:
+Delete the annotations without deleting the dataset or its segments:
 
 snippet: howto/spans[delete]
 

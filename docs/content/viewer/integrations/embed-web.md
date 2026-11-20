@@ -6,7 +6,7 @@ description: Embed the web Viewer via iframe, JavaScript package, or Gradio
 
 For the full JavaScript API, see the [Web Viewer API reference](https://ref.rerun.io/docs/js/).
 
-Integrating the Rerun Viewer into your web application can be accomplished either by [utilizing an iframe](#embedding-apprerunio-using-an-iframe) or by using our [JavaScript package](#using-the-javascript-package).
+You can embed the Viewer with an [iframe](#embedding-apprerunio-using-an-iframe) or with the [JavaScript package](#using-the-javascript-package).
 
 ## Embedding `app.rerun.io` using an `<iframe>`
 
@@ -36,13 +36,12 @@ RRD files written by Rerun 0.23 or later can be opened by any newer Viewer (see 
 
 ### Matching the host page's theme
 
-By default, the embedded viewer follows the user's OS theme (`prefers-color-scheme`). If your host page has its own theme toggle, you can pin the viewer to match by passing `theme=dark`, `theme=light`, or `theme=system`:
+By default, the embedded viewer follows the user's OS theme (`prefers-color-scheme`).
+If your host page has its own theme toggle, pin the viewer to match by passing `theme=dark`, `theme=light`, or `theme=system`:
 
 ```html
 <iframe src="https://app.rerun.io/version/{RERUN_VERSION}/?url={RRD_URL}&theme=dark"></iframe>
 ```
-
-This is useful for sites whose theme can differ from the OS preference — without it, a user on a light-mode OS visiting your dark-mode page would see a bright viewer panel against a dark background.
 
 ## Using the JavaScript package
 

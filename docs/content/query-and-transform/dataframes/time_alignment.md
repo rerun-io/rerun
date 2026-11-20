@@ -5,9 +5,7 @@ description: Fill forward unaligned data so you can run compute at a fixed frequ
 ---
 
 Real-world data is usually not time-aligned.
-Rerun provides capabilities to simplify time alignment.
-One common use case is to fill forward to run compute at a fixed frequency.
-This example demonstrates how Rerun simplifies that process.
+This example fills data forward so that you can run compute at a fixed frequency.
 
 > [!NOTE]
 > The examples on this page use a local open-source server and also run on [Rerun Hub](../../hub.md) ([how to switch](../../hub.md#run-the-examples-on-hub)).

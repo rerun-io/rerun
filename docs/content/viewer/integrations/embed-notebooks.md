@@ -4,8 +4,7 @@ order: 0
 description: How to embed Rerun in notebooks like Jupyter, Colab, or marimo
 ---
 
-Rerun can embed the Rerun Viewer directly within IPython-style notebooks.
-This makes it easy to iterate on API calls as well as to share data with others.
+This page shows how to embed the Rerun Viewer in IPython-style notebooks, stream data to it, and react to its events from Python.
 
 Rerun has been tested with:
 

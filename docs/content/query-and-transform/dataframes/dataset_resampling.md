@@ -17,10 +17,8 @@ snippet: howto/dataset_resampling[get_dataset]
 
 ## Investigate time ranges
 
-Before we do the resampling, we can examine the dataset's time ranges using the function
-`get_index_ranges()`. This is not strictly necessary for the resampling work to follow, but
-it can be helpful during investigation of your data. This will show you the start and
-end values for all indexes in your dataset, one per segment.
+Optionally, examine the dataset's time ranges with `get_index_ranges()`.
+It shows the start and end values for all indexes in your dataset, one per segment.
 
 snippet: howto/dataset_resampling[view_index_ranges]
 

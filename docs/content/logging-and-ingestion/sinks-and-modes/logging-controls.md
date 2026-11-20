@@ -4,6 +4,8 @@ order: 400
 description: Turn logging to Rerun on or off, and control what Rerun prints to the console
 ---
 
+This page shows how to turn logging off or on, globally or at runtime, and how to silence Rerun's console output.
+
 ## Controlling logging globally
 
 Rerun logging is enabled by default. The logging behavior can be overridden at runtime using the `RERUN` environment variable:
@@ -20,7 +22,7 @@ cargo run my_rerun_package
 The `RERUN` environment variable is read once during SDK initialization. The accepted values for `RERUN` are `1/on/true`, and `0/off/false`.
 
 > [!NOTE]
-> When Rerun is disabled, logging statements are bypassed and essentially become no-ops.
+> When Rerun is disabled, logging calls are no-ops.
 
 ## Creating a default-off setup in code
 

@@ -5,13 +5,14 @@ description: How each MCAP decoder interprets and extracts data from the same fi
 ---
 
 MCAP processing in Rerun uses a decoder architecture where each decoder represents a different way to interpret and extract data from the same MCAP source.
-By default, when opening a file Rerun analyzes an MCAP file to determine which decoders are active to provide the most comprehensive view of your data, while avoiding duplication.
-You can specify which decoders to use during conversion, allowing you to extract exactly the information you need for your analysis.
+By default, all decoders are enabled, including the `foxglove` lenses and the `urdf` decoder; when converting, you can select a subset of them.
 
 ## Understanding decoders with an example
 
 File-level decoders (`schema`, `stats`, `metadata`, `attachments`, `recording_info`) each run once over the file.
-Message decoders are tried per channel in priority order (`ros2msg`, `ros2_reflection`, `protobuf`), and each channel is handled by the first enabled one that supports it, with `raw` as the fallback for channels no other decoder supports.
+Message decoders are tried per channel in priority order (`ros2msg`, `ros2_reflection`, `protobuf`), and each channel is handled by the first enabled one that supports it.
+The `raw` decoder handles the channels no other decoder supports; `rerun mcap convert --disable-raw-fallback` turns that off.
+The `foxglove` lenses then turn decoded Foxglove Protobuf messages into Rerun archetypes.
 
 Consider an MCAP file from a ROS2 robot containing sensor data on the topic `/robot/camera/image_raw` with ROS2 `sensor_msgs/msg/Image` messages:
 
@@ -21,9 +22,11 @@ Consider an MCAP file from a ROS2 robot containing sensor data on the topic `/ro
 
 ## Schema and statistics decoders
 
-The `schema` decoder extracts structural information about the MCAP file's organization, creating metadata entities that describe channel definitions, topic names with their message types, and schema definitions. This decoder is particularly useful for understanding unfamiliar MCAP files or getting an overview of available topics and channels before deeper processing.
+The `schema` decoder extracts structural information about the MCAP file's organization, creating metadata entities that describe channel definitions, topic names with their message types, and schema definitions.
 
-The `stats` decoder computes file-level metrics and statistics, creating entities with message counts per channel, temporal ranges, file size information, and data rate analysis. This gives you insight into the scale and characteristics of your dataset for quality assessment and planning storage requirements.
+The `stats` decoder computes file-level metrics and statistics, such as message counts per channel, temporal ranges, and file size, and stores them in `__mcap_properties`.
+
+The `metadata` decoder copies the MCAP file's metadata records (if any) to `__mcap_metadata`, and the `attachments` decoder copies its attachment records (if any) to `__mcap_attachments` as static data.
 
 ## Message interpretation decoders
 
@@ -37,15 +40,13 @@ See [Message Formats](message-formats.md) for the complete list of supported mes
 
 The `protobuf` decoder automatically decodes protobuf-encoded messages using reflection, creating structured component data based on the protobuf schema. Message fields become Rerun components that you can query and analyze.
 
-However, this decoder provides structured access without semantic visualization meaning. While the data becomes queryable, it won't automatically appear as meaningful visualizations like images or point clouds, it gives you the data structure, not the visual interpretation.
-
 ## The raw decoder
 
 The `raw` decoder preserves the original message bytes without any interpretation, creating blob entities containing the unprocessed message data. Each message appears as a binary blob that can be accessed programmatically for custom analysis tools.
 
 ## Recording info
 
-The `recording_info` decoder extracts metadata about the recording session and capture context, creating metadata entities with information about recording timestamps, source system details, and capture software versions.
+The `recording_info` decoder extracts metadata about the recording session and capture context, such as recording timestamps, source system details, and capture software versions, and stores it in `__mcap_properties`.
 
 ## The URDF option
 
@@ -53,22 +54,9 @@ The `urdf` option uses Rerun's built-in URDF loader if there is a ROS 2 string t
 
 For general information about how to load URDF files, see [here](../urdf.md).
 
-## Decoder selection and performance
+## Selecting decoders
 
-### Selecting decoders
-
-By default, all decoders are available and each channel is decoded by the most specific one that supports it. You can control which decoders are used when [converting MCAP files via the CLI](cli-reference.md) using the `-d` flag:
-
-```bash
-# Use only specific decoders
-rerun mcap convert input.mcap -d protobuf -d stats -o output.rrd
-
-# Use multiple decoders for different perspectives
-rerun mcap convert input.mcap -d ros2msg -d raw -d recording_info -o output.rrd
-
-# Add robot geometry from ROS robot_description topics
-rerun mcap convert input.mcap -d ros2msg -d urdf -o output.rrd
-```
+To select decoders when converting MCAP files, see the [MCAP CLI reference](cli-reference.md#decoder-selection).
 
 ## Accessing decoder data
 
@@ -78,7 +66,8 @@ Each decoder creates different types of components on entity paths (derived from
 - Other data from the `protobuf` or `ros2_reflection` decoders appears as structured components that can be queried by field name or manually added to certain views ([example](message-formats.md#example-time-series-plot-for-custom-message-scalars))
 - Data from the `raw` decoder appears as blob components containing the original message bytes
 - Data from the `urdf` option appears as static 3D robot geometry loaded from the ROS 2 `/robot_description` topic
-- Metadata from `schema`, `stats`, and `recording_info` decoders appears as dedicated metadata entities
+- The `schema` decoder's static summary of channels and schemas appears as dedicated metadata entities
+- Metadata from the `stats` and `recording_info` decoders appears in `__mcap_properties`, MCAP metadata records in `__mcap_metadata`, and attachments in `__mcap_attachments`
 
 For more information on querying data and working with archetypes, see the [Data Queries documentation](../../../query-and-transform/catalog/get-data-out.md).
 

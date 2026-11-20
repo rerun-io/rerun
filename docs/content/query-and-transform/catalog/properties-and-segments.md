@@ -24,8 +24,6 @@ In this example, we use `send_property()` to attach metadata to each recording. 
 In addition to user-provided properties, Rerun automatically stores built-in properties using the [`RecordingInfo`](../../reference/types/archetypes/recording_info.md) archetype.
 Its `start_time` field is automatically set to the time the recording stream was created, and its `name` field can be set with `send_recording_name()`.
 
-Internally, properties are logged under a reserved `/__properties` entity path and use [static semantics](../../logging-and-ingestion/data-model/static.md) since they apply to the entire recording rather than specific points in time.
-
 ## Displaying the segment table
 
 To customize how the segment table appears in the Viewer, use a table blueprint.

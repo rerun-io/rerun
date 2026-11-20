@@ -139,7 +139,8 @@ See [Where a query runs](../dataframes/query_performance_tuning.md#where-a-query
 
 ## Querying a subset of a dataset
 
-In general, datasets can be arbitrarily large, and it is often useful to query only a subset of it. This is achieved using `DatasetSelection` objects:
+Datasets can be arbitrarily large, and it is often useful to query only a subset of it.
+This is achieved using `DatasetSelection` objects:
 
 snippet: howto/get_data_out[filter_selection]
 

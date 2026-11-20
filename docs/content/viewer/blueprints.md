@@ -19,7 +19,7 @@ A way to think about the Rerun Viewer is that
 -   The **recording** provides the actual data you are visualizing
 -   The **blueprint** determines how that data is displayed
 
-Both pieces are crucial. Without a recording there is nothing to show. Without a blueprint there is no way to show it. Even when you use Rerun without explicitly loading a blueprint, the Viewer creates one automatically for you.
+When you do not load a blueprint, the Viewer creates one automatically.
 
 ## What blueprints control
 
@@ -27,7 +27,7 @@ Blueprints control the Viewer's layout and configuration:
 
 -   **Panel visibility**: Whether panels like the blueprint panel, selection panel, and time panel are expanded or collapsed
 -   **Layout structure**: How views are arranged using containers (Grid, Horizontal, Vertical, Tabs)
--   **View types and configuration**: What kind of views display your data (2D/3D spatial, maps, charts, text logs, etc.) and their specific settings
+-   **View classes and configuration**: What kind of views display your data (2D/3D spatial, maps, charts, text logs, etc.) and their specific settings
 -   **Visual properties**: Styling like backgrounds, colors, zoom levels, time ranges, and visual bounds
 
 In general, if you can modify an aspect of how something looks through the Viewer, you are actually modifying the blueprint.
@@ -154,27 +154,6 @@ snippet: howto/visualization/blueprint_view_options[tabs]
 
 There is no scrollable container yet: all views in a container share the available space.
 See [missing features](../development/roadmap.md#missing-features).
-
-## Common use cases
-
-### Debugging specific scenarios
-Create blueprints optimized for diagnosing particular issues. For example, when debugging robot perception, you might want a blueprint that shows:
--   The camera view in 2D
--   The 3D world with detected objects
--   Detection confidence scores in a time series chart
--   Error logs in a text panel
-
-### Sharing layouts with teams
-Save a blueprint file and share it with your team. Everyone loading that blueprint with matching recordings will see the data the same way, making it easier to discuss findings and collaborate.
-
-### Templating for different data types
-Create different blueprint templates for different types of recordings. For example:
--   A blueprint for autonomous vehicle data that focuses on map views and sensor fusion
--   A blueprint for robotics manipulation that emphasizes joint angles and gripper cameras
--   A blueprint for computer vision that shows side-by-side comparisons of different models
-
-### Dynamic Viewer configuration
-Generate blueprints programmatically based on runtime conditions. For instance, automatically create one view per detected anomaly, or adjust the layout based on how many data sources are active.
 
 ## Blueprint architecture
 
