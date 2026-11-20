@@ -7,7 +7,7 @@ use re_protos::cloud::v1alpha1::FetchChunksRequest;
 use re_protos::cloud::v1alpha1::ext::{
     ChunkCandidatesDataframe, ChunkMode, ComponentSelection, ContentSelection, DataSource,
     DirectUrlMode, EntitySelection, FillMode, FindChunksRequest, Query, QueryDatasetDataframe,
-    QueryDatasetRequest, QueryLatestAt, QueryRange, RangeSelection, SegmentSelection,
+    QueryDatasetRequest, QueryLatestAt, QueryRange, RangeSelection, SampleTimes, SegmentSelection,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::common::v1alpha1::ext::ScanParameters;
@@ -706,7 +706,7 @@ fn find_samples(
         contents,
         mode: ChunkMode::Samples {
             timeline: timeline.into(),
-            segments,
+            segments: SampleTimes::new(segments).expect("valid sample times"),
             fill_mode: FillMode::LatestAt,
         },
         direct_url_mode: if omit_direct_urls {

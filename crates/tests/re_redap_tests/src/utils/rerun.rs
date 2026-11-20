@@ -1061,6 +1061,32 @@ fn create_store_with_static_components(
     Ok(tmp_path)
 }
 
+/// Creates a recording holding exactly `chunks`.
+///
+/// The chunks are sent prebuilt, so the batcher keeps their ids and does not split or merge them.
+pub fn create_recording_with_chunks(
+    segment_id: &str,
+    chunks: impl IntoIterator<Item = re_chunk::Chunk>,
+) -> anyhow::Result<TempPath> {
+    let tmp_path = {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join(format!("{segment_id}.rrd"));
+        TempPath::new(dir, path)
+    };
+
+    let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_chunks")
+        .recording_id(segment_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    for chunk in chunks {
+        rec.send_chunk(chunk);
+    }
+    rec.flush_blocking()?;
+
+    Ok(tmp_path)
+}
+
 /// Create a recording containing only a single static chunk.
 pub fn create_minimal_static_recording(
     tuid_prefix: TuidPrefix,

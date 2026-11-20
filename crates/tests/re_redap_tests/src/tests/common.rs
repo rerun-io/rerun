@@ -22,8 +22,8 @@ use tonic::async_trait;
 use url::Url;
 
 use crate::utils::rerun::{
-    create_recording_with_static_components, create_two_timeline_recording,
-    multi_chunked_entities_recording,
+    create_recording_with_chunks, create_recording_with_static_components,
+    create_two_timeline_recording, multi_chunked_entities_recording,
 };
 use crate::{
     RecordBatchTestExt as _, TempPath, TuidPrefix, create_nasty_recording,
@@ -428,6 +428,9 @@ pub enum LayerType {
         time_type: TimeType,
     },
 
+    /// See [`crate::utils::rerun::create_recording_with_chunks`]
+    Chunks { chunks: Vec<re_chunk::Chunk> },
+
     /// See [`crate::create_nasty_recording`]
     Nasty { entities: &'static [&'static str] },
 
@@ -563,6 +566,8 @@ impl LayerType {
                 time_type,
             ),
 
+            Self::Chunks { chunks } => create_recording_with_chunks(segment_id, chunks),
+
             Self::Nasty { entities } => create_nasty_recording(tuid_prefix, segment_id, entities),
 
             Self::Properties { properties } => create_recording_with_properties(
@@ -667,6 +672,20 @@ impl LayerDefinition {
             layer_type: LayerType::simple_one_chunk_per_frame_with_time(
                 entities, start_time, time_type,
             ),
+        }
+    }
+
+    /// A layer holding exactly the provided chunks.
+    pub fn chunks(
+        segment_id: &'static str,
+        chunks: impl IntoIterator<Item = re_chunk::Chunk>,
+    ) -> Self {
+        Self {
+            segment_id,
+            layer_name: None,
+            layer_type: LayerType::Chunks {
+                chunks: chunks.into_iter().collect(),
+            },
         }
     }
 

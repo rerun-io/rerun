@@ -14,7 +14,7 @@ use re_log_types::{EntityPath, TimeInt};
 use crate::cloud::v1alpha1::ext::{
     ChunkCandidatesDataframe, ChunkMode, ComponentSelection, ContentSelection, DirectUrlMode,
     EntitySelection, FillMode, FindChunksRequest, Query, QueryDatasetDataframe,
-    QueryDatasetRequest, RangeSelection, SegmentSelection,
+    QueryDatasetRequest, RangeSelection, SampleTimes, SegmentSelection,
 };
 use crate::cloud::v1alpha1::{DatasetQueryScope, QueryDatasetResponse};
 
@@ -200,9 +200,6 @@ pub fn adapt_legacy(request: QueryDatasetRequest) -> tonic::Result<LegacyPlan> {
             for (segment_id, values) in
                 std::iter::zip(segment_ids.iter(), latest_at.per_segment_values.iter())
             {
-                if values.is_empty() {
-                    continue;
-                }
                 plan_segments.insert(
                     segment_id.clone(),
                     values
@@ -216,7 +213,7 @@ pub fn adapt_legacy(request: QueryDatasetRequest) -> tonic::Result<LegacyPlan> {
                 contents,
                 mode: ChunkMode::Samples {
                     timeline,
-                    segments: plan_segments,
+                    segments: SampleTimes::new(plan_segments)?,
                     fill_mode: FillMode::LatestAt,
                 },
                 direct_url_mode,
@@ -780,10 +777,11 @@ mod tests {
                     contents: ContentSelection::All,
                     mode: ChunkMode::Samples {
                         timeline: TimelineName::from("frame"),
-                        segments: BTreeMap::from([(
+                        segments: SampleTimes::new(BTreeMap::from([(
                             SegmentId::from("seg1"),
                             BTreeSet::from([TimeInt::new_temporal(1), TimeInt::new_temporal(2)]),
-                        )]),
+                        )]))
+                        .expect("valid sample times"),
                         fill_mode: FillMode::LatestAt,
                     },
                     direct_url_mode: DirectUrlMode::Omit,

@@ -9,18 +9,21 @@ use arrow::array::RecordBatch;
 use arrow::datatypes::Schema;
 use futures::StreamExt as _;
 use itertools::izip;
+use re_chunk::{Chunk, RowId, TimePoint};
+use re_chunk_store::{ChunkTrackingMode, LatestAtQuery};
 use re_datafusion::DataframeQueryTableProvider;
-use re_log_types::example_components::MyPoints;
-use re_log_types::{EntityPath, TimeInt, TimeType};
+use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
+use re_log_types::{EntityPath, TimeInt, TimeType, build_frame_nr};
 use re_protos::capabilities::{DATASET_FIND_CHUNKS, ServerCapabilities};
 use re_protos::cloud::v1alpha1::ext::{
     ChunkCandidatesDataframe, ChunkMode, ComponentSelection, ContentSelection, DirectUrlMode,
-    EntitySelection, FillMode, FindChunksRequest, RangeSelection, SegmentSelection,
+    EntitySelection, FillMode, FindChunksRequest, RangeSelection, SampleTimes, SegmentSelection,
 };
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 use re_protos::headers::RerunHeadersInjectorExt as _;
 use re_redap_client::{Connection, ConnectionRegistry};
-use re_types_core::{ChunkId, LayerName, SegmentId};
+use re_types_core::archetypes::Clear;
+use re_types_core::{ArrowDataType as _, ChunkId, LayerName, SegmentId};
 
 use crate::tests::common::{
     DataSourcesDefinition, LayerDefinition, RerunCloudServiceExt as _, concat_record_batches,
@@ -28,8 +31,9 @@ use crate::tests::common::{
 };
 use crate::utils::rerun::next_chunk_id_generator;
 use crate::utils::{
-    assert_one_empty_batch, chunk_ids, register_layered_dataset, register_mixed_timelines_dataset,
-    register_per_segment_dataset, register_simple_dataset,
+    assert_one_empty_batch, chunk_ids, point_chunk, query_cache, register_chunks_dataset,
+    register_layered_dataset, register_mixed_timelines_dataset, register_per_segment_dataset,
+    register_simple_dataset,
 };
 
 // --- Request builders ---
@@ -75,7 +79,7 @@ pub fn samples_request(
         contents: ContentSelection::All,
         mode: ChunkMode::Samples {
             timeline: timeline.into(),
-            segments,
+            segments: SampleTimes::new(segments).expect("valid sample times"),
             fill_mode,
         },
         direct_url_mode: DirectUrlMode::Signed,
@@ -167,6 +171,171 @@ pub fn one_chunk_per_frame_ids(tuid_prefix: u64) -> ([ChunkId; 4], ChunkId) {
         next_chunk_id(),
     ];
     (temporal, next_chunk_id())
+}
+
+// --- Samples resolution fixtures ---
+
+/// A chunk of one `MyPoints` point on `entity`, on `frame_nr` at `time`, or static for `None`.
+///
+/// `n` is the position in logging order: row ids grow with it.
+fn single_point_chunk(n: u64, entity: &str, time: Option<i64>, value: f32) -> Chunk {
+    point_chunk(
+        sample_chunk_id(n),
+        entity,
+        &[(
+            sample_row_id(n),
+            time,
+            &[(&MyPoints::descriptor_points(), value)],
+        )],
+    )
+}
+
+/// A static chunk on `entity` whose `MyPoints` points column holds a single null.
+///
+/// The chunk also holds a label: a chunk without any value is not a valid store insertion.
+fn all_null_static_chunk(n: u64, entity: &str) -> Chunk {
+    let points = MyPoints::descriptor_points();
+    Chunk::builder_with_id(sample_chunk_id(n), entity)
+        .with_sparse_component_batches(
+            sample_row_id(n),
+            TimePoint::STATIC,
+            [
+                (points.clone(), None),
+                (
+                    MyPoints::descriptor_labels(),
+                    Some(&[MyLabel("label".to_owned())] as _),
+                ),
+            ],
+        )
+        .build_with_datatypes(&std::iter::once((points, MyPoint::arrow_data_type())).collect())
+        .expect("a column of nulls keeps its descriptor")
+}
+
+/// A static chunk on `entity` that holds a `MyPoints` label and no points.
+fn static_label_chunk(n: u64, entity: &str) -> Chunk {
+    Chunk::builder_with_id(sample_chunk_id(n), entity)
+        .with_sparse_component_batches(
+            sample_row_id(n),
+            TimePoint::STATIC,
+            [(
+                MyPoints::descriptor_labels(),
+                Some(&[MyLabel("label".to_owned())] as _),
+            )],
+        )
+        .build()
+        .expect("valid label chunk")
+}
+
+/// A non-recursive clear of `entity` at `time` on `frame_nr`.
+fn flat_clear_chunk(n: u64, entity: &str, time: i64) -> Chunk {
+    Chunk::builder_with_id(sample_chunk_id(n), entity)
+        .with_archetype(
+            sample_row_id(n),
+            [build_frame_nr(TimeInt::new_temporal(time))],
+            &Clear::flat(),
+        )
+        .build()
+        .expect("valid clear chunk")
+}
+
+fn sample_chunk_id(n: u64) -> ChunkId {
+    ChunkId::from_tuid(re_tuid::Tuid::from_nanos_and_inc(1, n))
+}
+
+fn sample_row_id(n: u64) -> RowId {
+    RowId::from_tuid(re_tuid::Tuid::from_nanos_and_inc(2, n))
+}
+
+/// Registers `chunks` as one segment, asks for the `MyPoints` points of `entity` with `Samples`
+/// and latest-at fill at `sample_time`, and checks the contract: the SDK's latest-at over the
+/// returned candidates gives the same result as over all `chunks`.
+///
+/// `expected_value` is the point's value that result must hold, or `None` if it must hold no
+/// point.
+async fn assert_samples_resolve_like_full_store(
+    service: &impl RerunCloudService,
+    dataset_name: &str,
+    chunks: Vec<Chunk>,
+    entity: &str,
+    sample_time: i64,
+    expected_value: Option<f32>,
+) {
+    let segment_id = "my_segment";
+    let component = MyPoints::descriptor_points().component;
+    let _data_sources =
+        register_chunks_dataset(service, dataset_name, segment_id, chunks.clone()).await;
+
+    let request = FindChunksRequest {
+        contents: ContentSelection::Explicit(vec![EntitySelection {
+            entity_path: EntityPath::from(entity),
+            components: ComponentSelection::Explicit(BTreeSet::from([component.to_string()])),
+        }]),
+        ..samples_request(
+            "frame_nr",
+            BTreeMap::from([(
+                SegmentId::from(segment_id),
+                BTreeSet::from([TimeInt::new_temporal(sample_time)]),
+            )]),
+            FillMode::LatestAt,
+        )
+    };
+    let candidate_ids = find_chunks_ids(service, dataset_name, request).await;
+
+    assert_eq!(
+        resolve_like_full_store(&chunks, &candidate_ids, entity, sample_time),
+        expected_value,
+        "resolved value at frame {sample_time}"
+    );
+}
+
+/// Checks that the SDK's latest-at of the `MyPoints` points of `entity` at `sample_time` is the
+/// same over the chunks of `candidate_ids` as over all `chunks`, and returns the resolved point's
+/// `x`.
+fn resolve_like_full_store(
+    chunks: &[Chunk],
+    candidate_ids: &BTreeSet<ChunkId>,
+    entity: &str,
+    sample_time: i64,
+) -> Option<f32> {
+    let component = MyPoints::descriptor_points().component;
+    let all_ids: BTreeSet<ChunkId> = chunks.iter().map(Chunk::id).collect();
+    assert!(
+        candidate_ids.is_subset(&all_ids),
+        "candidates must be registered chunks, got {candidate_ids:?} of {all_ids:?}"
+    );
+
+    let query = LatestAtQuery::new("frame_nr".into(), sample_time);
+    let entity_path = EntityPath::from(entity);
+    let expected = query_cache(chunks).latest_at(
+        ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path,
+        [component],
+    );
+    let actual = query_cache(
+        chunks
+            .iter()
+            .filter(|chunk| candidate_ids.contains(&chunk.id())),
+    )
+    .latest_at(
+        ChunkTrackingMode::PanicOnMissing,
+        &query,
+        &entity_path,
+        [component],
+    );
+    assert_eq!(
+        actual, expected,
+        "latest-at of {entity} at frame {sample_time} over the candidates must match latest-at \
+         over all chunks"
+    );
+
+    actual.get(component).map(|chunk| {
+        chunk
+            .component_mono::<MyPoint>(component)
+            .expect("resolved chunk must hold one row")
+            .expect("resolved value must decode")
+            .x
+    })
 }
 
 // --- Tests ---
@@ -463,10 +632,14 @@ pub async fn find_chunks_samples(service: impl RerunCloudService) {
     );
 }
 
-/// Samples keeps each segment's chunks apart when two segments hold the same chunk ids.
+/// Samples keeps each segment's chunks apart when two segments hold the same chunk ids, in both
+/// fill modes.
 ///
 /// Two recordings with different recording ids are built from the same `tuid_prefix`, so their
 /// chunk ids are identical, as for copies of one recording registered under other recording ids.
+/// The segments have one chunk per frame, at 1010, 1020, 1030 and 1040. `seg_a` samples between
+/// two frames, so only latest-at selects a temporal chunk there, and the latest-at winner of
+/// `seg_b` must not leak into `seg_a`.
 pub async fn find_chunks_samples_shared_chunk_ids(service: impl RerunCloudService) {
     let dataset_name = "samples_shared_chunk_ids";
     let tuid_prefix = 650;
@@ -496,7 +669,7 @@ pub async fn find_chunks_samples_shared_chunk_ids(service: impl RerunCloudServic
     let samples = BTreeMap::from([
         (
             SegmentId::from("seg_a"),
-            BTreeSet::from([TimeInt::new_temporal(1010)]),
+            BTreeSet::from([TimeInt::new_temporal(1015)]),
         ),
         (
             SegmentId::from("seg_b"),
@@ -504,40 +677,131 @@ pub async fn find_chunks_samples_shared_chunk_ids(service: impl RerunCloudServic
         ),
     ]);
 
-    let batches = find_chunks_batches(
+    for (fill_mode, seg_a_temporal) in [(FillMode::None, None), (FillMode::LatestAt, Some(0))] {
+        let batches = find_chunks_batches(
+            &service,
+            dataset_name,
+            samples_request("frame_nr", samples.clone(), fill_mode),
+        )
+        .await;
+
+        let mut actual: BTreeMap<SegmentId, BTreeSet<ChunkId>> = BTreeMap::new();
+        for batch in &batches {
+            let ids = ChunkCandidatesDataframe::COLUMN_CHUNK_ID
+                .extract(batch)
+                .expect("bad chunk_id column");
+            let segments = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
+                .extract(batch)
+                .expect("bad chunk_segment_id column");
+            for (id, segment) in std::iter::zip(ids.iter_owned(), segments.iter_owned()) {
+                actual.entry(segment).or_default().insert(id);
+            }
+        }
+
+        let seg_a = itertools::chain!(
+            seg_a_temporal.map(|frame: usize| temporal[frame]),
+            [static_id]
+        )
+        .collect();
+        let expected = BTreeMap::from([
+            (SegmentId::from("seg_a"), seg_a),
+            (
+                SegmentId::from("seg_b"),
+                BTreeSet::from([temporal[2], static_id]),
+            ),
+        ]);
+        assert_eq!(
+            actual, expected,
+            "with fill mode {fill_mode:?}, each segment must get only the chunks sampled for it"
+        );
+    }
+}
+
+/// Samples with latest-at: a non-recursive clear of the entity, logged after its last value,
+/// leaves no value.
+///
+/// Samples candidates do not include clears logged on ancestor entities.
+pub async fn find_chunks_samples_resolve_clear_after_last_value(service: impl RerunCloudService) {
+    let chunks = vec![
+        single_point_chunk(1, "my/entity", Some(5), 1.0),
+        flat_clear_chunk(2, "my/entity", 7),
+    ];
+
+    assert_samples_resolve_like_full_store(
         &service,
-        dataset_name,
-        samples_request("frame_nr", samples, FillMode::None),
+        "samples_clear_after_value",
+        chunks,
+        "my/entity",
+        10,
+        None,
     )
     .await;
+}
 
-    let mut actual: BTreeMap<SegmentId, BTreeSet<ChunkId>> = BTreeMap::new();
-    for batch in &batches {
-        let ids = ChunkCandidatesDataframe::COLUMN_CHUNK_ID
-            .extract(batch)
-            .expect("bad chunk_id column");
-        let segments = ChunkCandidatesDataframe::COLUMN_CHUNK_SEGMENT_ID
-            .extract(batch)
-            .expect("bad chunk_segment_id column");
-        for (id, segment) in std::iter::zip(ids.iter_owned(), segments.iter_owned()) {
-            actual.entry(segment).or_default().insert(id);
+/// Samples, with and without latest-at: every static chunk with data is a candidate, and with
+/// latest-at the candidates resolve like the full store.
+///
+/// A server may return the temporal chunks of a component that also has static data, or leave them
+/// out: the SDK resolves the static value either way. A static column that holds only nulls is not
+/// static data, so the temporal points of `static_null` are candidates.
+pub async fn find_chunks_samples_return_statics_and_resolve_like_full_store(
+    service: impl RerunCloudService,
+) {
+    let dataset_name = "samples_statics_resolve";
+    let segment_id = "my_segment";
+    let chunks = vec![
+        single_point_chunk(1, "static_value", None, 1.0),
+        single_point_chunk(2, "static_value", Some(5), 2.0),
+        all_null_static_chunk(3, "static_null"),
+        single_point_chunk(4, "static_null", Some(5), 4.0),
+        static_label_chunk(5, "other_component"),
+        single_point_chunk(6, "other_component", Some(5), 6.0),
+    ];
+    let _data_sources =
+        register_chunks_dataset(&service, dataset_name, segment_id, chunks.clone()).await;
+
+    let statics: BTreeSet<ChunkId> = [1, 3, 5].into_iter().map(sample_chunk_id).collect();
+    let temporal_without_static: BTreeSet<ChunkId> =
+        [4, 6].into_iter().map(sample_chunk_id).collect();
+    let sample_times = [5, 10];
+    for fill_mode in [FillMode::LatestAt, FillMode::None] {
+        let request = samples_request(
+            "frame_nr",
+            BTreeMap::from([(
+                SegmentId::from(segment_id),
+                sample_times
+                    .into_iter()
+                    .map(TimeInt::new_temporal)
+                    .collect(),
+            )]),
+            fill_mode,
+        );
+        let candidate_ids = find_chunks_ids(&service, dataset_name, request).await;
+        assert!(
+            candidate_ids.is_superset(&statics),
+            "with fill mode {fill_mode:?}, every static chunk with data must be a candidate, got \
+             {candidate_ids:?}"
+        );
+        assert!(
+            candidate_ids.is_superset(&temporal_without_static),
+            "with fill mode {fill_mode:?}, the temporal points at frame 5 of components without \
+             static data must be candidates, got {candidate_ids:?}"
+        );
+        if fill_mode == FillMode::LatestAt {
+            for sample_time in sample_times {
+                for (entity, expected_value) in
+                    [("static_value", Some(1.0)), ("other_component", Some(6.0))]
+                {
+                    assert_eq!(
+                        resolve_like_full_store(&chunks, &candidate_ids, entity, sample_time),
+                        expected_value,
+                        "{entity} at frame {sample_time}"
+                    );
+                }
+                resolve_like_full_store(&chunks, &candidate_ids, "static_null", sample_time);
+            }
         }
     }
-
-    let expected = BTreeMap::from([
-        (
-            SegmentId::from("seg_a"),
-            BTreeSet::from([temporal[0], static_id]),
-        ),
-        (
-            SegmentId::from("seg_b"),
-            BTreeSet::from([temporal[2], static_id]),
-        ),
-    ]);
-    assert_eq!(
-        actual, expected,
-        "each segment must get only the chunks sampled for it"
-    );
 }
 
 /// Layers: each (segment, layer) pair returns exactly its own chunks.

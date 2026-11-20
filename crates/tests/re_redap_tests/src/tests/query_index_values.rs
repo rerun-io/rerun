@@ -465,12 +465,10 @@ async fn query_dataset_emits_per_segment_pushdown_by_time_type<T: RerunCloudServ
                          sample times"
                     );
                     for (segment_id, values) in segments {
-                        if !values.is_empty() {
-                            emitted.insert(
-                                segment_id.clone(),
-                                values.iter().map(|value| value.as_i64()).collect(),
-                            );
-                        }
+                        emitted.insert(
+                            segment_id.clone(),
+                            values.iter().map(|value| value.as_i64()).collect(),
+                        );
                     }
                 }
                 RecordedRequest::QueryDataset(request) => {

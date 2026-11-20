@@ -130,6 +130,8 @@ define_redap_tests! {
     find_chunks::find_chunks_invalid_requests,
     find_chunks::find_chunks_range_bounds,
     find_chunks::find_chunks_samples,
+    find_chunks::find_chunks_samples_resolve_clear_after_last_value,
+    find_chunks::find_chunks_samples_return_statics_and_resolve_like_full_store,
     find_chunks::find_chunks_samples_shared_chunk_ids,
     find_chunks::find_chunks_segment_scope,
     find_chunks::find_chunks_simple_dataset,

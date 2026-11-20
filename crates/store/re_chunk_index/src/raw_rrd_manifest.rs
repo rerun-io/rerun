@@ -747,7 +747,7 @@ impl RawRrdManifest {
     const INDEX_NAME_STATIC: &str = "rerun:static";
 
     /// The Segment Manifest's `rerun:index` value of the static-data pseudo-index.
-    const INDEX_NAME_STATIC_SEGMENT_MANIFEST: &str = "static";
+    pub const INDEX_NAME_STATIC_SEGMENT_MANIFEST: &str = "static";
 
     /// Index marker of the column holding the lower bound of an index range.
     pub const INDEX_MARKER_START: &str = "start";

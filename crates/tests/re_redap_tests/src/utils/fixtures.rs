@@ -1,6 +1,7 @@
 //! Datasets for the redap test suite, registered through [`RerunCloudService`], so each one is
 //! set up the same way on every implementation: the OSS server and the Rerun Hub.
 
+use re_chunk::Chunk;
 use re_log_types::TimeType;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService;
 
@@ -107,6 +108,25 @@ pub async fn register_per_segment_dataset(
                 time_type,
             ),
         ],
+    );
+
+    create_and_register(service, dataset_name, data_sources_def).await
+}
+
+/// Registers one segment, `segment_id`, holding exactly `chunks`.
+///
+/// Hold the returned [`DataSourcesDefinition`] until the last query, as for
+/// [`register_per_segment_dataset`].
+pub async fn register_chunks_dataset(
+    service: &impl RerunCloudService,
+    dataset_name: &str,
+    segment_id: &'static str,
+    chunks: impl IntoIterator<Item = Chunk>,
+) -> DataSourcesDefinition {
+    // The prefix only numbers generated chunks, and this layer has none.
+    let data_sources_def = DataSourcesDefinition::new_with_tuid_prefix(
+        1,
+        [LayerDefinition::chunks(segment_id, chunks)],
     );
 
     create_and_register(service, dataset_name, data_sources_def).await
