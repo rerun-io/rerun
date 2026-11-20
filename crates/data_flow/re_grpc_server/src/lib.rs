@@ -1528,13 +1528,7 @@ mod tests {
     fn set_store_info_msg(store_id: &StoreId) -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
-            info: StoreInfo::new(
-                store_id.clone(),
-                StoreSource::RustSdk {
-                    rustc_version: String::new(),
-                    llvm_version: String::new(),
-                },
-            ),
+            info: StoreInfo::new(store_id.clone(), StoreSource::RustSdk),
         })
     }
 

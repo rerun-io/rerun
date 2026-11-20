@@ -142,10 +142,7 @@ pub enum AppEnvironment {
     PythonSdk(re_log_msg::PythonVersion),
 
     /// Created from the Rerun Rust SDK.
-    RustSdk {
-        rustc_version: String,
-        llvm_version: String,
-    },
+    RustSdk,
 
     /// Running the Rust `rerun` binary from the CLI.
     RerunCli {
@@ -171,13 +168,7 @@ impl AppEnvironment {
 
             StoreSource::PythonSdk(python_version) => Self::PythonSdk(python_version.clone()),
 
-            StoreSource::RustSdk {
-                rustc_version,
-                llvm_version,
-            } => Self::RustSdk {
-                rustc_version: rustc_version.clone(),
-                llvm_version: llvm_version.clone(),
-            },
+            StoreSource::RustSdk => Self::RustSdk,
 
             StoreSource::File { .. }
             | StoreSource::Unknown
@@ -188,10 +179,7 @@ impl AppEnvironment {
                 #[cfg(debug_assertions)]
                 re_log::warn_once!("Asked to create an AppEnvironment from {source:?}");
 
-                Self::RustSdk {
-                    rustc_version: "unknown".into(),
-                    llvm_version: "unknown".into(),
-                }
+                Self::RustSdk
             }
         }
     }
@@ -200,7 +188,7 @@ impl AppEnvironment {
         match self {
             Self::CSdk => "c_sdk",
             Self::PythonSdk(_) => "python_sdk",
-            Self::RustSdk { .. } => "rust_sdk",
+            Self::RustSdk => "rust_sdk",
             Self::RerunCli { .. } => "rerun_cli",
             Self::Web { .. } => "web_viewer",
             Self::Custom(_) => "custom",

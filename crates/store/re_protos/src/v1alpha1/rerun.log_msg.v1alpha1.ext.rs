@@ -29,17 +29,11 @@ impl From<re_log_msg::StoreSource> for crate::log_msg::v1alpha1::StoreSource {
                     .encode_to_vec()
                     .into(),
             ),
-            re_log_msg::StoreSource::RustSdk {
-                rustc_version,
-                llvm_version,
-            } => (
+            re_log_msg::StoreSource::RustSdk => (
                 crate::log_msg::v1alpha1::StoreSourceKind::RustSdk as i32,
-                crate::log_msg::v1alpha1::CrateInfo {
-                    rustc_version,
-                    llvm_version,
-                }
-                .encode_to_vec()
-                .into(),
+                crate::log_msg::v1alpha1::CrateInfo {}
+                    .encode_to_vec()
+                    .into(),
             ),
             re_log_msg::StoreSource::File { file_source } => (
                 crate::log_msg::v1alpha1::StoreSourceKind::File as i32,
@@ -91,12 +85,9 @@ impl TryFrom<crate::log_msg::v1alpha1::StoreSource> for re_log_msg::StoreSource 
                     crate::log_msg::v1alpha1::StoreSource,
                     "extra"
                 ))?;
-                let crate_info =
+                let crate::log_msg::v1alpha1::CrateInfo {} =
                     crate::log_msg::v1alpha1::CrateInfo::decode(&mut &extra.payload[..])?;
-                Ok(Self::RustSdk {
-                    rustc_version: crate_info.rustc_version,
-                    llvm_version: crate_info.llvm_version,
-                })
+                Ok(Self::RustSdk)
             }
             StoreSourceKind::File => {
                 let extra = value.extra.ok_or(missing_field!(
@@ -381,6 +372,32 @@ mod tests {
         let proto_store_source: crate::log_msg::v1alpha1::StoreSource = store_source.clone().into();
         let store_source2: re_log_msg::StoreSource = proto_store_source.try_into().unwrap();
         assert_eq!(store_source, store_source2);
+    }
+
+    #[test]
+    fn rust_sdk_store_source_legacy_compat() {
+        let proto: crate::log_msg::v1alpha1::StoreSource = re_log_msg::StoreSource::RustSdk.into();
+        let extra = proto
+            .extra
+            .as_ref()
+            .expect("older readers reject a `RustSdk` source without `extra`");
+        assert!(extra.payload.is_empty());
+
+        // `CrateInfo { rustc_version = 1: "1.90.0", llvm_version = 2: "20.1" }` as written by older encoders.
+        let mut legacy_payload = vec![0x0a, 6];
+        legacy_payload.extend_from_slice(b"1.90.0");
+        legacy_payload.extend_from_slice(&[0x12, 4]);
+        legacy_payload.extend_from_slice(b"20.1");
+        let legacy = crate::log_msg::v1alpha1::StoreSource {
+            kind: crate::log_msg::v1alpha1::StoreSourceKind::RustSdk as i32,
+            extra: Some(crate::log_msg::v1alpha1::StoreSourceExtra {
+                payload: legacy_payload.into(),
+            }),
+        };
+        assert_eq!(
+            re_log_msg::StoreSource::try_from(legacy).unwrap(),
+            re_log_msg::StoreSource::RustSdk
+        );
     }
 
     #[test]

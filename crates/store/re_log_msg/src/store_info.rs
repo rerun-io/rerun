@@ -261,13 +261,7 @@ pub enum StoreSource {
     PythonSdk(PythonVersion),
 
     /// The official Rerun Rust Logging SDK
-    RustSdk {
-        /// Rust version of the code compiling the Rust SDK
-        rustc_version: String,
-
-        /// LLVM version of the code compiling the Rust SDK
-        llvm_version: String,
-    },
+    RustSdk,
 
     /// Loading a file via CLI, drag-and-drop, a file-dialog, etc.
     File {
@@ -287,7 +281,7 @@ impl std::fmt::Display for StoreSource {
             Self::Unknown => "Unknown".fmt(f),
             Self::CSdk => "C SDK".fmt(f),
             Self::PythonSdk(version) => write!(f, "Python {version} SDK"),
-            Self::RustSdk { rustc_version, .. } => write!(f, "Rust SDK (rustc {rustc_version})"),
+            Self::RustSdk => "Rust SDK".fmt(f),
             Self::File { file_source, .. } => match file_source {
                 FileSource::Cli => write!(f, "File via CLI"),
                 FileSource::Uri => write!(f, "File via URI"),
