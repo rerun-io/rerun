@@ -8,6 +8,7 @@
 //! content blocks, and a [`ToolError`] a result with `isError` set.
 
 mod combined_toolbox;
+mod model_preselect;
 
 use std::sync::Arc;
 
@@ -15,6 +16,7 @@ use futures::future::BoxFuture;
 use serde_json::{Map, Value};
 
 pub use self::combined_toolbox::CombinedToolbox;
+pub use self::model_preselect::{ModelCategory, ModelPreference, ModelPreselect};
 
 /// The error a tool call fails with.
 ///

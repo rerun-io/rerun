@@ -7,6 +7,7 @@ use egui::{
     PopupCloseBehavior, Rect, RectAlign, RichText, Sense, TextWrapMode, Vec2, WidgetAtom,
     WidgetInfo,
 };
+use re_agent_tools::ModelCategory;
 use re_catalog_client::BlueprintName;
 use re_log_types::StoreId;
 use re_log_types::external::re_types_core::SegmentId;
@@ -59,6 +60,12 @@ const HEADING_PADDING_BOTTOM: i8 = 4;
 
 /// The gap between the parts of a row.
 const ICON_GAP: f32 = 10.0;
+
+/// The label of the row that asks the agent to create a blueprint.
+const CREATE_WITH_AGENT_LABEL: &str = "Create with agent";
+
+/// What the row labeled [`CREATE_WITH_AGENT_LABEL`] asks the agent.
+const CREATE_WITH_AGENT_PROMPT: &str = "Create a blueprint for this recording";
 
 /// The size of the star after the name of the default blueprint.
 const STAR_SIZE: f32 = 12.0;
@@ -237,6 +244,9 @@ pub fn dataset_blueprint_dropdown_ui(
             let shown_segment = shown.map(|shown| &shown.segment_id);
             dataset_blueprint_items_ui(ui, &actions, dataset_blueprints, shown_segment, is_loading);
 
+            ui.separator();
+            create_blueprint_with_agent_row_ui(ui, &actions);
+
             if actions.sent_command.get() {
                 ui.close();
             }
@@ -297,6 +307,82 @@ fn dataset_blueprint_items_ui(
                 ui.error_label(err.to_string());
             });
     }
+}
+
+/// A row that asks the agent in the agent panel to create a blueprint for the recording.
+///
+/// Clicking it closes the dropdown.
+fn create_blueprint_with_agent_row_ui(ui: &mut egui::Ui, actions: &BlueprintActions<'_, '_>) {
+    let tokens = ui.tokens();
+
+    let row = row_widget(
+        ui,
+        (
+            re_ui::icons::AGENT
+                .as_image()
+                .tint(tokens.list_item_default_icon)
+                .atom_size(tokens.small_icon_size),
+            RichText::new(CREATE_WITH_AGENT_LABEL).color(tokens.text_default),
+            Atom::grow(),
+        ),
+        ROW_PADDING,
+    )
+    .allocate(ui);
+    let response = paint_row(ui, row, false).response;
+    response.widget_info(|| {
+        WidgetInfo::labeled(egui::Role::Button, ui.is_enabled(), CREATE_WITH_AGENT_LABEL)
+    });
+    let response = response.on_hover_text("Ask the agent in the agent panel to create a blueprint");
+
+    if response.clicked() {
+        actions
+            .command_sender
+            .send_system(SystemCommand::TriggerPrompt {
+                model: ModelCategory::Fast.into(),
+                prompt: CREATE_WITH_AGENT_PROMPT.to_owned(),
+            });
+        actions.sent_command.set(true);
+    }
+}
+
+/// A row of the open dropdown, around `atoms`.
+///
+/// `right_padding` is the gap between the right edge of the row and its content.
+fn row_widget<'a>(
+    ui: &egui::Ui,
+    atoms: impl egui::IntoAtoms<'a>,
+    right_padding: i8,
+) -> WidgetAtom<'a> {
+    WidgetAtom::new(atoms)
+        .frame(
+            Frame::new()
+                .inner_margin(Margin {
+                    left: ROW_PADDING,
+                    right: right_padding,
+                    top: 0,
+                    bottom: 0,
+                })
+                .corner_radius(ui.tokens().normal_corner_radius()),
+        )
+        .gap(ICON_GAP)
+        .min_size(Vec2::new(0.0, ROW_HEIGHT))
+        .wrap_mode(TextWrapMode::Truncate)
+        .sense(Sense::click())
+}
+
+/// Paints a row of the open dropdown, filled when it is the active one or hovered.
+fn paint_row(
+    ui: &egui::Ui,
+    mut row: egui::AllocatedWidgetAtom<'_>,
+    is_active: bool,
+) -> egui::WidgetAtomResponse {
+    let tokens = ui.tokens();
+    if is_active {
+        row.frame = row.frame.fill(tokens.button_opened.fill);
+    } else if row.response.hovered() {
+        row.frame = row.frame.fill(tokens.list_item_hovered_bg);
+    }
+    row.paint(ui)
 }
 
 /// The name of a blueprint formatted with `text`.
@@ -414,29 +500,10 @@ impl BlueprintItem<'_> {
         } else {
             ROW_PADDING
         };
-        let mut row = WidgetAtom::new(atoms)
-            .frame(
-                Frame::new()
-                    .inner_margin(Margin {
-                        left: ROW_PADDING,
-                        right: right_padding,
-                        top: 0,
-                        bottom: 0,
-                    })
-                    .corner_radius(tokens.normal_corner_radius()),
-            )
-            .gap(ICON_GAP)
-            .min_size(Vec2::new(0.0, ROW_HEIGHT))
-            .wrap_mode(TextWrapMode::Truncate)
+        let row = row_widget(ui, atoms, right_padding)
             .id(self.row_id)
-            .sense(Sense::click())
             .allocate(ui);
-        if self.is_active {
-            row.frame = row.frame.fill(tokens.button_opened.fill);
-        } else if row.response.hovered() {
-            row.frame = row.frame.fill(tokens.list_item_hovered_bg);
-        }
-        let row = row.paint(ui);
+        let row = paint_row(ui, row, self.is_active);
 
         if let Some(icon_rect) = row.rect(icon_id) {
             paint_blueprint_icon(ui, icon_rect, icon_tint, self.is_loading);
@@ -529,6 +596,14 @@ impl BlueprintActions<'_, '_> {
         );
     }
 
+    /// `kind` acting on the active recording.
+    fn recording_command(&self, kind: RecordingCommandKind) -> RecordingCommand {
+        RecordingCommand {
+            recording_id: self.store_context.recording_store_id().clone(),
+            kind,
+        }
+    }
+
     /// A menu button that runs `command` on the active recording.
     ///
     /// See [`RecordingCommand::button_ui`]. Clicking it closes the dropdown.
@@ -539,11 +614,7 @@ impl BlueprintActions<'_, '_> {
         command: RecordingCommandKind,
         disabled_reason: Option<&str>,
     ) {
-        let recording_command = RecordingCommand {
-            recording_id: self.store_context.recording_store_id().clone(),
-            kind: command,
-        };
-        let response = recording_command.button_ui(
+        let response = self.recording_command(command).button_ui(
             ui,
             egui::Button::new(text),
             disabled_reason,

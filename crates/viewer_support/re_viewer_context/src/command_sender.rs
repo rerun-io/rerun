@@ -103,6 +103,12 @@ pub enum SystemCommand {
     /// Activates the setting route.
     OpenSettings,
 
+    /// Open the agent panel, and send `prompt` in a new conversation that preselects `model`.
+    TriggerPrompt {
+        model: re_agent_tools::ModelPreselect,
+        prompt: String,
+    },
+
     /// Activates the chunk store route.
     OpenChunkStoreBrowser {
         store_id: Option<StoreId>,

@@ -364,6 +364,9 @@ impl AppCore {
                 egui_ctx.request_repaint(); // Make sure we actually see the new mode.
             }
 
+            SystemCommand::TriggerPrompt { model, prompt } => {
+                self.ask_agent_in_new_conversation(model, prompt);
+            }
             SystemCommand::OpenSettings => {
                 let settings = Route::settings(self.navigation.routes.current());
                 self.navigation.routes.replace(settings);

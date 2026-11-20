@@ -18,7 +18,7 @@ use re_agent::AgentEntry;
 use re_agent::Transcript;
 use re_agent::{AgentLaunch, AgentLaunchError};
 use re_agent::{AgentSession, Phase, Prompt, SessionReports};
-use re_agent::{AgentSettings, SessionContext};
+use re_agent::{AgentSettings, ModelPreselect, SessionContext};
 
 /// How wide a host should make the panel.
 ///
@@ -519,13 +519,30 @@ impl AgentPanel {
     pub fn open_conversation(
         &mut self,
         context: SessionContext,
-        opening_prompt: impl Into<String>,
+        opening_prompt: impl Into<Prompt>,
     ) {
         let mut conversation = self.fresh_conversation();
         conversation.context = Some(context);
-        conversation
-            .pending_prompts
-            .push_back(Prompt::from(opening_prompt.into()));
+        self.show_new_conversation(conversation, opening_prompt.into());
+    }
+
+    /// Opens a conversation with the panel's shared context, and sends `opening_prompt` as soon
+    /// as its agent is ready.
+    ///
+    /// Its agent starts on `model_preselect`. It is kept like any conversation the user started.
+    pub fn open_conversation_with_model(
+        &mut self,
+        model_preselect: ModelPreselect,
+        opening_prompt: impl Into<Prompt>,
+    ) {
+        let mut conversation = self.fresh_conversation();
+        conversation.model_preselect = model_preselect;
+        self.show_new_conversation(conversation, opening_prompt.into());
+    }
+
+    /// Shows `conversation`, which sends `opening_prompt` as soon as its agent is ready.
+    fn show_new_conversation(&mut self, mut conversation: Conversation, opening_prompt: Prompt) {
+        conversation.pending_prompts.push_back(opening_prompt);
         self.view = View::Conversation(conversation.id);
         self.conversations.push(conversation);
     }
@@ -1063,6 +1080,23 @@ mod tests {
                 .map(|prompt| prompt.text.as_str())
                 .collect::<Vec<_>>(),
             ["Prompt from command palette", "Prompt from chat"],
+        );
+    }
+
+    /// A conversation opened with a model preselect has no context of its own, so it is kept.
+    #[test]
+    fn conversation_with_model_is_kept() {
+        let mut panel =
+            AgentPanel::with_agents(AgentSettings::default(), None, Vec::new(), Vec::new());
+        panel.open_conversation_with_model(re_agent::ModelCategory::Fast.into(), "Prompt");
+
+        let [conversation] = panel.conversations.as_slice() else {
+            panic!("expected exactly one conversation");
+        };
+        assert!(conversation.context.is_none());
+        assert_eq!(
+            conversation.model_preselect,
+            re_agent::ModelCategory::Fast.into()
         );
     }
 

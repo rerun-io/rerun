@@ -202,6 +202,7 @@ impl App {
             additional_directories: Vec::new(),
             default_cwd: None,
             off_limits_directories: Vec::new(),
+            model_preselect: Default::default(),
         });
         Self { panel }
     }

@@ -852,6 +852,24 @@ impl AppCore {
         self.state.agent_panel_ever_opened
     }
 
+    /// Open the agent panel and submit `prompt` to its agent.
+    fn ask_agent(&mut self, prompt: impl Into<String>) {
+        self.state.agent_panel_open = true;
+        self.agent_panel.submit_prompt(prompt.into());
+    }
+
+    /// Open the agent panel and send `prompt` in a new conversation that preselects
+    /// `model_preselect`.
+    fn ask_agent_in_new_conversation(
+        &mut self,
+        model_preselect: re_agent::ModelPreselect,
+        prompt: impl Into<re_agent::Prompt>,
+    ) {
+        self.state.agent_panel_open = true;
+        self.agent_panel
+            .start_conversation_with_model(model_preselect, prompt);
+    }
+
     pub fn toggle_agent_panel(&mut self) {
         self.state.agent_panel_open ^= true;
         if self.state.agent_panel_open {
@@ -1854,10 +1872,7 @@ impl AppCore {
             };
             if let Some(cmd) = self.cmd_palette.show(ui.ctx(), &mut cmd_palette_provider) {
                 match cmd {
-                    CommandPaletteAction::AskAgent(prompt) => {
-                        self.state.agent_panel_open = true;
-                        self.agent_panel.submit_prompt(prompt);
-                    }
+                    CommandPaletteAction::AskAgent(prompt) => self.ask_agent(prompt),
                     CommandPaletteAction::SetUpAgent => {
                         self.state.agent_panel_open = true;
                     }

@@ -112,6 +112,7 @@ impl Harness {
             additional_directories: agent_dir.iter().cloned().collect(),
             default_cwd: self.scratch_cwd.clone(),
             off_limits_directories,
+            model_preselect: Default::default(),
         });
         panel
     }

@@ -602,7 +602,7 @@ fn config_menu_ui(
     // Our "recommended" label marks Rerun's preferred model, which may differ from
     // the model the provider calls "Default (recommended)".
     let recommended = if is_model {
-        re_agent::preferred_model(&choices, &re_agent::DEFAULT_MODEL_PREFERENCES)
+        re_agent::preferred_model(&choices, &re_agent::ModelCategory::default().preferences())
     } else {
         None
     };

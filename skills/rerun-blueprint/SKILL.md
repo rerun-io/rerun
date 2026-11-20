@@ -19,6 +19,24 @@ The constructors are discoverable (`dir(rrb)`,
 `help(rrb.Spatial3DView)`); this skill covers what you can't guess. Import as
 `import rerun.blueprint as rrb`.
 
+## Build first, then offer variations
+
+When asked to create or design a blueprint, don't ask what kind of blueprint the user wants.
+Pick the most useful blueprint for the data, write it, and verify it.
+Then say in one or two lines what you built, and offer two or three concrete variations to choose from.
+A first try on screen is easier to react to than a question about a blueprint the user cannot see.
+
+What to build first:
+- For a dataset, write the blueprint of its segment table: cards with a preview of the main camera, plus the property columns that tell segments apart, such as the task. See [Tables](#tables).
+- For a recording, lay out its views with steps 1–4 below.
+- For a plain table, hide empty and internal columns, and give the rest readable names.
+
+Writing over the blueprint on screen is safe, so do it without asking, even when the recording already has a full layout.
+The viewer only changes its own copy: the blueprints registered for a dataset stay as they are on the server, and the user can pick one of them again in the blueprint dropdown.
+Each write is also a step in the blueprint's undo history.
+When you report what you built, say that undo or the blueprint dropdown brings the old layout back.
+Ask before writing only when an edit could apply to several existing views (see below).
+
 ## Editing a recording's blueprint through MCP
 
 If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.

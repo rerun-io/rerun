@@ -357,20 +357,23 @@ async fn start_session(
 
     match opened {
         Ok(mut opened) => {
-            let saved_model = opened
-                .config_options
-                .as_deref()
-                .unwrap_or_default()
-                .iter()
-                .find(|option| option.category == Some(SessionConfigOptionCategory::Model))
-                .and_then(|option| config.preferences.get(option.id.clone()))
-                .and_then(SessionConfigOptionValue::as_value_id);
+            let options = opened.config_options.as_deref().unwrap_or_default();
             let mut preferences = config.preferences.clone();
-            if let Some((config_id, value)) = pick_model(
-                opened.config_options.as_deref().unwrap_or_default(),
-                saved_model,
-                &config.model_preferences,
-            ) {
+            // The model to restore, and the category to pick from when it is not offered.
+            let (saved_model, category) = match config.model_preselect {
+                crate::ModelPreselect::Previous => (
+                    saved_model(options, &preferences),
+                    crate::ModelCategory::default(),
+                ),
+                crate::ModelPreselect::Category(category) => {
+                    forget_model_and_effort(&mut preferences, options);
+                    (None, category)
+                }
+            };
+            let model_preferences = category.preferences();
+            if let Some((config_id, value)) =
+                pick_model(options, saved_model.as_ref(), &model_preferences)
+            {
                 preferences.set(config_id, value);
             }
             let mut attempted = std::collections::HashSet::new();
@@ -435,6 +438,34 @@ async fn new_session(
         config_options: response.config_options,
         origin: SessionOrigin::New,
     })
+}
+
+/// The model the user picked last, if `options` has a model selector.
+fn saved_model(
+    options: &[SessionConfigOption],
+    preferences: &crate::AgentPreferences,
+) -> Option<SessionConfigValueId> {
+    options
+        .iter()
+        .find(|option| option.category == Some(SessionConfigOptionCategory::Model))
+        .and_then(|option| preferences.get(option.id.clone()))
+        .and_then(SessionConfigOptionValue::as_value_id)
+        .cloned()
+}
+
+/// Removes the saved selections of the model and effort options among `options`.
+fn forget_model_and_effort(
+    preferences: &mut crate::AgentPreferences,
+    options: &[SessionConfigOption],
+) {
+    for option in options {
+        if matches!(
+            option.category,
+            Some(SessionConfigOptionCategory::Model | SessionConfigOptionCategory::ThoughtLevel)
+        ) {
+            preferences.config_options.remove(&option.id);
+        }
+    }
 }
 
 /// Re-read options after each accepted change: it can add or change dependent choices.
@@ -619,6 +650,22 @@ mod tests {
             SessionConfigOption::select("effort", "Effort", current.to_owned(), levels)
                 .category(SessionConfigOptionCategory::ThoughtLevel),
         ]
+    }
+
+    /// The fast preselect forgets the model and effort, but keeps unrelated settings.
+    #[test]
+    fn fast_preselect_forgets_only_model_and_effort() {
+        let options = [claude_models("opus"), claude_effort("high")].concat();
+        let mut preferences = crate::AgentPreferences::default();
+        preferences.set("model", "opus");
+        preferences.set("effort", "high");
+        preferences.set("brave_mode", true);
+
+        forget_model_and_effort(&mut preferences, &options);
+
+        assert_eq!(preferences.get("model"), None);
+        assert_eq!(preferences.get("effort"), None);
+        assert!(preferences.get("brave_mode").is_some());
     }
 
     #[test]
@@ -857,7 +904,7 @@ mod tests {
             mcp_servers: Vec::new(),
             log_protocol: false,
             preamble: None,
-            model_preferences: Vec::new(),
+            model_preselect: crate::ModelPreselect::Previous,
             preferences: crate::AgentPreferences {
                 config_options: [
                     ("model".into(), "chosen".into()),

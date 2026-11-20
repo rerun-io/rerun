@@ -6,22 +6,10 @@ use std::path::PathBuf;
 use agent_client_protocol_schema::v1::{
     SessionConfigId, SessionConfigOptionValue, SessionConfigValueId, SessionId,
 };
+use re_agent_tools::ModelPreselect;
 
 use crate::agent_harness::{AgentEntry, AgentHarnessConfig, AgentProfileId};
 use crate::model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiProvider};
-
-/// Fast models to select, best first, unless the user has picked a model for the profile.
-///
-/// The agent panel should feel fast, and flagship models are often too slow for that.
-pub static DEFAULT_MODEL_PREFERENCES: std::sync::LazyLock<Vec<crate::ModelPreference>> =
-    std::sync::LazyLock::new(|| {
-        vec![
-            crate::ModelPreference::new(&["sonnet"]), // Anthropic: Claude
-            crate::ModelPreference::new(&["terra"]),  // OpenAI: Codex
-            crate::ModelPreference::new(&["gemini", "flash"]), // Google: Gemini
-            crate::ModelPreference::new(&["gpt", "mini"]), // OpenAI: older GPT models
-        ]
-    });
 
 /// An MCP server the agent should connect to, spawned by the agent over stdio.
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -62,6 +50,9 @@ impl McpServerConfig {
 /// Not persisted: it describes the host, not the user's choices.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SessionContext {
+    /// Which model the session selects before its first prompt.
+    pub model_preselect: ModelPreselect,
+
     /// Markdown sent to an agent harness together with its first prompt,
     /// e.g. "You are running inside the Rerun Viewer. …".
     ///
@@ -329,22 +320,28 @@ impl AgentSettings {
         let api_key = self
             .api_key(provider)
             .ok_or_else(|| AgentLaunchError::missing_api_key(provider))?;
-        let model = self
-            .preferences(&self.profile_id)
-            .and_then(|preferences| preferences.model())
-            .map_or_else(
-                || provider.default_model().to_owned(),
-                |model| model.0.to_string(),
-            );
+        let (model, effort) = match context.model_preselect {
+            ModelPreselect::Previous => {
+                let preferences = self.preferences(&self.profile_id);
+                let model = preferences
+                    .and_then(|preferences| preferences.model())
+                    .map_or_else(
+                        || provider.default_model().to_owned(),
+                        |model| model.0.to_string(),
+                    );
+                let effort = preferences
+                    .and_then(|preferences| preferences.get("effort"))
+                    .and_then(SessionConfigOptionValue::as_value_id)
+                    .map(Effort::from);
+                (model, effort)
+            }
+            ModelPreselect::Category(category) => (provider.model(category).to_owned(), None),
+        };
         Ok(AgentLaunch::ModelApi(ModelApiConfig {
             provider,
             api_key,
             model,
-            effort: self
-                .preferences(&self.profile_id)
-                .and_then(|preferences| preferences.get("effort"))
-                .and_then(SessionConfigOptionValue::as_value_id)
-                .map(Effort::from),
+            effort,
             system_prompt: context.model_api_preamble.clone(),
             hosted_tools: self.model_api_hosted_tools,
             toolbox: None,

@@ -993,6 +993,7 @@ impl TestContext {
                 | SystemCommand::ResetViewer
                 | SystemCommand::SetRoute(_)
                 | SystemCommand::OpenSettings
+                | SystemCommand::TriggerPrompt { .. }
                 | SystemCommand::OpenChunkStoreBrowser { .. }
                 | SystemCommand::ResetRoute
                 | SystemCommand::ReturnFromLoading

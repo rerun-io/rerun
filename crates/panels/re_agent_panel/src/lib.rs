@@ -138,6 +138,10 @@ pub struct ViewerAgentPanel {
     /// Use `push_back()` to enqueue, and `pop_front()` to get the next pending prompt.
     pending_prompts: VecDeque<String>,
 
+    /// Conversations waiting for the agent panel to be created, each with its model and opening
+    /// prompt, see [`Self::start_conversation_with_model`].
+    pending_conversations: VecDeque<(re_agent::ModelPreselect, re_agent::Prompt)>,
+
     /// Contents of image files dropped onto the viewer, to attach to the prompt being composed.
     dropped_images: DroppedImages,
 
@@ -195,6 +199,22 @@ impl ViewerAgentPanel {
         }
     }
 
+    /// Start a new conversation that preselects `model_preselect`, and send it `prompt` once its
+    /// agent is ready. Buffers it until the panel exists; the caller must open the panel.
+    pub fn start_conversation_with_model(
+        &mut self,
+        model_preselect: re_agent::ModelPreselect,
+        prompt: impl Into<re_agent::Prompt>,
+    ) {
+        let prompt = prompt.into();
+        if let Some(panel) = self.panel.as_mut() {
+            panel.open_conversation_with_model(model_preselect, prompt);
+        } else {
+            self.pending_conversations
+                .push_back((model_preselect, prompt));
+        }
+    }
+
     /// Where to drop image files to attach them to the prompt being composed.
     ///
     /// `None` while the panel is closed.
@@ -242,6 +262,7 @@ impl ViewerAgentPanel {
             focus_input,
             example_prompts,
             pending_prompts,
+            pending_conversations,
             dropped_images,
             ..
         } = self;
@@ -263,6 +284,9 @@ impl ViewerAgentPanel {
             }
             for prompt in pending_prompts.drain(..) {
                 panel.queue_prompt(prompt);
+            }
+            for (model_preselect, prompt) in pending_conversations.drain(..) {
+                panel.open_conversation_with_model(model_preselect, prompt);
             }
             for EncodedImage(bytes) in dropped_images.take() {
                 if let Err(err) = panel.attach_image_file(&bytes) {

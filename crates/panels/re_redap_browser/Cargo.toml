@@ -20,6 +20,7 @@ all-features = true
 
 
 [dependencies]
+re_agent_tools.workspace = true
 re_arrow_ui.workspace = true
 re_async.workspace = true
 re_auth.workspace = true

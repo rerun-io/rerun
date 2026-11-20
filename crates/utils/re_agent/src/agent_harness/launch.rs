@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use super::{AgentEntry, AgentHarnessConfig, AgentProfileId, McpStdioServer, find_executable};
-use crate::settings::{AgentLaunchError, AgentSettings, DEFAULT_MODEL_PREFERENCES, SessionContext};
+use crate::settings::{AgentLaunchError, AgentSettings, SessionContext};
 
 impl AgentSettings {
     /// Resolves these settings into an agent subprocess that can be spawned.
@@ -91,7 +91,7 @@ impl AgentSettings {
             mcp_servers,
             log_protocol: self.log_protocol,
             preamble: context.agent_harness_preamble.clone(),
-            model_preferences: DEFAULT_MODEL_PREFERENCES.clone(),
+            model_preselect: context.model_preselect,
             preferences,
             session_to_load: None,
         })

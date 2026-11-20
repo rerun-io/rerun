@@ -47,17 +47,14 @@ pub struct AgentHarnessConfig {
     /// Markdown sent together with the first prompt of the session.
     pub preamble: Option<String>,
 
-    /// Ranked model-name fallbacks used when no saved model selection is available
-    /// or the agent no longer offers it.
+    /// Which model the session selects before it takes its first prompt.
     ///
-    /// The first matching preference selects a model before the session takes its first prompt.
-    /// An agent that offers no model selector, or nothing that matches, keeps
-    /// whatever model it would use on its own.
-    pub model_preferences: Vec<crate::ModelPreference>,
+    /// An agent that offers no model selector, or nothing that matches, keeps whatever model it
+    /// would use on its own.
+    pub model_preselect: crate::ModelPreselect,
 
     /// Saved selections, restored only when offered by the agent.
-    /// A saved model takes precedence over `model_preferences`.
-    /// Other settings keep the agent's defaults when their saved value is unavailable.
+    /// Settings keep the agent's defaults when their saved value is unavailable.
     pub preferences: crate::AgentPreferences,
 
     /// An earlier session to continue, if the agent can load it.

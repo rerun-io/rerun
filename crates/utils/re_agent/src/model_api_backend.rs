@@ -234,12 +234,18 @@ impl ModelApiProvider {
     }
 
     /// The model a new session starts with, unless the user has picked another.
-    ///
-    /// The first of [`crate::DEFAULT_MODEL_PREFERENCES`] the provider offers, as for agent
-    /// harnesses, because the agent panel should feel fast.
     pub fn default_model(self) -> &'static str {
+        self.model(crate::ModelCategory::default())
+    }
+
+    /// The model of `category` that this provider offers, or else its default model.
+    pub fn model(self, category: crate::ModelCategory) -> &'static str {
         let models = self.models();
-        crate::model_recommendation::preferred_model_id(models, &crate::DEFAULT_MODEL_PREFERENCES)
+        let preferred = |category: crate::ModelCategory| -> Option<&'static str> {
+            crate::model_recommendation::preferred_model_id(models, &category.preferences())
+        };
+        preferred(category)
+            .or_else(|| preferred(crate::ModelCategory::default()))
             .or_else(|| models.first().copied())
             .unwrap_or_default()
     }
