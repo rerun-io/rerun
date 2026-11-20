@@ -64,9 +64,6 @@ examples = [
   "human_pose_tracking",
   "gesture_detection",
 
-  # Stale external example.
-  "mcap",
-
   # Not part of the experiment loop.
   "air_traffic_data",
   "animated_urdf",
