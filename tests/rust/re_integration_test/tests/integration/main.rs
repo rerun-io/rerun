@@ -13,6 +13,7 @@ mod blueprint_context_menu_test;
 mod blueprint_dropdown;
 mod blueprint_import_test;
 mod cards_view_flagging;
+mod catalog_entry_loading;
 mod check_focus_test;
 mod container_context_menu_test;
 mod context_menu_test;

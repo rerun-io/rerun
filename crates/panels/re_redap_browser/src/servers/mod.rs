@@ -941,14 +941,21 @@ impl RedapServers {
             return;
         };
 
-        if let Ok(crate::entries::EntryInner::Dataset(dataset)) = entry.inner() {
+        let table_session = if let Ok(crate::entries::EntryInner::Dataset(dataset)) = entry.inner()
+        {
             dataset.requests().refresh();
-        }
+            let Some(session) = dataset.requests().loaded_table_session() else {
+                return;
+            };
+            session
+        } else {
+            server.tables_session_ctx.clone()
+        };
 
         re_dataframe_ui::DataFusionTableWidget::refresh(
             server.client.runtime(),
             egui_ctx.clone(),
-            server.tables_session_ctx.clone(),
+            table_session,
             TableReference::bare(entry.name().to_string()),
         );
     }
@@ -1000,14 +1007,14 @@ impl RedapServers {
         else {
             return None;
         };
-        let details = &dataset.dataset_entry.dataset_details;
-        let blueprint_dataset = details.blueprint_dataset?;
-
         let query = EntryMetaQuery {
             client: &server.client,
             egui_ctx,
             dataset_id,
         };
+        let entry = dataset.requests().dataset_entry(query);
+        let details = &entry.get()?.dataset_details;
+        let blueprint_dataset = details.blueprint_dataset?;
         let blueprints = dataset.requests().blueprints(query, blueprint_dataset);
 
         Some(crate::DatasetBlueprints {
@@ -1356,17 +1363,6 @@ impl RedapServers {
                     return;
                 };
                 server.entries.clear_entry_assets(entry_id);
-
-                // A dataset's asset dataset comes from the entry list, and the server only has one
-                // to report once the first asset is registered. Until the new list arrives there
-                // is nothing to fetch the asset list from.
-                if server.entries.entry_asset_dataset(entry_id).is_none() {
-                    send_crossbeam(
-                        &self.command_sender,
-                        Command::RefreshCollection(origin.clone()),
-                    )
-                    .ok();
-                }
 
                 if reload_segments {
                     viewer_command_sender.send_system(SystemCommand::ReloadDatasetSegments {

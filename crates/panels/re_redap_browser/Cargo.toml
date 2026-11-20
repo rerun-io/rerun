@@ -49,7 +49,6 @@ egui_extras.workspace = true
 egui_table.workspace = true
 egui.workspace = true
 futures.workspace = true
-itertools.workspace = true
 rfd = { workspace = true, features = ["file-handle-inner"] }
 serde_json.workspace = true
 serde.workspace = true

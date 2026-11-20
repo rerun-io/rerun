@@ -10785,7 +10785,6 @@ dependencies = [
  "egui_kittest",
  "egui_table",
  "futures",
- "itertools 0.15.0",
  "re_agent_tools",
  "re_arrow_ui",
  "re_async",
