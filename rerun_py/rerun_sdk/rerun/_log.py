@@ -258,10 +258,7 @@ def log_file_from_path(
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    native_recording = bindings.get_data_recording(recording=recording.to_native() if recording is not None else None)
-    if native_recording is None:
-        return
-
+    native_recording = recording.to_native() if recording is not None else None
     paths = (file_path,) if isinstance(file_path, (str, PathLike)) else file_path
     for path in paths:
         bindings.log_file_from_path(
