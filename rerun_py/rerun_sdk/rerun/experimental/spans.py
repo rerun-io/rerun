@@ -92,8 +92,13 @@ def _boundary_value(value: _Boundary) -> int | None:
     if isinstance(value, (np.timedelta64, np.datetime64)):
         if np.isnat(value):
             return None
-        # numpy wraps out-of-range values and truncates sub-nanosecond units without raising.
-        if value.astype(f"{type(value).__name__}[ns]").astype(value.dtype) != value:
+        # Depending on its version, numpy either wraps out-of-range values or raises `OverflowError`, and it
+        # truncates sub-nanosecond units without raising.
+        try:
+            exact = value.astype(f"{type(value).__name__}[ns]").astype(value.dtype) == value
+        except OverflowError:
+            exact = False
+        if not exact:
             raise ValueError(f"Span boundary {value!r} is not representable exactly as 64-bit nanoseconds")
     nanos = int(to_nanos(value)) if isinstance(value, (timedelta, np.timedelta64)) else to_nanos_since_epoch(value)
     if not -(1 << 63) <= nanos < 1 << 63:
