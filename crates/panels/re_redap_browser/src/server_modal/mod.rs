@@ -13,7 +13,7 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::servers::{AddServerCommand, Command};
+use crate::servers::{AddServerCommand, Command, ServerLifetime};
 
 mod login_flow;
 pub use login_flow::{LoginError, LoginFlow, LoginFlowResult};
@@ -385,6 +385,7 @@ impl ServerModal {
                             Command::AddServer(AddServerCommand {
                                 origin: origin.clone(),
                                 credentials,
+                                lifetime: ServerLifetime::Remembered,
                                 on_add: Some(on_add),
                             }),
                         )

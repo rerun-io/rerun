@@ -264,6 +264,8 @@ impl AppCore {
             ..
         } = self;
 
+        #[cfg(not(target_arch = "wasm32"))]
+        agent_panel.set_known_servers(state.redap_servers.known_servers());
         agent_panel.show(
             ui,
             &mut state.agent_panel_open,

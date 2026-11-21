@@ -31,7 +31,8 @@ impl CatalogToolset {
             .with_client_name("rerun-mcp".to_owned());
         Ok(Self {
             defaults_to_viewer_catalog: AtomicBool::new(origin.is_none()),
-            tools: CatalogTools::new(registry, runtime, origin),
+            tools: CatalogTools::new(registry, runtime, origin)
+                .with_known_servers(re_redap_client::KnownServers::in_config_dir()),
         })
     }
 

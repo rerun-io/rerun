@@ -80,6 +80,7 @@ web-time.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_perf_telemetry = { workspace = true, optional = true }
 http-body.workspace = true
+serde_json.workspace = true
 tokio = { workspace = true, features = ["fs", "rt", "rt-multi-thread", "time"] }
 tonic = { workspace = true, default-features = false, features = ["transport", "tls-native-roots"] }
 
@@ -93,6 +94,7 @@ re_log = { workspace = true, features = ["setup"] }
 re_uri.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tempfile.workspace = true
 tiny_http.workspace = true
 tokio = { workspace = true, features = ["test-util"] }
 

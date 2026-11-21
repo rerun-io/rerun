@@ -12,6 +12,10 @@ pub struct ConnectArgs {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
+pub struct ListServersArgs {}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 pub struct LoginArgs {}
 
 #[derive(Debug, Deserialize, JsonSchema)]

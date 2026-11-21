@@ -23,6 +23,7 @@ use crate::commands::McapCommands;
 #[cfg(feature = "native_viewer")]
 use crate::commands::McpCommand;
 use crate::commands::RrdCommands;
+use crate::commands::ServersCommands;
 
 use super::cli_data_source::local_recordings_for_assets;
 
@@ -810,6 +811,10 @@ enum Command {
     #[cfg(feature = "oss_server")]
     #[command(name = "server")]
     Server(re_server::Args),
+
+    /// Manage the catalog servers that the Viewer, the CLI, and `rerun mcp` remember.
+    #[command(subcommand)]
+    Servers(ServersCommands),
 }
 
 /// Run the Rerun application and return an exit code.
@@ -967,6 +972,8 @@ where
 
             #[cfg(feature = "oss_server")]
             Command::Server(server) => tokio_runtime.block_on(server.run_async(build_info)),
+
+            Command::Servers(servers) => servers.run(),
         }
     } else {
         #[cfg(all(not(target_arch = "wasm32"), feature = "perf_telemetry"))]
@@ -2319,6 +2326,15 @@ fn record_cli_command_analytics(args: &Args, build_info: re_build_info::BuildInf
 
         #[cfg(feature = "oss_server")]
         Some(Command::Server(_)) => ("server", None),
+
+        Some(Command::Servers(cmd)) => {
+            let subcommand = match cmd {
+                ServersCommands::List => "list",
+                ServersCommands::Add { .. } => "add",
+                ServersCommands::Remove { .. } => "remove",
+            };
+            ("servers", Some(subcommand))
+        }
 
         None => ("viewer", None),
     };

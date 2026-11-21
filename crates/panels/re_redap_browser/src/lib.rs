@@ -24,7 +24,7 @@ pub use re_viewer_context::viewer_url::EXAMPLES_ORIGIN;
 pub use self::dataset_blueprint_dropdown::dataset_blueprint_dropdown_ui;
 pub use self::dataset_blueprints::DatasetBlueprints;
 pub use self::entries::{Entries, Entry, EntryInner};
-pub use self::servers::{AddServerCommand, Command, RedapServers, Server};
+pub use self::servers::{AddServerCommand, Command, RedapServers, Server, ServerLifetime};
 pub use self::upload_asset::UploadAssetExt;
 
 /// Utility function to switch to the examples screen.

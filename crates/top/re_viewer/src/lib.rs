@@ -305,22 +305,11 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
                 anyhow::bail!("Failed to figure out where Rerun stores its data.")
             };
 
-            // Note: `remove_dir_all` fails if the directory doesn't exist.
             if data_dir.exists() {
-                // Keep analytics, because it is used to uniquely identify users over time.
-                let analytics_file_path = data_dir.join("analytics.json");
-                let analytics = std::fs::read(&analytics_file_path);
-
-                if let Err(err) = std::fs::remove_dir_all(&data_dir) {
-                    anyhow::bail!("Failed to remove {data_dir:?}: {err}");
+                if let Err(err) = clear_dir_except(&data_dir, KEPT_ON_RESET) {
+                    anyhow::bail!("Failed to clear {data_dir:?}: {err}");
                 }
                 re_log::info!("Cleared {data_dir:?}.");
-
-                if let Ok(analytics) = analytics {
-                    // Restore analytics.json:
-                    std::fs::create_dir(&data_dir).ok();
-                    std::fs::write(&analytics_file_path, analytics).ok();
-                }
             } else {
                 re_log::info!("Rerun state was already cleared.");
             }
@@ -342,8 +331,53 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// The files in the viewer's data directory that a reset keeps.
+///
+/// `analytics.json` identifies users over time. `servers.json` is the catalog server list that the
+/// `rerun` CLI and `rerun mcp` share, which on macOS is in this same directory.
+#[cfg(not(target_arch = "wasm32"))]
+const KEPT_ON_RESET: &[&str] = &["analytics.json", "servers.json"];
+
+/// Remove everything in `dir` except the files named in `keep`.
+#[cfg(not(target_arch = "wasm32"))]
+fn clear_dir_except(dir: &std::path::Path, keep: &[&str]) -> std::io::Result<()> {
+    for entry in std::fs::read_dir(dir)? {
+        let entry = entry?;
+        if keep.iter().any(|name| entry.file_name() == *name) {
+            continue;
+        }
+        if entry.file_type()?.is_dir() {
+            std::fs::remove_dir_all(entry.path())?;
+        } else {
+            std::fs::remove_file(entry.path())?;
+        }
+    }
+    Ok(())
+}
+
 /// Hook into [`re_log`] to receive copies of text log messages on a channel,
 /// which we will then show in the notification panel.
 pub fn register_text_log_receiver() -> crossbeam::channel::Receiver<re_log::LogMsg> {
     re_log::add_log_msg_receiver(re_log::LevelFilter::INFO)
+}
+
+#[cfg(all(test, not(target_arch = "wasm32")))]
+mod reset_tests {
+    #[test]
+    fn a_reset_keeps_analytics_and_the_server_list() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        for name in ["analytics.json", "servers.json", "app.ron"] {
+            std::fs::write(dir.path().join(name), name).expect("write");
+        }
+        std::fs::create_dir(dir.path().join("blueprints")).expect("create dir");
+
+        super::clear_dir_except(dir.path(), super::KEPT_ON_RESET).expect("clear");
+
+        let mut left: Vec<_> = std::fs::read_dir(dir.path())
+            .expect("read dir")
+            .map(|entry| entry.expect("entry").file_name())
+            .collect();
+        left.sort();
+        assert_eq!(left, ["analytics.json", "servers.json"]);
+    }
 }

@@ -90,6 +90,22 @@ impl Origin {
         format!("http://{host}:{port}")
     }
 
+    /// Parse a catalog server URL as a user would type it: like [`std::str::FromStr`], but also
+    /// accepting plain `http(s)://` for `rerun+http(s)://`, a scheme in any case, and
+    /// surrounding whitespace.
+    pub fn from_user_input(input: &str) -> Result<Self, Error> {
+        let input = input.trim();
+        let input = match input.split_once("://") {
+            Some((scheme, rest)) => format!("{}://{rest}", scheme.to_ascii_lowercase()),
+            None => input.to_owned(),
+        };
+        if input.starts_with("http://") || input.starts_with("https://") {
+            format!("rerun+{input}").parse()
+        } else {
+            input.parse()
+        }
+    }
+
     /// Parses a URL and returns the [`crate::Origin`] and the canonical URL (i.e. one that
     ///  starts with `http://` or `https://`).
     pub(crate) fn replace_and_parse(
@@ -209,6 +225,46 @@ fn is_host_localhost(host: &url::Host) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn user_input_accepts_plain_http_urls() {
+        let parsed = |input: &str| Origin::from_user_input(input).map(|origin| origin.to_string());
+        assert_eq!(
+            parsed(" http://127.0.0.1:51234 ").ok().as_deref(),
+            Some("rerun+http://127.0.0.1:51234")
+        );
+        assert_eq!(
+            parsed("https://example.com").ok().as_deref(),
+            Some("rerun://example.com:443")
+        );
+        assert_eq!(
+            parsed("rerun+http://127.0.0.1:51234").ok().as_deref(),
+            Some("rerun+http://127.0.0.1:51234")
+        );
+        assert!(parsed("ftp://example.com").is_err());
+    }
+
+    #[test]
+    fn user_input_scheme_in_any_case() {
+        assert_eq!(
+            Origin::from_user_input("HTTPS://example.com")
+                .ok()
+                .map(|origin| origin.to_string())
+                .as_deref(),
+            Some("rerun://example.com:443")
+        );
+    }
+
+    #[test]
+    fn user_input_without_scheme() {
+        assert_eq!(
+            Origin::from_user_input("127.0.0.1:51234")
+                .ok()
+                .map(|origin| origin.to_string())
+                .as_deref(),
+            Some("rerun+http://127.0.0.1:51234")
+        );
+    }
 
     #[test]
     fn test_origin_format() {

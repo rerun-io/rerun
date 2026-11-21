@@ -613,9 +613,15 @@ pub struct RedapServers {
     /// internal catalog or a catalog event arrives. Remote servers are always shown.
     internal_catalog_revealed: bool,
 
-    /// When deserializing we can't construct the [`Server`]s right away
-    /// so they get queued here.
+    /// Servers to show that we can't construct a [`Server`] for yet, e.g. right after
+    /// deserializing, so they get queued here.
     pending_servers: Vec<re_uri::Origin>,
+
+    /// The servers the user added, shared with the `rerun` CLI and `rerun mcp`, once
+    /// [`Self::set_known_servers`] set it. While set, remote servers are remembered there rather
+    /// than in the viewer's own persisted state.
+    #[cfg(not(target_arch = "wasm32"))]
+    known_servers: Option<re_redap_client::KnownServers>,
 
     // message queue for commands
     command_sender: crossbeam::channel::Sender<Command>,
@@ -642,6 +648,10 @@ impl serde::Serialize for RedapServers {
     where
         S: serde::Serializer,
     {
+        #[cfg(not(target_arch = "wasm32"))]
+        if self.known_servers.is_some() {
+            return Vec::<re_uri::Origin>::new().serialize(serializer);
+        }
         self.servers
             .values()
             .filter(|server| server.is_remote())
@@ -678,6 +688,8 @@ impl Default for RedapServers {
             servers: Default::default(),
             internal_catalog_revealed: false,
             pending_servers: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            known_servers: None,
             command_sender,
             command_receiver,
             server_modal_ui: Default::default(),
@@ -690,6 +702,16 @@ impl Default for RedapServers {
     }
 }
 
+/// Whether a server outlives this run of the viewer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ServerLifetime {
+    /// Added by the user: remembered, and shared with the `rerun` CLI and `rerun mcp`.
+    Remembered,
+
+    /// Opened by a URL, or already remembered.
+    ThisSession,
+}
+
 /// Add a server with an optional JWT token.
 ///
 /// If the token is None, this does *not* remove an existing token.
@@ -697,6 +719,9 @@ pub struct AddServerCommand {
     pub origin: re_uri::Origin,
 
     pub credentials: Option<re_redap_client::Credentials>,
+
+    /// Whether to remember the server for later runs.
+    pub lifetime: ServerLifetime,
 
     /// Ran after adding the server (useful since [`Command`]s are not ran in order with
     /// [`re_viewer_context::SystemCommand`]s).
@@ -708,11 +733,13 @@ impl std::fmt::Debug for AddServerCommand {
         let Self {
             origin,
             credentials,
+            lifetime,
             on_add,
         } = self;
         f.debug_struct("AddServerCommand")
             .field("origin", origin)
             .field("credentials", credentials)
+            .field("lifetime", lifetime)
             .field("on_add", &on_add.as_ref().map(|_| "…"))
             .finish()
     }
@@ -860,20 +887,74 @@ impl RedapServers {
             .is_some_and(|server| server.is_remote())
         {
             connection_registry.remove_credentials(origin);
+            #[cfg(not(target_arch = "wasm32"))]
+            if let Some(known) = &self.known_servers
+                && let Err(err) = known.remove(origin)
+            {
+                re_log::error!("Failed to forget the server {origin}: {err}");
+            }
         }
     }
 
-    /// Add a server to the hub.
+    /// Show a server for this run of the viewer, e.g. one a URL opened.
+    ///
+    /// Servers the user adds in the server modal are remembered instead.
     pub fn add_server(&self, origin: re_uri::Origin) {
         send_crossbeam(
             &self.command_sender,
             Command::AddServer(AddServerCommand {
                 origin,
                 credentials: None,
+                lifetime: ServerLifetime::ThisSession,
                 on_add: None,
             }),
         )
         .ok();
+    }
+
+    /// Remember the servers the user adds in `known`, shared with the `rerun` CLI and
+    /// `rerun mcp`, and show the ones already there.
+    ///
+    /// The servers this viewer remembered in its own persisted state are moved to `known`, which
+    /// is the only place they are remembered from now on. Local servers are left out: older
+    /// viewers remembered every server they opened, and a local one is usually gone by now. If
+    /// moving fails, e.g. because the file is broken, the viewer keeps remembering servers in its
+    /// own state, so none are lost.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn set_known_servers(
+        &mut self,
+        known: re_redap_client::KnownServers,
+    ) -> Result<(), re_redap_client::KnownServersError> {
+        let remote: Vec<_> = self
+            .pending_servers
+            .iter()
+            .filter(|origin| !origin.is_localhost())
+            .cloned()
+            .collect();
+        known.add_all(&remote)?;
+        for origin in known.load()? {
+            if !self.pending_servers.contains(&origin) {
+                self.pending_servers.push(origin);
+            }
+        }
+        self.known_servers = Some(known);
+        Ok(())
+    }
+
+    /// Add `origin` to the shared list, if there is one.
+    #[cfg(not(target_arch = "wasm32"))]
+    fn remember(&self, origin: &re_uri::Origin) {
+        if let Some(known) = &self.known_servers
+            && let Err(err) = known.add(origin)
+        {
+            re_log::error!("Failed to remember the server {origin}: {err}");
+        }
+    }
+
+    /// The shared list set by [`Self::set_known_servers`], if any.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn known_servers(&self) -> Option<&re_redap_client::KnownServers> {
+        self.known_servers.as_ref()
     }
 
     pub fn add_internal_server(
@@ -1125,6 +1206,7 @@ impl RedapServers {
                 Command::AddServer(AddServerCommand {
                     origin,
                     credentials: None,
+                    lifetime: ServerLifetime::ThisSession,
                     on_add: None,
                 }),
             )
@@ -1376,14 +1458,22 @@ impl RedapServers {
             Command::AddServer(AddServerCommand {
                 origin,
                 credentials,
+                #[cfg(not(target_arch = "wasm32"))]
+                lifetime,
+                #[cfg(target_arch = "wasm32")]
+                    lifetime: _,
                 on_add,
             }) => {
                 if let Some(credentials) = credentials {
                     connection_registry.set_credentials(&origin, credentials);
                 }
+                // The browser remembers every server in the viewer's own state.
+                #[cfg(not(target_arch = "wasm32"))]
+                if lifetime == ServerLifetime::Remembered {
+                    self.remember(&origin);
+                }
                 if self.servers.contains_key(&origin) {
-                    // Since we persist the server list on disk this happens quite often.
-                    // E.g. run `pixi run rerun "rerun+http://localhost"` more than once.
+                    // E.g. a URL opens a server that is already shown.
                     re_log::debug!(
                         "Tried to add pre-existing server at {:?}",
                         origin.to_string()
@@ -1415,6 +1505,9 @@ impl RedapServers {
             }
 
             Command::UseStoredCredentials(origin) => {
+                // Logging in to a server is as deliberate as adding it.
+                #[cfg(not(target_arch = "wasm32"))]
+                self.remember(&origin);
                 connection_registry.set_credentials(&origin, Credentials::Stored);
                 send_crossbeam(&self.command_sender, Command::RefreshCollection(origin)).ok();
             }
@@ -1719,6 +1812,136 @@ mod tests {
             .expect("valid origin");
 
         assert!(servers.is_entry_kind_pending(&origin, EntryId::new()));
+    }
+
+    fn origin(url: &str) -> re_uri::Origin {
+        url.parse().expect("valid origin")
+    }
+
+    /// The remote servers from the viewer's own persisted state move into the shared list, and
+    /// all of them are shown, along with those already in the list.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn known_servers_take_over_from_the_persisted_state() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let known = re_redap_client::KnownServers::at(dir.path().join("servers.json"));
+        let from_cli = origin("rerun://cli.example.com:443");
+        known.add(&from_cli).expect("add");
+
+        let remote = origin("rerun://example.com:443");
+        let local = origin("rerun+http://127.0.0.1:51234");
+        let mut servers: RedapServers =
+            serde_json::from_value(serde_json::json!([remote, local])).expect("deserialize");
+        servers.set_known_servers(known.clone()).expect("migrate");
+
+        assert_eq!(
+            servers.pending_servers,
+            [remote.clone(), local, from_cli.clone()]
+        );
+        assert_eq!(known.load().expect("load"), [from_cli, remote]);
+    }
+
+    /// Once the shared list is used, the viewer's own persisted state holds no servers.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn known_servers_empty_the_persisted_state() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let known = re_redap_client::KnownServers::at(dir.path().join("servers.json"));
+        let mut servers: RedapServers =
+            serde_json::from_value(serde_json::json!([origin("rerun://example.com:443")]))
+                .expect("deserialize");
+        servers.set_known_servers(known).expect("migrate");
+        assert_eq!(
+            serde_json::to_value(&servers).expect("serialize"),
+            serde_json::json!([])
+        );
+    }
+
+    /// A broken shared list is not used, so the servers stay in the viewer's own state.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn a_broken_known_servers_file_keeps_the_persisted_state() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("servers.json");
+        std::fs::write(&path, "not json").expect("write");
+        let from_app_state = origin("rerun://example.com:443");
+        let mut servers: RedapServers =
+            serde_json::from_value(serde_json::json!([from_app_state])).expect("deserialize");
+
+        servers
+            .set_known_servers(re_redap_client::KnownServers::at(path))
+            .expect_err("broken file");
+        assert!(servers.known_servers().is_none());
+        assert_eq!(servers.pending_servers, [from_app_state]);
+    }
+
+    /// Only servers the user adds are remembered; those a URL opened are not, and removing a
+    /// server forgets it.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn only_added_servers_are_remembered() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let known = re_redap_client::KnownServers::at(dir.path().join("servers.json"));
+        let connection_registry =
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials();
+        let runtime =
+            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("tokio runtime");
+        let egui_ctx = egui::Context::default();
+        let (viewer_command_sender, _receiver) = re_viewer_context::command_channel();
+
+        let mut servers = RedapServers::default();
+        servers.set_known_servers(known.clone()).expect("use");
+        let opened = origin("rerun+http://127.0.0.1:51234");
+        let added = origin("rerun://example.com:443");
+        for (origin, lifetime) in [
+            (opened.clone(), ServerLifetime::ThisSession),
+            (added.clone(), ServerLifetime::Remembered),
+        ] {
+            servers.handle_command(
+                &connection_registry,
+                &runtime,
+                &egui_ctx,
+                Command::AddServer(AddServerCommand {
+                    origin,
+                    credentials: None,
+                    lifetime,
+                    on_add: None,
+                }),
+                false,
+                &viewer_command_sender,
+            );
+        }
+        assert!(servers.has_server(&opened));
+        assert_eq!(known.load().expect("load"), std::slice::from_ref(&added));
+
+        servers.remove_server(&added, &connection_registry);
+        assert_eq!(known.load().expect("load"), []);
+    }
+
+    /// Logging in to a server remembers it, like adding it does.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[tokio::test(flavor = "multi_thread")]
+    async fn logging_in_remembers_the_server() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let known = re_redap_client::KnownServers::at(dir.path().join("servers.json"));
+        let connection_registry =
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials();
+        let runtime =
+            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("tokio runtime");
+        let (viewer_command_sender, _receiver) = re_viewer_context::command_channel();
+
+        let mut servers = RedapServers::default();
+        servers.set_known_servers(known.clone()).expect("use");
+        let opened = origin("rerun://example.com:443");
+        servers.handle_command(
+            &connection_registry,
+            &runtime,
+            &egui::Context::default(),
+            Command::UseStoredCredentials(opened.clone()),
+            false,
+            &viewer_command_sender,
+        );
+        assert_eq!(known.load().expect("load"), [opened]);
     }
 
     /// An entry that is newer than the listing of its server can only turn up in a new listing,

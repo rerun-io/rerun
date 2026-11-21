@@ -1644,7 +1644,17 @@ impl AppCore {
 
     /// Reset the viewer to how it looked the first time you ran it.
     fn reset_viewer(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+        // The shared server list belongs to every Rerun program on the machine, not to this
+        // viewer's state, so it survives the reset.
+        #[cfg(not(target_arch = "wasm32"))]
+        let known_servers = self.state.redap_servers.known_servers().cloned();
         self.state = Default::default();
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(known) = known_servers
+            && let Err(err) = self.state.redap_servers.set_known_servers(known)
+        {
+            re_log::warn!("{err}");
+        }
         // The panel keeps its own copy of the settings, including typed-in API keys, which it
         // would otherwise write back into the state.
         self.agent_panel = Default::default();

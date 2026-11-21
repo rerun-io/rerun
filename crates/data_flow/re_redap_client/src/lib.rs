@@ -16,8 +16,12 @@ mod schema_cache;
 mod tasks;
 
 #[cfg(not(target_arch = "wasm32"))]
+mod known_servers;
+#[cfg(not(target_arch = "wasm32"))]
 mod segment_chunk_provider;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::known_servers::{KnownServers, KnownServersError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::segment_chunk_provider::SegmentChunkProvider;
 

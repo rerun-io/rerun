@@ -82,7 +82,7 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
 - Never guess an entity path or a component name: read them with `catalog_get_dataset_schema`.
 - Read values with `catalog_query_dataset`: pick the `index` timeline, the `segments`, and the `entity_paths` you need, and aggregate in its `sql` rather than reading many rows. Large values such as images come back cut short or left out.
 - Narrow queries to the segments, entities, and time range you need. Ask the user before scanning a whole large dataset if the scope is unclear.
-- If no server matches what the user names, ask for the URL rather than guessing one.
+- `catalog_list_servers` lists the catalog servers the user has added. If none matches what the user names, ask for the URL rather than guessing one.
 - If `catalog_connect` says the server needs a login, call `catalog_login`, show the user its link, call `catalog_login` again to wait until they are done, then retry `catalog_connect`.
 - Until you call `catalog_connect`, the catalog tools act on the catalog of the connected viewer (its `catalog_url`) when that viewer runs on this machine. It holds the recordings the viewer loaded from files: read their values with `catalog_query_dataset` rather than the Python API. Call `catalog_connect` to read another server, e.g. one from the `servers` that `viewer_get_state` lists.
 - A recording's `store_id` in `viewer_get_state` names its dataset id and segment id: pass them as `dataset` and `segment_id`.
@@ -363,6 +363,24 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
     "required": [
       "dataset"
     ]
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
+## catalog_list_servers
+
+{
+  "name": "catalog_list_servers",
+  "description": "List the catalog servers the user has added, in the Rerun viewer or with `rerun servers add`, and the one the catalog tools act on now. Pass one to `catalog_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
   },
   "annotations": {
     "readOnlyHint": true,

@@ -4,6 +4,16 @@ expression: definitions
 ---
 [
   {
+    "name": "catalog_list_servers",
+    "description": "List the catalog servers the user has added, in the Rerun viewer or with `rerun servers add`, and the one the catalog tools act on now. Pass one to `catalog_connect`.",
+    "input_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "effect": "ReadOnly"
+  },
+  {
     "name": "catalog_connect",
     "description": "Connect to a Rerun catalog server, replacing any previous catalog connection. The other catalog tools act on this catalog. Returns the server's version.",
     "input_schema": {

@@ -46,6 +46,9 @@ Use the catalog tools to find and query data across recordings. You can connect 
 
 Ask “Which recordings contain lidar data?” to explore datasets and segment properties, or “What was the peak speed in each run?” to query recorded values with SQL.
 
+The agent can also list the catalog servers you added in the Viewer or with `rerun servers add <url>`, and pick one to connect to.
+The web Viewer cannot offer that list, since it keeps its servers in the browser rather than in Rerun's config directory.
+
 <a id="changing-a-catalog"></a>
 
 The agent can also create and rename datasets, upload or register `.rrd` recordings into them, and register a table blueprint for a dataset's segment table, optionally as its default.

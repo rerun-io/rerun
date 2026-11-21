@@ -429,6 +429,16 @@ impl App {
             AppState::default()
         };
 
+        // Not in tests: the list is shared by every Rerun program on the machine.
+        #[cfg(not(target_arch = "wasm32"))]
+        if startup_options.persist_state
+            && !is_test
+            && let Some(known) = re_redap_client::KnownServers::in_config_dir()
+            && let Err(err) = state.redap_servers.set_known_servers(known)
+        {
+            re_log::warn!("{err}");
+        }
+
         if startup_options.persist_state {
             // Check if the user has recently upgraded Rerun.
             if let Some(storage) = creation_context.storage {

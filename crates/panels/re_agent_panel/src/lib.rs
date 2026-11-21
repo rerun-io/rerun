@@ -156,9 +156,23 @@ pub struct ViewerAgentPanel {
     /// Viewer-control operations that a model-API agent asked for, to be run on the UI thread.
     /// Set up with the panel.
     viewer_control_calls: Option<crossbeam::channel::Receiver<viewer_toolbox::QueuedCall>>,
+
+    /// The catalog servers the catalog tools list, as set by [`Self::set_known_servers`].
+    #[cfg(not(target_arch = "wasm32"))]
+    known_servers: Option<re_redap_client::KnownServers>,
 }
 
 impl ViewerAgentPanel {
+    /// The catalog servers that a model-API agent's catalog tools list, if any.
+    ///
+    /// Only read when the panel is created, so cheap to call every frame.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn set_known_servers(&mut self, known_servers: Option<&re_redap_client::KnownServers>) {
+        if self.panel.is_none() {
+            self.known_servers = known_servers.cloned();
+        }
+    }
+
     /// Takes the viewer-control operations that the agent asked for since the last call.
     pub fn take_viewer_control_calls(&self) -> Vec<ViewerControlCall> {
         self.viewer_control_calls
@@ -394,28 +408,24 @@ impl ViewerAgentPanel {
         let (calls_tx, calls_rx) = viewer_toolbox::calls_channel();
         self.viewer_control_calls = Some(calls_rx);
         let viewer_tools = viewer_toolbox::ViewerToolbox::new(calls_tx, egui_ctx.ui_waker());
-        panel.set_toolbox(model_api_toolbox(
-            viewer_tools,
-            connection_registry,
-            async_runtime,
-        ));
+        let catalog_tools = re_catalog_tools::CatalogTools::new(
+            connection_registry.clone(),
+            async_runtime.clone(),
+            connection_registry.internal_origin(),
+        );
+        #[cfg(not(target_arch = "wasm32"))]
+        let catalog_tools = catalog_tools.with_known_servers(self.known_servers.clone());
+        panel.set_toolbox(model_api_toolbox(viewer_tools, catalog_tools));
 
         self.panel = Some(panel);
     }
 }
 
-/// The tools of a model-API agent: the viewer-control tools, and the catalog tools on the
-/// viewer's own catalog.
+/// The tools of a model-API agent: the viewer-control tools, and the catalog tools.
 fn model_api_toolbox(
     viewer_tools: Arc<viewer_toolbox::ViewerToolbox>,
-    connection_registry: &ConnectionRegistryHandle,
-    async_runtime: &AsyncRuntimeHandle,
+    catalog_tools: re_catalog_tools::CatalogTools,
 ) -> Arc<dyn AgentToolbox> {
-    let catalog_tools = re_catalog_tools::CatalogTools::new(
-        connection_registry.clone(),
-        async_runtime.clone(),
-        connection_registry.internal_origin(),
-    );
     Arc::new(CombinedToolbox::new(
         Some(MCP_SERVER_NAME.to_owned()),
         [
@@ -436,8 +446,11 @@ mod toolbox_tests {
         let (calls_tx, _calls_rx) = viewer_toolbox::calls_channel();
         let toolbox = model_api_toolbox(
             viewer_toolbox::ViewerToolbox::new(calls_tx, re_async::UiWaker::noop()),
-            &re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
-            &AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime"),
+            re_catalog_tools::CatalogTools::new(
+                re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
+                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime"),
+                None,
+            ),
         );
         let names: Vec<String> = toolbox
             .definitions()
@@ -445,7 +458,7 @@ mod toolbox_tests {
             .map(|definition| definition.name)
             .collect();
         assert!(names.iter().any(|name| name == "viewer_get_state"));
-        for tool in <re_catalog_tools::CatalogTool as strum::VariantArray>::VARIANTS {
+        for tool in re_catalog_tools::CatalogTool::available() {
             assert!(names.iter().any(|name| name == tool.name()), "{tool:?}");
         }
         assert!(!toolbox.requires_approval("catalog_query_tables", &Map::new()));

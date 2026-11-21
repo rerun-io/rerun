@@ -336,8 +336,6 @@ pub async fn serve(config: Config) -> Result<(), ServeError> {
 mod tests {
     use std::fmt::Write as _;
 
-    use strum::VariantArray as _;
-
     use super::*;
 
     fn server(viewer: Option<ViewerConfig>, catalog: Option<CatalogConfig>) -> RerunMcpServer {
@@ -383,8 +381,7 @@ mod tests {
             .collect();
         assert_eq!(
             names,
-            CatalogTool::VARIANTS
-                .iter()
+            CatalogTool::available()
                 .map(|tool| tool.name().to_owned())
                 .collect::<Vec<_>>()
         );
@@ -496,7 +493,12 @@ mod tests {
             .filter(|tool| asks_the_viewer_for_its_catalog(tool.name(), catalog))
             .collect();
         let expected: Vec<_> = CatalogTool::available()
-            .filter(|tool| !matches!(tool, CatalogTool::Connect | CatalogTool::Login))
+            .filter(|tool| {
+                !matches!(
+                    tool,
+                    CatalogTool::ListServers | CatalogTool::Connect | CatalogTool::Login
+                )
+            })
             .collect();
         assert_eq!(asking, expected);
     }
@@ -515,7 +517,7 @@ mod tests {
         );
 
         let viewer_only = server(Some(ViewerConfig::default()), None).instructions();
-        for tool in CatalogTool::VARIANTS {
+        for tool in CatalogTool::available() {
             assert!(!viewer_only.contains(tool.name()), "{viewer_only}");
         }
     }

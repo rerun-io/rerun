@@ -212,7 +212,9 @@ pub fn model_api_text() -> String {
          for another server",
     );
     if cfg!(not(target_arch = "wasm32")) {
-        text.push_str(", and `catalog_login` when it needs a login");
+        text.push_str(
+            ", e.g. one from `catalog_list_servers`, and `catalog_login` when it needs a login",
+        );
     }
     text.push_str(
         ". Read values with `catalog_query_dataset` rather than asking for code to run.\n",

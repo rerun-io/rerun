@@ -66,6 +66,12 @@ pub enum CatalogToolError {
     )]
     ConnectSuperseded { url: String },
 
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error(transparent)]
+    KnownServers {
+        source: re_redap_client::KnownServersError,
+    },
+
     #[error("No dataset or table named {entry:?}. Call `catalog_list_entries` for the names.")]
     NoSuchEntry { entry: String },
 

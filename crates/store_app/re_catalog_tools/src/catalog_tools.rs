@@ -10,12 +10,14 @@ use serde_json::{Map, Value, json};
 use re_agent_tools::{AgentToolbox, ToolDefinition, ToolError, ToolOutput};
 use re_async::AsyncRuntimeHandle;
 use re_catalog_client::CatalogClient;
+#[cfg(not(target_arch = "wasm32"))]
+use re_redap_client::KnownServers;
 use re_redap_client::{
     ApiError, ApiErrorKind, ClientCredentialsError, ConnectionRegistryHandle, Credentials,
 };
 use re_uri::Origin;
 
-use crate::args::{ConnectArgs, LoginArgs};
+use crate::args::{ConnectArgs, ListServersArgs, LoginArgs};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::login::Login;
 use crate::metadata::{
@@ -39,6 +41,11 @@ pub struct CatalogTools {
 
     #[cfg(not(target_arch = "wasm32"))]
     login: Arc<Login>,
+
+    /// The catalog servers the user added, which `list_servers` lists. `None` until
+    /// [`Self::with_known_servers`] sets it.
+    #[cfg(not(target_arch = "wasm32"))]
+    known_servers: Option<KnownServers>,
 }
 
 /// Which catalog the tools act on.
@@ -77,23 +84,53 @@ impl CatalogTools {
                 catalog,
                 ..Default::default()
             })),
+            #[cfg(not(target_arch = "wasm32"))]
+            known_servers: None,
         }
     }
 
-    /// Parse a catalog URL, also accepting plain `http(s)://` for `rerun+http(s)://`.
-    pub fn parse_url(url: &str) -> Result<Origin, CatalogToolError> {
-        let trimmed = url.trim();
-        let rerun_url = if trimmed.starts_with("http://") || trimmed.starts_with("https://") {
-            format!("rerun+{trimmed}")
-        } else {
-            trimmed.to_owned()
+    /// Let `list_servers` list the servers in `known_servers`, or none.
+    ///
+    /// The host decides which list, if any, so that e.g. a viewer that does not persist its
+    /// state keeps the agent off the user's real list too.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[must_use]
+    pub fn with_known_servers(mut self, known_servers: Option<KnownServers>) -> Self {
+        self.known_servers = known_servers;
+        self
+    }
+
+    /// The `list_servers` tool.
+    #[cfg_attr(target_arch = "wasm32", expect(clippy::unnecessary_wraps))]
+    fn list_servers(&self) -> Result<Value, CatalogToolError> {
+        let servers: Vec<Origin> = cfg_select! {
+            target_arch = "wasm32" => Vec::new(),
+            _ => match &self.known_servers {
+                Some(known) => known
+                    .load()
+                    .map_err(|source| CatalogToolError::KnownServers { source })?,
+                None => Vec::new(),
+            },
         };
-        rerun_url
-            .parse::<Origin>()
-            .map_err(|source| CatalogToolError::InvalidUrl {
-                url: url.to_owned(),
-                source,
-            })
+        Ok(json!({
+            "current": self.origin().map(|origin| origin.to_string()),
+            "servers": servers.iter().map(ToString::to_string).collect::<Vec<_>>(),
+        }))
+    }
+
+    /// Every catalog tool, as the toolbox offers them, without needing an instance.
+    pub fn definitions() -> Vec<ToolDefinition> {
+        CatalogTool::available()
+            .map(CatalogTool::definition)
+            .collect()
+    }
+
+    /// Parse a catalog URL, see [`Origin::from_user_input`].
+    pub fn parse_url(url: &str) -> Result<Origin, CatalogToolError> {
+        Origin::from_user_input(url).map_err(|source| CatalogToolError::InvalidUrl {
+            url: url.to_owned(),
+            source,
+        })
     }
 
     /// The catalog the tools act on, if any.
@@ -137,6 +174,10 @@ impl CatalogTools {
             CatalogTool::Connect => {
                 let ConnectArgs { url } = parse_args(arguments)?;
                 self.connect(&url).await
+            }
+            CatalogTool::ListServers => {
+                let ListServersArgs {} = parse_args(arguments)?;
+                self.list_servers()
             }
             CatalogTool::Login => {
                 let LoginArgs {} = parse_args(arguments)?;
@@ -480,5 +521,34 @@ mod tests {
     fn login_does_not_help_other_failures() {
         let err = ApiError::connection(&Origin::http_local_host(1), "connection refused");
         assert!(!login_can_help(&err, true, None, || false));
+    }
+
+    #[tokio::test(flavor = "multi_thread")]
+    async fn lists_the_servers_the_user_added() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let known = KnownServers::at(dir.path().join("servers.json"));
+        let added = Origin::http_local_host(51234);
+        known.add(&added).expect("add");
+
+        let runtime =
+            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime");
+        let current = Origin::http_local_host(1);
+        let tools = CatalogTools::new(
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
+            runtime,
+            Some(current.clone()),
+        )
+        .with_known_servers(Some(known));
+        let servers = tools
+            .run(CatalogTool::ListServers, Map::new())
+            .await
+            .expect("servers");
+        assert_eq!(
+            servers,
+            json!({
+                "current": current.to_string(),
+                "servers": [added.to_string()],
+            })
+        );
     }
 }

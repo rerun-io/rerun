@@ -3,7 +3,6 @@
 use std::sync::Arc;
 
 use serde_json::{Map, Value, json};
-use strum::VariantArray as _;
 
 use re_catalog_tools::{CatalogTool, CatalogTools};
 use re_log_types::{EntryName, TimeType};
@@ -531,8 +530,7 @@ async fn works_as_an_agent_toolbox() {
         .collect();
     assert_eq!(
         names,
-        CatalogTool::VARIANTS
-            .iter()
+        CatalogTool::available()
             .map(|tool| tool.name().to_owned())
             .collect::<Vec<_>>()
     );

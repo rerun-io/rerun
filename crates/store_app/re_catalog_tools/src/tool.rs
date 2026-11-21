@@ -8,8 +8,9 @@ use re_agent_tools::{ToolDefinition, ToolEffect};
 
 use crate::args::{
     ConnectArgs, CreateDatasetArgs, DatasetArgs, DatasetSchemaArgs, ListEntriesArgs,
-    ListSegmentsArgs, LoginArgs, QueryDatasetArgs, QueryTablesArgs, RegisterRecordingsArgs,
-    RegisterTableBlueprintArgs, RenameEntryArgs, SegmentPropertiesArgs, UploadRecordingArgs,
+    ListSegmentsArgs, ListServersArgs, LoginArgs, QueryDatasetArgs, QueryTablesArgs,
+    RegisterRecordingsArgs, RegisterTableBlueprintArgs, RenameEntryArgs, SegmentPropertiesArgs,
+    UploadRecordingArgs,
 };
 
 /// One tool an agent can call.
@@ -17,6 +18,9 @@ use crate::args::{
 /// [`strum::VariantArray::VARIANTS`] lists them in the order an agent should meet them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, strum::VariantArray)]
 pub enum CatalogTool {
+    /// List the catalog servers the user has added, to pick one to connect to.
+    ListServers,
+
     /// Pick the catalog server the other tools act on.
     Connect,
 
@@ -66,6 +70,7 @@ impl CatalogTool {
     /// The name the agent calls the tool by, e.g. `catalog_list_entries`.
     pub fn name(self) -> &'static str {
         match self {
+            Self::ListServers => "catalog_list_servers",
             Self::Connect => "catalog_connect",
             Self::Login => "catalog_login",
             Self::ListEntries => "catalog_list_entries",
@@ -90,12 +95,16 @@ impl CatalogTool {
 
     /// The tools available on this platform, in the order an agent should meet them.
     ///
-    /// `login` needs a local web server for the login callback, which the browser cannot start,
-    /// and `upload_recording` reads a local file, which the browser cannot do.
+    /// `list_servers` needs the list on disk, which the browser has none of. `login` needs a local
+    /// web server for the login callback, which the browser cannot start, and `upload_recording`
+    /// reads a local file, which the browser cannot do.
     pub fn available() -> impl Iterator<Item = Self> {
         Self::VARIANTS.iter().copied().filter(|tool| {
             cfg!(not(target_arch = "wasm32"))
-                || !matches!(tool, Self::Login | Self::UploadRecording)
+                || !matches!(
+                    tool,
+                    Self::ListServers | Self::Login | Self::UploadRecording
+                )
         })
     }
 
@@ -125,9 +134,10 @@ impl CatalogTool {
 
     /// Whether the tool acts on the catalog the tools are connected to.
     ///
-    /// `connect` picks a catalog itself, and `login` logs the user in for any catalog.
+    /// `list_servers` lists the ones to pick from, `connect` picks a catalog itself, and `login`
+    /// logs the user in for any catalog.
     pub fn acts_on_catalog(self) -> bool {
-        !matches!(self, Self::Connect | Self::Login)
+        !matches!(self, Self::ListServers | Self::Connect | Self::Login)
     }
 
     /// What an agent that may call the write tools should know, for the host's instructions.
@@ -159,6 +169,11 @@ impl CatalogTool {
 
     fn description(self) -> &'static str {
         match self {
+            Self::ListServers => {
+                "List the catalog servers the user has added, in the Rerun viewer or with \
+                 `rerun servers add`, and the one the catalog tools act on now. Pass one to \
+                 `catalog_connect`."
+            }
             Self::Connect => {
                 "Connect to a Rerun catalog server, replacing any previous catalog connection. \
                  The other catalog tools act on this catalog. Returns the server's version."
@@ -242,7 +257,8 @@ impl CatalogTool {
             | Self::UploadRecording
             | Self::RegisterRecordings
             | Self::RegisterTableBlueprint => ToolEffect::NonDestructive,
-            Self::ListEntries
+            Self::ListServers
+            | Self::ListEntries
             | Self::GetDatasetInfo
             | Self::GetDatasetSchema
             | Self::ListSegments
@@ -254,6 +270,7 @@ impl CatalogTool {
 
     fn input_schema(self) -> Map<String, Value> {
         match self {
+            Self::ListServers => schema_for::<ListServersArgs>(),
             Self::Connect => schema_for::<ConnectArgs>(),
             Self::Login => schema_for::<LoginArgs>(),
             Self::ListEntries => schema_for::<ListEntriesArgs>(),

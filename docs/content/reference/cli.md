@@ -29,6 +29,7 @@ The Rerun command-line interface:
 * `reset`: Reset the memory of the Rerun Viewer.
 * `rrd`: Manipulate the contents of .rrd and .rbl files.
 * `server`: Local Rerun catalog server.
+* `servers`: Manage the catalog servers that the Viewer, the CLI, and `rerun mcp` remember.
 
 **Arguments**
 
@@ -1110,3 +1111,39 @@ Local Rerun catalog server.
 
 * `-V, --version `
 > Print version.
+
+## rerun servers
+
+Manage the catalog servers that the Viewer, the CLI, and `rerun mcp` remember.
+
+**Usage**: `rerun servers <COMMAND>`
+
+**Commands**
+
+* `list`: List the catalog servers Rerun remembers.
+* `add`: Remember a catalog server, so `rerun mcp` offers it to agents, and the Viewer shows it the next time it starts.
+* `remove`: Forget a catalog server.
+
+## rerun servers add
+
+Remember a catalog server, so `rerun mcp` offers it to agents, and the Viewer shows it the next time it starts.
+
+**Usage**: `rerun servers add <URL>`
+
+**Arguments**
+
+* `<URL>`
+> The server's URL, e.g. `rerun+https://example.com` or `http://127.0.0.1:51234`.
+
+## rerun servers remove
+
+Forget a catalog server.
+
+A running Viewer keeps showing it until it restarts. A login the Viewer saved for it stays in the Viewer's settings; remove the server in the Viewer instead to drop that too.
+
+**Usage**: `rerun servers remove <URL>`
+
+**Arguments**
+
+* `<URL>`
+> The server's URL, as `rerun servers list` shows it.
