@@ -41,9 +41,9 @@ accept = [
 
 # Exclude these filesystem paths from getting checked.
 exclude_path = [
-  # Symlink mirror of `docs/` and `skills/`, which are already checked at their real paths.
+  # Symlink mirror of `skills/`, which is already checked at its real path.
   # Relative links that resolve correctly from the real path break when followed through here.
-  "crates/top/re_viewer/agent_context",
+  "crates/panels/re_agent_panel/agent_context",
 
   "docs/speculative_links", # Regexes of links to exclude, not links.
   "lychee.toml", # Contains regex patterns with URL-like strings that aren't actual links.

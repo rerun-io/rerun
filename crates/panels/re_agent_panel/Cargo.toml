@@ -14,14 +14,8 @@ include = [
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
-  "agent_context/**/*.cpp",
-  "agent_context/**/*.in",
   "agent_context/**/*.md",
   "agent_context/**/*.py",
-  "agent_context/**/*.rs",
-  "agent_context/**/*.toml",
-  "agent_context/**/*.txt",
-  "agent_context/**/*.yaml",
   "Cargo.toml",
 ]
 
@@ -35,9 +29,9 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 [features]
 default = []
 
-## Embed the Rerun skills and documentation for the agent panel to hand its agent.
+## Embed the Rerun skills for the agent panel to hand its agent.
 ##
-## Costs a couple of megabytes of binary size, and does nothing on the web.
+## Does nothing on the web.
 agent_context = []
 
 [dependencies]

@@ -31,7 +31,7 @@ Standalone:
 
 | Skill                                                     | What it covers                                                                                               |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
-| [`rerun-docs`](rerun-docs/SKILL.md)                       | Where the docs and code snippets live on disk, and how to search them                                        |
+| [`rerun-docs`](rerun-docs/SKILL.md)                       | Where the docs and code snippets live, and how to search them                                                |
 | [`rerun-blueprint`](rerun-blueprint/SKILL.md)             | Designing and editing blueprints, verifying state and appearance, and configuring segment and catalog tables |
 | [`rerun-catalog-queries`](rerun-catalog-queries/SKILL.md) | Performance patterns for querying a catalog from Python                                                      |
 | [`investigate-puffin`](investigate-puffin/SKILL.md)       | Finding slow scopes in a Puffin profile of the Viewer, and comparing two profiles                            |

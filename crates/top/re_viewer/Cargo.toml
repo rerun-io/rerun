@@ -49,9 +49,9 @@ default = ["agent_context", "analytics", "default_web"]
 ## so a feature that should be on for the web must be added here.
 default_web = ["audio", "map_view"]
 
-## Embed the Rerun skills and documentation for the agent panel to hand its agent.
+## Embed the Rerun skills for the agent panel to hand its agent.
 ##
-## Costs a couple of megabytes of binary size, and does nothing on the web.
+## Does nothing on the web.
 agent_context = ["re_agent_panel/agent_context"]
 
 ## Enable anonymized telemetry using our analytics SDK.

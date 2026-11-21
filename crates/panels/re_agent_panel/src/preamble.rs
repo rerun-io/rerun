@@ -9,7 +9,7 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 #[cfg(agent_harness_backend)]
-use super::{DOCS_SUBDIR, SKILLS_SUBDIR};
+use super::SKILLS_SUBDIR;
 
 /// The start of the instructions, the same for every backend.
 fn intro() -> String {
@@ -27,7 +27,12 @@ fn intro() -> String {
 }
 
 /// The end of the instructions, the same for every backend.
-const OUTRO: &str = "- Rerun is open source, and its examples are worth reading and worth linking: \
+const OUTRO: &str = "- Before answering how Rerun works, read the documentation for the version of this \
+     viewer, which `viewer_get_state` reports: the docs source at \
+     `https://raw.githubusercontent.com/rerun-io/rerun/<version>/docs/` and the Python API reference \
+     at `https://ref.rerun.io/docs/python/<version>/`. Use `main` for a development build. \
+     <https://rerun.io/docs> shows only the latest release, which can be newer than this viewer.\n\
+     - Rerun is open source, and its examples are worth reading and worth linking: \
      their code is under `examples/` in <https://github.com/rerun-io/rerun>, and \
      <https://rerun.io/examples> walks through collecting, preparing, and training on robot \
      data. Larger applications — SLAM, gaussian splatting, \
@@ -45,7 +50,7 @@ pub struct Preamble<'a> {
     /// already attached. Unset when the viewer serves no endpoint to connect to.
     pub viewer_endpoint: Option<&'a str>,
 
-    /// Where the skills and docs were unpacked for the agent to read.
+    /// Where the skills were unpacked for the agent to read.
     /// Unset when there was nowhere to unpack them, in which case they go unmentioned.
     pub agent_dir: Option<&'a Path>,
 
@@ -113,13 +118,6 @@ impl Preamble<'_> {
                 "- To change how a table looks (previews, cards, columns, filters), read the `rerun-blueprint` skill \
                  and call `viewer_set_blueprint`. Do not click through the UI.\n",
             );
-            writeln!(
-                text,
-                "- The Rerun documentation (the source of rerun.io/docs) and its code snippets are in `{}`. \
-                 The `rerun-docs` skill explains the layout; grep there before answering how Rerun works.",
-                agent_dir.join(DOCS_SUBDIR).display()
-            )
-            .ok();
         }
 
         text.push_str(

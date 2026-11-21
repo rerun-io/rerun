@@ -3,7 +3,7 @@
 //! model-API agent.
 //!
 //! This crate holds everything that ties the agent to the Rerun Viewer: the preambles, the
-//! viewer-control toolbox, the harness setup, the embedded skills and docs, feedback, and
+//! viewer-control toolbox, the harness setup, the embedded skills, feedback, and
 //! analytics. Chat UI that any egui app could use goes in [`re_agent_ui`] instead.
 
 use std::collections::VecDeque;
@@ -20,6 +20,8 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
 mod agent_analytics;
+#[cfg(agent_harness_backend)]
+mod embedded;
 mod example_prompts;
 mod feedback;
 #[cfg(agent_harness_backend)]
@@ -40,10 +42,6 @@ const MCP_SERVER_NAME: &str = "rerun";
 /// Where the skills are unpacked inside the agent directory.
 #[cfg(agent_harness_backend)]
 const SKILLS_SUBDIR: &str = "agent_context/skills";
-
-/// Where the documentation and snippets are unpacked inside the agent directory.
-#[cfg(agent_harness_backend)]
-const DOCS_SUBDIR: &str = "agent_context/docs";
 
 /// Offered in an empty conversation while a recording is open.
 const RECORDING_EXAMPLE_PROMPTS: [&str; 3] = [

@@ -1,6 +1,6 @@
 //! The parts of the agent panel that only exist where agent harnesses (Claude Code, Codex, …)
-//! can run: the `rerun mcp` server they drive the viewer through, the skills and docs we
-//! unpack for them, and self-improvement.
+//! can run: the `rerun mcp` server they drive the viewer through, the skills we unpack for
+//! them, and self-improvement.
 
 use std::path::Path;
 
@@ -8,19 +8,17 @@ use re_agent::{AgentSettings, McpServerConfig, SessionContext};
 use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
 
-use super::{DOCS_SUBDIR, MCP_SERVER_NAME, SKILLS_SUBDIR, preamble, self_improve};
+use super::{MCP_SERVER_NAME, embedded, preamble, self_improve};
 
-/// Sub-directory of the viewer cache that the agent may read. Holds the skills and docs.
+/// Sub-directory of the viewer cache that the agent may read. Holds the skills.
 const AGENT_CACHE_SUBDIR: &str = "agent";
+
+/// Sub-directory of the agent directory that the panel owns, and replaces on every start.
+const AGENT_CONTEXT_SUBDIR: &str = "agent_context";
 
 /// Sub-directory of the viewer cache that the agent works in, in our own development builds.
 /// See [`Harness::user_like_cwd`].
 const SCRATCH_CWD_SUBDIR: &str = "agent-cwd";
-
-/// The skills and docs from the repository, embedded by `build.rs`.
-mod embedded {
-    include!(concat!(env!("OUT_DIR"), "/agent_files.rs"));
-}
 
 /// What the agent panel keeps for agent harnesses.
 #[derive(Default)]
@@ -47,7 +45,7 @@ pub struct Harness {
 
 impl Harness {
     /// A new agent panel that can also run agent harnesses, which drive this viewer through
-    /// `rerun mcp` and read the skills and docs we unpack for them.
+    /// `rerun mcp` and read the skills we unpack for them.
     ///
     /// `viewer_endpoint` is the gRPC address of this viewer, which `rerun mcp` connects to.
     /// `cache_dir` is where the skills are unpacked for the agent to read.
@@ -73,11 +71,11 @@ impl Harness {
         }
 
         let agent_dir = cache_dir
-            .filter(|_| !embedded::AGENT_FILES.is_empty())
+            .filter(|_| !embedded::SKILL_FILES.is_empty())
             .and_then(|cache_dir| {
                 let agent_dir = cache_dir.join(AGENT_CACHE_SUBDIR);
                 // The directory itself has to exist before the agent is told about it;
-                // filling it is thousands of small writes, so that happens off this thread.
+                // filling it is many small writes, so that happens off this thread.
                 match std::fs::create_dir_all(&agent_dir) {
                     Ok(()) => {
                         install_agent_files_in_background(agent_dir.clone());
@@ -275,14 +273,14 @@ fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
     Some(McpServerConfig::new(MCP_SERVER_NAME, &rerun, &args))
 }
 
-/// Unpacks the embedded skills and docs into `agent_dir` on a background thread.
+/// Unpacks the embedded skills into `agent_dir` on a background thread.
 ///
 /// The agent is told about the directory right away. The files land well before it has read a
 /// prompt and gone looking for a skill, and an agent that looks too early simply finds nothing.
 fn install_agent_files_in_background(agent_dir: std::path::PathBuf) {
     let install = move || {
         if let Err(err) = install_agent_files(&agent_dir) {
-            re_log::warn_once!("Failed to unpack the agent skills and docs: {err}");
+            re_log::warn_once!("Failed to unpack the agent skills: {err}");
         }
     };
     if let Err(err) = std::thread::Builder::new()
@@ -293,17 +291,15 @@ fn install_agent_files_in_background(agent_dir: std::path::PathBuf) {
     }
 }
 
-/// Writes the embedded skills and docs into `agent_dir`, replacing what was there.
+/// Writes the embedded skills into `agent_dir`, replacing everything in its `agent_context`.
 fn install_agent_files(agent_dir: &Path) -> std::io::Result<()> {
     re_tracing::profile_function!();
 
-    for subdir in [SKILLS_SUBDIR, DOCS_SUBDIR] {
-        let dir = agent_dir.join(subdir);
-        if dir.exists() {
-            std::fs::remove_dir_all(&dir)?;
-        }
+    let context_dir = agent_dir.join(AGENT_CONTEXT_SUBDIR);
+    if context_dir.exists() {
+        std::fs::remove_dir_all(&context_dir)?;
     }
-    for (relative_path, contents) in embedded::AGENT_FILES {
+    for (relative_path, contents) in embedded::SKILL_FILES {
         let path = agent_dir.join(relative_path);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)?;
@@ -319,17 +315,20 @@ mod tests {
 
     #[test]
     #[cfg(feature = "agent_context")]
-    fn skills_and_docs_are_embedded() {
-        let has = |wanted: &str| {
-            embedded::AGENT_FILES
-                .iter()
-                .any(|(path, _)| *path == wanted)
-        };
-        assert!(has("agent_context/skills/rerun-docs/SKILL.md"));
-        assert!(has("agent_context/docs/snippets/INDEX.md"));
-        assert!(has("agent_context/docs/content/index.md"));
+    fn skills_are_embedded() {
         assert!(
-            !embedded::AGENT_FILES.iter().any(|(path, _)| {
+            embedded::SKILL_FILES
+                .iter()
+                .any(|(path, _)| *path == "agent_context/skills/rerun-blueprint/SKILL.md")
+        );
+        assert!(
+            embedded::SKILL_FILES
+                .iter()
+                .all(|(path, _)| { path.starts_with(&format!("{}/", crate::SKILLS_SUBDIR)) }),
+            "every embedded file must be inside the directory the agent is pointed at"
+        );
+        assert!(
+            !embedded::SKILL_FILES.iter().any(|(path, _)| {
                 Path::new(path)
                     .extension()
                     .is_some_and(|ext| ext == "rrd" || ext == "png")
@@ -384,7 +383,7 @@ mod tests {
     fn install_writes_every_file() {
         let dir = tempfile::tempdir().expect("tempdir");
         install_agent_files(dir.path()).expect("install");
-        for (relative_path, contents) in embedded::AGENT_FILES {
+        for (relative_path, contents) in embedded::SKILL_FILES {
             let path = dir.path().join(relative_path);
             assert_eq!(std::fs::read(&path).expect("read").as_slice(), *contents);
         }
