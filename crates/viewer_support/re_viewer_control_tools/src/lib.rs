@@ -59,6 +59,7 @@ const READ_ONLY_OPERATIONS: &[&str] = &[
     "get_logs",
     "get_recording_schema",
     "get_selection",
+    "get_settings",
     "get_state",
     "get_table_schema",
     "get_transform_graph",
@@ -70,8 +71,9 @@ const READ_ONLY_OPERATIONS: &[&str] = &[
 ///
 /// Everything not listed here or in [`READ_ONLY_OPERATIONS`] asks first, including operations
 /// added later: `open` loads data from any URL, `close` drops recordings, `capture_profile_trace`
-/// writes files, and `submit_feedback` sends text to Rerun. `run_command` asks too, since it runs
-/// any UI command, but a host that sees the arguments can let the undoable commands through.
+/// writes files, `set_settings` changes saved settings, and `submit_feedback` sends text to Rerun.
+/// `run_command` asks too, since it runs any UI command, but a host that sees the arguments can
+/// let the undoable commands through.
 const NON_DESTRUCTIVE_OPERATIONS: &[&str] = &[
     "highlight_rect",
     "set_blueprint",
@@ -965,6 +967,18 @@ mod tests {
 
         let unknown = run_command_id(None).unwrap();
         assert_eq!(unknown.get("enum"), None);
+    }
+
+    #[test]
+    fn changing_settings_needs_approval_but_reading_them_does_not() {
+        assert_eq!(
+            call_effect("get_settings", &Map::new()),
+            ToolEffect::ReadOnly
+        );
+        assert_eq!(
+            call_effect("set_settings", &Map::new()),
+            ToolEffect::Destructive
+        );
     }
 
     /// Checks the public mode names, the omitted default, and rejection of invalid modes.

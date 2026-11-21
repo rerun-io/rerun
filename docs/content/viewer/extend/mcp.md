@@ -77,3 +77,10 @@ To highlight one entity, ask “Make the lidar points red in the 3D view”. The
 <a id="table-blueprints"></a>
 
 An agent can filter rows, rearrange columns, or show recordings as cards with camera previews. See [Configure table blueprints](../blueprints/configure-table-blueprints.md).
+
+<a id="changing-settings"></a>
+
+The agent can read and change the Viewer's app settings, such as the memory limit, the timestamp format, and the video decoder options.
+Try “Raise the memory limit to 8 GiB”.
+The Viewer saves the change, so it outlives the session.
+The agent cannot read or change secrets, such as the Mapbox access token.

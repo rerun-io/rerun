@@ -1908,6 +1908,24 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
   }
 }
 
+## viewer_get_settings
+
+{
+  "name": "viewer_get_settings",
+  "description": "Read the viewer's app settings as a JSON object, e.g. memory limit and video decoding.\n\nPass parts of it to `set_settings` to change them.\n\nRequires `viewer_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "description": "Request for `GetSettings`."
+  },
+  "annotations": {
+    "readOnlyHint": true,
+    "destructiveHint": false,
+    "idempotentHint": true,
+    "openWorldHint": false
+  }
+}
+
 ## viewer_get_state
 
 {
@@ -2281,6 +2299,32 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
     "destructiveHint": false,
     "idempotentHint": false,
     "openWorldHint": false
+  }
+}
+
+## viewer_set_settings
+
+{
+  "name": "viewer_set_settings",
+  "description": "Change some of the viewer's app settings.\n\nThe viewer saves them, so they outlive this session.\nCall `get_settings` first to see the names and current values.\nThe FFmpeg path and the cache directory are read-only.\n\nRequires `viewer_connect`.",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "settings_json": {
+        "type": "string",
+        "description": "The settings to change, as a JSON object with the same shape as `GetSettingsResponse`.\n\nKeys that are left out keep their value, also in nested objects.\nUnknown keys, values of the wrong type, secrets, changes to read-only settings, and lowering\nthe memory limit below 128 MiB are `INVALID_ARGUMENT`, and then nothing changes."
+      }
+    },
+    "required": [
+      "settings_json"
+    ],
+    "description": "Request for `SetSettings`."
+  },
+  "annotations": {
+    "readOnlyHint": false,
+    "destructiveHint": true,
+    "idempotentHint": false,
+    "openWorldHint": true
   }
 }
 

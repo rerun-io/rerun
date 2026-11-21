@@ -480,3 +480,22 @@ def test_selection_skips_unknown_kinds_and_reads_empty_as_nothing() -> None:
     """A newer viewer may report kinds this client does not know."""
     assert _selection_from_json({}) == Selection(store_id=None, items=[])
     assert _selection_from_json({"items": [{"server": {"origin": "rerun+http://localhost"}}]}).items == []
+
+
+def test_set_settings_sends_the_patch_as_json_and_returns_the_new_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, requests = _controlling_viewer(
+        monkeypatch,
+        {"set_settings": {"settings_json": '{"show_metrics": true, "video": {"allow_slow_av1_decoding": false}}'}},
+    )
+
+    settings = viewer.set_settings({"show_metrics": True})
+
+    assert settings == {"show_metrics": True, "video": {"allow_slow_av1_decoding": False}}
+    assert requests == [{"set_settings": {"settings_json": '{"show_metrics": true}'}}]
+
+
+def test_get_settings_parses_the_json(monkeypatch: pytest.MonkeyPatch) -> None:
+    viewer, requests = _controlling_viewer(monkeypatch, {"get_settings": {"settings_json": '{"show_metrics": false}'}})
+
+    assert viewer.get_settings() == {"show_metrics": False}
+    assert requests == [{"get_settings": {}}]

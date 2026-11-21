@@ -1142,6 +1142,42 @@ class ViewerClient:
         """
         return _selection_from_json(self._viewer_control("get_selection", {}))
 
+    def get_settings(self) -> dict[str, Any]:
+        """
+        Read the viewer's app settings, e.g. memory limit and video decoding.
+
+        Secrets, such as access tokens, are left out.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        """
+        response = self._viewer_control("get_settings", {})
+        settings: dict[str, Any] = json.loads(response["settings_json"])
+        return settings
+
+    def set_settings(self, settings: dict[str, Any]) -> dict[str, Any]:
+        """
+        Change some of the viewer's app settings, and return all of them after the change.
+
+        Keys that are left out keep their value, also in nested dicts.
+        The viewer saves the settings, so they outlive this session.
+
+        !!! warning
+            This API is experimental and may change or be removed in future versions.
+
+        Parameters
+        ----------
+        settings:
+            The settings to change, shaped like the result of [`get_settings`][rerun.experimental.ViewerClient.get_settings].
+            Unknown keys, values of the wrong type, secrets, changes to the FFmpeg path or the cache
+            directory, and lowering the memory limit below 128 MiB raise an error, and then nothing changes.
+
+        """
+        response = self._viewer_control("set_settings", {"settings_json": json.dumps(settings)})
+        new_settings: dict[str, Any] = json.loads(response["settings_json"])
+        return new_settings
+
     def take_screenshot(self, view_id: str | UUID | None = None, *, max_size: int | None = None) -> bytes:
         """
         Take a screenshot of the viewer, or of one of its views, and return it as a PNG.

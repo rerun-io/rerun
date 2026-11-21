@@ -12198,6 +12198,7 @@ dependencies = [
  "serde",
  "serde-wasm-bindgen",
  "serde_json",
+ "serde_path_to_error",
  "strum 0.26.3",
  "strum_macros 0.26.4",
  "tap",

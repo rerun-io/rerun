@@ -6,6 +6,9 @@ use re_video::{DecodeHardwareAcceleration, DecodeSettings};
 const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
 
 /// Global options for the viewer.
+///
+/// When adding or renaming an option, check whether agents may read and change it: see
+/// `SECRET_SETTINGS` and `READ_ONLY_SETTINGS` in `re_viewer`'s `app/viewer_control/settings.rs`.
 #[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize, Clone)]
 #[serde(default)]
 pub struct AppOptions {

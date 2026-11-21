@@ -187,6 +187,7 @@ ron.workspace = true
 serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
+serde_path_to_error.workspace = true
 strum_macros.workspace = true
 strum.workspace = true
 tap.workspace = true
