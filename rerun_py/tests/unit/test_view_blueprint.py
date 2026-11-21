@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import itertools
+import warnings
 from typing import TYPE_CHECKING, cast
 
+import pytest
 from rerun.blueprint.archetypes.view_blueprint import ViewBlueprint
 from rerun.blueprint.components.view_class import ViewClass, ViewClassBatch
 from rerun.blueprint.components.view_origin import ViewOrigin, ViewOriginBatch
 from rerun.components.name import Name, NameBatch
 from rerun.components.visible import Visible, VisibleBatch
+from rerun.error_utils import RerunWarning
 
 from .common_arrays import none_empty_or_value
 
@@ -60,3 +63,28 @@ def test_view_blueprint() -> None:
         assert arch.display_name == NameBatch._converter(none_empty_or_value(display_name, "3D view"))
         assert arch.space_origin == ViewOriginBatch._converter(none_empty_or_value(space_origin, "/robot/arm"))
         assert arch.visible == VisibleBatch._converter(none_empty_or_value(visible, [False]))
+
+
+def test_wildcard_in_override_path_warns() -> None:
+    import rerun as rr
+    import rerun.blueprint as rrb
+
+    rr.set_strict_mode(False)
+
+    for path in ["/boxes/**", "boxes/*/inner", "/world/*"]:
+        with pytest.warns(RerunWarning, match="has no effect") as record:
+            rrb.Spatial2DView(overrides={path: [rr.Boxes2D.from_fields(colors=[0, 255, 0])]})
+
+        assert len(record) == 1
+        assert record[0].filename == __file__
+
+    # Full paths (and escaped asterisks) are fine:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        rrb.Spatial2DView(overrides={"/boxes/a": [rr.Boxes2D.from_fields(colors=[0, 255, 0])]})
+        rrb.Spatial2DView(overrides={r"/boxes/a\*": [rr.Boxes2D.from_fields(colors=[0, 255, 0])]})
+
+    rr.set_strict_mode(True)
+    with pytest.raises(ValueError, match="glob"):
+        rrb.Spatial2DView(overrides={"/boxes/**": [rr.Boxes2D.from_fields(colors=[0, 255, 0])]})
+    rr.set_strict_mode(False)
