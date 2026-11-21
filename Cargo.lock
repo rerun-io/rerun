@@ -11670,7 +11670,6 @@ dependencies = [
  "indicatif",
  "itertools 0.15.0",
  "js-sys",
- "poll-promise",
  "re_async",
  "re_byte_size",
  "re_int",

@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::{Arc, OnceLock};
 use std::task::Poll;
 
-use poll_promise::Promise;
 use re_mutex::Mutex;
 
 // FFmpeg 5.1 "Riemann" is from 2022-07-22.
@@ -89,12 +89,11 @@ impl FFmpegVersion {
         re_tracing::profile_function!();
 
         let modification_time = file_modification_time(path)?;
-        VersionCache::global(|cache| {
-            cache
-                .version(path, modification_time)
-                .poll()
-                .map(|r| r.clone())
-        })
+        let version = VersionCache::global(|cache| cache.version(path, modification_time));
+        match version.get() {
+            Some(result) => Poll::Ready(result.clone()),
+            None => Poll::Pending,
+        }
     }
 
     /// Like [`Self::for_executable_poll`], but blocks until the version is ready.
@@ -106,13 +105,10 @@ impl FFmpegVersion {
 
         let modification_time = file_modification_time(path)?;
 
+        let version = VersionCache::global(|cache| cache.version(path, modification_time));
+
         re_tracing::profile_wait!("ffmpeg-version");
-        VersionCache::global(|cache| {
-            cache
-                .version(path, modification_time)
-                .block_until_ready()
-                .clone()
-        })
+        version.wait().clone()
     }
 
     /// Returns true if this version is compatible with Rerun's minimum requirements.
@@ -142,9 +138,16 @@ fn file_modification_time(
     })
 }
 
+/// The `Arc` lets callers wait on a result without holding the cache lock.
 #[derive(Default)]
 struct VersionCache(
-    HashMap<PathBuf, (Option<std::time::SystemTime>, Promise<FfmpegVersionResult>)>,
+    HashMap<
+        PathBuf,
+        (
+            Option<std::time::SystemTime>,
+            Arc<OnceLock<FfmpegVersionResult>>,
+        ),
+    >,
 );
 
 impl VersionCache {
@@ -158,7 +161,7 @@ impl VersionCache {
         &mut self,
         path: Option<&std::path::Path>,
         modification_time: Option<std::time::SystemTime>,
-    ) -> &Promise<FfmpegVersionResult> {
+    ) -> Arc<OnceLock<FfmpegVersionResult>> {
         let Self(cache) = self;
 
         let cache_key = path
@@ -166,12 +169,21 @@ impl VersionCache {
             .to_path_buf();
 
         match cache.entry(cache_key) {
-            std::collections::hash_map::Entry::Occupied(entry) => &entry.into_mut().1,
+            std::collections::hash_map::Entry::Occupied(entry) => entry.get().1.clone(),
             std::collections::hash_map::Entry::Vacant(entry) => {
+                let version = Arc::new(OnceLock::new());
                 let path = path.map(|path| path.to_path_buf());
-                let version =
-                    Promise::spawn_thread("ffmpeg_version", move || ffmpeg_version(path.as_ref()));
-                &entry.insert((modification_time, version)).1
+                std::thread::Builder::new()
+                    .name("ffmpeg_version".to_owned())
+                    .spawn({
+                        let version = version.clone();
+                        move || {
+                            version.set(ffmpeg_version(path.as_ref())).ok();
+                        }
+                    })
+                    .expect("Failed to spawn thread");
+                entry.insert((modification_time, version.clone()));
+                version
             }
         }
     }
@@ -235,7 +247,58 @@ fn ffmpeg_version(
 
 #[cfg(test)]
 mod tests {
-    use crate::decode::ffmpeg_cli::FFmpegVersion;
+    use std::sync::{Arc, OnceLock};
+    use std::task::Poll;
+    use std::time::Duration;
+
+    use super::{FFmpegVersion, VersionCache, file_modification_time};
+
+    /// Regression test for <https://github.com/rerun-io/rerun/issues/10789>.
+    #[test]
+    fn poll_does_not_wait_for_blocking_caller() {
+        // The cache is global, so use a path no other test uses. It must exist for `file_modification_time`.
+        let path = std::env::current_exe().unwrap();
+        let modification_time = file_modification_time(Some(&path)).unwrap();
+        let pending = Arc::new(OnceLock::new());
+        VersionCache::global(|VersionCache(cache)| {
+            cache.insert(path.clone(), (modification_time, pending.clone()));
+        });
+
+        let blocking = std::thread::Builder::new()
+            .name("test_blocking".to_owned())
+            .spawn({
+                let path = path.clone();
+                move || FFmpegVersion::for_executable_blocking(Some(&path))
+            })
+            .unwrap();
+        // Give the blocking caller time to start waiting.
+        std::thread::sleep(Duration::from_millis(100));
+
+        // Poll on another thread so that a regression fails the test instead of hanging it.
+        let (poll_tx, poll_rx) = std::sync::mpsc::sync_channel(1);
+        std::thread::Builder::new()
+            .name("test_poll".to_owned())
+            .spawn({
+                let path = path.clone();
+                move || poll_tx.send(FFmpegVersion::for_executable_poll(Some(&path)).is_pending())
+            })
+            .unwrap();
+        let poll_was_pending = poll_rx.recv_timeout(Duration::from_secs(5));
+
+        let version = FFmpegVersion::parse("7.1").unwrap();
+        pending.set(Ok(version.clone())).unwrap();
+
+        assert_eq!(
+            poll_was_pending,
+            Ok(true),
+            "for_executable_poll waited for for_executable_blocking"
+        );
+        assert_eq!(blocking.join().unwrap().unwrap(), version);
+        assert_eq!(
+            FFmpegVersion::for_executable_poll(Some(&path)).map(Result::unwrap),
+            Poll::Ready(version)
+        );
+    }
 
     #[test]
     fn test_parse_ffmpeg_version() {
