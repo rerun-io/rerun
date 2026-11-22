@@ -11,6 +11,25 @@
 ///
 /// See also [`rerun::encodings::ClassDescription`].
 ///
+/// \py In Python, you can pass a list of tuples,
+/// \py [`rerun::encodings::AnnotationInfo`] objects, or
+/// \py [`rerun::encodings::ClassDescription`] objects.
+/// \py An `AnnotationInfo` holds an ID and an optional label and color.
+/// \py A `ClassDescription` also lets you specify keypoint annotations and connections.
+/// \py
+/// \py ```python
+/// \py import rerun as rr
+/// \py
+/// \py rr.AnnotationContext([(1, "person", [255, 0, 0])])
+/// \py rr.AnnotationContext([rr.AnnotationInfo(1, label="person", color=[255, 0, 0])])
+/// \py rr.AnnotationContext([
+/// \py     rr.ClassDescription(
+/// \py         info=(1, "person", [255, 0, 0]),
+/// \py         keypoint_annotations=[(0, "left shoulder"), (1, "right shoulder")],
+/// \py         keypoint_connections=[(0, 1)],
+/// \py     )
+/// \py ])
+/// \py ```
 /// \example archetypes/annotation_context_rects !api title="Rectangles" image="https://static.rerun.io/annotation_context_rects/9b446c36011ed30fce7dc6ed03d5fd9557460f70/1200w.png" alt="Rerun Viewer with a 2D view of overlapping red and green rectangles, and the selection panel listing class ids, labels, and colors"
 /// \example archetypes/annotation_context_segmentation title="Segmentation" image="https://static.rerun.io/annotation_context_segmentation/6c9e88fc9d44a08031cadd444c2e58a985cc1208/1200w.png" alt="2D view of a segmentation image with a red rectangle and a larger green rectangle on a muted red background"
 /// \example archetypes/annotation_context_connections !api title="Connections" image="https://static.rerun.io/annotation_context_connections/4a8422bc154699c5334f574ff01b55c5cd1748e3/1200w.png" alt="3D view with four labeled keypoints (zero, one, two, three) joined by red lines defined in the annotation context"

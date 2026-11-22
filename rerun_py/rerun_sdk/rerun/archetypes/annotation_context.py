@@ -35,6 +35,26 @@ class AnnotationContext(Archetype):
 
     See also [`encodings.ClassDescription`][rerun.encodings.ClassDescription].
 
+    In Python, you can pass a list of tuples,
+    [`encodings.AnnotationInfo`][rerun.encodings.AnnotationInfo] objects, or
+    [`encodings.ClassDescription`][rerun.encodings.ClassDescription] objects.
+    An `AnnotationInfo` holds an ID and an optional label and color.
+    A `ClassDescription` also lets you specify keypoint annotations and connections.
+
+    ```python
+    import rerun as rr
+
+    rr.AnnotationContext([(1, "person", [255, 0, 0])])
+    rr.AnnotationContext([rr.AnnotationInfo(1, label="person", color=[255, 0, 0])])
+    rr.AnnotationContext([
+        rr.ClassDescription(
+            info=(1, "person", [255, 0, 0]),
+            keypoint_annotations=[(0, "left shoulder"), (1, "right shoulder")],
+            keypoint_connections=[(0, 1)],
+        )
+    ])
+    ```
+
     ⚠️ **This type is _unstable_ and may change significantly in a way that the data won't be backwards compatible.**
 
     Example
