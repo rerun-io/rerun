@@ -74,19 +74,22 @@ def test_visible_time_ranges_invalid_parameters() -> None:
 
 
 def test_visible_time_range_override_warns(tmp_path: Path) -> None:
-    time_range = rr.VisibleTimeRange(
-        "timeline",
-        start=rr.TimeRangeBoundary.cursor_relative(),
-        end=rr.TimeRangeBoundary.infinite(),
-    )
+    time_ranges = [
+        rr.VisibleTimeRange(
+            timeline,
+            start=rr.TimeRangeBoundary.cursor_relative(),
+            end=rr.TimeRangeBoundary.infinite(),
+        )
+        for timeline in ("first", "second")
+    ]
     blueprint = rrb.Blueprint(
-        rrb.TimeSeriesView(overrides={"/action": [time_range]})  # type: ignore[dict-item]
+        rrb.TimeSeriesView(overrides={"/action": time_ranges})  # type: ignore[dict-item]
     )
 
     previous_strict_mode = rr.strict_mode()
     try:
         rr.set_strict_mode(False)
-        with pytest.warns(RerunWarning, match=r"overrides.*VisibleTimeRanges"):
-            blueprint.save("repro_10694", tmp_path / "bad.rbl")
+        with pytest.warns(RerunWarning, match=r"overrides.*all ranges for each entity in a single VisibleTimeRanges"):
+            blueprint.save("test_visible_time_range_override", tmp_path / "bad.rbl")
     finally:
         rr.set_strict_mode(previous_strict_mode)
