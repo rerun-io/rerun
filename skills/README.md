@@ -22,7 +22,7 @@ Ingestion is ordered: decide the data model first, then the mechanism, then read
 | [`rerun-chunk-processing`](rerun-chunk-processing/SKILL.md)     | The mechanism: `LazyChunkStream`, `Chunk`, lenses, `RrdReader`, writing optimized RRDs   |
 | [`rerun-mcap`](rerun-mcap/SKILL.md)                             | `McapReader`: topics, decoders, custom protobuf                                          |
 | [`rerun-parquet`](rerun-parquet/SKILL.md)                       | `ParquetReader`: column grouping, index and static columns                               |
-| [`rerun-mp4`](rerun-mp4/SKILL.md)                               | `Mp4Reader`: stream vs asset mode, transcoding, PTS alignment                            |
+| [`rerun-mp4`](rerun-mp4/SKILL.md)                               | `Mp4Reader`: stream vs asset mode, transcoding, PTS alignment, file inspection           |
 | [`rerun-urdf`](rerun-urdf/SKILL.md)                             | `UrdfTree`: static model plus forward kinematics as a transform layer                    |
 | [`rerun-lerobot`](rerun-lerobot/SKILL.md)                       | LeRobot datasets: the built-in directory importer, per-episode splitting                 |
 | [`rerun-dataset-conversion`](rerun-dataset-conversion/SKILL.md) | The workflow for a whole dataset: survey, layers, default blueprint, catalog, validation |

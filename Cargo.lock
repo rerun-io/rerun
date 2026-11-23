@@ -10529,6 +10529,7 @@ version = "0.44.0-alpha.1+dev"
 dependencies = [
  "arrow",
  "itertools 0.15.0",
+ "quiver",
  "re_chunk",
  "re_log",
  "re_log_types",

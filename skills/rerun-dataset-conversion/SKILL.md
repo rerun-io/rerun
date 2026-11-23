@@ -97,7 +97,8 @@ For example:
 2. Survey the diversity (ranges or distributions) of the samples.
    Common dimensions to look at:
     - FPS
-    - Image size and format. If video, resolution and encoding spec (GOP, codec)
+    - Image size and format. If video, resolution and encoding spec (GOP, codec).
+      For an mp4, `rerun.experimental.Mp4Reader(path).info()` reports them from the file's metadata, without decoding (see `rerun-mp4`).
     - Missing / extra topics
     - Empty or invalid values
     - Anything off from what's expected or very unusual

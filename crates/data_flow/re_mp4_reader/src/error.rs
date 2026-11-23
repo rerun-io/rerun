@@ -50,6 +50,9 @@ pub enum Mp4Error {
     #[error("MP4 has no timescale; cannot derive sample timestamps")]
     NoTimescale,
 
+    #[error("MP4 has no encoding details; cannot describe the video track")]
+    NoEncodingDetails,
+
     #[error("MP4 sample conversion: {0}")]
     SampleConversion(String),
 }
@@ -71,6 +74,7 @@ impl Mp4Error {
             | Self::ImageSequenceInStreamMode
             | Self::SamplesBeforeFirstKeyframe
             | Self::NoTimescale
+            | Self::NoEncodingDetails
             | Self::SampleConversion(_) => false,
         }
     }
