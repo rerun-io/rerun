@@ -30,6 +30,24 @@ fn suggest_api_prefix(origin: &Origin) -> Option<String> {
     }
 }
 
+/// The warning for the user of a client that the server at `origin` will stop serving.
+fn deprecation_warning(
+    origin: &Origin,
+    deprecation: re_protos::cloud::v1alpha1::ClientDeprecation,
+) -> String {
+    let client_version = env!("CARGO_PKG_VERSION");
+    let upgrade = match deprecation.min_non_deprecated_version {
+        Some(version) => format!(
+            "Upgrade to Rerun {} or later.",
+            re_build_info::CrateVersion::from(version)
+        ),
+        None => "Upgrade to a newer version.".to_owned(),
+    };
+    format!(
+        "The server will stop supporting this version of Rerun ({client_version}). {upgrade}\nServer: {origin}"
+    )
+}
+
 //TODO(#11016): refactor this to achieve lazy auth retry.
 pub struct ConnectionRegistry {
     /// The saved authentication tokens.
@@ -648,7 +666,11 @@ impl ConnectionRegistryHandle {
                     can_read,
                     can_write,
                     capabilities,
+                    client_deprecation,
                 } = resp.into_inner();
+                if let Some(client_deprecation) = client_deprecation {
+                    re_log::warn_once!("{}", deprecation_warning(&origin, client_deprecation));
+                }
                 let is_anonymous = user_id.is_none();
                 let user_id = user_id.as_deref().unwrap_or("<anonymous>");
                 let capabilities =
@@ -931,5 +953,37 @@ mod tests {
                 .expect_err("connection should fail");
             assert_eq!(err.kind, ApiErrorKind::Connection, "{credentials:?}: {err}");
         }
+    }
+
+    /// The warning names the version to upgrade to when the server sends one, and ends with the
+    /// server's address.
+    #[test]
+    fn deprecation_warning_names_the_version_to_upgrade_to() {
+        use re_protos::cloud::v1alpha1::ClientDeprecation;
+
+        let origin: re_uri::Origin = "rerun+http://127.0.0.1:51234"
+            .parse()
+            .expect("origin should be valid");
+        let client_version = env!("CARGO_PKG_VERSION");
+
+        let with_version = ClientDeprecation {
+            min_non_deprecated_version: Some(re_build_info::CrateVersion::new(0, 45, 0).into()),
+        };
+        assert_eq!(
+            super::deprecation_warning(&origin, with_version),
+            format!(
+                "The server will stop supporting this version of Rerun ({client_version}). Upgrade to Rerun 0.45.0 or later.\nServer: {origin}"
+            )
+        );
+
+        let without_version = ClientDeprecation {
+            min_non_deprecated_version: None,
+        };
+        assert_eq!(
+            super::deprecation_warning(&origin, without_version),
+            format!(
+                "The server will stop supporting this version of Rerun ({client_version}). Upgrade to a newer version.\nServer: {origin}"
+            )
+        );
     }
 }

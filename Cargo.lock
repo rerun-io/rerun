@@ -10871,6 +10871,7 @@ dependencies = [
  "re_async",
  "re_auth",
  "re_backoff",
+ "re_build_info",
  "re_byte_size",
  "re_chunk",
  "re_chunk_index",

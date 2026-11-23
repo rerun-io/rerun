@@ -498,6 +498,21 @@ message WhoAmIResponse {
   // advertising none. Clients must tell the two apart, and send the request
   // anyway rather than treat everything as unsupported.
   optional ServerCapabilities capabilities = 4;
+
+  // Set when the server still serves the calling client's version, but will stop doing so.
+  //
+  // Unset when the client is not deprecated, and by a server that deprecates no version.
+  // The server decides from the version the client reports: a client only has to tell its
+  // user when the field is set.
+  optional ClientDeprecation client_deprecation = 5;
+}
+
+// Tells a client that the server will stop serving its version.
+message ClientDeprecation {
+  // The oldest client version that is not deprecated.
+  //
+  // Unset when the server names none: the client is deprecated all the same.
+  rerun.common.v1alpha1.SemanticVersion min_non_deprecated_version = 1;
 }
 
 // Request for `DoBandwidthTest`.
