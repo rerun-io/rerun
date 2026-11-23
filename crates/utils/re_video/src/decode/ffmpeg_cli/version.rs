@@ -121,6 +121,18 @@ impl FFmpegVersion {
             || (self.major == FFMPEG_MINIMUM_VERSION_MAJOR
                 && self.minor >= FFMPEG_MINIMUM_VERSION_MINOR)
     }
+
+    /// Keeps the version of the executable at `path` pending until the returned sender is used.
+    ///
+    /// The sender must be used: a dropped sender makes every later query for `path` panic.
+    #[cfg(test)]
+    pub fn pending_for_test(path: &std::path::Path) -> poll_promise::Sender<FfmpegVersionResult> {
+        let (sender, promise) = Promise::new();
+        VersionCache::global(|VersionCache(cache)| {
+            cache.insert(path.to_path_buf(), (None, promise));
+        });
+        sender
+    }
 }
 
 fn file_modification_time(

@@ -392,12 +392,10 @@ impl FFmpegProcessAndListener {
             .spawn({
                 let output_sender = output_sender.clone();
                 let debug_name = debug_name.to_owned();
-                let ffmpeg_path = ffmpeg_path.map(|p| p.to_owned());
                 let outstanding_frames = num_outstanding_frames.clone();
                 move || {
                     read_ffmpeg_output(
                         &debug_name,
-                        ffmpeg_path.as_deref(),
                         ffmpeg_iterator,
                         &frame_info_rx,
                         &pixel_format,
@@ -688,23 +686,19 @@ impl FrameBuffer {
     }
 }
 
+/// Forwards the frames and errors of one ffmpeg process to `output_sender`.
+///
+/// This must depend on nothing but that one process. In particular it must not wait for
+/// [`FFmpegVersion::for_executable_blocking`], which runs a second process: if that one stalls,
+/// no frame would ever arrive.
 fn read_ffmpeg_output(
     debug_name: &str,
-    ffmpeg_path: Option<&std::path::Path>,
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
     frame_info_rx: &Receiver<FFmpegFrameInfo>,
     pixel_format: &PixelFormat,
     outstanding_frames: &AtomicI32,
     output_sender: &OutputSender,
 ) -> Option<()> {
-    // Before we do anything else - make sure the ffmpeg version is compatible:
-    // Ok to block here - we're in a background thread.
-    let ffmpeg_version_result = FFmpegVersion::for_executable_blocking(ffmpeg_path);
-    if let Err(err) = check_ffmpeg_version(ffmpeg_version_result) {
-        send_output(output_sender, Err(err.into())).ok();
-        return None;
-    }
-
     let mut buffer = FrameBuffer::new();
 
     for event in ffmpeg_iterator {
@@ -865,7 +859,8 @@ fn read_ffmpeg_output(
                             }
                             .into()),
                         )
-                        .ok()?;
+                        .ok();
+                        return None;
                     }
                 } else {
                     re_log::warn_once!(
@@ -927,9 +922,8 @@ impl FFmpegCliDecoder {
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        // Check the version once ahead of running FFmpeg, if we can get it without blocking.
-        // We also check it in a background thread, but getting the error
-        // early is preferable:
+        // Check the version ahead of running FFmpeg, if we can get it without blocking:
+        // getting the error early is preferable.
         if let std::task::Poll::Ready(ffmpeg_version_result) =
             FFmpegVersion::for_executable_poll(ffmpeg_path.as_deref())
         {
@@ -1335,6 +1329,85 @@ mod tests {
         assert!(
             needed <= promised,
             "ffmpeg needed {needed} samples ahead, more than the {promised} we promise the player"
+        );
+    }
+
+    /// `ffmpeg -version` is a second process. If it is slow, or never finishes, the decoder
+    /// must still hand out frames.
+    #[test]
+    fn decodes_while_version_is_pending() {
+        let Ok(version) = FFmpegVersion::for_executable_blocking(None) else {
+            // Nothing to assert without ffmpeg on this machine.
+            return;
+        };
+        if !version.is_compatible() {
+            return;
+        }
+
+        // A different cache key than the `None` that other tests use, for the same executable.
+        let file_name = format!("ffmpeg{}", std::env::consts::EXE_SUFFIX);
+        let Some(ffmpeg_path) = std::env::var_os("PATH").and_then(|paths| {
+            std::env::split_paths(&paths)
+                .map(|dir| dir.join(&file_name))
+                .find(|path| path.is_file())
+        }) else {
+            return;
+        };
+
+        let video_path = std::env::var_os("CARGO_MANIFEST_DIR")
+            .map_or_else(
+                || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                std::path::PathBuf::from,
+            )
+            .join("../../../tests/assets/video/Big_Buck_Bunny_1080_1s_h264.mp4");
+        let data = std::fs::read(&video_path).unwrap();
+        let video_descr =
+            VideoDataDescription::load_from_bytes(&data, "video/mp4", "pending version").unwrap();
+
+        let chunks: Vec<_> = video_descr
+            .samples
+            .iter_indexed()
+            .map(|(sample_idx, sample)| {
+                let sample = sample.sample().unwrap();
+                sample.get(&VideoSliceSource(&data), sample_idx).unwrap()
+            })
+            .collect();
+
+        let (frame_tx, frame_rx) = crate::channel("pending version");
+
+        let version_sender = FFmpegVersion::pending_for_test(&ffmpeg_path);
+
+        let got_frame = FFmpegCliDecoder::new(
+            "pending version".to_owned(),
+            video_descr.encoding_details.as_ref(),
+            frame_tx,
+            Some(ffmpeg_path),
+            &crate::VideoCodec::H264,
+        )
+        .map(|mut decoder| {
+            for chunk in chunks {
+                decoder.submit_chunk(chunk).ok();
+            }
+            decoder.end_of_video().ok();
+
+            // ffmpeg may report recoverable errors before its first frame.
+            let deadline = std::time::Instant::now() + Duration::from_secs(30);
+            loop {
+                let time_left = deadline.saturating_duration_since(std::time::Instant::now());
+                match frame_rx.recv_timeout(time_left) {
+                    Ok(Ok(_frame)) => break true,
+                    Ok(Err(_err)) => {}
+                    Err(_err) => break false,
+                }
+            }
+        });
+
+        // Resolve the version before asserting, so that nothing is left waiting for it.
+        version_sender.send(Ok(version));
+
+        assert!(
+            got_frame.unwrap(),
+            "no frame while the ffmpeg version was pending"
         );
     }
 }
