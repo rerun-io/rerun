@@ -22,7 +22,7 @@ reader = McapReader(mcap_path)  # see help(McapReader) for the full option set
 stream = reader.stream()
 ```
 
-A URDF embedded in the MCAP can be ingested as well (then see `rerun-urdf`).
+A URDF embedded in the MCAP can be ingested as well (then see `rerun-robot-model`).
 
 ## What a topic becomes
 
@@ -83,4 +83,4 @@ Drop to `mcap.reader.make_reader` only when you need raw record metadata without
 ## References
 
 - End-to-end MCAP pipeline: `https://github.com/rerun-io/rerun/tree/main/examples/python/robot_data_preprocessing`
-- `rerun-chunk-processing` (stream/lens mechanics), `rerun-urdf` (FK from joint-state topics), `rerun-data-model` (modeling decisions)
+- `rerun-chunk-processing` (stream/lens mechanics), `rerun-robot-model` (FK from joint-state topics), `rerun-data-model` (modeling decisions)

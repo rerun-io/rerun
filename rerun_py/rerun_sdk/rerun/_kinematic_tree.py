@@ -1,4 +1,4 @@
-"""The parts of `rerun.urdf` that do not depend on the model format."""
+"""The parts of `rerun.urdf` and `rerun.mjcf` that do not depend on the model format."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ if TYPE_CHECKING:
 
     import pyarrow as pa
 
-    from rerun_bindings import _UrdfJointInternal, _UrdfTreeInternal
+    from rerun_bindings import _MjcfJointInternal, _MjcfTreeInternal, _UrdfJointInternal, _UrdfTreeInternal
 
     from . import Transform3D
     from ._baseclasses import ComponentColumnList
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 class _KinematicJoint:
-    def __init__(self, inner: _UrdfJointInternal) -> None:
+    def __init__(self, inner: _UrdfJointInternal | _MjcfJointInternal) -> None:
         self._inner = inner
 
     def compute_transform(self, value: float, clamp: bool = True) -> Transform3D:
@@ -92,7 +92,7 @@ class _KinematicJoint:
 
 
 class _KinematicTree:
-    def __init__(self, inner: _UrdfTreeInternal) -> None:
+    def __init__(self, inner: _UrdfTreeInternal | _MjcfTreeInternal) -> None:
         self._inner = inner
 
     @property

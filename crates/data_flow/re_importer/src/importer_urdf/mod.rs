@@ -23,7 +23,7 @@ use re_sdk_types::external::glam;
 use re_sdk_types::{Component as _, ComponentDescriptor};
 use urdf_rs::{Geometry, Joint, Vec3, Vec4};
 
-use crate::kinematic_tree::emit_archetype;
+use crate::kinematic_tree::{emit_archetype, emit_static_transforms_batch};
 use crate::{ImportedData, Importer, ImporterError, KinematicTree as _};
 
 fn is_urdf_file(path: impl AsRef<Path>) -> bool {
@@ -302,24 +302,6 @@ fn get_joint_transform(urdf_tree: &UrdfTree, joint: &Joint) -> Transform3D {
         urdf_tree.apply_frame_prefix(&parent.link),
         urdf_tree.apply_frame_prefix(&child.link),
     )
-}
-
-/// Emit a batch of static transforms as a single chunk.
-///
-/// We always do this statically for URDF, because this allows users to override them later
-/// on any other transform entity of their choice.
-fn emit_static_transforms_batch(
-    emit: &mut dyn FnMut(Chunk),
-    transforms_path: &EntityPath,
-    transforms: &[Transform3D],
-) -> anyhow::Result<()> {
-    let mut chunk = ChunkBuilder::new(ChunkId::new(), transforms_path.clone());
-
-    for transform in transforms {
-        chunk = chunk.with_archetype(RowId::new(), TimePoint::STATIC, transform);
-    }
-
-    emit_chunk_builder(emit, chunk)
 }
 
 fn transform_from_pose(
@@ -688,8 +670,8 @@ fn material_albedo_factor(material: Option<&urdf_rs::Material>) -> Option<Rgba32
                 rgba: Vec4([r, g, b, a]),
             } = color;
 
-            // TODO(emilk): is this linear or sRGB?
-            Rgba32::from_linear_unmultiplied_rgba_f32(*r as f32, *g as f32, *b as f32, *a as f32)
+            // RViz displays these values without converting them from linear space, so they are effectively sRGB.
+            Rgba32::from_unmultiplied_rgba_f32(*r as f32, *g as f32, *b as f32, *a as f32)
         })
 }
 

@@ -3,6 +3,8 @@ mod test_audio_importer;
 mod test_lerobot_importer;
 #[cfg(feature = "mcap")]
 mod test_mcap_importer;
+#[cfg(feature = "mjcf")]
+mod test_mjcf_importer;
 #[cfg(feature = "video")]
 mod test_mp4_importer;
 mod test_ply_importer;

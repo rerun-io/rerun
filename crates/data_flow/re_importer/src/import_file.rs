@@ -162,7 +162,9 @@ pub(crate) fn import(
                 use crate::Importer as _;
 
                 let extension = crate::extension(path);
-                if crate::is_supported_file_extension(&extension) {
+                if crate::is_supported_file_extension(&extension)
+                    && !crate::CONTENT_DEPENDENT_EXTENSIONS.contains(&extension.as_str())
+                {
                     Either::Left(
                         crate::iter_importers()
                             .filter(|importer| importer.name() != crate::ExternalImporter.name()),

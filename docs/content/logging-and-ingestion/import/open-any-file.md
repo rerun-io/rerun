@@ -21,7 +21,7 @@ The following data types have built-in support in the Rerun Viewer and SDK:
 
 -   Native Rerun files: `rrd`, `rbl`
 -   MCAP files: `mcap`
--   Robot descriptions: `urdf`
+-   Robot descriptions: `urdf`, `mjcf` ([MuJoCo models](mjcf.md), also as `.xml`)
 -   3D models: `dae`, `gltf`, `glb`, `obj`, `ply`, `stl`
 -   Images: `avif`, `bmp`, `dds`, `exr`, `farbfeld`, `ff`, `gif`, `hdr`, `ico`, `jpeg`, `jpg`, `pam`, `pbm`, `pgm`, `png`, `ppm`, `tga`, `tif`, `tiff`, `webp`
 -   Depth images: `rvl`
@@ -34,6 +34,7 @@ The following data types have built-in support in the Rerun Viewer and SDK:
 
 A `.ply` file can hold either a mesh or a point cloud, so it is listed twice: its header decides which one you get.
 Point clouds may leave out `z`, in which case they load as 2D.
+An `.xml` file is only loaded if it is a MuJoCo model, i.e. its root element is `<mujoco>`.
 
 Files can also be opened from an HTTP URL (e.g. `rerun https://demo.rerun.io/version/latest/examples/dna/data.rrd`).
 `rrd` and `rbl` files are streamed, while other supported formats are downloaded first and then loaded.

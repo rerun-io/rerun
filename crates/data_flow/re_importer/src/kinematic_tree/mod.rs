@@ -1,6 +1,6 @@
-//! The interface shared by robot model trees such as `UrdfTree`.
+//! The interface shared by the robot model trees ([`crate::UrdfTree`], [`crate::MjcfTree`]).
 
-#[cfg(feature = "urdf")]
+#[cfg(any(feature = "mjcf", feature = "urdf"))]
 mod log_paths;
 
 use std::sync::Arc;
@@ -17,8 +17,8 @@ use re_sdk_types::archetypes::Transform3D;
 use re_sdk_types::encodings::{Quaternion, Vec3D};
 use re_sdk_types::external::glam::{Quat, Vec3};
 
-#[cfg(feature = "urdf")]
-pub use self::log_paths::{LogPaths, emit_archetype};
+#[cfg(any(feature = "mjcf", feature = "urdf"))]
+pub use self::log_paths::{LogPaths, emit_archetype, emit_static_transforms_batch};
 
 /// The transform from a parent frame to a child frame, for some set of joint values.
 #[derive(Clone, Debug, PartialEq)]
@@ -80,13 +80,13 @@ pub struct UnsupportedJointType {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, strum::Display)]
 #[strum(serialize_all = "lowercase")]
 pub enum MultiDofJointType {
-    /// Translates and rotates freely along all three axes, like URDF `floating`.
+    /// Translates and rotates freely along all three axes, like URDF `floating` or MJCF `free`.
     Floating,
 
     /// Translates within a plane and rotates about its normal, like URDF `planar`.
     Planar,
 
-    /// Rotates freely about all three axes, like URDF `spherical`.
+    /// Rotates freely about all three axes, like URDF `spherical` or MJCF `ball`.
     Spherical,
 }
 
@@ -96,6 +96,9 @@ pub enum MultiDofJointType {
 pub enum ModelFormat {
     /// [Unified Robot Description Format](https://en.wikipedia.org/wiki/URDF), common in ROS.
     Urdf,
+
+    /// [MuJoCo's XML model format](https://mujoco.readthedocs.io/en/stable/XMLreference.html).
+    Mjcf,
 }
 
 /// A robot model whose frames can be posed from joint values.

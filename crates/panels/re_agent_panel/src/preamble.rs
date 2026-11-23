@@ -159,9 +159,9 @@ impl Preamble<'_> {
         );
 
         text.push_str(
-            "- When a recording has joint angles but no robot model, suggest adding a URDF: \
+            "- When a recording has joint angles but no robot model, suggest adding a robot model (URDF or MJCF): \
              fetch one for that robot, solve forward kinematics from the joint states, \
-             and layer the transforms onto the recording. The `rerun-urdf` skill has the sources and the pipeline.\n",
+             and layer the transforms onto the recording. The `rerun-robot-model` skill has the sources and the pipeline.\n",
         );
 
         text.push_str(

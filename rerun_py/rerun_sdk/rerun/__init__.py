@@ -27,6 +27,7 @@ from . import (
     catalog as catalog,
     chunk as chunk,
     experimental as experimental,
+    mjcf as mjcf,
     server as server,
     urdf as urdf,
 )

@@ -1311,6 +1311,91 @@ class TableInsertModeInternal:
     OVERWRITE: TableInsertModeInternal
     REPLACE: TableInsertModeInternal
 
+class _MjcfTreeInternal:
+    """Internal Rust implementation of a parsed MJCF model."""
+
+    @staticmethod
+    def from_file_path(
+        path: str | os.PathLike[str],
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
+    ) -> _MjcfTreeInternal: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def frame_prefix(self) -> str | None: ...
+    def root_body(self) -> _MjcfBodyInternal: ...
+    def bodies(self) -> list[_MjcfBodyInternal]: ...
+    def get_body_by_name(self, body_name: str) -> _MjcfBodyInternal | None: ...
+    def joints(self) -> list[_MjcfJointInternal]: ...
+    def get_joint_by_name(self, joint_name: str) -> _MjcfJointInternal | None: ...
+    def get_collision_geometry_paths(self, body: _MjcfBodyInternal) -> list[str]: ...
+    def get_visual_geometry_paths(self, body: _MjcfBodyInternal) -> list[str]: ...
+    def log(self, recording: PyRecordingStream | None = None) -> None: ...
+    def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStreamInternal: ...
+    def compute_joint_transform_batches(
+        self,
+        names: pa.Array,
+        values: pa.Array,
+        *,
+        clamp: bool = False,
+    ) -> pa.Array: ...
+
+class _MjcfJointInternal:
+    """Internal Rust representation of an MJCF joint."""
+
+    @property
+    def name(self) -> str: ...
+    @property
+    def joint_type(self) -> str: ...
+    @property
+    def body(self) -> str: ...
+    @property
+    def parent_body(self) -> str | None: ...
+    @property
+    def axis(self) -> tuple[float, float, float]: ...
+    @property
+    def anchor(self) -> tuple[float, float, float]: ...
+    @property
+    def reference(self) -> float: ...
+    @property
+    def range(self) -> tuple[float, float] | None: ...
+    def compute_transform(self, value: float, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute the transform components for this joint at the given value.
+
+        The result is wrapped in a dictionary for easy conversion to the final types in Python.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
+
+    def compute_transform_columns(self, values: list[float], *, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute transforms for this joint at multiple values in a single call.
+
+        Returns a dictionary with translations, quaternions, frame names, and warnings
+        for use with columnar APIs like `send_columns`.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
+
+class _MjcfBodyInternal:
+    """Internal Rust representation of an MJCF body."""
+
+    @property
+    def name(self) -> str: ...
+    @property
+    def parent(self) -> str | None: ...
+    @property
+    def translation(self) -> tuple[float, float, float]: ...
+    @property
+    def quaternion_xyzw(self) -> tuple[float, float, float, float]: ...
+    def joints(self) -> list[_MjcfJointInternal]: ...
+
 class _UrdfTreeInternal:
     """Internal Rust implementation of a parsed URDF tree."""
 

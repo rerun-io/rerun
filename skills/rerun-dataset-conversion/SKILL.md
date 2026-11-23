@@ -31,13 +31,13 @@ This skill adds how a conversion, or a layer addition, is shaped, decided, and v
 The `rerun-*` skills cover the Rerun mechanics, and this skill routes to them instead of repeating them.
 Read each one at the stage that needs it:
 
-| Skill                                                                         | When to read it                                                                                                         |
-| ----------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `rerun-data-model`                                                            | Before modeling any source item. It settles entity versus component, static versus temporal, and property versus layer. |
-| `rerun-chunk-processing`                                                      | Before writing any conversion code. It mandates reader + lens pipelines and carries the anti-pattern list.              |
-| `rerun-mcap` / `rerun-parquet` / `rerun-lerobot` / `rerun-urdf` / `rerun-mp4` | When the source has that format.                                                                                        |
-| `rerun-blueprint`                                                             | When designing the default view.                                                                                        |
-| `rerun-catalog-queries`                                                       | When registering or querying a catalog.                                                                                 |
+| Skill                                                                                | When to read it                                                                                                         |
+| ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `rerun-data-model`                                                                   | Before modeling any source item. It settles entity versus component, static versus temporal, and property versus layer. |
+| `rerun-chunk-processing`                                                             | Before writing any conversion code. It mandates reader + lens pipelines and carries the anti-pattern list.              |
+| `rerun-mcap` / `rerun-parquet` / `rerun-lerobot` / `rerun-robot-model` / `rerun-mp4` | When the source has that format.                                                                                        |
+| `rerun-blueprint`                                                                    | When designing the default view.                                                                                        |
+| `rerun-catalog-queries`                                                              | When registering or querying a catalog.                                                                                 |
 
 A conversion project's conventions belong in that project's own docs. The skill only carries principles and decision points.
 
@@ -111,7 +111,7 @@ For example:
 
 ### Step 3: conversion - base
 
-1. Design the conversion mapping based on relevant skills:`rerun-mcap` / `rerun-parquet` / `rerun-lerobot` / `rerun-urdf` / `rerun-mp4`.
+1. Design the conversion mapping based on relevant skills:`rerun-mcap` / `rerun-parquet` / `rerun-lerobot` / `rerun-robot-model` / `rerun-mp4`.
 
 > **DO NOT** force unsupported data into an unrelated archetype.
 > Preserve the original meaning and structure as much as possible.

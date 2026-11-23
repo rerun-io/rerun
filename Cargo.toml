@@ -371,6 +371,7 @@ mimalloc = { version = "=0.1.48", features = [
 ] } # Waiting for fix from microsoft/mimalloc/issues/1287 to land in mimalloc crate
 mime_guess2 = "2.3" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
+mjcf-rs = "=0.36.0" # Young crate — pin exactly, bump deliberately.
 natord = "1.0"
 ndarray = "0.16.1" # pinned by `lance-index` (lance family) and `numpy` to 0.16; 0.17 would duplicate.
 never = "0.1.0"
