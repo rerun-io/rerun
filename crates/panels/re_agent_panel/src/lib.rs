@@ -20,7 +20,6 @@ use re_redap_client::ConnectionRegistryHandle;
 use re_ui::{ContextExt as _, UiExt as _};
 
 mod agent_analytics;
-#[cfg(agent_harness_backend)]
 mod embedded;
 mod example_prompts;
 mod feedback;
@@ -31,6 +30,7 @@ mod product_feedback;
 mod reporting;
 #[cfg(agent_harness_backend)]
 mod self_improve;
+mod skills_toolbox;
 mod viewer_toolbox;
 
 pub use viewer_toolbox::ViewerControlCall;
@@ -419,17 +419,19 @@ impl ViewerAgentPanel {
     }
 }
 
-/// The tools of a model-API agent: the viewer-control tools, and the catalog tools.
+/// The tools of a model-API agent: the viewer-control tools, the catalog tools, and the Rerun
+/// skills.
 fn model_api_toolbox(
     viewer_tools: Arc<viewer_toolbox::ViewerToolbox>,
     catalog_tools: re_catalog_tools::CatalogTools,
 ) -> Arc<dyn AgentToolbox> {
+    let mut toolboxes: Vec<Arc<dyn AgentToolbox>> = vec![viewer_tools, Arc::new(catalog_tools)];
+    if let Some(skills) = skills_toolbox::SkillsToolbox::embedded() {
+        toolboxes.push(Arc::new(skills));
+    }
     Arc::new(CombinedToolbox::new(
         Some(MCP_SERVER_NAME.to_owned()),
-        [
-            viewer_tools as Arc<dyn AgentToolbox>,
-            Arc::new(catalog_tools),
-        ],
+        toolboxes,
     ))
 }
 
@@ -456,6 +458,9 @@ mod toolbox_tests {
             .map(|definition| definition.name)
             .collect();
         assert!(names.iter().any(|name| name == "viewer_get_state"));
+        if cfg!(feature = "agent_skills") {
+            assert!(names.iter().any(|name| name == skills_toolbox::SKILL_READ));
+        }
         for tool in re_catalog_tools::CatalogTool::available() {
             assert!(names.iter().any(|name| name == tool.name()), "{tool:?}");
         }

@@ -314,7 +314,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(feature = "agent_context")]
+    #[cfg(feature = "agent_skills")]
     fn skills_are_embedded() {
         assert!(
             embedded::SKILL_FILES

@@ -14,9 +14,7 @@ fn main() {
         agent_harness_backend: { not(target_arch = "wasm32") },
     }
 
-    // Only agent harnesses read the skills, which the web viewer cannot run.
-    let target_is_web = std::env::var("CARGO_CFG_TARGET_ARCH").is_ok_and(|arch| arch == "wasm32");
-    embed_skills(std::env::var_os("CARGO_FEATURE_AGENT_CONTEXT").is_some() && !target_is_web);
+    embed_skills(std::env::var_os("CARGO_FEATURE_AGENT_SKILLS").is_some());
 }
 
 /// Writes `$OUT_DIR/skill_files.rs` holding `SKILL_FILES`: every matching file from
@@ -41,7 +39,7 @@ fn embed_skills(embed: bool) {
         println!(
             "cargo::warning=No skills found in {}; \
              the agent panel will run without Rerun skills. \
-             Build without the `agent_context` feature to make this deliberate.",
+             Build without the `agent_skills` feature to make this deliberate.",
             skills_dir.display()
         );
     }

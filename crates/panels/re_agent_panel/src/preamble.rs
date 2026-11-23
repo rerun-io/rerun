@@ -223,6 +223,12 @@ pub fn model_api_text() -> String {
         "\n- Ask for clarification in chat when needed. Provide code for the user to run when a \
          task needs their local files or Python environment.\n",
     );
+    if crate::skills_toolbox::SkillsToolbox::embedded().is_some() {
+        text.push_str(
+            "- Rerun skills are listed in the description of `skill_read`. \
+             Read the relevant one with it before starting the task.\n",
+        );
+    }
     text.push_str(OUTRO);
     text
 }
@@ -244,6 +250,8 @@ mod tests {
                     re_viewer_control_tools::is_operation(operation),
                     "unknown tool: {name}"
                 );
+            } else if name.starts_with("skill_") {
+                assert_eq!(name, crate::skills_toolbox::SKILL_READ, "unknown tool");
             } else if name.starts_with("catalog_") && name != "catalog_url" {
                 assert!(
                     re_catalog_tools::CatalogTool::from_name(name).is_some(),
