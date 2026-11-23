@@ -693,6 +693,14 @@ fn material_albedo_factor(material: Option<&urdf_rs::Material>) -> Option<Rgba32
         })
 }
 
+/// The joint's axis as a unit vector, or `None` if it is zero-length or not finite.
+///
+/// URDF does not require a unit axis, but rotations and slides must use one.
+fn unit_joint_axis(joint: &Joint) -> Option<glam::Vec3> {
+    let [x, y, z] = joint.axis.xyz.0;
+    glam::Vec3::new(x as f32, y as f32, z as f32).try_normalize()
+}
+
 fn quat_from_rpy(rpy: &[f64; 3]) -> glam::Quat {
     glam::Quat::from_euler(
         glam::EulerRot::ZYX,
