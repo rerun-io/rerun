@@ -124,6 +124,7 @@ Prefer strong types over primitive ones:
 * An enum over a `bool` field or parameter (`enum Screen { Setup, Chat }` over `show_setup: bool`).
 * `Option<Result<(), Error>>` over `Option<bool>`.
 * A named struct (or `Rangef`, `Span`, …) over a tuple.
+* `re_span::Span` over a separate start and length (or start and end) of an integer range, e.g. `rows: Span<usize>` over `offset: usize, len: usize`.
 * `Option<NonZeroU64>` over a `u64` where `0` means "disabled".
 
 If a path or file marker could silently go stale, add a `debug_assert!` or a test that checks it.
@@ -286,6 +287,7 @@ Refer to metadata keys and column names through their constants, never through a
 ### API design
 * Prefer constructors and associated functions over free functions.
 * Put general or context parameters first and specific ones last, e.g. `fn entity_ui(ctx: &ViewerContext, ui: &mut Ui, entity_path: &EntityPath)`.
+* All other things being equal, order parameters chronologically, e.g. `fn after_direct_read_failed(direct_err: &ApiError, fallback_err: ApiError)`, where the direct read failed first.
 * Avoid global state (`static FOO: LazyLock<…>`); let the caller own it.
 * Instead of `fn should_do_x(x) -> bool` + `fn do_x(x)`, write a single `fn do_x(x) -> Option<…>`.
 * Keep items private by default, and make only the intended API `pub`.

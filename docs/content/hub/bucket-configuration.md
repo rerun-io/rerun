@@ -18,8 +18,15 @@ Data then always flows through an extra hop, subject to any size limits Rerun Hu
 
 ### What to configure
 
-The typical setup: the Web Viewer runs at `https://<stack>.cloud.rerun.io`, and the data lives in a customer-owned S3 bucket.
-The bucket needs a CORS configuration that allows that origin to read.
+The typical setup: the data lives in a customer-owned S3 bucket, and the Web Viewer runs at one of these origins:
+
+* `https://<stack>.cloud.rerun.io`, the Web Viewer of your Rerun Hub.
+* `https://rerun.io`, for `https://rerun.io/viewer?url=rerun://…` links.
+* `https://app.rerun.io`, if you [embed](../viewer/integrations/embed-web.md) `app.rerun.io` in an `<iframe>`.
+* The origin of any Web Viewer you host yourself.
+
+The bucket needs a CORS configuration that allows each origin you open the Web Viewer from to read.
+If the Web Viewer warns that it failed to read an RRD footer directly from the bucket, its origin is most likely missing from this list.
 
 What the Viewer sends and reads:
 
@@ -34,7 +41,7 @@ What the Viewer sends and reads:
 {
   "CORSRules": [
     {
-      "AllowedOrigins": ["https://<stack>.cloud.rerun.io"],
+      "AllowedOrigins": ["https://<stack>.cloud.rerun.io", "https://rerun.io", "https://app.rerun.io"],
       "AllowedMethods": ["GET", "HEAD"],
       "AllowedHeaders": ["Range", "If-Match"],
       "ExposeHeaders": ["Content-Range", "ETag", "Last-Modified", "Accept-Ranges"],

@@ -14,6 +14,12 @@ use tonic::codegen::{Body, StdError};
 use super::RedapClient;
 use crate::{ApiError, ApiErrorKind, ApiResponseStream, ApiResult, TraceId};
 
+#[cfg(any(target_arch = "wasm32", test))]
+const BUCKET_CORS_FIX: &str = "Fix: add the Web Viewer's origin to the bucket's allowed CORS origins \
+    (see https://rerun.io/docs/hub/bucket-configuration#cors). \
+    If you opened the dataset from another site, opening it in the Web Viewer of your Rerun Hub \
+    may also work.";
+
 /// Checks that a `Content-Range` value describes the exact inclusive byte range expected by the
 /// request and, when present, a complete object length greater than the range end.
 fn content_range_matches(value: &str, expected_start: u64, expected_end: u64) -> bool {
@@ -250,6 +256,49 @@ async fn fetch_rrd_manifest_via_key(
     Ok(hub.into_raw())
 }
 
+/// The likely reason a browser could not read the bucket directly, phrased as a question.
+///
+/// Only browsers enforce CORS, so this only applies to the Web Viewer.
+#[cfg(any(target_arch = "wasm32", test))]
+fn bucket_cors_question(web_viewer_origin: Option<&str>) -> String {
+    let origin = web_viewer_origin.map_or_else(
+        || "this Web Viewer's origin".to_owned(),
+        |origin| format!("`{origin}`"),
+    );
+    format!("is {origin} missing from the bucket's CORS configuration?")
+}
+
+/// Adds the failed direct read from the bucket to an error from the server fallback.
+///
+/// Without this, the user sees only the fallback's error,
+/// but the fix is usually in the bucket's CORS configuration.
+#[cfg(any(target_arch = "wasm32", test))]
+fn after_direct_read_failed(
+    web_viewer_origin: Option<&str>,
+    direct_err: &ApiError,
+    mut fallback_err: ApiError,
+) -> ApiError {
+    let previous = re_error::StructuredError::parse(&fallback_err.message);
+    let previous_summary = match crate::api_error::endpoint_only(&previous.summary) {
+        Some(endpoint) => format!("Endpoint: {endpoint}"),
+        None => previous.summary,
+    };
+    let direct_summary = re_error::StructuredError::parse(direct_err.to_string()).summary;
+
+    let message = re_error::StructuredError::from_summary(format!(
+        "Failed to read the RRD manifest directly from the bucket ({}), \
+         and then through Rerun Hub",
+        bucket_cors_question(web_viewer_origin)
+    ))
+    .with_detail(previous_summary)
+    .with_details(previous.details)
+    .with_detail(BUCKET_CORS_FIX)
+    .with_detail(format!("Bucket read error: {direct_summary}"));
+
+    fallback_err.message = message.to_string();
+    fallback_err
+}
+
 impl<T> RedapClient<T>
 where
     T: tonic::client::GrpcService<tonic::body::Body> + Clone,
@@ -273,15 +322,27 @@ where
         dataset_id: EntryId,
         segment_id: SegmentId,
     ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
-        if !cfg!(target_family = "wasm") {
-            return self
-                .get_rrd_manifest_stream_impl(dataset_id, segment_id, true)
-                .await;
+        cfg_select! {
+            target_arch = "wasm32" => {
+                self.get_rrd_manifest_stream_with_fallback(dataset_id, segment_id)
+                    .await
+            }
+            _ => {
+                self.get_rrd_manifest_stream_impl(dataset_id, segment_id, true)
+                    .await
+            }
         }
+    }
 
-        // In a browser, direct object-store reads only work when the bucket's CORS
-        // configuration allows them, which cannot be assumed: if it fails,
-        // ask for server-provided manifests instead.
+    /// In a browser, direct object-store reads only work when the bucket's CORS configuration
+    /// allows them, which cannot be assumed: if the first one fails, ask for server-provided
+    /// manifests instead.
+    #[cfg(target_arch = "wasm32")]
+    async fn get_rrd_manifest_stream_with_fallback(
+        &mut self,
+        dataset_id: EntryId,
+        segment_id: SegmentId,
+    ) -> ApiResult<ApiResponseStream<RawRrdManifest>> {
         let mut stream = self
             .get_rrd_manifest_stream_impl(dataset_id, segment_id.clone(), true)
             .await?;
@@ -295,20 +356,37 @@ where
             // Browsers report a CORS block as an opaque network failure, so `Connection` is
             // the narrowest kind that covers it. This costs a fallback even on other
             // types of network failures.
-            Some(Err(err)) if err.kind == ApiErrorKind::Connection => {
+            Some(Err(direct_err)) if direct_err.kind == ApiErrorKind::Connection => {
+                // `None` outside a window, e.g. in a web worker.
+                let web_viewer_origin =
+                    web_sys::window().and_then(|window| window.location().origin().ok());
                 re_log::warn_once!(
                     "{}",
-                    re_error::format_with_details(
-                        "Failed to fetch an RRD footer directly from the object store, \
-                         falling back to slower server-provided manifests. \
-                         This usually means the bucket is missing a CORS configuration that \
-                         allows the Web Viewer to read it — see \
-                         https://rerun.io/docs/hub/bucket-configuration#cors for how to set it up.",
-                        err.to_string(),
-                    )
+                    re_error::StructuredError::from_summary(format!(
+                        "Failed to read an RRD footer directly from the bucket ({}), \
+                         falling back to slower server-provided manifests",
+                        bucket_cors_question(web_viewer_origin.as_deref())
+                    ))
+                    .with_detail(BUCKET_CORS_FIX)
+                    .with_detail(direct_err.to_string())
                 );
-                self.get_rrd_manifest_stream_impl(dataset_id, segment_id, false)
+
+                let fallback = self
+                    .get_rrd_manifest_stream_impl(dataset_id, segment_id, false)
                     .await
+                    .map_err(|err| {
+                        after_direct_read_failed(web_viewer_origin.as_deref(), &direct_err, err)
+                    })?;
+                let trace_id = fallback.trace_id();
+                Ok(ApiResponseStream::new(
+                    self.origin.clone(),
+                    fallback.map(move |part| {
+                        part.map_err(|err| {
+                            after_direct_read_failed(web_viewer_origin.as_deref(), &direct_err, err)
+                        })
+                    }),
+                    trace_id,
+                ))
             }
             Some(Err(err)) => Err(err),
             None => Ok(stream),
@@ -446,6 +524,42 @@ mod tests {
     use re_types_core::LayerName;
 
     use super::*;
+
+    #[test]
+    fn fallback_error_names_the_bucket_read_failure() {
+        let origin: re_uri::Origin = "rerun+http://localhost:51234".parse().unwrap();
+        let direct_err = ApiError::connection(&origin, "failed to fetch RRD manifest directly");
+        let fallback_err = ApiError::tonic(
+            &origin,
+            tonic::Status::out_of_range(
+                "Error, encoded message length too large: found 15548167 bytes, the limit is: 8388608 bytes",
+            ),
+            "/GetRrdManifest",
+        );
+
+        let error = after_direct_read_failed(Some("https://rerun.io"), &direct_err, fallback_err)
+            .to_string();
+        let mut lines = error.lines();
+        assert_eq!(
+            lines.next(),
+            Some(
+                "Failed to read the RRD manifest directly from the bucket \
+                 (is `https://rerun.io` missing from the bucket's CORS configuration?), \
+                 and then through Rerun Hub: \
+                 Error, encoded message length too large: found 15548167 bytes, the limit is: 8388608 bytes (OutOfRange)"
+            )
+        );
+        for expected in [
+            "Endpoint: /GetRrdManifest",
+            "bucket-configuration#cors",
+            "Bucket read error: failed to fetch RRD manifest directly",
+        ] {
+            assert!(
+                error.contains(expected),
+                "missing {expected:?} in:\n{error}"
+            );
+        }
+    }
 
     #[test]
     fn direct_rrd_manifest_response_metadata_is_validated() {

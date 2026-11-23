@@ -89,6 +89,7 @@ tonic = { workspace = true, default-features = false, features = ["transport", "
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic-web-wasm-client.workspace = true
 tonic = { workspace = true, default-features = false }
+web-sys = { workspace = true, features = ["Location", "Window"] }
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
