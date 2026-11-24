@@ -163,6 +163,12 @@ pub struct WhoAmIResponse {
     /// user when the field is set.
     #[prost(message, optional, tag = "5")]
     pub client_deprecation: ::core::option::Option<ClientDeprecation>,
+    /// The protocol level this server implements: see `ClientMeta.protocol_level`.
+    ///
+    /// 0 from a server that predates this field. A client must not rely on the server part of a
+    /// level above the one advertised here.
+    #[prost(uint32, tag = "6")]
+    pub protocol_level: u32,
 }
 impl ::prost::Name for WhoAmIResponse {
     const NAME: &'static str = "WhoAmIResponse";

@@ -505,6 +505,12 @@ message WhoAmIResponse {
   // The server decides from the version the client reports: a client only has to tell its
   // user when the field is set.
   optional ClientDeprecation client_deprecation = 5;
+
+  // The protocol level this server implements: see `ClientMeta.protocol_level`.
+  //
+  // 0 from a server that predates this field. A client must not rely on the server part of a
+  // level above the one advertised here.
+  uint32 protocol_level = 6;
 }
 
 // Tells a client that the server will stop serving its version.

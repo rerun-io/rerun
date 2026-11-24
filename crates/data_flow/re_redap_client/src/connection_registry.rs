@@ -9,6 +9,7 @@ use re_auth::credentials::CredentialsProviderError;
 use re_byte_size::SizeBytes as _;
 use re_protos::capabilities::ServerCapabilities;
 use re_protos::cloud::v1alpha1::{EntryFilter, FindEntriesRequest, WhoAmIRequest};
+use re_protos::protocol_level::ProtocolLevel;
 use re_uri::Origin;
 use tokio::sync::RwLock;
 use tonic::Code;
@@ -229,10 +230,11 @@ pub struct SourcedCredentials {
     pub credentials: Credentials,
 }
 
-/// A client stack that passed the `/WhoAmI` check, and the capabilities that call returned.
+/// A client stack that passed the `/WhoAmI` check, and what that call said of the server.
 struct ValidatedClientStack {
     client_stack: RedapClientStack,
     capabilities: ServerCapabilities,
+    server_protocol_level: ProtocolLevel,
 }
 
 impl ConnectionRegistryHandle {
@@ -411,6 +413,7 @@ impl ConnectionRegistryHandle {
             ValidatedClientStack {
                 client_stack,
                 capabilities,
+                server_protocol_level,
             },
             successful_credentials,
         ) = Self::try_connect_client_stack(
@@ -448,6 +451,7 @@ impl ConnectionRegistryHandle {
                     client_stack,
                 )),
                 capabilities,
+                server_protocol_level,
             };
 
             inner
@@ -657,7 +661,7 @@ impl ConnectionRegistryHandle {
                         }),
                     })
                     .await
-                    .map(|_| ServerCapabilities::unknown())
+                    .map(|_| (ServerCapabilities::unknown(), ProtocolLevel::BASELINE))
             }
             Ok(resp) => {
                 let trace_id = crate::extract_trace_id(resp.metadata());
@@ -667,6 +671,7 @@ impl ConnectionRegistryHandle {
                     can_write,
                     capabilities,
                     client_deprecation,
+                    protocol_level,
                 } = resp.into_inner();
                 if let Some(client_deprecation) = client_deprecation {
                     re_log::warn_once!("{}", deprecation_warning(&origin, client_deprecation));
@@ -675,8 +680,9 @@ impl ConnectionRegistryHandle {
                 let user_id = user_id.as_deref().unwrap_or("<anonymous>");
                 let capabilities =
                     capabilities.map_or_else(ServerCapabilities::unknown, Into::into);
+                let server_protocol_level = ProtocolLevel::from(protocol_level);
                 re_log::debug_once!(
-                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}, capabilities={capabilities:?}",
+                    "Connected to {origin}: {user_id}, can_read={can_read}, can_write={can_write}, capabilities={capabilities:?}, protocol_level={server_protocol_level}",
                 );
                 if !can_read {
                     if is_anonymous {
@@ -695,15 +701,16 @@ impl ConnectionRegistryHandle {
                         "the server reports that you do not have read access",
                     ));
                 }
-                Ok(capabilities)
+                Ok((capabilities, server_protocol_level))
             }
             Err(err) => Err(err),
         };
 
         match request_result {
-            Ok(capabilities) => Ok(ValidatedClientStack {
+            Ok((capabilities, server_protocol_level)) => Ok(ValidatedClientStack {
                 client_stack,
                 capabilities,
+                server_protocol_level,
             }),
 
             // catch unauthenticated errors and forget the token if they happen

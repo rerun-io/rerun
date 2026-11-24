@@ -71,7 +71,12 @@ pub fn build(proxy_addr: SocketAddr, build_info: re_build_info::BuildInfo) -> In
         .expect("failed to build internal catalog");
     let handler = Arc::new(handler);
     let storage_dir = handler.storage_dir().to_owned();
-    let connection = Connection::from_service(origin, handler.clone(), re_server::capabilities());
+    let connection = Connection::from_service(
+        origin,
+        handler.clone(),
+        re_server::capabilities(),
+        re_server::PROTOCOL_LEVEL,
+    );
 
     InternalCatalog {
         connection,
@@ -90,7 +95,12 @@ pub fn build(build_info: re_build_info::BuildInfo) -> InternalCatalog {
     // in-memory handler (matching the native construction), not a reachable endpoint.
     let origin = re_uri::Origin::http_local_host(0);
 
-    let connection = Connection::from_service(origin, handler, re_server::capabilities());
+    let connection = Connection::from_service(
+        origin,
+        handler,
+        re_server::capabilities(),
+        re_server::PROTOCOL_LEVEL,
+    );
 
     InternalCatalog {
         connection,

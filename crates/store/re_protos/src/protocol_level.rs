@@ -3,18 +3,33 @@
 //! A protocol level is fixed by the build, ordered, and shared by clients and servers: see
 //! `ClientMeta` in `cloud.proto`. It counts revisions within one protobuf package version.
 //!
+//! A client sends its level in `ClientMeta.protocol_level`, and a server advertises its own in
+//! `WhoAmIResponse.protocol_level`.
+//!
 //! What one server is configured to offer is a server capability instead: see
 //! [`crate::capabilities`].
+//!
+//! To add a level:
+//!
+//! * Define it on [`ProtocolLevel`], with its client part and its server part.
+//! * List it in the comment of `ClientMeta.protocol_level` in `cloud.proto`.
+//! * Name its first client release in [`ProtocolLevel::first_client_release`].
+//! * Raise [`ProtocolLevel::CURRENT`] once the clients implement their part.
+//! * Raise the level that each server advertises once that server implements its part.
 
 /// A protocol level: a protocol revision shared by clients and servers.
 ///
 /// A level implies every level below it. A side claims a level only once it implements its part
 /// of that level and of every level below.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(
+    Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash, re_byte_size::SizeBytes,
+)]
 pub struct ProtocolLevel(u32);
 
 impl ProtocolLevel {
     /// Level 0, `baseline`: a client or a server from before protocol levels existed.
+    ///
+    /// Also the level of a side that does not state one, whatever it implements.
     pub const BASELINE: Self = Self(0);
 
     /// Level 1, `manifest_key_store_id`.
@@ -33,7 +48,10 @@ impl ProtocolLevel {
     /// * Server: nothing.
     pub const CHUNK_SEGMENT_FROM_REQUEST: Self = Self(2);
 
-    /// The level this build implements, sent in `ClientMeta.protocol_level`.
+    /// The level the clients of this build implement, sent in `ClientMeta.protocol_level`.
+    ///
+    /// Not the level of a server: each server defines the one it advertises, and raises it only
+    /// once it implements the server part of that level.
     pub const CURRENT: Self = Self::CHUNK_SEGMENT_FROM_REQUEST;
 
     /// The level of the client that sent a request. A request without `ClientMeta` comes from a

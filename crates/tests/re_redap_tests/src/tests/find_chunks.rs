@@ -1130,6 +1130,7 @@ pub async fn find_chunks_dispatch_follows_advertised_capabilities<T: RerunCloudS
                     re_uri::Origin::test(),
                     Arc::clone(&service),
                     capabilities,
+                    re_protos::protocol_level::ProtocolLevel::BASELINE,
                 ),
                 tempdir.path().to_path_buf(),
             )

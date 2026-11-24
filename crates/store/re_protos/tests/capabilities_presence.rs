@@ -16,6 +16,7 @@ fn response(capabilities: Option<Vec<String>>) -> WhoAmIResponse {
         capabilities: capabilities
             .map(|capabilities| re_protos::cloud::v1alpha1::ServerCapabilities { capabilities }),
         client_deprecation: None,
+        protocol_level: 0,
     }
 }
 

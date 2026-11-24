@@ -54,7 +54,12 @@ async fn catalog_server() -> (
     let storage = tempfile::tempdir().expect("temp dir");
     let origin = re_uri::Origin::http_local_host(1);
     let registry = ConnectionRegistry::new_without_stored_credentials().with_internal(
-        Connection::from_service(origin.clone(), Arc::new(handler), re_server::capabilities()),
+        Connection::from_service(
+            origin.clone(),
+            Arc::new(handler),
+            re_server::capabilities(),
+            re_server::PROTOCOL_LEVEL,
+        ),
         storage.path().to_path_buf(),
     );
     let tools = CatalogTools::new(registry.clone(), runtime(), Some(origin));
