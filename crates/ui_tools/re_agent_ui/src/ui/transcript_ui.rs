@@ -186,7 +186,9 @@ fn entry_ui(
                 thoughts_ui(ui, thoughts);
             }
             for (block_index, block) in content.iter().enumerate() {
-                content_block_ui(ui, block, ui.make_persistent_id(block_index));
+                ui.push_id(block_index, |ui| {
+                    content_block_ui(ui, block, ui.make_persistent_id(block_index));
+                });
             }
             None
         }

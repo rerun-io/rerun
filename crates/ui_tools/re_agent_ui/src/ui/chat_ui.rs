@@ -971,7 +971,7 @@ fn auth_ui(
             });
             if !has_login_method && let Some(login_hint) = login_hint {
                 ui.weak("Log in from a terminal, then restart the agent:");
-                ui.push_id("login_hint", |ui| code_ui(ui, login_hint, None));
+                code_ui(ui, "login_hint", login_hint, None);
             }
             for method in &auth.methods {
                 match method {
@@ -982,7 +982,7 @@ fn auth_ui(
                         }
                         if !method.args.is_empty() {
                             ui.weak("Run this in a terminal, then restart the agent:");
-                            code_ui(ui, &method.args.join(" "), None);
+                            code_ui(ui, &method.id, &method.args.join(" "), None);
                         }
                     }
                     AuthMethod::Agent(method) => {
@@ -1060,7 +1060,7 @@ fn permissions_ui(ui: &mut egui::Ui, session: &mut AgentSession, input: &mut Cha
 
             if let Some(command_input) = &command_input {
                 scroll_area.show(ui, |ui| {
-                    code_ui(ui, command_input.command, None);
+                    code_ui(ui, "command", command_input.command, None);
                     tool_fields_ui(ui, command_input.other_fields());
                 });
             } else if let Some(raw_input) = raw_input {
