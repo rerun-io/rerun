@@ -1,7 +1,7 @@
 ---
 title: Import multiple files with the Python SDK
 hidden: true
-type: feature
+type: misc
 ---
 
 ### Import multiple files with the Python SDK
