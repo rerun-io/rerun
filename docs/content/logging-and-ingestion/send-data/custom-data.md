@@ -6,7 +6,7 @@ description: Log your own data types with AnyValues and DynamicArchetype
 
 Rerun comes with many pre-built [Types](../../reference/types.md) that you can use out of the box. As long as your own data can be decomposed into Rerun [components](../../reference/types/components.md) or can be serialized with [Apache Arrow](https://arrow.apache.org/), you can log it directly without needing to recompile Rerun.
 
-For Python and Rust we have helpers for this, called `AnyValues`, allowing you to easily attach custom values to any entity instance.
+For Python and Rust we have helpers for this, called `AnyValues`, allowing you to easily attach custom values to any entity.
 For C++ a similar thing can be accomplished without the helpers.
 You find the documentation for these helpers here:
 
@@ -16,6 +16,9 @@ You find the documentation for these helpers here:
 snippet: tutorials/any_values
 
 If your values should be grouped together and that grouping isn't referred to from many places that need to stay aligned we have a helper for this called `DynamicArchetype`, which adds some structural grouping to multiple values.
+`DynamicArchetype` stores the values under an [archetype](../data-model/archetypes.md) name of your choice.
+The `confidence` field of `MyArchetype` becomes the column `MyArchetype:confidence`.
+`AnyValues` stores no archetype name, so the same field becomes the column `confidence`.
 
 You find the documentation for these helpers here:
 
@@ -24,7 +27,7 @@ You find the documentation for these helpers here:
 
 snippet: tutorials/dynamic_archetype
 
-You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
+You can also make your own type loggable by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
 
 ## Logging custom data
 
@@ -79,6 +82,8 @@ snippet: tutorials/custom_data
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/custom_data_dataframe/16d49401a8c9ed40d948623a8f4188104e4bfb64/1200w.png">
 </picture>
+
+The point clouds still show up in a 3D view, because `CustomPoints3D` also logs the components of the built-in `Points3D`.
 
 
 ## Creating/augmenting visualizations from custom data

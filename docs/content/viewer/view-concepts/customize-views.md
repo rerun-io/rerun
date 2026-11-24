@@ -31,12 +31,14 @@ Which visualizers are available is highly dependent on the specific kind of view
 For example, the `SeriesLines` visualizer only exists for time series views — not, e.g., for 3D views.
 
 For a given view, each entity's components determine which visualizers are available.
+For most visualizers, this is decided by Arrow datatype.
+The visualizer is available when the entity has a component with the datatype of the visualizer's required input, whatever that component is named.
 By default, visualizers are selected for entities logged with a corresponding [archetype](../../reference/types/archetypes.md).
 For example, in a 3D view, an entity logged with the [`Points3D`](../../reference/types/archetypes/points3d.md) archetype results in the `Points3D` visualizer being selected by default.
 This happens because the components of an [archetype](../../reference/types/archetypes.md) are tagged with the archetype's name.
 With a few exceptions, archetypes are directly associated with a single visualizer, but it's also possible to add multiple visualizers of the same type to a given entity via blueprints or the UI.
 
-Then, each selected visualizer determines the values for the components it supports. For example, the `Points3D` visualizer handles, among others, the [`Position3D`](../../reference/types/components/position3d.md), [`Radius`](../../reference/types/components/radius.md), and [`Color`](../../reference/types/components/color.md) components.
+Then, each selected visualizer determines the values for its inputs. For example, the `Points3D` visualizer reads, among others, `Points3D:positions` ([`Position3D`](../../reference/types/components/position3d.md)), `Points3D:radii` ([`Radius`](../../reference/types/components/radius.md)), and `Points3D:colors` ([`Color`](../../reference/types/components/color.md)).
 
 <!-- It's a feature that we don't need to specify any details for the visualizers here. -->
 
