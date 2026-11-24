@@ -55,7 +55,7 @@ pub fn resolution_of_image_at(
         let video = ctx
             .store_context
             .memoizer(|c: &mut crate::VideoStreamCache| {
-                let codec_component = archetypes::EncodedImage::descriptor_media_type().component;
+                let codec_component = archetypes::VideoStream::descriptor_codec().component;
                 let codec = entity_db
                     .latest_at_component::<components::VideoCodec>(
                         entity_path,
