@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+from os import PathLike
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -220,26 +221,24 @@ def _log_components(
 # TODO(#3841): expose timepoint settings once we implement stateless APIs
 @catch_and_log_exceptions()
 def log_file_from_path(
-    file_path: str | Path,
+    file_path: str | PathLike[str] | Iterable[str | PathLike[str]],
     *,
     entity_path_prefix: str | None = None,
     static: bool = False,
     recording: RecordingStream | None = None,
 ) -> None:
     r"""
-    Logs the file at the given `path` using all `Importer`s available.
+    Import one or more local files using the available importers.
 
-    A single `path` might be handled by more than one importer.
-
-    This method blocks until either at least one `Importer` starts
-    streaming data in or all of them fail.
+    Pass multiple MCAP paths to import the files into one recording with their original timestamps.
+    For each path, the call waits until an importer starts streaming data or all importers fail.
 
     See <https://www.rerun.io/docs/logging-and-ingestion/import/open-any-file> for more information.
 
     Parameters
     ----------
     file_path:
-        Path to the file to be logged.
+        A path or an iterable of paths to the files to import.
 
     entity_path_prefix:
         What should the logged entity paths be prefixed with?
@@ -259,12 +258,15 @@ def log_file_from_path(
         also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    bindings.log_file_from_path(
-        Path(file_path),
-        entity_path_prefix=entity_path_prefix,
-        static_=static,
-        recording=recording.to_native() if recording is not None else None,
-    )
+    native_recording = recording.to_native() if recording is not None else None
+    paths = (file_path,) if isinstance(file_path, (str, PathLike)) else file_path
+    for path in paths:
+        bindings.log_file_from_path(
+            Path(path),
+            entity_path_prefix=entity_path_prefix,
+            static_=static,
+            recording=native_recording,
+        )
 
 
 # TODO(cmc): expose timepoint settings once we implement stateless APIs
