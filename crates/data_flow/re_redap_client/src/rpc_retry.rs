@@ -5,6 +5,16 @@ use futures::future::{Either, select};
 use re_protos::external::tonic_types::StatusExt as _;
 use std::time::Duration;
 
+// Deadlines must be measured on the clock that `re_async::sleep` waits on.
+cfg_select! {
+    target_arch = "wasm32" => {
+        use web_time::Instant;
+    }
+    _ => {
+        use tokio::time::Instant;
+    }
+}
+
 /// Returns diagnostic context for retryable errors, or `None` to stop retrying.
 type RetryReason = fn(&tonic::Status) -> Option<&str>;
 
@@ -90,17 +100,18 @@ async fn retry_with_policy<T, F: Future<Output = tonic::Result<T>>>(
                 .metadata_mut()
                 .insert(crate::GRPC_RESPONSE_TRACEID_HEADER, trace_id.clone());
         }
-        let deadline = *deadline.get_or_insert_with(|| web_time::Instant::now() + policy.budget);
+        let deadline = *deadline.get_or_insert_with(|| Instant::now() + policy.budget);
         let delay = backoff
             .get_or_insert_with(|| policy.backoff())
             .gen_next()
             .jittered()
-            .min(deadline.saturating_duration_since(web_time::Instant::now()));
+            .min(deadline.saturating_duration_since(Instant::now()));
         tracing::trace!(%reason, ?delay, "RPC rejected, retrying after backoff");
         re_async::sleep(delay).await;
-        let Some(remaining) = deadline.checked_duration_since(web_time::Instant::now()) else {
+        let remaining = deadline.saturating_duration_since(Instant::now());
+        if remaining.is_zero() {
             return Err(timeout);
-        };
+        }
         result = match select(
             std::pin::pin!(call()),
             std::pin::pin!(re_async::sleep(remaining)),
@@ -118,17 +129,15 @@ pub async fn open_stream<T: Send + 'static>(
     response: tonic::Response<tonic::Streaming<T>>,
 ) -> tonic::Result<tonic::Response<impl futures::Stream<Item = tonic::Result<T>> + Send>> {
     let (metadata, mut stream, extensions) = response.into_parts();
-    let first = stream.message().await.map_err(|mut status| {
-        if crate::extract_trace_id(status.metadata()).is_none()
+    let first = stream.message().await.map_err(|mut err| {
+        if crate::extract_trace_id(err.metadata()).is_none()
             && let Some(trace_id) = metadata.get(crate::GRPC_RESPONSE_TRACEID_HEADER)
         {
-            status
-                .metadata_mut()
+            err.metadata_mut()
                 .insert(crate::GRPC_RESPONSE_TRACEID_HEADER, trace_id.clone());
         }
-        status
+        err
     })?;
-    // NOLINT: futures Stream::chain, not Iterator::chain
     let stream = futures::stream::iter(first.map(Ok)).chain(stream);
     Ok(tonic::Response::from_parts(metadata, stream, extensions))
 }
@@ -248,12 +257,14 @@ mod tests {
         }
     }
 
-    #[tokio::test]
+    #[tokio::test(start_paused = true)]
     async fn deadline_bounds_backoff_and_pending_attempts() {
         for pending in [false, true] {
             let mut attempts = 0;
             let mut policies = default_policy();
-            policies[0].budget = Duration::from_millis(150);
+            let budget = Duration::from_millis(150);
+            policies[0].budget = budget;
+            let start = Instant::now();
             let result: tonic::Result<()> = tokio::time::timeout(
                 Duration::from_secs(2),
                 retry_with_policy(policies, || {
@@ -278,7 +289,13 @@ mod tests {
             let error = result.unwrap_err();
             assert_eq!(error.code(), tonic::Code::DeadlineExceeded);
             assert_eq!(error.message(), format!("timed out {}", guard().message()));
-            assert!(attempts >= 2);
+            assert!(2 <= attempts);
+            let elapsed = start.elapsed();
+            // Tokio timers round up to the next millisecond.
+            assert!(
+                budget <= elapsed && elapsed <= budget + Duration::from_millis(2),
+                "{elapsed:?}"
+            );
             let last_rejection = if pending { 1 } else { attempts };
             assert_eq!(
                 crate::extract_trace_id(error.metadata())

@@ -177,9 +177,8 @@ mod tests {
     use std::collections::HashMap;
 
     use super::*;
-    use arrow::array::{ArrayRef, Int32Array, Int64Array, ListArray, StringArray, StructArray};
+    use arrow::array::{Int32Array, Int64Array, ListArray, StringArray};
     use arrow::buffer::OffsetBuffer;
-    use arrow::datatypes::{DataType, Field, Fields, Schema};
 
     fn new_schema(fields: Vec<Field>) -> Schema {
         let meta = HashMap::new();

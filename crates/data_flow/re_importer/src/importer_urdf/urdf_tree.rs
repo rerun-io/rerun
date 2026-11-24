@@ -1,24 +1,17 @@
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use ahash::{HashMap, HashMapExt as _, HashSet, HashSetExt as _};
 use anyhow::{Context as _, bail};
-use arrow::array::{Array as _, Float64Array, ListArray, StringArray, StructArray};
-use arrow::buffer::OffsetBuffer;
-use arrow::compute::cast;
-use arrow::datatypes::{DataType, Field, Fields};
+use arrow::array::ListArray;
 use itertools::Itertools as _;
-use re_arrow_util::ArrowArrayDowncastRef as _;
-use re_chunk::EntityPath;
+use re_chunk::{Chunk, EntityPath, TimePoint};
 use re_log_types::EntityPathPart;
-use re_sdk_types::ToArrow as _;
 use re_sdk_types::archetypes::Transform3D;
-use re_sdk_types::encodings::{Quaternion, Vec3D};
-use urdf_rs::{Geometry, Joint, Link, Material, Robot};
+use urdf_rs::{Geometry, Joint, JointType, Link, Material, Robot};
 
 use super::joint_transform;
-
-const DEFAULT_TF_STATIC_ENTITY_PATH: &str = "tf_static";
+use crate::kinematic_tree::LogPaths;
+use crate::{JointTransform, KinematicTree, ModelFormat, UnsupportedJointType};
 
 /// Returns a short name for the geometry type, used as a path segment.
 fn geometry_type_name(geometry: &Geometry) -> &'static str {
@@ -31,39 +24,6 @@ fn geometry_type_name(geometry: &Geometry) -> &'static str {
     }
 }
 
-/// Helper struct containing the (root) entity paths where the different parts of the URDF model are logged.
-pub(crate) struct UrdfLogPaths {
-    /// The root entity path of the robot.
-    pub root: EntityPath,
-
-    /// We separate visual and collision geometries under different paths below `root_path`.
-    /// This makes it for example easier to toggle the visibility of all visual or collision geometries at once.
-    pub visual_root: EntityPath,
-    pub collision_root: EntityPath,
-
-    // We log all default transforms to the same entity path because we use Transform3D with frame names.
-    pub transforms: EntityPath,
-}
-
-impl UrdfLogPaths {
-    pub fn new(robot_name: &str, entity_path_prefix: Option<EntityPath>) -> Self {
-        let root = match entity_path_prefix {
-            Some(prefix) => prefix / EntityPath::from_single_string(robot_name),
-            None => EntityPath::from_single_string(robot_name),
-        };
-        let visual_root = root.clone() / EntityPathPart::new("visual_geometries");
-        let collision_root = root.clone() / EntityPathPart::new("collision_geometries");
-        let transforms = EntityPath::from_single_string(DEFAULT_TF_STATIC_ENTITY_PATH);
-
-        Self {
-            root,
-            visual_root,
-            collision_root,
-            transforms,
-        }
-    }
-}
-
 /// A `.urdf` file loaded into memory (excluding any mesh files).
 ///
 /// Can be used to inspect any link or joint in the URDF.
@@ -72,7 +32,7 @@ pub struct UrdfTree {
     ///
     /// Used to find mesh files (.stl etc) relative to the URDF file.
     pub(crate) urdf_dir: Option<PathBuf>,
-    pub(crate) log_paths: UrdfLogPaths,
+    pub(crate) log_paths: LogPaths,
 
     name: String,
     root: Link,
@@ -163,9 +123,19 @@ impl UrdfTree {
                     joint.parent.link
                 );
             }
+            let moves_along_axis = matches!(
+                joint.joint_type,
+                JointType::Continuous | JointType::Revolute | JointType::Prismatic
+            );
+            if moves_along_axis && super::unit_joint_axis(joint).is_none() {
+                let joint_name = &joint.name;
+                re_log::warn!(
+                    "Joint {joint_name:?} has a zero-length or non-finite axis, so it will not move. Set a non-zero `<axis xyz>` in the URDF."
+                );
+            }
         }
 
-        let log_paths = UrdfLogPaths::new(&name, entity_path_prefix);
+        let log_paths = LogPaths::new(&name, entity_path_prefix);
 
         Ok(Self {
             urdf_dir,
@@ -199,182 +169,45 @@ impl UrdfTree {
         &self.name
     }
 
-    /// The frame prefix, if set.
-    pub fn frame_prefix(&self) -> Option<&str> {
-        self.frame_prefix.as_deref()
-    }
-
-    /// Applies [`Self::frame_prefix`] to the given name, if set.
-    pub fn apply_frame_prefix(&self, name: &str) -> String {
-        match &self.frame_prefix {
-            Some(prefix) => format!("{prefix}{name}"),
-            None => name.to_owned(),
-        }
-    }
-
     /// Computes a [`Transform3D`] for a joint at the given value.
     ///
-    /// If [`Self::frame_prefix`] is set, the frame IDs of the transform are prefixed with it.
+    /// `value` is an angle in radians for revolute and continuous joints, and a distance in meters for
+    /// prismatic joints.
+    /// If [`KinematicTree::frame_prefix`] is set, the frame IDs of the transform are prefixed with it.
+    /// If `clamp` is true, values outside the joint's limits are clamped and a warning is logged.
     pub fn compute_joint_transform(
         &self,
         joint: &Joint,
         value: f64,
         clamp: bool,
-    ) -> Result<Transform3D, joint_transform::Error> {
-        let result = joint_transform::internal::compute_joint_transform(joint, value, clamp)?;
-
-        if let Some(warning) = &result.warning {
+    ) -> Result<Transform3D, UnsupportedJointType> {
+        let transform = self.prefixed_joint_transform(joint, value, clamp)?;
+        for warning in &transform.warnings {
             re_log::warn!("{warning}");
         }
-
-        Ok(Transform3D::update_fields()
-            .with_translation(result.translation.to_array())
-            .with_quaternion(result.quaternion.to_array())
-            .with_parent_frame(self.apply_frame_prefix(&result.parent_frame))
-            .with_child_frame(self.apply_frame_prefix(&result.child_frame)))
+        Ok(transform.into())
     }
 
-    /// Computes batches of 3D transform components from Arrow list arrays containing joint names and values.
-    ///
-    /// `names` must be a `ListArray` with `Utf8` values.
-    /// `values` must be a `ListArray` with values castable to `Float64`.
-    ///
-    /// The output is a `ListArray` with `translation`, `quaternion`, `parent_frame`, and
-    /// `child_frame` fields and the same outer row count as the inputs.
-    ///
-    /// Note: this is intended as a helper for lens pipelines, where you would usually pipe this output
-    /// through an additional lens that scatters each batch into final [`Transform3D`] rows.
+    fn prefixed_joint_transform(
+        &self,
+        joint: &Joint,
+        value: f64,
+        clamp: bool,
+    ) -> Result<JointTransform, UnsupportedJointType> {
+        Ok(
+            joint_transform::compute_joint_transform(joint, value, clamp)?
+                .with_frame_prefix(self.frame_prefix.as_deref()),
+        )
+    }
+
+    /// See [`KinematicTree::compute_joint_transform_batches`].
     pub fn compute_joint_transform_batches(
         &self,
         names: &ListArray,
         values: &ListArray,
         clamp: bool,
     ) -> anyhow::Result<ListArray> {
-        if names.len() != values.len() {
-            bail!(
-                "joint name and value arrays must have the same number of rows, got {} and {}",
-                names.len(),
-                values.len()
-            );
-        }
-
-        let joint_names = names
-            .values()
-            .try_downcast_array_ref::<StringArray>()
-            .with_context(|| {
-                format!(
-                    "joint names must be list<utf8>, got {:?}",
-                    names.data_type()
-                )
-            })?;
-
-        let joint_values = cast(values.values().as_ref(), &DataType::Float64)
-            .context("failed to cast joint values to float64")?
-            .try_downcast_array::<Float64Array>()?;
-
-        let mut offsets = Vec::<i32>::with_capacity(names.len() + 1);
-        let mut translations = Vec::<Vec3D>::new();
-        let mut quaternions = Vec::<Quaternion>::new();
-        let mut parent_frames = Vec::<String>::new();
-        let mut child_frames = Vec::<String>::new();
-
-        offsets.push(0);
-
-        for row in 0..names.len() {
-            if names.is_null(row) || values.is_null(row) {
-                bail!(
-                    "joint name and value lists must not contain null rows, got null at row {row}"
-                );
-            }
-
-            let names_start = names.value_offsets()[row] as usize;
-            let names_end = names.value_offsets()[row + 1] as usize;
-            let values_start = values.value_offsets()[row] as usize;
-            let values_end = values.value_offsets()[row + 1] as usize;
-
-            let num_names = names_end - names_start;
-            let num_values = values_end - values_start;
-            if num_names != num_values {
-                bail!(
-                    "joint name and value lists must have the same length at row {row}, got {num_names} and {num_values}"
-                );
-            }
-
-            for (name_index, value_index) in
-                std::iter::zip(names_start..names_end, values_start..values_end)
-            {
-                if joint_names.is_null(name_index) || joint_values.is_null(value_index) {
-                    bail!(
-                        "joint name and value lists must not contain null values, got null at row {row}"
-                    );
-                }
-
-                let joint_name = joint_names.value(name_index);
-                let joint = self
-                    .get_joint_by_name(joint_name)
-                    .with_context(|| format!("URDF does not contain joint {joint_name:?}"))?;
-
-                let result = joint_transform::internal::compute_joint_transform(
-                    joint,
-                    joint_values.value(value_index),
-                    clamp,
-                )?;
-
-                if let Some(warning) = &result.warning {
-                    re_log::warn!("{warning}");
-                }
-
-                translations.push(Vec3D([
-                    result.translation.x,
-                    result.translation.y,
-                    result.translation.z,
-                ]));
-                quaternions.push(Quaternion([
-                    result.quaternion.x,
-                    result.quaternion.y,
-                    result.quaternion.z,
-                    result.quaternion.w,
-                ]));
-                parent_frames.push(self.apply_frame_prefix(&result.parent_frame));
-                child_frames.push(self.apply_frame_prefix(&result.child_frame));
-            }
-
-            offsets.push(
-                i32::try_from(parent_frames.len())
-                    .context("too many joint transforms for Arrow list offsets")?,
-            );
-        }
-
-        let translation_array = Vec3D::to_arrow(translations.iter())?;
-        let quaternion_array = Quaternion::to_arrow(quaternions.iter())?;
-
-        let struct_fields = Fields::from(vec![
-            Field::new("translation", translation_array.data_type().clone(), false),
-            Field::new("quaternion", quaternion_array.data_type().clone(), false),
-            Field::new("parent_frame", DataType::Utf8, false),
-            Field::new("child_frame", DataType::Utf8, false),
-        ]);
-
-        let struct_array = StructArray::try_new(
-            struct_fields.clone(),
-            vec![
-                translation_array,
-                quaternion_array,
-                Arc::new(StringArray::from(parent_frames)),
-                Arc::new(StringArray::from(child_frames)),
-            ],
-            None,
-        )?;
-
-        Ok(ListArray::new(
-            Arc::new(Field::new_list_field(
-                DataType::Struct(struct_fields),
-                false,
-            )),
-            OffsetBuffer::new(offsets.into()),
-            Arc::new(struct_array),
-            None,
-        ))
+        KinematicTree::compute_joint_transform_batches(self, names, values, clamp)
     }
 
     /// The root [`Link`] in the URDF hierarchy.
@@ -475,6 +308,41 @@ impl UrdfTree {
     }
 }
 
+impl KinematicTree for UrdfTree {
+    fn model_format(&self) -> ModelFormat {
+        ModelFormat::Urdf
+    }
+
+    fn frame_prefix(&self) -> Option<&str> {
+        self.frame_prefix.as_deref()
+    }
+
+    fn emit(
+        &self,
+        emit: &mut dyn FnMut(Chunk),
+        timepoint: &TimePoint,
+        include_joint_transforms: bool,
+    ) -> anyhow::Result<()> {
+        Self::emit(self, emit, timepoint, include_joint_transforms)
+    }
+
+    fn compute_joint_transforms(
+        &self,
+        joint_values: &[(&str, f64)],
+        clamp: bool,
+    ) -> anyhow::Result<Vec<JointTransform>> {
+        joint_values
+            .iter()
+            .map(|&(joint_name, value)| {
+                let joint = self
+                    .get_joint_by_name(joint_name)
+                    .with_context(|| format!("URDF does not contain joint {joint_name:?}"))?;
+                Ok(self.prefixed_joint_transform(joint, value, clamp)?)
+            })
+            .collect()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -486,6 +354,88 @@ mod tests {
             visual: vec![],
             collision: vec![],
         }
+    }
+
+    /// Two robots that share the default `/tf_static` entity keep all of their static joint
+    /// transforms, because the store keeps every static named-transform row.
+    #[test]
+    fn test_two_prefixed_robots_keep_their_static_transforms() {
+        const URDF: &str = r#"
+            <robot name="arm">
+              <link name="base"/><link name="upper"/><link name="lower"/>
+              <joint name="shoulder" type="fixed"><parent link="base"/><child link="upper"/></joint>
+              <joint name="elbow" type="fixed"><parent link="upper"/><child link="lower"/></joint>
+            </robot>"#;
+
+        let mut store = re_chunk_store::ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test"),
+            Default::default(),
+        );
+        let mut transforms_paths = Vec::new();
+        for side in ["left", "right"] {
+            let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
+            let tree = UrdfTree::new(robot, None, Some(EntityPath::from(side)))
+                .expect("the test URDF should load")
+                .with_frame_prefix(format!("{side}/"));
+            transforms_paths.push(tree.log_paths.transforms.clone());
+            tree.emit(
+                &mut |chunk| {
+                    store
+                        .insert_chunk(&std::sync::Arc::new(chunk))
+                        .expect("insert should succeed");
+                },
+                &TimePoint::STATIC,
+                true,
+            )
+            .expect("emit should succeed");
+        }
+
+        assert_eq!(
+            transforms_paths[0], transforms_paths[1],
+            "both robots should share the default static transform entity"
+        );
+
+        let mut child_frames = store
+            .iter_physical_chunks()
+            .filter(|chunk| chunk.entity_path() == &transforms_paths[0])
+            .flat_map(|chunk| {
+                chunk
+                    .iter_slices::<String>(Transform3D::descriptor_child_frame().component)
+                    .flatten()
+                    .map(|frame| frame.to_string())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        child_frames.sort();
+        assert_eq!(
+            child_frames,
+            ["left/lower", "left/upper", "right/lower", "right/upper"]
+        );
+    }
+
+    /// A zero axis is a broken joint, not a broken robot: the model still loads, and the joint stays still.
+    #[test]
+    fn test_zero_axis_joint_does_not_move() {
+        const URDF: &str = r#"
+            <robot name="arm">
+              <link name="a"/><link name="b"/>
+              <joint name="broken_hinge" type="revolute">
+                <parent link="a"/><child link="b"/><axis xyz="0 0 0"/>
+                <limit lower="-1" upper="1" effort="1" velocity="1"/>
+              </joint>
+            </robot>"#;
+
+        let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
+        let tree = UrdfTree::new(robot, None, None).expect("a zero axis must not fail the load");
+        let joint = tree
+            .get_joint_by_name("broken_hinge")
+            .expect("the test URDF declares this joint");
+        let transform = joint_transform::compute_joint_transform(joint, 0.5, false)
+            .expect("a revolute joint is supported");
+        assert_eq!(
+            transform.quaternion,
+            re_sdk_types::external::glam::Quat::IDENTITY
+        );
     }
 
     #[test]
@@ -532,19 +482,5 @@ mod tests {
             .with_static_transform_entity("robot/tf");
 
         assert_eq!(tree.log_paths.transforms.to_string(), "/robot/tf");
-    }
-
-    #[test]
-    fn test_static_transforms_path_defaults_to_tf_static() {
-        let paths = UrdfLogPaths::new("test", None);
-
-        assert_eq!(paths.transforms.to_string(), "/tf_static");
-    }
-
-    #[test]
-    fn test_static_transforms_path_is_unaffected_by_prefix() {
-        let paths = UrdfLogPaths::new("test", Some(EntityPath::parse_forgiving("robots/left_arm")));
-
-        assert_eq!(paths.transforms.to_string(), "/tf_static");
     }
 }

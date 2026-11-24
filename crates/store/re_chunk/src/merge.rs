@@ -587,7 +587,7 @@ mod tests {
     use std::assert_matches;
 
     use super::*;
-    use crate::{Chunk, RowId, Timeline};
+    use crate::{RowId, Timeline};
 
     /// Rows come out in `indices` order; a component missing from a source is null on its rows;
     /// chunks with different timelines or component datatypes are refused.

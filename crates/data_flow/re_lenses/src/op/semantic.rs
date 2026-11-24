@@ -289,15 +289,11 @@ pub fn rgba_struct_to_uint32()
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use arrow::array::{
         ArrayRef, BinaryArray, Float32Array, Float64Array, GenericByteBuilder, Int32Array,
-        Int64Array, ListBuilder, StringArray, StructArray, UInt8Builder, UInt32Array,
+        ListBuilder, UInt8Builder,
     };
-    use arrow::datatypes::{DataType, Field, GenericBinaryType};
-    use re_lenses_core::combinators::Error;
-    use re_sdk_types::components::VideoCodec;
+    use arrow::datatypes::GenericBinaryType;
     use re_sdk_types::reflection::Enum as _;
 
     use super::*;

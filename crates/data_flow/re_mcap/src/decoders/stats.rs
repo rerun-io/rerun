@@ -76,7 +76,6 @@ fn from_statistics(stats: &::mcap::records::Statistics) -> McapStatistics {
 mod tests {
     use std::io;
 
-    use re_chunk::Chunk;
     use re_log_types::TimeType;
 
     use crate::DecoderRegistry;

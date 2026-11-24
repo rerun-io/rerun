@@ -95,9 +95,7 @@ async function waitForDeployment(client, teamId, projectId, deploymentId) {
  */
 async function updateEnv(client, teamId, projectId) {
   if (!commit && !version) {
-    throw new Error(
-      `one of "release_commit", "release_version" must be specified`,
-    );
+    throw new Error(`one of "release_commit", "release_version" must be specified`);
   }
 
   await updateProjectEnv(client, {

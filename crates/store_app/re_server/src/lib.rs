@@ -24,6 +24,13 @@ pub use self::{
     server::{Server, ServerBuilder, ServerError, ServerHandle},
 };
 
+/// The protocol level this build of the server implements.
+///
+/// Same as what `/WhoAmI` advertises, for a client that talks to the server in-process and never
+/// makes that call.
+pub const PROTOCOL_LEVEL: re_protos::protocol_level::ProtocolLevel =
+    re_protos::protocol_level::ProtocolLevel::CHUNK_SEGMENT_FROM_REQUEST;
+
 /// The capability names this build supports.
 ///
 /// On wasm the server reads `file://` sources from OPFS, and only the viewer itself puts files
@@ -34,6 +41,7 @@ pub(crate) fn capability_names() -> Vec<String> {
         _ => {
             vec![
                 re_protos::capabilities::catalog_write_register("file"),
+                re_protos::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE.to_owned(),
                 re_protos::capabilities::CATALOG_WRITE_STAGING.to_owned(),
                 re_protos::capabilities::DATASET_FIND_CHUNKS.to_owned(),
             ]
@@ -66,5 +74,6 @@ mod tests {
 
         assert_eq!(capabilities.register_schemes(), vec!["file"]);
         assert!(capabilities.has(re_protos::capabilities::CATALOG_WRITE_STAGING));
+        assert!(capabilities.has(re_protos::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE));
     }
 }

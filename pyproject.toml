@@ -13,7 +13,7 @@
 name = "rerun-workspace"
 version = "0.28.0-alpha.1+dev"
 description = "Rerun Python workspace"
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11.5,<3.13"
 
 [dependency-groups]
 dev = [
@@ -331,8 +331,6 @@ extend-select = [
   "S", # flake8-bandit: security lints
 ]
 ignore = [
-  "ANN401", # Explicit `Any`
-
   # flake8-bandit (`S`). This tree is an SDK plus its examples, docs snippets, tests and
   # build scripts, so the rules below cannot produce a security finding anywhere in it.
   # Everything scoped to a subdirectory instead is under `per-file-ignores`.
@@ -371,6 +369,8 @@ ignore = [
 
 [tool.ruff.lint.flake8-annotations]
 mypy-init-return = true
+# `*args: Any, **kwargs: Any` forwards arguments to a callee that checks their types.
+allow-star-arg-any = true
 
 [tool.ruff.lint.per-file-ignores]
 "docs/snippets/all/*" = [
@@ -392,6 +392,7 @@ mypy-init-return = true
 "tests/python/*" = [
   # We don't care about nice APIs in our tests:
   "PLR0917",
+  "ANN401", # Explicit `Any`
 ]
 
 "examples/notebook/*/*_marimo.py" = [
@@ -419,6 +420,7 @@ mypy-init-return = true
 "scripts/*" = [
   # We don't care about nice APIs in our scripts:
   "PLR0917",
+  "ANN401", # Explicit `Any`
   # Build tooling that runs on inputs we control:
   "S314", # parsing SVG that `d2` just produced
   "S405", # importing `xml.etree` to do it
@@ -470,12 +472,6 @@ module = [
   "cv2.*",
   "huggingface_hub.*",
 ]
-ignore_missing_imports = true
-
-[[tool.mypy.overrides]]
-# rerun_draft is a sandbox for testing new APIs - we don't care about strict type checking
-module = ["api_sandbox.rerun_draft.*", "rerun_draft.*"]
-ignore_errors = true
 ignore_missing_imports = true
 
 [tool.ty.environment]
@@ -574,7 +570,7 @@ unresolved-reference = "ignore"
 
 [[tool.ty.overrides]]
 # `rerun/tests/__init__.py` makes `tests` a regular package, which hides `rerun_py/tests` from
-# ty, so the relative imports in there do not resolve. `rerun_draft` is a sandbox with no stubs.
+# ty, so the relative imports in there do not resolve.
 include = ["rerun_py/tests/**"]
 
 [tool.ty.overrides.rules]
@@ -594,11 +590,3 @@ include = ["rerun_py/rerun_sdk/rerun/encodings/class_description.py"]
 [tool.ty.overrides.rules]
 # The generated keypoint fields are typed as lists, but hold `None` when not given.
 invalid-assignment = "ignore"
-
-[[tool.ty.overrides]]
-# A sandbox for drafting new APIs.
-include = ["rerun_py/tests/api_sandbox/rerun_draft/**"]
-
-[tool.ty.overrides.rules]
-invalid-assignment = "ignore"
-no-matching-overload = "ignore"

@@ -5,7 +5,6 @@ use itertools::Itertools as _;
 use re_chunk::EntityPath;
 use re_entity_db::EntityDb;
 use re_log_types::StoreKind;
-use re_sdk_types::external::glam;
 use re_tf::TransformFrameIdHash;
 
 use crate::{DataResultInteractionAddress, Item, ViewId, resolve_mono_instance_path_item};

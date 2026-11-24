@@ -24,7 +24,7 @@ This example demonstrates how to visualize arbitrary data, even when it was not 
 
 ## Run the code
 
-To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/common#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
+To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
 
 ```sh
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
@@ -133,13 +133,13 @@ Rerun uses a path syntax inspired by [`jq`](https://jqlang.org/) to reach into y
 
 ## Resources
 
-- [Customize views](https://rerun.io/docs/concepts/visualization/customize-views)
-- [Plot any scalar](https://rerun.io/docs/howto/visualization/plot-any-scalar)
-- [Component Mappings Guide](https://rerun.io/docs/howto/visualization/component-mappings)
+- [Customize views](https://rerun.io/docs/viewer/view-concepts/customize-views)
+- [Plot any scalar](https://rerun.io/docs/viewer/view-types/time-series#plot-any-scalar)
+- [Component Mappings Guide](https://rerun.io/docs/viewer/view-concepts/component-mappings)
 
 ---
 
 ## Used Rerun types
 
-[`DynamicArchetype`](https://ref.rerun.io/docs/python/stable/common/custom_data/#rerun.dynamic_archetype.DynamicArchetype), [`SeriesLines`](https://rerun.io/docs/reference/types/archetypes/series_lines), [`SeriesPoints`](https://rerun.io/docs/reference/types/archetypes/series_points)
+[`DynamicArchetype`](https://ref.rerun.io/docs/python/stable/rerun/#rerun.DynamicArchetype), [`SeriesLines`](https://rerun.io/docs/reference/types/archetypes/series_lines), [`SeriesPoints`](https://rerun.io/docs/reference/types/archetypes/series_points)
 

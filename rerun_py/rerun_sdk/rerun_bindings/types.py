@@ -65,3 +65,17 @@ class GopBatchingRuleDict(TypedDict):
     entity_filter: str | None
     samples: Literal["inherit", "passthrough"] | MergeSplitSettingsDict
     keyframes: Literal["inline", "own_chunk"] | MergeSplitSettingsDict
+
+
+class StorageLocationDict(TypedDict):
+    alias: str
+    display_name: str | None
+    region: str
+    bucket_name: str
+    prefix: str | None
+    read_only: bool
+
+
+class StorageLocationsDict(TypedDict):
+    locations: list[StorageLocationDict]
+    default_alias: str

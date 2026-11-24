@@ -37,6 +37,7 @@ re_arrow_util.workspace = true
 re_async.workspace = true
 re_auth = { workspace = true, features = ["oauth"] }
 re_backoff.workspace = true
+re_build_info.workspace = true
 re_byte_size.workspace = true
 re_chunk.workspace = true
 re_chunk_index.workspace = true
@@ -80,20 +81,24 @@ web-time.workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 re_perf_telemetry = { workspace = true, optional = true }
 http-body.workspace = true
-tokio = { workspace = true, features = ["rt", "rt-multi-thread", "fs"] }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["fs", "rt", "rt-multi-thread", "time"] }
 tonic = { workspace = true, default-features = false, features = ["transport", "tls-native-roots"] }
 
 # Web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 tonic-web-wasm-client.workspace = true
 tonic = { workspace = true, default-features = false }
+web-sys = { workspace = true, features = ["Location", "Window"] }
 
 [dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }
 re_uri.workspace = true
 
 [target.'cfg(not(target_arch = "wasm32"))'.dev-dependencies]
+tempfile.workspace = true
 tiny_http.workspace = true
+tokio = { workspace = true, features = ["test-util"] }
 
 [target.'cfg(target_arch = "wasm32")'.dev-dependencies]
 re_log = { workspace = true, features = ["setup"] }

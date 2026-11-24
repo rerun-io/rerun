@@ -27,7 +27,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `ChannelCountPair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1ChannelCountPair.html)
- * 🐍 [Python API docs for `ChannelCountPair`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ChannelCountPair)
+ * 🐍 [Python API docs for `ChannelCountPair`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.ChannelCountPair)
  * 🦀 [Rust API docs for `ChannelCountPair`](https://docs.rs/rerun/latest/rerun/encodings/struct.ChannelCountPair.html)
 
 

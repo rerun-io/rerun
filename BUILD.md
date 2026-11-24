@@ -16,15 +16,22 @@ This is a guide to how to build Rerun.
 
 First, install the Rust toolchain using the installer from <https://rustup.rs/>.
 
-Then, clone the repository:
+Then, clone the repository, either over SSH:
 ```sh
 git clone git@github.com:rerun-io/rerun.git
 cd rerun
 ```
 
+or over HTTPS:
+```sh
+git clone https://github.com/rerun-io/rerun.git
+cd rerun
+```
+
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.98.1` once you are done.
+Make sure `cargo --version` prints `1.98.1` and `pixi --version` prints `pixi 0.82.1` once you are done.
+To install exactly that version of pixi, run `pixi self-update --version 0.82.1`.
 
 ### Python/PyO3 configuration (important!)
 
@@ -50,7 +57,8 @@ PYO3_CONFIG_FILE = { value = "rerun_py/pyo3-build.cfg", relative = true }
 
 For more details, see [Python build configuration](#python-build-configuration-automatic) below.
 
-If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
+If you are using an Apple-silicon Mac, make sure `rustc -vV` outputs `host: aarch64-apple-darwin`.
+If not, this should fix it:
 
 ```sh
 rustup set default-host aarch64-apple-darwin && rustup install 1.98.1
@@ -97,6 +105,8 @@ You can validate your environment is set up correctly by running:
 ```sh
 pixi run check-env
 ```
+
+This checks for the exact versions of pixi, `cargo`, and `rustc` that we use on CI (see `scripts/check_env.py`), and prints the command to install the right version if one does not match.
 
 
 ## Building and running the Viewer
@@ -202,7 +212,8 @@ This can be useful for developer tools, e.g. for [setting up IntelliSense in VSC
 
 ## Building the docs
 
-High-level documentation for Rerun can be found at [https://rerun.io/docs](https://rerun.io/docs). It is built from the separate repository [rerun-docs](https://github.com/rerun-io/rerun-docs).
+High-level documentation for Rerun can be found at [https://rerun.io/docs](https://rerun.io/docs).
+It is built from [`docs/content`](docs/content) by the separate [landing](https://github.com/rerun-io/landing) repository, see [`docs/README.md`](docs/README.md).
 
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run -e cpp cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the Python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).
@@ -232,25 +243,11 @@ These tools can be configured through your `Cargo` configuration, available at `
 
 ### macOS
 
-On x64 macOS, use the [zld](https://github.com/michaeleisel/zld) linker and keep debuginfo in a single separate file.
+On macOS, the default linker that comes with Xcode 15 and later is fast, so you don't need a custom linker.
+Do NOT set `split-debuginfo=packed`, as that will make linking a lot slower.
+You can set `split-debuginfo=unpacked` for a small improvement.
 
-Pre-requisites:
-- Install [zld](https://github.com/michaeleisel/zld): `brew install michaeleisel/zld/zld`.
-
-`config.toml` (x64):
-```toml
-[target.x86_64-apple-darwin]
-rustflags = [
-    "-C",
-    "link-arg=-fuse-ld=/usr/local/bin/zld",
-    "-C",
-    "split-debuginfo=packed",
-]
-```
-
-On Apple-silicon Mac (M1, M2), the default settings are already pretty good. The default linker is just as good as `zld`. Do NOT set `split-debuginfo=packed`, as that will make linking a lot slower. You can set `split-debuginfo=unpacked` for a small improvement.
-
-`config.toml` (M1, M2):
+`config.toml` (Apple silicon):
 ```toml
 [target.aarch64-apple-darwin]
 rustflags = [

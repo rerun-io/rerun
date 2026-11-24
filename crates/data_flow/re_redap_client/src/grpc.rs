@@ -14,14 +14,14 @@ use re_log_channel::{
     BlueprintTarget, DataSourceMessage, DefaultBlueprintRegistration, ViewerControlCommand,
 };
 use re_log_msg::{BlueprintActivationCommand, LogMsg, SetStoreInfo, StoreInfo, StoreSource};
-use re_log_types::{EntryId, StoreId, StoreKind};
+use re_log_types::{ApplicationId, EntryId, StoreId, StoreKind};
 use re_protos::cloud::v1alpha1::rerun_cloud_service_client::RerunCloudServiceClient;
 use re_protos::common::v1alpha1::ext::DatasetKind;
 use re_types_core::SegmentId;
 use re_uri::Origin;
 use tokio_stream::StreamExt as _;
 
-use crate::asset::{AssetSegments, asset_manifest, asset_segments};
+use crate::asset::{asset_manifest, asset_segments};
 use crate::{
     ApiError, ApiResult, BoxedRedapClientStack, ConnectionClient, MAX_DECODING_MESSAGE_SIZE,
 };
@@ -210,7 +210,6 @@ impl PoolChannel {
 
     /// Index of the connection with the fewest requests in flight.
     fn least_loaded(&self) -> usize {
-        use std::sync::atomic::Ordering;
         self.in_flight
             .iter()
             .enumerate()
@@ -283,8 +282,6 @@ impl tower::Service<tonic::codegen::http::Request<tonic::body::Body>> for PoolCh
     }
 
     fn call(&mut self, req: tonic::codegen::http::Request<tonic::body::Body>) -> Self::Future {
-        use std::sync::atomic::Ordering;
-
         let idx = self.least_loaded();
         self.in_flight[idx].fetch_add(1, Ordering::Relaxed);
         let guard = InFlightGuard {
@@ -452,20 +449,80 @@ pub(crate) async fn connect_grpc_client(
     Ok(assemble_grpc_client(channel, credentials, client_name))
 }
 
+/// Decodes an [`ArrowMsg`](re_protos::log_msg::v1alpha1::ArrowMsg) into a chunk.
+fn decode_chunk(
+    arrow_msg: &re_protos::log_msg::v1alpha1::ArrowMsg,
+    origin: &Origin,
+    trace_id: Option<opentelemetry::TraceId>,
+) -> Result<Chunk, ApiError> {
+    re_tracing::profile_function!();
+
+    use re_log_encoding::ToApplication as _;
+    let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
+        ApiError::deserialization_with_source(
+            origin,
+            trace_id,
+            err,
+            "failed to decode ArrowMsg payload",
+        )
+    })?;
+
+    Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
+        ApiError::deserialization_with_source(
+            origin,
+            trace_id,
+            err,
+            "failed to parse chunk from ArrowMsg",
+        )
+    })
+}
+
+/// What the chunks decoded from a `/FetchChunks` response may keep alive.
+///
+/// An uncompressed chunk is decoded without copying, so its arrays alias the gRPC receive buffer,
+/// which holds the whole response and can also hold neighboring responses.
+/// Size estimates of a chunk (`heap_size_bytes`) do not include the rest of that buffer.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FetchedPayloads {
+    /// Chunks alias the receive buffer, which stays alive until every chunk sliced from it is dropped.
+    ///
+    /// Dropping only some of those chunks frees none of their bytes, so a memory budget that
+    /// refunds the `heap_size_bytes` of dropped chunks overstates what was freed.
+    Shared,
+
+    /// Each uncompressed payload is copied out before decoding, so a chunk keeps alive only its
+    /// own bytes (see [`re_protos::log_msg::v1alpha1::ArrowMsg::unshare_payload`]).
+    ///
+    /// For callers that retain chunks in a store whose garbage collection is sized by
+    /// `heap_size_bytes`.
+    Copied,
+}
+
+impl FetchedPayloads {
+    fn detach(self, response: &mut [re_protos::log_msg::v1alpha1::ArrowMsg]) {
+        if self == Self::Copied {
+            re_tracing::profile_function!();
+            for arrow_msg in response {
+                arrow_msg.unshare_payload();
+            }
+        }
+    }
+}
+
 /// Converts a `FetchChunksStream` stream into a stream of `Chunk`s.
+///
+/// The chunks do not say which segment they belong to: the recording id in their `store_id` is
+/// that of the store they were logged to, which is not always the segment they were registered
+/// as. The caller knows the segment from the rows it requested.
 //
 // TODO(#9430): ideally this should be factored as a nice helper in `re_proto`
-// TODO(cmc): we should compute contiguous runs of the same segment here, and return a `(SegmentId, Vec<Chunk>)`
-// instead. Because of how the server performs the computation, this will very likely work out well
-// in practice.
-pub type ChunksWithSegment = Vec<(Chunk, Option<SegmentId>)>;
-
 #[tracing::instrument(level = "debug", skip_all)]
 #[cfg(not(target_arch = "wasm32"))]
-pub fn fetch_chunks_response_to_chunk_and_segment_id(
+pub fn fetch_chunks_response_to_chunks(
     response: crate::FetchChunksResponseStream,
+    payloads: FetchedPayloads,
     decode_time_us: Option<Arc<AtomicU64>>,
-) -> crate::ApiResponseStream<ChunksWithSegment> {
+) -> crate::ApiResponseStream<Vec<Chunk>> {
     let origin = response.origin().clone();
     let trace_id = response.trace_id();
 
@@ -488,7 +545,7 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                 // the Tokio runtime (which would slow down every other futures currently scheduled!).
                 tokio::task::spawn_blocking(move || {
                     let _parent_guard = parent_span.enter();
-                    let r = resp?;
+                    let mut r = resp?;
                     let _span = tracing::trace_span!(
                         parent: &parent_span,
                         "fetch_chunks::batch_decode",
@@ -499,40 +556,11 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
                     // Time the decode loop from inside the blocking task so we
                     // capture true CPU time, not scheduling wait.
                     let decode_start = web_time::Instant::now();
-                    let result: Result<ChunksWithSegment, ApiError> = r
+                    payloads.detach(&mut r.chunks);
+                    let result: Result<Vec<Chunk>, ApiError> = r
                         .chunks
                         .into_iter()
-                        .map(|arrow_msg| {
-                            re_tracing::profile_scope!(
-                                "fetch_chunks_response_to_chunk_and_segment_id"
-                            );
-                            let segment_id = arrow_msg
-                                .store_id
-                                .clone()
-                                .map(|id| SegmentId::from(id.recording_id));
-
-                            use re_log_encoding::ToApplication as _;
-                            let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                            ApiError::deserialization_with_source(
-                                &origin,
-                                trace_id,
-                                err,
-                                "failed to get arrow data for item in /FetchChunks response stream",
-                            )
-                        })?;
-
-                            let chunk =
-                                re_chunk::Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
-                                    ApiError::deserialization_with_source(
-                                        &origin,
-                                        trace_id,
-                                        err,
-                                        "failed to parse item in /FetchChunks response stream",
-                                    )
-                                })?;
-
-                            Ok((chunk, segment_id))
-                        })
+                        .map(|arrow_msg| decode_chunk(&arrow_msg, &origin, trace_id))
                         .try_collect();
                     if let Some(acc) = &decode_time_us {
                         acc.fetch_add(decode_start.elapsed().as_micros() as u64, Ordering::Relaxed);
@@ -560,53 +588,29 @@ pub fn fetch_chunks_response_to_chunk_and_segment_id(
 
 // This code path happens to be shared between native and web, but we don't have a Tokio runtime on web!
 #[cfg(target_arch = "wasm32")]
-pub fn fetch_chunks_response_to_chunk_and_segment_id(
+pub fn fetch_chunks_response_to_chunks(
     response: crate::FetchChunksResponseStream,
+    payloads: FetchedPayloads,
     decode_time_us: Option<Arc<std::sync::atomic::AtomicU64>>,
-) -> crate::ApiResponseStream<ChunksWithSegment> {
+) -> crate::ApiResponseStream<Vec<Chunk>> {
     let origin = response.origin().clone();
     let trace_id = response.trace_id();
     let stream = response.map({
         let origin = origin.clone();
         move |resp| {
             let origin = origin.clone();
-            let resp = resp?;
+            let mut resp = resp?;
 
             let _span =
                 tracing::trace_span!("fetch_chunks::batch_decode", num_chunks = resp.chunks.len())
                     .entered();
 
             let decode_start = web_time::Instant::now();
-            let result: Result<ChunksWithSegment, ApiError> = resp
+            payloads.detach(&mut resp.chunks);
+            let result: Result<Vec<Chunk>, ApiError> = resp
                 .chunks
                 .into_iter()
-                .map(|arrow_msg| {
-                    let segment_id = arrow_msg
-                        .store_id
-                        .clone()
-                        .map(|id| SegmentId::from(id.recording_id));
-
-                    use re_log_encoding::ToApplication as _;
-                    let arrow_msg = arrow_msg.to_application(()).map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            &origin,
-                            trace_id,
-                            err,
-                            "failed to get arrow data for item in /FetchChunks response stream",
-                        )
-                    })?;
-
-                    let chunk = re_chunk::Chunk::from_arrow_msg(&arrow_msg).map_err(|err| {
-                        ApiError::deserialization_with_source(
-                            &origin,
-                            trace_id,
-                            err,
-                            "failed to parse item in /FetchChunks response stream",
-                        )
-                    })?;
-
-                    Ok((chunk, segment_id))
-                })
+                .map(|arrow_msg| decode_chunk(&arrow_msg, &origin, trace_id))
                 .try_collect();
             if let Some(acc) = &decode_time_us {
                 acc.fetch_add(
@@ -677,6 +681,17 @@ impl std::fmt::Debug for StreamingOptions {
     }
 }
 
+/// The store id of a blueprint streamed from a segment of a blueprint dataset.
+///
+/// The recording id is the blueprint's segment id, so streaming the same blueprint again uses the
+/// same store.
+pub fn blueprint_store_id_for_segment(
+    application_id: ApplicationId,
+    blueprint_segment: &SegmentId,
+) -> StoreId {
+    StoreId::new(StoreKind::Blueprint, application_id, blueprint_segment)
+}
+
 async fn stream_blueprint_segment(
     client: &mut ConnectionClient,
     tx: &re_log_channel::LogSender,
@@ -696,7 +711,7 @@ async fn stream_blueprint_segment(
         blueprint_store_info,
         tx,
         blueprint_dataset,
-        DatasetKind::Blueprint,
+        None,
         blueprint_segment,
         re_uri::Fragment::default(),
         &StreamingOptions::default(),
@@ -730,8 +745,8 @@ fn warn_blueprint_skipped(
     );
 }
 
-/// Create a log channel for streaming a table blueprint from a catalog server.
-pub fn table_blueprint_log_channel(
+/// Create a log channel for streaming a blueprint from a catalog server.
+pub fn blueprint_log_channel(
     origin: re_uri::Origin,
     blueprint_dataset: EntryId,
     blueprint_segment: &SegmentId,
@@ -762,17 +777,75 @@ pub fn table_blueprint_log_channel(
 /// stays in the viewer. It returns early without the quit marker only when the receiver
 /// disconnects.
 pub async fn stream_table_blueprint_segment_from_server(
-    mut client: ConnectionClient,
+    client: ConnectionClient,
     tx: re_log_channel::LogSender,
     blueprint_store_id: StoreId,
     table_ref: re_uri::TableReference,
     blueprint_dataset: EntryId,
     blueprint_segment: SegmentId,
 ) -> ApiResult {
+    let registration = DefaultBlueprintRegistration {
+        blueprint_id: blueprint_store_id.clone(),
+        target: BlueprintTarget::Table(table_ref),
+    };
+
+    stream_blueprint_segment_then_send(
+        client,
+        tx,
+        blueprint_store_id,
+        blueprint_dataset,
+        blueprint_segment,
+        registration.into(),
+    )
+    .await
+}
+
+/// Stream a registered `.rbl` blueprint segment into an existing log channel, and make it the
+/// active blueprint of its application.
+///
+/// The application's default blueprint stays the same.
+///
+/// Loading is best effort, the same way as for [`stream_table_blueprint_segment_from_server`].
+pub async fn stream_active_blueprint_segment_from_server(
+    client: ConnectionClient,
+    tx: re_log_channel::LogSender,
+    blueprint_store_id: StoreId,
+    blueprint_dataset: EntryId,
+    blueprint_segment: SegmentId,
+) -> ApiResult {
+    let activation = LogMsg::BlueprintActivationCommand(BlueprintActivationCommand {
+        blueprint_id: blueprint_store_id.clone(),
+        make_active: true,
+        make_default: false,
+    });
+
+    stream_blueprint_segment_then_send(
+        client,
+        tx,
+        blueprint_store_id,
+        blueprint_dataset,
+        blueprint_segment,
+        activation.into(),
+    )
+    .await
+}
+
+/// Streams a blueprint segment, sends `on_loaded` once all of it is streamed, and then sends a
+/// successful quit marker.
+///
+/// If the blueprint fails to load, this logs a warning and skips `on_loaded`.
+async fn stream_blueprint_segment_then_send(
+    mut client: ConnectionClient,
+    tx: re_log_channel::LogSender,
+    blueprint_store_id: StoreId,
+    blueprint_dataset: EntryId,
+    blueprint_segment: SegmentId,
+    on_loaded: DataSourceMessage,
+) -> ApiResult {
     match stream_blueprint_segment(
         &mut client,
         &tx,
-        blueprint_store_id.clone(),
+        blueprint_store_id,
         blueprint_dataset,
         blueprint_segment.clone(),
     )
@@ -781,16 +854,7 @@ pub async fn stream_table_blueprint_segment_from_server(
         Ok(ControlFlow::Break(())) => return Ok(()),
 
         Ok(ControlFlow::Continue(())) => {
-            if tx
-                .send(
-                    DefaultBlueprintRegistration {
-                        blueprint_id: blueprint_store_id,
-                        target: BlueprintTarget::Table(table_ref),
-                    }
-                    .into(),
-                )
-                .is_err()
-            {
+            if tx.send(on_loaded).is_err() {
                 re_log::debug!("Receiver disconnected");
                 return Ok(());
             }
@@ -876,10 +940,9 @@ pub async fn stream_blueprint_and_segment_from_server(
         {
             re_log::debug!("Streaming blueprint dataset {blueprint_dataset}");
 
-            // For blueprint, we can use a random recording ID
-            let blueprint_store_id = StoreId::random(
-                StoreKind::Blueprint,
+            let blueprint_store_id = blueprint_store_id_for_segment(
                 recording_store_id.application_id().clone(),
+                &blueprint_segment,
             );
 
             match stream_blueprint_segment(
@@ -934,12 +997,19 @@ pub async fn stream_blueprint_and_segment_from_server(
             store_version: None,
         };
 
+        // Only recording datasets have assets, so a blueprint or asset dataset has none to look up.
+        let asset_dataset = if dataset_kind == DatasetKind::Recording {
+            dataset_entry.dataset_details.asset_dataset
+        } else {
+            None
+        };
+
         if stream_segment_from_server(
             &mut client,
             store_info,
             &tx,
             dataset_id,
-            dataset_kind,
+            asset_dataset,
             segment_id,
             fragment,
             &options,
@@ -960,7 +1030,7 @@ async fn stream_segment_from_server(
     store_info: StoreInfo,
     tx: &re_log_channel::LogSender,
     dataset_id: EntryId,
-    dataset_kind: DatasetKind,
+    asset_dataset: Option<EntryId>,
     segment_id: SegmentId,
     fragment: re_uri::Fragment,
     options: &StreamingOptions,
@@ -1001,19 +1071,13 @@ async fn stream_segment_from_server(
         }
     }
 
-    // Only recording datasets have assets, so a blueprint or asset dataset has none to look up.
-    if dataset_kind == DatasetKind::Recording
-        && let Some(AssetSegments {
-            dataset_id: asset_dataset_id,
-            segment_ids: asset_segment_ids,
-        }) = asset_segments(client, dataset_id, &segment_id).await
-    {
+    if let Some(asset_dataset) = asset_dataset {
         // Only assets that apply to the opened segment are streamed.
-        for asset_segment_id in asset_segment_ids {
+        for asset_segment_id in asset_segments(client, asset_dataset, &segment_id).await {
             // TODO(RR-5399): Cache asset manifests?
             // We don't support assets without manifests.
             let streamed = match client
-                .get_rrd_manifest_stream(asset_dataset_id, asset_segment_id.clone())
+                .get_rrd_manifest_stream(asset_dataset, asset_segment_id.clone())
                 .await
             {
                 Ok(manifest_stream) => {
@@ -1142,10 +1206,10 @@ async fn stream_manifest(
         let rrd_manifest = Arc::new(rrd_manifest);
 
         if tx
-            .send(DataSourceMessage::RrdManifest(
-                store_id.clone(),
-                rrd_manifest.clone(),
-            ))
+            .send(DataSourceMessage::RrdManifest {
+                store_id: store_id.clone(),
+                manifest: rrd_manifest.clone(),
+            })
             .is_err()
         {
             re_log::debug!("Receiver disconnected");
@@ -1328,14 +1392,15 @@ async fn load_small_chunk_batch(
 ) -> ApiResult<(ControlFlow<()>, u64)> {
     // TODO(RR-3323): FetchChunks should expose a proper bidirectional streaming path on native.
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut chunk_stream = fetch_chunks_response_to_chunk_and_segment_id(chunk_stream, None);
+    let mut chunk_stream =
+        fetch_chunks_response_to_chunks(chunk_stream, FetchedPayloads::Copied, None);
     let trace_id = chunk_stream.trace_id();
 
     let mut batch_bytes: u64 = 0;
     let mut num_chunks_received: u64 = 0;
 
     while let Some(chunks) = chunk_stream.next().await {
-        for (chunk, _partition_id) in chunks? {
+        for chunk in chunks? {
             batch_bytes += chunk.heap_size_bytes();
             num_chunks_received += 1;
 
@@ -1349,7 +1414,7 @@ async fn load_small_chunk_batch(
                                 client.origin(),
                                 trace_id,
                                 err,
-                                "failed to parse chunk in /FetchChunks response stream",
+                                "failed to re-encode chunk from /FetchChunks response stream as ArrowMsg",
                             )
                         })?,
                     )
@@ -1401,4 +1466,46 @@ fn sort_batch(batch: &RecordBatch) -> Result<RecordBatch, ArrowError> {
     let sorted = arrow::compute::take_record_batch(batch, &indices)?;
 
     Ok(sorted)
+}
+
+#[cfg(test)]
+mod tests {
+    use re_protos::external::prost::bytes::Bytes;
+    use re_protos::log_msg::v1alpha1::ArrowMsg;
+
+    use super::FetchedPayloads;
+
+    /// Two payloads sliced out of one shared receive buffer.
+    fn response() -> (Bytes, Vec<ArrowMsg>) {
+        let buffer = Bytes::from(vec![7_u8; 64]);
+        let msgs = [0..32, 32..64]
+            .into_iter()
+            .map(|range| ArrowMsg {
+                payload: buffer.slice(range),
+                ..Default::default()
+            })
+            .collect();
+        (buffer, msgs)
+    }
+
+    fn aliases(buffer: &Bytes, msg: &ArrowMsg) -> bool {
+        buffer.as_ptr_range().contains(&msg.payload.as_ptr())
+    }
+
+    #[test]
+    fn copied_payloads_stop_aliasing_the_receive_buffer() {
+        let (buffer, mut msgs) = response();
+        FetchedPayloads::Copied.detach(&mut msgs);
+        for msg in &msgs {
+            assert!(!aliases(&buffer, msg));
+            assert_eq!(&msg.payload[..], &[7_u8; 32]);
+        }
+    }
+
+    #[test]
+    fn shared_payloads_keep_aliasing() {
+        let (buffer, mut msgs) = response();
+        FetchedPayloads::Shared.detach(&mut msgs);
+        assert!(msgs.iter().all(|msg| aliases(&buffer, msg)));
+    }
 }

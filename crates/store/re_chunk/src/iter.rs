@@ -94,7 +94,7 @@ impl Chunk {
         &self,
         timeline: TimelineName,
         component: ComponentIdentifier,
-    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ + use<'_> {
+    ) -> impl Iterator<Item = (TimeInt, RowId)> + '_ {
         let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
@@ -160,7 +160,7 @@ impl Chunk {
     pub fn iter_component_timepoints(
         &self,
         component: ComponentIdentifier,
-    ) -> impl Iterator<Item = TimePoint> + '_ + use<'_> {
+    ) -> impl Iterator<Item = TimePoint> + '_ {
         let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
@@ -230,7 +230,7 @@ impl Chunk {
     pub fn iter_slices<'a, S: 'a + ChunkComponentSlicer>(
         &'a self,
         component: ComponentIdentifier,
-    ) -> impl Iterator<Item = S::Item<'a>> + 'a + use<'a, S> {
+    ) -> impl Iterator<Item = S::Item<'a>> + 'a {
         let Some(list_array) = self.components.get_array(component) else {
             return Either::Left(std::iter::empty());
         };
@@ -1241,7 +1241,7 @@ impl Chunk {
     pub fn iter_component<C: Component>(
         &self,
         component: ComponentIdentifier,
-    ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + '_ + use<'_, C>> {
+    ) -> ChunkComponentIter<C, impl Iterator<Item = Span<usize>> + '_> {
         let Some(list_array) = self.components.get_array(component) else {
             return ChunkComponentIter {
                 values: Arc::new(vec![]),

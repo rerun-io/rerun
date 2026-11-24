@@ -64,7 +64,7 @@ rr.log(
 ### Timelines
 
 All data logged using Rerun in the following sections is initially connected to a specific time.
-Rerun assigns a timestamp to each piece of logged data, and these timestamps are associated with [`timelines`](https://www.rerun.io/docs/concepts/logging-and-ingestion/timelines).
+Rerun assigns a timestamp to each piece of logged data, and these timestamps are associated with [`timelines`](https://www.rerun.io/docs/logging-and-ingestion/data-model/timelines).
 
 ```python
 rr.set_time("timestamp", timestamp=sample_data["timestamp"] * 1e-6)
@@ -174,7 +174,7 @@ We programmatically create one view per sensor and arrange them in a grid layout
 
 
 ## Run the code
-To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/common#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
+To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
 ```bash
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository

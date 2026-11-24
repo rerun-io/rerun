@@ -32,7 +32,7 @@ Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`]
 
 ## API reference links
  * 🌊 [C++ API docs for `EncodedDepthImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1EncodedDepthImage.html)
- * 🐍 [Python API docs for `EncodedDepthImage`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.EncodedDepthImage)
+ * 🐍 [Python API docs for `EncodedDepthImage`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.EncodedDepthImage)
  * 🦀 [Rust API docs for `EncodedDepthImage`](https://docs.rs/rerun/latest/rerun/archetypes/struct.EncodedDepthImage.html)
 
 ## Example
@@ -46,6 +46,6 @@ snippet: archetypes/encoded_depth_image
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1200w.png">
-  <img src="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png">
+  <img src="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/full.png" alt="Rerun Viewer with a 2D view of a depth image in a rainbow colormap, showing two arms reaching forward in front of a chair">
 </picture>
 

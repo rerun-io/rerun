@@ -1,12 +1,12 @@
 //! The viewer's own tools for a model-API agent: the viewer-control operations, run in-process.
 //!
-//! An agent harness reaches the same operations through `rerun viewer-mcp` instead, and its
+//! An agent harness reaches the same operations through `rerun mcp` instead, and its
 //! permission requests for them are judged by the same rules.
 
 use std::sync::Arc;
 
 use futures::future::BoxFuture;
-use re_agent::{AgentToolbox, ToolDefinition, ToolOutput};
+use re_agent_tools::{AgentToolbox, ToolDefinition, ToolOutput};
 use re_async::UiWaker;
 use re_log_channel::{UiCallback, ViewerControlError};
 use re_protos::viewer_control::v1alpha1::{
@@ -40,8 +40,14 @@ enum ViewerToolError {
     #[error("`{name}` failed: {message}")]
     Failed { name: String, message: String },
 
-    #[error("{message}")]
-    InvalidRequest { message: String },
+    #[error(transparent)]
+    InvalidRequest(re_viewer_control_tools::BuildRequestError),
+
+    #[error("`{name}` failed: {source}")]
+    InvalidResponse {
+        name: String,
+        source: re_viewer_control_tools::ResponseJsonError,
+    },
 
     #[error("The viewer is no longer running")]
     Stopped,
@@ -112,7 +118,7 @@ pub struct ViewerToolbox {
     waker: UiWaker,
 
     /// Built once: every tool, as the service describes it.
-    tools: Vec<re_viewer_control_tools::ToolDefinition>,
+    tools: Vec<ToolDefinition>,
 }
 
 impl ViewerToolbox {
@@ -121,7 +127,10 @@ impl ViewerToolbox {
         Arc::new(Self {
             calls_tx,
             waker,
-            tools: re_viewer_control_tools::tools(SCREENSHOT_DELIVERY),
+            tools: re_viewer_control_tools::tools(
+                SCREENSHOT_DELIVERY,
+                Some(&CommandKind::all().map(CommandKind::id).collect::<Vec<_>>()),
+            ),
         })
     }
 
@@ -133,7 +142,7 @@ impl ViewerToolbox {
     ) -> Result<futures::channel::oneshot::Receiver<ViewerControlResult>, ViewerToolError> {
         let request =
             re_viewer_control_tools::build_request(operation, Some(arguments), SCREENSHOT_DELIVERY)
-                .map_err(|message| ViewerToolError::InvalidRequest { message })?;
+                .map_err(ViewerToolError::InvalidRequest)?;
 
         let (reply_tx, reply_rx) = futures::channel::oneshot::channel();
         let call = QueuedCall { request, reply_tx };
@@ -154,11 +163,17 @@ impl AgentToolbox for ViewerToolbox {
                 name: format!("{TOOL_NAME_PREFIX}{}", tool.name),
                 description: tool.description.clone(),
                 input_schema: tool.input_schema.clone(),
+                effect: tool.effect,
             })
             .collect()
     }
 
     fn requires_approval(&self, name: &str, arguments: &Map<String, Value>) -> bool {
+        // An agent harness's `rerun mcp` serves the catalog tools too, and asks the panel about
+        // them.
+        if let Some(tool) = re_catalog_tools::CatalogTool::from_name(name) {
+            return tool.requires_approval();
+        }
         let operation = name.strip_prefix(TOOL_NAME_PREFIX);
         if operation == Some(RUN_COMMAND_OPERATION) {
             // An unknown command fails in the viewer anyway, but asking costs nothing.
@@ -201,7 +216,11 @@ impl AgentToolbox for ViewerToolbox {
                 }
             };
             let response = answer
-                .map_err(|_canceled| ViewerToolError::Dropped { name: name.clone() })?
+                .map_err(
+                    |futures::channel::oneshot::Canceled| ViewerToolError::Dropped {
+                        name: name.clone(),
+                    },
+                )?
                 .map_err(|err| ViewerToolError::Failed {
                     name: name.clone(),
                     message: err.message,
@@ -215,7 +234,7 @@ impl AgentToolbox for ViewerToolbox {
                 }]);
             }
             let json = re_viewer_control_tools::response_json(&operation, &response)
-                .map_err(|message| ViewerToolError::Failed { name, message })?;
+                .map_err(|source| ViewerToolError::InvalidResponse { name, source })?;
             Ok(vec![ToolOutput::Text(json.to_string())])
         })
     }
@@ -257,6 +276,15 @@ mod tests {
     }
 
     #[test]
+    fn read_only_catalog_tools_need_no_approval() {
+        let (calls_tx, _calls_rx) = crossbeam::channel::bounded(MAX_WAITING_CALLS);
+        let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
+        assert!(!toolbox.requires_approval("catalog_list_entries", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_connect", &Map::new()));
+        assert!(toolbox.requires_approval("some_other_tool", &Map::new()));
+    }
+
+    #[test]
     fn calls_the_agent_stopped_waiting_for_do_not_run() {
         let (calls_tx, calls_rx) = calls_channel();
         let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
@@ -273,6 +301,41 @@ mod tests {
     }
 
     #[test]
+    fn run_command_tool() {
+        let (calls_tx, _calls_rx) = calls_channel();
+        let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
+
+        let ToolDefinition {
+            name: _,
+            description,
+            mut input_schema,
+            effect: _,
+        } = toolbox
+            .definitions()
+            .into_iter()
+            .find(|tool| tool.name == format!("{TOOL_NAME_PREFIX}{RUN_COMMAND_OPERATION}"))
+            .expect("the run_command tool");
+
+        // The same snapshot for debug and release builds.
+        cfg_select! {
+            debug_assertions => {
+                let ids = input_schema["properties"]["id"]["enum"]
+                    .as_array_mut()
+                    .expect("the listed command ids");
+                ids.retain(|id| {
+                    id.as_str()
+                        .and_then(CommandKind::from_id)
+                        .is_some_and(|kind| !kind.is_debug_only())
+                });
+            }
+            _ => {}
+        }
+
+        let schema = serde_json::to_string_pretty(&input_schema).expect("a JSON object");
+        insta::assert_snapshot!(format!("{description}\n\n{schema}"));
+    }
+
+    #[test]
     fn screenshots_cannot_be_written_to_disk() {
         let (calls_tx, calls_rx) = calls_channel();
         let toolbox = ViewerToolbox::new(calls_tx, UiWaker::noop());
@@ -280,7 +343,7 @@ mod tests {
         let schema = toolbox
             .definitions()
             .into_iter()
-            .find(|tool| tool.name == "rerun_save_screenshot")
+            .find(|tool| tool.name == "viewer_save_screenshot")
             .expect("the screenshot tool")
             .input_schema;
         assert!(schema["properties"].get("file_path").is_none());

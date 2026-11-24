@@ -101,12 +101,16 @@ fn ensure_buffers_equal(
 
 /// Return true when arguments are the same within some rounding error.
 ///
+/// Two `NaN` values count as equal, and a `NaN` never equals a number.
+///
 /// For instance `almost_equal(x, x.to_degrees().to_radians(), f64::EPSILON)` should hold true for all x.
 /// The `epsilon`  can be `f64::EPSILON` to handle simple transforms (like degrees -> radians)
 /// but should be higher to handle more complex transformations.
 pub fn almost_equal_f64(a: f64, b: f64, epsilon: f64) -> bool {
-    if a == b {
-        true // handle infinites
+    if a.is_nan() || b.is_nan() {
+        a.is_nan() && b.is_nan()
+    } else if a == b {
+        true // handle infinities
     } else {
         let abs_max = a.abs().max(b.abs());
         abs_max <= epsilon || ((a - b).abs() / abs_max) <= epsilon
@@ -129,6 +133,7 @@ fn test_almost_equal() {
         f64::MAX / 100.0,
         // f64::MAX, // overflows in rad<->deg test
         f64::INFINITY,
+        f64::NAN,
     ] {
         for &x in &[-x, x] {
             for roundtrip in &[
@@ -143,6 +148,19 @@ fn test_almost_equal() {
                     roundtrip(x)
                 );
             }
+        }
+    }
+}
+
+/// A `NaN` equals another `NaN`, but no number, including values within `epsilon` of zero.
+#[test]
+fn test_almost_equal_nan() {
+    let epsilon = 1e-3;
+    assert!(almost_equal_f64(f64::NAN, f64::NAN, epsilon));
+    for x in [0.0, 1e-6, 1.0, f64::INFINITY] {
+        for x in [-x, x] {
+            assert!(!almost_equal_f64(f64::NAN, x, epsilon), "NaN vs {x}");
+            assert!(!almost_equal_f64(x, f64::NAN, epsilon), "{x} vs NaN");
         }
     }
 }

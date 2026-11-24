@@ -98,6 +98,7 @@ impl MenuGroup {
                 Command(Recording(RecordingCommand::OpenAddViewOrContainerDialog)),
                 Command(Recording(RecordingCommand::ResetBlueprintToDefault)),
                 Command(Recording(RecordingCommand::ResetBlueprintToHeuristic)),
+                Command(Recording(RecordingCommand::ResetBlueprint)),
                 Command(Table(TableCommandKind::ResetBlueprintToDefault)),
                 #[cfg(not(target_arch = "wasm32"))]
                 Separator,
@@ -381,7 +382,7 @@ impl AppCore {
             ui_zoom_is_default: self.egui_ctx.zoom_factor() == 1.0,
             graphics_backend: self.adapter_backend(),
             links: LinkAvailability::from_url(
-                ViewerUrl::from_route(store_hub, self.state.navigation.current()).ok(),
+                ViewerUrl::from_route(store_hub, self.navigation.routes.current()).ok(),
             ),
         }
     }
@@ -593,8 +594,7 @@ mod tests {
         let mut harness = crate::viewer_test_utils::viewer_harness(&Default::default());
         let app = harness.state_mut();
         let origin = "rerun://localhost:51234".parse().expect("valid server URL");
-        app.state
-            .selection_state
+        app.selection_state
             .set_selection(re_viewer_context::Item::RedapServer(origin));
         let context = app.command_context(&app.store_hub, None);
         assert!(context.environment.redap_server.is_none());

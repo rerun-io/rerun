@@ -1,9 +1,5 @@
 use std::borrow::Cow;
-#[cfg(agent_harness_backend)]
-use std::path::Path;
-use std::path::PathBuf;
-
-use agent_client_protocol_schema::v1::SessionModeId;
+use std::path::{Path, PathBuf};
 
 use crate::ModelApiProvider;
 
@@ -113,6 +109,9 @@ pub struct AgentProfile {
     /// Executable name or path.
     pub command: String,
 
+    /// The agent's own command line tool, when [`Self::command`] only starts an adapter for it.
+    pub cli: Option<String>,
+
     /// Arguments that put the agent in ACP mode, e.g. `--acp`.
     pub args: Vec<String>,
 
@@ -126,10 +125,8 @@ pub struct AgentProfile {
     /// Environment variables the agent needs to work well with the panel.
     pub env: Vec<(String, String)>,
 
-    /// Session mode selected when the user has not picked one the agent offers.
-    ///
-    /// We prefer a mode that runs safe tool calls without asking, and asks about the rest.
-    pub default_mode: Option<SessionModeId>,
+    /// Initial selections for this profile, overridden by the user's saved preferences.
+    pub default_config: crate::AgentPreferences,
 
     /// URL to the agent's ACP documentation or install page.
     pub url: String,
@@ -151,14 +148,26 @@ impl AgentProfile {
     }
 }
 
+/// Whether an agent can be started on this machine.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum AgentInstall {
+    /// [`AgentProfile::command`] was found here.
+    Ready(PathBuf),
+
+    /// [`AgentProfile::cli`] was found here, but not [`AgentProfile::command`], which starts it.
+    NeedsCommand { cli: PathBuf },
+
+    /// Neither was found.
+    NotInstalled,
+}
+
 /// A known agent plus where (and whether) it is installed on this machine.
 #[derive(Clone, Debug)]
 pub struct AgentEntry {
     /// How to launch this agent.
     pub profile: AgentProfile,
 
-    /// Where the launch command was found, or `None` if the agent is not installed.
-    pub executable: Option<PathBuf>,
+    pub install: AgentInstall,
 }
 
 impl AgentEntry {
@@ -168,7 +177,7 @@ impl AgentEntry {
         AgentProfile::builtin()
             .into_iter()
             .map(|profile| Self {
-                executable: profile.find_executable(),
+                install: detect(&profile),
                 profile,
             })
             .collect()
@@ -177,14 +186,22 @@ impl AgentEntry {
     /// Checks again whether the agent is installed, e.g. after the user installed it.
     #[cfg(agent_harness_backend)]
     pub fn refresh(&mut self) {
-        self.executable = self.profile.find_executable();
+        self.install = detect(&self.profile);
+    }
+
+    /// Where the launch command was found, or `None` if the agent cannot be started.
+    pub fn executable(&self) -> Option<&Path> {
+        match &self.install {
+            AgentInstall::Ready(path) => Some(path),
+            AgentInstall::NeedsCommand { .. } | AgentInstall::NotInstalled => None,
+        }
     }
 
     /// The installed agent to use when the user has not picked one yet:
     /// the first installed one in a fixed popularity order, so the choice is stable
     /// from one launch to the next.
     pub fn pick_default(agents: &[Self]) -> Option<&Self> {
-        let installed = agents.iter().filter(|agent| agent.executable.is_some());
+        let installed = agents.iter().filter(|agent| agent.executable().is_some());
         installed.min_by_key(|agent| {
             DEFAULT_AGENT_PRIORITY
                 .iter()
@@ -204,22 +221,26 @@ fn builtin_profiles() -> Vec<AgentProfile> {
             description: "Anthropic's Claude Code, via the official ACP adapter (needs Node.js)."
                 .to_owned(),
             command: "npx".to_owned(),
+            cli: Some("claude".to_owned()),
             args: npx("@agentclientprotocol/claude-agent-acp"),
-            install_hint: "Install Node.js (which provides npx), then run `claude` once to log in."
+            install_hint: "Install Node.js from nodejs.org, then run claude once to log in."
                 .to_owned(),
             url: "https://github.com/agentclientprotocol/claude-agent-acp".to_owned(),
             login_hint: "claude  # then type /login".to_owned(),
             // Newer Claude models drop the todo tools, which is what feeds the plan view.
             env: vec![("CLAUDE_CODE_ENABLE_TODO_TOOLS".to_owned(), "1".to_owned())],
-            default_mode: Some(SessionModeId::new("auto")),
+            default_config: crate::AgentPreferences {
+                config_options: [("mode".into(), "auto".into())].into(),
+            },
         },
         AgentProfile {
             id: AgentProfileId::new("codex"),
             name: "Codex".to_owned(),
             description: "OpenAI's Codex, via the official ACP adapter (needs Node.js).".to_owned(),
             command: "npx".to_owned(),
+            cli: Some("codex".to_owned()),
             args: npx("@agentclientprotocol/codex-acp"),
-            install_hint: "Install Node.js (which provides npx), then run `codex` once to log in."
+            install_hint: "Install Node.js from nodejs.org, then run codex once to log in."
                 .to_owned(),
             url: "https://github.com/agentclientprotocol/codex-acp".to_owned(),
             login_hint: "codex login".to_owned(),
@@ -236,76 +257,94 @@ fn builtin_profiles() -> Vec<AgentProfile> {
                 ),
             ],
             // "Auto review"
-            default_mode: Some(SessionModeId::new("agent")),
+            default_config: crate::AgentPreferences {
+                config_options: [("mode".into(), "agent".into())].into(),
+            },
         },
         AgentProfile {
             id: AgentProfileId::new("gemini"),
             name: "Gemini CLI".to_owned(),
             description: "Google's Gemini CLI, native ACP support.".to_owned(),
             command: "gemini".to_owned(),
+            cli: None,
             args: vec!["--acp".to_owned()],
             install_hint: "npm install -g @google/gemini-cli".to_owned(),
             url: "https://geminicli.com/docs/cli/acp-mode/".to_owned(),
             login_hint: "gemini  # pick a login method when asked".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
         AgentProfile {
             id: AgentProfileId::new("copilot"),
             name: "GitHub Copilot CLI".to_owned(),
             description: "GitHub Copilot CLI, native ACP support.".to_owned(),
             command: "copilot".to_owned(),
+            cli: None,
             args: vec!["--acp".to_owned()],
             install_hint: "npm install -g @github/copilot".to_owned(),
             url: "https://docs.github.com/en/copilot/reference/copilot-cli-reference/acp-server"
                 .to_owned(),
             login_hint: "copilot  # then type /login".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
         AgentProfile {
             id: AgentProfileId::new("opencode"),
             name: "OpenCode".to_owned(),
             description: "OpenCode, native ACP support.".to_owned(),
             command: "opencode".to_owned(),
+            cli: None,
             args: vec!["acp".to_owned()],
             install_hint: "curl -fsSL https://opencode.ai/install | bash".to_owned(),
             url: "https://opencode.ai/docs/acp/".to_owned(),
             login_hint: "opencode auth login".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
         AgentProfile {
             id: AgentProfileId::new("goose"),
             name: "Goose".to_owned(),
             description: "Block's Goose, native ACP support.".to_owned(),
             command: "goose".to_owned(),
+            cli: None,
             args: vec!["acp".to_owned()],
             install_hint: "Download from https://github.com/block/goose/releases".to_owned(),
             url: "https://github.com/block/goose".to_owned(),
             login_hint: "goose configure".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
         AgentProfile {
             id: AgentProfileId::new("cursor"),
             name: "Cursor CLI".to_owned(),
             description: "Cursor's CLI agent, native ACP support.".to_owned(),
             command: "cursor-agent".to_owned(),
+            cli: None,
             args: vec!["acp".to_owned()],
             install_hint: "curl https://cursor.com/install -fsS | bash".to_owned(),
             url: "https://cursor.com/docs/cli/acp".to_owned(),
             login_hint: "cursor-agent login".to_owned(),
             env: Vec::new(),
-            default_mode: None,
+            default_config: Default::default(),
         },
     ];
     profiles.sort_by_key(|profile| profile.name.to_lowercase());
     profiles
 }
 
-/// Looks for an executable on `PATH`, plus a few directories that installers use
-/// but that are often missing from the `PATH` of a GUI app.
+#[cfg(agent_harness_backend)]
+fn detect(profile: &AgentProfile) -> AgentInstall {
+    if let Some(path) = profile.find_executable() {
+        AgentInstall::Ready(path)
+    } else if let Some(cli) = profile.cli.as_deref().and_then(find_executable) {
+        AgentInstall::NeedsCommand { cli }
+    } else {
+        AgentInstall::NotInstalled
+    }
+}
+
+/// Looks for an executable on `PATH`, plus a few directories that installers and Node.js
+/// version managers use but that are often missing from the `PATH` of a GUI app.
 #[cfg(agent_harness_backend)]
 pub fn find_executable(command: &str) -> Option<PathBuf> {
     let command = Path::new(command);
@@ -324,6 +363,11 @@ pub fn find_executable(command: &str) -> Option<PathBuf> {
         dirs.push(home.join(".opencode/bin"));
         dirs.push(home.join(".npm-global/bin"));
         dirs.push(home.join(".bun/bin"));
+        dirs.push(home.join(".volta/bin"));
+        dirs.push(home.join(".asdf/shims"));
+        dirs.push(home.join(".local/share/mise/shims"));
+        let nvm_dir = std::env::var_os("NVM_DIR").map_or_else(|| home.join(".nvm"), PathBuf::from);
+        dirs.extend(newest_nvm_node_bin(&nvm_dir));
     }
     dirs.push(PathBuf::from("/opt/homebrew/bin"));
     dirs.push(PathBuf::from("/usr/local/bin"));
@@ -347,6 +391,26 @@ pub fn find_executable(command: &str) -> Option<PathBuf> {
 }
 
 #[cfg(agent_harness_backend)]
+fn newest_nvm_node_bin(nvm_dir: &Path) -> Option<PathBuf> {
+    let versions = std::fs::read_dir(nvm_dir.join("versions/node")).ok()?;
+    versions
+        .filter_map(|entry| {
+            let path = entry.ok()?.path();
+            let version = node_version(path.file_name()?.to_str()?)?;
+            Some((version, path.join("bin")))
+        })
+        .max_by_key(|(version, _)| *version)
+        .map(|(_, bin)| bin)
+}
+
+#[cfg(agent_harness_backend)]
+fn node_version(dir_name: &str) -> Option<(u32, u32, u32)> {
+    let mut parts = dir_name.strip_prefix('v')?.split('.');
+    let mut next = || parts.next()?.parse().ok();
+    Some((next()?, next()?, next()?))
+}
+
+#[cfg(agent_harness_backend)]
 fn is_executable(path: &Path) -> bool {
     let Ok(metadata) = std::fs::metadata(path) else {
         return false;
@@ -361,5 +425,26 @@ fn is_executable(path: &Path) -> bool {
             metadata.permissions().mode() & 0o111 != 0
         }
         _ => true,
+    }
+}
+
+#[cfg(all(test, agent_harness_backend))]
+mod tests {
+    use super::{newest_nvm_node_bin, node_version};
+
+    #[test]
+    fn nvm_node_versions_compare_as_numbers() {
+        assert_eq!(node_version("v22.11.0"), Some((22, 11, 0)));
+        assert_eq!(node_version("system"), None);
+
+        let nvm_dir = tempfile::tempdir().expect("a temporary directory");
+        for version in ["v9.0.0", "v22.2.0", "v22.11.0", "not-a-version"] {
+            std::fs::create_dir_all(nvm_dir.path().join("versions/node").join(version))
+                .expect("a version directory");
+        }
+        assert_eq!(
+            newest_nvm_node_bin(nvm_dir.path()),
+            Some(nvm_dir.path().join("versions/node/v22.11.0/bin"))
+        );
     }
 }

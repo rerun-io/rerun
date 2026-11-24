@@ -24,12 +24,22 @@ const _: () = assert!(
     "Error type is too large. Try to reduce its size by boxing some of its variants.",
 );
 
+/// Largest byte chunk the `BufRead`-driven decoders push into the state machine at once.
+///
+/// A decoded message aliases the chunk it was read from, so this bounds how much memory a message
+/// that is kept alive can pin beyond its own bytes. Without it, reading from an in-memory slice
+/// would push the whole input as one chunk. Messages larger than this are gathered into their own
+/// buffer instead.
+///
+/// 1 MiB is above the size of all but blob-carrying messages, so nearly every message is a view,
+/// while the memory a single message can pin stays negligible next to any memory limit.
+const MAX_BYTE_CHUNK_LEN: usize = 1024 * 1024;
+
 // ---
 
 use re_build_info::CrateVersion;
 
-use crate::rrd::Decodable as _;
-use crate::{ApplicationIdInjector, MessageKind, ToApplication as _};
+use crate::{ApplicationIdInjector, ToApplication as _};
 
 /// Implemented for top-level types that can kickoff decoding.
 ///
@@ -84,22 +94,6 @@ impl DecoderEntrypoint for re_protos::log_msg::v1alpha1::log_msg::Msg {
         _app_id_injector: &mut impl ApplicationIdInjector,
         _patched_version: Option<CrateVersion<'static>>,
     ) -> Result<Option<Self>, crate::rrd::CodecError> {
-        let data = &data_excluding_headers;
-
-        Ok(Some(match message_kind {
-            MessageKind::SetStoreInfo => Self::SetStoreInfo(
-                re_protos::log_msg::v1alpha1::SetStoreInfo::from_rrd_bytes(data)?,
-            ),
-
-            MessageKind::ArrowMsg => Self::ArrowMsg(
-                re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(data)?,
-            ),
-
-            MessageKind::BlueprintActivationCommand => Self::BlueprintActivationCommand(
-                re_protos::log_msg::v1alpha1::BlueprintActivationCommand::from_rrd_bytes(data)?,
-            ),
-
-            MessageKind::End => return Ok(None),
-        }))
+        crate::rrd::decode_transport_msg(message_kind, data_excluding_headers)
     }
 }

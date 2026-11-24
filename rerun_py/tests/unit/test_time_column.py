@@ -139,3 +139,19 @@ def test_timestamp_column(
 ) -> None:
     column = rr.TimeColumn("timestamp", timestamp=timestamp)
     assert column.as_arrow_array() == expected
+
+
+def test_float_array_columns_round_to_nearest_nano() -> None:
+    # `1.001 * 1e9` is `1000999999.9999999`: truncating it would drop a nanosecond.
+    seconds = np.array([1.001, -1.001])
+    expected = [1_001_000_000, -1_001_000_000]
+    assert rr.TimeColumn("t", duration=seconds).as_arrow_array().cast(pa.int64()).to_pylist() == expected
+    assert rr.TimeColumn("t", timestamp=seconds).as_arrow_array().cast(pa.int64()).to_pylist() == expected
+
+
+def test_float32_array_columns_convert_exactly() -> None:
+    # `np.float32(1.001)` is exactly 1.00100004673… s; scaling it in float32 lands on 1001000064.
+    seconds = np.array([1.001], dtype=np.float32)
+    expected = [1_001_000_047]
+    assert rr.TimeColumn("t", duration=seconds).as_arrow_array().cast(pa.int64()).to_pylist() == expected
+    assert rr.TimeColumn("t", timestamp=seconds).as_arrow_array().cast(pa.int64()).to_pylist() == expected

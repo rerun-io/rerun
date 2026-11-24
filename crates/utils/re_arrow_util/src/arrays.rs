@@ -698,14 +698,13 @@ pub fn deep_slice_array<T: Array + From<ArrayData>>(array: &T, span: Span<usize>
 )]
 mod tests {
     use arrow::array::{
-        Array, ArrayRef, Float32Array, Int32Array, Int64Array, ListArray, RecordBatch, StringArray,
-        StructArray, UInt8Array, UnionArray,
+        Float32Array, Int32Array, Int64Array, RecordBatch, StringArray, StructArray, UInt8Array,
+        UnionArray,
     };
-    use arrow::buffer::{OffsetBuffer, ScalarBuffer};
-    use arrow::datatypes::{Field, UnionFields};
+    use arrow::buffer::ScalarBuffer;
+    use arrow::datatypes::UnionFields;
     use arrow::ipc::writer::StreamWriter;
     use std::fmt::Write as _;
-    use std::sync::Arc;
 
     use super::*;
 
@@ -757,7 +756,7 @@ mod tests {
         );
 
         // `Debug` must defer to `Display`, so `.unwrap()` panics with the readable message:
-        assert_eq!(format!("{err:?}"), err.to_string()); // NOLINT: this test asserts `Debug` defers to `Display`
+        assert_eq!(format!("{err:?}"), err.to_string());
 
         // Downcasting to the type we already have must succeed:
         assert!(array.try_downcast_array_ref::<Int32Array>().is_ok());

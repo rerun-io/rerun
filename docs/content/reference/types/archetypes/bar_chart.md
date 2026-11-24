@@ -24,7 +24,7 @@ The bar heights will be the provided values, and the x coordinates of the bars w
 
 ## API reference links
  * 🌊 [C++ API docs for `BarChart`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1BarChart.html)
- * 🐍 [Python API docs for `BarChart`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.BarChart)
+ * 🐍 [Python API docs for `BarChart`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.BarChart)
  * 🦀 [Rust API docs for `BarChart`](https://docs.rs/rerun/latest/rerun/archetypes/struct.BarChart.html)
 
 ## Example
@@ -38,6 +38,6 @@ snippet: archetypes/bar_chart
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/1200w.png">
-  <img src="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/full.png">
+  <img src="https://static.rerun.io/bar_chart/ba274527813ccb9049f6760d82f36c8da6a6f2ff/full.png" alt="Two bar chart views side by side: one with bars at default indices, one named bar_chart_custom_abscissa with bars at custom x positions">
 </picture>
 

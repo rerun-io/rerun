@@ -197,7 +197,11 @@ impl ArchetypeImporter {
     ) -> usize {
         let mut num_sent = 0;
         for chunk in chunks {
-            let data = ImportedData::Chunk(self.name(), store_id.clone(), chunk);
+            let data = ImportedData::Chunk {
+                importer_name: self.name(),
+                store_id: store_id.clone(),
+                chunk,
+            };
             if re_quota_channel::send_crossbeam(tx, data).is_err() {
                 break;
             }

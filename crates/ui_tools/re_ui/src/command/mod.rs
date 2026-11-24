@@ -22,7 +22,9 @@ pub fn consume_best_shortcut<Cmd: Copy>(
     // So we order the commands here so that the commands with `Shift` and `Alt` in them
     // are checked first.
     commands.sort_by_key(|(kb_shortcut, _cmd)| {
-        let num_shift_alts = kb_shortcut.modifiers.shift as i32 + kb_shortcut.modifiers.alt as i32;
+        let modifiers = kb_shortcut.modifiers;
+        let num_shift_alts = modifiers.contains(egui::Modifiers::SHIFT) as i32
+            + modifiers.contains(egui::Modifiers::ALT) as i32;
         -num_shift_alts // most first
     });
 
@@ -47,7 +49,7 @@ pub fn consume_best_shortcut<Cmd: Copy>(
 pub fn conflicts_with_text_editing(kb_shortcut: &KeyboardShortcut) -> bool {
     let modifiers = kb_shortcut.modifiers;
     kb_shortcut.conflicts_with_text_editing()
-        || ((modifiers.command || modifiers.ctrl || modifiers.mac_cmd)
+        || (modifiers.matches_any(egui::Modifiers::COMMAND)
             && matches!(kb_shortcut.logical_key, egui::Key::Z | egui::Key::Y))
 }
 

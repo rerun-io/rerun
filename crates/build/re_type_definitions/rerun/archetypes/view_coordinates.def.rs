@@ -14,7 +14,7 @@
 ///
 /// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///
-/// \example archetypes/view_coordinates_simple title="Set the default 3D view orientation" image="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png"
+/// \example archetypes/view_coordinates_simple title="Set the default 3D view orientation" image="https://static.rerun.io/viewcoordinates/0833f0dc8616a676b7b2c566f2a6f613363680c5/1200w.png" alt="3D view named world showing red, green, and blue axis lines meeting at the origin, oriented by the logged view coordinates"
 #[rerun::rerun_type]
 #[docs(category = "Transforms")]
 #[docs(view_types = "Spatial3DView")]

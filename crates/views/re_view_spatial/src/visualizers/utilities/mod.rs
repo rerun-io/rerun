@@ -6,8 +6,7 @@ mod textured_rect;
 mod transform_retrieval;
 
 pub use labels::{
-    LabeledBatch, UiLabel, UiLabelStyle, UiLabelTarget, process_labels, process_labels_2d,
-    process_labels_3d,
+    LabeledBatch, UiLabel, UiLabelStyle, UiLabelTarget, process_labels_2d, process_labels_3d,
 };
 pub use proc_mesh_vis::{ProcMeshBatch, ProcMeshDrawableBuilder};
 pub use spatial_view_visualizer::{SpatialViewVisualizerData, iter_spatial_data};

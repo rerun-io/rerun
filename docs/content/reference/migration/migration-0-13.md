@@ -2,6 +2,7 @@
 title: Migrating from 0.12 to 0.13
 order: 996
 hidden: true
+description: Breaking changes in Rerun 0.13 and how to update code written for 0.12
 ---
 
 ## `TimeSeriesScalar` deprecated in favor of `Scalar` & `SeriesLine`/`SeriesPoint`

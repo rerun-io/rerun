@@ -10,7 +10,7 @@
 /// The underlying data needs to be logged to the same entity-path using [`rerun::archetypes::Scalars`].
 /// Dimensionality of the scalar arrays logged at each time point is assumed to be the same over time.
 ///
-/// \example archetypes/series_points_style title="Point series" image="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png"
+/// \example archetypes/series_points_style title="Point series" image="https://static.rerun.io/series_point_style/82207a705da6c086b28ce161db1db9e8b12258b7/1200w.png" alt="Time series view named trig with sin(0.01t) drawn as large red circle markers and cos(0.01t) as small green crosses"
 #[rerun::rerun_type]
 #[docs(category = "Plotting")]
 #[docs(view_types = "TimeSeriesView")]

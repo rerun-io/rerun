@@ -42,7 +42,6 @@ impl Decoder for McapRecordingInfoDecoder {
 mod tests {
     use std::io;
 
-    use re_chunk::Chunk;
     use re_log_types::TimeType;
 
     use crate::DecoderRegistry;

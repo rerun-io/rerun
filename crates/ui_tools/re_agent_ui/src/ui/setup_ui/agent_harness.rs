@@ -6,7 +6,8 @@ use re_ui::text_edit::ReTextEdit;
 use re_ui::{UiExt as _, icons};
 
 use re_agent::{
-    AgentEntry, AgentKind, AgentProfileId, AgentSettings, McpServerConfig, ModelApiProvider,
+    AgentEntry, AgentInstall, AgentKind, AgentProfile, AgentProfileId, AgentSettings,
+    McpServerConfig, McpStdioServer, ModelApiProvider,
 };
 
 use super::{ApiKeySource, default_model_api, model_api_key_ui, tag_ui};
@@ -56,7 +57,12 @@ pub fn agent_choice_ui(
 }
 
 /// The working directory, environment, and MCP servers of an agent harness.
-pub fn options_ui(ui: &mut egui::Ui, settings: &mut AgentSettings) {
+/// `rerun_mcp_server` is the host's own MCP server, see [`re_agent::SessionContext::rerun_mcp_server`].
+pub fn options_ui(
+    ui: &mut egui::Ui,
+    settings: &mut AgentSettings,
+    rerun_mcp_server: Option<&McpStdioServer>,
+) {
     ui.label(RichText::new("Working directory").strong());
     let current_dir =
         std::env::current_dir().map_or_else(|_| String::new(), |dir| dir.display().to_string());
@@ -77,7 +83,12 @@ pub fn options_ui(ui: &mut egui::Ui, settings: &mut AgentSettings) {
     ui.weak("One NAME=value per line, set for the agent process.");
 
     ui.add_space(8.0);
-    mcp_servers_ui(ui, &mut settings.mcp_servers);
+    mcp_servers_ui(
+        ui,
+        rerun_mcp_server,
+        &mut settings.rerun_mcp_enabled,
+        &mut settings.mcp_servers,
+    );
 }
 
 /// A selectable card: a radio button with a title and a description.
@@ -124,10 +135,23 @@ fn choice_card_ui(
         .inner
 }
 
-/// The installed agents, with the others and a custom command behind a collapsing header.
+/// The agents found on this machine, with the others and a custom command behind a collapsing header.
 fn local_agents_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &mut [AgentEntry]) {
+    let window_focused = ui.input(|input| {
+        input
+            .events
+            .iter()
+            .any(|event| matches!(event, egui::Event::WindowFocused(true)))
+    });
+    if window_focused {
+        for agent in agents.iter_mut() {
+            agent.refresh();
+        }
+    }
+
+    let found = |agent: &&AgentEntry| agent.install != AgentInstall::NotInstalled;
     let mut picked = None;
-    for agent in agents.iter().filter(|agent| agent.executable.is_some()) {
+    for agent in agents.iter().filter(found) {
         let selected = agent.profile.id == settings.profile_id;
         if agent_row_ui(ui, agent, selected).clicked() {
             picked = Some(agent.profile.id.clone());
@@ -135,12 +159,18 @@ fn local_agents_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &mut
     }
 
     let custom_selected = settings.profile_id == AgentProfileId::CUSTOM;
-    let any_installed = agents.iter().any(|agent| agent.executable.is_some());
+    let missing_selected = agents.iter().any(|agent| {
+        agent.install == AgentInstall::NotInstalled && agent.profile.id == settings.profile_id
+    });
+    let any_found = agents.iter().any(|agent| found(&agent));
     ui.collapsing_header(
         "Other agents and custom command",
-        custom_selected || !any_installed,
+        custom_selected || missing_selected || !any_found,
         |ui| {
-            for agent in agents.iter().filter(|agent| agent.executable.is_none()) {
+            for agent in agents
+                .iter()
+                .filter(|agent| agent.install == AgentInstall::NotInstalled)
+            {
                 let selected = agent.profile.id == settings.profile_id;
                 if agent_row_ui(ui, agent, selected).clicked() {
                     picked = Some(agent.profile.id.clone());
@@ -166,34 +196,64 @@ fn local_agents_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, agents: &mut
     });
 }
 
-/// What picking the local card selects: the first installed agent, else a custom command.
+/// What picking the local card selects: the first agent that can start, else the first that
+/// needs setup, else a custom command.
 fn default_local_agent(agents: &[AgentEntry]) -> AgentProfileId {
-    agents
-        .iter()
-        .find(|agent| agent.executable.is_some())
-        .map_or(AgentProfileId::CUSTOM, |agent| agent.profile.id.clone())
+    let first = |wanted: fn(&AgentInstall) -> bool| {
+        agents
+            .iter()
+            .find(|agent| wanted(&agent.install))
+            .map(|agent| agent.profile.id.clone())
+    };
+    first(|install| matches!(install, AgentInstall::Ready(_)))
+        .or_else(|| first(|install| matches!(install, AgentInstall::NeedsCommand { .. })))
+        .unwrap_or(AgentProfileId::CUSTOM)
 }
 
 /// Returns the response of the radio button.
 fn agent_row_ui(ui: &mut egui::Ui, agent: &AgentEntry, selected: bool) -> egui::Response {
-    let AgentEntry {
-        profile,
-        executable,
-    } = agent;
+    let AgentEntry { profile, install } = agent;
 
-    ui.horizontal(|ui| {
-        let radio = ui
-            .add_enabled_ui(executable.is_some(), |ui| {
-                ui.re_radio(selected, &profile.name)
-            })
-            .inner
-            .on_disabled_hover_text("Not installed");
-        if let Some(path) = executable {
-            tag_ui(ui, "Installed").on_hover_text(path.display().to_string());
-        }
-        radio
-    })
-    .inner
+    let radio = ui
+        .horizontal(|ui| {
+            let radio = ui.re_radio(selected, &profile.name);
+            match install {
+                AgentInstall::Ready(path) => {
+                    tag_ui(ui, "Installed").on_hover_text(path.display().to_string());
+                }
+                AgentInstall::NeedsCommand { cli } => {
+                    tag_ui(ui, "Needs setup").on_hover_text(cli.display().to_string());
+                }
+                AgentInstall::NotInstalled => {}
+            }
+            radio
+        })
+        .inner;
+    let problem = match install {
+        AgentInstall::Ready(_) => None,
+        AgentInstall::NeedsCommand { .. } => Some(format!(
+            "{} is installed, but the panel starts it with {}, which was not found.",
+            profile.name, profile.command
+        )),
+        AgentInstall::NotInstalled => Some(format!("{} is not installed.", profile.name)),
+    };
+    if selected && let Some(problem) = problem {
+        ui.indent(&profile.id, |ui| setup_steps_ui(ui, profile, problem));
+    }
+    radio
+}
+
+fn setup_steps_ui(ui: &mut egui::Ui, profile: &AgentProfile, problem: String) {
+    egui::Frame::new()
+        .stroke(ui.visuals().widgets.noninteractive.bg_stroke)
+        .corner_radius(ui.tokens().normal_corner_radius())
+        .inner_margin(8)
+        .show(ui, |ui| {
+            ui.set_min_width(ui.available_width());
+            ui.label(problem);
+            ui.label(&profile.install_hint);
+            ui.re_hyperlink("Learn more", &profile.url, true);
+        });
 }
 
 /// Returns `true` if the radio button was clicked, or the command field focused or edited.
@@ -217,7 +277,12 @@ fn custom_agent_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, selected: bo
     radio_clicked || field_used
 }
 
-fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
+fn mcp_servers_ui(
+    ui: &mut egui::Ui,
+    rerun_mcp_server: Option<&McpStdioServer>,
+    rerun_mcp_enabled: &mut bool,
+    servers: &mut Vec<McpServerConfig>,
+) {
     egui::containers::Sides::new().show(
         ui,
         |ui| ui.label(RichText::new("MCP servers").strong()),
@@ -228,14 +293,40 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
                 .clicked()
             {
                 servers.push(McpServerConfig {
-                    name: "rerun".to_owned(),
-                    command_line: "rerun viewer-mcp".to_owned(),
+                    name: String::new(),
+                    command_line: String::new(),
                     enabled: true,
                 });
             }
         },
     );
-    ui.weak("Given to the agent when the session starts. `rerun viewer-mcp` lets it see and drive a running Rerun Viewer.");
+    ui.weak("Given to the agent when the session starts.");
+
+    if let Some(server) = rerun_mcp_server {
+        ui.horizontal(|ui| {
+            ui.set_min_height(re_ui::DesignTokens::list_item_height(
+                re_ui::ListItemDensity::Spacious,
+            ));
+            mcp_server_enabled_ui(ui, rerun_mcp_enabled);
+            // The executable's name rather than its full path, which can be long.
+            let executable = server.command.file_name().map_or_else(
+                || server.command.to_string_lossy(),
+                |name| name.to_string_lossy(),
+            );
+            let short_command = std::iter::chain(
+                std::iter::once(executable.as_ref()),
+                server.args.iter().map(String::as_str),
+            )
+            .collect::<Vec<_>>()
+            .join(" ");
+            ui.add(egui::Label::new(short_command).truncate())
+                .on_hover_text(format!(
+                    "`rerun mcp` is what lets the agent panel connect to this viewer and your \
+                     catalog servers.\n\n{}",
+                    server.command_line()
+                ));
+        });
+    }
 
     let mut remove = None;
     for (index, server) in servers.iter_mut().enumerate() {
@@ -245,18 +336,7 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
                 re_ui::ListItemDensity::Spacious,
             ));
 
-            let response = ui
-                .checkbox(&mut server.enabled, "")
-                .on_hover_text("Give this server to the agent");
-            let enabled = server.enabled;
-            response.widget_info(|| {
-                egui::WidgetInfo::selected(
-                    egui::Role::CheckBox,
-                    true,
-                    enabled,
-                    "Give this server to the agent",
-                )
-            });
+            mcp_server_enabled_ui(ui, &mut server.enabled);
             ui.add(
                 ReTextEdit::singleline(&mut server.name)
                     .hint_text("name")
@@ -284,4 +364,19 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
     if let Some(index) = remove {
         servers.remove(index);
     }
+}
+
+fn mcp_server_enabled_ui(ui: &mut egui::Ui, enabled: &mut bool) {
+    let response = ui
+        .checkbox(enabled, "")
+        .on_hover_text("Give this server to the agent");
+    let is_enabled = *enabled;
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(
+            egui::Role::CheckBox,
+            true,
+            is_enabled,
+            "Give this server to the agent",
+        )
+    });
 }

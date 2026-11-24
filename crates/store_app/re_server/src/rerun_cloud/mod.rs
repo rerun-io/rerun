@@ -38,14 +38,15 @@ use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
 use re_protos::common::v1alpha1::ext::{DatasetKind, SegmentId};
 use re_protos::headers::{RerunHeadersExtractorExt as _, resolve_entry_id};
 use re_protos::missing_field;
+use re_protos::protocol_level::{ClientLevelCheck, ProtocolLevel};
 use re_protos::{
     EntryName,
     cloud::v1alpha1::ext::{
-        self, CreateDatasetEntryRequest, CreateDatasetEntryResponse, CreateTableEntryRequest,
-        DataSource, EntryDetailsUpdate, QueryDatasetRequest, ReadDatasetEntryResponse,
-        ReadTableEntryResponse, TableInsertMode, UpdateDatasetEntryRequest,
-        UpdateDatasetEntryResponse, UpdateEntryRequest, UpdateEntryResponse,
-        UpdateTableEntryRequest, UpdateTableEntryResponse,
+        self, ApplyDatasetPolicyRequest, ApplyDatasetPolicyResponse, CreateDatasetEntryRequest,
+        CreateDatasetEntryResponse, CreateTableEntryRequest, DataSource, EntryDetailsUpdate,
+        QueryDatasetRequest, ReadDatasetEntryResponse, ReadTableEntryResponse, TableInsertMode,
+        UpdateDatasetEntryRequest, UpdateDatasetEntryResponse, UpdateEntryRequest,
+        UpdateEntryResponse, UpdateTableEntryRequest, UpdateTableEntryResponse,
     },
 };
 #[cfg(not(target_arch = "wasm32"))]
@@ -273,6 +274,7 @@ impl RerunCloudHandlerBuilder {
 pub struct RerunCloudHandler {
     #[cfg(not(target_arch = "wasm32"))]
     settings: RerunCloudHandlerSettings,
+
     #[cfg(not(target_arch = "wasm32"))]
     write_access_grants: Option<crate::routes::WriteAccessGrants>,
     build_info: re_build_info::BuildInfo,
@@ -457,7 +459,7 @@ impl RerunCloudHandler {
                             "memory:// URLs cannot be used as prefix data sources",
                         ));
                     }
-                    let path = source.storage_url.to_file_path().map_err(|_err| {
+                    let path = source.storage_url.to_file_path().map_err(|()| {
                         tonic::Status::invalid_argument(format!(
                             "getting file path from {:?}",
                             source.storage_url
@@ -769,6 +771,8 @@ impl RerunCloudService for RerunCloudHandler {
                 capabilities: Some(re_protos::cloud::v1alpha1::ServerCapabilities {
                     capabilities: crate::capability_names(),
                 }),
+                client_deprecation: None,
+                protocol_level: crate::PROTOCOL_LEVEL.as_u32(),
             },
         ))
     }
@@ -828,6 +832,16 @@ impl RerunCloudService for RerunCloudHandler {
     }
 
     // --- Catalog ---
+
+    async fn get_storage_locations(
+        &self,
+        _request: tonic::Request<re_protos::cloud::v1alpha1::GetStorageLocationsRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetStorageLocationsResponse>>
+    {
+        Err(tonic::Status::unimplemented(
+            "storage locations are not supported",
+        ))
+    }
 
     async fn find_entries(
         &self,
@@ -965,7 +979,7 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::ReadDatasetEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ReadDatasetEntryResponse>> {
         let store = self.store.read().await;
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         let dataset = store.dataset(entry_id)?;
 
         Ok(tonic::Response::new(
@@ -981,6 +995,10 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateDatasetEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateDatasetEntryResponse>>
     {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
         let request = UpdateDatasetEntryRequest::from_resolved(entry_id, request.into_inner())?;
 
@@ -999,10 +1017,8 @@ impl RerunCloudService for RerunCloudHandler {
         // datasets were introduced have none, so create the missing one on demand, and replace a
         // reference left dangling by a deleted asset dataset the same way.
         let dataset = store.dataset(request.id)?;
-        if dataset_details.policy.is_none() {
-            dataset_details.policy = dataset.dataset_details().policy.clone();
-        }
-        dataset_details.resolve_chunk_indexing_policy(ChunkIndexingPolicy::ALL);
+        // Only `ApplyDatasetPolicy` changes the policy.
+        dataset_details.policy = dataset.dataset_details().policy.clone();
         let stored_asset_dataset = dataset.dataset_details().asset_dataset;
         let dataset_kind = dataset.dataset_kind();
         let client_chosen_asset_dataset = dataset_details.asset_dataset.is_some()
@@ -1029,12 +1045,40 @@ impl RerunCloudService for RerunCloudHandler {
         ))
     }
 
+    async fn apply_dataset_policy(
+        &self,
+        request: tonic::Request<re_protos::cloud::v1alpha1::ApplyDatasetPolicyRequest>,
+    ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ApplyDatasetPolicyResponse>>
+    {
+        let mut store = self.store.write().await;
+        let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
+        let ApplyDatasetPolicyRequest { mut policy } = request.into_inner().try_into()?;
+        policy.resolve_chunk_indexing_policy(ChunkIndexingPolicy::ALL);
+
+        let dataset = store.dataset_mut(entry_id)?;
+        let mut dataset_details = dataset.dataset_details().clone();
+        dataset_details.policy = Some(policy);
+        dataset.set_dataset_details(dataset_details);
+
+        Ok(tonic::Response::new(
+            ApplyDatasetPolicyResponse {
+                dataset_entry: dataset.as_dataset_entry(),
+                task_ids: Vec::new(),
+            }
+            .into(),
+        ))
+    }
+
     async fn read_table_entry(
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ReadTableEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::ReadTableEntryResponse>> {
         let store = self.store.read().await;
 
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
 
         let table = store.table(id).ok_or_else(|| {
@@ -1053,6 +1097,10 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateTableEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateTableEntryResponse>> {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
         let request = UpdateTableEntryRequest::from_resolved(entry_id, request.into_inner())?;
 
@@ -1101,6 +1149,10 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::DeleteEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::DeleteEntryResponse>> {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
 
         self.store.write().await.delete_entry(entry_id)?;
@@ -1118,6 +1170,10 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::UpdateEntryRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::UpdateEntryResponse>> {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let resolved_id = resolve_entry_id(&request, request.get_ref().id.as_ref())?;
         let UpdateEntryRequest {
             id: entry_id,
@@ -1159,7 +1215,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetWriteAccessGrantResponse>>
     {
         let request: ext::GetWriteAccessGrantRequest = request.into_inner().try_into()?;
-        if request.location.is_some() {
+        if request.storage_location.is_some() {
             return Err(tonic::Status::invalid_argument(
                 "explicit storage locations are not supported",
             ));
@@ -1221,7 +1277,7 @@ impl RerunCloudService for RerunCloudHandler {
     {
         let mut store = self.store.write().await;
 
-        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
 
         let ext::RegisterWithDatasetRequest {
             data_sources,
@@ -1233,6 +1289,18 @@ impl RerunCloudService for RerunCloudHandler {
             return Err(tonic::Status::invalid_argument(
                 "no data sources to register",
             ));
+        }
+
+        // A segment id that differs from its store's recording id is misread by clients that
+        // attribute chunks to recording ids. Raised before registering, since a failed batch can
+        // still have added some of its sources.
+        if data_sources
+            .iter()
+            .any(|data_source| data_source.segment_id_override.is_some())
+        {
+            store
+                .dataset_mut(dataset_id)?
+                .raise_required_client_protocol_level(ProtocolLevel::CHUNK_SEGMENT_FROM_REQUEST);
         }
 
         let RegisterWithDatasetResult {
@@ -1267,7 +1335,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<Response<Self::UnregisterFromDatasetStream>> {
         let mut store = self.store.write().await;
 
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         request.get_ref().sanity_check()?;
 
         let dataset = store.dataset_mut(entry_id)?;
@@ -1312,7 +1380,7 @@ impl RerunCloudService for RerunCloudHandler {
         // when reading and writing to the same table
         let entry_id = {
             let store = self.store.read().await;
-            get_entry_id_from_headers(&store, &request)?
+            get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?
         };
 
         let mut request = request.into_inner();
@@ -1376,7 +1444,7 @@ impl RerunCloudService for RerunCloudHandler {
     {
         let store = self.store.read().await;
 
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         let dataset = store.dataset(entry_id)?;
         let record_batch = dataset.segment_table().await.map_err(|err| {
             tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
@@ -1406,7 +1474,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<Self::ScanSegmentTableStream>> {
         let (mut record_batch, request) = {
             let store = self.store.read().await;
-            let entry_id = get_entry_id_from_headers(&store, &request)?;
+            let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
             let dataset = store.dataset(entry_id)?;
             let record_batch = dataset.segment_table().await.map_err(|err| {
                 tonic::Status::internal(format!("Unable to read segment table: {err:#}"))
@@ -1443,7 +1511,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<Response<GetDatasetManifestSchemaResponse>> {
         let store = self.store.read().await;
 
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         let dataset = store.dataset(entry_id)?;
         let record_batch = dataset.dataset_manifest().await?;
 
@@ -1471,7 +1539,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<Response<Self::ScanDatasetManifestStream>> {
         let (mut record_batch, request) = {
             let store = self.store.read().await;
-            let entry_id = get_entry_id_from_headers(&store, &request)?;
+            let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
             let dataset = store.dataset(entry_id)?;
             let record_batch = dataset.dataset_manifest().await?;
             (record_batch, request.into_inner())
@@ -1506,7 +1574,7 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetDatasetSchemaRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetDatasetSchemaResponse>> {
         let store = self.store.read().await;
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
 
         let dataset = store.dataset(entry_id)?;
         let schema = dataset.schema().map_err(|err| {
@@ -1528,7 +1596,7 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<GetSchemasRequest>,
     ) -> tonic::Result<tonic::Response<Self::GetSchemasStream>> {
         let store = self.store.read().await;
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         let dataset = store.dataset(entry_id)?;
 
         let ext::GetSchemasRequest {
@@ -1564,7 +1632,11 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetRrdManifestRequest>,
     ) -> tonic::Result<tonic::Response<Self::GetRrdManifestStream>> {
         let store = self.store.read().await;
-        let entry_id = get_entry_id_from_headers(&store, &request)?;
+        let entry_id = get_entry_id_from_headers(
+            &store,
+            &request,
+            ClientLevelCheck::Enforce(request.get_ref().client_meta),
+        )?;
 
         let request = request.into_inner();
         let segment_id = request
@@ -1602,7 +1674,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<Self::GetAssetsForSegmentStream>> {
         let store = self.store.read().await;
 
-        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         let request = request.into_inner();
 
         let dataset = store.dataset(dataset_id)?;
@@ -1671,7 +1743,7 @@ impl RerunCloudService for RerunCloudHandler {
     ) -> tonic::Result<tonic::Response<Self::GetSegmentPropertiesStream>> {
         let store = self.store.read().await;
 
-        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         let request = request.into_inner();
 
         let dataset = store.dataset(dataset_id)?;
@@ -1717,7 +1789,7 @@ impl RerunCloudService for RerunCloudHandler {
     {
         let mut store = self.store.write().await;
 
-        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         let request = request.into_inner();
 
         let segment_id: SegmentId = request
@@ -1757,7 +1829,7 @@ impl RerunCloudService for RerunCloudHandler {
     {
         let mut store = self.store.write().await;
 
-        let dataset_id = get_entry_id_from_headers(&store, &request)?;
+        let dataset_id = get_entry_id_from_headers(&store, &request, ClientLevelCheck::Exempt)?;
         let request = request.into_inner();
 
         let dataset = store.dataset_mut(dataset_id)?;
@@ -1782,7 +1854,11 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::QueryDatasetRequest>,
     ) -> tonic::Result<tonic::Response<Self::QueryDatasetStream>> {
-        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
+        let entry_id = get_entry_id_from_headers(
+            &*self.store.read().await,
+            &request,
+            ClientLevelCheck::Enforce(request.get_ref().client_meta),
+        )?;
 
         let mut request: QueryDatasetRequest = request.into_inner().try_into()?;
 
@@ -1931,10 +2007,15 @@ impl RerunCloudService for RerunCloudHandler {
         mut request: tonic::Request<re_protos::cloud::v1alpha1::FindChunksRequest>,
     ) -> tonic::Result<tonic::Response<Self::FindChunksStream>> {
         // Validate the body before looking up the entry, keeping the headers for that lookup.
+        let client_meta = request.get_ref().client_meta;
         let find_request: ext::FindChunksRequest = std::mem::take(request.get_mut()).try_into()?;
         find_request.ensure_supported()?;
 
-        let entry_id = get_entry_id_from_headers(&*self.store.read().await, &request)?;
+        let entry_id = get_entry_id_from_headers(
+            &*self.store.read().await,
+            &request,
+            ClientLevelCheck::Enforce(client_meta),
+        )?;
 
         let stream = self.find_candidates(entry_id, find_request).await?;
 
@@ -2022,6 +2103,10 @@ impl RerunCloudService for RerunCloudHandler {
         request: tonic::Request<re_protos::cloud::v1alpha1::GetTableSchemaRequest>,
     ) -> tonic::Result<tonic::Response<re_protos::cloud::v1alpha1::GetTableSchemaResponse>> {
         let store = self.store.read().await;
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().table_id.as_ref())?;
 
         let table = store
@@ -2045,6 +2130,10 @@ impl RerunCloudService for RerunCloudHandler {
         &self,
         request: tonic::Request<re_protos::cloud::v1alpha1::ScanTableRequest>,
     ) -> tonic::Result<tonic::Response<Self::ScanTableStream>> {
+        #[expect(
+            deprecated,
+            reason = "body id fallback for clients that send no header"
+        )]
         let entry_id = resolve_entry_id(&request, request.get_ref().table_id.as_ref())?;
 
         let provider = {
@@ -2324,23 +2413,38 @@ fn check_merge_keys(
 }
 
 /// Retrieves the entry ID based on HTTP headers.
+/// Resolves the entry that the headers of a request name.
+///
+/// With [`ClientLevelCheck::Enforce`], the entry must be a dataset, and the request fails with
+/// `FailedPrecondition` when the client is below the protocol level that dataset requires.
 fn get_entry_id_from_headers<T>(
     store: &InMemoryStore,
     req: &tonic::Request<T>,
+    check: ClientLevelCheck,
 ) -> tonic::Result<EntryId> {
-    if let Some(entry_id) = req.entry_id()? {
-        Ok(entry_id)
+    let entry_id = if let Some(entry_id) = req.entry_id()? {
+        entry_id
     } else if let Some(dataset_name) = req.entry_name()? {
-        Ok(store.dataset_by_name(&dataset_name)?.id())
+        store.dataset_by_name(&dataset_name)?.id()
     } else {
         const HEADERS: &[&str] = &[
             re_protos::headers::RERUN_HTTP_HEADER_ENTRY_ID,
             re_protos::headers::RERUN_HTTP_HEADER_ENTRY_NAME,
         ];
-        Err(tonic::Status::invalid_argument(format!(
+        return Err(tonic::Status::invalid_argument(format!(
             "missing mandatory {HEADERS:?} HTTP headers"
-        )))
+        )));
+    };
+
+    match check {
+        ClientLevelCheck::Exempt => {}
+        ClientLevelCheck::Enforce(_) => store
+            .dataset(entry_id)?
+            .required_client_protocol_level()
+            .ensure_met_by(check, "this dataset")?,
     }
+
+    Ok(entry_id)
 }
 
 /// Streams `num_bytes` of pseudo-random (incompressible) bytes back to the client,

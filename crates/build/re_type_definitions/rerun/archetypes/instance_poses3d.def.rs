@@ -22,8 +22,8 @@
 /// Some visualizers like the mesh visualizer used for [`rerun::archetypes::Mesh3D`],
 /// will draw an object for every pose, a behavior also known as "instancing".
 ///
-/// \example archetypes/instance_poses3d_combined title="Regular & instance transforms in tandem" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png"
-/// \example archetypes/mesh3d_instancing !api title="3D mesh with instancing" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png"
+/// \example archetypes/instance_poses3d_combined title="Regular & instance transforms in tandem" image="https://static.rerun.io/leaf_transform3d/41674f0082d6de489f8a1cd1583f60f6b5820ddf/1200w.png" alt="Rerun Viewer 3D view showing a grid of small cyan points around a purple wireframe box, with the entity tree in the blueprint panel"
+/// \example archetypes/mesh3d_instancing !api title="3D mesh with instancing" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png" alt="3D view of a rainbow-colored pyramid mesh instanced four times inside a single magenta wireframe box"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]
 #[docs(view_types = "Spatial3DView, Spatial2DView: if logged above active projection")]

@@ -188,6 +188,7 @@ pub const ARROW_UP: Icon = icon_from_path!("../data/icons/arrow_up.svg");
 pub const ARROW_DOWN: Icon = icon_from_path!("../data/icons/arrow_down.svg");
 pub const COMBO_ARROW: Icon = icon_from_path!("../data/icons/combo_arrow.svg");
 pub const LOOP: Icon = icon_from_path!("../data/icons/loop.svg");
+pub const FAST_MODE: Icon = icon_from_path!("../data/icons/fast_mode.svg");
 pub const FILTER: Icon = icon_from_path!("../data/icons/filter.svg");
 
 pub const NOTIFICATION: Icon = icon_from_path!("../data/icons/notification.svg");
@@ -279,6 +280,8 @@ pub const DATASET: Icon = icon_from_path!("../data/icons/dataset.svg");
 pub const RECORDING: Icon = icon_from_path!("../data/icons/recording.svg");
 pub const OPEN_RECORDING: Icon = icon_from_path!("../data/icons/open_recording.svg");
 pub const BLUEPRINT: Icon = icon_from_path!("../data/icons/blueprint.svg");
+pub const LAYOUT: Icon = icon_from_path!("../data/icons/layout.svg");
+pub const STAR: Icon = icon_from_path!("../data/icons/star.svg");
 pub const ASSET: Icon = icon_from_path!("../data/icons/asset.svg");
 
 // These link icons have a blue arrow that wouldn't work with the usual tint we do for light/dark,

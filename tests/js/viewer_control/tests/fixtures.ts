@@ -24,9 +24,9 @@ export const test = base.extend<{ viewer: Page }>({
             if (!window.viewer?.ready) {
               return false;
             }
-            const state = await window.viewer.get_state();
+            const state = await window.viewer.getState();
             return (
-              state.active_store_id !== undefined &&
+              state.activeStoreId !== undefined &&
               0 < (state.recordings[0]?.timelines.length ?? 0) &&
               state.loading.length === 0 &&
               0 < state.views.length
@@ -49,7 +49,7 @@ export { expect };
  *
  * Fails if `call` rejects with anything else.
  */
-export async function error_code(page: Page, call: string): Promise<string> {
+export async function errorCode(page: Page, call: string): Promise<string> {
   return page.evaluate(async (call) => {
     const run = new Function("viewer", "rerun", `return (async () => (${call}))();`);
     try {

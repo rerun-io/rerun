@@ -37,7 +37,7 @@ class VideoTimestampExt:
             if seconds is not None:
                 if nanoseconds is not None:
                     raise ValueError("Cannot specify both `seconds` and `nanoseconds`.")
-                nanoseconds = int(seconds * 1e9 + 0.5)
+                nanoseconds = round(float(seconds) * 1e9)
             elif nanoseconds is None:
                 raise ValueError("Either `seconds` or `nanoseconds` must be specified.")
 
@@ -59,7 +59,7 @@ class VideoTimestampExt:
             Timestamp values in seconds since video start.
 
         """
-        return components.VideoTimestamp.nanoseconds(np.array(seconds) * 1e9)
+        return components.VideoTimestamp.nanoseconds(np.round(np.asarray(seconds, dtype=np.float64) * 1e9))
 
     @staticmethod
     def milliseconds(
@@ -74,7 +74,7 @@ class VideoTimestampExt:
             Timestamp values in milliseconds since video start.
 
         """
-        return components.VideoTimestamp.nanoseconds(np.array(milliseconds) * 1e6)
+        return components.VideoTimestamp.nanoseconds(np.round(np.asarray(milliseconds, dtype=np.float64) * 1e6))
 
     @staticmethod
     def nanoseconds(

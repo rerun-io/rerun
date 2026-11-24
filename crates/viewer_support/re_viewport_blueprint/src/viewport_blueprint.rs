@@ -140,14 +140,13 @@ impl ViewportBlueprint {
             .collect();
 
         // Auto layouting and auto view are only enabled if no blueprint has been provided by the user.
-        // Only enable auto-views if this is the app-default blueprint
-        let is_app_default_blueprint = blueprint_db
+        // Only enable auto-views if this is the heuristic blueprint
+        let is_heuristic_blueprint = blueprint_db
             .store_info()
-            .is_some_and(|ri| ri.is_app_default_blueprint());
+            .is_some_and(|ri| ri.is_heuristic_blueprint());
         let auto_layout =
-            AtomicBool::new(auto_layout.map_or(is_app_default_blueprint, |auto| *auto.0));
-        let auto_views =
-            AtomicBool::new(auto_views.map_or(is_app_default_blueprint, |auto| *auto.0));
+            AtomicBool::new(auto_layout.map_or(is_heuristic_blueprint, |auto| *auto.0));
+        let auto_views = AtomicBool::new(auto_views.map_or(is_heuristic_blueprint, |auto| *auto.0));
 
         let root_container = root_container.unwrap_or_else(|| {
             let new_root_id = ContainerId::hashed_from_str("placeholder_root_container");
@@ -642,7 +641,10 @@ impl ViewportBlueprint {
             return;
         }
 
-        self.enqueue_command(ViewportCommand::SetContainerKind(container_id, kind));
+        self.enqueue_command(ViewportCommand::SetContainerKind {
+            container_id,
+            container_kind: kind,
+        });
     }
 
     /// Simplify the container tree with the provided options.
@@ -651,10 +653,10 @@ impl ViewportBlueprint {
         container_id: &ContainerId,
         simplification_options: SimplificationOptions,
     ) {
-        self.enqueue_command(ViewportCommand::SimplifyContainer(
-            *container_id,
-            simplification_options,
-        ));
+        self.enqueue_command(ViewportCommand::SimplifyContainer {
+            container_id: *container_id,
+            options: simplification_options,
+        });
     }
 
     /// Make all children of the given container the same size.
@@ -1052,7 +1054,10 @@ fn apply_viewport_command(
             }
         }
 
-        ViewportCommand::SetContainerKind(container_id, container_kind) => {
+        ViewportCommand::SetContainerKind {
+            container_id,
+            container_kind,
+        } => {
             if let Some(egui_tiles::Tile::Container(container)) = bp
                 .tree
                 .tiles
@@ -1108,7 +1113,10 @@ fn apply_viewport_command(
             }
         }
 
-        ViewportCommand::SimplifyContainer(container_id, options) => {
+        ViewportCommand::SimplifyContainer {
+            container_id,
+            options,
+        } => {
             re_log::trace!("Simplifying tree with options: {options:?}");
             let tile_id = blueprint_id_to_tile_id(&container_id);
             bp.tree.simplify_children_of_tile(tile_id, &options);

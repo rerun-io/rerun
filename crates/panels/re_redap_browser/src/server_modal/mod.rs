@@ -13,10 +13,10 @@ use re_viewer_context::{
 };
 
 use crate::context::Context;
-use crate::servers::{AddServerCommand, Command};
+use crate::servers::{AddServerCommand, Command, ServerLifetime};
 
 mod login_flow;
-pub use login_flow::{LoginFlow, LoginFlowResult};
+pub use login_flow::{LoginError, LoginFlow, LoginFlowResult};
 
 /// Should the modal edit an existing server or add a new one?
 pub enum ServerModalMode {
@@ -46,7 +46,7 @@ enum AuthKind {
 /// Authentication state for the server modal.
 struct Authentication {
     kind: AuthKind,
-    error: Option<String>,
+    error: Option<LoginError>,
 }
 
 impl Authentication {
@@ -329,28 +329,24 @@ impl ServerModal {
                     port: self.port,
                 });
 
+                // `None` if the credentials are not ready; `auth_ui` shows why.
                 let credentials = match &self.auth.kind {
                     AuthKind::Token(token) => Jwt::try_from(token.clone())
-                        .map(re_redap_client::Credentials::Token)
-                        .map(Some)
-                        .map_err(|_err| ()),
-                    AuthKind::RerunAccount(_) => {
-                        if app_ctx.logged_in() {
-                            Ok(Some(re_redap_client::Credentials::Stored))
-                        } else {
-                            Err(())
-                        }
-                    }
-                    AuthKind::None => Ok(None),
+                        .ok()
+                        .map(|jwt| Some(re_redap_client::Credentials::Token(jwt))),
+                    AuthKind::RerunAccount(_) => app_ctx
+                        .logged_in()
+                        .then_some(Some(re_redap_client::Credentials::Stored)),
+                    AuthKind::None => Some(None),
                 };
 
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let enabled = origin.is_ok() && credentials.is_ok();
+                    let enabled = origin.is_ok() && credentials.is_some();
                     let save_button_response = ui
                         .add_enabled(enabled, egui::Button::new(save_text).primary().size_small());
 
                     if let Ok(origin) = origin
-                        && let Ok(credentials) = credentials
+                        && let Some(credentials) = credentials
                         && (save_button_response.clicked()
                             || ui.input(|i| i.key_pressed(egui::Key::Enter)))
                     {
@@ -389,6 +385,7 @@ impl ServerModal {
                             Command::AddServer(AddServerCommand {
                                 origin: origin.clone(),
                                 credentials,
+                                lifetime: ServerLifetime::Remembered,
                                 on_add: Some(on_add),
                             }),
                         )
@@ -453,7 +450,7 @@ fn auth_ui(ui: &mut egui::Ui, ctx: &AppContext<'_>, auth: &mut Authentication) {
             }
 
             if let Some(error) = &auth.error {
-                ui.error_label(error.clone());
+                ui.error_label(error.to_string());
             }
         }
 

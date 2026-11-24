@@ -22,11 +22,56 @@
 
 # These archetypes will ignore the associated snippets in the snippet index.
 [snippets_ref.archetypes.opt_out]
+"BarChart" = ["howto/visualization/blueprint_overview"] # Only used to populate the example data
 "DataframeQuery" = ["howto/visualization/save_blueprint"]
+"GeoPoints" = ["howto/visualization/blueprint_overview"] # Only used to populate the example data
 "GridMap" = ["archetypes/mesh3d_image"] # snippet only references `GridMap` in the docstring
 "Pinhole" = ["archetypes/mesh3d_image"] # snippet only references `Pinhole` in the docstring
-"Tensor" = ["howto/dataloader"] # snippet uses `torch.Tensor`, not Rerun's `Tensor` archetype
-
+"Points2D" = ["howto/visualization/blueprint_overview"] # Only used to populate the example data
+"Points3D" = [
+  "concepts/query-and-transform/catalog_object_model",
+  "howto/get_data_out",
+  "howto/visualization/blueprint_overview",
+  "howto/visualization/blueprint_view_options",
+  "howto/visualization/playback_blueprint",
+] # Only used to populate the example data
+"Scalars" = [
+  "howto/spans",
+  "concepts/how-does-rerun-work/use-catalog",
+  "concepts/query-and-transform/catalog_object_model",
+  "howto/get_data_out",
+  "howto/dataloader_performance",
+  "howto/visualization/blueprint_overview",
+  "howto/visualization/blueprint_stocks",
+  "howto/visualization/blueprint_view_options",
+] # Only used to populate the example data
+"SeriesLines" = [
+  "howto/visualization/blueprint_overview",
+  "howto/visualization/blueprint_stocks",
+  "howto/visualization/blueprint_view_options",
+] # Only used to style the example plots
+"SeriesPoints" = [
+  "howto/visualization/blueprint_overview",
+  "howto/visualization/blueprint_stocks",
+  "howto/visualization/blueprint_view_options",
+] # Only used to style the example plots
+"Tensor" = [
+  "howto/dataloader",
+  "howto/dataloader_performance",
+  "howto/visualization/blueprint_overview",
+] # snippets use `torch.Tensor`, or only log a tensor to populate the example data
+"TextDocument" = [
+  "howto/visualization/blueprint_overview",
+  "howto/visualization/blueprint_stocks",
+  "howto/visualization/blueprint_view_options",
+] # Only used to populate the example data
+"TextLog" = [
+  "howto/get_data_out",
+  "howto/multiprocessing_logging",
+  "howto/visualization/blueprint_overview",
+  "howto/visualization/blueprint_view_options",
+] # Only used to populate the example data
+"VideoStream" = ["howto/dataloader_performance"] # Only used to populate the example data
 # These components will ignore the associated snippets in the snippet index.
 [snippets_ref.components.opt_out]
 "ShowLabels" = ["tutorials/data_out"]
@@ -40,14 +85,18 @@ features = [
   [
     "Catalog server",
     [
+      "concepts/how-does-rerun-work/use-catalog",
+      "concepts/query-and-transform/catalog_object_model",
       "howto/catalog_tables",
       "howto/dataframe_operations",
       "howto/dataframe_performance",
       "howto/dataset_resampling",
+      "howto/get_data_out",
       "howto/lerobot_export",
       "howto/query_images",
       "howto/query_videos",
       "howto/query_video_keyframes",
+      "howto/spans",
       "howto/sub_dataset",
       "howto/time_alignment",
       "howto/view_operations",
@@ -129,6 +178,8 @@ features = [
     [
       "howto/screenshot",
       "howto/send_table",
+      "howto/visualization/viewer_client_control",
+      "howto/visualization/viewer_client_screenshot",
     ],
   ],
 ]
@@ -141,6 +192,9 @@ backwards_check = [
   "archetypes/video_stream_synthetic", # Video encodes differently on CI :(
   "concepts/build_chunk", # Python-only experimental API; no reference RRD checked in
   "concepts/build_chunk_from_record_batch", # Python-only experimental API; builds and prints chunks, generates no rrd
+  "howto/log_csv_and_hdf5", # Python-only experimental `Hdf5Reader`; output rrd may shift across versions
+  "howto/lerobot_to_rrd", # Writes one rrd per episode with `write_rrd`, not a recording stream
+  "howto/query_rrd_file", # Rust-only; queries an rrd it writes itself, generates no comparable rrd
   "concepts/explicit_recording", # The file path differs locally and on CI
   "concepts/send_dataframe", # Python-only API; no reference RRD checked in
   "concepts/chunk_processing", # Python-only experimental API; output rrd may shift across versions
@@ -149,12 +203,16 @@ backwards_check = [
   "concepts/rrd_format", # Python-only experimental API; output rrd may shift across versions
   "howto/optimize_chunks", # Compacts a video-bearing MCAP; chunk layout may shift across optimizer versions
   # Catalog server examples don't generate rrds
+  "concepts/how-does-rerun-work/use-catalog",
+  "concepts/query-and-transform/catalog_object_model",
   "concepts/query-and-transform/dataframe_query_example",
   "concepts/query-and-transform/segment_properties",
   "howto/catalog_tables",
   "howto/dataframe_operations",
   "howto/dataframe_performance",
   "howto/dataloader",
+  "howto/dataloader_performance",
+  "howto/get_data_out",
   "tutorials/getting_started",
   "howto/dataset_resampling",
   "howto/layers",
@@ -162,6 +220,7 @@ backwards_check = [
   "howto/query_images",
   "howto/query_videos",
   "howto/query_video_keyframes",
+  "howto/spans",
   "howto/sub_dataset",
   "howto/time_alignment",
   "howto/query-and-transform/segment_url",
@@ -216,6 +275,14 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/how-does-rerun-work/use-catalog" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"concepts/query-and-transform/catalog_object_model" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "concepts/rrd_format" = [ # `rerun.experimental` is Python-only
   "cpp",
   "rust",
@@ -258,6 +325,10 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"concepts/transform_frames" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "concepts/viscomp-base" = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
@@ -270,7 +341,12 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"concepts/how-does-rerun-work" = [ # Uses a non-standard logging workflow
+"concepts/how-does-rerun-work/log-to-grpc" = [ # Logs to a gRPC server in an endless loop
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/how-does-rerun-work/log-to-rrd" = [ # Logs to a file in an endless loop
   "py",
   "cpp",
   "rust",
@@ -296,12 +372,54 @@ backwards_check = [
   "cpp",
   "rust",
 ]
+"howto/blueprint_grid" = [
+  "py", # Not implemented
+  "cpp", # Not implemented
+]
 "howto/check_connection_status" = [
   "py", # TODO(#2353): Doesn't exist
   "cpp", # TODO(#2353): Doesn't exist
   "rust", # Runs indefinitely.
 ]
+"howto/clears" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/component_mapping" = [
+  "cpp", # Not implemented
+]
+"howto/dataloader_performance" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/get_data_out" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/lerobot_to_rrd" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/log_csv_and_hdf5" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/multiple_recordings" = [
+  "py", # Several recording streams overwrite the forced test save file; it would spawn a real Viewer otherwise
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/multiprocessing_logging" = [
+  "py", # Several recording streams overwrite the forced test save file; it would spawn a real Viewer otherwise
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/pcm_audio" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/query_rrd_file" = [
+  "py", # Not implemented
   "cpp", # Not implemented
 ]
 "howto/state_remapping" = [
@@ -329,6 +447,10 @@ backwards_check = [
   "rust", # Not implemented
 ]
 "howto/layers" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/spans" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -409,7 +531,41 @@ backwards_check = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
+"howto/urdf_utilities" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
 "howto/visible_series" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/visualization/blueprint_overview" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/visualization/blueprint_stocks" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/visualization/blueprint_view_options" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/visualization/playback_blueprint" = [
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/visualization/viewer_client_control" = [
+  "py", # Requires a running Viewer
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"howto/visualization/viewer_client_screenshot" = [
+  "py", # Requires a running Viewer
+  "cpp", # Not implemented
+  "rust", # Not implemented
+]
+"tutorials/remap_to_archetype" = [
   "cpp", # Not implemented
   "rust", # Not implemented
 ]
@@ -577,14 +733,6 @@ backwards_check = [
   "cpp", # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
-"concepts/viscomp-visualizer-override-multiple" = [
-  "cpp", # Blueprint API doesn't exist for C++/Rust
-  "rust", # Blueprint API doesn't exist for C++/Rust
-]
-"concepts/viscomp-visualizer-override" = [
-  "cpp", # Blueprint API doesn't exist for C++/Rust
-  "rust", # Blueprint API doesn't exist for C++/Rust
-]
 quick_start = [ # These examples don't have exactly the same implementation.
   "cpp",
   "py",
@@ -697,6 +845,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
   "py",
   "rust",
 ]
+"howto/spans" = [ # Catalog server examples don't generate rrds
+  "cpp",
+  "py",
+  "rust",
+]
 "howto/sub_dataset" = [ # Cloud examples don't generate rrds
   "cpp",
   "py",
@@ -756,7 +909,6 @@ quick_start = [ # These examples don't have exactly the same implementation.
 "archetypes/asset_audio_simple" = ["$config_dir/../../tests/assets/audio/toreador_song.aac"]
 "views/audio" = ["$config_dir/../../tests/assets/audio/toreador_song.aac"]
 "archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
-"archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/mesh/cube.glb"]
 "archetypes/encoded_depth_image" = ["$config_dir/../../tests/assets/encoded_depth_image.rvl"]
 "archetypes/video_auto_frames" = [
   "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",

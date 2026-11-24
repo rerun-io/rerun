@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use pyo3::exceptions::PyRuntimeError;
 use pyo3::prelude::*;
+use re_sdk::external::re_importer::ModelFormat;
 
 /// Container for a Python exception that can be sent across threads
 /// and later re-raised at the PyO3 boundary.
@@ -76,8 +77,8 @@ pub enum ChunkPipelineError {
     #[error("Parquet error: {reason}")]
     Parquet { reason: String },
 
-    #[error("URDF error: {reason}")]
-    Urdf { reason: String },
+    #[error("{format} error: {reason}")]
+    RobotModel { format: ModelFormat, reason: String },
 
     #[error("Failed to add chunk to store: {reason}")]
     ChunkStoreInsert { reason: String },
@@ -118,7 +119,7 @@ impl From<ChunkPipelineError> for pyo3::PyErr {
             | ChunkPipelineError::Hdf5 { .. }
             | ChunkPipelineError::LeRobot { .. }
             | ChunkPipelineError::Parquet { .. }
-            | ChunkPipelineError::Urdf { .. }
+            | ChunkPipelineError::RobotModel { .. }
             | ChunkPipelineError::ChunkStoreInsert { .. }
             | ChunkPipelineError::Lenses { .. }
             | ChunkPipelineError::IndexedLoad { .. }

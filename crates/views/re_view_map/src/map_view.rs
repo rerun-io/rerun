@@ -1,5 +1,3 @@
-use std::mem::size_of;
-
 use egui::{Modifiers, NumExt as _, Rect, Response};
 use re_data_ui::{DataUi as _, item_ui};
 use re_entity_db::InstancePathHash;
@@ -12,9 +10,8 @@ use re_ui::{Help, IconText, icons, list_item};
 use re_viewer_context::{
     DataResultInteractionAddress, IdentifiedViewSystem as _, Item, StoreViewContext, SystemCommand,
     SystemCommandSender as _, SystemExecutionOutput, UiLayout, ViewClass, ViewClassExt as _,
-    ViewClassLayoutPriority, ViewClassRegistryError, ViewHighlights, ViewQuery,
-    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
-    ViewSystemRegistrator, ViewerContext, gpu_bridge,
+    ViewClassRegistryError, ViewHighlights, ViewQuery, ViewSpawnHeuristics, ViewState,
+    ViewStateExt as _, ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, gpu_bridge,
 };
 use re_viewport_blueprint::ViewProperty;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
@@ -167,10 +164,6 @@ impl ViewClass for MapView {
         Some(1.0)
     }
 
-    fn layout_priority(&self) -> ViewClassLayoutPriority {
-        ViewClassLayoutPriority::default()
-    }
-
     fn supports_visible_time_range(&self) -> bool {
         true
     }
@@ -254,6 +247,7 @@ impl ViewClass for MapView {
             span.zoom_for_screen_size(
                 (ui.available_size() - egui::vec2(15.0, 15.0)).at_least(egui::Vec2::ZERO),
             )
+            .map(|zoom| zoom.min(16.0))
         });
         let zoom_level = blueprint_zoom_level.or(default_zoom_level).unwrap_or(16.0);
 

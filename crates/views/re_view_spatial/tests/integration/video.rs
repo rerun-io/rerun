@@ -509,3 +509,62 @@ fn test_video_stream_codec_vp9() {
 fn test_video_stream_codec_av1() {
     test_video(VideoType::VideoStream, &VideoCodec::AV1);
 }
+
+/// A pinhole without a resolution falls back to the resolution of a video stream logged at the
+/// same entity path.
+#[test]
+fn test_pinhole_resolution_fallback_from_video_stream() {
+    let mut test_context = TestContext::new_with_view_class::<re_view_spatial::SpatialView3D>();
+    let timeline = test_context
+        .active_timeline()
+        .expect("should have an active timeline");
+
+    let video_path = video_test_file_mp4(&VideoCodec::H264, true);
+    let video_asset = AssetVideo::from_file_path(&video_path).unwrap();
+    let blob_bytes =
+        encodings::Blob::serialized_blob_as_slice(video_asset.blob.as_ref().unwrap()).unwrap();
+    let video_data_description = VideoDataDescription::load_from_bytes(
+        blob_bytes,
+        MediaType::mp4().as_str(),
+        video_path.to_str().unwrap(),
+    )
+    .unwrap();
+    let avcc = video_data_description
+        .encoding_details
+        .as_ref()
+        .and_then(|e| e.stsd.as_ref())
+        .and_then(|stsd| match &stsd.contents {
+            re_mp4::StsdBoxContent::Avc1(avc1) => Some(avc1),
+            _ => None,
+        })
+        .expect("AVCC box should be present for H264 mp4");
+
+    // The first sample is a keyframe, which carries the SPS with the resolution.
+    let mut sample_bytes = Vec::new();
+    re_video::write_avc_chunk_to_nalu_stream(
+        avcc,
+        &mut sample_bytes,
+        &video_data_description.samples[0]
+            .sample()
+            .unwrap()
+            .get(&VideoSliceSource(blob_bytes), 0)
+            .unwrap(),
+        &mut re_video::AnnexBStreamState::default(),
+    )
+    .unwrap();
+    test_context.log_entity("camera", |builder| {
+        builder.with_archetype(
+            RowId::new(),
+            [(timeline, 0)],
+            &VideoStream::new(components::VideoCodec::H264).with_sample(sample_bytes),
+        )
+    });
+
+    let resolution = test_context.run_once_in_egui_central_panel(|ctx, _ui| {
+        re_viewer_context::resolution_of_image_at(ctx, &ctx.current_query(), &"camera".into())
+    });
+    assert_eq!(
+        resolution,
+        Some(components::Resolution::from([1920.0, 1080.0]))
+    );
+}

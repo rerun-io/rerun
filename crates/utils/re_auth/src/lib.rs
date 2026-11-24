@@ -62,6 +62,17 @@ pub mod oauth;
 #[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
 pub mod callback_server;
 
+/// Where Rerun keeps its configuration on this machine, e.g. the stored login.
+///
+/// On macOS, the viewer keeps its own state (`app.ron`) in this same directory. On Linux and
+/// Windows, the viewer's state is in the data directory instead.
+///
+/// `None` when there is no home directory to find it in.
+#[cfg(all(feature = "oauth", not(target_arch = "wasm32")))]
+pub fn rerun_config_dir() -> Option<std::path::PathBuf> {
+    directories::ProjectDirs::from("", "", "rerun").map(|dirs| dirs.config_dir().to_owned())
+}
+
 pub use claims::{Claims, RedapClaims};
 #[cfg(not(target_arch = "wasm32"))]
 pub use error::Error;

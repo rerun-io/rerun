@@ -916,7 +916,7 @@ impl TestContext {
                         handled = false;
                     }
                 }
-                SystemCommand::AppendToStore(store_id, chunks) => {
+                SystemCommand::AppendToStore { store_id, chunks } => {
                     let mut store_hub = self
                         .store_hub
                         .try_lock()
@@ -932,7 +932,10 @@ impl TestContext {
                     egui_ctx.request_repaint();
                 }
 
-                SystemCommand::DropEntity(store_id, entity_path) => {
+                SystemCommand::DropEntity {
+                    store_id,
+                    entity_path,
+                } => {
                     let mut store_hub = self
                         .store_hub
                         .try_lock()
@@ -990,11 +993,14 @@ impl TestContext {
                 | SystemCommand::ResetViewer
                 | SystemCommand::SetRoute(_)
                 | SystemCommand::OpenSettings
+                | SystemCommand::TriggerPrompt { .. }
                 | SystemCommand::OpenChunkStoreBrowser { .. }
                 | SystemCommand::ResetRoute
                 | SystemCommand::ReturnFromLoading
                 | SystemCommand::ClearActiveBlueprint
                 | SystemCommand::ClearActiveBlueprintAndEnableHeuristics
+                | SystemCommand::ActivateHeuristicBlueprint(_)
+                | SystemCommand::ResetActiveBlueprint
                 | SystemCommand::AddRedapServer { .. }
                 | SystemCommand::ExpandFallbackBlueprintPanel
                 | SystemCommand::RefreshRedapServer(_)
@@ -1006,6 +1012,7 @@ impl TestContext {
                 | SystemCommand::Table(_)
                 | SystemCommand::EnsureTableBlueprint(_)
                 | SystemCommand::EnsureRecordingBlueprint(_)
+                | SystemCommand::ActivateDatasetBlueprint { .. }
                 | SystemCommand::UndoBlueprint { .. }
                 | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllEntries
@@ -1030,7 +1037,6 @@ impl TestContext {
     }
 
     pub fn test_help_view(help: impl Fn(OperatingSystem) -> Help) {
-        use egui::os::OperatingSystem;
         let mut snapshot_results = egui_kittest::SnapshotResults::new();
         for os in [OperatingSystem::Mac, OperatingSystem::Windows] {
             let mut harness = egui_kittest::Harness::builder()
@@ -1103,7 +1109,6 @@ impl TestContext {
 
 #[cfg(test)]
 mod test {
-    use re_entity_db::InstancePath;
     use re_viewer_context::Item;
 
     use super::*;

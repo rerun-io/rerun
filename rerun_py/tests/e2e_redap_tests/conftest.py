@@ -67,6 +67,13 @@ def pytest_addoption(parser: pytest.Parser) -> None:
         "Choices: 'local' (default), 'dpf-docker' (skip local_only), "
         "'dpf-stack' (skip local_only), 'all' (skip nothing).",
     )
+    # TODO(RR-6353): Remove --storage-location-fixture when CustomProviders is deprecated.
+    parser.addoption(
+        "--storage-location-fixture",
+        action="store_true",
+        default=False,
+        help="Test discovery against the services/e2e-tests/storage-keychain fixture mounted on the Hub server.",
+    )
     parser.addoption(
         "--cloud",
         action="store",
@@ -92,6 +99,11 @@ def pytest_configure(config: pytest.Config) -> None:
     config.addinivalue_line(
         "markers",
         "aws_only: mark test as requiring AWS (e.g., uses S3 buckets directly)",
+    )
+
+    config.addinivalue_line(
+        "markers",
+        "hub_only: skip when running against the local OSS server (the 'local' profile)",
     )
 
     config.addinivalue_line(
@@ -129,6 +141,12 @@ def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item
         for item in items:
             if "local_only" in item.keywords:
                 item.add_marker(skip_marker)
+
+    if profile_name == "local":
+        skip_hub_only = pytest.mark.skip(reason="Hub-only test skipped against the OSS server")
+        for item in items:
+            if "hub_only" in item.keywords:
+                item.add_marker(skip_hub_only)
 
     if profile_name == "dpf-docker":
         skip_uploads = pytest.mark.skip(reason="write access grants are not configured in Docker")

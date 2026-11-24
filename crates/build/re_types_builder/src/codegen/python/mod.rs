@@ -2339,6 +2339,18 @@ fn fixed_size_array_scalar_dtype(typ: &Type) -> Option<(&'static str, usize)> {
     np_dtype_from_type(elem).map(|np_dtype| (np_dtype, depth))
 }
 
+/// A type whose arrow serialization we cannot generate code for.
+#[derive(Debug, thiserror::Error)]
+enum UnsupportedArrowSerialization {
+    #[error("We lack codegen for arrow-serialization of general structs")]
+    GeneralStruct,
+
+    #[error(
+        "We lack codegen for arrow-serialization of unions containing lists. Can't handle type {field_fqname}"
+    )]
+    UnionWithList { field_fqname: String },
+}
+
 /// Only implemented for some cases.
 fn quote_arrow_serialization(
     reporter: &Reporter,
@@ -2346,7 +2358,7 @@ fn quote_arrow_serialization(
     obj: &Object,
     type_registry: &TypeRegistry,
     ext_class: &ExtensionClass,
-) -> Result<String, String> {
+) -> Result<String, UnsupportedArrowSerialization> {
     let Object { name, .. } = obj;
 
     match obj.class {
@@ -2506,9 +2518,7 @@ fn quote_arrow_serialization(
                     | Type::Binary
                     | Type::FixedSizeList { .. }
                     | Type::List { .. } => {
-                        return Err(
-                            "We lack codegen for arrow-serialization of general structs".to_owned()
-                        );
+                        return Err(UnsupportedArrowSerialization::GeneralStruct);
                     }
                     Type::Object {
                         fqname: field_fqname,
@@ -2623,10 +2633,9 @@ return pa.array(pa_data, type=data_type)
                         format!("pa.array({variant_kind_list}, type={datatype})")
                     }
                     Type::FixedSizeList { .. } | Type::List { .. } => {
-                        return Err(format!(
-                            "We lack codegen for arrow-serialization of unions containing lists. Can't handle type {}",
-                            field.fqname
-                        ));
+                        return Err(UnsupportedArrowSerialization::UnionWithList {
+                            field_fqname: field.fqname.clone(),
+                        });
                     }
                 };
                 child_list_push.push_indented(1, format!("{variant_list_to_pa_array},"), 1);

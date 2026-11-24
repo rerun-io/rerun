@@ -118,7 +118,7 @@ impl LogReceiverSet {
 
         let oper = sel.select();
         let index = oper.index();
-        oper.recv(rx[index].inner()).map_err(|_err| RecvError)
+        oper.recv(rx[index].inner())
     }
 
     /// Returns immediately if there is nothing to receive.

@@ -12,7 +12,7 @@
 /// i.e. each triangle is shaded with its own face normal.
 /// To render an asset unlit instead, give it all-zero vertex normals.
 ///
-/// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png"
+/// \example archetypes/asset3d_simple title="Simple 3D asset" image="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/1200w.png" alt="3D view of a textured mesh asset: a wooden post with a lantern hanging from its crossbeam"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]
 #[docs(view_types = "Spatial3DView, Spatial2DView: if logged above active projection")]

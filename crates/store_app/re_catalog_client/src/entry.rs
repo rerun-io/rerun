@@ -2,7 +2,8 @@
 
 use re_log_types::{EntryId, EntryName};
 use re_protos::cloud::v1alpha1::ext::{
-    DatasetDetails, DatasetEntry, DatasetPolicy, EntryDetails, EntryDetailsUpdate,
+    ApplyDatasetPolicyResponse, DatasetDetails, DatasetEntry, DatasetPolicy, EntryDetails,
+    EntryDetailsUpdate,
 };
 use re_protos::cloud::v1alpha1::{EntryFilter, EntryKind};
 use re_redap_client::{ApiError, ApiErrorKind, ApiResult, ConnectionClient};
@@ -58,6 +59,18 @@ impl CatalogClient {
         self.client()
             .await?
             .update_dataset_entry(entry_id, details)
+            .await
+    }
+
+    /// Set the policies of a dataset and start applying them to the registered data.
+    pub async fn apply_dataset_policy(
+        &self,
+        entry_id: EntryId,
+        policy: DatasetPolicy,
+    ) -> ApiResult<ApplyDatasetPolicyResponse> {
+        self.client()
+            .await?
+            .apply_dataset_policy(entry_id, policy)
             .await
     }
 

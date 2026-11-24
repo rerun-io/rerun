@@ -179,7 +179,7 @@ fn scaled_rgb_image(rgba: &egui::ColorImage, max_size: Option<u32>) -> Option<im
     let rgba_image = image::RgbaImage::from_vec(
         rgba.width() as _,
         rgba.height() as _,
-        bytemuck::pod_collect_to_vec(&rgba.pixels),
+        bytemuck::pod_collect_to_vec(rgba.pixels()),
     )?;
 
     let mut image = image::DynamicImage::ImageRgba8(rgba_image);

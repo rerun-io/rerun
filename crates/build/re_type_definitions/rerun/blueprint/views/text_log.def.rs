@@ -3,8 +3,9 @@
 
 /// A view of a text log, for use with [`rerun::archetypes::TextLog`].
 ///
-/// \example views/text_log title="Use a blueprint to show a TextLogView." image="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1200w.png"
+/// \example views/text_log title="Use a blueprint to show a TextLogView." image="https://static.rerun.io/text_log/457ab91ec42a481bacae4146c0fc01eee397bb86/1200w.png" alt="Text log view listing INFO and WARN messages with log_tick, log_time, time, entity path, level and body columns"
 #[rerun::rerun_type]
+#[docs(keywords = "text, log, severity, logging")]
 #[rerun(view_identifier = "TextLog")]
 #[rerun(state = "unstable")]
 pub struct TextLogView {

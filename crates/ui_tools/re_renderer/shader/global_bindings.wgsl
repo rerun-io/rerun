@@ -1,4 +1,7 @@
 struct FrameUniformBuffer {
+    /// Copy this into a local before you read a column from it.
+    /// Safari can't compile a column read straight from a uniform `mat4x3f` ("no member named 'xyz' in 'PackedVec3<float>'").
+    /// See <https://bugs.webkit.org/show_bug.cgi?id=320443>.
     view_from_world: mat4x3f,
     projection_from_view: mat4x4f,
     projection_from_world: mat4x4f,

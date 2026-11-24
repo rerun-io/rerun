@@ -38,19 +38,19 @@ name = "Rerun.io"
 [project.optional-dependencies]
 tests = [
   "av>=14.2.0", # PyAV, for demuxing mp4 in VideoStream tests
-  "inline-snapshot==0.31.1",
+  "inline-snapshot==0.36.2",
   "opencv-python>4.6",
   "pandas>=2",
-  "polars==1.36.1",
-  "pytest==9.0.3",
-  "semver>=3.0,<3.1",
-  "syrupy==5.0.0",
-  "tomli==2.0.1",
+  "polars==2.1.0",
+  "pytest==9.2.0",
+  "semver>=3.0,<3.2",
+  "syrupy==7.0.0",
+  "tomli==2.5.0",
   "torch>=2.5", # Needs numpy 2 support
   "torchvision", # Imported at top of `rerun.experimental.dataloader.decoders`, so needed to import the dataloader module at all
   "datafusion==54.0.0",
 ]
-notebook = ["rerun-notebook==0.43.0-alpha.1+dev"]
+notebook = ["rerun-notebook==0.44.0-alpha.1+dev"]
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
 catalog = [
   "datafusion==54.0.0",
@@ -68,7 +68,7 @@ tracing = ["opentelemetry-api", "opentelemetry-sdk", "opentelemetry-exporter-otl
 # Note: We avoid self-referential extras like "rerun-sdk[notebook]" because they cause
 # uv to fetch rerun-sdk from PyPI when the local package isn't built yet.
 # TODO(RR-3786): when pyarrow is fixed, we should remove the pandas dependency
-all = ["datafusion==54.0.0", "pandas>=2", "rerun-notebook==0.43.0-alpha.1+dev"]
+all = ["datafusion==54.0.0", "pandas>=2", "rerun-notebook==0.44.0-alpha.1+dev"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
@@ -113,7 +113,6 @@ lint.ignore = [
   # TODO(ab): fix 'em nonetheless!
   "ANN001",
   "ANN202",
-  "ANN401",
 
   # Conflicts with the formatter, as per ruff itself
   "COM812",
@@ -215,6 +214,10 @@ lint.unfixable = [
 [tool.ruff.lint.pylint]
 max-positional-args = 3
 
+[tool.ruff.lint.flake8-annotations]
+# `*args: Any, **kwargs: Any` forwards arguments to a callee that checks their types.
+allow-star-arg-any = true
+
 [tool.ruff.lint.per-file-ignores]
 "*" = ["RUF012"] # TODO(emilk): consider enabling this
 
@@ -223,6 +226,7 @@ max-positional-args = 3
 "tests/*" = [
   # We don't care about nice APIs in our tests:
   "PLR0917",
+  "ANN401", # Explicit `Any`
   # Test fixtures, not a security surface:
   "S301", # `pickle` round-trip fixtures
   "S608", # SQL built from literals in the e2e catalog tests

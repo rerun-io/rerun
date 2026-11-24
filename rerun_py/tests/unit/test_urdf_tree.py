@@ -9,6 +9,8 @@ import rerun as rr
 import rerun.urdf as rru
 from rerun.chunk import Chunk, DeriveLens, LazyChunkStream, RrdReader, Selector, StreamingReader
 
+from .kinematics_helpers import assert_quat_equivalent, assert_translation_expected
+
 REPO_ROOT = Path(__file__).resolve().parents[3]
 URDF_PATH = REPO_ROOT / "examples" / "rust" / "animated_urdf" / "data" / "so100.urdf"
 
@@ -120,30 +122,66 @@ def test_urdf_tree_no_frame_prefix() -> None:
     assert tree.frame_prefix is None
 
 
+@pytest.mark.parametrize(
+    ("prefix", "expected_prefix"),
+    [
+        ("world/robot", "/world/robot"),
+        ("/world/robot/", "/world/robot"),
+        ("robot", "/robot"),
+        ("", ""),
+        (r"world\/robot", r"/world\/robot"),
+    ],
+)
+def test_urdf_tree_entity_path_prefix(prefix: str, expected_prefix: str) -> None:
+    tree = rru.UrdfTree.from_file_path(URDF_PATH, entity_path_prefix=prefix)
+    expected_root = f"{expected_prefix}/so_arm100"
+    expected_visual = f"{expected_root}/visual_geometries/shoulder/visual_0"
+    expected_collision = f"{expected_root}/collision_geometries/mesh/shoulder/collision_0"
+
+    assert expected_visual in tree.get_visual_geometry_paths("shoulder")
+    assert expected_collision in tree.get_collision_geometry_paths("shoulder")
+    entity_paths = {chunk.entity_path for chunk in tree.stream().to_chunks()}
+    assert {expected_root, expected_visual, expected_collision, "/tf_static"} <= entity_paths
+
+
+def test_urdf_tree_prefix_matches_log_file_from_path(tmp_path: Path) -> None:
+    prefix = "world/robot"
+    tree = rru.UrdfTree.from_file_path(URDF_PATH, entity_path_prefix=prefix)
+    tree_paths = {chunk.entity_path for chunk in tree.stream().to_chunks()}
+    rrd_path = tmp_path / "urdf.rrd"
+
+    with rr.RecordingStream("rerun_example_urdf_prefix_test", make_default=False, make_thread_default=False) as rec:
+        rec.save(rrd_path)
+        rr.log_file_from_path(URDF_PATH, entity_path_prefix=prefix, static=True, recording=rec)
+
+    logged_paths = set(RrdReader(rrd_path).stream().collect().schema().entity_paths())
+    assert tree_paths == logged_paths
+
+
 def test_urdf_tree_log() -> None:
     rec = rr.RecordingStream("rerun_example_test_urdf_tree_log", make_default=False, make_thread_default=False)
     rec.memory_recording()
 
     tree = rru.UrdfTree.from_file_path(URDF_PATH)
-    tree.log_urdf_to_recording(rec)
+    tree.log_to_recording(rec)
 
     # Also test with frame_prefix
     tree_prefixed = rru.UrdfTree.from_file_path(URDF_PATH, frame_prefix="left/")
-    tree_prefixed.log_urdf_to_recording(rec)
+    tree_prefixed.log_to_recording(rec)
 
 
 def test_urdf_tree_custom_static_transform_entity_path(tmp_path: Path) -> None:
     rrd_path = tmp_path / "urdf_static_transforms.rrd"
 
     with rr.RecordingStream(
-        "test_urdf_tree_custom_static_transform_entity_path",
+        "rerun_example_urdf_tree_custom_static_transform_entity_path",
         make_default=False,
         make_thread_default=False,
     ) as rec:
         rec.save(rrd_path)
 
         tree = rru.UrdfTree.from_file_path(URDF_PATH, static_transform_entity_path="custom_tf_static")
-        tree.log_urdf_to_recording(rec)
+        tree.log_to_recording(rec)
 
     paths = RrdReader(rrd_path).stream().collect().schema().entity_paths()
 
@@ -281,19 +319,6 @@ def test_urdf_transform_batches_in_lens_pipeline() -> None:
         [f"{frame_prefix}{joint2.child_link}"],
         [f"{frame_prefix}{joint1.child_link}"],
     ]
-
-
-def assert_quat_equivalent(actual: rr.components.RotationQuatBatch, expected: list[float]) -> None:
-    actual_values = actual.pa_array.to_pylist()[0]
-    dot = sum(a * b for a, b in zip(actual_values, expected, strict=False))
-    if dot < 0.0:
-        expected = [-value for value in expected]
-    assert actual_values == pytest.approx(expected)
-
-
-def assert_translation_expected(actual: rr.components.Translation3DBatch, expected: tuple[float, float, float]) -> None:
-    actual_values = actual.pa_array.to_pylist()[0]
-    assert actual_values == pytest.approx(expected)
 
 
 def _euler_to_quat(roll: float, pitch: float, yaw: float) -> list[float]:

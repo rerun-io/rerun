@@ -58,28 +58,63 @@ impl MergeCommand {
 
 // ---
 
+/// A size argument is not a valid byte count.
+#[derive(Debug, thiserror::Error)]
+enum ParseSizeError {
+    #[error("invalid size {0:?}; expected a value with a unit suffix, e.g. `2MiB`, `1GB`, `1024B`")]
+    Unrecognized(String),
+
+    #[error("size {size:?} must be non-negative: {source}")]
+    Negative {
+        size: String,
+        source: std::num::TryFromIntError,
+    },
+}
+
 /// Parse a human-readable size string (e.g. `2MiB`, `512KiB`, `1GB`) into a byte count.
 ///
 /// Accepts both binary (`KiB`/`MiB`/`GiB`/`TiB`) and decimal (`kB`/`MB`/`GB`/`TB`) units,
 /// as well as a plain `B` suffix (e.g. `1024B`).
-fn parse_size(s: &str) -> Result<u64, String> {
-    let bytes = re_format::parse_bytes(s).ok_or_else(|| {
-        format!(
-            "invalid size {s:?}; expected a value with a unit suffix, e.g. `2MiB`, `1GB`, `1024B`"
-        )
-    })?;
-    u64::try_from(bytes).map_err(|err| format!("size {s:?} must be non-negative: {err}"))
+fn parse_size(s: &str) -> Result<u64, ParseSizeError> {
+    let bytes =
+        re_format::parse_bytes(s).ok_or_else(|| ParseSizeError::Unrecognized(s.to_owned()))?;
+    u64::try_from(bytes).map_err(|source| ParseSizeError::Negative {
+        size: s.to_owned(),
+        source,
+    })
 }
 
 // ---
 
-#[derive(Debug, Clone, Copy, clap::ValueEnum)]
+#[derive(Debug, Clone, Copy)]
 pub enum ProfileArg {
-    /// Small chunks tuned for the live Viewer workflow.
     Live,
-
-    /// Larger chunks tuned for object-store-backed query and streaming.
     ObjectStore,
+}
+
+/// Implemented by hand (not derived) so the help text can show each profile's limits.
+impl clap::ValueEnum for ProfileArg {
+    /// Must list every variant: one left out here can't be parsed or shown in `--help`.
+    fn value_variants<'a>() -> &'a [Self] {
+        &[Self::Live, Self::ObjectStore]
+    }
+
+    fn to_possible_value(&self) -> Option<clap::builder::PossibleValue> {
+        let (name, purpose) = match self {
+            Self::Live => ("live", "Small chunks tuned for the live Viewer workflow"),
+            Self::ObjectStore => (
+                "object-store",
+                "Larger chunks tuned for object-store-backed query and streaming",
+            ),
+        };
+        let profile = self.to_profile();
+        let help = format!(
+            "{purpose} (at most {} rows and {} per chunk)",
+            re_format::format_uint(profile.chunk_max_rows),
+            re_format::format_bytes(profile.chunk_max_bytes as f64),
+        );
+        Some(clap::builder::PossibleValue::new(name).help(help))
+    }
 }
 
 impl ProfileArg {

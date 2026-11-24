@@ -6,9 +6,10 @@ use arrow::datatypes::Schema as ArrowSchema;
 use re_log_types::{EntryId, EntryIdOrName};
 use re_protos::EntryName;
 use re_protos::cloud::v1alpha1::ext::{
-    CreateDatasetEntryResponse, DataSource, DatasetDetails, DatasetEntry, DatasetPolicy,
-    ReadDatasetEntryResponse, RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor,
-    UnregisterFromDatasetRequest, UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
+    ApplyDatasetPolicyRequest, ApplyDatasetPolicyResponse, CreateDatasetEntryResponse, DataSource,
+    DatasetDetails, DatasetEntry, DatasetPolicy, ReadDatasetEntryResponse,
+    RegisterWithDatasetRequest, RegisterWithDatasetTaskDescriptor, UnregisterFromDatasetRequest,
+    UpdateDatasetEntryRequest, UpdateDatasetEntryResponse,
 };
 use re_protos::cloud::v1alpha1::{
     CreateDatasetEntryRequest, DatasetQueryScope, GetDatasetManifestSchemaRequest,
@@ -185,6 +186,34 @@ where
         })?;
 
         Ok(response.dataset_entry)
+    }
+
+    /// Set the policies of a dataset and start applying them to the registered data.
+    ///
+    /// Returns the updated entry and the tasks that apply the policies.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn apply_dataset_policy(
+        &mut self,
+        entry_id: EntryId,
+        policy: DatasetPolicy,
+    ) -> ApiResult<ApplyDatasetPolicyResponse> {
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .apply_dataset_policy(
+                    tonic::Request::new(ApplyDatasetPolicyRequest { policy }.into())
+                        .with_entry_id(entry_id),
+                )
+                .await
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/ApplyDatasetPolicy"))?,
+        );
+        inner.try_into().map_err(|err| {
+            ApiError::deserialization_with_source(
+                &self.origin,
+                trace_id,
+                err,
+                "failed parsing /ApplyDatasetPolicy response",
+            )
+        })
     }
 
     //TODO(ab): accept entry name

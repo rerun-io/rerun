@@ -214,11 +214,11 @@ message PythonVersion {
 
 // Information about the Rust SDK that created the recording.
 message CrateInfo {
-  // Version of the Rust compiler used to compile the SDK.
-  string rustc_version = 1;
+  reserved 1;
+  reserved "rustc_version";
 
-  // Version of LLVM used by the Rust compiler.
-  string llvm_version = 2;
+  reserved 2;
+  reserved "llvm_version";
 }
 
 // A recording which came from a file.

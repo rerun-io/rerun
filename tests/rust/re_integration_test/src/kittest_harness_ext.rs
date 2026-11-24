@@ -14,7 +14,6 @@ use re_sdk::{
 };
 use re_viewer::external::re_chunk::{ChunkBuilder, LatestAtQuery};
 use re_viewer::external::re_entity_db::EntityDb;
-use re_viewer::external::re_sdk_types;
 use re_viewer::external::re_viewer_context::{self, AppContext, ViewerContext, blueprint_timeline};
 use re_viewer::viewer_test_utils::AppTestingExt as _;
 use re_viewer::{SystemCommand, SystemCommandSender as _};
@@ -552,7 +551,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn save_recording_to_file(&mut self, path: impl AsRef<std::path::Path>) {
         let mut file = std::fs::File::create(&path)
-            .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
+            .unwrap_or_else(|err| panic!("Failed to create file at {:?}: {err}", path.as_ref()));
 
         let app = self.state_mut();
         let recording_id = app
@@ -577,7 +576,7 @@ impl<'h> HarnessExt<'h> for egui_kittest::Harness<'h, re_viewer::App> {
 
     fn save_blueprint_to_file(&mut self, path: impl AsRef<std::path::Path>) {
         let mut file = std::fs::File::create(&path)
-            .unwrap_or_else(|e| panic!("Failed to create file at {:?}: {}", path.as_ref(), e));
+            .unwrap_or_else(|err| panic!("Failed to create file at {:?}: {err}", path.as_ref()));
 
         let app = self.state_mut();
         let route = app.route().clone();

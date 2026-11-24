@@ -95,7 +95,7 @@ pub enum StagingError {
 impl CatalogClient {
     /// Stages `source` in the catalog's storage under `key` and returns its credential-free URL
     /// after the upload succeeds.
-    // TODO(RR-6055): Accept object_store_config in the staging options.
+    // TODO(RR-6055): Negotiate server support before accepting storage_location in staging options.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn stage(
         &self,
@@ -120,8 +120,8 @@ impl CatalogClient {
         let source_size_bytes = source.size().await?;
         let request = GetWriteAccessGrantRequest {
             key,
-            // TODO(RR-6055): Forward the selected object_store_config in the grant request.
-            location: None,
+            // TODO(RR-6055): Negotiate server support before sending an explicit storage alias.
+            storage_location: None,
             size_bytes: Some(source_size_bytes),
             supported_upload_methods: upload_methods,
             signing: UrlSigning::Signed,

@@ -3,7 +3,7 @@
 use std::path::PathBuf;
 
 use super::{AgentEntry, AgentHarnessConfig, AgentProfileId, McpStdioServer, find_executable};
-use crate::settings::{AgentLaunchError, AgentSettings, DEFAULT_MODEL_PREFERENCES, SessionContext};
+use crate::settings::{AgentLaunchError, AgentSettings, SessionContext};
 
 impl AgentSettings {
     /// Resolves these settings into an agent subprocess that can be spawned.
@@ -12,36 +12,38 @@ impl AgentSettings {
         agents: &[AgentEntry],
         context: &SessionContext,
     ) -> Result<AgentHarnessConfig, AgentLaunchError> {
-        let (command, args, env, default_mode) = if self.profile_id == AgentProfileId::CUSTOM {
-            let mut parts = shell_words::split(&self.custom_command_line)
-                .map_err(|err| AgentLaunchError::InvalidCommandLine { err })?;
-            let env = take_leading_env_vars(&mut parts);
-            if parts.is_empty() {
-                return Err(AgentLaunchError::EmptyCommandLine);
-            }
-            let command = parts.remove(0);
-            (command, parts, env, None)
-        } else {
-            let agent = agents
-                .iter()
-                .find(|agent| agent.profile.id == self.profile_id)
-                .ok_or_else(|| AgentLaunchError::UnknownProfile {
-                    profile_id: self.profile_id.clone(),
-                })?;
-            let profile = &agent.profile;
-            (
-                profile.command.clone(),
-                profile.args.clone(),
-                profile.env.clone(),
-                profile.default_mode.clone(),
-            )
-        };
-
-        let mut env = env;
-        env.extend(parse_env_vars(&self.env_vars)?);
+        let (command, args, profile_env, mut preferences) =
+            if self.profile_id == AgentProfileId::CUSTOM {
+                let mut parts = shell_words::split(&self.custom_command_line)
+                    .map_err(|err| AgentLaunchError::InvalidCommandLine { err })?;
+                let env = take_leading_env_vars(&mut parts);
+                if parts.is_empty() {
+                    return Err(AgentLaunchError::EmptyCommandLine);
+                }
+                let command = parts.remove(0);
+                (command, parts, env, crate::AgentPreferences::default())
+            } else {
+                let agent = agents
+                    .iter()
+                    .find(|agent| agent.profile.id == self.profile_id)
+                    .ok_or_else(|| AgentLaunchError::UnknownProfile {
+                        profile_id: self.profile_id.clone(),
+                    })?;
+                let profile = &agent.profile;
+                (
+                    profile.command.clone(),
+                    profile.args.clone(),
+                    profile.env.clone(),
+                    profile.default_config.clone(),
+                )
+            };
 
         // Resolve to an absolute path so that agents installed outside the app's PATH still work.
         let command = find_executable(&command).unwrap_or_else(|| PathBuf::from(&command));
+
+        let mut env: Vec<(String, String)> = path_with_dir_of(&command).into_iter().collect();
+        env.extend(profile_env);
+        env.extend(parse_env_vars(&self.env_vars)?);
 
         let cwd = if !self.cwd.trim().is_empty() {
             PathBuf::from(self.cwd.trim())
@@ -54,7 +56,12 @@ impl AgentSettings {
             return Err(AgentLaunchError::MissingWorkingDirectory { cwd });
         }
 
-        let mut mcp_servers = Vec::new();
+        let mut mcp_servers: Vec<McpStdioServer> = context
+            .rerun_mcp_server
+            .iter()
+            .filter(|_| self.rerun_mcp_enabled)
+            .cloned()
+            .collect();
         for server in self.mcp_servers.iter().filter(|s| s.enabled) {
             let mut parts = shell_words::split(&server.command_line).map_err(|err| {
                 AgentLaunchError::InvalidMcpCommandLine {
@@ -74,6 +81,11 @@ impl AgentSettings {
             });
         }
 
+        if let Some(saved) = self.preferences(&self.profile_id) {
+            preferences
+                .config_options
+                .extend(saved.config_options.clone());
+        }
         Ok(AgentHarnessConfig {
             command,
             args,
@@ -84,12 +96,9 @@ impl AgentSettings {
             mcp_servers,
             log_protocol: self.log_protocol,
             preamble: context.agent_harness_preamble.clone(),
-            model_preferences: DEFAULT_MODEL_PREFERENCES
-                .iter()
-                .map(|&model| model.to_owned())
-                .collect(),
-            preferred_model: self.preferred_models.get(&self.profile_id).cloned(),
-            mode_preferences: std::iter::chain(self.preferred_mode.clone(), default_mode).collect(),
+            model_preselect: context.model_preselect,
+            preferences,
+            session_to_load: None,
         })
     }
 }
@@ -143,12 +152,30 @@ fn take_leading_env_vars(parts: &mut Vec<String>) -> Vec<(String, String)> {
     env
 }
 
+fn path_with_dir_of(command: &std::path::Path) -> Option<(String, String)> {
+    let dir = command.parent().filter(|dir| dir.is_absolute())?;
+    let current = std::env::var_os("PATH").unwrap_or_default();
+    let dirs = std::iter::chain([dir.to_path_buf()], std::env::split_paths(&current));
+    let path = std::env::join_paths(dirs).ok()?.into_string().ok()?;
+    Some(("PATH".to_owned(), path))
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
 
-    use super::{parse_env_vars, take_leading_env_vars};
+    use super::{parse_env_vars, path_with_dir_of, take_leading_env_vars};
     use crate::{AgentProfileId, AgentSettings, SessionContext};
+
+    #[test]
+    fn the_agent_path_starts_with_the_directory_of_its_command() {
+        let node = tempfile::tempdir().expect("a temporary directory");
+        let dir = node.path();
+        let (name, path) = path_with_dir_of(&dir.join("npx")).expect("an absolute command");
+        assert_eq!(name, "PATH");
+        assert_eq!(std::env::split_paths(&path).next().as_deref(), Some(dir));
+        assert_eq!(path_with_dir_of(std::path::Path::new("npx")), None);
+    }
 
     #[test]
     fn the_host_picks_the_working_directory_only_as_a_default() {
@@ -184,6 +211,41 @@ mod tests {
         // Neither source may name a directory that does not exist.
         assert!(cwd(&here.join("nope").display().to_string(), None).is_none());
         assert!(cwd("", Some(&here.join("nope").display().to_string())).is_none());
+    }
+
+    #[test]
+    fn the_host_s_own_mcp_server_comes_first_unless_turned_off() {
+        let rerun = crate::McpStdioServer {
+            name: "rerun".to_owned(),
+            command: PathBuf::from("/bin/rerun"),
+            args: vec!["mcp".to_owned()],
+        };
+        let context = SessionContext {
+            rerun_mcp_server: Some(rerun.clone()),
+            ..Default::default()
+        };
+        let names = |rerun_mcp_enabled: bool| {
+            let settings = AgentSettings {
+                profile_id: AgentProfileId::CUSTOM,
+                custom_command_line: "agent".to_owned(),
+                mcp_servers: vec![crate::McpServerConfig::new(
+                    "mine",
+                    std::path::Path::new("/bin/mine"),
+                    &[] as &[&str],
+                )],
+                rerun_mcp_enabled,
+                ..Default::default()
+            };
+            settings
+                .agent_harness_config(&[], &context)
+                .expect("config")
+                .mcp_servers
+                .into_iter()
+                .map(|server| server.name)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(true), ["rerun", "mine"]);
+        assert_eq!(names(false), ["mine"]);
     }
 
     #[test]

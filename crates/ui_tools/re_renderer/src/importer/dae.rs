@@ -204,10 +204,10 @@ fn import_geometry(
     for triangles in all_triangles {
         let vertex_importer: VertexImporter<'_> = vertices
             .importer(maps)
-            .map_err(|_err| DaeImportError::NoTriangles)?;
+            .map_err(|()| DaeImportError::NoTriangles)?;
         let dae_importer: DaeImporter<'_> = triangles
             .importer(maps, vertex_importer)
-            .map_err(|_err| DaeImportError::NoTriangles)?;
+            .map_err(|()| DaeImportError::NoTriangles)?;
 
         let prim_data = triangles
             .data

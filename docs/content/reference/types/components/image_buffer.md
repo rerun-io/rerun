@@ -5,7 +5,7 @@ title: "ImageBuffer"
 
 A buffer that is known to store image data.
 
-To interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).
+To interpret the contents of this buffer, see [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).
 
 ## Rerun encoding
 [`Blob`](../encodings/blob.md)
@@ -18,7 +18,7 @@ List(non-null UInt8)
 
 ## API reference links
  * 🌊 [C++ API docs for `ImageBuffer`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ImageBuffer.html)
- * 🐍 [Python API docs for `ImageBuffer`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ImageBuffer)
+ * 🐍 [Python API docs for `ImageBuffer`](https://ref.rerun.io/docs/python/stable/components#rerun.components.ImageBuffer)
  * 🦀 [Rust API docs for `ImageBuffer`](https://docs.rs/rerun/latest/rerun/components/struct.ImageBuffer.html)
 
 

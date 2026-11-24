@@ -584,6 +584,7 @@ impl RrdManifestIndex {
         };
 
         fetcher.fetch(budget, options.max_fetch_stage)?;
+        fetcher.protect_in_transit(budget, options.max_fetch_stage)?;
 
         let res = fetcher.finish(load_chunks)?;
 
@@ -611,8 +612,8 @@ impl RrdManifestIndex {
     ///
     /// Subtracts already loaded physical chunks from the memory budget.
     ///
-    /// Then call [`ChunkFetcher::fetch`] to actually fetch chunks,
-    /// and [`ChunkFetcher::finish`] when done.
+    /// Then call [`ChunkFetcher::fetch_for_recordings`] to fetch and protect chunks for the
+    /// fetchers of all recordings that share the budget, and [`ChunkFetcher::finish`] when done.
     pub fn prepare_chunk_fetcher<'a>(
         &'a mut self,
         store: &'a ChunkStore,

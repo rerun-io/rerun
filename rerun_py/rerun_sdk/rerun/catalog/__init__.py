@@ -4,6 +4,7 @@ from typing import Any
 
 from rerun_bindings import (
     AlreadyExistsError as AlreadyExistsError,
+    ChunkNotIndexedError as ChunkNotIndexedError,
     ComponentColumnDescriptor as ComponentColumnDescriptor,
     ComponentColumnSelector as ComponentColumnSelector,
     EntryId as EntryId,
@@ -17,6 +18,7 @@ from rerun_bindings.types import (
 )
 
 from ._catalog_client import CatalogClient as CatalogClient, VersionInfo as VersionInfo
+from ._chunk_indexing_policy import ChunkIndexingPolicy as ChunkIndexingPolicy
 from ._content_filter import ContentFilter as ContentFilter
 from ._dataset_info import (
     DatasetInfo as DatasetInfo,
@@ -24,14 +26,18 @@ from ._dataset_info import (
     TimelineInfo as TimelineInfo,
     TimelineKind as TimelineKind,
 )
+from ._dataset_policy_handle import DatasetPolicyHandle as DatasetPolicyHandle
 from ._entry import (
     DatasetEntry as DatasetEntry,
+    DatasetQueryScope as DatasetQueryScope,
     DatasetSelection as DatasetSelection,
     Entry as Entry,
     OnDuplicateSegmentLayer as OnDuplicateSegmentLayer,
     TableEntry as TableEntry,
 )
 from ._layer import Layer as Layer
+from ._location import StorageLocation as StorageLocation, StorageLocations as StorageLocations
+from ._registered_blueprint import RegisteredBlueprint as RegisteredBlueprint
 from ._registration_handle import (
     RegistrationOperation as RegistrationOperation,
     RegistrationResult as RegistrationResult,
@@ -44,7 +50,8 @@ from ._unregistration_handle import (
 )
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
     if name == "RegistrationHandle":
         import warnings

@@ -5,7 +5,7 @@ use re_ui::{ButtonExt as _, UiExt as _, icons};
 
 use super::Screen;
 use re_agent::AgentEntry;
-use re_agent::{AgentProfileId, AgentSettings, HostedTools, ModelApiProvider};
+use re_agent::{AgentProfileId, AgentSettings, HostedTools, ModelApiProvider, SessionContext};
 
 #[cfg(agent_harness_backend)]
 mod agent_harness;
@@ -35,6 +35,7 @@ enum ApiKeySource<'a> {
 pub fn setup_ui(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
+    context: &SessionContext,
     agents: &mut [AgentEntry],
     available_model_apis: &[ModelApiProvider],
 ) -> Screen {
@@ -43,18 +44,28 @@ pub fn setup_ui(
     egui::ScrollArea::vertical()
         .auto_shrink(false)
         .show(ui, |ui| {
-            egui::Frame::new().inner_margin(12).show(ui, |ui| {
-                next_screen = cfg_select! {
-                    agent_harness_backend => setup_ui_inner(
-                        ui,
-                        settings,
-                        agents,
-                        available_model_apis,
-                        agent_harness::agent_choice_ui,
-                    ),
-                    _ => setup_ui_inner(ui, settings, agents, available_model_apis, web_choice_ui),
-                };
-            });
+            egui::Frame::new()
+                .inner_margin(ui.tokens().view_padding())
+                .show(ui, |ui| {
+                    next_screen = cfg_select! {
+                        agent_harness_backend => setup_ui_inner(
+                            ui,
+                            settings,
+                            context,
+                            agents,
+                            available_model_apis,
+                            agent_harness::agent_choice_ui,
+                        ),
+                        _ => setup_ui_inner(
+                            ui,
+                            settings,
+                            context,
+                            agents,
+                            available_model_apis,
+                            web_choice_ui,
+                        ),
+                    };
+                });
         });
 
     next_screen
@@ -65,6 +76,11 @@ pub fn setup_ui(
 fn setup_ui_inner(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
+    #[cfg_attr(
+        not(agent_harness_backend),
+        expect(unused_variables, reason = "only an agent harness gets MCP servers")
+    )]
+    context: &SessionContext,
     agents: &mut [AgentEntry],
     available_model_apis: &[ModelApiProvider],
     choice_ui: impl FnOnce(&mut egui::Ui, &mut AgentSettings, &mut [AgentEntry], &[ModelApiProvider]),
@@ -81,6 +97,8 @@ fn setup_ui_inner(
     // The provider toggle already names a model API.
     let label = if settings.profile_id.model_api_provider().is_some() {
         "Start".to_owned()
+    } else if matches!(ready, Err(AgentNotReady::NotInstalled { .. })) {
+        "Finish setup to start".to_owned()
     } else {
         format!(
             "Start {}",
@@ -98,11 +116,12 @@ fn setup_ui_inner(
     if clicked {
         next_screen = Screen::Chat;
     }
-    // A missing key is already shown next to the provider toggle.
-    if let Err(problem) = ready
+    // A missing key is already shown next to the provider toggle, and a missing agent under it.
+    if let Err(err) = ready
         && settings.profile_id.model_api_provider().is_none()
+        && !matches!(err, AgentNotReady::NotInstalled { .. })
     {
-        ui.error_label(problem);
+        ui.error_label(err.to_string());
     }
 
     ui.add_space(4.0);
@@ -115,7 +134,7 @@ fn setup_ui_inner(
 
         #[cfg(agent_harness_backend)]
         {
-            agent_harness::options_ui(ui, settings);
+            agent_harness::options_ui(ui, settings, context.rerun_mcp_server.as_ref());
             ui.add_space(8.0);
         }
         ui.label(RichText::new("Options").strong());
@@ -300,13 +319,46 @@ fn tag_ui(ui: &mut egui::Ui, text: &str) -> egui::Response {
 
 /// The name of the selected agent, e.g. "Claude Code" or "Anthropic API".
 pub fn selected_agent_name(settings: &AgentSettings, agents: &[AgentEntry]) -> Option<String> {
-    if let Some(provider) = settings.profile_id.model_api_provider() {
+    agent_name(&settings.profile_id, agents)
+}
+
+/// The name of the agent with `profile_id`, e.g. "Claude Code" or "Anthropic API".
+pub fn agent_name(profile_id: &AgentProfileId, agents: &[AgentEntry]) -> Option<String> {
+    if let Some(provider) = profile_id.model_api_provider() {
         return Some(format!("{} API", provider.name()));
     }
     agents
         .iter()
-        .find(|agent| agent.profile.id == settings.profile_id)
+        .find(|agent| &agent.profile.id == profile_id)
         .map(|agent| agent.profile.name.clone())
+}
+
+/// Why the selected agent cannot be started.
+#[derive(Debug, thiserror::Error)]
+pub enum AgentNotReady {
+    /// The custom agent has no command line.
+    #[error("Enter the command that starts your agent")]
+    EmptyCustomCommand,
+
+    /// The selected model API cannot be launched.
+    #[error(transparent)]
+    Launch(re_agent::AgentLaunchError),
+
+    /// No known agent has the selected profile.
+    #[error("Select an agent")]
+    NoAgentSelected,
+
+    /// The selected agent's executable was not found.
+    #[error("{name} needs {command}, which was not found. {install_hint}")]
+    NotInstalled {
+        /// Display name of the agent.
+        name: String,
+
+        command: String,
+
+        /// How to install the agent.
+        install_hint: String,
+    },
 }
 
 /// Whether the selected agent can be started, or why not.
@@ -316,10 +368,10 @@ pub fn selected_agent_ready(
     settings: &AgentSettings,
     agents: &[AgentEntry],
     available_model_apis: &[ModelApiProvider],
-) -> Result<(), String> {
+) -> Result<(), AgentNotReady> {
     if settings.profile_id == AgentProfileId::CUSTOM {
         if settings.custom_command_line.trim().is_empty() {
-            return Err("Enter the command that starts your agent".to_owned());
+            return Err(AgentNotReady::EmptyCustomCommand);
         }
         return Ok(());
     }
@@ -328,7 +380,9 @@ pub fn selected_agent_ready(
         return if model_apis_with_key(settings, available_model_apis).contains(&provider) {
             Ok(())
         } else {
-            Err(re_agent::AgentLaunchError::missing_api_key(provider).to_string())
+            Err(AgentNotReady::Launch(
+                re_agent::AgentLaunchError::missing_api_key(provider),
+            ))
         };
     }
 
@@ -336,13 +390,14 @@ pub fn selected_agent_ready(
         .iter()
         .find(|agent| agent.profile.id == settings.profile_id)
     else {
-        return Err("Select an agent".to_owned());
+        return Err(AgentNotReady::NoAgentSelected);
     };
-    if agent.executable.is_none() {
-        return Err(format!(
-            "{} is not installed. {}",
-            agent.profile.name, agent.profile.install_hint
-        ));
+    if agent.executable().is_none() {
+        return Err(AgentNotReady::NotInstalled {
+            name: agent.profile.name.clone(),
+            command: agent.profile.command.clone(),
+            install_hint: agent.profile.install_hint.clone(),
+        });
     }
     Ok(())
 }
@@ -360,13 +415,22 @@ mod tests {
         )
         .build_ui_state(
             |ui, (settings, key): &mut (AgentSettings, String)| {
-                egui::Frame::new().inner_margin(12).show(ui, |ui| {
-                    _ = setup_ui_inner(ui, settings, &mut [], &[], |ui, settings, _, _| {
-                        model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
-                            ApiKeySource::Typed(key)
-                        });
+                egui::Frame::new()
+                    .inner_margin(ui.tokens().view_padding())
+                    .show(ui, |ui| {
+                        _ = setup_ui_inner(
+                            ui,
+                            settings,
+                            &SessionContext::default(),
+                            &mut [],
+                            &[],
+                            |ui, settings, _, _| {
+                                model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
+                                    ApiKeySource::Typed(key)
+                                });
+                            },
+                        );
                     });
-                });
             },
             (AgentSettings::default(), String::new()),
         );

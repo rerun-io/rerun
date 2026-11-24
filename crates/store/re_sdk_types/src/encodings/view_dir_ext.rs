@@ -1,4 +1,5 @@
 use crate::encodings::ViewDir;
+use crate::view_coordinates::ViewDirError;
 use re_types_core::reflection::Enum as _;
 
 impl ViewDir {
@@ -11,7 +12,7 @@ impl ViewDir {
     /// * 'F' => [`Self::Forward`]
     /// * 'B' => [`Self::Back`]
     #[inline]
-    pub fn from_ascii_char(c: u8) -> Result<Self, String> {
+    pub fn from_ascii_char(c: u8) -> Result<Self, ViewDirError> {
         match c {
             b'U' => Ok(Self::Up),
             b'D' => Ok(Self::Down),
@@ -19,7 +20,7 @@ impl ViewDir {
             b'L' => Ok(Self::Left),
             b'F' => Ok(Self::Forward),
             b'B' => Ok(Self::Back),
-            _ => Err("Expected one of UDRLFB (Up Down Right Left Forward Back)".to_owned()),
+            _ => Err(ViewDirError::InvalidChar(c.into())),
         }
     }
 
@@ -58,10 +59,10 @@ impl ViewDir {
 }
 
 impl TryFrom<u8> for ViewDir {
-    type Error = String;
+    type Error = ViewDirError;
 
     #[inline]
-    fn try_from(i: u8) -> Result<Self, String> {
-        Self::try_from_integer(i).ok_or_else(|| format!("Could not interpret {i} as ViewDir."))
+    fn try_from(i: u8) -> Result<Self, ViewDirError> {
+        Self::try_from_integer(i).ok_or(ViewDirError::InvalidInteger(i))
     }
 }

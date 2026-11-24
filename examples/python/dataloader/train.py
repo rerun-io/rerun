@@ -13,7 +13,7 @@ Usage:
     train.py iterable [common options] [--shuffle ...]
     train.py map [common options]
 
-See https://rerun.io/docs/howto/train/dataloader for what the dataset styles
+See https://rerun.io/docs/train/dataloader for what the dataset styles
 and shuffle options mean and how to tune them.
 """
 

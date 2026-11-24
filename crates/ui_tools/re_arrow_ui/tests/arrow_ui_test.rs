@@ -42,7 +42,7 @@ fn arrow_list_ui(ui: &mut egui::Ui) {
         ),
         (
             "Special characters",
-            Utf8::from(r#"With \backslash, "quotes", thin space"#).to_arrow(),
+            Utf8::from("With \\backslash, \"quotes\", thin\u{2009}space, narrow\u{202F}no-break\u{202F}space").to_arrow(),
         ),
         (
             "Two strings",

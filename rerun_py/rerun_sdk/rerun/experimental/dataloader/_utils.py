@@ -6,6 +6,7 @@ import contextvars
 import multiprocessing
 import os
 import sys
+import time
 import warnings
 from collections import defaultdict
 from concurrent.futures import Future, ThreadPoolExecutor
@@ -29,14 +30,17 @@ from rerun._tracing import (
 from rerun.catalog import CatalogClient
 from rerun_bindings import CatalogClientInternal
 
+from .._query_metrics import query_metrics
 from ._config import TimeAlignedSampling
+from ._metrics import _worker_metrics_scope
 from ._sample_index import (
+    EmptyTableError,
     IndexValue,
+    _find_range_columns,
     _index_value_to_int,
     _ns_to_datetime64,
     _ns_to_timedelta64,
     _validate_timeline_sampling,
-    _window_trims_ns,
 )
 from .decoders import DecodeRequest, FieldBatch
 
@@ -45,13 +49,17 @@ if TYPE_CHECKING:
 
     from datafusion.expr import Expr
 
-    from rerun.catalog._entry import DatasetEntry
+    from rerun.catalog._entry import DatasetEntry, DatasetSelection
 
+    from .._query_metrics import QueryMetrics
     from ._config import DataSource, Field, FixedRateSampling
+    from ._metrics import _WorkerMetricsPublisher
     from ._sample_index import SampleIndex, SegmentMetadata
     from .decoders._base import ColumnDecoder, DecodedResult, DecodedSample, DecodedValue
 
+_BlockT = TypeVar("_BlockT")
 _DecodedT = TypeVar("_DecodedT")
+_FetchedT = TypeVar("_FetchedT")
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,10 +109,38 @@ class Target:
 
 @dataclass(frozen=True, slots=True)
 class FetchedBlock:
-    """One fetch block's logical targets and materialized query results."""
+    """One fetch block's logical targets, materialized results, and query totals."""
 
     targets: list[Target]
     fetched_groups: list[FetchedGroup]
+    fetch_direct_original_ranges: int = 0
+    fetch_direct_merged_ranges: int = 0
+    fetch_grpc_requests: int = 0
+    delivered_bytes: int = 0
+
+
+@dataclass(slots=True)
+class FetchMetricsAccumulator:
+    """Mutable query totals assembled while one fetch block is materialized."""
+
+    direct_original_ranges: int = 0
+    direct_merged_ranges: int = 0
+    grpc_requests: int = 0
+    delivered_bytes: int = 0
+
+    def record_queries(self, queries: Sequence[QueryMetrics]) -> None:
+        self.direct_original_ranges += sum(query.fetch_direct_original_ranges for query in queries)
+        self.direct_merged_ranges += sum(query.fetch_direct_merged_ranges for query in queries)
+        self.grpc_requests += sum(query.fetch_grpc_requests for query in queries)
+        self.delivered_bytes += sum(query.delivered_bytes for query in queries)
+
+
+@contextmanager
+def _record_query_metrics(metrics: FetchMetricsAccumulator) -> Iterator[None]:
+    """Accumulate completed DataFusion query metrics for one dataloader fetch block."""
+    with query_metrics() as collector:
+        yield
+    metrics.record_queries(collector.queries)
 
 
 @dataclass(frozen=True, slots=True)
@@ -182,6 +218,32 @@ _DATALOADER_CLIENT_NAME = "rerun-py-dataloader"
 """Reported in `x-rerun-client-version`, so the server can tell dataloader traffic apart from other SDK queries."""
 
 
+def _validate_source_schema(
+    source: DataSource,
+    index: str,
+    fields: dict[str, Field],
+    *,
+    expected_index_type: pa.DataType | None = None,
+) -> None:
+    """Check timeline and field configuration using catalog metadata without reading recording rows."""
+    schema = source._selection(include_segments=False).schema()
+    if index not in {column.name for column in schema.index_columns()}:
+        raise ValueError(f"Timeline {index!r} does not exist in the dataset schema")
+    if expected_index_type is not None:
+        actual = schema.to_arrow().field(index).type
+        if actual != expected_index_type:
+            raise ValueError(f"Timeline {index!r} has type {actual}, but the curation requires {expected_index_type}")
+    for name, field in fields.items():
+        paths = [field.path]
+        if field.prior_keyframe_path is not None:
+            paths.append(field.prior_keyframe_path)
+        for path in paths:
+            try:
+                schema.column_for_selector(path)
+            except (LookupError, ValueError) as error:
+                raise ValueError(f"Field {name!r} cannot resolve a column in the dataset schema: {path!r}") from error
+
+
 class _WorkerConnection:
     """Per-worker catalog connection, view, and decoders, built lazily."""
 
@@ -190,16 +252,20 @@ class _WorkerConnection:
         *,
         catalog_url: str,
         token: str | None,
-        dataset_name: str,
+        dataset_id: str,
         fields: dict[str, Field],
+        segments: list[str] | None = None,
+        content_filters: tuple[str, ...] = (),
     ) -> None:
         self._catalog_url = catalog_url
         self._token = token
-        self._dataset_name = dataset_name
+        self._dataset_id = dataset_id
         self._fields = fields
+        self._segments = None if segments is None else list(segments)
+        self._content_filters = content_filters
         self._initialized: bool = False
         self._init_pid: int = -1
-        self._view: DatasetEntry | None = None
+        self._view: DatasetEntry | DatasetSelection | None = None
         self._decoders: dict[str, ColumnDecoder[DecodedValue]] = {}
 
     @classmethod
@@ -209,12 +275,14 @@ class _WorkerConnection:
         return cls(
             catalog_url=catalog.url,
             token=catalog._internal.token,
-            dataset_name=source.dataset.name,
+            dataset_id=str(source.dataset.id),
             fields=fields,
+            segments=source.segments,
+            content_filters=source._content_filters,
         )
 
     @with_tracing("RerunDataset._ensure_initialized")
-    def ensure(self) -> tuple[DatasetEntry, dict[str, ColumnDecoder[DecodedValue]]]:
+    def ensure(self) -> tuple[DatasetEntry | DatasetSelection, dict[str, ColumnDecoder[DecodedValue]]]:
         """Return `(view, decoders)`, building them once per worker process."""
         pid = os.getpid()
         if self._initialized and self._init_pid == pid:
@@ -224,20 +292,25 @@ class _WorkerConnection:
         client = CatalogClient._from_internal(
             CatalogClientInternal(self._catalog_url, self._token, client_name=_DATALOADER_CLIENT_NAME)
         )
-        dataset = client.get_dataset(self._dataset_name)
+        dataset = client.get_dataset(id=self._dataset_id)
+        if str(dataset.id) != self._dataset_id:
+            raise ValueError("The reconnected dataset ID does not match the requested source")
+        view: DatasetEntry | DatasetSelection = dataset
+        for expression in self._content_filters:
+            view = view.filter_contents(expression)
         keyframe_fields = {
             key: path for key, field in self._fields.items() if (path := field.prior_keyframe_path) is not None
         }
         if keyframe_fields:
-            schema_columns = set(dataset.schema().column_names())
+            schema_columns = set(view.schema().column_names())
             missing = {key: path for key, path in keyframe_fields.items() if path not in schema_columns}
             if missing:
                 details = ", ".join(f"{key!r}: {path!r}" for key, path in sorted(missing.items()))
                 raise ValueError(f"Video fields require an is_keyframe column; missing {details}")
         self._decoders = {k: f.decode for k, f in self._fields.items()}
-        # Leave the dataset unscoped here: each query plan narrows contents to its own
-        # entities at query time (`_fetch_query`, `_fetch_prior_keyframes`).
-        self._view = dataset
+        if self._segments is not None:
+            view = view.filter_segments(self._segments)
+        self._view = view
         self._initialized = True
         self._init_pid = pid
         return self._view, self._decoders
@@ -322,65 +395,72 @@ def _build_targets(
 
 
 def _pipeline_blocks(
-    blocks: list[np.ndarray],
+    blocks: Iterable[_BlockT],
     *,
-    fetch: Callable[[np.ndarray], Any],
-    process: Callable[[Any], Iterator[DecodedSample]],
+    fetch: Callable[[_BlockT], _FetchedT],
+    process: Callable[[_FetchedT], Iterator[DecodedSample]],
+    metrics: _WorkerMetricsPublisher | None = None,
 ) -> Generator[DecodedSample, None, None]:
-    """Process blocks while fetching the next block on a background thread."""
-    if not blocks:
+    """Process a lazy block stream while fetching the next block on a background thread."""
+    block_iter = iter(blocks)
+    try:
+        first_block = next(block_iter)
+    except StopIteration:
         return
 
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="rerun-fetch")
 
-    def submit(block: np.ndarray) -> Future[Any]:
+    def submit(block: _BlockT) -> Future[_FetchedT]:
         # Copy the caller's contextvars so the fetch's span nests under the current OTel
         # context instead of appearing as a root trace.
         ctx = contextvars.copy_context()
+        if metrics is not None:
+
+            def measured_fetch() -> _FetchedT:
+                value = fetch(block)
+                metrics.record_fetch_completion(
+                    samples_fetched=len(value.targets) if isinstance(value, FetchedBlock) else 0,
+                    direct_original_ranges=value.fetch_direct_original_ranges if isinstance(value, FetchedBlock) else 0,
+                    direct_merged_ranges=value.fetch_direct_merged_ranges if isinstance(value, FetchedBlock) else 0,
+                    grpc_requests=value.fetch_grpc_requests if isinstance(value, FetchedBlock) else 0,
+                    delivered_bytes=value.delivered_bytes if isinstance(value, FetchedBlock) else 0,
+                )
+                return value
+
+            return executor.submit(lambda: ctx.run(measured_fetch))
         return executor.submit(lambda: ctx.run(fetch, block))
 
     try:
-        pending: Future[Any] | None = submit(blocks[0])
-        for i in range(len(blocks)):
-            assert pending is not None
+        pending: Future[_FetchedT] | None = submit(first_block)
+        block_index = 0
+        while pending is not None:
             with tracing_scope("RerunDataset._wait_for_fetch_block"):
-                set_current_span_attributes({"rerun.dataloader.iter.block.index": i})
-                fetched = pending.result()
-            pending = submit(blocks[i + 1]) if i + 1 < len(blocks) else None
+                set_current_span_attributes({"rerun.dataloader.iter.block.index": block_index})
+                if metrics is None:
+                    fetched = pending.result()
+                else:
+                    wait_started_ns = time.perf_counter_ns()
+                    fetched = pending.result()
+                    metrics.record_fetch_wait(time.perf_counter_ns() - wait_started_ns)
+
+            try:
+                next_block = next(block_iter)
+            except StopIteration:
+                pending = None
+            else:
+                pending = submit(next_block)
+
             samples = process(fetched)
             # Only `samples` may keep the block's fetched tables alive while it is drained.
             del fetched
             yield from samples
+            block_index += 1
     finally:
+        close = getattr(block_iter, "close", None)
+        if close is not None:
+            close()
         with tracing_scope("executor.shutdown"):
             executor.shutdown(wait=False)
-
-
-def _replay(
-    samples: Generator[DecodedSample, None, None],
-    order: np.ndarray,
-) -> Generator[DecodedSample, None, None]:
-    """
-    Re-emit a fetch-order sample stream in a known pull `order` (a deterministic queue).
-
-    `order[k]` is the fetch position to emit `k`-th. Decode still runs in fetch order;
-    this only buffers decoded samples until their turn, so the buffer never exceeds what
-    the manifest's buffer held at build time (the order came from that buffer).
-
-    Closes `samples` on exit, so an early teardown reaches the fetch executor's
-    shutdown promptly.
-    """
-    buffer: dict[int, DecodedSample] = {}
-    fetched = enumerate(samples)
-    try:
-        for fetch_idx in order:
-            fetch_idx = int(fetch_idx)
-            while fetch_idx not in buffer:
-                i, sample = next(fetched)
-                buffer[i] = sample
-            yield buffer.pop(fetch_idx)
-    finally:
-        samples.close()
 
 
 def _run_parallel(tasks: list[Callable[[], Any]], *, max_workers: int | None = None) -> list[Any]:
@@ -406,20 +486,21 @@ def _run_parallel(tasks: list[Callable[[], Any]], *, max_workers: int | None = N
 def _fetch_queries_parallel(
     plans: list[QueryPlan],
     *,
-    view: DatasetEntry,
+    view: DatasetEntry | DatasetSelection,
     index: str,
 ) -> list[FetchedGroup]:
     """Execute every query plan, overlapping the independent server round-trips."""
 
     def fetch_group(plan: QueryPlan) -> FetchedGroup:
+        table = _fetch_query(
+            view=view,
+            index=index,
+            plan=plan,
+        )
         return FetchedGroup(
             fields=plan.fields,
             fetch_requests=plan.fetch_requests,
-            table=_fetch_query(
-                view=view,
-                index=index,
-                plan=plan,
-            ),
+            table=table,
             keyframe_columns=plan.keyframe_columns,
         )
 
@@ -527,7 +608,7 @@ def _or_predicates(predicates: list[Expr]) -> Expr:
 
 def _fetch_query(
     *,
-    view: DatasetEntry,
+    view: DatasetEntry | DatasetSelection,
     index: str,
     plan: QueryPlan,
 ) -> pa.Table:
@@ -832,6 +913,7 @@ def _decode_field_batch(
     num_samples: int,
     key: str,
     decoder: ColumnDecoder[_DecodedT],
+    metrics: _WorkerMetricsPublisher | None = None,
 ) -> list[_DecodedT | None]:
     """
     Decode one field for every target of a fetch block; `result[i]` aligns with `targets[i]`.
@@ -846,7 +928,8 @@ def _decode_field_batch(
         "rerun.dataloader.decode.num_segments": prepared_field.num_segments,
     })
 
-    results = decoder.decode(prepared_field.batch, prepared_field.requests)
+    with _worker_metrics_scope(metrics):
+        results = decoder.decode(prepared_field.batch, prepared_field.requests)
     if len(results) != len(prepared_field.requests):
         raise RuntimeError(
             f"{type(decoder).__name__}.decode returned {len(results)} results "
@@ -864,6 +947,8 @@ def _decode_iter(
     prepared: PreparedBlock,
     decoders: dict[str, ColumnDecoder[DecodedValue]],
     executor: ThreadPoolExecutor | None = None,
+    metrics: _WorkerMetricsPublisher | None = None,
+    preparation_elapsed_ns: int = 0,
 ) -> Iterator[DecodedSample]:
     """
     Decode every field of a block now, then yield its samples one at a time.
@@ -874,6 +959,8 @@ def _decode_iter(
     with tracing_scope("RerunDataset._decode_block"):
         set_current_span_attributes({"rerun.dataloader.decode.block_size": prepared.num_samples})
         if not prepared.num_samples:
+            if metrics is not None and preparation_elapsed_ns:
+                metrics.record_decode(elapsed_ns=preparation_elapsed_ns)
             return iter(())
 
         decode_field: dict[str, Callable[[], list[DecodedResult]]] = {}
@@ -884,17 +971,29 @@ def _decode_iter(
                 num_samples=prepared.num_samples,
                 key=key,
                 decoder=decoders[key],
+                metrics=metrics,
             )
 
-        if executor is None:
+        if metrics is None and executor is None:
             per_field = {key: decode() for key, decode in decode_field.items()}
-        else:
+        elif metrics is None:
+            assert executor is not None
             # Copy the caller's contextvars so each field's spans nest under this
             # block's span instead of appearing as roots.
             futures: dict[str, Future[list[DecodedResult]]] = {  # ty: ignore[invalid-assignment]
                 key: executor.submit(contextvars.copy_context().run, decode) for key, decode in decode_field.items()
             }
             per_field = {key: future.result() for key, future in futures.items()}
+        else:
+            decode_started_ns = time.perf_counter_ns()
+            if executor is None:
+                per_field = {key: decode() for key, decode in decode_field.items()}
+            else:
+                futures = {
+                    key: executor.submit(contextvars.copy_context().run, decode) for key, decode in decode_field.items()
+                }
+                per_field = {key: future.result() for key, future in futures.items()}
+            metrics.record_decode(elapsed_ns=preparation_elapsed_ns + time.perf_counter_ns() - decode_started_ns)
 
     return _iter_samples(per_field, prepared.num_samples)
 
@@ -1099,7 +1198,7 @@ def _uncovered_integer_ranges(ranges: list[tuple[int, int]], covered: list[tuple
 @with_tracing("RerunDataset._fetch_keyframe_ranges")
 def _fetch_keyframe_ranges(
     *,
-    view: DatasetEntry,
+    view: DatasetEntry | DatasetSelection,
     index: str,
     paths: list[str],
     ranges: dict[str, list[tuple[int, int]]],
@@ -1161,7 +1260,7 @@ def _fetch_keyframe_ranges(
 @with_tracing("RerunDataset._discover_prior_keyframes")
 def _discover_prior_keyframes(
     *,
-    view: DatasetEntry,
+    view: DatasetEntry | DatasetSelection,
     index: str,
     fields: dict[str, Field],
     located: Sequence[tuple[SegmentMetadata, IndexValue]],
@@ -1173,25 +1272,40 @@ def _discover_prior_keyframes(
     Searches expand only while unresolved, down to the untrimmed segment minimum.
     Each target is resolved only after its entire interval back to a true marker
     has been read, so sparse markers and unrelated target windows cannot hide a
-    nearer keyframe. Returned arrays need only cover these targets; manifest
-    generation uses `_fetch_prior_keyframes` to obtain the complete history.
+    nearer keyframe. Selected annotation intervals do not limit decode pre-roll;
+    missing recording minima are read from range metadata before searching.
     """
     keyframe_fields = {key: path for key, field in fields.items() if (path := field.prior_keyframe_path) is not None}
     if not keyframe_fields or not located:
         return {}
     paths = list(dict.fromkeys(keyframe_fields.values()))
-    trim_start = (
-        _window_trims_ns(fields)[0]
-        if sample_index.ns_dtype is not None
-        else -min([0, *(int(min(field.window)) for field in fields.values() if field.window is not None)])
-    )
     minimum = -(1 << 63) + int(sample_index.ns_dtype is not None)
     maximum = (1 << 63) - 1
-    floors: dict[str, int] = {}
+    floors = {
+        segment.segment_id: max(minimum, segment.index_min) for segment, _ in located if segment.index_min is not None
+    }
+    unknown = sorted({segment.segment_id for segment, _ in located if segment.index_min is None})
+    if unknown:
+        recording_ranges = view.filter_segments(unknown).get_index_ranges()
+        try:
+            start_column, _ = _find_range_columns(recording_ranges.schema().names, index)
+        except EmptyTableError:
+            pass
+        else:
+            bounds = recording_ranges.select("rerun_segment_id", start_column).to_arrow_table()
+            floors.update({
+                segment_id: max(minimum, start)
+                for segment_id, start in zip(
+                    bounds["rerun_segment_id"].to_pylist(),
+                    bounds[start_column].cast(pa.int64()).to_pylist(),
+                    strict=True,
+                )
+                if start is not None
+            })
     pending: dict[tuple[str, str, int], int] = {}
     for segment, anchor in located:
-        floor = segment.index_min if segment.index_min is not None else segment.index_start - trim_start
-        floors[segment.segment_id] = max(minimum, floor)
+        if segment.segment_id not in floors:
+            continue
         for key, path in keyframe_fields.items():
             target = min(_index_value_to_int(value) for value in sample_index.output_index_values(anchor, fields[key]))
             if target >= floors[segment.segment_id]:
@@ -1218,7 +1332,11 @@ def _discover_prior_keyframes(
             pending_paths = {path for path, _segment_id, _target in pending}
             active_paths = [path for path in paths if path in pending_paths]
             fetched = _fetch_keyframe_ranges(
-                view=view, index=index, paths=active_paths, ranges=ranges, sample_index=sample_index
+                view=view,
+                index=index,
+                paths=active_paths,
+                ranges=ranges,
+                sample_index=sample_index,
             )
             rounds += 1
             for path, by_segment in fetched.items():
@@ -1239,115 +1357,6 @@ def _discover_prior_keyframes(
 
     set_current_span_attributes({"rerun.dataloader.keyframes.discovery_rounds": rounds})
     return {key: found[path] for key, path in keyframe_fields.items()}
-
-
-@with_tracing("RerunDataset._fetch_prior_keyframes")
-def _fetch_prior_keyframes(
-    *,
-    view: DatasetEntry,
-    index: str,
-    fields: dict[str, Field],
-    located: Sequence[tuple[SegmentMetadata, IndexValue]],
-    sample_index: SampleIndex,
-) -> dict[str, dict[str, np.ndarray]]:
-    """
-    Per-field sorted keyframe index values, grouped by segment.
-
-    Skips fields without a `prior_keyframe_path`. Fields that declare one must
-    have that keyframe column in the live schema. Returns `{}` when no field
-    needs keyframe metadata, so non-video datasets pay no query overhead.
-
-    Queries `is_keyframe` rows at or before each segment's max target.
-    Works whether `is_keyframe` is logged sparsely (only `true` on keyframes)
-    or densely (`true`/`false` on every row). The result maps
-    `field_key -> {segment_id: sorted_int64_keyframes}`; values are `int`
-    (ns-since-epoch for timestamp timelines, ns count for duration timelines).
-    The caller bisects via
-    [`_prior_keyframe`][rerun.experimental.dataloader._utils._prior_keyframe].
-    """
-    keyframe_fields: dict[str, str] = {}
-    for key, field in fields.items():
-        path = field.prior_keyframe_path
-        if path is not None:
-            keyframe_fields[key] = path
-    if not keyframe_fields:
-        return {}
-
-    if not located:
-        return {}
-
-    # Per-segment max requested output across all keyframe-aware fields.
-    max_per_segment: dict[str, int] = {}
-    for seg, idx_val in located:
-        sid = seg.segment_id
-        requested_max = max(
-            _index_value_to_int(value)
-            for key in keyframe_fields
-            for value in sample_index.output_index_values(idx_val, fields[key])
-        )
-        max_per_segment[sid] = max(requested_max, max_per_segment.get(sid, requested_max))
-
-    unique_paths = list(dict.fromkeys(keyframe_fields.values()))
-
-    def idx_lit(value: int) -> Any:
-        # The literal must match the index column type, or DataFusion fails to
-        # coerce the comparison (`Duration(ns) <= Int64`).
-        if sample_index.is_timestamp:
-            return np.datetime64(value, "ns")
-        if sample_index.is_duration:
-            return np.timedelta64(value, "ns")
-        return value
-
-    # Manifest generation needs every preceding keyframe, not only the nearest
-    # one for each representative target. A global upper bound includes that
-    # complete history; per-sample bisects select the appropriate prior marker.
-    global_max = max(max_per_segment.values())
-    index_filter = col(index) <= idx_lit(global_max)
-
-    # `is_keyframe` is `List<Bool>` in Arrow. Datafusion can't coerce that to
-    # `Bool`, so `is_not_null()` is a coarse server-side pre-filter. The actual
-    # value check happens client-side in the `by_path` loop below.
-    # TODO(isaac): Will be able to do check server side with upcoming DF changes.
-    path_filter = col(unique_paths[0]).is_not_null()
-    for p in unique_paths[1:]:
-        path_filter = path_filter | col(p).is_not_null()
-
-    # Selecting only the `is_keyframe` columns (a strict subset of the entity's
-    # components) under the default `fill_latest_at=False` lets the server push this
-    # projection into each query's `fuzzy_descriptors` and skip chunks for the heavy
-    # `VideoStream:sample` sibling. Keep the select narrow and do not pass
-    # `fill_latest_at=True`, or the push-down (gated on `SparseFillStrategy::None`)
-    # falls back to fetching every component on the entity.
-    # Scope to just the keyframe entities (the `is_keyframe` siblings live on the same
-    # entities as the video samples), so this query never touches unrelated entities.
-    keyframe_contents = _content_filter_for_paths(unique_paths)
-
-    with tracing_scope("RerunDataset._fetch_prior_keyframes.to_arrow_table"):
-        table = (
-            view
-            .filter_contents(keyframe_contents)
-            .filter_segments(list(max_per_segment.keys()))
-            .reader(index=index)
-            .filter(index_filter & path_filter)
-            .select(col(index), col("rerun_segment_id"), *[col(p) for p in unique_paths])
-            .to_arrow_table()
-        )
-
-    # Per-path: sorted int64 arrays of keyframe index values, grouped by segment.
-    # `int(scalar)` on a `datetime64[ns]` element returns its nanoseconds-since-epoch
-    # representation, so this works uniformly for int64 and timestamp timelines.
-    by_path: dict[str, dict[str, np.ndarray]] = {}
-    for path in unique_paths:
-        mask = pc.list_element(table.column(path), 0)
-        sub = table.filter(mask)
-        sub_segs = sub.column("rerun_segment_id").to_pylist()
-        sub_idx = sub.column(index).to_numpy(zero_copy_only=False)
-        by_seg: dict[str, list[int]] = defaultdict(list)
-        for s, v in zip(sub_segs, sub_idx, strict=True):
-            by_seg[s].append(int(v))
-        by_path[path] = {s: np.sort(np.array(vs, dtype=np.int64)) for s, vs in by_seg.items()}
-
-    return {key: by_path[path] for key, path in keyframe_fields.items()}
 
 
 def _prior_keyframe(sorted_kfs: np.ndarray | None, target: int) -> int | None:

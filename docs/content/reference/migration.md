@@ -2,9 +2,19 @@
 title: Migration guides
 order: 1000
 hidden: true
+description: How to update your code when upgrading to a new version of Rerun
 ---
 
-For Rerun 0.34 and later, breaking changes and their migration guides are part of the [changelog](../changelog.md).
+Rerun does not have a stable API yet, so most releases have breaking changes.
+When you upgrade across several versions, read the guides for every version in between, oldest first.
+
+## Rerun 0.34 and later
+
+For Rerun 0.34 and later, breaking changes and how to migrate are listed in the "Breaking changes" section of each release in the [changelog](../changelog.md).
+Some releases also have a separate migration guide:
+
+- [Migrating from 0.38 to 0.39](migration/migration-0-39.md)
+- [Migrating from 0.37 to 0.38](migration/migration-0-38.md)
 
 ## Older migration guides
 

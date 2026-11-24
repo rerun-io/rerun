@@ -1517,6 +1517,7 @@ def test_worker_connection_requires_keyframe_column_and_retries_failed_initializ
 ) -> None:
     columns = ["/camera:VideoStream:sample", "/other:VideoStream:is_keyframe"]
     dataset = Mock()
+    dataset.id = "video"
     dataset.schema.return_value.column_names.return_value = columns
     client = Mock()
     client.get_dataset.return_value = dataset
@@ -1526,7 +1527,7 @@ def test_worker_connection_requires_keyframe_column_and_retries_failed_initializ
     connection = _utils._WorkerConnection(
         catalog_url="rerun+http://fake",
         token=None,
-        dataset_name="video",
+        dataset_id="video",
         fields={"image": Field("/camera:VideoStream:sample", decode=decoder)},
     )
 
@@ -1547,6 +1548,7 @@ def test_worker_connection_requires_keyframe_column_and_retries_failed_initializ
 
 def test_worker_connection_non_video_fields_do_not_query_schema(monkeypatch: pytest.MonkeyPatch) -> None:
     dataset = Mock()
+    dataset.id = "state"
     client = Mock()
     client.get_dataset.return_value = dataset
     monkeypatch.setattr(_utils, "CatalogClientInternal", Mock())
@@ -1555,7 +1557,7 @@ def test_worker_connection_non_video_fields_do_not_query_schema(monkeypatch: pyt
     connection = _utils._WorkerConnection(
         catalog_url="rerun+http://fake",
         token=None,
-        dataset_name="state",
+        dataset_id="state",
         fields={"state": Field("/state:Scalars:scalars", decode=decoder)},
     )
 

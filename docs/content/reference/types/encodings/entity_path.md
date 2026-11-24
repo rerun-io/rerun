@@ -13,7 +13,7 @@ Utf8
 
 ## API reference links
  * 🌊 [C++ API docs for `EntityPath`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1EntityPath.html)
- * 🐍 [Python API docs for `EntityPath`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.EntityPath)
+ * 🐍 [Python API docs for `EntityPath`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.EntityPath)
  * 🦀 [Rust API docs for `EntityPath`](https://docs.rs/rerun/latest/rerun/encodings/struct.EntityPath.html)
 
 

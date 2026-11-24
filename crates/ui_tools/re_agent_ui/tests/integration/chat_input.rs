@@ -6,9 +6,9 @@ use egui::Role;
 use egui::Vec2;
 use egui_kittest::kittest::{NodeT as _, Queryable as _};
 use re_agent::acp::schema::v1::{
-    AvailableCommand, AvailableCommandsUpdate, CurrentModeUpdate, PermissionOption,
-    PermissionOptionKind, RequestPermissionRequest, SessionId, SessionMode, SessionModeState,
-    SessionUpdate, ToolCallUpdate, ToolCallUpdateFields,
+    AvailableCommand, AvailableCommandsUpdate, PermissionOption, PermissionOptionKind,
+    RequestPermissionRequest, SessionConfigOption, SessionConfigOptionCategory,
+    SessionConfigSelectOption, SessionId, SessionUpdate, ToolCallUpdate, ToolCallUpdateFields,
 };
 use re_agent::{AgentEntry, AgentEvent, AgentProfile, AgentProfileId, AgentSettings};
 use re_agent_ui::AgentPanel;
@@ -62,19 +62,34 @@ fn permission_shortcuts_require_chat_input_focus() {
 }
 
 pub fn ready_panel() -> AgentPanel {
+    ready_panel_for_profile(AgentProfileId::new("claude"))
+}
+
+pub fn ready_panel_for_profile(profile_id: AgentProfileId) -> AgentPanel {
     let agents = AgentProfile::builtin()
         .into_iter()
         .map(|profile| AgentEntry {
-            executable: Some(PathBuf::from("/usr/local/bin").join(&profile.command)),
+            install: re_agent::AgentInstall::Ready(
+                PathBuf::from("/usr/local/bin").join(&profile.command),
+            ),
             profile,
         })
         .collect();
     let settings = AgentSettings {
-        profile_id: AgentProfileId::new("claude"),
+        profile_id,
         ..Default::default()
     };
     let mut panel = AgentPanel::with_agents(settings, None, agents, Vec::new());
     panel.set_example_prompts(crate::example_prompts());
+    connect_shown_conversation(&mut panel);
+    panel
+}
+
+/// Puts the shown conversation in the chat, with an open session, without launching an agent.
+///
+/// A chat without a session launches the agent's real command on a background thread, and what
+/// that process reports arrives at a frame no test can predict.
+pub fn connect_shown_conversation(panel: &mut AgentPanel) {
     panel.show_chat();
 
     let session = panel.session_mut();
@@ -85,19 +100,23 @@ pub fn ready_panel() -> AgentPanel {
     });
     session.handle_event(AgentEvent::SessionStarted {
         session_id: SessionId::new("test-session"),
-        modes: Some(SessionModeState::new(
-            "default",
-            vec![
-                SessionMode::new("default", "Manual"),
-                SessionMode::new("acceptEdits", "Accept edits"),
-            ],
-        )),
-        config_options: Vec::new(),
+        origin: re_agent::SessionOrigin::New,
+        config_options: vec![
+            SessionConfigOption::select(
+                "mode",
+                "Mode",
+                "default",
+                vec![
+                    SessionConfigSelectOption::new("default", "Manual"),
+                    SessionConfigSelectOption::new("acceptEdits", "Accept edits"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::Mode),
+        ],
     });
     session.handle_event(AgentEvent::Update(SessionUpdate::AvailableCommandsUpdate(
         AvailableCommandsUpdate::new(vec![AvailableCommand::new("help", "Show help")]),
     )));
-    panel
 }
 
 /// Typing `/` opens the command list above the input. The input must keep keyboard focus.
@@ -160,7 +179,7 @@ fn requested_input_focus_is_applied() {
         );
     harness.run_steps(2);
 
-    harness.get_by_value("Manual").focus();
+    harness.get_by_label("Manual").focus();
     harness.run_steps(2);
     let input = harness.get_by_role(Role::MultilineTextInput);
     assert!(!input.accesskit_node().is_focused());
@@ -171,15 +190,31 @@ fn requested_input_focus_is_applied() {
     assert!(input.accesskit_node().is_focused());
 }
 
-/// Picking a mode in the footer dropdown asks the agent to switch.
+/// The settings menu names the agent, and its settings button opens the agent setup.
+#[test]
+fn settings_menu_opens_agent_setup() {
+    let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
+        .build_ui_state(
+            |ui, panel: &mut AgentPanel| {
+                panel.ui(ui);
+            },
+            ready_panel(),
+        );
+    harness.run_steps(2);
+    assert!(harness.query_by_label_contains("Start Claude").is_none());
+
+    harness.get_by_label("Manual").click();
+    harness.run_steps(2);
+    harness.get_by_label("Claude Code");
+    harness.get_by_label("Agent setup").click();
+    harness.run_steps(2);
+    assert!(harness.query_by_label_contains("Start Claude").is_some());
+}
+
+/// Picking a mode in the settings menu asks the agent to switch.
 #[test]
 fn mode_picker_requests_the_clicked_mode() {
-    let mut panel = ready_panel();
-    panel
-        .session_mut()
-        .handle_event(AgentEvent::Update(SessionUpdate::CurrentModeUpdate(
-            CurrentModeUpdate::new("default"),
-        )));
+    let panel = ready_panel();
     let mut harness = re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, SIZE)
         .build_ui_state(
             |ui, panel: &mut AgentPanel| {
@@ -189,24 +224,28 @@ fn mode_picker_requests_the_clicked_mode() {
         );
     harness.run_steps(2);
 
-    harness.get_by_value("Manual").click();
-    harness.run_steps(2);
+    super::open_settings_submenu(&mut harness, "Manual", "Mode");
     harness.get_by_label("Accept edits").click();
     harness.run_steps(2);
 
-    let session = harness.state().session();
-    assert_eq!(
-        session.requested_mode().map(|id| id.0.as_ref()),
-        Some("acceptEdits")
-    );
     assert_eq!(
         harness
             .state()
             .settings()
-            .preferred_mode
-            .as_ref()
+            .preferences(&AgentProfileId::new("claude"))
+            .and_then(|preferences| preferences.get("mode"))
+            .and_then(|value| value.as_value_id())
             .map(|mode| mode.0.as_ref()),
         Some("acceptEdits")
+    );
+
+    // The mode belongs to the agent that offered it.
+    assert_eq!(
+        harness
+            .state()
+            .settings()
+            .preferences(&AgentProfileId::new("codex")),
+        None
     );
 }
 

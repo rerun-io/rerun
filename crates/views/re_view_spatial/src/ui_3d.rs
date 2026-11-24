@@ -1,5 +1,5 @@
+use egui::NumExt as _;
 use egui::emath::RectTransform;
-use egui::{Modifiers, NumExt as _};
 use glam::Vec3;
 use re_chunk_store::MissingChunkReporter;
 use re_math::BoundingBox;
@@ -14,7 +14,7 @@ use re_tf::image_view_coordinates;
 use re_ui::{ContextExt as _, Help, IconText, MouseButtonText, UiExt as _, icons};
 use re_view::controls::{
     DRAG_PAN3D_BUTTON, ROLL_MOUSE_ALT, ROLL_MOUSE_MODIFIER, ROTATE3D_BUTTON, RuntimeModifiers,
-    SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
+    SPEED_UP_3D_MODIFIER, TRACK_ENTITY_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, ItemContext, ViewClassExt as _, ViewContext, ViewQuery,
@@ -109,7 +109,7 @@ pub fn help(os: egui::os::OperatingSystem) -> Help {
         .control(
             "Track",
             (
-                IconText::from_modifiers(os, Modifiers::ALT),
+                IconText::from_modifiers(os, TRACK_ENTITY_3D_MODIFIER),
                 "+",
                 "double",
                 icons::LEFT_MOUSE_CLICK,
@@ -329,7 +329,7 @@ impl SpatialView3D {
             };
 
             if let Some(entity_path) = focused_entity {
-                if ui.input(|i| i.modifiers.alt)
+                if ui.input(|i| i.modifiers.matches_logically(TRACK_ENTITY_3D_MODIFIER))
                     || find_camera(space_cameras, entity_path).is_some()
                 {
                     if state.last_tracked_entity() != Some(entity_path) {

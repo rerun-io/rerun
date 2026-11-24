@@ -3,7 +3,7 @@
 
 /// A log entry in a text log, comprised of a text body and its log level.
 ///
-/// \example archetypes/text_log_integration text="Logging text directly or via a logger" image="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png"
+/// \example archetypes/text_log_integration text="Logging text directly or via a logger" image="https://static.rerun.io/text_log_integration/9737d0c986325802a9885499d6fcc773b1736488/1200w.png" alt="Rerun Viewer with a TextLog view listing TRACE and INFO log entries from native loggers, with level filters in the selection panel"
 #[rerun::rerun_type]
 #[docs(category = "Text")]
 #[docs(view_types = "TextLogView")]

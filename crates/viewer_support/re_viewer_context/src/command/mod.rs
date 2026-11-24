@@ -33,7 +33,7 @@ use smallvec::{SmallVec, smallvec};
 /// This does not work in a web browser, unless we also prevent the browser from handling the shortcut
 /// (which we currently don't do). The fix for that would be to call `.prevent_default()` on the event in eframe.
 pub fn refresh_shortcuts(os: egui::os::OperatingSystem) -> SmallVec<[KeyboardShortcut; 2]> {
-    use egui::{Key, KeyboardShortcut, Modifiers};
+    use egui::{Key, Modifiers};
     if os == egui::os::OperatingSystem::Mac {
         smallvec![
             KeyboardShortcut::new(Modifiers::COMMAND, Key::R),
@@ -46,13 +46,13 @@ pub fn refresh_shortcuts(os: egui::os::OperatingSystem) -> SmallVec<[KeyboardSho
 
 /// The keyboard shortcut for undoing a blueprint edit.
 pub fn undo_shortcuts() -> SmallVec<[KeyboardShortcut; 2]> {
-    use egui::{Key, KeyboardShortcut, Modifiers};
+    use egui::{Key, Modifiers};
     smallvec![KeyboardShortcut::new(Modifiers::COMMAND, Key::Z)]
 }
 
 /// The keyboard shortcuts for redoing a blueprint edit.
 pub fn redo_shortcuts(os: egui::os::OperatingSystem) -> SmallVec<[KeyboardShortcut; 2]> {
-    use egui::{Key, KeyboardShortcut, Modifiers};
+    use egui::{Key, Modifiers};
     if os == egui::os::OperatingSystem::Mac {
         smallvec![
             KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, Key::Z),
@@ -239,6 +239,10 @@ fn undo_redo_shortcuts_preserve_text_editing() {
 fn check_for_clashing_command_shortcuts() {
     use egui::os::OperatingSystem;
 
+    #[expect(
+        clippy::disallowed_fields,
+        reason = "Compares the raw modifier flags of two shortcuts"
+    )]
     fn clashes(a: KeyboardShortcut, b: KeyboardShortcut) -> bool {
         if a.logical_key != b.logical_key {
             return false;

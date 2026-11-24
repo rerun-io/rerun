@@ -23,7 +23,6 @@ use re_dataframe_ui::{
     parse_sql_expr,
 };
 use re_types_core::{Component as _, FIELD_METADATA_KEY_COMPONENT_TYPE};
-use re_viewer_context::external::tokio;
 use strum::VariantArray as _;
 
 const COLUMN_NAME: &str = "column";

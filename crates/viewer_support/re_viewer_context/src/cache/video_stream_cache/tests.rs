@@ -1,10 +1,8 @@
 #![expect(clippy::cast_possible_wrap)] // u64 -> i64 is fine
 use std::assert_matches;
 
-use re_chunk::{ChunkBuilder, RowId, TimePoint, Timeline};
-use re_chunk_store::ChunkStoreDiff;
+use re_chunk::{ChunkBuilder, TimePoint, Timeline};
 use re_log_types::StoreId;
-use re_sdk_types::archetypes::VideoStream;
 use re_sdk_types::components::VideoCodec;
 use re_video::{VideoDataDescription, VideoEncodingDetails};
 

@@ -18,8 +18,10 @@ pub struct PyRerunHtmlTable {
 
     #[pyo3(get, set)]
     max_memory_bytes: u64,
+
     #[pyo3(get, set)]
     min_rows_display: usize,
+
     #[pyo3(get, set)]
     repr_rows: usize,
 }
@@ -108,7 +110,7 @@ impl PyRerunHtmlTable {
     }
 }
 
-#[pymethods] // NOLINT: ignore[py-mthd-str]
+#[pymethods] // relint: allow(pymethods_str): not in the Python API stubs
 impl PyRerunHtmlTable {
     #[new]
     #[pyo3(signature = (max_width=None, max_height=None))]

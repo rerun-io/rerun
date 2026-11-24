@@ -5,7 +5,7 @@ pub struct ViewerControlRequest {
     /// Which operation to perform. A request with no `kind` set is `INVALID_ARGUMENT`.
     #[prost(
         oneof = "viewer_control_request::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24, 25, 26"
     )]
     pub kind: ::core::option::Option<viewer_control_request::Kind>,
 }
@@ -139,7 +139,7 @@ pub mod viewer_control_request {
         /// A recording's blueprint has the layout, views, their properties and overrides. A table's
         /// blueprint only has what it sets, such as row filters, the layout, and column settings.
         /// `GetTableSchema` names all columns of a table.
-        /// See <https://rerun.io/docs/concepts/visualization/blueprints.>
+        /// See <https://rerun.io/docs/viewer/blueprints.>
         ///
         /// Set at most one of `recording` and `table`, such as `{"recording": {}}` or
         /// `{"table": {"table_url": "…"}}`. With neither it reads the blueprint of what is on screen:
@@ -174,6 +174,7 @@ pub mod viewer_control_request {
         /// (customize tables, enable card layouts, and add preview cells) with JSON, in the form
         /// `GetBlueprint` reads. Use `recording` for a regular blueprint and `table` for a table blueprint.
         /// Read the `table` input field's documentation for the table, card, and preview configuration interface.
+        /// Consult `viewer_list_view_types` before selecting a new view type.
         ///
         /// `mode` is `full` (default) or `partial`. Full updates clear omitted fields and entities;
         /// partial updates write only supplied fields, preserving everything else. Prefer partial
@@ -264,7 +265,7 @@ pub mod viewer_control_request {
         ///
         /// Returns JSON with frames, edges, provenance, query time, effective options, and missing-chunk status.
         /// This is a latest-at snapshot, not transform history. To inspect another time, call
-        /// `rerun_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.
+        /// `viewer_set_time_cursor`, then this tool again. Pause playback for repeatable inspection.
         /// If no cursor is set, queries latest values and explicitly reports query.mode = "latest".
         /// If chunks are missing, the graph is incomplete: missing edges do not prove disconnection.
         ///
@@ -273,7 +274,7 @@ pub mod viewer_control_request {
         /// a frame, and Transform3D connects child and parent frames independently of entity paths.
         /// Parents can change over time; pinholes connect 3D and 2D spaces. This graph excludes
         /// per-instance poses and view-specific blueprint overrides; it is not the rendering result.
-        /// See <https://rerun.io/docs/concepts/logging-and-ingestion/transforms.>
+        /// See <https://rerun.io/docs/logging-and-ingestion/data-model/transforms.>
         ///
         /// Choose the representation before diagnosing connectivity:
         /// 1. First query with frame_filter = FRAME_FILTER_NAMED and edge_filter = EDGE_FILTER_ALL.
@@ -295,7 +296,7 @@ pub mod viewer_control_request {
         /// Inspecting frame assignments is a separate concern from this API, do it only when asked or
         /// necessary for debugging.
         ///
-        /// Use also rerun_get_state to check spatial-view topology errors.
+        /// Use also viewer_get_state to check spatial-view topology errors.
         /// For missing content, check if the blueprint's target frame is set to a meaningful value.
         /// tf#/ is the default root for entity-path frame topologies, but is also a fallback when
         /// there are multiple disconnected trees with named frames.
@@ -309,7 +310,7 @@ pub mod viewer_control_request {
         /// An asset holds static data shared by the dataset's segments, such as a robot's meshes. The
         /// viewer shows it as part of every segment it applies to, so an entity missing from
         /// `GetDatasetSchema` may be in an asset. See
-        /// <<https://rerun.io/docs/concepts/query-and-transform/catalog-object-model#assets>.>
+        /// <<https://rerun.io/docs/query-and-transform/catalog/catalog-object-model#assets>.>
         ///
         /// Only assets the server is done registering are described.
         ///
@@ -323,6 +324,30 @@ pub mod viewer_control_request {
         /// Fails with `FAILED_PRECONDITION` when analytics is turned off: do not retry.
         #[prost(message, tag = "22")]
         SubmitFeedback(super::SubmitFeedbackRequest),
+        /// Report what the user has selected, in selection order, e.g. to answer "why is this not shown?".
+        ///
+        /// Entities and components belong to the active recording.
+        /// Blueprint entities, servers, catalog entries, and similar are left out.
+        #[prost(message, tag = "23")]
+        GetSelection(super::GetSelectionRequest),
+        /// List the view types available in this viewer, with descriptions and discovery keywords.
+        /// Consult this before choosing a view for a new blueprint: use the
+        /// returned `class_identifier` in `ViewBlueprint`. This lists supported types, not the views
+        /// already on screen (`GetState`). No recording needs to be open.
+        #[prost(message, tag = "24")]
+        ListViewTypes(super::ListViewTypesRequest),
+        /// Read the viewer's app settings as a JSON object, e.g. memory limit and video decoding.
+        ///
+        /// Pass parts of it to `set_settings` to change them.
+        #[prost(message, tag = "25")]
+        GetSettings(super::GetSettingsRequest),
+        /// Change some of the viewer's app settings.
+        ///
+        /// The viewer saves them, so they outlive this session.
+        /// Call `get_settings` first to see the names and current values.
+        /// The FFmpeg path and the cache directory are read-only.
+        #[prost(message, tag = "26")]
+        SetSettings(super::SetSettingsRequest),
     }
 }
 impl ::prost::Name for ViewerControlRequest {
@@ -341,7 +366,7 @@ pub struct ViewerControlResponse {
     /// Always the same variant as the request's `kind`.
     #[prost(
         oneof = "viewer_control_response::Kind",
-        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22"
+        tags = "1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 17, 18, 19, 20, 15, 21, 22, 23, 24, 25, 26"
     )]
     pub kind: ::core::option::Option<viewer_control_response::Kind>,
 }
@@ -413,6 +438,18 @@ pub mod viewer_control_response {
         /// Result of `submit_feedback`.
         #[prost(message, tag = "22")]
         SubmitFeedback(super::SubmitFeedbackResponse),
+        /// Result of `get_selection`.
+        #[prost(message, tag = "23")]
+        GetSelection(super::GetSelectionResponse),
+        /// Result of `list_view_types`.
+        #[prost(message, tag = "24")]
+        ListViewTypes(super::ListViewTypesResponse),
+        /// Result of `get_settings`.
+        #[prost(message, tag = "25")]
+        GetSettings(super::GetSettingsResponse),
+        /// Result of `set_settings`.
+        #[prost(message, tag = "26")]
+        SetSettings(super::SetSettingsResponse),
     }
 }
 impl ::prost::Name for ViewerControlResponse {
@@ -423,6 +460,62 @@ impl ::prost::Name for ViewerControlResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.viewer_control.v1alpha1.ViewerControlResponse".into()
+    }
+}
+/// Request for `ListViewTypes`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ListViewTypesRequest {}
+impl ::prost::Name for ListViewTypesRequest {
+    const NAME: &'static str = "ListViewTypesRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ListViewTypesRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ListViewTypesRequest".into()
+    }
+}
+/// View types registered in this viewer, ordered by class identifier.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListViewTypesResponse {
+    /// Only classes registered in the connected viewer, including custom view classes.
+    #[prost(message, repeated, tag = "1")]
+    pub view_types: ::prost::alloc::vec::Vec<ViewerViewType>,
+}
+impl ::prost::Name for ListViewTypesResponse {
+    const NAME: &'static str = "ListViewTypesResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ListViewTypesResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ListViewTypesResponse".into()
+    }
+}
+/// Discovery metadata for a registered view type.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ViewerViewType {
+    /// Exact value to use for `ViewBlueprint.class_identifier`.
+    #[prost(string, tag = "1")]
+    pub class_identifier: ::prost::alloc::string::String,
+    /// Human-readable label; use `class_identifier` rather than this label in blueprints.
+    #[prost(string, tag = "2")]
+    pub display_name: ::prost::alloc::string::String,
+    /// Short Markdown description. Empty for custom views without reflection metadata.
+    #[prost(string, tag = "3")]
+    pub description: ::prost::alloc::string::String,
+    /// Discovery terms for choosing a view; empty when reflection metadata is unavailable.
+    #[prost(string, repeated, tag = "4")]
+    pub keywords: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
+impl ::prost::Name for ViewerViewType {
+    const NAME: &'static str = "ViewerViewType";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.ViewerViewType".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.ViewerViewType".into()
     }
 }
 /// Request for `GetTransformGraph`.
@@ -1267,6 +1360,262 @@ impl ::prost::Name for ViewerLogEntry {
         "/rerun.viewer_control.v1alpha1.ViewerLogEntry".into()
     }
 }
+/// A UUID.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct Uuid {
+    /// In the hyphenated form, e.g. `67e55044-10b1-426f-9247-bb680e5fe0c8`.
+    #[prost(string, tag = "1")]
+    pub uuid: ::prost::alloc::string::String,
+}
+impl ::prost::Name for Uuid {
+    const NAME: &'static str = "Uuid";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.Uuid".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.Uuid".into()
+    }
+}
+/// Request for `GetSettings`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSettingsRequest {}
+impl ::prost::Name for GetSettingsRequest {
+    const NAME: &'static str = "GetSettingsRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetSettingsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetSettingsRequest".into()
+    }
+}
+/// Response for `GetSettings`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSettingsResponse {
+    /// All settings, as a JSON object.
+    ///
+    /// Secrets, such as access tokens, are left out.
+    #[prost(string, tag = "1")]
+    pub settings_json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for GetSettingsResponse {
+    const NAME: &'static str = "GetSettingsResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetSettingsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetSettingsResponse".into()
+    }
+}
+/// Request for `SetSettings`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetSettingsRequest {
+    /// The settings to change, as a JSON object with the same shape as `GetSettingsResponse`.
+    ///
+    /// Keys that are left out keep their value, also in nested objects.
+    /// Unknown keys, values of the wrong type, secrets, changes to read-only settings, and lowering
+    /// the memory limit below 128 MiB are `INVALID_ARGUMENT`, and then nothing changes.
+    #[prost(string, tag = "1")]
+    pub settings_json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetSettingsRequest {
+    const NAME: &'static str = "SetSettingsRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetSettingsRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetSettingsRequest".into()
+    }
+}
+/// Response for `SetSettings`.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SetSettingsResponse {
+    /// All settings after the change, as `GetSettingsResponse` reports them.
+    #[prost(string, tag = "1")]
+    pub settings_json: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SetSettingsResponse {
+    const NAME: &'static str = "SetSettingsResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SetSettingsResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SetSettingsResponse".into()
+    }
+}
+/// Request for `GetSelection`.
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct GetSelectionRequest {}
+impl ::prost::Name for GetSelectionRequest {
+    const NAME: &'static str = "GetSelectionRequest";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetSelectionRequest".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetSelectionRequest".into()
+    }
+}
+/// Response for `GetSelection`: what the user has selected in the viewer.
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct GetSelectionResponse {
+    /// The recording that the selected entities and components belong to: the active recording, as
+    /// `{kind}:{application_id}:{recording_id}`. Absent if no recording is active.
+    #[prost(string, optional, tag = "1")]
+    pub store_id: ::core::option::Option<::prost::alloc::string::String>,
+    /// The selected items, in selection order. Empty if nothing is selected.
+    #[prost(message, repeated, tag = "2")]
+    pub items: ::prost::alloc::vec::Vec<SelectedItem>,
+}
+impl ::prost::Name for GetSelectionResponse {
+    const NAME: &'static str = "GetSelectionResponse";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.GetSelectionResponse".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.GetSelectionResponse".into()
+    }
+}
+/// One selected item.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedItem {
+    /// What kind of thing is selected.
+    #[prost(oneof = "selected_item::Kind", tags = "1, 2, 3, 4, 5")]
+    pub kind: ::core::option::Option<selected_item::Kind>,
+}
+/// Nested message and enum types in `SelectedItem`.
+pub mod selected_item {
+    /// What kind of thing is selected.
+    #[derive(Clone, PartialEq, Eq, Hash, ::prost::Oneof)]
+    pub enum Kind {
+        /// An entity, or one instance of it.
+        #[prost(message, tag = "1")]
+        Entity(super::SelectedEntity),
+        /// A component of an entity.
+        #[prost(message, tag = "2")]
+        Component(super::SelectedComponent),
+        /// A view.
+        #[prost(message, tag = "3")]
+        View(super::SelectedView),
+        /// A container in the layout of the views.
+        #[prost(message, tag = "4")]
+        Container(super::SelectedContainer),
+        /// A recording or a blueprint.
+        #[prost(message, tag = "5")]
+        Recording(super::SelectedRecording),
+    }
+}
+impl ::prost::Name for SelectedItem {
+    const NAME: &'static str = "SelectedItem";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedItem".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedItem".into()
+    }
+}
+/// A selected entity, or one instance of it.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedEntity {
+    /// The entity path, e.g. `/world/robot`.
+    #[prost(string, tag = "1")]
+    pub entity_path: ::prost::alloc::string::String,
+    /// The index of the selected instance, e.g. one point of a point cloud. Absent when the whole
+    /// entity is selected.
+    #[prost(uint64, optional, tag = "2")]
+    pub instance: ::core::option::Option<u64>,
+    /// The view it was selected in, as a `view_id` from `GetState`. Absent when it was selected
+    /// outside of a view, e.g. in the time panel.
+    #[prost(message, optional, tag = "3")]
+    pub view_id: ::core::option::Option<Uuid>,
+}
+impl ::prost::Name for SelectedEntity {
+    const NAME: &'static str = "SelectedEntity";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedEntity".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedEntity".into()
+    }
+}
+/// A selected component of an entity.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedComponent {
+    /// The entity path, e.g. `/world/robot`.
+    #[prost(string, tag = "1")]
+    pub entity_path: ::prost::alloc::string::String,
+    /// The component, as `GetRecordingSchema` names it, e.g. `Points3D:positions`.
+    #[prost(string, tag = "2")]
+    pub component: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SelectedComponent {
+    const NAME: &'static str = "SelectedComponent";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedComponent".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedComponent".into()
+    }
+}
+/// A selected view.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedView {
+    /// The view id, as `GetState` reports it.
+    #[prost(message, optional, tag = "1")]
+    pub view_id: ::core::option::Option<Uuid>,
+}
+impl ::prost::Name for SelectedView {
+    const NAME: &'static str = "SelectedView";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedView".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedView".into()
+    }
+}
+/// A selected container.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedContainer {
+    /// The container id, as in the blueprint entity path `/container/<id>` of `GetBlueprint`.
+    #[prost(message, optional, tag = "1")]
+    pub container_id: ::core::option::Option<Uuid>,
+}
+impl ::prost::Name for SelectedContainer {
+    const NAME: &'static str = "SelectedContainer";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedContainer".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedContainer".into()
+    }
+}
+/// A selected recording or blueprint.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct SelectedRecording {
+    /// The store id, as `{kind}:{application_id}:{recording_id}`.
+    #[prost(string, tag = "1")]
+    pub store_id: ::prost::alloc::string::String,
+}
+impl ::prost::Name for SelectedRecording {
+    const NAME: &'static str = "SelectedRecording";
+    const PACKAGE: &'static str = "rerun.viewer_control.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.viewer_control.v1alpha1.SelectedRecording".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.viewer_control.v1alpha1.SelectedRecording".into()
+    }
+}
 /// Request for `GetState`. Empty: the whole state is always returned.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetStateRequest {}
@@ -1284,7 +1633,7 @@ impl ::prost::Name for GetStateRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetStateResponse {
     /// What the viewer is showing, as `get_location` reports it. Empty if that has no location.
-    /// See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
     /// The active recording, if any, as `{kind}:{application_id}:{recording_id}`.
@@ -1295,8 +1644,8 @@ pub struct GetStateResponse {
     pub recordings: ::prost::alloc::vec::Vec<ViewerRecording>,
     /// Origin of the catalog server the viewer hosts, e.g. `rerun+<http://127.0.0.1:9876`.>
     ///
-    /// Clients (notably `re_viewer_mcp`) hand this to the Python `CatalogClient` to read the data
-    /// behind the open recordings, which this service deliberately does not serve itself.
+    /// Clients read the data behind the open recordings from it, e.g. `re_rerun_mcp`'s catalog
+    /// tools or the Python `CatalogClient`, since this service deliberately does not serve it.
     /// Unset if the viewer has no catalog, which on native is only the case before it starts up.
     #[prost(string, optional, tag = "4")]
     pub catalog_url: ::core::option::Option<::prost::alloc::string::String>,
@@ -1477,7 +1826,7 @@ pub struct ViewerRecording {
     /// The recording's current time cursor.
     #[prost(message, optional, tag = "3")]
     pub current_time: ::core::option::Option<TimeCursor>,
-    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// The location that shows this recording, for `set_location`. See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "4")]
     pub location: ::prost::alloc::string::String,
     /// Whether the time cursor is paused, playing, or following the latest data.
@@ -1863,7 +2212,7 @@ pub mod set_blueprint_request {
         ///
         /// The entity paths and archetypes of a table blueprint are described by
         /// `rerun.blueprint.archetypes.TableBlueprint` in the Python SDK and in
-        /// <<https://rerun.io/docs/howto/visualization/configure-table-blueprints>.>
+        /// <<https://rerun.io/docs/viewer/blueprints/configure-table-blueprints>.>
         ///
         /// `TableBlueprint` at `/table` has these fields:
         /// * `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a
@@ -2060,7 +2409,7 @@ impl ::prost::Name for GetLocationRequest {
 /// Response for `GetLocation`.
 #[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
 pub struct GetLocationResponse {
-    /// What the viewer is showing. See <<https://rerun.io/docs/reference/viewer/urls>> for the syntax.
+    /// What the viewer is showing. See <<https://rerun.io/docs/viewer/extend/urls>> for the syntax.
     #[prost(string, tag = "1")]
     pub location: ::prost::alloc::string::String,
 }
@@ -2113,7 +2462,7 @@ pub struct SubmitFeedbackRequest {
     /// What kind of problem it is.
     #[prost(enumeration = "FeedbackCategory", tag = "2")]
     pub category: i32,
-    /// The tool, command, or API that let you down, e.g. `rerun_set_blueprint` or `rr.log`.
+    /// The tool, command, or API that let you down, e.g. `viewer_set_blueprint` or `rr.log`.
     #[prost(string, optional, tag = "3")]
     pub surface: ::core::option::Option<::prost::alloc::string::String>,
     /// More detail: the error message, what you expected instead, and how you worked around it.
@@ -2322,7 +2671,7 @@ pub mod viewer_control_service_client {
     use tonic::codegen::*;
     /// Remote control of a running viewer.
     ///
-    /// The viewer serves this alongside its SDK comms endpoint. `re_viewer_mcp` is the main client:
+    /// The viewer serves this alongside its SDK comms endpoint. `re_rerun_mcp` is the main client:
     /// it drives the viewer on behalf of an agent.
     ///
     /// `ViewerControl` carries every viewer-control operation in one `oneof`, rather than one RPC per
@@ -2483,7 +2832,7 @@ pub mod viewer_control_service_server {
     }
     /// Remote control of a running viewer.
     ///
-    /// The viewer serves this alongside its SDK comms endpoint. `re_viewer_mcp` is the main client:
+    /// The viewer serves this alongside its SDK comms endpoint. `re_rerun_mcp` is the main client:
     /// it drives the viewer on behalf of an agent.
     ///
     /// `ViewerControl` carries every viewer-control operation in one `oneof`, rather than one RPC per

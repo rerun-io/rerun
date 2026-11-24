@@ -21,6 +21,7 @@ pub mod chunk_store;
 mod engine;
 pub mod error;
 mod hdf5_reader;
+pub mod kinematic_tree_stream;
 pub mod lazy_store;
 mod lerobot_reader;
 mod mcap_reader;
@@ -31,7 +32,6 @@ mod py_stream;
 pub mod rrd_reader;
 pub mod stream;
 mod summary;
-pub mod urdf_tree_stream;
 
 use std::sync::Arc;
 
@@ -54,6 +54,7 @@ pub fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<hdf5_reader::PyHdf5ReaderInternal>()?;
     m.add_class::<lerobot_reader::PyLeRobotReaderInternal>()?;
     m.add_class::<mp4_reader::PyMp4TranscodeOptions>()?;
+    m.add_class::<mp4_reader::PyMp4InfoInternal>()?;
     m.add_class::<parquet_reader::PyParquetReaderInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamInternal>()?;
     m.add_class::<py_stream::PyLazyChunkStreamIterator>()?;

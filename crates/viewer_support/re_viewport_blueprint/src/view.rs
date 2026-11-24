@@ -258,10 +258,10 @@ impl ViewBlueprint {
         contents.save_to_blueprint_store(ctx);
 
         ctx.command_sender()
-            .send_system(SystemCommand::AppendToStore(
-                ctx.store_context.blueprint.store_id().clone(),
-                deltas,
-            ));
+            .send_system(SystemCommand::AppendToStore {
+                store_id: ctx.store_context.blueprint.store_id().clone(),
+                chunks: deltas,
+            });
     }
 
     /// Creates a new [`ViewBlueprint`] with the same contents, but a different [`ViewId`]
@@ -484,7 +484,6 @@ mod tests {
     use std::sync::Arc;
 
     use ahash::HashSet;
-    use re_chunk::RowId;
     use re_log_types::TimePoint;
     use re_log_types::example_components::{MyLabel, MyPoint, MyPoints};
     use re_sdk_types::blueprint::archetypes::EntityBehavior;

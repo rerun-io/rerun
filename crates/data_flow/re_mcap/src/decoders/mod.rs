@@ -945,7 +945,6 @@ fn join_without_pool<RA: Send, RB>(
 mod tests {
     use std::io;
 
-    use re_log_types::TimeType;
     use re_sdk_types::archetypes::McapMessage;
 
     use super::*;

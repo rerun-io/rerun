@@ -3,8 +3,6 @@
 //! For a complete reference of the format see:
 //! <https://www.microsoft.com/en-us/research/wp-content/uploads/2018/09/p100-wilson.pdf>
 
-use std::mem::size_of;
-
 use byteorder::{ByteOrder as _, LittleEndian};
 use thiserror::Error;
 

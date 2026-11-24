@@ -33,7 +33,7 @@ The underlying data needs to be logged to the same entity path using [`archetype
 
 ## API reference links
  * 🌊 [C++ API docs for `StateConfiguration`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1StateConfiguration.html)
- * 🐍 [Python API docs for `StateConfiguration`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.StateConfiguration)
+ * 🐍 [Python API docs for `StateConfiguration`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.StateConfiguration)
  * 🦀 [Rust API docs for `StateConfiguration`](https://docs.rs/rerun/latest/rerun/archetypes/struct.StateConfiguration.html)
 
 ## Example

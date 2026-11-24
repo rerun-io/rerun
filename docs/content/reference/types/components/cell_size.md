@@ -18,7 +18,7 @@ Float32
 
 ## API reference links
  * 🌊 [C++ API docs for `CellSize`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1CellSize.html)
- * 🐍 [Python API docs for `CellSize`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.CellSize)
+ * 🐍 [Python API docs for `CellSize`](https://ref.rerun.io/docs/python/stable/components#rerun.components.CellSize)
  * 🦀 [Rust API docs for `CellSize`](https://docs.rs/rerun/latest/rerun/components/struct.CellSize.html)
 
 

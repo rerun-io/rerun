@@ -223,7 +223,7 @@ impl std::fmt::Display for WrongDatatypeError {
 #[cfg(test)]
 mod reject_unsupported_widenings_tests {
     use super::*;
-    use arrow::datatypes::{DataType, Field, Fields};
+    use arrow::datatypes::Fields;
 
     fn small_union_type() -> DataType {
         use arrow::datatypes::UnionFields;

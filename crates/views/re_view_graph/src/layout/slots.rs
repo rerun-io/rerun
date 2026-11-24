@@ -9,14 +9,23 @@ use crate::graph::NodeId;
 
 /// Uniquely identifies a [`Slot`] by ordering the [`NodeIds`](NodeId) that make up an edge.
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
-pub struct SlotId(NodeId, NodeId);
+pub struct SlotId {
+    min: NodeId,
+    max: NodeId,
+}
 
 impl SlotId {
     pub fn new(source: NodeId, target: NodeId) -> Self {
         if source < target {
-            Self(source, target)
+            Self {
+                min: source,
+                max: target,
+            }
         } else {
-            Self(target, source)
+            Self {
+                min: target,
+                max: source,
+            }
         }
     }
 }
@@ -49,8 +58,8 @@ pub fn slotted_edges<'a>(
                 SlotKind::SelfEdge { node: e.source }
             } else {
                 SlotKind::Regular {
-                    source: id.0,
-                    target: id.1,
+                    source: id.min,
+                    target: id.max,
                 }
             },
             edges: Vec::new(),

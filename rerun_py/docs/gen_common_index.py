@@ -56,11 +56,14 @@ DOCUMENTED_PACKAGES: Final[dict[str, tuple[str, ...]]] = {
     "rerun.chunk": ("Chunk",),
     "rerun.experimental": ("Experimental",),
     "rerun.experimental.dataloader": ("Experimental", "Dataloader"),
+    "rerun.experimental.spans": ("Experimental", "Spans"),
     "rerun.server": ("Server",),
     "rerun.urdf": ("URDF Support",),
+    "rerun.mjcf": ("MJCF Support",),
     "rerun.notebook": ("Notebook",),
     "rerun.auth": ("Authentication",),
     "rerun.utilities": ("Utilities",),
+    "rerun.utilities.datafusion": ("Utilities", "DataFusion"),
 }
 
 # Subpackages/modules under `rerun.` that deliberately do NOT get a Track A
@@ -85,14 +88,9 @@ EXCLUDED_FROM_TRACK_A: Final[set[str]] = {
     # `Visualizer`/`VisualizableArchetype` which are implementation contracts,
     # not user-facing API.
     "rerun.blueprint.visualizers",
-    # Namespace-only packages with empty `__init__.py`; users import
-    # deeper symbols (e.g. `from rerun.utilities.datafusion.collect import ...`).
-    # No aggregated surface to document at the namespace level.
-    "rerun.utilities.datafusion",
+    # Namespace-only package; its public symbols are re-exported from
+    # `rerun.utilities.datafusion` and documented there.
     "rerun.utilities.datafusion.functions",
-    # Sampling-manifest internals; its only public symbol (`Manifest`) is
-    # re-exported flat into `rerun.experimental.dataloader` and documented there.
-    "rerun.experimental.dataloader.manifest",
     # Column-decoder internals
     "rerun.experimental.dataloader.decoders",
     # Deprecated aliases for `rerun.encodings` / `rerun.blueprint.encodings`, which
@@ -548,16 +546,16 @@ with mkdocs_gen_files.open(index_path, "w") as index_file:
     index_file.write(
         """
 ## Getting Started
-* [Quick start](https://www.rerun.io/docs/getting-started/data-in/python)
-* [Tutorial](https://www.rerun.io/docs/getting-started/data-in/python)
+* [Quick start](https://www.rerun.io/docs/logging-and-ingestion/tutorial)
+* [Tutorial](https://www.rerun.io/docs/logging-and-ingestion/tutorial)
 * [Examples on GitHub](https://github.com/rerun-io/rerun/tree/latest/examples/python)
-* [Troubleshooting](https://www.rerun.io/docs/overview/installing-rerun/troubleshooting)
+* [Troubleshooting](https://www.rerun.io/docs/getting-started/install-rerun/troubleshooting)
 
 There are many different ways of sending data to the Rerun Viewer depending on what you're trying
 to achieve and whether the viewer is running in the same process as your code, in another process,
 or even as a separate web application.
 
-Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating-modes) for an
+Checkout [SDK Operating Modes](https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/operating-modes) for an
 overview of what's possible and how.
 
 ## Supported Python Versions
@@ -567,6 +565,7 @@ of Python, you can use the table below to make sure you choose the proper Rerun 
 
 | **Rerun Version** | **Release Date** | **Supported Python Version** |
 |-------------------|------------------|------------------------------|
+| 0.43              | Nov. 11, 2026    | 3.11+                        |
 | 0.42              | Nov.  4, 2026    | 3.11+                        |
 | 0.41              | Oct. 28, 2026    | 3.11+                        |
 | 0.40              | Oct. 21, 2026    | 3.11+                        |

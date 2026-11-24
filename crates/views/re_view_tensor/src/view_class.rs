@@ -128,10 +128,6 @@ Set the displayed dimensions in a selection panel.",
         None
     }
 
-    fn layout_priority(&self) -> re_viewer_context::ViewClassLayoutPriority {
-        re_viewer_context::ViewClassLayoutPriority::Medium
-    }
-
     fn new_state(&self) -> Box<dyn ViewState> {
         Box::<ViewTensorState>::default()
     }

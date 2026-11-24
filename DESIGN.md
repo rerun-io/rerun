@@ -7,6 +7,13 @@ Short, single-sentence text do NOT end in a period in the UI.
 
 Multi-sentence text ALWAYS ends in a period.
 
+#### Quotation marks
+
+Put the surrounding sentence’s punctuation after the closing quotation mark.
+Keep punctuation that belongs to the quoted text inside the quotation marks.
+
+> Ask “Why is this view empty?”.
+
 #### Casing
 We prefer normal casing, and avoid Title Casing.
 

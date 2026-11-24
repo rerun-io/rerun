@@ -21,21 +21,21 @@
 //! [`McpServerConfig`]s are handed over as additional MCP servers when the session opens.
 //! Neither removes anything the agent would otherwise have.
 //! Unless the user has picked a model, the session also switches to a fast one if the agent
-//! offers it (see [`AgentHarnessConfig::model_preferences`]).
+//! offers it (see [`AgentHarnessConfig::model_preselect`]).
 //!
 //! The model-API backend has none of that: no skills or configuration of the user's, only the
 //! model, [`SessionContext::model_api_preamble`] as its system prompt, and the tools of the host's
-//! [`AgentToolbox`].
+//! [`re_agent_tools::AgentToolbox`].
 
 // The workspace has two reqwest versions until it can move to 0.13; see the root `Cargo.toml`.
 extern crate reqwest013 as reqwest;
 
 mod agent_harness;
-mod agent_toolbox;
 mod backend;
 mod elicitation;
 mod error;
 mod model_api_backend;
+mod model_recommendation;
 mod redactor;
 mod reports;
 mod responder;
@@ -59,23 +59,28 @@ pub mod acp {
 #[cfg(agent_harness_backend)]
 pub use agent_harness::find_executable;
 pub use agent_harness::{
-    AgentEntry, AgentHarnessConfig, AgentKind, AgentProfile, AgentProfileId, McpStdioServer,
+    AgentEntry, AgentHarnessConfig, AgentInstall, AgentKind, AgentProfile, AgentProfileId,
+    McpStdioServer,
 };
-pub use agent_toolbox::{AgentToolbox, ToolDefinition, ToolOutput};
-pub use backend::{AgentCommand, AgentEvent, LineDirection};
+pub use backend::{AgentCommand, AgentEvent, LineDirection, SessionOrigin, TurnError};
 pub use error::{AgentError, AgentErrorSource, FailedRequest, McpStartupFailure};
 pub use model_api_backend::{ApiKey, HostedTools, ModelApiConfig, ModelApiError, ModelApiProvider};
+pub use model_recommendation::preferred_model;
+pub use re_agent_tools::{ModelCategory, ModelPreference, ModelPreselect};
 pub use redactor::{OnRedacted, RedactionAgent, RedactionError, Redactor};
-pub use reports::SessionReports;
+pub use reports::{McpStartupReport, SessionReports};
 pub use responder::{AgentStoppedWaiting, Responder};
 pub use session::{
     AgentSession, AuthPrompt, ElicitationId, LogLine, PendingElicitation, PendingPermission, Phase,
     Prompt, PromptImage,
 };
-pub use settings::{AgentLaunch, AgentLaunchError, AgentSettings, McpServerConfig, SessionContext};
+pub use settings::{
+    AgentLaunch, AgentLaunchError, AgentPreferences, AgentSettings, Effort, McpServerConfig,
+    SavedConversation, SessionContext,
+};
 pub use startup::{AgentBackendKind, StartupOutcome, StartupReport};
 pub use transcript::{
-    ToolCallState, Transcript, TranscriptEntry, TranscriptItem, message_text, model_name,
-    truncate_bytes,
+    ToolCallState, Transcript, TranscriptEntry, TranscriptItem, TurnId, message_text, model_name,
+    select_options, truncate_bytes,
 };
 pub use turn::{TurnOutcome, TurnReport};

@@ -6,8 +6,8 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
+use re_viewer::external::re_view_spatial;
 use re_viewer::external::re_viewer_context::{ContainerId, RecommendedView, ViewClass as _};
-use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -325,8 +325,8 @@ pub async fn test_add_entity_to_view_recommendations_scalars() {
     harness.streams_tree().right_click_label("scalars");
     harness.hover_label_contains("Add to new view");
 
-    assert!(harness.query_all_by_label("Time series").count() > 0);
-    assert!(harness.query_all_by_label("Dataframe").count() > 0);
+    assert!(harness.has_label("Time series"));
+    assert!(harness.has_label("Dataframe"));
     // Visualizable by the state visualizer (`Float64` casts to a state), but not recommended.
     assert_eq!(harness.query_all_by_label("State timeline").count(), 0);
 }
@@ -340,8 +340,8 @@ pub async fn test_add_entity_to_view_recommendations_states() {
     harness.streams_tree().right_click_label("states");
     harness.hover_label_contains("Add to new view");
 
-    assert!(harness.query_all_by_label("State timeline").count() > 0);
-    assert!(harness.query_all_by_label("Dataframe").count() > 0);
+    assert!(harness.has_label("State timeline"));
+    assert!(harness.has_label("Dataframe"));
     // `StateChange:state` is a `Text` component, but that doesn't make it a graph node, a document
     // or a log message.
     assert_eq!(harness.query_all_by_label("Graph").count(), 0);

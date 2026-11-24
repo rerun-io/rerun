@@ -63,8 +63,10 @@ impl crate::sink::LogSink for re_log_encoding::FileSink {
         use re_log_encoding::FileFlushError;
 
         Self::flush_blocking(self, timeout).map_err(|err| match err {
-            FileFlushError::Failed { message } => sink::SinkFlushError::Failed { message },
             FileFlushError::Timeout => sink::SinkFlushError::Timeout,
+            err @ (FileFlushError::WriterThreadShutDown | FileFlushError::Encode { .. }) => {
+                sink::SinkFlushError::failed(err.to_string())
+            }
         })
     }
 
@@ -230,11 +232,5 @@ pub fn new_store_info(
 ) -> re_log_msg::StoreInfo {
     let store_id = StoreId::random(StoreKind::Recording, application_id.into());
 
-    re_log_msg::StoreInfo::new(
-        store_id,
-        re_log_msg::StoreSource::RustSdk {
-            rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-            llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-        },
-    )
+    re_log_msg::StoreInfo::new(store_id, re_log_msg::StoreSource::RustSdk)
 }

@@ -23,12 +23,12 @@ This example demonstrates multiple aspects of the Rerun viewer:
 - Use of the [map view](https://rerun.io/docs/reference/types/views/map_view).
 - Use of [pyproj](https://pyproj4.github.io/pyproj/stable/) to transform geospatial data from one coordinate system to another.
 - Use [GeoPandas](https://geopandas.org/en/stable/) to load geospatial data into a 3D view.
-- Use [Polars]https://pola.rs) to batch data to be sent via [`rr.send_columns()`](https://rerun.io/docs/howto/logging-and-ingestion/send-columns) (use `--batch`).
+- Use [Polars]https://pola.rs) to batch data to be sent via [`rr.send_columns()`](https://rerun.io/docs/logging-and-ingestion/send-data/send-columns) (use `--batch`).
 
 
 ## Run the code
 
-To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/common#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
+To run this example, make sure you have the [required Python version](https://ref.rerun.io/docs/python/main/#supported-python-versions), the Rerun repository checked out and the latest SDK installed:
 ```bash
 pip install --upgrade rerun-sdk  # install the latest Rerun SDK
 git clone git@github.com:rerun-io/rerun.git  # Clone the repository

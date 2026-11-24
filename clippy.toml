@@ -26,6 +26,15 @@ too-many-lines-threshold = 600 # TODO(emilk): decrease this
 
 # -----------------------------------------------------------------------------
 
+# https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_fields
+disallowed-fields = [
+  { path = "egui::Modifiers::alt", reason = "Name the modifier with an `egui::Modifiers` const, and test it with `Modifiers::matches_logically` or `matches_exact`" },
+  { path = "egui::Modifiers::command", reason = "Name the modifier with an `egui::Modifiers` const, and test it with `Modifiers::matches_logically` or `matches_exact`" },
+  { path = "egui::Modifiers::ctrl", reason = "Name the modifier with an `egui::Modifiers` const, and test it with `Modifiers::matches_logically` or `matches_exact`" },
+  { path = "egui::Modifiers::mac_cmd", reason = "Name the modifier with an `egui::Modifiers` const, and test it with `Modifiers::matches_logically` or `matches_exact`" },
+  { path = "egui::Modifiers::shift", reason = "Name the modifier with an `egui::Modifiers` const, and test it with `Modifiers::matches_logically` or `matches_exact`" },
+]
+
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_macros
 disallowed-macros = [
   'std::dbg',
@@ -131,6 +140,7 @@ doc-valid-idents = [
   "MessagePack",
   "MiB",
   "MiMalloc",
+  "MuJoCo",
   "NaN",
   "OBJ",
   "OpenGL",
@@ -141,6 +151,7 @@ doc-valid-idents = [
   "WebCodec",
   "WebGL",
   "WebGPU",
+  "WebKit",
   "WebSocket",
   "WebSockets",
 ]

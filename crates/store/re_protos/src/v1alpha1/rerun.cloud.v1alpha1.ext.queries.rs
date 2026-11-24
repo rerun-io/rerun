@@ -75,6 +75,7 @@ impl From<QueryDatasetRequest> for crate::cloud::v1alpha1::QueryDatasetRequest {
             query: value.query.map(Into::into),
             generate_direct_urls: value.generate_direct_urls,
             unsigned_direct_urls: value.unsigned_direct_urls,
+            client_meta: Some(crate::cloud::v1alpha1::ClientMeta::current()),
         }
     }
 }
@@ -307,6 +308,93 @@ pub enum SegmentSelection {
     Explicit(BTreeSet<SegmentId>),
 }
 
+/// The sample times of each segment of a [`ChunkMode::Samples`] selection.
+///
+/// Every segment in the map has at least one sample time, and no sample time is
+/// [`TimeInt::STATIC`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SampleTimes(BTreeMap<SegmentId, BTreeSet<TimeInt>>);
+
+impl SampleTimes {
+    /// Drops the segments without sample times: they select nothing.
+    ///
+    /// Fails with `InvalidArgument` if a sample time is [`TimeInt::STATIC`].
+    pub fn new(segments: BTreeMap<SegmentId, BTreeSet<TimeInt>>) -> tonic::Result<Self> {
+        for (segment_id, times) in &segments {
+            if times.contains(&TimeInt::STATIC) {
+                return Err(tonic::Status::invalid_argument(format!(
+                    "`static` is not a valid value for segment selection (segment {segment_id})"
+                )));
+            }
+        }
+
+        let segments = segments
+            .into_iter()
+            .filter(|(_, times)| !times.is_empty())
+            .collect();
+
+        Ok(Self(segments))
+    }
+
+    /// The sample times of `segment`, or `None` when the selection does not name it.
+    pub fn get(&self, segment: &SegmentId) -> Option<&BTreeSet<TimeInt>> {
+        self.0.get(segment)
+    }
+
+    /// Whether the selection names `segment`.
+    pub fn contains_segment(&self, segment: &SegmentId) -> bool {
+        self.0.contains_key(segment)
+    }
+
+    /// The IDs of the selected segments, in ascending order.
+    pub fn segment_ids(&self) -> impl Iterator<Item = &SegmentId> {
+        self.0.keys()
+    }
+
+    /// The selected segments with their sample times, in segment order.
+    pub fn iter(&self) -> impl Iterator<Item = (&SegmentId, &BTreeSet<TimeInt>)> {
+        self.0.iter()
+    }
+
+    /// Every sample time of every segment.
+    pub fn times(&self) -> impl Iterator<Item = &TimeInt> {
+        self.0.values().flatten()
+    }
+
+    /// The number of segments.
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    /// Whether no segment is selected.
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    /// The number of sample times over every segment.
+    pub fn num_times(&self) -> usize {
+        self.0.values().map(BTreeSet::len).sum()
+    }
+}
+
+impl IntoIterator for SampleTimes {
+    type Item = (SegmentId, BTreeSet<TimeInt>);
+    type IntoIter = std::collections::btree_map::IntoIter<SegmentId, BTreeSet<TimeInt>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a SampleTimes {
+    type Item = (&'a SegmentId, &'a BTreeSet<TimeInt>);
+    type IntoIter = std::collections::btree_map::Iter<'a, SegmentId, BTreeSet<TimeInt>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.iter()
+    }
+}
+
 /// The selection mode of a [`FindChunksRequest`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChunkMode {
@@ -335,10 +423,8 @@ pub enum ChunkMode {
         /// unless the dataset has no data.
         timeline: TimelineName,
 
-        /// The sample times of each selected segment. Sample times are never [`TimeInt::STATIC`].
-        ///
-        /// A segment with no sample times selects nothing, not even its static chunks.
-        segments: BTreeMap<SegmentId, BTreeSet<TimeInt>>,
+        /// The sample times of each selected segment.
+        segments: SampleTimes,
 
         /// Whether to also select the chunks that resolve state at each sample time.
         fill_mode: FillMode,
@@ -353,7 +439,7 @@ impl ChunkMode {
                 SegmentSelection::All => true,
                 SegmentSelection::Explicit(ids) => ids.contains(segment_id),
             },
-            Self::Samples { segments, .. } => segments.contains_key(segment_id),
+            Self::Samples { segments, .. } => segments.contains_segment(segment_id),
         }
     }
 }
@@ -387,6 +473,9 @@ pub struct FindChunksRequest {
 
     /// Which direct chunk URLs the response carries.
     pub direct_url_mode: DirectUrlMode,
+
+    /// Which data the request reads. `Unspecified` reads the full scope.
+    pub scope: crate::cloud::v1alpha1::DatasetQueryScope,
 }
 
 impl FindChunksRequest {
@@ -443,13 +532,13 @@ impl FindChunksRequest {
 }
 
 /// Fails with `InvalidArgument` naming `field` if `value` is `None`.
-fn required_field<T>(value: Option<T>, field: &str) -> Result<T, tonic::Status> {
+fn required_field<T>(value: Option<T>, field: &str) -> tonic::Result<T> {
     value.ok_or_else(|| tonic::Status::invalid_argument(format!("`{field}` is required")))
 }
 
 /// Rejects `i64::MIN`, the wire sentinel for [`TimeInt::STATIC`], which is illegal wherever a
 /// temporal time value is expected.
-fn try_time_value(raw: i64, field: &str) -> Result<TimeInt, tonic::Status> {
+fn try_time_value(raw: i64, field: &str) -> tonic::Result<TimeInt> {
     if raw == i64::MIN {
         return Err(tonic::Status::invalid_argument(format!(
             "`{field}` must not be `i64::MIN` (the static sentinel)"
@@ -460,7 +549,7 @@ fn try_time_value(raw: i64, field: &str) -> Result<TimeInt, tonic::Status> {
 
 fn try_content_selection(
     proto: crate::cloud::v1alpha1::ContentSelection,
-) -> Result<ContentSelection, tonic::Status> {
+) -> tonic::Result<ContentSelection> {
     use crate::cloud::v1alpha1::content_selection::Selection;
 
     let selection = required_field(proto.selection, "contents.selection")?;
@@ -511,7 +600,7 @@ fn try_content_selection(
 
 fn try_component_selection(
     proto: crate::cloud::v1alpha1::entity_selection::Components,
-) -> Result<ComponentSelection, tonic::Status> {
+) -> tonic::Result<ComponentSelection> {
     use crate::cloud::v1alpha1::entity_selection::Components;
 
     Ok(match proto {
@@ -533,7 +622,7 @@ fn try_component_selection(
 
 fn try_segment_selection(
     proto: crate::cloud::v1alpha1::SegmentSelection,
-) -> Result<SegmentSelection, tonic::Status> {
+) -> tonic::Result<SegmentSelection> {
     use crate::cloud::v1alpha1::segment_selection::Selection;
 
     let selection = required_field(proto.selection, "segments.selection")?;
@@ -552,7 +641,7 @@ fn try_range_bounds(
     start_inclusive: Option<i64>,
     end_inclusive: Option<i64>,
     fill_mode: FillMode,
-) -> Result<RangeSelection, tonic::Status> {
+) -> tonic::Result<RangeSelection> {
     let timeline = TimelineName::try_new(timeline)
         .map_err(|err| tonic::Status::invalid_argument(err.to_string()))?;
 
@@ -593,7 +682,7 @@ fn try_range_bounds(
 ///
 /// Accepts every defined mode, including the ones no server implements, so a malformed request
 /// fails with `InvalidArgument` before [`FindChunksRequest::ensure_supported`] runs.
-fn try_fill_mode(raw: i32, field: &str) -> Result<FillMode, tonic::Status> {
+fn try_fill_mode(raw: i32, field: &str) -> tonic::Result<FillMode> {
     use crate::cloud::v1alpha1::FillMode as WireFillMode;
 
     let fill_mode = WireFillMode::try_from(raw).map_err(|_err| {
@@ -607,7 +696,7 @@ fn try_fill_mode(raw: i32, field: &str) -> Result<FillMode, tonic::Status> {
     })
 }
 
-fn try_direct_url_mode(raw: i32) -> Result<DirectUrlMode, tonic::Status> {
+fn try_direct_url_mode(raw: i32) -> tonic::Result<DirectUrlMode> {
     use crate::cloud::v1alpha1::DirectUrlMode as WireMode;
 
     let mode = WireMode::try_from(raw).map_err(|_err| {
@@ -623,7 +712,7 @@ fn try_direct_url_mode(raw: i32) -> Result<DirectUrlMode, tonic::Status> {
 
 fn try_samples_mode(
     proto: crate::cloud::v1alpha1::SegmentSamplesSelection,
-) -> Result<ChunkMode, tonic::Status> {
+) -> tonic::Result<ChunkMode> {
     let crate::cloud::v1alpha1::SegmentSamplesSelection {
         timeline,
         segments,
@@ -634,15 +723,14 @@ fn try_samples_mode(
     let timeline = TimelineName::try_new(timeline)
         .map_err(|err| tonic::Status::invalid_argument(err.to_string()))?;
 
-    let mut seen = HashSet::with_capacity(segments.len());
-    let mut entries = Vec::with_capacity(segments.len());
+    let mut entries = BTreeMap::new();
 
     for entry in segments {
         let crate::cloud::v1alpha1::SegmentSamples { segment_id, values } = entry;
 
         let segment_id: SegmentId = required_field(segment_id, "samples.segment_id")?.try_into()?;
 
-        if !seen.insert(segment_id.clone()) {
+        if entries.contains_key(&segment_id) {
             return Err(tonic::Status::invalid_argument(format!(
                 "duplicate segment id in `samples`: {segment_id}"
             )));
@@ -651,17 +739,12 @@ fn try_samples_mode(
         let values = values
             .into_iter()
             .map(|raw| try_time_value(raw, "samples.values"))
-            .collect::<Result<BTreeSet<_>, tonic::Status>>()?;
+            .collect::<tonic::Result<BTreeSet<_>>>()?;
 
-        entries.push((segment_id, values));
+        entries.insert(segment_id, values);
     }
 
-    // Drop segments with an empty value list only after every entry has been validated, so a
-    // later duplicate or invalid value is still rejected.
-    let segments = entries
-        .into_iter()
-        .filter(|(_, values)| !values.is_empty())
-        .collect();
+    let segments = SampleTimes::new(entries)?;
 
     Ok(ChunkMode::Samples {
         timeline,
@@ -677,6 +760,13 @@ impl TryFrom<crate::cloud::v1alpha1::FindChunksRequest> for FindChunksRequest {
         use crate::cloud::v1alpha1::find_chunks_request::Mode;
 
         let direct_url_mode = try_direct_url_mode(value.direct_url_mode)?;
+        let scope =
+            crate::cloud::v1alpha1::DatasetQueryScope::try_from(value.scope).map_err(|_err| {
+                tonic::Status::invalid_argument(format!(
+                    "`scope` has unknown value {}",
+                    value.scope
+                ))
+            })?;
         let contents = try_content_selection(required_field(value.contents, "contents")?)?;
 
         let mode = required_field(value.mode, "mode")?;
@@ -711,6 +801,7 @@ impl TryFrom<crate::cloud::v1alpha1::FindChunksRequest> for FindChunksRequest {
             contents,
             mode,
             direct_url_mode,
+            scope,
         })
     }
 }
@@ -829,6 +920,8 @@ impl From<FindChunksRequest> for crate::cloud::v1alpha1::FindChunksRequest {
                 DirectUrlMode::Signed => crate::cloud::v1alpha1::DirectUrlMode::Signed as i32,
             },
             mode: Some(value.mode.into()),
+            scope: value.scope as i32,
+            client_meta: Some(crate::cloud::v1alpha1::ClientMeta::current()),
         }
     }
 }
@@ -1286,6 +1379,8 @@ mod tests {
             contents,
             direct_url_mode: cloud_proto::DirectUrlMode::Unspecified as i32,
             mode,
+            scope: cloud_proto::DatasetQueryScope::Unspecified as i32,
+            client_meta: None,
         }
     }
 
@@ -1293,12 +1388,14 @@ mod tests {
     enum FcrOutcome {
         /// `TryFrom` fails with `InvalidArgument`, whose message contains this substring.
         Invalid(&'static str),
+
         /// `TryFrom` succeeds with the expected `is_empty()`, then `ensure_supported` fails with
         /// `Unimplemented`, whose message contains `message`.
         Unsupported {
             is_empty: bool,
             message: &'static str,
         },
+
         /// `TryFrom` and `ensure_supported` succeed, and the result's `is_empty()` matches.
         Valid { is_empty: bool },
     }
@@ -1576,11 +1673,34 @@ mod tests {
                 ),
                 outcome: FcrOutcome::Valid { is_empty: true },
             },
+            FcrCase {
+                name: "samples: static sentinel value",
+                proto: fcr_request(
+                    Some(fcr_all_contents()),
+                    Some(fcr_samples_mode(
+                        "frame",
+                        vec![(Some("seg1"), vec![i64::MIN])],
+                    )),
+                ),
+                outcome: FcrOutcome::Invalid("samples.values"),
+            },
         ];
 
         for case in cases {
             fcr_check(case);
         }
+    }
+
+    #[test]
+    fn sample_times_reject_static() {
+        let err = SampleTimes::new(BTreeMap::from([(
+            SegmentId::from("a"),
+            BTreeSet::from([TimeInt::new_temporal(1), TimeInt::STATIC]),
+        )]))
+        .expect_err("a static sample time is invalid");
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+        assert!(err.message().contains("`static`"), "{err}");
+        assert!(err.message().contains("segment a"), "{err}");
     }
 
     /// The range bound rules, including the static sentinel and equal bounds.
@@ -1664,6 +1784,7 @@ mod tests {
                                 range,
                             },
                             direct_url_mode: DirectUrlMode::Signed,
+                            scope: cloud_proto::DatasetQueryScope::Full,
                         };
                         assert!(
                             !request.is_empty(),
@@ -1699,6 +1820,7 @@ mod tests {
                     segments: SegmentSelection::All,
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Unspecified,
             },
             FindChunksRequest {
                 contents: ContentSelection::Explicit(vec![EntitySelection {
@@ -1718,6 +1840,7 @@ mod tests {
                     },
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Indexed,
             },
             FindChunksRequest {
                 contents: ContentSelection::All,
@@ -1731,30 +1854,35 @@ mod tests {
                     },
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Full,
             },
             FindChunksRequest {
                 contents: ContentSelection::All,
                 mode: ChunkMode::Samples {
                     timeline: TimelineName::from("frame"),
-                    segments: BTreeMap::from([(
+                    segments: SampleTimes::new(BTreeMap::from([(
                         SegmentId::from("seg1"),
                         BTreeSet::from([TimeInt::new_temporal(1), TimeInt::new_temporal(2)]),
-                    )]),
+                    )]))
+                    .expect("valid sample times"),
                     fill_mode: FillMode::None,
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Full,
             },
             FindChunksRequest {
                 contents: ContentSelection::All,
                 mode: ChunkMode::Samples {
                     timeline: TimelineName::from("frame"),
-                    segments: BTreeMap::from([(
+                    segments: SampleTimes::new(BTreeMap::from([(
                         SegmentId::from("seg1"),
                         BTreeSet::from([TimeInt::new_temporal(1)]),
-                    )]),
+                    )]))
+                    .expect("valid sample times"),
                     fill_mode: FillMode::EarliestAt,
                 },
                 direct_url_mode: DirectUrlMode::Signed,
+                scope: cloud_proto::DatasetQueryScope::Full,
             },
         ];
 
@@ -1824,6 +1952,7 @@ mod tests {
                 segments: SegmentSelection::All,
             },
             direct_url_mode: DirectUrlMode::default(),
+            scope: cloud_proto::DatasetQueryScope::Full,
         };
 
         assert!(
@@ -1874,9 +2003,25 @@ mod tests {
             direct_url_mode: 99,
             contents: Some(fcr_all_contents()),
             mode: Some(fcr_static_mode(Some(fcr_explicit_segments(&[])))),
+            scope: cloud_proto::DatasetQueryScope::Unspecified as i32,
+            client_meta: None,
         })
         .expect_err("unknown direct URL mode must be rejected before empty-selection handling");
         assert_eq!(err.code(), tonic::Code::InvalidArgument);
         assert!(err.message().contains("direct_url_mode"));
+    }
+
+    #[test]
+    fn unknown_scope_is_rejected() {
+        let err = FindChunksRequest::try_from(cloud_proto::FindChunksRequest {
+            scope: 99,
+            ..fcr_request(
+                Some(fcr_all_contents()),
+                Some(fcr_static_mode(Some(fcr_all_segments()))),
+            )
+        })
+        .expect_err("unknown scope must be rejected");
+        assert_eq!(err.code(), tonic::Code::InvalidArgument);
+        assert!(err.message().contains("scope"));
     }
 }

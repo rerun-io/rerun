@@ -5,9 +5,9 @@
 
 /// A 2D point cloud with positions and optional colors, radii, labels, etc.
 ///
-/// \example archetypes/points2d_simple !api title="Simple 2D points" image="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/1200w.png"
-/// \example archetypes/points2d_random title="Randomly distributed 2D points with varying color and radius" image="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png"
-/// \example archetypes/points2d_ui_radius title="Log points with radii given in UI points" image="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1200w.png"
+/// \example archetypes/points2d_simple !api title="Simple 2D points" image="https://static.rerun.io/point2d_simple/66e33b237ecd3d51363e56706566c5e7a58fe075/1200w.png" alt="2D view showing two tiny points on a black background, logged as a simple Points2D batch"
+/// \example archetypes/points2d_random title="Randomly distributed 2D points with varying color and radius" image="https://static.rerun.io/point2d_random/8e8ac75373677bd72bd3f56a15e44fcab309a168/1200w.png" alt="2D view showing ten randomly placed circles with varying colors and radii on a black background"
+/// \example archetypes/points2d_ui_radius title="Log points with radii given in UI points" image="https://static.rerun.io/point2d_ui_radius/ce804fc77300d89c348b4ab5960395171497b7ac/1200w.png" alt="Rerun Viewer 2D view with two blue and two red circles of different sizes, comparing point radii in scene units and UI points"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 2D")]
 #[docs(view_types = "Spatial2DView, Spatial3DView: if logged under a projection")]

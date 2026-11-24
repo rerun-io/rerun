@@ -6,8 +6,8 @@ use std::task::{Context, Poll};
 
 use crate::DataframeClientAPI;
 use crate::dataframe_query_common::{
-    IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id, schema_with_array_datatypes,
-    segment_belongs_to_partition,
+    ChunkSegments, IndexValuesMap, PlanSummary, group_chunk_infos_by_segment_id,
+    schema_with_array_datatypes, segment_belongs_to_partition,
 };
 use arrow::array::{Array, RecordBatch, RecordBatchOptions, StringArray};
 use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
@@ -68,7 +68,9 @@ pub(crate) struct SegmentStreamExec<T: DataframeClientAPI> {
 pub struct DataframeSegmentStream<T: DataframeClientAPI> {
     projected_schema: SchemaRef,
     client: T,
-    chunk_infos: Vec<RecordBatch>,
+
+    /// The chunks to fetch for each segment.
+    chunk_info: Arc<BTreeMap<SegmentId, Vec<RecordBatch>>>,
     current_query: Option<(SegmentId, QueryHandle<StorageEngine>)>,
     query_expression: QueryExpression,
     remaining_segment_ids: Vec<SegmentId>,
@@ -91,10 +93,26 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
 
     async fn get_chunk_store_for_single_rerun_segment(
         &mut self,
-        segment_id: &str,
+        segment_id: &SegmentId,
     ) -> ApiResult<ChunkStoreHandle> {
         let origin = self.origin().clone();
-        let chunk_infos = self.chunk_infos.iter().map(Into::into).collect::<Vec<_>>();
+        let request_batches = self
+            .chunk_info
+            .get(segment_id)
+            .map(Vec::as_slice)
+            .unwrap_or_default();
+
+        let mut chunk_segments = ChunkSegments::default();
+        let mut chunk_infos = Vec::with_capacity(request_batches.len());
+        for batch in request_batches {
+            let rows_to_fetch = chunk_segments.add_batch(batch).map_err(|err| {
+                ApiError::internal_with_source(&origin, None, err, "reading the chunks to fetch")
+            })?;
+            if rows_to_fetch.num_rows() > 0 {
+                chunk_infos.push((&rows_to_fetch).into());
+            }
+        }
+
         let fetch_chunks_request = FetchChunksRequest { chunk_infos };
 
         let mut req = fetch_chunks_request.into_request();
@@ -114,47 +132,26 @@ impl<T: DataframeClientAPI> DataframeSegmentStream<T> {
         // Then we need to fully decode these chunks, i.e. both the transport layer (Protobuf)
         // and the app layer (Arrow).
         let decode_us = Arc::new(std::sync::atomic::AtomicU64::new(0));
-        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(
+        let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunks(
             response_stream,
+            re_redap_client::FetchedPayloads::Shared,
             Some(Arc::clone(&decode_us)),
         );
 
         // Note: using segment id as the store id, shouldn't really
         // matter since this is just a temporary store.
-        let application_id = re_log_types::ApplicationId::new_or_unknown(segment_id);
+        let application_id = re_log_types::ApplicationId::new_or_unknown(segment_id.as_str());
         let store_id = StoreId::random(StoreKind::Recording, application_id);
         let store = ChunkStore::new_handle(store_id, Default::default());
 
-        while let Some(chunks_and_segment_ids) = chunk_stream.next().await {
-            let chunks_and_segment_ids = chunks_and_segment_ids?;
+        while let Some(chunks) = chunk_stream.next().await {
+            let chunks = chunks?;
 
-            let _span = tracing::trace_span!(
-                "fetch_chunks::batch_insert",
-                num_chunks = chunks_and_segment_ids.len()
-            )
-            .entered();
+            let _span =
+                tracing::trace_span!("fetch_chunks::batch_insert", num_chunks = chunks.len())
+                    .entered();
 
-            for chunk_and_segment_id in chunks_and_segment_ids {
-                let (chunk, received_segment_id) = chunk_and_segment_id;
-
-                let received_segment_id = received_segment_id.ok_or_else(|| {
-                    ApiError::deserialization(
-                        &origin,
-                        None,
-                        "server returned chunk without a segment id in fetch_chunks response",
-                    )
-                })?;
-                if received_segment_id.as_ref() != segment_id {
-                    return Err(ApiError::deserialization(
-                        &origin,
-                        None,
-                        format!(
-                            "server returned chunk for unexpected segment id `{received_segment_id}` \
-                             while fetching chunks for `{segment_id}`"
-                        ),
-                    ));
-                }
-
+            for (chunk, _segment_id) in chunk_segments.attribute(chunks) {
                 store
                     .write()
                     .insert_chunk(&Arc::new(chunk))
@@ -238,7 +235,7 @@ impl<T: DataframeClientAPI> Stream for DataframeSegmentStream<T> {
 
                 let runtime = Handle::current();
                 let store = runtime
-                    .block_on(this.get_chunk_store_for_single_rerun_segment(segment_id.as_str()))
+                    .block_on(this.get_chunk_store_for_single_rerun_segment(&segment_id))
                     .map_err(|err| err.into_df_error())?;
 
                 let query_engine = QueryEngine::new(store.clone(), QueryCache::new_handle(store));
@@ -489,19 +486,12 @@ impl<T: DataframeClientAPI> ExecutionPlan for SegmentStreamExec<T> {
 
         let client = self.client.clone();
 
-        let chunk_infos: Vec<RecordBatch> = remaining_segment_ids
-            .iter()
-            .filter_map(|sid| self.chunk_info.get(sid))
-            .flatten()
-            .cloned()
-            .collect();
-
         let query_expression = self.query_expression.clone();
 
         let stream = DataframeSegmentStream {
             projected_schema: self.projected_schema.clone(),
             client,
-            chunk_infos,
+            chunk_info: Arc::clone(&self.chunk_info),
             remaining_segment_ids,
             current_query: None,
             query_expression,

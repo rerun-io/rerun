@@ -12,10 +12,10 @@
 /// front faces are assumed to be those with counter clockwise triangle winding order
 /// (this is the same as in the GLTF specification).
 ///
-/// \example archetypes/mesh3d_indexed title="Simple indexed 3D mesh" image="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png"
-/// \example archetypes/mesh3d_instancing title="3D mesh with instancing" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png"
-/// \example archetypes/mesh3d_partial_updates !api title="Update specific parts of a 3D mesh over time" image="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1200w.png"
-/// \example archetypes/mesh3d_image title="Image as a 3D quad" image="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/1200w.png"
+/// \example archetypes/mesh3d_indexed title="Simple indexed 3D mesh" image="https://static.rerun.io/mesh3d_indexed/57c70dc992e6dc0bd9c5222ca084f5b6240cea75/1200w.png" alt="Rerun Viewer showing a triangle mesh with red, green, and blue vertex colors blended across it, and Mesh3D data in the selection panel"
+/// \example archetypes/mesh3d_instancing title="3D mesh with instancing" image="https://static.rerun.io/mesh3d_leaf_transforms3d/c2d0ee033129da53168f5705625a9b033f3a3d61/1200w.png" alt="3D view of a rainbow-colored pyramid mesh instanced four times inside a single magenta wireframe box"
+/// \example archetypes/mesh3d_partial_updates !api title="Update specific parts of a 3D mesh over time" image="https://static.rerun.io/mesh3d_partial_updates/79b8a83294ef2c1eb7f9ae7dea7267a17da464ae/1200w.png" alt="3D view of a triangle mesh with red, green and blue vertex colors, with a hover tooltip for /triangle listing its components"
+/// \example archetypes/mesh3d_image title="Image as a 3D quad" image="https://static.rerun.io/mesh3d_image/98ffc9479275c150984959c4cb0a3b2266cf6026/1200w.png" alt="3D view showing a square quad mesh textured with an image whose corners fade between black, red, green, and yellow"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]
 #[docs(view_types = "Spatial3DView, Spatial2DView: if logged above active projection")]

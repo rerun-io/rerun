@@ -104,8 +104,9 @@ impl McapCompressionInfo {
     ///
     /// Returns `None` when the uncompressed size is zero.
     pub fn savings_ratio(&self) -> Option<f64> {
-        (self.uncompressed_size_bytes > 0)
-            .then(|| 1.0 - self.compressed_size_bytes as f64 / self.uncompressed_size_bytes as f64)
+        (self.uncompressed_size_bytes > 0).then_some(
+            1.0 - self.compressed_size_bytes as f64 / self.uncompressed_size_bytes as f64,
+        )
     }
 }
 

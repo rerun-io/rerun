@@ -55,9 +55,9 @@ def set_sinks(
         See [`rerun.GrpcSink`][], [`rerun.GrpcServerSink`][], [`rerun.FileSink`][],
         [`rerun.BinaryStream`][].
     default_blueprint:
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        Optionally set a default blueprint to use for this application. If the user has edited
+        the active blueprint of the application, the new blueprint won't become active until
+        the user resets to the default blueprint. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -92,7 +92,7 @@ def set_sinks(
         logging.warning("Rerun is disabled - set_sinks() call ignored")
         return
 
-    application_id = get_application_id(recording)  # NOLINT
+    application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
@@ -134,9 +134,9 @@ def connect_grpc(
 
         The default is `rerun+http://127.0.0.1:9876/proxy`.
     default_blueprint:
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        Optionally set a default blueprint to use for this application. If the user has edited
+        the active blueprint of the application, the new blueprint won't become active until
+        the user resets to the default blueprint. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -150,7 +150,7 @@ def connect_grpc(
 
     from rerun.recording_stream import get_application_id
 
-    application_id = get_application_id(recording)  # NOLINT
+    application_id = get_application_id(recording)
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording.",
@@ -192,9 +192,9 @@ def save(
     path:
         The path to save the data to.
     default_blueprint
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        Optionally set a default blueprint to use for this application. If the user has edited
+        the active blueprint of the application, the new blueprint won't become active until
+        the user resets to the default blueprint. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -261,9 +261,9 @@ def stdout(
     Parameters
     ----------
     default_blueprint
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        Optionally set a default blueprint to use for this application. If the user has edited
+        the active blueprint of the application, the new blueprint won't become active until
+        the user resets to the default blueprint. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -359,9 +359,9 @@ def serve_grpc(
     grpc_port:
         The port to serve the gRPC server on (defaults to 9876)
     default_blueprint:
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        Optionally set a default blueprint to use for this application. If the user has edited
+        the active blueprint of the application, the new blueprint won't become active until
+        the user resets to the default blueprint. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
@@ -429,13 +429,13 @@ def send_blueprint(
     make_active:
         Immediately make this the active blueprint for the associated `app_id`.
         Note that setting this to `false` does not mean the blueprint may not still end
-        up becoming active. In particular, if `make_default` is true and there is no other
-        currently active blueprint.
+        up becoming active. In particular, if `make_default` is true and the user has not
+        edited the active blueprint.
     make_default:
         Make this the default blueprint for the `app_id`.
         The default blueprint will be used as the template when the user resets the
-        blueprint for the app. It will also become the active blueprint if no other
-        blueprint is currently active.
+        blueprint for the app. It also replaces the active blueprint, unless the user has
+        edited the active blueprint.
     recording:
         Specifies the [`rerun.RecordingStream`][] to use.
         If left unspecified, defaults to the current active data recording, if there is one.
@@ -517,9 +517,9 @@ def spawn(
         If left unspecified, defaults to the current active data recording, if there is one.
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
     default_blueprint
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        Optionally set a default blueprint to use for this application. If the user has edited
+        the active blueprint of the application, the new blueprint won't become active until
+        the user resets to the default blueprint. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
 
     """

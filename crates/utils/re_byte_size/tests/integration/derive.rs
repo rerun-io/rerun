@@ -17,6 +17,7 @@ struct Named {
 }
 
 #[derive(SizeBytes)]
+// relint: allow(positional_fields): tests the derive on tuple structs
 struct Tuple(Vec<u8>, u32);
 
 #[derive(SizeBytes)]
@@ -44,8 +45,10 @@ struct Generic<T> {
 #[derive(SizeBytes)]
 enum MyEnum {
     Unit,
+    // relint: allow(positional_fields): tests the derive on tuple variants
     Tuple(Vec<u8>, u32),
     Named { data: String },
+    // relint: allow(positional_fields): tests the derive on tuple variants
     Ignoring(#[size_bytes(ignore)] Vec<u8>, u32),
 }
 

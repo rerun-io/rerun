@@ -4,13 +4,12 @@ import functools
 import random
 import sys
 import warnings
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ParamSpec, TypeVar, cast
 
 import numpy as np
 
-__version__ = "0.43.0-alpha.1+dev"
-__version_info__ = (0, 43, 0, "alpha.1")
+__version__ = "0.44.0-alpha.1+dev"
+__version_info__ = (0, 44, 0, "alpha.1")
 
 if sys.version_info < (3, 11):  # noqa: UP036
     raise RuntimeError("Rerun SDK requires Python 3.11 or later.")
@@ -28,6 +27,7 @@ from . import (
     catalog as catalog,
     chunk as chunk,
     experimental as experimental,
+    mjcf as mjcf,
     server as server,
     urdf as urdf,
 )
@@ -237,6 +237,7 @@ from .time import (
 from .web import serve_web_viewer as serve_web_viewer
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from uuid import UUID
 
     from .blueprint.api import (
@@ -255,7 +256,8 @@ should exit with this exit code.
 """
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     """Lazy module-level attribute lookup for deprecated aliases (see PEP 562)."""
     if name == "EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE":
         import warnings
@@ -359,9 +361,9 @@ def init(
         If unset, this can alternatively be overridden using the RERUN_STRICT environment variable.
         If not otherwise specified, the default behavior will be equivalent to `False`.
     default_blueprint
-        Optionally set a default blueprint to use for this application. If the application
-        already has an active blueprint, the new blueprint won't become active until the user
-        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        Optionally set a default blueprint to use for this application. If the user has edited
+        the active blueprint of the application, the new blueprint won't become active until
+        the user resets to the default blueprint. If you want to activate the new blueprint
         immediately, instead use the [`rerun.send_blueprint`][] API.
     send_properties
             Immediately send the recording properties to the viewer (default: True)
@@ -451,10 +453,11 @@ def _register_on_fork() -> None:
 
 _register_on_fork()
 
-_TFunc = TypeVar("_TFunc", bound=Callable[..., Any])
+_P = ParamSpec("_P")
+_R = TypeVar("_R")
 
 
-def shutdown_at_exit(func: _TFunc) -> _TFunc:
+def shutdown_at_exit(func: Callable[_P, _R]) -> Callable[_P, _R]:
     """
     Decorator to shutdown Rerun cleanly when this function exits.
 
@@ -466,13 +469,13 @@ def shutdown_at_exit(func: _TFunc) -> _TFunc:
     """
 
     @functools.wraps(func)
-    def wrapper(*args: Any, **kwargs: Any) -> Any:
+    def wrapper(*args: _P.args, **kwargs: _P.kwargs) -> _R:
         try:
             return func(*args, **kwargs)
         finally:
             rerun_shutdown()
 
-    return cast("_TFunc", wrapper)
+    return wrapper
 
 
 # ---

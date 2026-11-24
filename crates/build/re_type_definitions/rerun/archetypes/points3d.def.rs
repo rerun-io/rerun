@@ -5,12 +5,12 @@
 ///
 /// If there are multiple instance poses, the entire point cloud will be repeated for each of the poses.
 ///
-/// \example archetypes/points3d_simple title="Simple 3D points" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png"
-/// \example archetypes/points3d_random !api title="Randomly distributed 3D points with varying color and radius" image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png"
-/// \example archetypes/points3d_ui_radius !api title="Log points with radii given in UI points" image="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1200w.png"
-/// \example archetypes/points3d_row_updates title="Update a point cloud over time" image="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png"
-/// \example archetypes/points3d_column_updates title="Update a point cloud over time, in a single operation" image="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png"
-/// \example archetypes/points3d_partial_updates title="Update specific properties of a point cloud over time" image="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1200w.png"
+/// \example archetypes/points3d_simple title="Simple 3D points" image="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png" alt="3D view showing two tiny green points on a dark gradient background, logged as a simple Points3D batch"
+/// \example archetypes/points3d_random !api title="Randomly distributed 3D points with varying color and radius" image="https://static.rerun.io/point3d_random/7e94e1806d2c381943748abbb3bedb68d564de24/1200w.png" alt="3D view showing ten randomly placed spheres with varying colors and radii"
+/// \example archetypes/points3d_ui_radius !api title="Log points with radii given in UI points" image="https://static.rerun.io/point3d_ui_radius/e051a65b4317438bcaea8d0eee016ac9460b5336/1200w.png" alt="3D view with two blue and two red spheres of different sizes, comparing point radii in scene units and UI points"
+/// \example archetypes/points3d_row_updates title="Update a point cloud over time" image="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png" alt="3D view of four cyan points hovering at different heights above the ground grid, at the end of the time timeline"
+/// \example archetypes/points3d_column_updates title="Update a point cloud over time, in a single operation" image="https://static.rerun.io/points3d_row_updates/fba056871b1ec3fc6978ab605d9a63e44ef1f6de/1200w.png" alt="3D view of four cyan points hovering at different heights above the ground grid, at the end of the time timeline"
+/// \example archetypes/points3d_partial_updates title="Update specific properties of a point cloud over time" image="https://static.rerun.io/points3d_partial_updates/d8bec9c3388d2bd0fe59dff01ab8cde0bdda135e/1200w.png" alt="3D view of a row of ten points above the ground grid, the first six large and green, the last four small and red"
 #[rerun::rerun_type]
 #[docs(category = "Spatial 3D")]
 #[docs(view_types = "Spatial3DView, Spatial2DView: if logged above active projection")]

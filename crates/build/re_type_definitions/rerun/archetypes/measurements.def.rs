@@ -17,7 +17,7 @@
 /// are logged together.
 /// Changes over time are supported for most but not all styling fields (see respective fields for details).
 ///
-/// \example archetypes/measurements_simple title="Pressure with variance" image="https://static.rerun.io/measurements/2388490ab2b487bb6c47a2be3e7d5e7aa17c08f3/1024w.png"
+/// \example archetypes/measurements_simple title="Pressure with variance" image="https://static.rerun.io/measurements/2388490ab2b487bb6c47a2be3e7d5e7aa17c08f3/1024w.png" alt="Time series plot of two barometer pressure series in Pa, each drawn as a line with a translucent variance band around it"
 #[rerun::rerun_type]
 #[docs(category = "Plotting")]
 #[docs(view_types = "TimeSeriesView")]

@@ -36,7 +36,7 @@ pub enum TimeRangeBoundary {
 
 /// Visible time range bounds for a specific timeline.
 ///
-/// \example archetypes/line_strips3d_time_window missing="cpp,rs" title="Time-windowed trails (e.g. Trajectories)" image="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png"
+/// \example archetypes/line_strips3d_time_window missing="cpp,rs" title="Time-windowed trails (e.g. Trajectories)" image="https://static.rerun.io/line_strips3d_time_window/999f92d8f7f09b77e8307e6bbcaad652cf2f2c44/1200w.png" alt="3D view with a ground grid showing a thick blue curved trail and a thinner orange one, trajectories limited to a time window"
 #[rerun::rerun_type]
 #[rust(derive(PartialEq, Eq))]
 #[rust(override_crate = "re_types_core")]

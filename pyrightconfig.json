@@ -1,7 +1,6 @@
 {
   "extraPaths": [
-    "rerun_py/rerun_sdk",
-    "rerun_py/tests/api_sandbox"
+    "rerun_py/rerun_sdk"
   ],
   "exclude": [
     "**/node_modules",

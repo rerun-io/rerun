@@ -4,8 +4,8 @@ use re_integration_test::HarnessExt as _;
 use re_integration_test::ViewerHarnessExt as _;
 use re_sdk::TimePoint;
 use re_sdk::log::RowId;
+use re_viewer::external::re_view_spatial;
 use re_viewer::external::re_viewer_context::{ContainerId, RecommendedView, ViewClass as _};
-use re_viewer::external::{re_sdk_types, re_view_spatial};
 use re_viewer::viewer_test_utils::{self, HarnessOptions};
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -213,22 +213,18 @@ pub async fn test_multi_container_drag_container() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-pub async fn test_add_container_from_blueprint_panel_menu() {
+pub async fn test_add_container_from_blueprint_panel_button() {
     let mut harness = make_multi_view_test_harness();
     add_containers_recursive(&mut harness, None, 1, 4, 0);
 
-    // Blueprint panel "…" icon
-    harness.click_label("Open menu with more options");
-    harness.snapshot_app("add_container_from_blueprint_panel_menu_1");
-
     harness.click_label_contains("Add view or container");
-    harness.snapshot_app("add_container_from_blueprint_panel_menu_2");
+    harness.snapshot_app("add_container_from_blueprint_panel_button_1");
 
     harness.click_label("Horizontal");
     // The modal closes under the cursor, so the cursor ends up hovering whatever is behind it.
     // Remove it, or this snapshot changes whenever the modal's layout does.
     harness.remove_cursor();
-    harness.snapshot_app("add_container_from_blueprint_panel_menu_3");
+    harness.snapshot_app("add_container_from_blueprint_panel_button_2");
 }
 
 #[tokio::test(flavor = "multi_thread")]

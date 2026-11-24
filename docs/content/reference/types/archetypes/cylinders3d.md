@@ -37,7 +37,7 @@ Orienting and placing cylinders forms a separate transform that is applied prior
 
 ## API reference links
  * 🌊 [C++ API docs for `Cylinders3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Cylinders3D.html)
- * 🐍 [Python API docs for `Cylinders3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Cylinders3D)
+ * 🐍 [Python API docs for `Cylinders3D`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Cylinders3D)
  * 🦀 [Rust API docs for `Cylinders3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Cylinders3D.html)
 
 ## Example
@@ -51,6 +51,6 @@ snippet: archetypes/cylinders3d_batch
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/1200w.png">
-  <img src="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/full.png">
+  <img src="https://static.rerun.io/cylinders3d_batch/ef642dede2bef23704eaff0f22aa48284d482b23/full.png" alt="3D view with five wireframe cylinders from red to blue, growing longer and tilting further from left to right">
 </picture>
 

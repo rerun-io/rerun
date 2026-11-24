@@ -24,6 +24,9 @@ const MAX_GAP: f64 = 40.0;
 /// Should be strictly less than half, or we will get overlapping segments.
 const GAP_EXPANSION_FRACTION: f64 = 1.0 / 4.0;
 
+/// Hold while dragging to snap to coarser time values.
+const COARSE_SNAP_MODIFIER: egui::Modifiers = egui::Modifiers::SHIFT;
+
 /// Sze of the gap between time segments.
 pub fn gap_width(x_range: &Rangef, segments: &[AbsoluteTimeRange]) -> f64 {
     let num_gaps = segments.len().saturating_sub(1);
@@ -298,7 +301,7 @@ impl TimeRangesUi {
 
         let time_per_x = 1.0 / self.points_per_time;
 
-        let coarse_snapping = ui.input(|i| i.modifiers.shift);
+        let coarse_snapping = ui.input(|i| i.modifiers.matches_logically(COARSE_SNAP_MODIFIER));
         let fine_snap_interval = time_snap_value_smaller_than(2.0 * aim_radius * time_per_x);
 
         let snap_interval = if coarse_snapping {

@@ -4,7 +4,6 @@
 
 use re_integration_test::HarnessExt as _;
 use re_sdk::Timeline;
-use re_viewer::external::re_sdk_types;
 use re_viewer::viewer_test_utils;
 
 #[tokio::test(flavor = "multi_thread")]

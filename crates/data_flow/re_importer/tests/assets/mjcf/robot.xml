@@ -1,0 +1,33 @@
+<mujoco model="test_robot">
+  <compiler angle="radian" meshdir="meshes"/>
+
+  <default>
+    <default class="visual">
+      <geom type="mesh" contype="0" conaffinity="0" group="2"/>
+    </default>
+    <default class="collision">
+      <geom group="3"/>
+    </default>
+  </default>
+
+  <asset>
+    <material name="red" rgba="1 0 0 1"/>
+    <mesh file="tetrahedron.obj" scale="2 2 2"/>
+    <mesh name="missing" file="missing.stl"/>
+  </asset>
+
+  <worldbody>
+    <body name="base" pos="0 0 0.1">
+      <geom name="base_visual" class="visual" mesh="tetrahedron" material="red"/>
+      <geom class="collision" type="box" size="0.1 0.1 0.1"/>
+      <body name="arm" pos="0 0 0.2" euler="0 0 1.5707963">
+        <joint name="shoulder" type="hinge" axis="0 0 1"/>
+        <geom class="collision" type="capsule" fromto="0 0 0 0 0 0.3" size="0.05"/>
+        <geom name="arm_visual" class="visual" mesh="missing"/>
+        <body pos="0 0 0.3">
+          <geom type="sphere" size="0.05" rgba="0 1 0 1"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

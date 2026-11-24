@@ -11,7 +11,7 @@ use re_viewer_context::{
 };
 
 use super::SpatialViewVisualizerData;
-use super::utilities::{LabeledBatch, process_labels_2d};
+use super::utilities::{LabeledBatch, process_labels_2d, spatial_view_kind_from_view_class};
 use crate::SpaceKind;
 use crate::contexts::SpatialSceneVisualizerInstructionContext;
 use crate::visualizers::{load_keypoint_connections, process_radius_slice};
@@ -156,6 +156,7 @@ impl Points2DVisualizer {
                     }),
                 },
                 world_from_obj,
+                spatial_view_kind_from_view_class(ent_context.view_class_identifier),
             ));
         }
 

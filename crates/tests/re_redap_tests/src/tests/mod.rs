@@ -4,10 +4,12 @@ mod create_dataset;
 mod create_table;
 mod dataset_schema;
 mod entries_table;
+mod entry_id_header;
 mod fetch_chunks;
 mod find_chunks;
 mod find_entries_filters;
 mod get_schemas;
+mod protocol_level;
 mod query_dataset;
 mod query_filter;
 mod query_index_values;
@@ -15,10 +17,20 @@ mod register_asset;
 mod register_segment;
 mod rrd_manifest;
 mod scan_filter;
+mod segment_id_override;
 mod unregister_segment;
 mod update_entry;
 mod watch_events;
 mod write_table;
+
+/// Runs a test body with snapshots resolved from this crate's directory.
+async fn with_snapshot_dir<F: std::future::Future>(test: F) -> F::Output {
+    let mut settings = insta::Settings::clone_current();
+    if std::path::Path::new(file!()).is_absolute() {
+        settings.set_snapshot_path(concat!(env!("CARGO_MANIFEST_DIR"), "/src/tests/snapshots"));
+    }
+    settings.bind_async(test).await
+}
 
 /// Generate wrappers and the `generate_redap_tests!`/`generate_oss_only_redap_tests!`
 /// instantiation macros.
@@ -43,7 +55,7 @@ macro_rules! define_redap_tests {
             where
                 T: re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
             {
-                $mod::$test(service).await;
+                with_snapshot_dir($mod::$test(service)).await;
             }
         )*
 
@@ -52,7 +64,7 @@ macro_rules! define_redap_tests {
             where
                 T: re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
             {
-                $rmod::$rtest(service).await.expect(stringify!($rtest));
+                with_snapshot_dir($rmod::$rtest(service)).await.expect(stringify!($rtest));
             }
         )*
 
@@ -61,7 +73,7 @@ macro_rules! define_redap_tests {
             where
                 T: re_protos::cloud::v1alpha1::rerun_cloud_service_server::RerunCloudService,
             {
-                $omod::$otest(service).await.expect(stringify!($otest));
+                with_snapshot_dir($omod::$otest(service)).await.expect(stringify!($otest));
             }
         )*
 
@@ -110,12 +122,16 @@ define_redap_tests! {
     entries_table::delete_table_deletes_attached_blueprint_dataset,
     entries_table::entries_table_with_empty_dataset,
     entries_table::list_entries_table,
+    entry_id_header::deprecated_body_id_endpoints_accept_body_only,
+    entry_id_header::deprecated_body_id_endpoints_accept_header_only,
     fetch_chunks::multi_dataset_fetch_chunk_completeness,
     fetch_chunks::simple_dataset_fetch_chunk_snapshot,
     find_chunks::find_chunks_fixed_schema,
     find_chunks::find_chunks_invalid_requests,
     find_chunks::find_chunks_range_bounds,
     find_chunks::find_chunks_samples,
+    find_chunks::find_chunks_samples_resolve_clear_after_last_value,
+    find_chunks::find_chunks_samples_return_statics_and_resolve_like_full_store,
     find_chunks::find_chunks_samples_shared_chunk_ids,
     find_chunks::find_chunks_segment_scope,
     find_chunks::find_chunks_simple_dataset,
@@ -135,6 +151,9 @@ define_redap_tests! {
     get_schemas::get_schemas_invalid_id,
     get_schemas::get_schemas_other_dataset_id,
     get_schemas::get_schemas_too_many_ids,
+    protocol_level::dataset_with_segment_id_override_refuses_older_clients,
+    protocol_level::new_dataset_serves_clients_without_protocol_level,
+    protocol_level::who_am_i_advertises_protocol_level,
     query_dataset::query_dataset_unknown_segment_id_returns_empty,
     query_dataset::query_dataset_has_uncompressed_sizes,
     query_dataset::query_dataset_matches_find_chunks,
@@ -199,6 +218,8 @@ define_redap_tests! {
     scan_filter::scan_segment_table_filter,
     scan_filter::scan_dataset_manifest_filter,
     scan_filter::scan_dataset_manifest_layer_filter,
+    segment_id_override::register_with_segment_id_override,
+    segment_id_override::segment_id_override_raises_required_client_protocol_level,
     rrd_manifest::segment_id_not_found,
     rrd_manifest::simple_dataset_rrd_manifest,
     rrd_manifest::unregistered_segment,
@@ -212,6 +233,7 @@ define_redap_tests! {
     unregister_segment::unregister_segment_drops_its_logged_properties,
     unregister_segment::unregister_simple,
     unregister_segment::unregister_then_query,
+    update_entry::apply_dataset_policy_stores_the_policy,
     update_entry::create_dataset_entry_rejects_an_unset_selection,
     update_entry::update_dataset_entry_keeps_asset_dataset,
     update_entry::update_dataset_entry_keeps_policy,
@@ -230,6 +252,8 @@ define_redap_tests! {
     register_segment::register_with_dataset_if_duplicate_behavior_error,
     ; // OSS-only tests:
     find_chunks::find_chunks_dispatch_follows_advertised_capabilities,
+    // The cloud server registers only the first store of a file, so it accepts this.
+    segment_id_override::register_multi_store_file_with_segment_id_override,
     // TODO(RR-4859): the cloud server returns `Unimplemented` for `WatchEvents`.
     watch_events::watch_events_entry_created,
     watch_events::watch_events_entry_deleted,

@@ -299,7 +299,6 @@ impl SegmentChunkManifest {
     /// a silently wrong `safe_horizon`.
     #[cfg(test)]
     fn check_invariants(&self) {
-        use std::collections::BTreeMap;
         let mut expected: BTreeMap<TimeInt, usize> = BTreeMap::new();
         for per_entity in self.outstanding_time_mins_per_entity.values() {
             assert!(

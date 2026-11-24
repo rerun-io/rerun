@@ -19,6 +19,6 @@ This is an example executable importer plugin for the Rerun Viewer.
 It will log C++ source code files as markdown documents.
 To try it out, compile it and place it in your $PATH, then open a C++ source file with Rerun (`rerun file.cpp`).
 
-Consider using the [`send_columns`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65) API for importers that ingest time series data from a file.
+Consider using the [`send_columns`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#addc516744c330c5021352266fdc2bf92) API for importers that ingest time series data from a file.
 This can be much more efficient that the stateful `log` API as it allows bundling
 component data over time into a single call consuming a continuous block of memory.

@@ -77,8 +77,9 @@ def test_static_overlay_layer_fills_every_row(entry_factory: EntryFactory, tmp_p
     column is simply empty for the rows that went out early.
 
     The local server plans this dataset as a single fetch batch, so the chunks arrive
-    together and this cannot *force* the late-arrival ordering; that case is covered
-    deterministically by `late_static_chunk_holds_back_every_row` in `re_datafusion`.
+    together and this cannot *force* the late-arrival ordering; the gate that holds rows
+    back while a static chunk is outstanding is covered by
+    `pretime_outstanding_gates_all_emission` in `re_datafusion` (`pipeline/segment.rs`).
     What this test covers is the realistic segment shape end-to-end, over the wire.
 
     It runs under whichever pipeline `RERUN_DATAFRAME_PIPELINE` selects.
@@ -185,3 +186,23 @@ def test_readonly_dataset_schema_comparison_self_consistent(readonly_test_datase
 
     assert len(set_diff) == 0, f"Schema iterator is not self-consistent: {set_diff}"
     assert schema_0 == schema_1, "Schema is not self-consistent"
+
+
+def test_schema_column_for_selector(readonly_test_dataset: DatasetEntry) -> None:
+    schema = readonly_test_dataset.schema()
+
+    column = schema.column_for_selector("/obj1:Points3D:positions")
+    assert column.entity_path == "/obj1"
+    assert column.component == "Points3D:positions"
+
+    column = schema.column_for_selector(rr.catalog.ComponentColumnSelector("/text1", "TextDocument:text"))
+    assert column.entity_path == "/text1"
+    assert column.component == "TextDocument:text"
+
+    assert schema.column_for_selector(column) == column
+
+    with pytest.raises(LookupError):
+        schema.column_for_selector("/nonexistent:Foo:bar")
+
+    with pytest.raises(ValueError):
+        schema.column_for_selector("invalid-format-no-colon")

@@ -23,7 +23,7 @@ pub async fn read_rrd_footer<R: AsyncReadAt>(reader: &R) -> Result<Option<RrdFoo
         return Ok(None);
     };
 
-    let transport_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&payload)?;
+    let transport_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(payload)?;
     Ok(Some(transport_footer.to_application(())?))
 }
 
@@ -44,7 +44,7 @@ pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
             StreamHeader::ENCODED_SIZE_BYTES as u64,
         ))
         .await?;
-    StreamHeader::from_rrd_bytes(&header_buf)?; // validates FourCC + version
+    StreamHeader::from_rrd_bytes(&header_buf[..])?; // validates FourCC + version
 
     // 2. Read the StreamFooter from the end of the file.
     if file_len < StreamFooter::ENCODED_SIZE_BYTES as u64 {
@@ -58,7 +58,7 @@ pub(super) async fn read_rrd_footer_payload<R: AsyncReadAt>(
         ))
         .await?;
 
-    let Ok(stream_footer) = StreamFooter::from_rrd_bytes(&footer_buf) else {
+    let Ok(stream_footer) = StreamFooter::from_rrd_bytes(&footer_buf[..]) else {
         return Ok(None); // Valid RRD, but no footer (legacy).
     };
 
@@ -156,7 +156,7 @@ pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
             StreamHeader::ENCODED_SIZE_BYTES as u64,
         ))
         .await?;
-    let stream_header = StreamHeader::from_rrd_bytes(&stream_header_buf)?;
+    let stream_header = StreamHeader::from_rrd_bytes(&stream_header_buf[..])?;
     let (version, _options) = stream_header.to_version_and_options()?;
 
     let file_len = reader.size().await?;
@@ -178,7 +178,7 @@ pub async fn enumerate_legacy_metadata<R: AsyncReadAt>(
             Err(err) => return Err(CodecError::Io(err)),
         };
         offset += MessageHeader::ENCODED_SIZE_BYTES as u64;
-        let header = MessageHeader::from_rrd_bytes(&msg_header_buf)?;
+        let header = MessageHeader::from_rrd_bytes(&msg_header_buf[..])?;
         if offset
             .checked_add(header.len)
             .is_none_or(|end| end > file_len)

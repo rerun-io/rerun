@@ -1,18 +1,17 @@
 //! The backend for an agent harness: a subprocess that speaks ACP over stdio.
 
-use agent_client_protocol::{
-    AcpAgent, AcpAgentConfig, Agent, Client, ConnectionTo, Error, JsonRpcResponse,
-};
+use agent_client_protocol::v1::ConnectionTo;
+use agent_client_protocol::{AcpAgent, AcpAgentConfig, Agent, Client, Error, JsonRpcResponse};
 use agent_client_protocol_schema::ProtocolVersion;
 use agent_client_protocol_schema::v1::{
-    AuthMethod, AuthenticateRequest, CancelNotification, ClientCapabilities, ConfigOptionUpdate,
-    CreateElicitationRequest, CurrentModeUpdate, ElicitationCapabilities,
-    ElicitationFormCapabilities, Implementation, InitializeRequest, McpServer, McpServerStdio,
-    NewSessionRequest, PromptRequest, RequestPermissionRequest, SessionConfigId, SessionConfigKind,
-    SessionConfigOption, SessionConfigOptionCategory, SessionConfigSelectOption,
-    SessionConfigSelectOptions, SessionConfigValueId, SessionId, SessionModeId, SessionModeState,
-    SessionNotification, SessionUpdate, SetSessionConfigOptionRequest, SetSessionModeRequest,
-    StopReason,
+    AuthMethod, AuthenticateRequest, BooleanConfigOptionCapabilities, CancelNotification,
+    ClientCapabilities, ClientSessionCapabilities, ConfigOptionUpdate, CreateElicitationRequest,
+    ElicitationCapabilities, ElicitationFormCapabilities, Implementation, InitializeRequest,
+    InitializeResponse, LoadSessionRequest, McpServer, McpServerStdio, NewSessionRequest,
+    PromptRequest, RequestPermissionRequest, SessionConfigId, SessionConfigKind,
+    SessionConfigOption, SessionConfigOptionCategory, SessionConfigOptionValue,
+    SessionConfigOptionsCapabilities, SessionConfigValueId, SessionId, SessionNotification,
+    SessionUpdate, SetSessionConfigOptionRequest, StopReason,
 };
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
@@ -20,7 +19,9 @@ use re_async::UiWaker;
 
 use crate::agent_harness::acp_error::describe_error;
 use crate::agent_harness::{AgentHarnessConfig, McpStdioServer};
-use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
+use crate::backend::{
+    AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin, TurnError,
+};
 use crate::{LineDirection, Responder};
 
 /// Spawns an agent subprocess and connects to it over ACP.
@@ -53,9 +54,11 @@ fn finish_turn(
         .filter(|err| err.code == Error::auth_required().code)
         .map(describe_error);
     // Finish the turn before entering the login state: finishing resets the session phase.
-    events.send(AgentEvent::TurnFinished(
-        result.map_err(|err| describe_error(&err)),
-    ));
+    events.send(AgentEvent::TurnFinished(result.map_err(|err| {
+        TurnError::Agent {
+            message: describe_error(&err),
+        }
+    })));
     if let Some(message) = auth_error {
         events.send(AgentEvent::AuthRequired {
             methods: auth_methods,
@@ -70,7 +73,7 @@ fn finish_turn(
 /// drops the receiver, which [`Responder::is_cancelled`] then reports.
 /// The task never fails, since a failed task shuts the whole connection down.
 pub fn forward_answer<T: JsonRpcResponse + Send + 'static>(
-    acp_responder: agent_client_protocol::Responder<T>,
+    acp_responder: agent_client_protocol::v1::Responder<T>,
 ) -> (
     Responder<T>,
     impl Future<Output = Result<(), Error>> + Send + 'static,
@@ -79,11 +82,17 @@ pub fn forward_answer<T: JsonRpcResponse + Send + 'static>(
     let task = async move {
         let cancellation = acp_responder.cancellation();
         let cancelled = std::pin::pin!(cancellation.cancelled());
-        // An answer that never comes, or comes after cancellation, leaves the request unanswered.
-        if let futures::future::Either::Left((Ok(response), _)) =
-            futures::future::select(answer, cancelled).await
-            && let Err(err) = acp_responder.respond(response)
-        {
+        // Answer every request explicitly: the SDK warns when a responder is dropped unanswered.
+        let sent = match futures::future::select(answer, cancelled).await {
+            futures::future::Either::Left((Ok(response), _)) => acp_responder.respond(response),
+            futures::future::Either::Left((Err(_ui_dropped_its_responder), _)) => {
+                acp_responder.respond_with_error(Error::internal_error())
+            }
+            futures::future::Either::Right(((), _)) => {
+                acp_responder.respond_with_error(Error::request_cancelled())
+            }
+        };
+        if let Err(err) = sent {
             re_log::debug!("Failed to answer the agent: {}", describe_error(&err));
         }
         Ok(())
@@ -123,7 +132,7 @@ fn run(
 
     let result = futures::executor::block_on(
         Client
-            .builder()
+            .v1()
             .name("re_agent_ui")
             .on_receive_notification(
                 async move |notification: SessionNotification, _cx| {
@@ -176,9 +185,18 @@ async fn drive(
         .send_request(
             InitializeRequest::new(ProtocolVersion::V1)
                 .client_info(client_info)
-                .client_capabilities(ClientCapabilities::new().elicitation(
-                    ElicitationCapabilities::new().form(ElicitationFormCapabilities::new()),
-                )),
+                .client_capabilities(
+                    ClientCapabilities::new()
+                        .session(
+                            ClientSessionCapabilities::new().config_options(
+                                SessionConfigOptionsCapabilities::new()
+                                    .boolean(BooleanConfigOptionCapabilities::new()),
+                            ),
+                        )
+                        .elicitation(
+                            ElicitationCapabilities::new().form(ElicitationFormCapabilities::new()),
+                        ),
+                ),
         )
         .block_task()
         .await?;
@@ -189,7 +207,14 @@ async fn drive(
         auth_methods: init.auth_methods.clone(),
     });
 
-    let mut session_id = start_session(&cx, &config, &events, &init.auth_methods).await;
+    let mut session_id = start_session(
+        &cx,
+        &config,
+        &events,
+        &init,
+        config.session_to_load.as_ref(),
+    )
+    .await;
 
     while let Some(command) = command_rx.next().await {
         match command {
@@ -215,29 +240,6 @@ async fn drive(
                 if let Some(session_id) = &session_id {
                     cx.send_notification(CancelNotification::new(session_id.clone()))?;
                 }
-            }
-
-            AgentCommand::SetMode(mode_id) => {
-                let Some(session_id) = &session_id else {
-                    continue;
-                };
-                let events = events.clone();
-                let request = SetSessionModeRequest::new(session_id.clone(), mode_id.clone());
-                cx.send_request(request)
-                    .on_receiving_result(move |result| async move {
-                        match result {
-                            // Agents need not announce the mode they were just told to use,
-                            // so report it ourselves once they have accepted it.
-                            Ok(_) => events.send(AgentEvent::Update(
-                                SessionUpdate::CurrentModeUpdate(CurrentModeUpdate::new(mode_id)),
-                            )),
-                            Err(err) => events.send(AgentEvent::Error(format!(
-                                "Failed to set mode: {}",
-                                describe_error(&err)
-                            ))),
-                        }
-                        Ok(())
-                    })?;
             }
 
             AgentCommand::SetConfigOption { config_id, value } => {
@@ -272,7 +274,11 @@ async fn drive(
                     .await
                 {
                     Ok(_) => {
-                        session_id = start_session(&cx, &config, &events, &init.auth_methods).await;
+                        // Continue the conversation the login interrupted, if there was one.
+                        let session_to_load = session_id.or_else(|| config.session_to_load.clone());
+                        session_id =
+                            start_session(&cx, &config, &events, &init, session_to_load.as_ref())
+                                .await;
                     }
                     Err(err) => {
                         events.send(AgentEvent::Error(format!(
@@ -290,15 +296,23 @@ async fn drive(
     Ok(())
 }
 
+/// A session the agent has opened, before saved configuration is applied.
+struct OpenedSession {
+    session_id: SessionId,
+    config_options: Option<Vec<SessionConfigOption>>,
+
+    origin: SessionOrigin,
+}
+
+/// Loads `session_to_load` if the agent can, and otherwise opens a new session.
 async fn start_session(
     cx: &ConnectionTo<Agent>,
     config: &AgentHarnessConfig,
     events: &EventSender,
-    auth_methods: &[AuthMethod],
+    init: &InitializeResponse,
+    session_to_load: Option<&SessionId>,
 ) -> Option<SessionId> {
-    events.send(AgentEvent::Status("Starting session…".to_owned()));
-
-    let mcp_servers = config
+    let mcp_servers: Vec<McpServer> = config
         .mcp_servers
         .iter()
         .map(|server| {
@@ -311,44 +325,89 @@ async fn start_session(
         })
         .collect();
 
-    let request = NewSessionRequest::new(config.cwd.clone())
-        .additional_directories(config.additional_directories.clone())
-        .mcp_servers(mcp_servers);
+    if session_to_load.is_some() {
+        // Also when the agent cannot load sessions, so that the user is told the conversation
+        // starts over.
+        events.send(AgentEvent::LoadingSession);
+    }
+    let loadable = session_to_load.filter(|_| init.agent_capabilities.load_session);
+    let opened = match loadable {
+        Some(session_id) => {
+            let request = LoadSessionRequest::new(session_id.clone(), config.cwd.clone())
+                .additional_directories(config.additional_directories.clone())
+                .mcp_servers(mcp_servers.clone());
+            match cx.send_request(request).block_task().await {
+                Ok(response) => Ok(OpenedSession {
+                    session_id: session_id.clone(),
+                    config_options: response.config_options,
+                    origin: SessionOrigin::Loaded,
+                }),
+                Err(err) if err.code == Error::auth_required().code => Err(err),
+                Err(err) => {
+                    re_log::warn!(
+                        "Failed to load the earlier agent session, so starting a new one: {}",
+                        describe_error(&err)
+                    );
+                    new_session(cx, config, events, mcp_servers).await
+                }
+            }
+        }
+        None => new_session(cx, config, events, mcp_servers).await,
+    };
 
-    match cx.send_request(request).block_task().await {
-        Ok(mut response) => {
-            if let Some(config_options) = select_model(
-                cx,
-                &response.session_id,
-                response.config_options.as_deref().unwrap_or_default(),
-                config.preferred_model.as_ref(),
-                &config.model_preferences,
-            )
-            .await
+    match opened {
+        Ok(mut opened) => {
+            let options = opened.config_options.as_deref().unwrap_or_default();
+            let mut preferences = config.preferences.clone();
+            // The model to restore, and the category to pick from when it is not offered.
+            let (saved_model, category) = match config.model_preselect {
+                crate::ModelPreselect::Previous => (
+                    saved_model(options, &preferences),
+                    crate::ModelCategory::default(),
+                ),
+                crate::ModelPreselect::Category(category) => {
+                    forget_model_and_effort(&mut preferences, options);
+                    (None, category)
+                }
+            };
+            let model_preferences = category.preferences();
+            if let Some((config_id, value)) =
+                pick_model(options, saved_model.as_ref(), &model_preferences)
             {
-                response.config_options = Some(config_options);
+                preferences.set(config_id, value);
             }
-            if let Some(selected_mode) = select_mode(
-                cx,
-                &response.session_id,
-                response.modes.as_ref(),
-                &config.mode_preferences,
-            )
-            .await
-                && let Some(modes) = &mut response.modes
-            {
-                modes.current_mode_id = selected_mode;
+            let mut attempted = std::collections::HashSet::new();
+            while let Some((config_id, value)) = next_preference(
+                opened.config_options.as_deref().unwrap_or_default(),
+                &preferences,
+                &attempted,
+            ) {
+                attempted.insert(config_id.clone());
+                let request =
+                    SetSessionConfigOptionRequest::new(opened.session_id.clone(), config_id, value);
+                match cx.send_request(request).block_task().await {
+                    Ok(updated) => opened.config_options = Some(updated.config_options),
+                    Err(err) => re_log::debug!(
+                        "Failed to restore session configuration: {}",
+                        describe_error(&err)
+                    ),
+                }
             }
+            let OpenedSession {
+                session_id,
+                config_options,
+                origin,
+            } = opened;
             events.send(AgentEvent::SessionStarted {
-                session_id: response.session_id.clone(),
-                modes: response.modes,
-                config_options: response.config_options.unwrap_or_default(),
+                session_id: session_id.clone(),
+                config_options: config_options.unwrap_or_default(),
+                origin,
             });
-            Some(response.session_id)
+            Some(session_id)
         }
         Err(err) if err.code == Error::auth_required().code => {
             events.send(AgentEvent::AuthRequired {
-                methods: auth_methods.to_vec(),
+                methods: init.auth_methods.clone(),
                 message: describe_error(&err),
             });
             None
@@ -363,59 +422,85 @@ async fn start_session(
     }
 }
 
-/// Selects the preferred mode before the session can receive its first prompt.
-async fn select_mode(
+async fn new_session(
     cx: &ConnectionTo<Agent>,
-    session_id: &SessionId,
-    modes: Option<&SessionModeState>,
-    preferences: &[SessionModeId],
-) -> Option<SessionModeId> {
-    let mode = pick_mode(modes, preferences)?;
-    let request = SetSessionModeRequest::new(session_id.clone(), mode.clone());
-    match cx.send_request(request).block_task().await {
-        Ok(_) => Some(mode),
-        Err(err) => {
-            re_log::debug!("Failed to select session mode: {}", describe_error(&err));
-            None
+    config: &AgentHarnessConfig,
+    events: &EventSender,
+    mcp_servers: Vec<McpServer>,
+) -> Result<OpenedSession, Error> {
+    events.send(AgentEvent::Status("Starting session…".to_owned()));
+    let request = NewSessionRequest::new(config.cwd.clone())
+        .additional_directories(config.additional_directories.clone())
+        .mcp_servers(mcp_servers);
+    let response = cx.send_request(request).block_task().await?;
+    Ok(OpenedSession {
+        session_id: response.session_id,
+        config_options: response.config_options,
+        origin: SessionOrigin::New,
+    })
+}
+
+/// The model the user picked last, if `options` has a model selector.
+fn saved_model(
+    options: &[SessionConfigOption],
+    preferences: &crate::AgentPreferences,
+) -> Option<SessionConfigValueId> {
+    options
+        .iter()
+        .find(|option| option.category == Some(SessionConfigOptionCategory::Model))
+        .and_then(|option| preferences.get(option.id.clone()))
+        .and_then(SessionConfigOptionValue::as_value_id)
+        .cloned()
+}
+
+/// Removes the saved selections of the model and effort options among `options`.
+fn forget_model_and_effort(
+    preferences: &mut crate::AgentPreferences,
+    options: &[SessionConfigOption],
+) {
+    for option in options {
+        if matches!(
+            option.category,
+            Some(SessionConfigOptionCategory::Model | SessionConfigOptionCategory::ThoughtLevel)
+        ) {
+            preferences.config_options.remove(&option.id);
         }
     }
 }
 
-/// Returns the first preferred mode the agent offers, when it differs from the agent's default.
-fn pick_mode(
-    modes: Option<&SessionModeState>,
-    preferences: &[SessionModeId],
-) -> Option<SessionModeId> {
-    let modes = modes?;
-    let preference = preferences.iter().find(|preference| {
-        modes
-            .available_modes
-            .iter()
-            .any(|mode| &mode.id == *preference)
-    })?;
-    (&modes.current_mode_id != preference).then(|| preference.clone())
-}
-
-/// Restores an offered saved model, otherwise selects the first offered model preference.
-///
-/// Awaited before the session is announced, so that the first prompt already runs on the chosen
-/// model. A failure is not fatal: the session then runs on the agent's own default model.
-async fn select_model(
-    cx: &ConnectionTo<Agent>,
-    session_id: &SessionId,
-    config_options: &[SessionConfigOption],
-    preferred_model: Option<&SessionConfigValueId>,
-    preferences: &[String],
-) -> Option<Vec<SessionConfigOption>> {
-    let (config_id, model) = pick_model(config_options, preferred_model, preferences)?;
-    let request = SetSessionConfigOptionRequest::new(session_id.clone(), config_id, model);
-    match cx.send_request(request).block_task().await {
-        Ok(response) => Some(response.config_options),
-        Err(err) => {
-            re_log::debug!("Failed to select a model: {}", describe_error(&err));
-            None
+/// Re-read options after each accepted change: it can add or change dependent choices.
+/// Each setting is attempted at most once so rejected or interdependent settings cannot loop.
+fn next_preference(
+    options: &[SessionConfigOption],
+    preferences: &crate::AgentPreferences,
+    attempted: &std::collections::HashSet<SessionConfigId>,
+) -> Option<(SessionConfigId, SessionConfigOptionValue)> {
+    // Model changes can reset other settings, regardless of their advertised order.
+    let is_model =
+        |option: &&SessionConfigOption| option.category == Some(SessionConfigOptionCategory::Model);
+    std::iter::chain(
+        options.iter().filter(is_model),
+        options.iter().filter(|option| !is_model(option)),
+    )
+    .find_map(|option| {
+        if attempted.contains(&option.id) {
+            return None;
         }
-    }
+        let value = preferences.get(option.id.clone())?;
+        let applicable = match (&option.kind, value) {
+            (SessionConfigKind::Select(select), SessionConfigOptionValue::ValueId { value }) => {
+                select.current_value != *value
+                    && crate::select_options(select)
+                        .iter()
+                        .any(|choice| choice.value == *value)
+            }
+            (SessionConfigKind::Boolean(boolean), SessionConfigOptionValue::Boolean { value }) => {
+                boolean.current_value != *value
+            }
+            _ => false,
+        };
+        applicable.then(|| (option.id.clone(), value.clone()))
+    })
 }
 
 /// The model selector and the model to set it to, or `None` when there is nothing to do.
@@ -425,7 +510,7 @@ async fn select_model(
 fn pick_model(
     config_options: &[SessionConfigOption],
     preferred_model: Option<&SessionConfigValueId>,
-    preferences: &[String],
+    preferences: &[crate::ModelPreference],
 ) -> Option<(SessionConfigId, SessionConfigValueId)> {
     if preferred_model.is_none() && preferences.is_empty() {
         return None;
@@ -437,33 +522,27 @@ fn pick_model(
     let SessionConfigKind::Select(select) = &selector.kind else {
         return None;
     };
-    let models: Vec<&SessionConfigSelectOption> = match &select.options {
-        SessionConfigSelectOptions::Ungrouped(models) => models.iter().collect(),
-        SessionConfigSelectOptions::Grouped(groups) => {
-            groups.iter().flat_map(|group| &group.options).collect()
-        }
-        _ => return None,
-    };
+    let models = crate::transcript::select_options(select);
 
     let model = preferred_model
-        .and_then(|preferred| models.iter().find(|model| &model.value == preferred))
-        .or_else(|| {
-            preferences.iter().find_map(|preference| {
-                let preference = preference.to_lowercase();
-                models.iter().find(|model| {
-                    model.value.0.to_lowercase().contains(&preference)
-                        || model.name.to_lowercase().contains(&preference)
-                })
-            })
-        })?;
+        .and_then(|preferred| {
+            models
+                .iter()
+                .copied()
+                .find(|model| &model.value == preferred)
+        })
+        .or_else(|| crate::preferred_model(&models, preferences))?;
 
     (model.value != select.current_value).then(|| (selector.id.clone(), model.value.clone()))
 }
 
 #[cfg(test)]
 mod tests {
+    use agent_client_protocol::Channel;
     use agent_client_protocol_schema::v1::{
-        SessionConfigSelectGroup, SessionConfigSelectOption, SessionMode,
+        NewSessionResponse, PermissionOption, PermissionOptionKind, SessionConfigSelectGroup,
+        SessionConfigSelectOption, SetSessionConfigOptionResponse, ToolCallUpdate,
+        ToolCallUpdateFields,
     };
 
     use super::*;
@@ -496,6 +575,50 @@ mod tests {
         assert!(rx.try_recv().is_err());
     }
 
+    fn pick_saved(
+        options: &[SessionConfigOption],
+        id: &str,
+        value: &str,
+    ) -> Option<(SessionConfigId, SessionConfigValueId)> {
+        let (id, value) = next_preference(
+            options,
+            &crate::AgentPreferences {
+                config_options: [(id.to_owned().into(), value.into())].into(),
+            },
+            &Default::default(),
+        )?;
+        Some((id, value.as_value_id()?.clone()))
+    }
+
+    /// Checks that boolean restoration preserves its wire type and rejects select values.
+    #[test]
+    fn restores_boolean_preferences() {
+        let options = vec![SessionConfigOption::boolean(
+            "auto_compact",
+            "Auto compact",
+            true,
+        )];
+        let mut preferences = crate::AgentPreferences {
+            config_options: [("auto_compact".into(), false.into())].into(),
+        };
+        let (id, value) =
+            next_preference(&options, &preferences, &Default::default()).expect("boolean change");
+        let request = SetSessionConfigOptionRequest::new("session", id, value);
+        let json = serde_json::to_value(request).expect("serialize request");
+        assert_eq!(json["type"], "boolean");
+        assert_eq!(json["value"], false);
+        preferences.set("auto_compact", true);
+        assert_eq!(
+            next_preference(&options, &preferences, &Default::default()),
+            None
+        );
+        preferences.set("auto_compact", "off");
+        assert_eq!(
+            next_preference(&options, &preferences, &Default::default()),
+            None
+        );
+    }
+
     fn claude_models(current: &str) -> Vec<SessionConfigOption> {
         let models = vec![
             SessionConfigSelectOption::new("default", "Default"),
@@ -510,37 +633,55 @@ mod tests {
         ]
     }
 
-    fn preferences(models: &[&str]) -> Vec<String> {
-        models.iter().map(|model| (*model).to_owned()).collect()
+    fn preferences(models: &[&str]) -> Vec<crate::ModelPreference> {
+        models
+            .iter()
+            .map(|model| crate::ModelPreference::new(&[model]))
+            .collect()
+    }
+
+    fn claude_effort(current: &str) -> Vec<SessionConfigOption> {
+        let levels = vec![
+            SessionConfigSelectOption::new("default", "Default"),
+            SessionConfigSelectOption::new("low", "Low"),
+            SessionConfigSelectOption::new("high", "High"),
+        ];
+        vec![
+            SessionConfigOption::select("effort", "Effort", current.to_owned(), levels)
+                .category(SessionConfigOptionCategory::ThoughtLevel),
+        ]
+    }
+
+    /// The fast preselect forgets the model and effort, but keeps unrelated settings.
+    #[test]
+    fn fast_preselect_forgets_only_model_and_effort() {
+        let options = [claude_models("opus"), claude_effort("high")].concat();
+        let mut preferences = crate::AgentPreferences::default();
+        preferences.set("model", "opus");
+        preferences.set("effort", "high");
+        preferences.set("brave_mode", true);
+
+        forget_model_and_effort(&mut preferences, &options);
+
+        assert_eq!(preferences.get("model"), None);
+        assert_eq!(preferences.get("effort"), None);
+        assert!(preferences.get("brave_mode").is_some());
     }
 
     #[test]
-    fn picks_the_first_preferred_mode_that_is_offered() {
-        let modes = SessionModeState::new(
-            "manual",
-            vec![
-                SessionMode::new("manual", "Manual"),
-                SessionMode::new("plan", "Plan"),
-                SessionMode::new("auto", "Auto"),
-            ],
-        );
-        let pick = |preferences: &[&str]| {
-            let preferences: Vec<_> = preferences
-                .iter()
-                .map(|id| SessionModeId::new(*id))
-                .collect();
-            pick_mode(Some(&modes), &preferences).map(|mode| mode.0.to_string())
-        };
+    fn restores_an_offered_effort() {
+        let (config_id, level) =
+            pick_saved(&claude_effort("default"), "effort", "high").expect("the effort selector");
+        assert_eq!(config_id.0.as_ref(), "effort");
+        assert_eq!(level.0.as_ref(), "high");
+    }
 
-        assert_eq!(pick(&["plan", "auto"]).as_deref(), Some("plan"));
-        assert_eq!(pick(&["yolo", "auto"]).as_deref(), Some("auto"));
-
-        // Nothing to change when the agent already is in the preferred mode.
-        assert_eq!(pick(&["manual", "auto"]), None);
-
-        assert_eq!(pick(&[]), None);
-        assert_eq!(pick(&["yolo"]), None);
-        assert_eq!(pick_mode(None, &[SessionModeId::new("plan")]), None);
+    #[test]
+    fn leaves_the_effort_when_the_saved_one_does_not_apply() {
+        let options = claude_effort("high");
+        assert_eq!(pick_saved(&options, "effort", "high"), None);
+        assert_eq!(pick_saved(&options, "effort", "max"), None);
+        assert_eq!(pick_saved(&claude_models("opus"), "effort", "high"), None);
     }
 
     #[test]
@@ -618,5 +759,288 @@ mod tests {
             pick_model(&claude_models("sonnet"), None, &preferences(&["sonnet"])),
             None
         );
+    }
+
+    /// A saved speed is restored also when the agent groups its speed options.
+    #[test]
+    fn picks_a_grouped_speed() {
+        let group = SessionConfigSelectGroup::new(
+            "tiers",
+            "Tiers",
+            vec![
+                SessionConfigSelectOption::new("off", "Off"),
+                SessionConfigSelectOption::new("on", "On"),
+            ],
+        );
+        let options = vec![SessionConfigOption::select(
+            "fast",
+            "Speed",
+            "off",
+            vec![group],
+        )];
+        let on = SessionConfigValueId::new("on");
+        assert_eq!(
+            pick_saved(&options, "fast", "on"),
+            Some((SessionConfigId::new("fast"), on))
+        );
+    }
+
+    /// Startup selects the model before restoring a speed that only that model offers.
+    #[test]
+    fn restores_speed_from_the_selected_models_options() {
+        check_startup(
+            Some(OfferedSpeed {
+                current: "off",
+                values: &["off", "on"],
+            }),
+            SpeedRequest::Accepted,
+        );
+    }
+
+    /// Checks that model selection precedes an earlier-listed setting that it resets.
+    #[test]
+    fn restores_settings_after_model_regardless_of_option_order() {
+        let speed = Some(OfferedSpeed {
+            current: "off",
+            values: &["off", "on"],
+        });
+        let mut initial = startup_options("initial", speed);
+        initial.reverse();
+        check_startup_with_options(initial, speed, SpeedRequest::Accepted);
+    }
+
+    /// Missing, unsupported, and already-selected speeds cause no speed request.
+    #[test]
+    fn skips_speed_requests_that_do_not_apply() {
+        check_startup(None, SpeedRequest::Omitted);
+        check_startup(
+            Some(OfferedSpeed {
+                current: "off",
+                values: &["off"],
+            }),
+            SpeedRequest::Omitted,
+        );
+        check_startup(
+            Some(OfferedSpeed {
+                current: "on",
+                values: &["off", "on"],
+            }),
+            SpeedRequest::Omitted,
+        );
+    }
+
+    /// A rejected speed request leaves the session ready with its confirmed settings.
+    #[test]
+    fn a_speed_request_failure_does_not_abort_startup() {
+        check_startup(
+            Some(OfferedSpeed {
+                current: "off",
+                values: &["off", "on"],
+            }),
+            SpeedRequest::Rejected,
+        );
+    }
+
+    /// The speed selector offered after selecting the chosen model.
+    #[derive(Clone, Copy)]
+    struct OfferedSpeed {
+        current: &'static str,
+        values: &'static [&'static str],
+    }
+
+    #[derive(Clone, Copy)]
+    enum SpeedRequest {
+        Accepted,
+        Omitted,
+        Rejected,
+    }
+
+    fn startup_options(model: &str, speed: Option<OfferedSpeed>) -> Vec<SessionConfigOption> {
+        let mut options = vec![
+            SessionConfigOption::select(
+                "model",
+                "Model",
+                model.to_owned(),
+                vec![
+                    SessionConfigSelectOption::new("initial", "Initial"),
+                    SessionConfigSelectOption::new("chosen", "Chosen"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::Model),
+        ];
+        if let Some(OfferedSpeed { current, values }) = speed {
+            options.push(SessionConfigOption::select(
+                "fast",
+                "Speed",
+                current.to_owned(),
+                values
+                    .iter()
+                    .map(|&value| SessionConfigSelectOption::new(value.to_owned(), value))
+                    .collect::<Vec<_>>(),
+            ));
+        }
+        options
+    }
+
+    /// Runs startup against an in-process ACP agent that offers `speed` only after model selection.
+    ///
+    /// Checks the request order and the confirmed options reported in `SessionStarted`.
+    fn check_startup(speed: Option<OfferedSpeed>, speed_request: SpeedRequest) {
+        check_startup_with_options(startup_options("initial", None), speed, speed_request);
+    }
+
+    fn check_startup_with_options(
+        initial: Vec<SessionConfigOption>,
+        speed: Option<OfferedSpeed>,
+        speed_request: SpeedRequest,
+    ) {
+        let config = AgentHarnessConfig {
+            command: "unused".into(),
+            args: Vec::new(),
+            env: Vec::new(),
+            cwd: ".".into(),
+            additional_directories: Vec::new(),
+            off_limits_directories: Vec::new(),
+            mcp_servers: Vec::new(),
+            log_protocol: false,
+            preamble: None,
+            model_preselect: crate::ModelPreselect::Previous,
+            preferences: crate::AgentPreferences {
+                config_options: [
+                    ("model".into(), "chosen".into()),
+                    ("fast".into(), "on".into()),
+                ]
+                .into(),
+            },
+            session_to_load: None,
+        };
+        let init = InitializeResponse::new(ProtocolVersion::V1);
+        let post_model = startup_options("chosen", speed);
+        let confirmed = match speed_request {
+            SpeedRequest::Accepted => startup_options(
+                "chosen",
+                speed.map(|speed| OfferedSpeed {
+                    current: "on",
+                    ..speed
+                }),
+            ),
+            SpeedRequest::Omitted | SpeedRequest::Rejected => post_model.clone(),
+        };
+        let response_options = confirmed.clone();
+        let (request_tx, mut request_rx) = futures::channel::mpsc::unbounded();
+        let (client_channel, agent_channel) = Channel::duplex();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+        let (events, event_rx) = EventSender::new(UiWaker::noop());
+
+        futures::executor::block_on(async {
+            let agent = Agent
+                .v1()
+                .on_receive_request(
+                    async move |_request: NewSessionRequest, responder, _cx| {
+                        responder.respond(
+                            NewSessionResponse::new("test-session").config_options(initial.clone()),
+                        )
+                    },
+                    agent_client_protocol::on_receive_request!(),
+                )
+                .on_receive_request(
+                    async move |request: SetSessionConfigOptionRequest, responder, _cx| {
+                        request_tx
+                            .unbounded_send((request.config_id.clone(), request.value.clone()))
+                            .expect("request receiver open");
+                        if request.config_id.0.as_ref() == "model" {
+                            responder
+                                .respond(SetSessionConfigOptionResponse::new(post_model.clone()))
+                        } else if matches!(speed_request, SpeedRequest::Rejected) {
+                            responder.respond_with_error(Error::internal_error())
+                        } else {
+                            responder.respond(SetSessionConfigOptionResponse::new(
+                                response_options.clone(),
+                            ))
+                        }
+                    },
+                    agent_client_protocol::on_receive_request!(),
+                )
+                .connect_with(agent_channel, async move |_cx| {
+                    // Keep the agent connected until the client has finished startup.
+                    done_rx.await.expect("startup completed");
+                    Ok::<_, Error>(())
+                });
+            let client =
+                Client
+                    .v1()
+                    .connect_with(client_channel, async move |cx: ConnectionTo<Agent>| {
+                        let session_id = start_session(&cx, &config, &events, &init, None).await;
+                        assert_eq!(session_id.unwrap().0.as_ref(), "test-session");
+                        done_tx.send(()).expect("agent waiting");
+                        Ok::<_, Error>(())
+                    });
+            let (client, agent) = futures::join!(client, agent);
+            client.expect("client connection");
+            agent.expect("agent connection");
+        });
+
+        let mut expected = vec![("model".into(), "chosen".into())];
+        if !matches!(speed_request, SpeedRequest::Omitted) {
+            expected.push(("fast".into(), "on".into()));
+        }
+        let requests: Vec<_> = std::iter::from_fn(|| request_rx.try_recv().ok()).collect();
+        assert_eq!(requests, expected);
+        let started = event_rx.try_iter().find_map(|event| match event {
+            AgentEvent::SessionStarted { config_options, .. } => Some(config_options),
+            _ => None,
+        });
+        assert_eq!(started, Some(confirmed));
+    }
+
+    /// The agent gets the cancellation error it expects, with no answer from the UI.
+    #[test]
+    fn an_agent_that_cancels_a_permission_request_gets_a_cancellation_error() {
+        let (client_channel, agent_channel) = Channel::duplex();
+        let (pending_tx, mut pending_rx) = futures::channel::mpsc::unbounded();
+        let (done_tx, done_rx) = futures::channel::oneshot::channel();
+
+        let agent_error = futures::executor::block_on(async {
+            let client = Client
+                .v1()
+                .on_receive_request(
+                    async move |_request: RequestPermissionRequest, acp_responder, cx| {
+                        let (responder, task) = forward_answer(acp_responder);
+                        pending_tx
+                            .unbounded_send(responder)
+                            .expect("test holds the receiver");
+                        cx.spawn(task)
+                    },
+                    agent_client_protocol::on_receive_request!(),
+                )
+                .connect_with(client_channel, async move |_cx| {
+                    done_rx.await.expect("agent finished");
+                    Ok::<_, Error>(())
+                });
+            let agent = Agent.v1().connect_with(agent_channel, async move |cx| {
+                let request = RequestPermissionRequest::new(
+                    "test-session",
+                    ToolCallUpdate::new("call", ToolCallUpdateFields::new()),
+                    vec![PermissionOption::new(
+                        "allow",
+                        "Allow",
+                        PermissionOptionKind::AllowOnce,
+                    )],
+                );
+                let sent = cx.send_request(request);
+                let cancellation = sent.cancellation_handle();
+                let unanswered = pending_rx.next().await.expect("the UI got the request");
+                cancellation.cancel()?;
+                let result = sent.block_task().await;
+                drop(unanswered);
+                done_tx.send(()).expect("client waiting");
+                Ok::<_, Error>(result.expect_err("the request was cancelled"))
+            });
+            let (client, agent) = futures::join!(client, agent);
+            client.expect("client connection");
+            agent.expect("agent connection")
+        });
+
+        assert_eq!(agent_error.code, Error::request_cancelled().code);
     }
 }

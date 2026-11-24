@@ -322,6 +322,25 @@ fn registration_error(task_id: &TaskId, status: &str, message: Option<&str>) -> 
     }
 }
 
+/// Fails unless the server registers a data source under its `segment_id`.
+///
+/// A server without this capability ignores the field and registers the source under its
+/// recording id, so the check must run before submitting.
+pub fn check_segment_id_override(connection: &re_redap_client::Connection) -> ApiResult<()> {
+    if connection
+        .capabilities()
+        .has(re_protos::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE)
+    {
+        Ok(())
+    } else {
+        Err(ApiError::unimplemented(
+            connection.origin(),
+            "this server does not support setting the segment id of a registered recording; \
+             it requires Rerun 0.44 or Rerun Hub 0.21 or later",
+        ))
+    }
+}
+
 impl CatalogClient {
     /// Unregisters segments and layers from the dataset.
     ///
@@ -351,6 +370,11 @@ impl CatalogClient {
     }
 
     /// Initiate asynchronous registration of the provided data sources with a dataset.
+    ///
+    /// Fails without contacting the dataset if a source sets
+    /// [`DataSource::segment_id_override`] and the server does not advertise
+    /// [`re_protos::capabilities::CATALOG_WRITE_SEGMENT_ID_OVERRIDE`], since such a server would
+    /// silently register the source under its recording id instead.
     #[tracing::instrument(level = "info", skip_all)]
     pub async fn register_with_dataset(
         &self,
@@ -358,9 +382,17 @@ impl CatalogClient {
         data_sources: Vec<DataSource>,
         on_duplicate: IfDuplicateBehavior,
     ) -> ApiResult<RegistrationHandle> {
-        let (trace_id, descriptors) = self
-            .client()
-            .await?
+        let mut connection = self.connection().connection().await?;
+
+        if data_sources
+            .iter()
+            .any(|ds| ds.segment_id_override.is_some())
+        {
+            check_segment_id_override(&connection)?;
+        }
+
+        let (trace_id, descriptors) = connection
+            .client
             .register_with_dataset(dataset_id, data_sources, on_duplicate)
             .await?;
 
@@ -405,7 +437,6 @@ impl CatalogClient {
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
     use re_protos::cloud::v1alpha1::ext::DataSourceKind;
-    use re_types_core::LayerName;
 
     use super::*;
     use re_redap_client::ConnectionRegistry;

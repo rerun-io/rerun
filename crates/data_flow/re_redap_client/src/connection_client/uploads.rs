@@ -13,6 +13,43 @@ where
     T::ResponseBody: Body<Data = Bytes> + std::marker::Send + 'static,
     <T::ResponseBody as Body>::Error: Into<StdError> + std::marker::Send,
 {
+    /// Lists configured locations, sorted by alias, without testing storage access.
+    #[tracing::instrument(level = "info", skip_all)]
+    pub async fn get_storage_locations(&mut self) -> ApiResult<cloud_ext::StorageLocations> {
+        let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
+            self.inner()
+                .get_storage_locations(re_protos::cloud::v1alpha1::GetStorageLocationsRequest {})
+                .await
+                .map_err(|err| ApiError::tonic(&self.origin, err, "/GetStorageLocations failed"))?,
+        );
+        let locations = inner
+            .storage_locations
+            .into_iter()
+            .map(TryInto::try_into)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    &self.origin,
+                    trace_id,
+                    err,
+                    "failed parsing /GetStorageLocations response",
+                )
+            })?;
+        let default_alias =
+            cloud_ext::StorageLocationAlias::try_new(inner.default_alias).map_err(|err| {
+                ApiError::deserialization_with_source(
+                    &self.origin,
+                    trace_id,
+                    err,
+                    "failed parsing /GetStorageLocations default alias",
+                )
+            })?;
+        Ok(cloud_ext::StorageLocations {
+            locations,
+            default_alias,
+        })
+    }
+
     /// Requests authorization to write one object.
     ///
     /// Writing the object does not register it: redeem the grant, then pass the returned storage
@@ -23,6 +60,14 @@ where
         &mut self,
         request: cloud_ext::GetWriteAccessGrantRequest,
     ) -> ApiResult<GetWriteAccessGrantResponse> {
+        // TODO(RR-6055): Negotiate explicit-location support; older servers ignore the selector.
+        if request.storage_location.is_some() {
+            return Err(ApiError::unimplemented(
+                &self.origin,
+                "explicit storage locations are not supported for uploads",
+            ));
+        }
+
         let supported_upload_methods = request.supported_upload_methods.clone();
         let signing = request.signing;
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(

@@ -143,7 +143,7 @@ impl Client {
             thread::Builder::new()
                 .name("message_proxy_client".to_owned())
                 .spawn(move || {
-                    let mut runtime = runtime::Builder::new_current_thread(); // NOLINT: the synchronous client thread owns this runtime
+                    let mut runtime = runtime::Builder::new_current_thread(); // relint: allow(tokio_runtime): the synchronous client thread owns this runtime
                     runtime.enable_all();
                     runtime
                         .build()
@@ -398,7 +398,8 @@ async fn message_proxy_client(
         // `connect_timeout_on_flush`.
         _ = shutdown_rx.recv() => {
             re_log::warn!(
-                "Shutdown requested while connecting; waiting up to {:.1}s for a final connection attempt. URI: {uri}",
+                %uri,
+                "Shutdown requested while connecting; waiting up to {:.1}s for a final connection attempt",
                 connect_timeout_on_flush.as_secs_f32(),
             );
             tokio::select! {
@@ -411,7 +412,8 @@ async fn message_proxy_client(
                         ),
                     )));
                     re_log::error!(
-                        "Failed to connect within {:.1}s during shutdown; dropping all pending gRPC messages. URI: {uri}",
+                        %uri,
+                        "Failed to connect within {:.1}s during shutdown; dropping all pending gRPC messages",
                         connect_timeout_on_flush.as_secs_f32(),
                     );
                     return;

@@ -16,7 +16,7 @@ FixedSizeList(3 x non-null Float32)
 
 ## API reference links
  * 🌊 [C++ API docs for `Vector3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Vector3D.html)
- * 🐍 [Python API docs for `Vector3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Vector3D)
+ * 🐍 [Python API docs for `Vector3D`](https://ref.rerun.io/docs/python/stable/components#rerun.components.Vector3D)
  * 🦀 [Rust API docs for `Vector3D`](https://docs.rs/rerun/latest/rerun/components/struct.Vector3D.html)
 
 

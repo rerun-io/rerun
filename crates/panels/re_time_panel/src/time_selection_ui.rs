@@ -10,6 +10,9 @@ use re_viewer_context::{
 
 use re_time_ruler::TimeRangesUi;
 
+/// Hold while clicking the time selection to remove it.
+const REMOVE_TIME_SELECTION_MODIFIER: egui::Modifiers = egui::Modifiers::ALT;
+
 /// Paints a rect on the timeline given a time range.
 pub fn paint_timeline_range(
     highlighted_range: AbsoluteTimeRange,
@@ -216,7 +219,10 @@ pub fn loop_selection_ui(
                     .unwrap_or(AbsoluteTimeRangeF::EMPTY);
 
                 if middle_response.clicked() {
-                    if ui.input(|i| i.modifiers.alt) {
+                    if ui.input(|i| {
+                        i.modifiers
+                            .matches_logically(REMOVE_TIME_SELECTION_MODIFIER)
+                    }) {
                         time_commands.push(TimeControlCommand::RemoveTimeSelection);
                     } else {
                         let new_loop_mode = if time_ctrl.loop_mode() == LoopMode::Selection {
@@ -355,7 +361,7 @@ fn selection_context_menu(
     time_commands: &mut Vec<TimeControlCommand>,
     is_on_selection: bool,
 ) {
-    let modifier = ui.format_modifiers(egui::Modifiers::ALT);
+    let modifier = ui.format_modifiers(REMOVE_TIME_SELECTION_MODIFIER);
     if ui
         .add_enabled(
             is_on_selection,

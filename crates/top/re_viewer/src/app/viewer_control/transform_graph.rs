@@ -64,14 +64,14 @@ impl AppCore {
             .map_err(|err| {
                 ViewerControlError::invalid_argument(format!("invalid store_id: {err}"))
             })?
-            .or_else(|| self.state.active_recording_id().cloned())
+            .or_else(|| self.active_recording_id().cloned())
             .ok_or_else(|| {
                 ViewerControlError::failed_precondition("no active recording, and no `store_id`")
             })?;
         let recording = store_hub.entity_db(&store_id).ok_or_else(|| {
             ViewerControlError::not_found(format!("recording {store_id} is not open"))
         })?;
-        let time_control = self.state.time_control(&store_id).ok_or_else(|| {
+        let time_control = self.stores.time_control(&store_id).ok_or_else(|| {
             ViewerControlError::failed_precondition(
                 "no time control for this recording; select it in the viewer first",
             )

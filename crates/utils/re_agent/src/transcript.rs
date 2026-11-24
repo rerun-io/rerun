@@ -1,11 +1,11 @@
 use std::collections::HashMap;
+use std::time::Duration;
 
 use agent_client_protocol_schema::v1::{
     AvailableCommand, ContentBlock, Plan, SessionConfigId, SessionConfigKind, SessionConfigOption,
     SessionConfigOptionCategory, SessionConfigSelect, SessionConfigSelectOption,
-    SessionConfigSelectOptions, SessionModeId, SessionUpdate, TextContent, ToolCall,
-    ToolCallContent, ToolCallId, ToolCallLocation, ToolCallStatus, ToolCallUpdate,
-    ToolCallUpdateFields, ToolKind, UsageUpdate,
+    SessionConfigSelectOptions, SessionUpdate, TextContent, ToolCall, ToolCallContent, ToolCallId,
+    ToolCallLocation, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields, ToolKind, UsageUpdate,
 };
 
 use crate::{AgentError, McpStartupFailure, Prompt, PromptImage};
@@ -192,9 +192,6 @@ pub struct Transcript {
     /// Slash commands the agent accepts, as of its latest update.
     pub available_commands: Vec<AvailableCommand>,
 
-    /// The permission mode the agent reports being in.
-    pub current_mode: Option<SessionModeId>,
-
     /// The agent's configuration, e.g. its model selector, as of its latest update.
     pub config_options: Vec<SessionConfigOption>,
 
@@ -203,7 +200,16 @@ pub struct Transcript {
 
     /// Title the agent gave the session, if any.
     pub title: Option<String>,
+
+    /// Working time of each ended turn.
+    turn_durations: HashMap<TurnId, Duration>,
 }
+
+/// A turn, named by the user message that started it.
+///
+/// Only a [`Transcript`] makes one, and only for an item that is a user message.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TurnId(usize);
 
 impl Transcript {
     fn push(&mut self, item: TranscriptItem) {
@@ -213,8 +219,44 @@ impl Transcript {
         });
     }
 
-    pub fn push_user(&mut self, prompt: Prompt) {
+    pub fn push_user(&mut self, prompt: Prompt) -> TurnId {
+        let turn = TurnId(self.items.len());
         self.push(TranscriptItem::User(prompt));
+        turn
+    }
+
+    /// The turn that the item at `index` in [`Self::items`] starts, if that item is a user message.
+    pub fn turn_id(&self, index: usize) -> Option<TurnId> {
+        let entry = self.items.get(index)?;
+        matches!(entry.item, TranscriptItem::User(_)).then_some(TurnId(index))
+    }
+
+    pub fn set_turn_duration(&mut self, turn: TurnId, duration: Duration) {
+        self.turn_durations.insert(turn, duration);
+    }
+
+    /// Working time of `turn`.
+    ///
+    /// `None` while the turn runs, and for turns loaded from an earlier session.
+    pub fn turn_duration(&self, turn: TurnId) -> Option<Duration> {
+        self.turn_durations.get(&turn).copied()
+    }
+
+    /// Adds one text block of a prompt from a loaded session's history.
+    ///
+    /// The agent replays each block of a prompt separately, so consecutive blocks join into one
+    /// prompt.
+    pub fn push_replayed_user_text(&mut self, text: &str) {
+        if let Some(TranscriptEntry {
+            item: TranscriptItem::User(prompt),
+            ..
+        }) = self.items.last_mut()
+        {
+            prompt.text.push_str("\n\n");
+            prompt.text.push_str(text);
+        } else {
+            self.push_user(Prompt::from(text.to_owned()));
+        }
     }
 
     pub fn push_mcp_startup_failure(&mut self, failure: McpStartupFailure) {
@@ -234,10 +276,22 @@ impl Transcript {
 
     /// The agent's model selector and its config id, if it offers one.
     pub fn model_selector(&self) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
+        self.selector(&SessionConfigOptionCategory::Model)
+    }
+
+    /// The agent's effort selector and its config id, if it offers one.
+    pub fn effort_selector(&self) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
+        self.selector(&SessionConfigOptionCategory::ThoughtLevel)
+    }
+
+    fn selector(
+        &self,
+        category: &SessionConfigOptionCategory,
+    ) -> Option<(&SessionConfigId, &SessionConfigSelect)> {
         let selector = self
             .config_options
             .iter()
-            .find(|option| option.category == Some(SessionConfigOptionCategory::Model))?;
+            .find(|option| option.category.as_ref() == Some(category))?;
         match &selector.kind {
             SessionConfigKind::Select(select) => Some((&selector.id, select)),
             _ => None,
@@ -247,22 +301,19 @@ impl Transcript {
     /// The name of the model the agent says it is using, if it offers a model selector.
     pub fn current_model(&self) -> Option<&str> {
         let (_, select) = self.model_selector()?;
-        let mut models: Box<dyn Iterator<Item = &SessionConfigSelectOption>> = match &select.options
-        {
-            SessionConfigSelectOptions::Ungrouped(models) => Box::new(models.iter()),
-            SessionConfigSelectOptions::Grouped(groups) => {
-                Box::new(groups.iter().flat_map(|group| &group.options))
-            }
-            _ => return None,
-        };
+        current_name(select, model_name)
+    }
 
-        // An agent may report a value it does not offer as an option; show it raw rather than
-        // claim it has no model.
-        Some(
-            models
-                .find(|model| model.value == select.current_value)
-                .map_or_else(|| select.current_value.0.as_ref(), model_name),
-        )
+    /// The name of the effort the agent says it is using, if it offers an effort
+    /// selector.
+    pub fn current_effort_name(&self) -> Option<&str> {
+        let (_, select) = self.effort_selector()?;
+        current_name(select, |level| &level.name)
+    }
+
+    pub fn current_effort(&self) -> Option<crate::Effort> {
+        let (_, select) = self.effort_selector()?;
+        Some(crate::Effort::from(&select.current_value))
     }
 
     pub fn tool_call(&self, id: &ToolCallId) -> Option<&ToolCallState> {
@@ -304,9 +355,6 @@ impl Transcript {
             }
             SessionUpdate::AvailableCommandsUpdate(update) => {
                 self.available_commands = update.available_commands;
-            }
-            SessionUpdate::CurrentModeUpdate(update) => {
-                self.current_mode = Some(update.current_mode_id);
             }
             SessionUpdate::ConfigOptionUpdate(update) => {
                 self.config_options = update.config_options;
@@ -647,6 +695,28 @@ pub fn message_text(content: &[ContentBlock]) -> String {
         .join("\n")
 }
 
+/// The name of the current value of `select`, as `name` gives it for the matching option.
+fn current_name<'a>(
+    select: &'a SessionConfigSelect,
+    name: impl FnOnce(&'a SessionConfigSelectOption) -> &'a str,
+) -> Option<&'a str> {
+    let mut options: Box<dyn Iterator<Item = &SessionConfigSelectOption>> = match &select.options {
+        SessionConfigSelectOptions::Ungrouped(options) => Box::new(options.iter()),
+        SessionConfigSelectOptions::Grouped(groups) => {
+            Box::new(groups.iter().flat_map(|group| &group.options))
+        }
+        _ => return None,
+    };
+
+    // An agent may report a value it does not offer as an option; show it raw rather than
+    // claim it has none.
+    Some(
+        options
+            .find(|option| option.value == select.current_value)
+            .map_or_else(|| select.current_value.0.as_ref(), name),
+    )
+}
+
 /// The most specific name for a model option, e.g. "Opus 5.5" rather than "Default (recommended)".
 ///
 /// Agents may give an alias a versionless name and put the concrete model in the description,
@@ -665,13 +735,23 @@ pub fn model_name(model: &SessionConfigSelectOption) -> &str {
     concrete.unwrap_or(&model.name)
 }
 
+/// All options of a select, flattening groups.
+pub fn select_options(select: &SessionConfigSelect) -> Vec<&SessionConfigSelectOption> {
+    match &select.options {
+        SessionConfigSelectOptions::Ungrouped(options) => options.iter().collect(),
+        SessionConfigSelectOptions::Grouped(groups) => {
+            groups.iter().flat_map(|group| &group.options).collect()
+        }
+        _ => Vec::new(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
     use agent_client_protocol_schema::v1::{
         ConfigOptionUpdate, ContentChunk, Diff, SessionConfigSelectGroup,
-        SessionConfigSelectOption, ToolCall,
     };
 
     use super::*;
@@ -754,6 +834,38 @@ mod tests {
             .category(SessionConfigOptionCategory::Mode),
         ];
         assert_eq!(transcript(modes).current_model(), None);
+    }
+
+    #[test]
+    fn names_the_selected_effort_apart_from_the_model() {
+        let options = vec![
+            model_selector("opus"),
+            SessionConfigOption::select(
+                "effort",
+                "Effort",
+                "high",
+                vec![
+                    SessionConfigSelectOption::new("low", "Low"),
+                    SessionConfigSelectOption::new("high", "High"),
+                ],
+            )
+            .category(SessionConfigOptionCategory::ThoughtLevel),
+        ];
+        let transcript = transcript(options);
+        assert_eq!(transcript.current_model(), Some("Opus 4.6"));
+        assert_eq!(transcript.current_effort_name(), Some("High"));
+        assert_eq!(
+            transcript.current_effort(),
+            Some(crate::Effort("high".to_owned()))
+        );
+    }
+
+    #[test]
+    fn has_no_effort_without_an_effort_selector() {
+        assert_eq!(
+            transcript(vec![model_selector("opus")]).current_effort(),
+            None
+        );
     }
 
     #[test]

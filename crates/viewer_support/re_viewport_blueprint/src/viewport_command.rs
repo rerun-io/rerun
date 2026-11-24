@@ -24,7 +24,13 @@ pub enum ViewportCommand {
     },
 
     /// Change the kind of a container.
-    SetContainerKind(ContainerId, egui_tiles::ContainerKind),
+    SetContainerKind {
+        /// The container to change.
+        container_id: ContainerId,
+
+        /// The new kind, e.g. tabs or grid.
+        container_kind: egui_tiles::ContainerKind,
+    },
 
     /// Ensure the tab for the provided view is focused (see [`egui_tiles::Tree::make_active`]).
     FocusTab(ViewId),
@@ -33,7 +39,13 @@ pub enum ViewportCommand {
     RemoveContents(Contents),
 
     /// Simplify the container with the provided options
-    SimplifyContainer(ContainerId, egui_tiles::SimplificationOptions),
+    SimplifyContainer {
+        /// The container whose children are simplified.
+        container_id: ContainerId,
+
+        /// Which simplifications to apply.
+        options: egui_tiles::SimplificationOptions,
+    },
 
     /// Make all column and row shares the same for this container
     MakeAllChildrenSameSize(ContainerId),

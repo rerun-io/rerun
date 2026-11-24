@@ -79,7 +79,7 @@ pub use self::app_options::{AppOptions, ExperimentalAppOptions, VideoOptions};
 pub use self::audio_output::AudioOutput;
 pub use self::blueprint_helpers::{
     AppBlueprintCtx, BlueprintContext, blueprint_timeline, blueprint_timepoint_for_writes,
-    entity_path_for_view_property,
+    entity_path_for_view_property, reset_blueprint_disabled_reason,
 };
 pub use self::blueprint_id::{
     BlueprintId, BlueprintIdRegistry, ContainerId, GLOBAL_VIEW_ID, ViewId,

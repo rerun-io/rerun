@@ -9,19 +9,23 @@ use re_quota_channel::send_crossbeam;
 /// An error that can occur when flushing.
 #[derive(Debug, thiserror::Error)]
 pub enum FileFlushError {
-    #[error("Failed to flush file: {message}")]
-    Failed { message: String },
+    /// The file-writer thread is gone, so nothing can be flushed.
+    #[error("File-writer thread shut down prematurely")]
+    WriterThreadShutDown,
 
+    /// The encoder failed to flush.
+    #[error("Failed to flush log stream: {source}. Target: {target}")]
+    Encode {
+        /// Where the log stream is written to.
+        target: String,
+
+        /// The underlying encoding error.
+        source: crate::rrd::EncodeError,
+    },
+
+    /// Not all messages were written before the timeout.
     #[error("File flush timed out - not all messages were written.")]
     Timeout,
-}
-
-impl FileFlushError {
-    fn failed(message: impl Into<String>) -> Self {
-        Self::Failed {
-            message: message.into(),
-        }
-    }
 }
 
 /// Errors that can occur when creating a [`FileSink`].
@@ -46,11 +50,13 @@ pub enum FileSinkError {
 #[derive(Debug)]
 enum Command {
     Send(LogMsg),
-    Flush { on_done: Sender<Result<(), String>> },
+    Flush {
+        on_done: Sender<Result<(), FileFlushError>>,
+    },
 }
 
 impl Command {
-    fn flush() -> (Self, Receiver<Result<(), String>>) {
+    fn flush() -> (Self, Receiver<Result<(), FileFlushError>>) {
         let (tx, rx) = crossbeam::channel::bounded(0); // oneshot
         (Self::Flush { on_done: tx }, rx)
     }
@@ -201,19 +207,13 @@ impl FileSink {
     #[inline]
     pub fn flush_blocking(&self, timeout: std::time::Duration) -> Result<(), FileFlushError> {
         let (cmd, oneshot) = Command::flush();
-        send_crossbeam(&self.tx.lock(), Some(cmd)).map_err(|_ignored| {
-            FileFlushError::failed("File-writer thread shut down prematurely")
-        })?;
+        send_crossbeam(&self.tx.lock(), Some(cmd))
+            .map_err(|_ignored| FileFlushError::WriterThreadShutDown)?;
 
-        oneshot
-            .recv_timeout(timeout)
-            .map_err(|err| match err {
-                RecvTimeoutError::Timeout => FileFlushError::Timeout,
-                RecvTimeoutError::Disconnected => {
-                    FileFlushError::failed("File-writer thread shut down prematurely")
-                }
-            })?
-            .map_err(FileFlushError::failed)
+        oneshot.recv_timeout(timeout).map_err(|err| match err {
+            RecvTimeoutError::Timeout => FileFlushError::Timeout,
+            RecvTimeoutError::Disconnected => FileFlushError::WriterThreadShutDown,
+        })?
     }
 
     #[inline]
@@ -243,9 +243,13 @@ fn spawn_and_stream<W: std::io::Write + Send + 'static>(
                         Command::Flush { on_done } => {
                             re_log::trace!("Flushing…");
 
-                            let result = encoder.flush_blocking().map_err(|err| {
-                                format!("Failed to flush log stream to {target}: {err}")
-                            });
+                            let result =
+                                encoder
+                                    .flush_blocking()
+                                    .map_err(|source| FileFlushError::Encode {
+                                        target: target.clone(),
+                                        source,
+                                    });
 
                             // Send back the result:
                             if let Err(SendError(result)) = send_crossbeam(&on_done, result)

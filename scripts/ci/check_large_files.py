@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
-from pathlib import Path
 
 # These files are allowed to be larger than our limit
 FILES_ALLOWED_TO_BE_LARGE = {
@@ -26,6 +25,7 @@ FILES_ALLOWED_TO_BE_LARGE = {
     "docs/snippets/INDEX.md",
     "pixi.lock",
     "rerun_cpp/docs/Doxyfile",
+    "rerun_js/web-viewer/index.ts",
     "uv.lock",
     # Examples excluded from the uv workspace so they maintain standalone lockfiles.
     "examples/python/dataloader/uv.lock",
@@ -46,17 +46,30 @@ PATH_PREFIXES_ALLOWED_TO_CONTAIN_NON_LFS_PNGS = (
 )
 
 
-def check_large_files(files_to_check: set[str]) -> int:
-    """Check for files that are too large to be checked into the repository."""
+DEFAULT_MAXIMUM_SIZE = 100 * 1024
 
-    maximum_size = 100 * 1024
+# Insta snapshots can contain entire tables of Arrow record batches.
+MAXIMUM_SIZE_PER_EXTENSION = {
+    ".snap": 2 * 1024 * 1024,
+}
+
+
+def check_large_files(directory: str, files_to_check: set[str], files_allowed_to_be_large: set[str]) -> int:
+    """Check for files that are too large to be checked into the repository."""
 
     result = 0
     for file_path in files_to_check:
-        actual_size = os.path.getsize(file_path)
+        full_path = os.path.join(directory, file_path)
+        if not os.path.exists(full_path):
+            continue
+
+        actual_size = os.path.getsize(full_path)
+
+        _, ext = os.path.splitext(file_path)
+        maximum_size = MAXIMUM_SIZE_PER_EXTENSION.get(ext, DEFAULT_MAXIMUM_SIZE)
 
         if actual_size >= maximum_size:
-            if file_path not in FILES_ALLOWED_TO_BE_LARGE:
+            if file_path not in files_allowed_to_be_large:
                 print(f"{file_path} is {actual_size} bytes (max allowed is {maximum_size} bytes)")
                 result = 1
 
@@ -65,12 +78,12 @@ def check_large_files(files_to_check: set[str]) -> int:
     return result
 
 
-def check_for_non_lfs_pngs(files_to_check: set[str]) -> int:
+def check_for_non_lfs_pngs(files_to_check: set[str], path_prefixes_allowed: tuple[str, ...]) -> int:
     """Check for PNG files that are not checked into LFS."""
 
     result = 0
     for file_path in files_to_check:
-        if file_path.startswith(PATH_PREFIXES_ALLOWED_TO_CONTAIN_NON_LFS_PNGS):
+        if file_path.startswith(path_prefixes_allowed):
             continue
 
         print(f"{file_path} is a PNG file that is not checked into LFS")
@@ -81,34 +94,43 @@ def check_for_non_lfs_pngs(files_to_check: set[str]) -> int:
     return result
 
 
+def check_directory(
+    directory: str,
+    files_allowed_to_be_large: set[str],
+    path_prefixes_allowed_to_contain_non_lfs_pngs: tuple[str, ...],
+) -> int:
+    """Check tracked files outside LFS in `directory` and return a non-zero error code if a check fails.
+
+    Paths in the allowed sets are relative to `directory`.
+    `directory` can be the root of the git repository or a folder inside it.
+    Repositories that contain this one as a folder call this with their own allowed paths.
+    """
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", *args], cwd=directory).decode()
+
+    # `git ls-files --full-name` and `git lfs ls-files` return paths relative to the repository root.
+    # `-z` turns off the quoting of non-ASCII paths. `git lfs ls-files` never quotes them.
+    prefix = git("rev-parse", "--show-prefix").strip()
+    all_tracked_files = set(git("ls-files", "-z", "--full-name").split("\0")) - {""}
+    lfs_files = set(git("lfs", "ls-files", "-n").splitlines())
+
+    not_lfs_files = {f.removeprefix(prefix) for f in all_tracked_files - lfs_files}
+    not_lfs_pngs = {f for f in not_lfs_files if f.endswith(".png")}
+
+    large_files_result = check_large_files(directory, not_lfs_files, files_allowed_to_be_large)
+    pngs_result = check_for_non_lfs_pngs(not_lfs_pngs, path_prefixes_allowed_to_contain_non_lfs_pngs)
+    return large_files_result or pngs_result
+
+
 def main() -> None:
     script_path = os.path.dirname(os.path.realpath(__file__))
-    os.chdir(os.path.join(script_path, "../.."))
-
-    all_tracked_files = set(subprocess.check_output(["git", "ls-files", "--full-name"]).decode().splitlines())
-    lfs_files = set(subprocess.check_output(["git", "lfs", "ls-files", "-n"]).decode().splitlines())
-    not_lfs_files = all_tracked_files - lfs_files
-    relative_paths = False
-    try:
-        Path(next(iter(not_lfs_files))).relative_to(Path.cwd().name)
-        relative_paths = True
-    except Exception:
-        pass
-    if relative_paths:
-        not_lfs_files = {str(Path(f).relative_to(Path.cwd().name)) for f in not_lfs_files}
-
-    result = check_large_files(not_lfs_files)
-    if result != 0:
-        sys.exit(result)
-
-    all_tracked_pngs = {f for f in all_tracked_files if f.endswith(".png")}
-    not_lfs_pngs = all_tracked_pngs - lfs_files
-    if relative_paths:
-        not_lfs_pngs = {str(Path(f).relative_to(Path.cwd().name)) for f in not_lfs_pngs}
-
-    result = check_for_non_lfs_pngs(not_lfs_pngs)
-    if result != 0:
-        sys.exit(result)
+    result = check_directory(
+        os.path.join(script_path, "../.."),
+        FILES_ALLOWED_TO_BE_LARGE,
+        PATH_PREFIXES_ALLOWED_TO_CONTAIN_NON_LFS_PNGS,
+    )
+    sys.exit(result)
 
 
 if __name__ == "__main__":

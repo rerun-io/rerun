@@ -17,6 +17,7 @@ from rerun._tracing import set_current_span_attributes, with_tracing
 
 from ....components import VideoCodec
 from ...video import detect_gop_start, is_annex_b, length_prefixed_to_annex_b
+from .._metrics import _record_video_frames
 from .._yuv import ColorRange, ColorSpace, Yuv420Frame
 from ._arrow import _flatten_blob
 from ._base import ColumnDecoder, DecodedValue, DecodeRequest, FieldBatch
@@ -531,6 +532,8 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
                 if frame is not None:
                     decoded_frames_by_packet_position[packet_position] = frame
 
+        _record_video_frames(output=len(decoded_frames_by_packet_position))
+
         if view_packet_positions_by_request is not None and self._try_emit_view_windows(
             packet_positions_by_request=view_packet_positions_by_request,
             wanted_packet_positions=wanted_packet_positions,
@@ -686,9 +689,11 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         captured: dict[int, DecodedValue] = {}
         wanted_set = set(wanted)
         saw_b_frame = False
+        frames_decoded = 0
 
         def receive_frame(frame: av.VideoFrame) -> None:
-            nonlocal saw_b_frame
+            nonlocal frames_decoded, saw_b_frame
+            frames_decoded += 1
             pos = session.frames_emitted
             session.frames_emitted += 1
             session.last_frame = frame
@@ -722,6 +727,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
                 "rerun.dataloader.video.sessions_evicted": evicted,
                 "rerun.dataloader.video.live_sessions": len(self._sessions),
             })
+            _record_video_frames(decoded=frames_decoded)
             return captured
 
         # Frame threading pipelines several packets before emitting their
@@ -737,6 +743,7 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
             receive_frame(frame)
 
         if session.frames_emitted == len(feed) and not saw_b_frame:
+            _record_video_frames(decoded=frames_decoded)
             return captured
 
         # A B-frame stream has decode order != presentation order, while raw
@@ -744,11 +751,14 @@ class VideoFrameDecoder(ColumnDecoder[DecodedValue], Generic[_OutputFormatT]):
         # behavior: replay through the requested position and take the final
         # displayed frame.
         if wanted != [len(feed) - 1]:
+            _record_video_frames(decoded=frames_decoded)
             return None
         target_frame = session.last_frame
         if target_frame is None:
+            _record_video_frames(decoded=frames_decoded)
             return {}
         position = len(feed) - 1
+        _record_video_frames(decoded=frames_decoded)
         return {position: frame_capture(position, target_frame)}
 
     def _feed_last(

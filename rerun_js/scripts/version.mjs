@@ -1,48 +1,37 @@
 #!/usr/bin/env node
 // @ts-check
 
-import {
-  fs,
-  script_dir,
-  path,
-  argv,
-  fail,
-  isSemver,
-  stripSemverBuildMetadata,
-} from "./common.mjs";
+import { fs, scriptDir, path, argv, fail, isSemver, stripSemverBuildMetadata } from "./common.mjs";
 
 if (argv.length != 1) {
   fail("expected one positional argument: version");
 }
 
 const version = argv[0];
-const root_dir = path.resolve(script_dir, "..");
+const rootDir = path.resolve(scriptDir, "..");
 
 if (!isSemver(version)) {
   fail(`${version} is not valid according to semver`);
 }
 
-const root_package_json = JSON.parse(
-  fs.readFileSync(path.join(root_dir, "package.json"), "utf-8"),
-);
-for (const pkg_path of root_package_json.workspaces) {
-  const package_json_path = path.join(root_dir, pkg_path, "package.json");
-  const readme_path = path.join(root_dir, pkg_path, "README.md");
-  const index_ts_path = path.join(root_dir, pkg_path, "index.ts");
+const rootPackageJson = JSON.parse(fs.readFileSync(path.join(rootDir, "package.json"), "utf-8"));
+for (const pkgPath of rootPackageJson.workspaces) {
+  const packageJsonPath = path.join(rootDir, pkgPath, "package.json");
+  const readmePath = path.join(rootDir, pkgPath, "README.md");
+  const indexTsPath = path.join(rootDir, pkgPath, "index.ts");
 
-  let package_json = JSON.parse(fs.readFileSync(package_json_path, "utf-8"));
-  let readme = fs.readFileSync(readme_path, "utf-8");
-  let index_ts = fs.existsSync(index_ts_path) ? fs.readFileSync(index_ts_path, "utf-8") : null;
+  let packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+  let readme = fs.readFileSync(readmePath, "utf-8");
+  let indexTs = fs.existsSync(indexTsPath) ? fs.readFileSync(indexTsPath, "utf-8") : null;
 
   // update package version
-  package_json.version = version;
+  packageJson.version = version;
 
   // update dependency versions
-  if ("dependencies" in package_json) {
-    for (const dependency of Object.keys(package_json.dependencies)) {
+  if ("dependencies" in packageJson) {
+    for (const dependency of Object.keys(packageJson.dependencies)) {
       if (dependency.startsWith("@rerun-io/")) {
-        package_json.dependencies[dependency] =
-          stripSemverBuildMetadata(version);
+        packageJson.dependencies[dependency] = stripSemverBuildMetadata(version);
       }
     }
   }
@@ -59,23 +48,22 @@ for (const pkg_path of root_package_json.workspaces) {
       `<https://app.rerun.io/version/${version}/examples/dna.rrd>`,
     );
     // pre-releases deploy their JS docs to `dev`, only final releases get a versioned directory.
-    const js_docs_version = stripSemverBuildMetadata(version).includes("-") ? "dev" : version;
+    const jsDocsVersion = stripSemverBuildMetadata(version).includes("-") ? "dev" : version;
     readme = readme.replace(
       /https:\/\/ref\.rerun\.io\/docs\/js\/[^/]+\/web-viewer/g,
-      `https://ref.rerun.io/docs/js/${js_docs_version}/web-viewer`
-    )
-    if (index_ts) {
-      index_ts = index_ts.replace(
+      `https://ref.rerun.io/docs/js/${jsDocsVersion}/web-viewer`,
+    );
+    if (indexTs) {
+      indexTs = indexTs.replace(
         /https:\/\/app\.rerun\.io\/version\/.*\/examples\/dna\.rrd/,
         `https://app.rerun.io/version/${version}/examples/dna.rrd`,
-      )
-
+      );
     }
   }
 
-  fs.writeFileSync(package_json_path, JSON.stringify(package_json, null, 2));
-  fs.writeFileSync(readme_path, readme);
-  if (index_ts) {
-    fs.writeFileSync(index_ts_path, index_ts);
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
+  fs.writeFileSync(readmePath, readme);
+  if (indexTs) {
+    fs.writeFileSync(indexTsPath, indexTs);
   }
 }

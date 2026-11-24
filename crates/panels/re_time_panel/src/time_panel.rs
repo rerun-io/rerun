@@ -1298,7 +1298,7 @@ impl TimePanel {
 
         let modifiers = ctx.egui_ctx().input(|i| i.modifiers);
 
-        if modifiers.shift {
+        if modifiers.contains(re_ui::SELECTION_RANGE_MODIFIER) {
             if let Some(anchor_item) = &self.range_selection_anchor_item {
                 let items_in_range = Self::items_in_range(
                     ctx,
@@ -1325,7 +1325,7 @@ impl TimePanel {
                         }),
                     );
 
-                    if modifiers.command {
+                    if modifiers.matches_logically(re_ui::SELECTION_TOGGLE_MODIFIER) {
                         // We extend into the current selection to append new items at the end.
                         let mut selection = ctx.selection().clone();
                         selection.extend(items);

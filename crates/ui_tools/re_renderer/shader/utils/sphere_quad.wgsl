@@ -15,7 +15,9 @@ fn sphere_quad(
     let distance_to_camera_sq = camera_distance * camera_distance; // (passing on micro-optimization here for splitting this out of earlier length calculation)
     let distance_to_camera_inv = 1.0 / camera_distance;
     let quad_normal = to_camera * distance_to_camera_inv;
-    let quad_right = normalize(cross(quad_normal, frame.view_from_world[1].xyz)); // It's spheres so any orthogonal vector would do.
+    // Read from a local copy. See `view_from_world` in `global_bindings.wgsl`.
+    let view_from_world = frame.view_from_world;
+    let quad_right = normalize(cross(quad_normal, view_from_world[1])); // It's spheres so any orthogonal vector would do.
     let quad_up = cross(quad_right, quad_normal);
     let pos_in_quad = top_bottom * quad_up + left_right * quad_right;
 
@@ -44,7 +46,9 @@ fn sphere_quad(
 /// on it.
 fn circle_quad(point_pos: vec3f, point_radius: f32, top_bottom: f32, left_right: f32) -> vec3f {
     let quad_normal = frame.camera_forward;
-    let quad_right = normalize(cross(quad_normal, frame.view_from_world[1].xyz)); // It's spheres so any orthogonal vector would do.
+    // Read from a local copy. See `view_from_world` in `global_bindings.wgsl`.
+    let view_from_world = frame.view_from_world;
+    let quad_right = normalize(cross(quad_normal, view_from_world[1])); // It's spheres so any orthogonal vector would do.
     let quad_up = cross(quad_right, quad_normal);
     let pos_in_quad = top_bottom * quad_up + left_right * quad_right;
 

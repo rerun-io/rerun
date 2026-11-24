@@ -3,14 +3,20 @@
 use std::collections::{BTreeMap, HashSet};
 use std::sync::Arc;
 
+use datafusion::common::TableReference;
+use datafusion::prelude::SessionContext;
+
 use re_async::WasmNotSend;
-use re_catalog_client::{Asset, AssetCoverage, CatalogClient};
-use re_log_types::EntryId;
+use re_catalog_client::{AssetCoverage, CatalogClient, ManifestSegment, RegisteredBlueprint};
+use re_dataframe_ui::StreamingCacheTableProvider;
+use re_datafusion::SegmentTableProvider;
 use re_log_types::external::re_types_core::SegmentId;
+use re_log_types::{EntryId, EntryName};
 use re_mutex::Mutex;
-use re_protos::cloud::v1alpha1::ext::AssetMode;
+use re_protos::cloud::v1alpha1::ext::{AssetMode, DatasetEntry};
 use re_redap_client::{ApiError, ApiErrorKind, ApiResult};
 use re_ui::{RequestedObject, ServerValue};
+use re_viewer_context::CommandSender;
 
 use crate::dataset_schema::DatasetSchema;
 
@@ -31,7 +37,9 @@ pub struct EntryMetaQuery<'a> {
     pub dataset_id: EntryId,
 }
 
-pub type AssetsRef = Arc<Vec<Asset>>;
+pub type AssetsRef = Arc<Vec<ManifestSegment>>;
+
+pub type BlueprintsRef = Arc<Vec<RegisteredBlueprint>>;
 
 pub type SegmentIdsRef = Arc<SegmentIds>;
 
@@ -126,12 +134,18 @@ pub struct DatasetRequests(Mutex<Requests>);
 /// behind an `Arc`.
 #[derive(Default)]
 struct Requests {
+    table_session: RequestedObject<Arc<SessionContext>, ApiError>,
+    dataset_entry: RequestedObject<Arc<DatasetEntry>, ApiError>,
+
     /// From the dataset's segment table. Only the count is kept, see [`EntryMeta::segments`].
     segment_count: RequestedObject<usize, ApiError>,
 
     /// The segment ids from the dataset's segment table, fetched when an asset modal searches
     /// them.
     segment_ids: RequestedObject<SegmentIdsRef, ApiError>,
+
+    /// From the segment table and segment properties of the dataset's blueprint dataset.
+    blueprints: RequestedObject<BlueprintsRef, ApiError>,
 
     /// From the manifest of the dataset's asset dataset.
     assets: RequestedObject<AssetsRef, ApiError>,
@@ -140,6 +154,13 @@ struct Requests {
 
     /// The combined schema of all layers in the dataset.
     schema: RequestedObject<Arc<DatasetSchema>, ApiError>,
+}
+
+/// Retry on next access. A registered table stays in the session; the widget refreshes its rows.
+fn retry_failed_registration(table_session: &mut RequestedObject<Arc<SessionContext>, ApiError>) {
+    if matches!(table_session, RequestedObject::Unavailable { .. }) {
+        table_session.refresh();
+    }
 }
 
 impl DatasetRequests {
@@ -174,17 +195,106 @@ impl DatasetRequests {
             })
     }
 
-    /// The assets registered for the dataset, as they stand in its asset dataset.
-    pub fn assets(
+    /// The blueprints registered for the dataset, asking for them if nothing has yet.
+    pub fn blueprints(
         &self,
         query: EntryMetaQuery<'_>,
-        asset_dataset: Option<EntryId>,
-    ) -> ServerValue<AssetsRef, ApiError> {
-        let Some(asset_dataset) = asset_dataset else {
-            // No asset was ever registered for this dataset.
-            return ServerValue::Completed(Arc::default());
-        };
+        blueprint_dataset: EntryId,
+    ) -> ServerValue<BlueprintsRef, ApiError> {
+        self.0
+            .lock()
+            .blueprints
+            .request_value(query.client.runtime(), query.egui_ctx, || {
+                warn_on_failure(
+                    "dataset blueprints",
+                    query.dataset_id,
+                    blueprints(query.client.clone(), blueprint_dataset),
+                )
+            })
+    }
 
+    pub fn table_session(
+        &self,
+        query: EntryMetaQuery<'_>,
+        catalog_session: &Arc<SessionContext>,
+        name: &EntryName,
+        command_sender: &CommandSender,
+    ) -> ServerValue<Arc<SessionContext>, ApiError> {
+        let dataset_entry = match self.dataset_entry(query) {
+            ServerValue::Completed(entry) => entry,
+            ServerValue::Pending { .. } => return ServerValue::Pending { previous: None },
+            ServerValue::Unavailable { err, .. } => {
+                return ServerValue::Unavailable {
+                    err,
+                    previous: None,
+                };
+            }
+        };
+        self.0
+            .lock()
+            .table_session
+            .request_value(query.client.runtime(), query.egui_ctx, || {
+                let catalog = query.client.clone();
+                let session = catalog_session.clone();
+                let table_name = name.to_string();
+                let command_sender = command_sender.clone();
+                async move {
+                    let client = catalog.client().await?;
+                    crate::entries::start_streaming_segment_table_blueprint(
+                        client.clone(),
+                        &dataset_entry,
+                        catalog.origin(),
+                        catalog.runtime(),
+                        &command_sender,
+                    );
+                    let provider = SegmentTableProvider::new(client, dataset_entry.details.id)
+                        .into_provider()
+                        .await
+                        .map_err(|err| {
+                            ApiError::internal_with_source(
+                                catalog.origin(),
+                                None,
+                                err,
+                                "failed creating segment table provider",
+                            )
+                        })?;
+                    let provider =
+                        StreamingCacheTableProvider::new(provider, catalog.runtime().clone());
+                    session
+                        .register_table(TableReference::bare(table_name), Arc::new(provider))
+                        .map_err(|err| {
+                            ApiError::internal_with_source(
+                                catalog.origin(),
+                                None,
+                                err,
+                                "failed registering segment table provider",
+                            )
+                        })?;
+                    Ok(session)
+                }
+            })
+    }
+
+    pub fn loaded_table_session(&self) -> Option<Arc<SessionContext>> {
+        self.0.lock().table_session.get().cloned()
+    }
+
+    pub fn dataset_entry(
+        &self,
+        query: EntryMetaQuery<'_>,
+    ) -> ServerValue<Arc<DatasetEntry>, ApiError> {
+        self.0
+            .lock()
+            .dataset_entry
+            .request_value(query.client.runtime(), query.egui_ctx, || {
+                let client = query.client.clone();
+                let id = query.dataset_id;
+                async move { client.read_dataset(id).await.map(Arc::new) }
+            })
+    }
+
+    /// The assets registered for the dataset, as they stand in its asset dataset.
+    pub fn assets(&self, query: EntryMetaQuery<'_>) -> ServerValue<AssetsRef, ApiError> {
         self.0
             .lock()
             .assets
@@ -192,7 +302,7 @@ impl DatasetRequests {
                 warn_on_failure(
                     "dataset assets",
                     query.dataset_id,
-                    assets(query.client.clone(), asset_dataset),
+                    assets(query.client.clone(), query.dataset_id),
                 )
             })
     }
@@ -232,18 +342,24 @@ impl DatasetRequests {
             })
     }
 
-    /// Fetch everything again, keeping what we have until the new values arrive.
+    /// Fetch metadata again on next access, keeping the previous values until then.
     pub fn refresh(&self) {
         let mut guard = self.0.lock();
         let Requests {
+            table_session,
+            dataset_entry,
             segment_count,
             segment_ids,
+            blueprints,
             assets,
             asset_coverage,
             schema,
         } = &mut *guard;
+        retry_failed_registration(table_session);
+        dataset_entry.refresh();
         segment_count.refresh();
         segment_ids.refresh();
+        blueprints.refresh();
         assets.refresh();
         for coverage in asset_coverage.values_mut() {
             coverage.refresh();
@@ -251,9 +367,13 @@ impl DatasetRequests {
         schema.refresh();
     }
 
-    /// Forget the assets we fetched, so the next access fetches them again.
-    ///
-    /// The rest of the metadata is left alone, since registering an asset doesn't change it.
+    /// Fetch the blueprints again on the next access, keeping the ones we have until the new ones
+    /// arrive.
+    pub fn refresh_blueprints(&self) {
+        self.0.lock().blueprints.refresh();
+    }
+
+    /// On next access, read the asset dataset ID from the entry again before fetching its assets.
     pub fn clear_assets(&self) {
         let mut guard = self.0.lock();
         guard.assets.refresh();
@@ -343,7 +463,15 @@ async fn schema(client: CatalogClient, entry_id: EntryId) -> ApiResult<Arc<Datas
     Ok(Arc::new(schema))
 }
 
-async fn assets(client: CatalogClient, asset_dataset: EntryId) -> ApiResult<AssetsRef> {
+async fn blueprints(client: CatalogClient, blueprint_dataset: EntryId) -> ApiResult<BlueprintsRef> {
+    Ok(Arc::new(client.get_blueprints(blueprint_dataset).await?))
+}
+
+async fn assets(client: CatalogClient, dataset_id: EntryId) -> ApiResult<AssetsRef> {
+    let entry = client.read_dataset(dataset_id).await?;
+    let Some(asset_dataset) = entry.dataset_details.asset_dataset else {
+        return Ok(Arc::default());
+    };
     let assets = client.scan_asset_dataset(asset_dataset).await?;
 
     Ok(Arc::new(assets))

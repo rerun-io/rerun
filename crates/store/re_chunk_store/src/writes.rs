@@ -64,7 +64,9 @@ impl ChunkStore {
         let lineage: ChunkDirectLineage = lineage.into();
 
         let descends_from_manifest = match &lineage {
-            ChunkDirectLineage::SplitFrom(chunk_id, _) => self.descends_from_manifest(chunk_id),
+            ChunkDirectLineage::SplitFrom { parent_id, .. } => {
+                self.descends_from_manifest(parent_id)
+            }
             ChunkDirectLineage::CompactedFrom(chunks) => {
                 chunks.iter().any(|c| self.descends_from_manifest(c))
             }
@@ -305,7 +307,10 @@ impl ChunkStore {
                         .filter(|c| c.id() != split_chunk.id())
                         .cloned()
                         .collect_vec();
-                    let lineage = ChunkDirectLineageReport::SplitFrom(chunk.clone(), siblings);
+                    let lineage = ChunkDirectLineageReport::SplitFrom {
+                        parent: chunk.clone(),
+                        siblings,
+                    };
 
                     let mut diffs = self.insert_chunk_impl(split_chunk, lineage)?;
                     for diff in &mut diffs {
@@ -779,8 +784,6 @@ impl ChunkStore {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
-
     use re_chunk::{TimeInt, TimePoint, Timeline};
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
     use re_log_types::{build_frame_nr, build_log_time};

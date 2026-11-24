@@ -26,10 +26,12 @@ impl CatalogClient {
         dataset_id: EntryId,
         segment_id: SegmentId,
     ) -> ApiResult<Option<(RecordBatch, u64)>> {
-        self.client()
+        Ok(self
+            .client()
             .await?
-            .get_segment_properties(dataset_id, segment_id)
-            .await
+            .get_segment_properties(dataset_id, vec![segment_id.clone()])
+            .await?
+            .remove(&segment_id))
     }
 
     /// Replace one segment's mutable properties, returning the new revision.
@@ -71,7 +73,7 @@ impl CatalogClient {
 
     /// The union of the schemas of a segment's registered layers.
     ///
-    /// With `include_assets`, the schemas of the assets that apply to the segment are merged in.
+    /// With an `asset_dataset_id`, the schemas of its assets that apply to the segment are merged in.
     ///
     /// The order of the fields is unspecified.
     #[tracing::instrument(level = "info", skip_all)]
@@ -79,7 +81,7 @@ impl CatalogClient {
         &self,
         dataset_id: EntryId,
         segment_id: SegmentId,
-        include_assets: bool,
+        asset_dataset_id: Option<EntryId>,
     ) -> ApiResult<ArrowSchema> {
         let mut client = self.client().await?;
 
@@ -96,24 +98,22 @@ impl CatalogClient {
                 format!("segment '{segment_id}' not found in dataset {dataset_id}"),
             ));
         };
-        if !include_assets {
-            return Ok(segment_schema);
-        }
-
-        let Some((asset_dataset, asset_ids)) = client
-            .get_assets_for_segment(dataset_id, Some(segment_id))
-            .await?
-        else {
+        let Some(asset_dataset_id) = asset_dataset_id else {
             return Ok(segment_schema);
         };
-        let asset_ids: BTreeSet<_> = asset_ids.into_iter().collect();
+
+        let asset_ids: BTreeSet<_> = client
+            .get_assets_for_segment(asset_dataset_id, Some(&segment_id))
+            .await?
+            .into_iter()
+            .collect();
         if asset_ids.is_empty() {
             return Ok(segment_schema);
         }
 
         let Some(asset_schema) = client
             .get_segments_schema(
-                asset_dataset,
+                asset_dataset_id,
                 &asset_ids,
                 OnMissingGetSchemas::FetchRrdManifests,
             )

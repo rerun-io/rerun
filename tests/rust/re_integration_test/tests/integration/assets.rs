@@ -9,7 +9,7 @@ use std::time::Duration;
 use arrow::array::RecordBatch;
 use egui::Role;
 use egui_kittest::Harness;
-use egui_kittest::kittest::{AccessKitNode, Queryable as _};
+use egui_kittest::kittest::{AccessKitNode, By, Queryable as _};
 use futures::StreamExt as _;
 
 use re_catalog_client::{AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
@@ -97,13 +97,15 @@ async fn fetch_chunk_ids(
     batch: &RecordBatch,
 ) -> Result<Vec<ChunkId>, ApiError> {
     let stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut stream = re_redap_client::fetch_chunks_response_to_chunk_and_segment_id(stream, None);
+    let mut stream = re_redap_client::fetch_chunks_response_to_chunks(
+        stream,
+        re_redap_client::FetchedPayloads::Shared,
+        None,
+    );
 
     let mut chunk_ids = Vec::new();
     while let Some(chunks) = stream.next().await {
-        for (chunk, _segment_id) in chunks? {
-            chunk_ids.push(chunk.id());
-        }
+        chunk_ids.extend(chunks?.iter().map(|chunk| chunk.id()));
     }
     chunk_ids.sort();
 
@@ -111,8 +113,7 @@ async fn fetch_chunk_ids(
 }
 
 /// A dataset gets its asset dataset on creation, so before anything is registered the client
-/// reports that asset dataset with no segments in it. `None` is reserved for datasets created
-/// before asset datasets existed, which have no asset dataset at all.
+/// reports no segments in it.
 #[tokio::test(flavor = "multi_thread")]
 async fn get_assets_for_segment_returns_no_segments_before_any_asset_is_registered() {
     let (server, _) = TestServer::spawn()
@@ -124,15 +125,14 @@ async fn get_assets_for_segment_returns_no_segments_before_any_asset_is_register
     let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
 
     let assets = client
-        .get_assets_for_segment(dataset_id(), None)
+        .get_assets_for_segment(asset_dataset, None)
         .await
         .expect("Failed to get assets");
 
-    assert_eq!(assets, Some((asset_dataset, vec![])));
+    assert!(assets.is_empty(), "expected no assets, got {assets:?}");
 }
 
-/// Once an asset is registered, the client reports the dataset's asset dataset along with every
-/// asset segment in it.
+/// Once an asset is registered, the client reports every asset segment in the asset dataset.
 #[tokio::test(flavor = "multi_thread")]
 async fn get_assets_for_segment_returns_the_registered_assets() {
     let (server, _) = TestServer::spawn()
@@ -157,14 +157,12 @@ async fn get_assets_for_segment_returns_the_registered_assets() {
     }
     expected_segments.sort();
 
-    let (entry, mut segments) = client
-        .get_assets_for_segment(dataset_id(), None)
+    let mut segments = client
+        .get_assets_for_segment(asset_dataset, None)
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     segments.sort();
 
-    assert_eq!(entry, asset_dataset);
     assert_eq!(segments, expected_segments);
 }
 
@@ -195,13 +193,13 @@ async fn register_asset_registers_with_the_datasets_asset_dataset() {
         .await
         .expect("Failed to register asset");
 
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
     let assets = client
-        .get_assets_for_segment(dataset_id(), None)
+        .get_assets_for_segment(asset_dataset, None)
         .await
         .expect("Failed to get assets");
 
-    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
-    assert_eq!(assets, Some((asset_dataset, vec![segment_id])));
+    assert_eq!(assets, vec![segment_id]);
 }
 
 /// Registering the same asset a second time replaces the one already there, leaving the dataset
@@ -242,11 +240,11 @@ async fn register_asset_replaces_an_already_registered_asset() {
 
     assert_eq!(first, second);
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), None)
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let segments = client
+        .get_assets_for_segment(asset_dataset, None)
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
 
     assert_eq!(segments, vec![second]);
 }
@@ -295,18 +293,17 @@ async fn register_asset_stores_the_coverage_it_is_given() {
         }
     );
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(segment_id))
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&segment_id))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert_eq!(segments, vec![asset_segment_id]);
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&SegmentId::from("another_segment")))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert!(segments.is_empty());
 }
 
@@ -354,18 +351,17 @@ async fn upload_asset_registers_an_uploaded_copy_with_its_coverage() {
         "the asset should be registered from the uploaded copy, got {layers:?}"
     );
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(segment_id))
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&segment_id))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert_eq!(segments, vec![asset_id]);
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(SegmentId::from("another_segment")))
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&SegmentId::from("another_segment")))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert!(segments.is_empty());
 }
 
@@ -519,11 +515,10 @@ async fn an_asset_without_a_stored_coverage_applies_to_every_segment() {
     assert_eq!(stored, AssetCoverage::default());
     assert_eq!(revision, 0);
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), Some(segment_id.clone()))
+    let segments = client
+        .get_assets_for_segment(asset_dataset, Some(&segment_id))
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset should have assets");
+        .expect("Failed to get assets");
     assert_eq!(segments, vec![asset_segment_id.clone()]);
 
     let coverage = AssetCoverage {
@@ -590,11 +585,11 @@ async fn unregister_asset_drops_the_asset() {
         .await
         .expect("Failed to unregister asset");
 
-    let (_entry, segments) = client
-        .get_assets_for_segment(dataset_id(), None)
+    let asset_dataset = asset_dataset(&mut client, dataset_id()).await;
+    let segments = client
+        .get_assets_for_segment(asset_dataset, None)
         .await
-        .expect("Failed to get assets")
-        .expect("the dataset keeps its asset dataset after its last asset is dropped");
+        .expect("Failed to get assets");
 
     assert!(
         segments.is_empty(),
@@ -654,7 +649,7 @@ async fn streaming_a_segment_delivers_its_asset_manifests() {
     let manifests: Vec<(StoreId, StoreId)> = messages
         .iter()
         .filter_map(|message| match message {
-            DataSourceMessage::RrdManifest(store_id, manifest) => {
+            DataSourceMessage::RrdManifest { store_id, manifest } => {
                 Some((store_id.clone(), manifest.store_id().clone()))
             }
             _ => None,
@@ -799,6 +794,14 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     );
 
     open_register_asset_modal(&mut harness);
+
+    // The search hints name the dataset's segment count, which is its own round trip to the
+    // server.
+    viewer_test_utils::step_until(
+        "the modal knows how many segments the dataset has",
+        &mut harness,
+        |harness| has_placeholder(harness, "Search 1 segment to exclude…"),
+    );
     harness.snapshot("register_asset_modal");
 
     let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
@@ -815,7 +818,7 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     viewer_test_utils::step_until_with_custom_timeout(
         "the registered asset shows up in the list",
         &mut harness,
-        |harness| harness.query_all_by_label_contains("robot_urdf").count() > 0,
+        |harness| harness.has_label_contains("robot_urdf"),
         Duration::from_millis(100),
         Duration::from_secs(10),
     );
@@ -1077,9 +1080,7 @@ async fn dataset_assets_tab() {
     });
 
     viewer_test_utils::step_until("both assets are listed", &mut harness, |harness| {
-        ASSET_IDS
-            .iter()
-            .all(|id| harness.query_all_by_label_contains(id).count() > 0)
+        ASSET_IDS.iter().all(|id| harness.has_label_contains(id))
     });
     harness.step_until_no_loading_indicator();
 
@@ -1154,7 +1155,7 @@ async fn open_asset_lists_it_under_owning_dataset() {
         &mut harness,
         |harness| {
             harness.query_by_label("Loading entries…").is_none()
-                && harness.query_all_by_label_contains("robot_data").count() > 0
+                && harness.has_label_contains("robot_data")
                 && {
                     let recording_panel = harness.recording_panel();
                     recording_panel
@@ -1711,6 +1712,14 @@ fn open_register_asset_modal(harness: &mut Harness<'static, re_viewer::App>) {
     // Opening the modal goes through the browser's command queue, so it appears a frame later.
     harness.run_ok();
     harness.run_ok();
+}
+
+/// Is there a text field that shows `placeholder` as its hint?
+fn has_placeholder(harness: &Harness<'static, re_viewer::App>, placeholder: &str) -> bool {
+    harness
+        .query_all(By::new().predicate(|node| node.placeholder() == Some(placeholder)))
+        .next()
+        .is_some()
 }
 
 /// The url of the dataset's asset list.

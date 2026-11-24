@@ -26,6 +26,8 @@ pub struct ViewerEvent {
     #[serde(with = "serde::recording_id")]
     pub recording_id: RecordingId,
 
+    // The JavaScript `ViewerEvent` types declare absent fields as optional, not `null`.
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub segment_id: Option<SegmentId>,
 
     #[serde(flatten)]
@@ -96,6 +98,7 @@ pub enum ViewerEventKind {
         /// Version of the SDK used to create this recording.
         ///
         /// Uses semver format.
+        #[serde(skip_serializing_if = "Option::is_none")]
         version: Option<String>,
     },
 }
@@ -289,10 +292,7 @@ impl ViewerEventDispatcher {
                     re_log_msg::StoreSource::Unknown => "unknown",
                     re_log_msg::StoreSource::CSdk => "cpp",
                     re_log_msg::StoreSource::PythonSdk(_python_version) => "python",
-                    re_log_msg::StoreSource::RustSdk {
-                        rustc_version: _,
-                        llvm_version: _,
-                    } => "rust",
+                    re_log_msg::StoreSource::RustSdk => "rust",
                     re_log_msg::StoreSource::File { file_source: _ } => "file",
                     re_log_msg::StoreSource::Viewer => "viewer",
                     re_log_msg::StoreSource::Other(v) => v.as_str(),

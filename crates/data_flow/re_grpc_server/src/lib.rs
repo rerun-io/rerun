@@ -706,10 +706,12 @@ pub fn spawn_with_recv_and_services(
             let msg: anyhow::Result<DataSourceMessage> = match broadcast_log_rx.recv().await {
                 Ok(inner) => match inner {
                     LogOrTableMsgProto::LogMsg(msg) => match msg.msg {
-                        Some(msg) => msg
-                            .to_application((&mut app_id_cache, None))
-                            .map(DataSourceMessage::LogMsg)
-                            .map_err(|err| err.into()),
+                        Some(mut msg) => {
+                            msg.unshare_payload();
+                            msg.to_application((&mut app_id_cache, None))
+                                .map(DataSourceMessage::LogMsg)
+                                .map_err(|err| err.into())
+                        }
                         None => Err(re_protos::missing_field!(
                             re_protos::log_msg::v1alpha1::LogMsg,
                             "msg"
@@ -1275,7 +1277,7 @@ impl MessageProxy {
         });
 
         match self.options.playback_behavior {
-            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)), // NOLINT: Stream::chain
+            PlaybackBehavior::OldestFirst => Box::pin(history.chain(channel)), // relint: allow(zip_chain_method): Stream::chain
             PlaybackBehavior::NewestFirst => Box::pin(PriorityMerge::new(channel, history)),
         }
     }
@@ -1433,7 +1435,6 @@ impl message_proxy_service_server::MessageProxyService for MessageProxy {
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
-    use std::net::SocketAddr;
     use std::sync::Arc;
     use std::time::Duration;
 
@@ -1444,9 +1445,7 @@ mod tests {
     use re_log_types::{StoreId, StoreKind};
     use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
     use similar_asserts::assert_eq;
-    use tokio::net::TcpListener;
     use tokio_util::sync::CancellationToken;
-    use tonic::transport::server::TcpIncoming;
     use tonic::transport::{Channel, Endpoint};
 
     use super::*;
@@ -1531,13 +1530,7 @@ mod tests {
     fn set_store_info_msg(store_id: &StoreId) -> LogMsg {
         LogMsg::SetStoreInfo(SetStoreInfo {
             row_id: *RowId::new(),
-            info: StoreInfo::new(
-                store_id.clone(),
-                StoreSource::RustSdk {
-                    rustc_version: String::new(),
-                    llvm_version: String::new(),
-                },
-            ),
+            info: StoreInfo::new(store_id.clone(), StoreSource::RustSdk),
         })
     }
 

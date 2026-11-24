@@ -10,7 +10,7 @@
 /// If there's more instance poses than half sizes, the last ellipsoid/sphere's orientation will be repeated for the remaining poses.
 /// Orienting and placing ellipsoids/spheres forms a separate transform that is applied prior to [`rerun::archetypes::InstancePoses3D`] and [`rerun::archetypes::Transform3D`].
 ///
-/// \example archetypes/ellipsoids3d_simple title="Covariance ellipsoid" image="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1200w.png"
+/// \example archetypes/ellipsoids3d_simple title="Covariance ellipsoid" image="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1200w.png" alt="3D view of a purple point cloud enclosed by yellow wireframe ellipsoids marking its covariance"
 #[rerun::rerun_type]
 #[cpp(no_field_ctors)]
 #[docs(category = "Spatial 3D")]

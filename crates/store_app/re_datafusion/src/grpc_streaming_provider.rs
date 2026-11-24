@@ -445,18 +445,17 @@ mod table_query_pipeline_tests {
     //! recorded into the resulting OTLP span.
 
     use std::collections::HashMap;
-    use std::sync::Arc;
 
-    use arrow::array::{RecordBatchOptions, StringArray, UInt32Array};
-    use arrow::datatypes::{DataType, Field, Schema, SchemaRef};
+    use arrow::array::{StringArray, UInt32Array};
+    use arrow::datatypes::{DataType, Field, Schema};
     use async_trait::async_trait;
     use parking_lot::Mutex;
     use re_arrow_util::ArrowArrayDowncastRef as _;
-    use re_redap_client::{ApiError, ApiResponseStream, ApiResult};
+    use re_redap_client::ApiError;
     use re_uri::Origin;
 
     use crate::analytics::{TableQueryInfo, build_table_query_span};
-    use crate::{ConnectionAnalytics, PendingTableQueryAnalytics, TableKind, TableQueryCaller};
+    use crate::{ConnectionAnalytics, TableKind, TableQueryCaller};
 
     use super::*;
 

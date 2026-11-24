@@ -353,15 +353,20 @@ impl std::fmt::Display for DatasetKind {
     }
 }
 
+/// Error returned when parsing a [`DatasetKind`] from a string.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[error("unknown DatasetKind: {0:?}")]
+pub struct UnknownDatasetKindError(pub String);
+
 impl std::str::FromStr for DatasetKind {
-    type Err = String;
+    type Err = UnknownDatasetKindError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "Recording" => Ok(Self::Recording),
             "Blueprint" => Ok(Self::Blueprint),
             "Asset" => Ok(Self::Asset),
-            other => Err(format!("unknown DatasetKind: {other:?}")),
+            other => Err(UnknownDatasetKindError(other.to_owned())),
         }
     }
 }
@@ -1324,52 +1329,213 @@ pub fn max_lz4_decompressed_size(compressed_len: usize) -> u64 {
         .min(MAX_PAYLOAD_SIZE_BYTES)
 }
 
+/// Why an IPC payload could not be turned into a `RecordBatch`.
+#[derive(Debug, thiserror::Error)]
+pub enum IpcDecodeError {
+    /// The allocator refused the decompression buffer, even though its declared size passed
+    /// the [`max_lz4_decompressed_size`] bound.
+    #[error("could not allocate the decompression buffer: {0}")]
+    Allocation(#[from] std::collections::TryReserveError),
+
+    /// The (decompressed) bytes are not a valid Arrow IPC stream.
+    #[error(transparent)]
+    Arrow(#[from] ArrowError),
+
+    /// The writer declared more decompressed bytes than the compressed payload can possibly
+    /// expand to, so the payload is malformed or hostile. Rejected before allocating.
+    #[error(
+        "declared uncompressed size {declared} exceeds the {max} byte maximum for this payload"
+    )]
+    InvalidUncompressedSize {
+        /// The uncompressed size the writer declared.
+        declared: u64,
+
+        /// The [`max_lz4_decompressed_size`] of the compressed payload.
+        max: u64,
+    },
+
+    /// The payload is not valid LZ4 block data, or decompresses to more than the declared size.
+    #[error("LZ4 decompression failure: {0}")]
+    Lz4(#[from] lz4_flex::block::DecompressError),
+
+    /// The declared uncompressed size passed the bound but exceeds `usize` (32-bit and wasm
+    /// targets).
+    #[error("declared uncompressed size does not fit this platform's address space: {0}")]
+    SizeDoesNotFit(#[from] std::num::TryFromIntError),
+
+    /// The payload decompressed to fewer bytes than the writer declared.
+    #[error("LZ4 payload decompressed to {actual} bytes, but {declared} were declared")]
+    UncompressedSizeMismatch {
+        /// The uncompressed size the writer declared.
+        declared: u64,
+
+        /// The number of bytes the payload actually decompressed to.
+        actual: u64,
+    },
+}
+
+impl From<IpcDecodeError> for ArrowError {
+    fn from(err: IpcDecodeError) -> Self {
+        match err {
+            IpcDecodeError::Arrow(err) => err,
+            IpcDecodeError::InvalidUncompressedSize { .. }
+            | IpcDecodeError::UncompressedSizeMismatch { .. }
+            | IpcDecodeError::Lz4(_) => Self::ParseError(err.to_string()),
+            IpcDecodeError::SizeDoesNotFit(_) | IpcDecodeError::Allocation(_) => {
+                Self::MemoryError(err.to_string())
+            }
+        }
+    }
+}
+
+impl From<IpcDecodeError> for TypeConversionError {
+    fn from(err: IpcDecodeError) -> Self {
+        Self::ArrowError(err.into())
+    }
+}
+
+/// Decompresses an LZ4 block payload whose decompressed size was declared by the writer.
+///
+/// `uncompressed_size` is untrusted input: it is checked against [`max_lz4_decompressed_size`]
+/// before anything is allocated, so a tiny payload cannot request a huge buffer.
+///
+/// The result is aligned for every arrow primitive, so IPC arrays can alias it without arrow
+/// relocating them.
+/// Decoding a dense union depends on that: arrow panics on misaligned dense-union offsets
+/// instead of relocating them, and nothing checks for unions in a decompressed payload.
+pub fn decompress_lz4_payload(
+    payload: &[u8],
+    uncompressed_size: u64,
+) -> Result<arrow::buffer::Buffer, IpcDecodeError> {
+    re_tracing::profile_function!();
+    let _span = tracing::trace_span!("lz4::decompress").entered();
+
+    let max = max_lz4_decompressed_size(payload.len());
+    if uncompressed_size > max {
+        return Err(IpcDecodeError::InvalidUncompressedSize {
+            declared: uncompressed_size,
+            max,
+        });
+    }
+    let uncompressed_size = usize::try_from(uncompressed_size)?;
+    let mut uncompressed = {
+        // Backed by `u128`s, the widest alignment arrow asks of any buffer (a `Vec<u8>` only
+        // promises 1).
+        let words = uncompressed_size.div_ceil(size_of::<u128>());
+        let mut storage = Vec::<u128>::new();
+        // Arrow's aligned constructors abort on allocation failure so use try_reserve_exact
+        storage.try_reserve_exact(words)?;
+        storage.resize(words, 0);
+        let mut uncompressed = arrow::buffer::MutableBuffer::from(storage);
+        uncompressed.truncate(uncompressed_size);
+        uncompressed
+    };
+
+    let actual = lz4_flex::block::decompress_into(payload, uncompressed.as_slice_mut())?;
+    if actual != uncompressed_size {
+        return Err(IpcDecodeError::UncompressedSizeMismatch {
+            declared: uncompressed_size as _,
+            actual: actual as _,
+        });
+    }
+    Ok(uncompressed.into())
+}
+
+/// Length of the message leading an IPC stream (its length prefix plus its metadata), which for
+/// the schema message is the whole message, since a schema has no body.
+///
+/// `None` if `stream` is too short to hold the length prefix.
+fn ipc_leading_message_len(stream: &[u8]) -> Option<usize> {
+    const CONTINUATION_MARKER: [u8; 4] = [0xff; 4];
+    let marker_len = if stream.starts_with(&CONTINUATION_MARKER) {
+        CONTINUATION_MARKER.len()
+    } else {
+        0
+    };
+    let (metadata_len, _) = stream[marker_len..].split_first_chunk::<4>()?;
+    (marker_len + metadata_len.len()).checked_add(u32::from_le_bytes(*metadata_len) as usize)
+}
+
+/// Whether `data_type` is or contains a dense union.
+fn has_dense_union(data_type: &arrow::datatypes::DataType) -> bool {
+    use arrow::datatypes::{DataType, UnionMode};
+
+    match data_type {
+        DataType::Union(fields, mode) => {
+            *mode == UnionMode::Dense
+                || fields
+                    .iter()
+                    .any(|(_, field)| has_dense_union(field.data_type()))
+        }
+        DataType::List(field)
+        | DataType::LargeList(field)
+        | DataType::ListView(field)
+        | DataType::LargeListView(field)
+        | DataType::FixedSizeList(field, _)
+        | DataType::Map(field, _) => has_dense_union(field.data_type()),
+        DataType::Struct(fields) => fields
+            .iter()
+            .any(|field| has_dense_union(field.data_type())),
+        DataType::Dictionary(_, values) => has_dense_union(values),
+        DataType::RunEndEncoded(_, values) => has_dense_union(values.data_type()),
+        _ => false,
+    }
+}
+
 /// IPC bytes to `RecordBatch`. `Ok(None)` if there's no data.
 ///
-/// The arrays are sliced out of the IPC body rather than copied, so the batch is one allocation
-/// shared by all its columns for as long as any of them is alive.
+/// With [`Compression::Off`], the arrays are sliced out of `payload` rather than copied: the
+/// batch keeps the allocation `payload` points into alive for as long as any of its columns is,
+/// which can be more than the payload itself (e.g. a whole gRPC message holding several chunks).
+/// Fixed-width columns whose bytes happen to be misaligned in `payload` are copied by arrow.
+/// A misaligned payload holding a dense union is copied whole, since arrow panics on misaligned
+/// dense-union offsets instead of realigning them.
+///
+/// With [`Compression::LZ4`], the arrays alias the decompression buffer instead.
 #[tracing::instrument(level = "debug", skip_all)]
-fn record_batch_from_ipc_bytes(
+pub fn record_batch_from_ipc_bytes(
     payload: &prost::bytes::Bytes,
     compression: Compression,
     uncompressed_size: u64,
-) -> Result<Option<arrow::array::RecordBatch>, ArrowError> {
+) -> Result<Option<arrow::array::RecordBatch>, IpcDecodeError> {
+    let mut decoder = arrow::ipc::reader::StreamDecoder::new();
     let mut buffer = match compression {
-        Compression::Off => arrow::buffer::Buffer::from(payload.clone()),
-        Compression::LZ4 => {
-            re_tracing::profile_scope!("LZ4-decompress");
-            let _span = tracing::trace_span!("lz4::decompress").entered();
-            let max = max_lz4_decompressed_size(payload.len());
-            if uncompressed_size > max {
-                return Err(ArrowError::ParseError(format!(
-                    "declared uncompressed size {uncompressed_size} exceeds the {max} byte maximum for this payload"
-                )));
+        Compression::Off => {
+            let mut buffer = arrow::buffer::Buffer::from(payload.clone());
+            // TODO(mailmindlin): remove this branch once arrow relocates misaligned dense-union
+            // offsets itself.
+            // Writers pad IPC metadata and body buffers to multiples of 8 from the stream start,
+            // so the payload's own address decides whether `i32` dense-union offsets are aligned.
+            if payload.as_ptr().align_offset(align_of::<i32>()) != 0
+                && let Some(head_len) = ipc_leading_message_len(payload)
+                    .and_then(|len| len.checked_add(1))
+                    .filter(|&head_len| head_len < payload.len())
+            {
+                // `decode` returns at the end of its input before handling a message with an
+                // empty body, so the head reaches one byte past the schema to get it parsed.
+                // One message cannot yield a batch: a batch needs a schema message before it.
+                let mut head = buffer.slice_with_length(0, head_len);
+                decoder.decode(&mut head)?;
+                if decoder.schema().is_none_or(|schema| {
+                    schema
+                        .fields()
+                        .iter()
+                        .any(|field| has_dense_union(field.data_type()))
+                }) {
+                    // The whole payload is copied and then sliced, so every stream offset keeps
+                    // its alignment relative to arrow's `ALIGNMENT`-aligned allocation.
+                    buffer = arrow::buffer::Buffer::from_slice_ref(payload);
+                }
+                buffer = buffer.slice(head_len);
             }
-            let uncompressed_size = usize::try_from(uncompressed_size).map_err(|err| {
-                ArrowError::MemoryError(format!(
-                    "declared uncompressed size {uncompressed_size} does not fit this platform's address space: {err}"
-                ))
-            })?;
-            let mut uncompressed = Vec::new();
-            uncompressed
-                .try_reserve_exact(uncompressed_size)
-                .map_err(|err| {
-                    ArrowError::MemoryError(format!(
-                        "could not allocate the decompression buffer: {err}"
-                    ))
-                })?;
-            uncompressed.resize(uncompressed_size, 0);
-            lz4_flex::block::decompress_into(payload, &mut uncompressed).map_err(|err| {
-                ArrowError::ParseError(format!("LZ4 decompression failure: {err:#}"))
-            })?;
-            arrow::buffer::Buffer::from_vec(uncompressed)
+            buffer
         }
+        Compression::LZ4 => decompress_lz4_payload(payload, uncompressed_size)?,
     };
 
     let _span = tracing::trace_span!("data").entered();
     // A single `decode` consumes the whole buffer up to the first record batch; `finish` then
     // reports a truncated message as an error rather than silently yielding no batch.
-    let mut decoder = arrow::ipc::reader::StreamDecoder::new();
     match decoder.decode(&mut buffer)? {
         Some(batch) => Ok(Some(batch)),
         None => {
@@ -1527,6 +1693,393 @@ mod tests {
         .unwrap()
         .unwrap();
         assert_eq!(decoded, batch);
+    }
+
+    /// A batch decoded from an uncompressed payload aliases the payload instead of copying it,
+    /// and still reports its real size (arrow's capacity-based accounting would say zero for
+    /// borrowed memory).
+    #[test]
+    fn uncompressed_payloads_are_decoded_without_copying() {
+        use arrow::array::{RecordBatch, UInt8Array};
+        use arrow::datatypes::{DataType, Field, Schema};
+        use re_byte_size::SizeBytes as _;
+
+        // A byte column is never relocated for alignment, so the batch must alias the payload.
+        let batch = RecordBatch::try_new(
+            std::sync::Arc::new(Schema::new(vec![Field::new("b", DataType::UInt8, false)])),
+            vec![std::sync::Arc::new(UInt8Array::from(vec![7_u8; 4096]))],
+        )
+        .unwrap();
+        let (payload, _, uncompressed_size) = record_batch_to_ipc_bytes(&batch, Compression::Off);
+        let payload = prost::bytes::Bytes::from(payload);
+
+        let decoded = record_batch_from_ipc_bytes(&payload, Compression::Off, uncompressed_size)
+            .unwrap()
+            .unwrap();
+        assert_eq!(decoded, batch);
+
+        let values = decoded.column(0).to_data().buffers()[0].as_ptr_range();
+        let payload_range = payload.as_ptr_range();
+        assert!(
+            payload_range.start <= values.start && values.end <= payload_range.end,
+            "the decoded column must point into the payload"
+        );
+
+        let size = decoded.heap_size_bytes();
+        assert!(
+            (4096..2 * 4096).contains(&size),
+            "a zero-copy batch of 4096 bytes reports {size} bytes"
+        );
+    }
+
+    /// A misaligned payload without a dense union is still decoded without copying it.
+    #[test]
+    fn misaligned_payloads_without_dense_unions_are_decoded_without_copying() {
+        use arrow::array::{RecordBatch, UInt8Array};
+        use arrow::datatypes::{DataType, Field, Schema};
+
+        let batch = RecordBatch::try_new(
+            std::sync::Arc::new(Schema::new(vec![Field::new("b", DataType::UInt8, false)])),
+            vec![std::sync::Arc::new(UInt8Array::from(vec![7_u8; 4096]))],
+        )
+        .unwrap();
+        let (payload, _, uncompressed_size) = record_batch_to_ipc_bytes(&batch, Compression::Off);
+        let payload = payload_at_alignment_offset(&payload, 1);
+
+        let decoded = record_batch_from_ipc_bytes(&payload, Compression::Off, uncompressed_size)
+            .unwrap()
+            .unwrap();
+        assert_eq!(decoded, batch);
+
+        let values = decoded.column(0).to_data().buffers()[0].as_ptr_range();
+        let payload_range = payload.as_ptr_range();
+        assert!(
+            payload_range.start <= values.start && values.end <= payload_range.end,
+            "the decoded column must point into the payload"
+        );
+    }
+
+    /// `payload` at an address that is exactly `offset` bytes past an 8-byte boundary, whatever
+    /// the allocator hands out.
+    fn payload_at_alignment_offset(payload: &[u8], offset: usize) -> prost::bytes::Bytes {
+        let mut storage = vec![0_u8; payload.len() + 16];
+        let start = storage.as_ptr().align_offset(align_of::<u64>()) + offset;
+        storage[start..start + payload.len()].copy_from_slice(payload);
+        let shifted = prost::bytes::Bytes::from(storage).slice(start..start + payload.len());
+        assert_eq!(shifted.as_ptr().addr() % align_of::<u64>(), offset % 8);
+        shifted
+    }
+
+    fn dense_union_array() -> arrow::array::ArrayRef {
+        use std::sync::Arc;
+
+        use arrow::array::{ArrayRef, Int32Array, UnionArray};
+        use arrow::datatypes::{DataType, Field, UnionFields};
+
+        Arc::new(
+            UnionArray::try_new(
+                UnionFields::try_new([0], [Field::new("i", DataType::Int32, false)]).unwrap(),
+                vec![0_i8; 3].into(),
+                Some(vec![0_i32, 1, 2].into()),
+                vec![Arc::new(Int32Array::from(vec![1, 2, 3])) as ArrayRef],
+            )
+            .unwrap(),
+        )
+    }
+
+    fn single_column_batch(column: arrow::array::ArrayRef) -> arrow::array::RecordBatch {
+        use arrow::datatypes::{Field, Schema};
+
+        arrow::array::RecordBatch::try_new(
+            std::sync::Arc::new(Schema::new(vec![Field::new(
+                "column",
+                column.data_type().clone(),
+                true,
+            )])),
+            vec![column],
+        )
+        .unwrap()
+    }
+
+    /// A dense union next to other columns decodes wherever the payload starts relative to an
+    /// 8-byte boundary, not only one byte past it.
+    #[test]
+    fn dense_unions_decode_at_every_payload_alignment() {
+        use std::sync::Arc;
+
+        use arrow::array::{BinaryArray, Int64Array, RecordBatch};
+        use arrow::datatypes::{DataType, Field, Schema};
+
+        let union = dense_union_array();
+        let batch = RecordBatch::try_new(
+            Arc::new(Schema::new(vec![
+                Field::new("blob", DataType::Binary, false),
+                Field::new("union", union.data_type().clone(), false),
+                Field::new("long", DataType::Int64, false),
+            ])),
+            vec![
+                Arc::new(BinaryArray::from_vec(vec![b"a", b"bc", b"def"])),
+                union,
+                Arc::new(Int64Array::from(vec![1, 2, 3])),
+            ],
+        )
+        .unwrap();
+        let (payload, _, uncompressed_size) = record_batch_to_ipc_bytes(&batch, Compression::Off);
+
+        for offset in 0..8 {
+            let payload = payload_at_alignment_offset(&payload, offset);
+            let decoded =
+                record_batch_from_ipc_bytes(&payload, Compression::Off, uncompressed_size)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(decoded, batch, "payload {offset} bytes past alignment");
+        }
+    }
+
+    /// A dense union is found, and its payload realigned, through every kind of type that can
+    /// nest it.
+    #[test]
+    fn dense_unions_decode_from_misaligned_payloads_under_every_nesting() {
+        use std::sync::Arc;
+
+        use arrow::array::{
+            Array as _, ArrayRef, DictionaryArray, FixedSizeListArray, Int32Array, LargeListArray,
+            LargeListViewArray, ListArray, ListViewArray, MapArray, RunArray, StructArray,
+            UnionArray,
+        };
+        use arrow::buffer::OffsetBuffer;
+        use arrow::datatypes::{DataType, Field, Fields, Int32Type, UnionFields};
+
+        let union = dense_union_array();
+        let item = Arc::new(Field::new("item", union.data_type().clone(), false));
+        let entries = StructArray::new(
+            Fields::from(vec![
+                Field::new("keys", DataType::Int32, false),
+                Field::new("values", union.data_type().clone(), false),
+            ]),
+            vec![
+                Arc::new(Int32Array::from(vec![1, 2, 3])) as ArrayRef,
+                Arc::clone(&union),
+            ],
+            None,
+        );
+
+        let nestings: Vec<(&str, ArrayRef)> = vec![
+            (
+                "list",
+                Arc::new(ListArray::new(
+                    Arc::clone(&item),
+                    OffsetBuffer::from_lengths([3]),
+                    Arc::clone(&union),
+                    None,
+                )),
+            ),
+            (
+                "large_list",
+                Arc::new(LargeListArray::new(
+                    Arc::clone(&item),
+                    OffsetBuffer::from_lengths([3]),
+                    Arc::clone(&union),
+                    None,
+                )),
+            ),
+            (
+                "list_view",
+                Arc::new(ListViewArray::new(
+                    Arc::clone(&item),
+                    vec![0_i32].into(),
+                    vec![3_i32].into(),
+                    Arc::clone(&union),
+                    None,
+                )),
+            ),
+            (
+                "large_list_view",
+                Arc::new(LargeListViewArray::new(
+                    Arc::clone(&item),
+                    vec![0_i64].into(),
+                    vec![3_i64].into(),
+                    Arc::clone(&union),
+                    None,
+                )),
+            ),
+            (
+                "fixed_size_list",
+                Arc::new(FixedSizeListArray::new(
+                    Arc::clone(&item),
+                    3,
+                    Arc::clone(&union),
+                    None,
+                )),
+            ),
+            (
+                "map",
+                Arc::new(MapArray::new(
+                    Arc::new(Field::new("entries", entries.data_type().clone(), false)),
+                    OffsetBuffer::from_lengths([3]),
+                    entries,
+                    None,
+                    false,
+                )),
+            ),
+            (
+                "struct",
+                Arc::new(StructArray::from(vec![(
+                    Arc::clone(&item),
+                    Arc::clone(&union),
+                )])),
+            ),
+            (
+                "sparse_union",
+                Arc::new(
+                    UnionArray::try_new(
+                        UnionFields::try_new([0], [item.as_ref().clone()]).unwrap(),
+                        vec![0_i8; 3].into(),
+                        None,
+                        vec![Arc::clone(&union)],
+                    )
+                    .unwrap(),
+                ),
+            ),
+            (
+                "dictionary",
+                Arc::new(
+                    DictionaryArray::<Int32Type>::try_new(
+                        Int32Array::from(vec![2, 0, 1]),
+                        Arc::clone(&union),
+                    )
+                    .unwrap(),
+                ),
+            ),
+            (
+                "run_end_encoded",
+                Arc::new(
+                    RunArray::<Int32Type>::try_new(&Int32Array::from(vec![1, 2, 3]), &union)
+                        .unwrap(),
+                ),
+            ),
+        ];
+
+        for (nesting, column) in nestings {
+            let batch = single_column_batch(column);
+            let (payload, _, uncompressed_size) =
+                record_batch_to_ipc_bytes(&batch, Compression::Off);
+            let payload = payload_at_alignment_offset(&payload, 1);
+
+            let decoded =
+                record_batch_from_ipc_bytes(&payload, Compression::Off, uncompressed_size)
+                    .unwrap()
+                    .unwrap();
+            assert_eq!(decoded, batch, "dense union nested in a {nesting}");
+        }
+    }
+
+    /// A payload cut short at any length yields the same batch, absence of one, or error
+    /// wherever it starts relative to an 8-byte boundary.
+    #[test]
+    fn truncated_payloads_decode_the_same_at_every_payload_alignment() {
+        use std::sync::Arc;
+
+        use arrow::array::{ArrayRef, DictionaryArray, Int64Array};
+        use arrow::datatypes::Int32Type;
+
+        let columns: [ArrayRef; 3] = [
+            dense_union_array(),
+            Arc::new(Int64Array::from(vec![1, 2, 3])),
+            Arc::new(
+                ["a", "b", "a"]
+                    .into_iter()
+                    .collect::<DictionaryArray<Int32Type>>(),
+            ),
+        ];
+
+        for column in columns {
+            let batch = single_column_batch(column);
+            let (payload, _, _) = record_batch_to_ipc_bytes(&batch, Compression::Off);
+
+            for len in 1..=payload.len() {
+                let decode = |offset| {
+                    let truncated = payload_at_alignment_offset(&payload[..len], offset);
+                    record_batch_from_ipc_bytes(&truncated, Compression::Off, len as u64)
+                        .map_err(|err| err.to_string())
+                };
+
+                let aligned = decode(0);
+                for offset in 1..8 {
+                    assert_eq!(
+                        decode(offset),
+                        aligned,
+                        "{len} of {} bytes of a {} column, {offset} bytes past alignment",
+                        payload.len(),
+                        batch.column(0).data_type(),
+                    );
+                }
+            }
+        }
+    }
+
+    /// Arrow panics on misaligned dense-union offsets instead of relocating them, which is why
+    /// [`record_batch_from_ipc_bytes`] copies misaligned payloads that hold one.
+    /// That copy cannot help a stream whose record batch metadata is not padded to a multiple
+    /// of 8: its body, and so the offsets, sit at an odd distance from the stream start.
+    //
+    // TODO(mailmindlin): once this stops panicking, arrow relocates the offsets itself, so
+    // expect the batch here and remove the dense-union copy from `record_batch_from_ipc_bytes`.
+    #[test]
+    #[should_panic(expected = "not aligned with the specified scalar type")]
+    fn dense_unions_in_streams_without_8_byte_padding_panic() {
+        let batch = single_column_batch(dense_union_array());
+        let (padded, _, _) = record_batch_to_ipc_bytes(&batch, Compression::Off);
+
+        // One byte appended to the record batch's flatbuffer, which readers ignore, shifts the
+        // body by one.
+        let unpadded = {
+            const PREFIX_LEN: usize = 8;
+            let batch_message = ipc_leading_message_len(&padded).unwrap();
+            let metadata_len_field = batch_message + 4..batch_message + PREFIX_LEN;
+            let metadata_len =
+                u32::from_le_bytes(padded[metadata_len_field.clone()].try_into().unwrap());
+            let body = batch_message + PREFIX_LEN + metadata_len as usize;
+
+            let mut unpadded = padded.clone();
+            unpadded[metadata_len_field].copy_from_slice(&(metadata_len + 1).to_le_bytes());
+            unpadded.insert(body, 0);
+            unpadded
+        };
+        let payload = payload_at_alignment_offset(&unpadded, 0);
+
+        let _decoded =
+            record_batch_from_ipc_bytes(&payload, Compression::Off, payload.len() as u64);
+    }
+
+    /// Decompressed payloads are aligned for the widest arrow primitive whatever their length,
+    /// so arrow can alias the columns in them instead of relocating them.
+    #[test]
+    fn lz4_payloads_decompress_into_aligned_buffers() {
+        for len in [1, 15, 16, 17, 4096 + 3] {
+            let uncompressed = vec![0xAB_u8; len];
+            let compressed = lz4_flex::block::compress(&uncompressed);
+            let decompressed = decompress_lz4_payload(&compressed, len as u64).unwrap();
+            assert_eq!(decompressed.as_slice(), uncompressed.as_slice());
+            assert_eq!(decompressed.as_ptr().align_offset(align_of::<u128>()), 0);
+        }
+    }
+
+    /// A payload that decompresses to fewer bytes than declared is rejected, not zero-padded.
+    #[test]
+    fn lz4_payload_decompressing_to_fewer_bytes_than_declared_is_rejected() {
+        let compressed = lz4_flex::block::compress(&[0xAB_u8; 64]);
+        let err = decompress_lz4_payload(&compressed, 65).unwrap_err();
+        assert!(
+            matches!(
+                err,
+                IpcDecodeError::UncompressedSizeMismatch {
+                    declared: 65,
+                    actual: 64
+                }
+            ),
+            "{err}"
+        );
     }
 
     /// A size the compressed bytes could not possibly expand to is rejected before allocating.

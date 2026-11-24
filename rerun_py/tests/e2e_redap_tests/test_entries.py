@@ -3,11 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pyarrow as pa
+import pytest
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+
     from syrupy import SnapshotAssertion
 
     from e2e_redap_tests.conftest import EntryFactory
+
+
+def own(entry_factory: EntryFactory, names: Iterable[str]) -> set[str]:
+    return {name for name in names if name.startswith(entry_factory.prefix)}
 
 
 def test_entries_without_hidden(entry_factory: EntryFactory, snapshot: SnapshotAssertion) -> None:
@@ -15,18 +22,18 @@ def test_entries_without_hidden(entry_factory: EntryFactory, snapshot: SnapshotA
     client = entry_factory.client
 
     # Capture entries before creating test entries
-    datasets_before = {d.name for d in client.datasets()}
-    tables_before = {t.name for t in client.tables()}
-    entries_before = {e.name for e in client.entries()}
+    datasets_before = own(entry_factory, (d.name for d in client.datasets()))
+    tables_before = own(entry_factory, (t.name for t in client.tables()))
+    entries_before = own(entry_factory, (e.name for e in client.entries()))
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
     entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]))
 
     # Get entries after - should only show user-created entries (no hidden)
-    datasets_after = {d.name for d in client.datasets()}
-    tables_after = {t.name for t in client.tables()}
-    entries_after = {e.name for e in client.entries()}
+    datasets_after = own(entry_factory, (d.name for d in client.datasets()))
+    tables_after = own(entry_factory, (t.name for t in client.tables()))
+    entries_after = own(entry_factory, (e.name for e in client.entries()))
 
     # Diff to find newly created entries
     prefix = entry_factory.prefix
@@ -54,12 +61,12 @@ def test_entries_with_hidden(entry_factory: EntryFactory) -> None:
     entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]))
 
     # Capture entries creating test entries, both visible-only and with hidden.
-    datasets = {d.name for d in client.datasets()}
-    datasets_hidden = {d.name for d in client.datasets(include_hidden=True)}
-    tables = {t.name for t in client.tables()}
-    tables_hidden = {t.name for t in client.tables(include_hidden=True)}
-    entries = {e.name for e in client.entries()}
-    entries_hidden = {e.name for e in client.entries(include_hidden=True)}
+    datasets = own(entry_factory, (d.name for d in client.datasets()))
+    datasets_hidden = own(entry_factory, (d.name for d in client.datasets(include_hidden=True)))
+    tables = own(entry_factory, (t.name for t in client.tables()))
+    tables_hidden = own(entry_factory, (t.name for t in client.tables(include_hidden=True)))
+    entries = own(entry_factory, (e.name for e in client.entries()))
+    entries_hidden = own(entry_factory, (e.name for e in client.entries(include_hidden=True)))
 
     # include_hidden reveals everything the visible listing does, plus hidden implementation-detail entries.
     assert datasets_hidden >= datasets
@@ -72,18 +79,18 @@ def test_entry_names_without_hidden(entry_factory: EntryFactory, snapshot: Snaps
     client = entry_factory.client
 
     # Capture names before creating test entries
-    dataset_names_before = set(client.dataset_names())
-    table_names_before = set(client.table_names())
-    entry_names_before = set(client.entry_names())
+    dataset_names_before = own(entry_factory, client.dataset_names())
+    table_names_before = own(entry_factory, client.table_names())
+    entry_names_before = own(entry_factory, client.entry_names())
 
     # Create test entries
     entry_factory.create_dataset("test_dataset")
     entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]))
 
     # Get names after - should only show user-created entries (no hidden)
-    dataset_names_after = set(client.dataset_names())
-    table_names_after = set(client.table_names())
-    entry_names_after = set(client.entry_names())
+    dataset_names_after = own(entry_factory, client.dataset_names())
+    table_names_after = own(entry_factory, client.table_names())
+    entry_names_after = own(entry_factory, client.entry_names())
 
     # Diff to find newly created entries
     prefix = entry_factory.prefix
@@ -111,12 +118,12 @@ def test_entry_names_with_hidden(entry_factory: EntryFactory) -> None:
     entry_factory.create_table("test_table", pa.schema([pa.field("col", pa.int32())]))
 
     # Capture names creating test entries, both visible-only and with hidden.
-    dataset_names = set(client.dataset_names())
-    dataset_names_hidden = set(client.dataset_names(include_hidden=True))
-    table_names = set(client.table_names())
-    table_names_hidden = set(client.table_names(include_hidden=True))
-    entry_names = set(client.entry_names())
-    entry_names_hidden = set(client.entry_names(include_hidden=True))
+    dataset_names = own(entry_factory, client.dataset_names())
+    dataset_names_hidden = own(entry_factory, client.dataset_names(include_hidden=True))
+    table_names = own(entry_factory, client.table_names())
+    table_names_hidden = own(entry_factory, client.table_names(include_hidden=True))
+    entry_names = own(entry_factory, client.entry_names())
+    entry_names_hidden = own(entry_factory, client.entry_names(include_hidden=True))
 
     # include_hidden reveals everything the visible listing does, plus hidden implementation-detail entries.
     assert dataset_names_hidden >= dataset_names
@@ -142,3 +149,23 @@ def test_entry_eq(entry_factory: EntryFactory) -> None:
     assert ds2.name in entries
 
     assert "doesnt_exists" not in client.entries()
+
+
+def test_rename_table(entry_factory: EntryFactory) -> None:
+    client = entry_factory.client
+    old_name = entry_factory.apply_prefix("table_to_rename")
+    new_name = entry_factory.apply_prefix("renamed_table")
+
+    table = entry_factory.create_table("table_to_rename", pa.schema([("id", pa.int32())]))
+    table.append(id=[1, 2])
+    assert client.ctx.table(old_name).count() == 2
+
+    table.set_name(new_name)
+
+    assert table.name == new_name
+    assert new_name in client.table_names()
+    assert old_name not in client.table_names()
+    assert client.get_table(name=new_name).id == table.id
+    assert client.ctx.table(new_name).count() == 2
+    with pytest.raises(Exception):  # noqa: B017 — error type varies across DataFusion versions
+        client.ctx.table(old_name)

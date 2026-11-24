@@ -202,6 +202,7 @@ impl PyHdf5ReaderInternal {
         }
 
         if !unsupported.is_empty() {
+            // relint: allow(log_sensitive_inline): an HDF5 attribute path, not a file path
             re_log::warn_once!(
                 "Ignoring HDF5 attributes of {path:?} with unsupported types: {}\nFile path: {}",
                 unsupported.join(", "),

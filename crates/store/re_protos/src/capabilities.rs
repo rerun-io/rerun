@@ -1,4 +1,9 @@
-//! Capability names, describing what a server implements and supports.
+//! Server capabilities: names describing what one server is configured to offer.
+//!
+//! A server advertises its capabilities by name, and two servers of the same build can advertise
+//! different ones, because the names follow the server's configuration. Use a capability only
+//! for that. What a build understands, on either side, is a protocol level instead: see
+//! [`crate::protocol_level`].
 //!
 //! A capability does not depend on the caller. Whether the caller is allowed to
 //! use one is a separate question. The user wants to know both, to tell apart
@@ -24,10 +29,17 @@ const SEPARATOR: char = ':';
 /// Prefix for all catalog registering capabilities.
 pub const CATALOG_WRITE_REGISTER: &str = "catalog:write:register";
 
+/// The server registers a data source under the segment id set in its `segment_id` field.
+///
+/// A server without it ignores the field and registers the source under its store's recording id.
+pub const CATALOG_WRITE_SEGMENT_ID_OVERRIDE: &str = "catalog:write:segment_id_override";
+
 /// The capability to write objects to catalog-managed staging storage.
 pub const CATALOG_WRITE_STAGING: &str = "catalog:write:staging";
 
 /// The server implements `FindChunks` with Static, Range, and Samples selection.
+///
+/// This follows the build and not the configuration: it predates protocol levels.
 pub const DATASET_FIND_CHUNKS: &str = "dataset:find_chunks";
 
 /// The capability a server advertises to register data sources with this URL scheme.

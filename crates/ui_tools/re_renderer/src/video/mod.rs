@@ -90,6 +90,7 @@ pub struct Video {
     debug_name: String,
     video_description: re_video::VideoDataDescription,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
+
     #[size_bytes(ignore)]
     decode_settings: DecodeSettings,
 }

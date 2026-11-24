@@ -13,7 +13,7 @@ Float32
 
 ## API reference links
  * 🌊 [C++ API docs for `Angle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Angle.html)
- * 🐍 [Python API docs for `Angle`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Angle)
+ * 🐍 [Python API docs for `Angle`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.Angle)
  * 🦀 [Rust API docs for `Angle`](https://docs.rs/rerun/latest/rerun/encodings/struct.Angle.html)
 
 

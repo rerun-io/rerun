@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use agent_client_protocol_schema::v1::{SessionConfigValueId, SessionModeId};
+use agent_client_protocol_schema::v1::SessionId;
 
 /// An MCP server the agent spawns itself over stdio.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -13,6 +13,17 @@ pub struct McpStdioServer {
 
     /// Arguments passed to [`Self::command`].
     pub args: Vec<String>,
+}
+
+impl McpStdioServer {
+    /// The command and its arguments, as one line to show the user.
+    pub fn command_line(&self) -> String {
+        let command = self.command.to_string_lossy();
+        shell_words::join(std::iter::chain(
+            std::iter::once(command.as_ref()),
+            self.args.iter().map(String::as_str),
+        ))
+    }
 }
 
 /// Everything needed to spawn an agent and open a session with it.
@@ -47,19 +58,19 @@ pub struct AgentHarnessConfig {
     /// Markdown sent together with the first prompt of the session.
     pub preamble: Option<String>,
 
-    /// Models to prefer for this session, best first.
+    /// Which model the session selects before it takes its first prompt.
     ///
-    /// Each entry is matched, case-insensitively, as a substring of the id and the name of every
-    /// model the agent offers over ACP; the first hit is selected before the session takes its
-    /// first prompt. An agent that offers no model selector, or nothing that matches, keeps
-    /// whatever model it would use on its own.
-    pub model_preferences: Vec<String>,
+    /// An agent that offers no model selector, or nothing that matches, keeps whatever model it
+    /// would use on its own.
+    pub model_preselect: crate::ModelPreselect,
 
-    /// Exact saved model ID, restored only if the agent still offers it.
-    pub preferred_model: Option<SessionConfigValueId>,
+    /// Saved selections, restored only when offered by the agent.
+    /// Settings keep the agent's defaults when their saved value is unavailable.
+    pub preferences: crate::AgentPreferences,
 
-    /// Session modes to prefer, best first.
+    /// An earlier session to continue, if the agent can load it.
     ///
-    /// The first one the agent offers is selected before the session takes its first prompt.
-    pub mode_preferences: Vec<SessionModeId>,
+    /// The agent replays its history before the session opens. When the agent cannot load
+    /// sessions, or no longer has this one, a new session starts instead.
+    pub session_to_load: Option<SessionId>,
 }

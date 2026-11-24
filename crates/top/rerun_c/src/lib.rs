@@ -829,7 +829,9 @@ fn rr_recording_stream_set_sinks_impl(
                         .server_memory_limit
                         .as_maybe_empty_str("server_memory_limit")?
                         .parse::<re_sdk::MemoryLimit>()
-                        .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?,
+                        .map_err(|err| {
+                            CError::new(CErrorCode::InvalidMemoryLimit, &err.to_string())
+                        })?,
                     cors_allowed_origins,
                 };
                 sinks.push(Box::new(
@@ -937,7 +939,7 @@ fn rr_recording_stream_serve_grpc_impl(
         memory_limit: server_memory_limit
             .as_maybe_empty_str("server_memory_limit")?
             .parse::<re_sdk::MemoryLimit>()
-            .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err))?,
+            .map_err(|err| CError::new(CErrorCode::InvalidMemoryLimit, &err.to_string()))?,
 
         cors_allowed_origins,
     };

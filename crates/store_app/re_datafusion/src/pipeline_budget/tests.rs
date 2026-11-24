@@ -1,7 +1,4 @@
-use std::sync::Arc;
-
 use crate::analytics::{QueryInfo, QueryType};
-use crate::metrics_capture::QueryMetrics;
 
 use super::*;
 

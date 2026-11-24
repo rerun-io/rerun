@@ -6,7 +6,6 @@
 use arrow::array::RecordBatch;
 use pyo3::exceptions::{PyRuntimeError, PyValueError};
 use pyo3::prelude::*;
-use pyo3::{Bound, PyResult};
 use re_grpc_client::write_table::channel;
 use re_protos::sdk_comms::v1alpha1::message_proxy_service_client::MessageProxyServiceClient;
 use re_protos::viewer_control::v1alpha1::viewer_control_service_client::ViewerControlServiceClient;
@@ -29,6 +28,7 @@ pub(crate) fn register(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()>
 pub struct PyViewerClientInternal {
     conn: ViewerConnectionHandle,
 }
+
 #[pymethods]
 impl PyViewerClientInternal {
     #[new]

@@ -30,6 +30,8 @@ sample_video_path = (
 
 server = rr.server.Server(datasets={"video_dataset": sample_video_path})
 client = server.client()
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 dataset = client.get_dataset(name="video_dataset")
 df = dataset.filter_contents(["/video_stream/**"]).reader(index="log_time")
 times = pa.table(df.select("log_time"))["log_time"].to_numpy()
@@ -89,6 +91,8 @@ with rr.RecordingStream(
     rec.send_columns("/video_stream", indexes=[time_column], columns=[*content])
 
 # Register the layer with the dataset
+# On Rerun Hub, register from object storage:
+# dataset.register(["s3://bucket/keyframes.rrd"], layer_name="keyframes")
 dataset.register([layer_path.as_uri()], layer_name="keyframes")
 print(f"Registered keyframe layer at {layer_path}")
 # endregion: add_keyframe_column

@@ -20,11 +20,14 @@ use re_log_types::{EntityPath, RecordingId, StoreId, TimePoint};
 mod import_file;
 mod importer_archetype;
 mod importer_directory;
+#[cfg(feature = "mjcf")]
+mod importer_mjcf;
 #[cfg(feature = "puffin")]
 mod importer_puffin;
 mod importer_rrd;
 #[cfg(feature = "urdf")]
 mod importer_urdf;
+mod kinematic_tree;
 
 // This importer currently only works when loading the entire dataset directory, and we cannot do that on web yet.
 #[cfg(all(feature = "lerobot", not(target_arch = "wasm32")))]
@@ -46,6 +49,11 @@ pub use self::importer_directory::DirectoryImporter;
 pub use self::importer_lerobot::LeRobotDatasetImporter;
 #[cfg(feature = "mcap")]
 pub use self::importer_mcap::McapImporter;
+#[cfg(feature = "mjcf")]
+pub use self::importer_mjcf::{
+    MjcfBody, MjcfBodyId, MjcfImporter, MjcfJoint, MjcfJointFrames, MjcfJointId, MjcfJointType,
+    MjcfTree,
+};
 #[cfg(all(feature = "parquet", not(target_arch = "wasm32")))]
 pub use self::importer_parquet::ParquetImporter;
 #[cfg(feature = "puffin")]
@@ -53,6 +61,9 @@ pub use self::importer_puffin::PuffinImporter;
 pub use self::importer_rrd::RrdImporter;
 #[cfg(feature = "urdf")]
 pub use self::importer_urdf::{UrdfImporter, UrdfTree, joint_transform as urdf_joint_transform};
+pub use self::kinematic_tree::{
+    JointTransform, KinematicTree, ModelFormat, MultiDofJointType, UnsupportedJointType,
+};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::{
     import_file::import_from_path,
@@ -63,6 +74,8 @@ pub use self::{
 };
 
 pub mod external {
+    #[cfg(feature = "mjcf")]
+    pub use mjcf_rs;
     #[cfg(feature = "urdf")]
     pub use urdf_rs;
 }
@@ -304,7 +317,7 @@ pub type ImporterName = String;
 ///
 /// ## Registering custom importers
 ///
-/// Checkout our [guide](https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview).
+/// Checkout our [guide](https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview).
 ///
 /// ## Execution
 ///
@@ -435,6 +448,7 @@ pub enum ImporterError {
     #[error("{source}\nFile path: {path}")]
     File {
         path: String,
+
         #[source]
         source: Box<Self>,
     },
@@ -482,9 +496,38 @@ impl ImporterError {
 /// full-on [`LogMsg`]s.
 #[derive(Debug)]
 pub enum ImportedData {
-    Chunk(ImporterName, re_log_types::StoreId, Chunk),
-    ArrowMsg(ImporterName, re_log_types::StoreId, ArrowMsg),
-    LogMsg(ImporterName, LogMsg),
+    /// A chunk for a store.
+    Chunk {
+        /// The name of the [`Importer`] that produced this data.
+        importer_name: ImporterName,
+
+        /// The store (recording or blueprint) the chunk belongs to.
+        store_id: re_log_types::StoreId,
+
+        /// The imported data.
+        chunk: Chunk,
+    },
+
+    /// A chunk for a store, already encoded as an Arrow message.
+    ArrowMsg {
+        /// The name of the [`Importer`] that produced this data.
+        importer_name: ImporterName,
+
+        /// The store (recording or blueprint) the message belongs to.
+        store_id: re_log_types::StoreId,
+
+        /// The imported data.
+        msg: ArrowMsg,
+    },
+
+    /// A complete log message, which carries its own store id.
+    LogMsg {
+        /// The name of the [`Importer`] that produced this data.
+        importer_name: ImporterName,
+
+        /// The imported message, for example data or store info.
+        msg: LogMsg,
+    },
 }
 
 impl ImportedData {
@@ -492,7 +535,9 @@ impl ImportedData {
     #[inline]
     pub fn importer_name(&self) -> &ImporterName {
         match self {
-            Self::Chunk(name, ..) | Self::ArrowMsg(name, ..) | Self::LogMsg(name, ..) => name,
+            Self::Chunk { importer_name, .. }
+            | Self::ArrowMsg { importer_name, .. }
+            | Self::LogMsg { importer_name, .. } => importer_name,
         }
     }
 
@@ -500,22 +545,22 @@ impl ImportedData {
     #[inline]
     pub fn into_log_msg(self) -> ChunkResult<LogMsg> {
         match self {
-            Self::Chunk(_name, store_id, chunk) => {
-                Ok(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
-            }
+            Self::Chunk {
+                store_id, chunk, ..
+            } => Ok(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?)),
 
-            Self::ArrowMsg(_name, store_id, msg) => Ok(LogMsg::ArrowMsg(store_id, msg)),
+            Self::ArrowMsg { store_id, msg, .. } => Ok(LogMsg::ArrowMsg(store_id, msg)),
 
-            Self::LogMsg(_name, msg) => Ok(msg),
+            Self::LogMsg { msg, .. } => Ok(msg),
         }
     }
 
     /// Convert the data into a [`Chunk`], ignoring all non-chunk-related things.
     pub fn into_chunk(self) -> Option<Chunk> {
         match self {
-            Self::Chunk(_name, _store_id, chunk) => Some(chunk),
-            Self::ArrowMsg(_name, _store_id, arrow_msg) => Chunk::from_arrow_msg(&arrow_msg).ok(),
-            Self::LogMsg(_name, msg) => match msg {
+            Self::Chunk { chunk, .. } => Some(chunk),
+            Self::ArrowMsg { msg, .. } => Chunk::from_arrow_msg(&msg).ok(),
+            Self::LogMsg { msg, .. } => match msg {
                 LogMsg::ArrowMsg(_store_id, arrow_msg) => Chunk::from_arrow_msg(&arrow_msg).ok(),
                 LogMsg::SetStoreInfo { .. } | LogMsg::BlueprintActivationCommand { .. } => None,
             },
@@ -545,6 +590,8 @@ static BUILTIN_IMPORTERS: LazyLock<Vec<Arc<dyn Importer>>> = LazyLock::new(|| {
         Arc::new(PuffinImporter),
         #[cfg(feature = "urdf")]
         Arc::new(UrdfImporter),
+        #[cfg(feature = "mjcf")]
+        Arc::new(MjcfImporter),
     ]
 });
 
@@ -606,7 +653,13 @@ pub const SUPPORTED_POINT_CLOUD_EXTENSIONS: &[&str] = &["ply"];
 pub const SUPPORTED_RERUN_EXTENSIONS: &[&str] = &["rbl", "rrd"];
 
 /// 3rd party formats with built-in support.
-pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "puffin", "urdf"];
+///
+/// `.xml` is only imported if it is an MJCF model.
+pub const SUPPORTED_THIRD_PARTY_FORMATS: &[&str] = &["mcap", "mjcf", "puffin", "urdf", "xml"];
+
+/// Extensions that a builtin importer only handles for some file contents, so external importers must still see them.
+#[cfg(not(target_arch = "wasm32"))]
+const CONTENT_DEPENDENT_EXTENSIONS: &[&str] = &["xml"];
 
 pub const SUPPORTED_PARQUET_EXTENSIONS: &[&str] = &["parquet"];
 
@@ -677,6 +730,8 @@ fn test_supported_extensions() {
     assert!(is_supported_file_extension("mcap"));
     assert!(is_supported_file_extension("png"));
     assert!(is_supported_file_extension("urdf"));
+    assert!(is_supported_file_extension("mjcf"));
+    assert!(is_supported_file_extension("xml"));
 
     // `.ply` holds either, so anyone probing the public lists must find it in both.
     assert!(SUPPORTED_MESH_EXTENSIONS.contains(&"ply"));

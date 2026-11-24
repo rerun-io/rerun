@@ -305,7 +305,7 @@ fn test_sole_nested_component_opens_by_default() {
         "an expanded row should drop its summary"
     );
     harness
-        .get_by_label("{stamp: {sec: 924, nanosec: 102\u{2009}000\u{2009}000}, frame_id: \"map\"}");
+        .get_by_label("{stamp: {sec: 924, nanosec: 102\u{202F}000\u{202F}000}, frame_id: \"map\"}");
 
     harness.snapshot("nested_message_expanded");
 }

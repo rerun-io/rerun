@@ -10,9 +10,9 @@ use re_view::controls::DRAG_PAN2D_BUTTON;
 use re_view::view_property_ui;
 use re_viewer_context::{
     IdentifiedViewSystem as _, Item, SystemCommand, SystemCommandSender as _,
-    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassLayoutPriority,
-    ViewClassRegistryError, ViewQuery, ViewSpawnHeuristics, ViewState, ViewStateExt as _,
-    ViewSystemExecutionError, ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
+    SystemExecutionOutput, ViewClass, ViewClassExt as _, ViewClassRegistryError, ViewQuery,
+    ViewSpawnHeuristics, ViewState, ViewStateExt as _, ViewSystemExecutionError,
+    ViewSystemRegistrator, ViewerContext, suggest_view_for_each_entity,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -137,10 +137,6 @@ impl ViewClass for GraphView {
             return Some(width / height);
         }
         None
-    }
-
-    fn layout_priority(&self) -> ViewClassLayoutPriority {
-        Default::default()
     }
 
     fn spawn_heuristics(

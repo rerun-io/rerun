@@ -47,8 +47,8 @@ impl ChunkStore {
                     }
 
                     // Only remove splits if all siblings aren't referenced.
-                    if let ChunkDirectLineage::SplitFrom(_, siblings) = &lineage.lineage {
-                        let siblings = siblings.clone();
+                    if let ChunkDirectLineage::SplitFrom { sibling_ids, .. } = &lineage.lineage {
+                        let siblings = sibling_ids.clone();
 
                         if siblings.iter().any(|chunk_id| {
                             ctx.chunks_lineage
@@ -217,7 +217,10 @@ mod tests {
         let split_b = ChunkId::new();
 
         let make_lineage = |sibling: ChunkId, ref_count: u32| TrackedDirectChunkLineage {
-            lineage: ChunkDirectLineage::SplitFrom(parent, vec![sibling].into_boxed_slice()),
+            lineage: ChunkDirectLineage::SplitFrom {
+                parent_id: parent,
+                sibling_ids: vec![sibling].into_boxed_slice(),
+            },
             ref_count,
             descends_from_manifest: false,
         };

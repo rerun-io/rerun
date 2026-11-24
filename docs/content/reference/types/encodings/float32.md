@@ -13,7 +13,7 @@ Float32
 
 ## API reference links
  * 🌊 [C++ API docs for `Float32`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1Float32.html)
- * 🐍 [Python API docs for `Float32`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.Float32)
+ * 🐍 [Python API docs for `Float32`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.Float32)
  * 🦀 [Rust API docs for `Float32`](https://docs.rs/rerun/latest/rerun/encodings/struct.Float32.html)
 
 

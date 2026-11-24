@@ -79,6 +79,65 @@ fn test_ellipses2d_zoomed_in() {
         .unwrap();
 }
 
+/// The whole view is inside the circle, so its outline is not drawn at all.
+#[test]
+fn test_ellipses2d_view_inside_circle() {
+    let (test_context, view_id) = setup(Range2D {
+        x_range: [-20.0, 20.0].into(),
+        y_range: [-20.0, 20.0].into(),
+    });
+
+    test_context
+        .run_view_ui_and_save_renderer_snapshot(
+            view_id,
+            "ellipses2d_view_inside_circle",
+            SNAPSHOT_SIZE,
+            None,
+        )
+        .unwrap();
+}
+
+/// Most of the circle's bounding box is outside the view, but the outline crosses it.
+#[test]
+fn test_ellipses2d_partially_in_view() {
+    let (test_context, view_id) = setup(Range2D {
+        x_range: [60.0, 120.0].into(),
+        y_range: [60.0, 120.0].into(),
+    });
+
+    test_context
+        .run_view_ui_and_save_renderer_snapshot(
+            view_id,
+            "ellipses2d_partially_in_view",
+            SNAPSHOT_SIZE,
+            None,
+        )
+        .unwrap();
+}
+
+/// Skipping an ellipse must not shrink what auto-framing sees.
+#[test]
+fn test_ellipses2d_skipped_still_frame_the_view() {
+    let (test_context, view_id) = setup(Range2D {
+        x_range: [-20.0, 20.0].into(),
+        y_range: [-20.0, 20.0].into(),
+    });
+
+    let state = run_and_get_state(&test_context, view_id);
+    assert!(
+        state
+            .bounding_boxes
+            .current
+            .contains(glam::vec3(-100.0, -100.0, 0.0))
+            && state
+                .bounding_boxes
+                .current
+                .contains(glam::vec3(100.0, 100.0, 0.0)),
+        "{:?}",
+        state.bounding_boxes.current
+    );
+}
+
 #[test]
 fn test_ellipses2d_visualizers_see_the_view() {
     let (test_context, view_id) = setup(Range2D {

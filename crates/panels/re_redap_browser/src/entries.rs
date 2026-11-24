@@ -1,4 +1,3 @@
-use std::future;
 use std::sync::Arc;
 use std::task::Poll;
 
@@ -6,11 +5,11 @@ use ahash::HashMap;
 use datafusion::catalog::TableProvider;
 use datafusion::common::TableReference;
 use datafusion::prelude::SessionContext;
+use futures::StreamExt as _;
 use futures::stream::FuturesUnordered;
-use futures::{FutureExt as _, StreamExt as _, TryFutureExt as _};
 use re_async::AsyncRuntimeHandle;
 use re_dataframe_ui::StreamingCacheTableProvider;
-use re_datafusion::{SegmentTableProvider, TableEntryTableProvider, TableKind, TableQueryCaller};
+use re_datafusion::{TableEntryTableProvider, TableKind, TableQueryCaller};
 use re_log_types::{EntryId, EntryName};
 use re_protos::TypeConversionError;
 use re_protos::cloud::v1alpha1::ext::{DatasetEntry, EntryDetails, ProviderDetails, TableEntry};
@@ -25,10 +24,12 @@ use crate::entry_meta::{DatasetRequests, EntryMetaQuery};
 pub type EntryResult<T = ()> = Result<T, ApiError>;
 
 pub struct Dataset {
-    pub dataset_entry: DatasetEntry,
+    details: EntryDetails,
+    // A catalog refresh replaces the session; register and query the table in the same generation.
+    catalog_session: Arc<SessionContext>,
     pub origin: re_uri::Origin,
 
-    /// What the server told us about this dataset beyond its entry, fetched on demand.
+    /// Metadata not included in `FindEntries`.
     requests: Box<DatasetRequests>,
 }
 
@@ -40,15 +41,20 @@ impl std::fmt::Debug for Dataset {
 
 impl Dataset {
     pub fn id(&self) -> EntryId {
-        self.dataset_entry.details.id
+        self.details.id
     }
 
     pub fn name(&self) -> &EntryName {
-        &self.dataset_entry.details.name
+        &self.details.name
     }
 
-    pub fn asset_dataset(&self) -> Option<EntryId> {
-        self.dataset_entry.dataset_details.asset_dataset
+    pub fn table_session(
+        &self,
+        query: EntryMetaQuery<'_>,
+        command_sender: &CommandSender,
+    ) -> ServerValue<Arc<SessionContext>, ApiError> {
+        self.requests
+            .table_session(query, &self.catalog_session, self.name(), command_sender)
     }
 
     pub fn requests(&self) -> &DatasetRequests {
@@ -206,15 +212,8 @@ impl Entries {
     pub(crate) fn request_entry_assets(&self, query: EntryMetaQuery<'_>) {
         if let Some(dataset) = self.find_dataset(query.dataset_id) {
             // The value is read where the assets are shown. Here we only keep the fetch going.
-            dataset.requests.assets(query, dataset.asset_dataset());
+            dataset.requests.assets(query);
         }
-    }
-
-    /// The dataset an entry's assets are registered with, as the entry list has it.
-    ///
-    /// This is `None` until the entry's first asset is registered and the new entry list arrives.
-    pub(crate) fn entry_asset_dataset(&self, entry_id: EntryId) -> Option<EntryId> {
-        self.find_dataset(entry_id)?.asset_dataset()
     }
 
     /// Whether we are waiting for an entry's assets.
@@ -280,154 +279,70 @@ async fn fetch_entries_and_register_tables(
         .find_entries(EntryFilter::default().with_all_kinds())
         .await?;
 
-    let origin_ref = &origin;
-    let runtime_ref = &runtime;
-    let command_sender_ref = &command_sender;
-    let futures_iter = entries.into_iter().filter_map(move |e| {
-        fetch_entry_details(
-            client.clone(),
-            origin_ref,
-            analytics.clone(),
-            e,
-            runtime_ref,
-            command_sender_ref,
-        )
-    });
-
-    let mut entries = HashMap::default();
-
-    let mut futures_unordered: FuturesUnordered<_> = futures_iter.collect();
-    while let Some((details, result)) = futures_unordered.next().await {
-        let id = details.id;
-        let inner_result = result.map(|(inner, provider)| {
-            // Create cached provider that reads from the raw table
-            let cached_provider = StreamingCacheTableProvider::new(provider, runtime.clone());
-
-            // Register cached provider with original name (in default schema).
-            // Use `TableReference::bare` to prevent DataFusion from splitting
-            // names containing dots into schema.table pairs.
-            session_ctx
-                .register_table(
-                    TableReference::bare(details.name.as_str()),
-                    Arc::new(cached_provider),
-                )
-                .ok();
-
-            inner
-        });
-
-        let is_system_table = match &inner_result {
-            Ok(EntryInner::Table(table)) => matches!(
-                table.table_entry.provider_details,
-                ProviderDetails::SystemTable(_)
-            ),
-            Err(_) | Ok(EntryInner::Dataset(_)) => false,
-        };
-        if !is_system_table {
-            let entry = Entry {
-                details,
-                inner: inner_result,
-            };
-            entries.insert(id, entry);
-        }
-    }
-
-    Ok(entries)
-}
-
-/// Basically a [`Entry`] + `Arc<dyn TableProvider>`.
-type FetchEntryDetailsOutput = (
-    EntryDetails,
-    EntryResult<(EntryInner, Arc<dyn TableProvider>)>,
-);
-
-/// Returns None if the entry should not be presented in the UI.
-fn fetch_entry_details(
-    client: ConnectionClient,
-    origin: &re_uri::Origin,
-    analytics: Option<ConnectionAnalyticsExporter>,
-    entry: EntryDetails,
-    runtime: &AsyncRuntimeHandle,
-    command_sender: &CommandSender,
-) -> Option<impl Future<Output = FetchEntryDetailsOutput>> {
-    // We could also box the future but then we'd need to use `.boxed()` natively and
-    // `.boxed_local()` on wasm. Either passes the `Send` type info transparently.
-    use itertools::Either::{Left, Right};
-    #[expect(clippy::match_same_arms)]
-    match &entry.kind {
-        // These are often empty datasets, and thus fail.
-        // Since we don't need these tables yet, we just skip them for now.
-        EntryKind::BlueprintDataset | EntryKind::AssetDataset => None,
-        EntryKind::Dataset => Some(Left(Left(
-            fetch_dataset_details(client, entry.id, origin, runtime, command_sender)
-                .map_ok(|(dataset, table_provider)| (EntryInner::Dataset(dataset), table_provider))
-                .map(move |res| (entry, res)),
-        ))),
-        EntryKind::Table => Some(Left(Right(
-            fetch_table_details(client, entry.id, origin, analytics, runtime, command_sender)
-                .map_ok(|(table, table_provider)| (EntryInner::Table(table), table_provider))
-                .map(move |res| (entry, res)),
-        ))),
-
-        // TODO(ab): these do not exist yet
-        EntryKind::DatasetView | EntryKind::TableView => None,
-
-        EntryKind::Unspecified => {
-            let kind = entry.kind;
-            let err = TypeConversionError::from(prost::UnknownEnumValue(kind as i32));
-            Some(Right(future::ready((
-                entry,
-                Err(ApiError::deserialization_with_source(
-                    origin,
-                    None,
-                    err,
-                    "unknown entry kind",
-                )),
-            ))))
-        }
-    }
-}
-
-async fn fetch_dataset_details(
-    mut client: ConnectionClient,
-    id: EntryId,
-    origin: &re_uri::Origin,
-    runtime: &AsyncRuntimeHandle,
-    command_sender: &CommandSender,
-) -> EntryResult<(Dataset, Arc<dyn TableProvider>)> {
-    let dataset_entry = client.read_dataset_entry(id).await?;
-
-    start_streaming_segment_table_blueprint(
-        client.clone(),
-        &dataset_entry,
-        origin,
-        runtime,
-        command_sender,
-    );
-
-    let result = Dataset {
-        dataset_entry,
-        origin: origin.clone(),
-        requests: Box::default(),
-    };
-
-    let table_provider = SegmentTableProvider::new(client, id)
-        .into_provider()
-        .await
-        .map_err(|err| {
-            ApiError::internal_with_source(
-                origin,
+    let mut listing = HashMap::default();
+    let mut tables = FuturesUnordered::new();
+    for details in entries {
+        let inner = match details.kind {
+            EntryKind::Dataset => Ok(EntryInner::Dataset(Dataset {
+                details: details.clone(),
+                origin: origin.clone(),
+                catalog_session: session_ctx.clone(),
+                requests: Box::default(),
+            })),
+            EntryKind::Table => {
+                let fetch = fetch_table_details(
+                    client.clone(),
+                    details.id,
+                    &origin,
+                    analytics.clone(),
+                    &runtime,
+                    &command_sender,
+                );
+                tables.push(async move { (details, fetch.await) });
+                continue;
+            }
+            EntryKind::BlueprintDataset
+            | EntryKind::AssetDataset
+            | EntryKind::DatasetView
+            | EntryKind::TableView => continue,
+            EntryKind::Unspecified => Err(ApiError::deserialization_with_source(
+                &origin,
                 None,
-                err,
-                "failed creating segment table provider",
-            )
-        })?;
+                TypeConversionError::from(prost::UnknownEnumValue(details.kind as i32)),
+                "unknown entry kind",
+            )),
+        };
+        listing.insert(details.id, Entry { details, inner });
+    }
 
-    Ok((result, table_provider))
+    // The server overview uses the system table, which ReadTableEntry identifies by provider.
+    while let Some((details, result)) = tables.next().await {
+        let inner = match result {
+            Ok((table, provider)) => {
+                let provider = StreamingCacheTableProvider::new(provider, runtime.clone());
+                session_ctx
+                    .register_table(
+                        TableReference::bare(details.name.as_str()),
+                        Arc::new(provider),
+                    )
+                    .ok();
+                if matches!(
+                    table.table_entry.provider_details,
+                    ProviderDetails::SystemTable(_)
+                ) {
+                    continue;
+                }
+                Ok(EntryInner::Table(table))
+            }
+            Err(err) => Err(err),
+        };
+        listing.insert(details.id, Entry { details, inner });
+    }
+    Ok(listing)
 }
 
 /// Stream the dataset's default segment-table blueprint (if any) and associate it with the dataset's segment table view.
-fn start_streaming_segment_table_blueprint(
+pub fn start_streaming_segment_table_blueprint(
     client: ConnectionClient,
     dataset_entry: &DatasetEntry,
     origin: &re_uri::Origin,
@@ -451,7 +366,7 @@ fn start_streaming_segment_table_blueprint(
         entry_id: dataset_id,
     };
 
-    let (tx, rx) = re_redap_client::table_blueprint_log_channel(
+    let (tx, rx) = re_redap_client::blueprint_log_channel(
         origin.clone(),
         blueprint_dataset,
         &blueprint_segment,
@@ -549,7 +464,7 @@ fn start_registered_table_blueprint_stream(
         entry_id: table_entry_id,
     };
 
-    let (tx, rx) = re_redap_client::table_blueprint_log_channel(
+    let (tx, rx) = re_redap_client::blueprint_log_channel(
         origin.clone(),
         blueprint_dataset,
         &blueprint_segment,

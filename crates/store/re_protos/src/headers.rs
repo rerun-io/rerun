@@ -190,7 +190,7 @@ impl<T> RerunHeadersExtractorExt for tonic::Request<T> {
 /// [`tonic::Code::InvalidArgument`].
 ///
 /// The body fallback can be removed once we can stop being backwards compatible with
-/// clients older or equal to 0.32.x.
+/// clients older or equal to 0.32.x, or 0.43.x for `UpdateTableEntry`.
 pub fn resolve_entry_id<T>(
     req: &tonic::Request<T>,
     body_id: Option<&crate::common::v1alpha1::EntryId>,
@@ -208,5 +208,47 @@ pub fn resolve_entry_id<T>(
         (None, None) => Err(tonic::Status::invalid_argument(
             "missing entry id in request header and body",
         )),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use re_log_types::EntryId;
+
+    use super::{RerunHeadersInjectorExt as _, resolve_entry_id};
+
+    fn resolve(header_id: Option<EntryId>, body_id: Option<EntryId>) -> tonic::Result<EntryId> {
+        let mut request = tonic::Request::new(());
+        if let Some(header_id) = header_id {
+            request = request.with_entry_id(header_id);
+        }
+        let body_id: Option<crate::common::v1alpha1::EntryId> = body_id.map(Into::into);
+        resolve_entry_id(&request, body_id.as_ref())
+    }
+
+    #[test]
+    fn resolve_entry_id_accepts_header_body_or_both() {
+        let id = EntryId::new();
+
+        assert_eq!(resolve(Some(id), None).unwrap(), id);
+        assert_eq!(resolve(None, Some(id)).unwrap(), id);
+        assert_eq!(resolve(Some(id), Some(id)).unwrap(), id);
+    }
+
+    #[test]
+    fn resolve_entry_id_rejects_mismatch_and_missing() {
+        let mismatch = resolve(Some(EntryId::new()), Some(EntryId::new())).unwrap_err();
+        assert_eq!(mismatch.code(), tonic::Code::InvalidArgument);
+        assert!(
+            mismatch.message().starts_with("mismatched entry ids"),
+            "unexpected status: {mismatch:?}"
+        );
+
+        let missing = resolve(None, None).unwrap_err();
+        assert_eq!(missing.code(), tonic::Code::InvalidArgument);
+        assert!(
+            missing.message().starts_with("missing entry id"),
+            "unexpected status: {missing:?}"
+        );
     }
 }

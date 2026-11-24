@@ -106,29 +106,6 @@ def update_url_map_rewrite_rules(project: str, version: str, language: str, dry_
         logging.info("Adding host rule for ref.rerun.io")
         url_map.host_rules.append(compute_v1.types.HostRule(hosts=["ref.rerun.io"], path_matcher="path-matcher-1"))
 
-    # --- Ensure docs.rerun.io path matcher exists (serves gs://rerun-prose) ---
-
-    prose_backend_url = (
-        f"https://www.googleapis.com/compute/v1/projects/{project}/global/backendBuckets/rerun-prose-backend"
-    )
-
-    prose_pm_idx = None
-    for idx, pm in enumerate(url_map.path_matchers):
-        if pm.name == "prose-path-matcher":
-            prose_pm_idx = idx
-            break
-
-    if prose_pm_idx is None:
-        logging.info("Creating path matcher for docs.rerun.io")
-        prose_pm = compute_v1.types.PathMatcher(
-            name="prose-path-matcher", default_service=prose_backend_url, path_rules=[]
-        )
-        url_map.path_matchers.append(prose_pm)
-
-    if not any("docs.rerun.io" in hr.hosts for hr in url_map.host_rules):
-        logging.info("Adding host rule for docs.rerun.io")
-        url_map.host_rules.append(compute_v1.types.HostRule(hosts=["docs.rerun.io"], path_matcher="prose-path-matcher"))
-
     # --- Update stable rewrite rules for ref.rerun.io ---
 
     pm = url_map.path_matchers[ref_pm_idx]

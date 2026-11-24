@@ -57,6 +57,24 @@ const BENCHMARK_WARMUP_FRAMES: u32 = 3;
 
 static COMMAND_LINE: OnceLock<CommandLine> = OnceLock::new();
 
+/// An unrecognized command line argument value.
+#[derive(Debug, thiserror::Error)]
+enum ArgError {
+    #[error("invalid --points value {value:?}; expected 1m, 4m, or 16m")]
+    Points { value: String },
+
+    #[error("invalid --camera value {value:?}; expected near, medium, far, or away")]
+    Camera { value: String },
+
+    #[error("invalid --size value {value:?}; expected screen or world")]
+    Size { value: String },
+
+    #[error(
+        "invalid --experiment value {value:?}; expected none, occluder-rectangle, or sorted-front-to-back"
+    )]
+    Experiment { value: String },
+}
+
 #[derive(Clone, Debug, clap::Parser)]
 #[command(
     name = "point_cloud_bench",
@@ -780,40 +798,40 @@ fn matching_size_modes(selected_size_mode: Option<PointSizeMode>) -> Vec<PointSi
     }
 }
 
-fn parse_points_arg(value: &str) -> Result<usize, String> {
+fn parse_points_arg(value: &str) -> Result<usize, ArgError> {
     match value.to_ascii_lowercase().replace('_', "").as_str() {
         "1" | "1000000" | "1m" => Ok(0),
         "2" | "4000000" | "4m" => Ok(1),
         "3" | "16000000" | "16m" => Ok(2),
-        _ => Err(format!(
-            "invalid --points value {value:?}; expected 1m, 4m, or 16m"
-        )),
+        _ => Err(ArgError::Points {
+            value: value.to_owned(),
+        }),
     }
 }
 
-fn parse_camera_arg(value: &str) -> Result<usize, String> {
+fn parse_camera_arg(value: &str) -> Result<usize, ArgError> {
     match value.to_ascii_lowercase().as_str() {
         "near" | "1" => Ok(0),
         "medium" | "mid" | "2" => Ok(1),
         "far" | "3" => Ok(2),
         "away" | "looking-away" | "lookingaway" | "4" => Ok(CAMERA_LOOKING_AWAY_INDEX),
-        _ => Err(format!(
-            "invalid --camera value {value:?}; expected near, medium, far, or away"
-        )),
+        _ => Err(ArgError::Camera {
+            value: value.to_owned(),
+        }),
     }
 }
 
-fn parse_size_mode_arg(value: &str) -> Result<PointSizeMode, String> {
+fn parse_size_mode_arg(value: &str) -> Result<PointSizeMode, ArgError> {
     match value.to_ascii_lowercase().as_str() {
         "screen" | "screen-space" | "screenspace" => Ok(PointSizeMode::ScreenSpace),
         "world" | "world-space" | "worldspace" => Ok(PointSizeMode::WorldSpace),
-        _ => Err(format!(
-            "invalid --size value {value:?}; expected screen or world"
-        )),
+        _ => Err(ArgError::Size {
+            value: value.to_owned(),
+        }),
     }
 }
 
-fn parse_experiment_arg(value: &str) -> Result<Experiment, String> {
+fn parse_experiment_arg(value: &str) -> Result<Experiment, ArgError> {
     match value.to_ascii_lowercase().as_str() {
         "none" | "baseline" => Ok(Experiment::None),
         "occluder" | "occluder-rectangle" | "occluderrectangle" => {
@@ -824,9 +842,9 @@ fn parse_experiment_arg(value: &str) -> Result<Experiment, String> {
         | "fronttoback"
         | "sorted-front-to-back"
         | "sortedfronttoback" => Ok(Experiment::SortedFrontToBack),
-        _ => Err(format!(
-            "invalid --experiment value {value:?}; expected none, occluder-rectangle, or sorted-front-to-back"
-        )),
+        _ => Err(ArgError::Experiment {
+            value: value.to_owned(),
+        }),
     }
 }
 

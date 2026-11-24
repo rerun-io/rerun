@@ -165,7 +165,7 @@ namespace rerun {
             // 444 formats.
             case encodings::PixelFormat::Y_U_V24_FullRange:
             case encodings::PixelFormat::Y_U_V24_LimitedRange:
-                return num_pixels * 4;
+                return 24 * num_pixels / 8;
 
             // 422 formats.
             case encodings::PixelFormat::Y_U_V16_FullRange:

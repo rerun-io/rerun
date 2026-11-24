@@ -5,7 +5,7 @@
 ///
 /// Rerun also supports uncompressed depth images with the [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image).
 ///
-/// \example archetypes/encoded_depth_image title="Encoded depth image" image="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1200w.png"
+/// \example archetypes/encoded_depth_image title="Encoded depth image" image="https://static.rerun.io/encoded_depth_image/d8180f8167278f9601808c360ba52eafaab52839/1200w.png" alt="Rerun Viewer with a 2D view of a depth image in a rainbow colormap, showing two arms reaching forward in front of a chair"
 #[rerun::rerun_type]
 #[docs(category = "Image & tensor")]
 #[docs(view_types = "Spatial2DView, Spatial3DView: if logged under a projection")]

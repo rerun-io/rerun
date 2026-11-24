@@ -6,9 +6,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 import torch
-from rerun.experimental.dataloader._iterable_dataset import _raise_if_incomplete, _skip_incomplete
-from rerun.experimental.dataloader._sample_index import SegmentMetadata
-from rerun.experimental.dataloader._utils import Target
+from rerun.experimental.dataloader import DataloaderMetrics
+from rerun.experimental.dataloader._iterable_dataset import _skip_incomplete
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -38,6 +37,24 @@ def test_drops_none_but_keeps_valid_empty_tensors() -> None:
 
     assert len(kept) == 3
     assert kept[-1] is valid_empty
+
+
+@pytest.mark.filterwarnings("ignore::RuntimeWarning")
+def test_records_one_skipped_sample_when_multiple_fields_are_missing() -> None:
+    metrics = DataloaderMetrics(max_workers=1)
+    try:
+        incomplete: DecodedSample = {"image": None, "action": None}
+        kept = list(
+            _skip_incomplete(
+                _stream(incomplete, _complete(), incomplete),
+                metrics=metrics._worker_publisher(),
+            )
+        )
+
+        assert len(kept) == 1
+        assert metrics.summary() == {"skipped_samples": 2.0}
+    finally:
+        metrics.close()
 
 
 def test_warns_once_per_missing_field() -> None:
@@ -150,26 +167,3 @@ def test_closes_the_source_when_the_consumer_stops_early() -> None:
     samples.close()
 
     assert closed
-
-
-def test_manifest_replay_raises_when_a_required_field_is_missing() -> None:
-    target = Target(
-        segment=SegmentMetadata(segment_id="segment-a", index_start=0, index_end=10, num_samples=11),
-        index_value=7,
-        fetch_requests={},
-    )
-
-    with pytest.raises(RuntimeError, match="Required fields decoded to nothing: image") as error:
-        _raise_if_incomplete({"image": None, "action": torch.ones(7)}, target, {"image"})
-
-    assert "Segment: segment-a at 7" in str(error.value)
-
-
-def test_manifest_replay_allows_an_optional_field_to_be_missing() -> None:
-    target = Target(
-        segment=SegmentMetadata(segment_id="segment-a", index_start=0, index_end=10, num_samples=11),
-        index_value=7,
-        fetch_requests={},
-    )
-
-    _raise_if_incomplete({"image": None, "action": torch.ones(7)}, target, {"action"})

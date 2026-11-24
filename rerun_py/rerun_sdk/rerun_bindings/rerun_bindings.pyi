@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Callable, Iterable, Iterator, Sequence
+from contextvars import ContextVar
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
@@ -16,6 +17,8 @@ from .types import (
     IndexValuesLike as IndexValuesLike,
     MergeSplitSettingsDict as MergeSplitSettingsDict,
     OwnChunkRuleDict as OwnChunkRuleDict,
+    StorageLocationDict as StorageLocationDict,
+    StorageLocationsDict as StorageLocationsDict,
     TemporalTimelineType as TemporalTimelineType,
     TimelineType as TimelineType,
 )
@@ -183,7 +186,11 @@ class SchemaInternal:
     def column_for_selector(
         self, selector: str | ComponentColumnSelector | ComponentColumnDescriptor
     ) -> ComponentColumnDescriptor: ...
-    def __arrow_c_schema__(self) -> Any: ...
+    def __arrow_c_schema__(self) -> object: ...
+
+class ChunkIndexingPolicyInternal:
+    @staticmethod
+    def match_entity_paths(schema: SchemaInternal, entity_paths: list[str]) -> list[str]: ...
 
 class ChunkInternal:
     @property
@@ -984,7 +991,9 @@ def new_entity_path(parts: list[str]) -> str:
 def new_property_entity_path(parts: list[str]) -> str:
     """Create a property entity path."""
 
-def asset_video_read_frame_timestamps_nanos(video_bytes_arrow_array: Any, media_type: str | None = None) -> list[int]:
+def asset_video_read_frame_timestamps_nanos(
+    video_bytes_arrow_array: pa.Array, media_type: str | None = None
+) -> list[int]:
     """
     Reads the timestamps of all frames in a video asset.
 
@@ -1073,13 +1082,17 @@ class DatasetEntryInternal:
     def catalog(self) -> CatalogClientInternal: ...
     def delete(self) -> None: ...
     def set_name(self, name: str) -> None: ...
+    def chunk_indexing_policy(self) -> tuple[list[str] | Literal["all"], list[str] | Literal["all"]] | None: ...
+    def set_chunk_indexing_policy(
+        self, policy: tuple[list[str] | Literal["all"], list[str] | Literal["all"]] | None
+    ) -> DatasetPolicyHandleInternal: ...
     def entry_details(self) -> EntryDetailsInternal: ...
 
     # ---
 
     @property
     def manifest_url(self) -> str: ...
-    def schema(self) -> SchemaInternal: ...
+    def schema(self, *, scope: str = "full") -> SchemaInternal: ...
     def _dataset_revision(self) -> int | None: ...
 
     # ---
@@ -1087,10 +1100,10 @@ class DatasetEntryInternal:
     def blueprint_dataset(self) -> DatasetEntryInternal | None: ...
     def asset_dataset(self) -> DatasetEntryInternal | None: ...
     def _ensure_asset_dataset(self) -> None: ...
-    def default_blueprint_segment_id(self) -> str | None: ...
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
-    def default_segment_table_blueprint_segment_id(self) -> str | None: ...
-    def set_default_segment_table_blueprint_segment_id(self, segment_id: str | None) -> None: ...
+    def default_blueprint(
+        self, *, kind: Literal["recording", "table"]
+    ) -> tuple[str, str | None, Literal["recording", "table"]] | None: ...
+    def set_default_blueprint(self, segment_id: str | None, *, kind: Literal["recording", "table"]) -> None: ...
 
     # ---
 
@@ -1120,6 +1133,7 @@ class DatasetEntryInternal:
         kind: Literal["segment", "blueprint", "asset"],
         layer: str,
         on_duplicate: str,
+        segment_id: str | None = None,
     ) -> WriteOperationInternal: ...
     def write_path(
         self,
@@ -1128,6 +1142,7 @@ class DatasetEntryInternal:
         kind: Literal["segment", "blueprint", "asset"],
         layer: str,
         on_duplicate: str,
+        segment_id: str | None = None,
     ) -> WriteOperationInternal: ...
     def register(
         self,
@@ -1135,7 +1150,8 @@ class DatasetEntryInternal:
         recording_layers: list[str],
         on_duplicate: str,
         *,
-        object_store_config: str | None = None,
+        segment_ids: list[str] | None = None,
+        storage_location: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def register_prefix(
         self,
@@ -1143,7 +1159,7 @@ class DatasetEntryInternal:
         layer_name: str,
         on_duplicate: str,
         *,
-        object_store_config: str | None = None,
+        storage_location: str | None = None,
     ) -> RegistrationHandleInternal: ...
     def unregister(
         self,
@@ -1156,14 +1172,27 @@ class DatasetEntryInternal:
     # ---
 
     def assets_for_segment(self, segment_id: str) -> list[str]: ...
-    def _get_segment_properties(self, segment_id: str) -> tuple[pa.RecordBatch, int] | None: ...
-    def _set_segment_properties(
+    def get_segment_properties(self, segment_id: str) -> tuple[pa.RecordBatch, int] | None: ...
+    def set_segment_properties(
         self,
         segment_id: str,
         properties: pa.RecordBatch,
         expected_revision: int | None = None,
     ) -> int: ...
     def delete_segment_properties(self, segment_ids: list[str]) -> None: ...
+    def blueprints(self) -> list[tuple[str, str | None, Literal["recording", "table"]]]: ...
+    def blueprint_by_name(self, name: str) -> tuple[str, str | None, Literal["recording", "table"]] | None: ...
+    def set_blueprint_name(
+        self, segment_id: str, name: str
+    ) -> tuple[str, str | None, Literal["recording", "table"]]: ...
+    def register_blueprint(
+        self,
+        uri: str,
+        name: str | None,
+        storage_location: str | None,
+        *,
+        kind: Literal["recording", "table"],
+    ) -> tuple[str, str | None, Literal["recording", "table"]]: ...
 
     # ---
 
@@ -1206,7 +1235,7 @@ class SegmentInternal:
 class SegmentUrlUdfInternal:
     """Rust-backed ScalarUDF for building segment URLs."""
 
-    def __datafusion_scalar_udf__(self) -> Any:
+    def __datafusion_scalar_udf__(self) -> object:
         """Scalar UDF pycapsule."""
 
 class DatasetSelectionInternal:
@@ -1221,8 +1250,8 @@ class DatasetSelectionInternal:
     def content_filters(self) -> list[str] | None: ...
 
     # Methods
-    def schema(self) -> SchemaInternal: ...
-    def arrow_schema(self) -> pa.Schema: ...
+    def schema(self, *, scope: str = "full") -> SchemaInternal: ...
+    def arrow_schema(self, *, scope: str = "full") -> pa.Schema: ...
     def info(self) -> DatasetInfoInternal: ...
     def segment_ids(self) -> list[str]: ...
     def reader(
@@ -1233,6 +1262,7 @@ class DatasetSelectionInternal:
         include_tombstone_columns: bool = False,
         fill_latest_at: bool = False,
         using_index_values: dict[str, IndexValuesLike] | None = None,
+        scope: str = "full",
     ) -> dfn.DataFrame: ...
     def read_arrow(
         self,
@@ -1255,12 +1285,12 @@ class TableEntryInternal:
     # ---
 
     def blueprint_dataset(self) -> DatasetEntryInternal: ...
-    def default_blueprint_segment_id(self) -> str | None: ...
-    def set_default_blueprint_segment_id(self, segment_id: str | None) -> None: ...
+    def default_blueprint(self) -> tuple[str, str | None, Literal["recording", "table"]] | None: ...
+    def set_default_blueprint(self, segment_id: str | None) -> None: ...
 
     # ---
 
-    def __datafusion_table_provider__(self, session: Any) -> Any: ...
+    def __datafusion_table_provider__(self, session: object) -> object: ...
     def reader(self) -> dfn.DataFrame: ...
     def to_arrow_reader(self) -> pa.RecordBatchReader: ...
 
@@ -1280,6 +1310,91 @@ class TableInsertModeInternal:
     APPEND: TableInsertModeInternal
     OVERWRITE: TableInsertModeInternal
     REPLACE: TableInsertModeInternal
+
+class _MjcfTreeInternal:
+    """Internal Rust implementation of a parsed MJCF model."""
+
+    @staticmethod
+    def from_file_path(
+        path: str | os.PathLike[str],
+        entity_path_prefix: str | None = None,
+        *,
+        frame_prefix: str | None = None,
+        static_transform_entity_path: str | None = None,
+    ) -> _MjcfTreeInternal: ...
+    @property
+    def name(self) -> str: ...
+    @property
+    def frame_prefix(self) -> str | None: ...
+    def root_body(self) -> _MjcfBodyInternal: ...
+    def bodies(self) -> list[_MjcfBodyInternal]: ...
+    def get_body_by_name(self, body_name: str) -> _MjcfBodyInternal | None: ...
+    def joints(self) -> list[_MjcfJointInternal]: ...
+    def get_joint_by_name(self, joint_name: str) -> _MjcfJointInternal | None: ...
+    def get_collision_geometry_paths(self, body: _MjcfBodyInternal) -> list[str]: ...
+    def get_visual_geometry_paths(self, body: _MjcfBodyInternal) -> list[str]: ...
+    def log(self, recording: PyRecordingStream | None = None) -> None: ...
+    def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStreamInternal: ...
+    def compute_joint_transform_batches(
+        self,
+        names: pa.Array,
+        values: pa.Array,
+        *,
+        clamp: bool = False,
+    ) -> pa.Array: ...
+
+class _MjcfJointInternal:
+    """Internal Rust representation of an MJCF joint."""
+
+    @property
+    def name(self) -> str: ...
+    @property
+    def joint_type(self) -> str: ...
+    @property
+    def body(self) -> str: ...
+    @property
+    def parent_body(self) -> str | None: ...
+    @property
+    def axis(self) -> tuple[float, float, float]: ...
+    @property
+    def anchor(self) -> tuple[float, float, float]: ...
+    @property
+    def reference(self) -> float: ...
+    @property
+    def range(self) -> tuple[float, float] | None: ...
+    def compute_transform(self, value: float, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute the transform components for this joint at the given value.
+
+        The result is wrapped in a dictionary for easy conversion to the final types in Python.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
+
+    def compute_transform_columns(self, values: list[float], *, clamp: bool = False) -> dict[str, Any]:
+        """
+        Compute transforms for this joint at multiple values in a single call.
+
+        Returns a dictionary with translations, quaternions, frame names, and warnings
+        for use with columnar APIs like `send_columns`.
+
+        If `clamp` is True, values outside joint limits will be clamped and a warning is generated.
+        If `clamp` is False (default), values outside limits are used as-is without warnings.
+        """
+
+class _MjcfBodyInternal:
+    """Internal Rust representation of an MJCF body."""
+
+    @property
+    def name(self) -> str: ...
+    @property
+    def parent(self) -> str | None: ...
+    @property
+    def translation(self) -> tuple[float, float, float]: ...
+    @property
+    def quaternion_xyzw(self) -> tuple[float, float, float, float]: ...
+    def joints(self) -> list[_MjcfJointInternal]: ...
 
 class _UrdfTreeInternal:
     """Internal Rust implementation of a parsed URDF tree."""
@@ -1395,7 +1510,7 @@ class _IndexValuesLikeInternal:
 class TableProviderAdapterInternal:
     """Internal opaque adapter exposing a Rust DataFusion `TableProvider` to Python via the FFI capsule protocol."""
 
-    def __datafusion_table_provider__(self, session: Any) -> Any: ...
+    def __datafusion_table_provider__(self, session: object) -> object: ...
 
 class BearerTokenObjectStoreAuth:
     """
@@ -1435,10 +1550,11 @@ class CatalogClientInternal:
 
     # ---
 
+    def get_storage_locations(self) -> StorageLocationsDict: ...
     def version_info(self) -> tuple[str, str | None, str | None, list[str]]: ...
     def rtt_seconds(self, num_pings: int) -> float: ...
     def bandwidth_bytes_per_sec(self, num_bytes: int, rtt_seconds: float) -> float | None: ...
-    # TODO(RR-6055): Add object_store_config to the file and bytes staging signatures.
+    # TODO(RR-6055): Negotiate server support before adding storage_location to staging.
     def stage_file(self, path: str, *, key: str, upload_method: Literal["auto", "single", "multipart"]) -> str: ...
     def stage_bytes(self, data: bytes, *, key: str, upload_method: Literal["auto", "single", "multipart"]) -> str: ...
     def datasets(self, include_hidden: bool) -> list[DatasetEntryInternal]: ...
@@ -1451,7 +1567,11 @@ class CatalogClientInternal:
 
     # ---
 
-    def create_dataset(self, name: str) -> DatasetEntryInternal: ...
+    def create_dataset(
+        self,
+        name: str,
+        chunk_indexing_policy: tuple[list[str] | Literal["all"], list[str] | Literal["all"]] | None = None,
+    ) -> DatasetEntryInternal: ...
     def register_table(self, name: str, url: str) -> TableEntryInternal: ...
     def create_table(self, name: str, schema: pa.Schema, url: str | None) -> TableEntryInternal: ...
     def ctx(self) -> dfn.SessionContext: ...
@@ -1477,6 +1597,9 @@ class UnregistrationHandleInternal:
     def wait(self, timeout_secs: int | None = None) -> None: ...
     def cancel(self) -> None: ...
 
+class DatasetPolicyHandleInternal:
+    def wait(self, timeout_secs: int | None = None) -> None: ...
+
 #####################################################################################################################
 ## VIEWER_CLIENT                                                                                                   ##
 #####################################################################################################################
@@ -1494,6 +1617,9 @@ class NotFoundError(Exception):
 class AlreadyExistsError(Exception):
     """Raised when trying to create a resource that already exists."""
 
+class ChunkNotIndexedError(Exception):
+    """Raised when a query reads data the dataset's chunk indexing policy excludes and the server can't serve it."""
+
 # The `asset` property layout, shared with the servers that read it.
 ASSET_PROPERTY: str
 ASSET_MODE_COMPONENT: str
@@ -1505,7 +1631,7 @@ class SelectorInternal:
     def __init__(self, query: str) -> None: ...
     def execute(self, source: pa.Array) -> pa.Array | None: ...
     def execute_per_row(self, source: pa.Array) -> pa.Array | None: ...
-    def pipe(self, func: Any) -> SelectorInternal: ...
+    def pipe(self, func: SelectorInternal | Callable[[pa.Array], pa.Array | None]) -> SelectorInternal: ...
     def try_to_string(self) -> str | None: ...
     def __repr__(self) -> str: ...
     def __str__(self) -> str: ...
@@ -1628,6 +1754,9 @@ class Credentials:
 def get_credentials() -> Credentials | None:
     """Returns the credentials for the current user."""
 
+def analytics_allowed() -> bool:
+    """Whether this machine's analytics config allows analytics, as set by `rerun analytics`."""
+
 def logout() -> str | None:
     """
     Log out by clearing stored credentials.
@@ -1639,7 +1768,7 @@ def logout() -> str | None:
 
     """
 
-def _get_trace_context_var() -> Any:
+def _get_trace_context_var() -> ContextVar[dict[str, str]] | None:
     """
     Return the `ContextVar` that Python uses to pass trace headers to Rust.
 
@@ -1650,7 +1779,7 @@ def _get_trace_context_var() -> Any:
     Returns `None` when `perf_telemetry` is disabled.
     """
 
-def _get_tracing_session_var() -> Any:
+def _get_tracing_session_var() -> ContextVar[str] | None:
     """
     Return the `ContextVar` carrying the active rerun session id.
 
@@ -1897,6 +2026,32 @@ class Mp4TranscodeOptionsInternal:
         ffmpeg_override: Path | None = None,
     ) -> None: ...
 
+class Mp4InfoInternal:
+    """Container metadata returned by `Mp4Reader.info()`."""
+
+    @property
+    def codec(self) -> int: ...
+    @property
+    def codec_string(self) -> str: ...
+    @property
+    def width(self) -> int: ...
+    @property
+    def height(self) -> int: ...
+    @property
+    def bit_depth(self) -> int | None: ...
+    @property
+    def num_frames(self) -> int: ...
+    @property
+    def duration_ns(self) -> int: ...
+    @property
+    def has_b_frames(self) -> bool: ...
+    @property
+    def gop_size_min(self) -> int: ...
+    @property
+    def gop_size_max(self) -> int: ...
+    @property
+    def samples(self) -> pa.RecordBatch: ...
+
 class Mp4ReaderInternal:
     """Internal implementation. Use Mp4Reader from rerun.experimental instead."""
 
@@ -1911,6 +2066,7 @@ class Mp4ReaderInternal:
         entity_path: str | None = None,
     ) -> None: ...
     def stream(self) -> LazyChunkStreamInternal: ...
+    def info(self) -> Mp4InfoInternal: ...
     @property
     def path(self) -> Path: ...
     @property
@@ -2030,7 +2186,7 @@ class LazyChunkStreamInternal:
     def to_chunks(self) -> list[ChunkInternal]: ...
     def __iter__(self) -> LazyChunkStreamIterator: ...
     @staticmethod
-    def from_iter(iterable: Any) -> LazyChunkStreamInternal: ...
+    def from_iter(iterable: Iterable[ChunkInternal]) -> LazyChunkStreamInternal: ...
     def send_to_recording(self, recording: PyRecordingStream | None = None) -> None:
         """
         Drain this stream into a recording stream.

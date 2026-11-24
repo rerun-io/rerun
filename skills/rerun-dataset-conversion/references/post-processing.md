@@ -52,12 +52,13 @@ For a video, query the `VideoStream:sample` column in time order and decode from
 A GOP (group of pictures) is a keyframe and the frames that depend on it.
 The `VideoStream:is_keyframe` column marks where each GOP starts, so a long video can be decoded GOP by GOP without holding every frame in memory.
 Write each result at the timestamp of the frame it came from.
-[Query video streams](https://rerun.io/docs/howto/query-and-transform/query_videos) shows the query and the decode loop.
+[Query video streams](https://rerun.io/docs/query-and-transform/images-and-video/query_videos) shows the query and the decode loop.
 
 ## 3. Write the layer
 
 Write one RRD file per segment, with the source segment's ID as `recording_id`.
 On a catalog, register the file under a new `layer_name`.
+A file written with another `recording_id` can still join the segment if it is registered with `segment_id=[…]`.
 Write derived values to a new entity or component, and keep the lens default `output_mode="drop_unmatched"`, so the layer holds only the derived data and no copy of the source.
 
 A chunk-processing pipeline already produces chunks.

@@ -1,7 +1,6 @@
 //! Async runtime abstractions for native and `WebAssembly` targets.
 
 use std::fmt::Debug;
-use std::future::Future;
 use std::time::Duration;
 
 mod read_at;
@@ -73,6 +72,13 @@ pub async fn sleep(duration: Duration) {
     })
     .await
     .expect("browser timer task should not be canceled while it is awaited");
+}
+
+/// Yields to the Tokio scheduler so other tasks can run.
+#[cfg(not(target_arch = "wasm32"))]
+#[inline]
+pub async fn yield_now() {
+    tokio::task::yield_now().await;
 }
 
 /// Yields to the browser event loop so other tasks can run.
@@ -224,7 +230,7 @@ where
         }
     });
 
-    receiver.map_err(|_err| TaskCancelled)
+    receiver.map_err(|futures::channel::oneshot::Canceled| TaskCancelled)
 }
 
 #[cfg(test)]
@@ -253,7 +259,7 @@ async fn check_timeout() {
 mod native_tests {
     #[test]
     fn timeout_completes_or_cancels() {
-        let runtime = tokio::runtime::Builder::new_current_thread() // NOLINT: the timeout needs a timer-enabled runtime
+        let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_time()
             .build()
             .unwrap();
@@ -262,7 +268,7 @@ mod native_tests {
 
     #[test]
     fn supplied_runtime_does_not_need_to_be_entered_when_spawning() {
-        let runtime = tokio::runtime::Builder::new_current_thread() // NOLINT: the test must supply a runtime to the handle under test
+        let runtime = tokio::runtime::Builder::new_current_thread()
             .build()
             .unwrap();
         let handle = super::AsyncRuntimeHandle::new_native(runtime.handle().clone());

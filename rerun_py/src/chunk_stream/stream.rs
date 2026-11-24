@@ -517,7 +517,7 @@ impl LazyChunkStream {
 mod tests {
     use super::*;
     use re_log_types::{EntityPathFilter, ResolvedEntityPathFilter};
-    use re_types_core::{ComponentIdentifier, TimelineName};
+    use re_types_core::TimelineName;
 
     fn epf(s: &str) -> ResolvedEntityPathFilter {
         EntityPathFilter::parse_forgiving(s).resolve_without_substitutions()

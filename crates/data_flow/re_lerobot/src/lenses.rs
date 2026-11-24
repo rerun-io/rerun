@@ -219,11 +219,9 @@ pub fn is_row_aligned_unit_list(list: &ListArray) -> bool {
 /// must change a test here.
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use arrow::array::{BinaryArray, Float32Array, StructArray};
     use arrow::datatypes::{DataType, Field};
-    use re_chunk::{Chunk, ChunkId, EntityPath, TimeColumn, Timeline};
+    use re_chunk::{Chunk, ChunkId, TimeColumn, Timeline};
     use re_sdk_types::ComponentDescriptor;
 
     use super::*;
@@ -260,7 +258,6 @@ mod tests {
         .unwrap();
         assert!(!is_row_aligned_unit_list(&ragged));
     }
-    use crate::emits::TabularEmit;
 
     /// One chunk shaped like `re_parquet`'s output: a single data column named `column`,
     /// wrapped one element per row, on a `frame_index` timeline.

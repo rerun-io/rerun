@@ -74,9 +74,9 @@ pub fn create_simple_recording_in(
     time_type: TimeType,
     in_dir: &std::path::Path,
 ) -> anyhow::Result<PathBuf> {
-    use re_chunk::{Chunk, TimePoint};
+    use re_chunk::Chunk;
+    use re_log_types::TimeInt;
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt};
 
     if !std::fs::metadata(in_dir)?.is_dir() {
         return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
@@ -207,9 +207,9 @@ pub fn create_simple_recording_one_chunk_per_frame_in(
     time_type: TimeType,
     in_dir: &std::path::Path,
 ) -> anyhow::Result<PathBuf> {
-    use re_chunk::{Chunk, TimePoint};
+    use re_chunk::Chunk;
+    use re_log_types::TimeInt;
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt};
 
     if !std::fs::metadata(in_dir)?.is_dir() {
         return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
@@ -275,7 +275,7 @@ pub fn create_simple_blueprint(
     segment_id: &str,
 ) -> anyhow::Result<TempPath> {
     use re_chunk::Chunk;
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+    use re_log_types::{TimeInt, build_frame_nr};
     use re_sdk_types::blueprint::archetypes::TimePanelBlueprint;
 
     let tmp_path = {
@@ -319,9 +319,9 @@ pub fn create_nasty_recording(
     segment_id: &str,
     entity_paths: &[&str],
 ) -> anyhow::Result<TempPath> {
-    use re_chunk::{Chunk, TimePoint};
+    use re_chunk::Chunk;
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr, build_log_time};
+    use re_log_types::{TimeInt, build_frame_nr, build_log_time};
 
     let tmp_path = {
         let dir = tempfile::tempdir()?;
@@ -1061,6 +1061,32 @@ fn create_store_with_static_components(
     Ok(tmp_path)
 }
 
+/// Creates a recording holding exactly `chunks`.
+///
+/// The chunks are sent prebuilt, so the batcher keeps their ids and does not split or merge them.
+pub fn create_recording_with_chunks(
+    segment_id: &str,
+    chunks: impl IntoIterator<Item = re_chunk::Chunk>,
+) -> anyhow::Result<TempPath> {
+    let tmp_path = {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join(format!("{segment_id}.rrd"));
+        TempPath::new(dir, path)
+    };
+
+    let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_chunks")
+        .recording_id(segment_id)
+        .send_properties(false)
+        .save(tmp_path.clone())?;
+
+    for chunk in chunks {
+        rec.send_chunk(chunk);
+    }
+    rec.flush_blocking()?;
+
+    Ok(tmp_path)
+}
+
 /// Create a recording containing only a single static chunk.
 pub fn create_minimal_static_recording(
     tuid_prefix: TuidPrefix,
@@ -1141,6 +1167,71 @@ pub fn create_minimal_binary_recording_in(
     Ok(tmp_path)
 }
 
+/// Creates an RRD holding one store per application id, all with the recording id `segment_id`,
+/// and saves it to `in_dir`.
+///
+/// Each store logs a single point at the entity `/{application_id}`, so its data tells which store
+/// a manifest or chunk came from. The `SetStoreInfo`s appear in `application_ids` order, so
+/// registration reads the first store.
+///
+/// Returns the path and the store ids, in `application_ids` order.
+pub fn create_recording_with_shared_recording_id_in(
+    tuid_prefix: TuidPrefix,
+    segment_id: &str,
+    application_ids: &[&str],
+    in_dir: &std::path::Path,
+) -> anyhow::Result<(PathBuf, Vec<re_log_types::StoreId>)> {
+    use re_chunk::Chunk;
+    use re_log_types::TimeInt;
+    use re_log_types::example_components::{MyPoint, MyPoints};
+    use re_sdk::external::{re_log_encoding, re_log_msg};
+
+    if !std::fs::metadata(in_dir)?.is_dir() {
+        return Err(anyhow::anyhow!("Expected `in_dir` to be a directory"));
+    }
+
+    let mut next_chunk_id = next_chunk_id_generator(tuid_prefix);
+    let mut next_row_id = next_row_id_generator(tuid_prefix);
+
+    let mut store_ids = Vec::with_capacity(application_ids.len());
+    let mut messages = Vec::new();
+    for application_id in application_ids {
+        let store_id = re_log_types::StoreId::recording(
+            re_log_types::ApplicationId::try_new(*application_id)?,
+            segment_id,
+        );
+
+        messages.push(re_log_msg::LogMsg::SetStoreInfo(re_log_msg::SetStoreInfo {
+            row_id: *next_row_id(),
+            info: re_log_msg::StoreInfo::new(store_id.clone(), re_log_msg::StoreSource::Unknown),
+        }));
+
+        let points = MyPoint::from_iter(0..1);
+        let chunk = Chunk::builder_with_id(next_chunk_id(), format!("/{application_id}"))
+            .with_sparse_component_batches(
+                next_row_id(),
+                [build_index_value(
+                    TimeInt::new_temporal(10),
+                    TimeType::Sequence,
+                )],
+                [(MyPoints::descriptor_points(), Some(&points as _))],
+            )
+            .build()?;
+        messages.push(re_log_msg::LogMsg::ArrowMsg(
+            store_id.clone(),
+            chunk.to_arrow_msg()?,
+        ));
+
+        store_ids.push(store_id);
+    }
+
+    let bytes = re_log_encoding::Encoder::encode(messages.into_iter().map(Ok))?;
+    let path = in_dir.join(format!("{segment_id}.rrd"));
+    std::fs::write(&path, bytes)?;
+
+    Ok((path, store_ids))
+}
+
 /// Creates a recording that can be split into multiple chunks.
 ///
 /// Each entity gets three temporal chunks of three rows each, at frames `base + {10, 20, 30}`
@@ -1152,9 +1243,9 @@ pub fn multi_chunked_entities_recording(
     segment_id: &str,
     entity_paths: &[&str],
 ) -> anyhow::Result<TempPath> {
-    use re_chunk::{Chunk, TimePoint};
+    use re_chunk::Chunk;
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
-    use re_log_types::{EntityPath, TimeInt, build_frame_nr};
+    use re_log_types::{TimeInt, build_frame_nr};
 
     let tmp_dir = tempfile::tempdir()?;
     let in_dir = tmp_dir.path();

@@ -72,6 +72,7 @@ pub enum LogMsg {
     /// Log an entity using an [`ArrowMsg`].
     //
     // TODO(#6574): the store ID should be in the metadata here so we can remove the layer on top
+    // relint: allow(positional_fields): used in 80+ places
     ArrowMsg(StoreId, ArrowMsg),
 
     /// Send after all messages in a blueprint to signal that the blueprint is complete.

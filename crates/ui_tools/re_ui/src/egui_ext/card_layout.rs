@@ -1,3 +1,5 @@
+use std::num::NonZeroUsize;
+
 use egui::{Color32, Frame, NumExt as _, Stroke, Ui};
 
 /// Per-item configuration for [`CardLayout`].
@@ -17,7 +19,8 @@ pub struct CardLayoutItem {
 /// A virtualized card layout that arranges items in a responsive grid.
 ///
 /// Items are laid out left-to-right, wrapping into rows. Each row is as wide as the
-/// available space, with items growing proportionally from their `min_width`.
+/// available space, with items growing proportionally from their `min_width`,
+/// unless [`Self::fixed_column_count`] specifies equal-width columns.
 /// Only rows that intersect the visible (clip) rectangle are rendered;
 /// row heights are measured each frame and cached for the next frame's layout.
 pub struct CardLayout {
@@ -26,6 +29,7 @@ pub struct CardLayout {
     hover_fill: Option<Color32>,
     hover_stroke: Option<Stroke>,
     all_rows_use_available_width: bool,
+    fixed_column_count: Option<NonZeroUsize>,
     clickable: bool,
 }
 
@@ -55,6 +59,7 @@ impl CardLayout {
             hover_fill: None,
             hover_stroke: None,
             all_rows_use_available_width: true,
+            fixed_column_count: None,
             clickable: false,
         }
     }
@@ -67,8 +72,17 @@ impl CardLayout {
             hover_fill: None,
             hover_stroke: None,
             all_rows_use_available_width: true,
+            fixed_column_count: None,
             clickable: false,
         }
+    }
+
+    /// Use this many equal-width columns, overriding per-item minimum widths.
+    ///
+    /// [`Self::all_rows_use_available_width`] controls whether an incomplete row stretches.
+    pub fn fixed_column_count(mut self, columns: NonZeroUsize) -> Self {
+        self.fixed_column_count = Some(columns);
+        self
     }
 
     /// Whether all rows stretch to fill the available width (default: `true`).
@@ -126,6 +140,7 @@ impl CardLayout {
             hover_fill,
             hover_stroke,
             all_rows_use_available_width,
+            fixed_column_count,
             clickable,
         } = self;
 
@@ -141,7 +156,21 @@ impl CardLayout {
         let item_spacing = ui.spacing().item_spacing;
 
         // Assign items to rows based on available width.
-        let rows = Self::assign_items_to_rows(&items, available_width, item_spacing.x);
+        let rows = if let Some(columns) = fixed_column_count {
+            let columns = columns.get();
+            (0..items.len())
+                .step_by(columns)
+                .map(|start| {
+                    let end = start.saturating_add(columns).min(items.len());
+                    RowAssignment {
+                        items: re_span::Span::from_start_end(start, end),
+                        total_width: items[start..end].iter().map(|item| item.min_width).sum(),
+                    }
+                })
+                .collect()
+        } else {
+            Self::assign_items_to_rows(&items, available_width, item_spacing.x)
+        };
 
         // Read cached row heights from previous frame.
         // For rows without cached data, use the nearest known row height (or 100 as a last resort).
@@ -190,6 +219,16 @@ impl CardLayout {
                 available_width / row.total_width
             };
 
+            let fixed_column_width = fixed_column_count.map(|columns| {
+                let columns = if all_rows_use_available_width {
+                    row.items.len
+                } else {
+                    columns.get()
+                };
+                ((available_width - item_spacing.x * (columns - 1) as f32) / columns as f32)
+                    .at_least(0.0)
+            });
+
             let mut card_x = full_rect.min.x;
             let mut new_row_stats = RowStats::default();
 
@@ -198,8 +237,9 @@ impl CardLayout {
                 let frame = item.frame.unwrap_or(default_frame);
                 let item_clickable = item.clickable.unwrap_or(clickable);
                 let frame_margin = frame.inner_margin.sum();
-                let card_width =
-                    (item_growth * item.min_width - gap_space_item).at_most(available_width);
+                let card_width = fixed_column_width.unwrap_or_else(|| {
+                    (item_growth * item.min_width - gap_space_item).at_most(available_width)
+                });
 
                 let card_rect = egui::Rect::from_min_size(
                     egui::pos2(card_x, row_y),
@@ -320,10 +360,66 @@ impl CardLayout {
 
 #[cfg(test)]
 mod tests {
+    use std::num::NonZeroUsize;
+
     use egui_kittest::Harness;
     use egui_kittest::kittest::Queryable as _;
 
     use super::{CardLayout, CardLayoutItem, Frame};
+
+    #[test]
+    fn explicit_columns_respect_last_row_stretching() {
+        for (available, columns, num_items, stretch) in [
+            (708.0, 2, 3, false),
+            (708.0, 2, 3, true),
+            (708.0, 2, 1, false),
+            (708.0, 2, 1, true),
+            (300.0, 1, 2, false),
+            (2642.0, 7, 8, false),
+        ] {
+            let mut rects = Vec::new();
+            Harness::builder()
+                .with_size(egui::vec2(2800.0, 800.0))
+                .build_ui(|ui| {
+                    ui.set_width(available);
+                    ui.spacing_mut().item_spacing = egui::vec2(8.0, 8.0);
+                    rects.clear();
+                    CardLayout::uniform(num_items, 350.0, Frame::NONE)
+                        .fixed_column_count(NonZeroUsize::new(columns).unwrap())
+                        .all_rows_use_available_width(stretch)
+                        .show(ui, |ui, _, _| {
+                            rects.push(ui.allocate_space(egui::vec2(ui.available_width(), 40.0)).1);
+                        });
+                })
+                .run();
+            assert_eq!(rects.len(), num_items);
+
+            for row in rects.chunks(columns) {
+                let row_columns = if stretch { row.len() } else { columns };
+                let width = (available - 8.0 * (row_columns - 1) as f32) / row_columns as f32;
+                for rect in row {
+                    // egui rounds widget rectangles to physical pixels.
+                    assert!(
+                        (rect.width() - width).abs() <= 1.0,
+                        "card width {} differs from column width {width}",
+                        rect.width(),
+                    );
+                    assert_eq!(rect.top(), row[0].top());
+                }
+                if stretch || row.len() == columns {
+                    let span = row.last().unwrap().right() - row[0].left();
+                    assert!(
+                        (span - available).abs() <= 1.0,
+                        "row must fill available width"
+                    );
+                }
+            }
+            if num_items > columns {
+                assert!(rects[columns].top() > rects[0].top());
+                assert_eq!(rects[columns].left(), rects[0].left());
+            }
+        }
+    }
 
     #[derive(Default)]
     struct Clicks {

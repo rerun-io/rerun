@@ -16,7 +16,7 @@ Float32
 
 ## API reference links
  * 🌊 [C++ API docs for `StrokeWidth`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1StrokeWidth.html)
- * 🐍 [Python API docs for `StrokeWidth`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.StrokeWidth)
+ * 🐍 [Python API docs for `StrokeWidth`](https://ref.rerun.io/docs/python/stable/components#rerun.components.StrokeWidth)
  * 🦀 [Rust API docs for `StrokeWidth`](https://docs.rs/rerun/latest/rerun/components/struct.StrokeWidth.html)
 
 

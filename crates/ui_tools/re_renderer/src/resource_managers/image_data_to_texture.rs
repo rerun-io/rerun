@@ -34,8 +34,6 @@ pub enum SourceImageDataFormat {
     ///
     /// Converted to RGB using bilinear demosaicing.
     Bayer(BayerPattern),
-    //
-    // TODO(#10648): Add rgb (3 channels!) formats.
 }
 
 impl From<wgpu::TextureFormat> for SourceImageDataFormat {

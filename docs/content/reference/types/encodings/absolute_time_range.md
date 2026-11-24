@@ -27,7 +27,7 @@ Struct(
 
 ## API reference links
  * 🌊 [C++ API docs for `AbsoluteTimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1encodings_1_1AbsoluteTimeRange.html)
- * 🐍 [Python API docs for `AbsoluteTimeRange`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.AbsoluteTimeRange)
+ * 🐍 [Python API docs for `AbsoluteTimeRange`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.AbsoluteTimeRange)
  * 🦀 [Rust API docs for `AbsoluteTimeRange`](https://docs.rs/rerun/latest/rerun/encodings/struct.AbsoluteTimeRange.html)
 
 

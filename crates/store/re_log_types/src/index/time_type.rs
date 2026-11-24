@@ -309,7 +309,7 @@ mod tests {
             (TimeInt::MIN, "beginning"),
             (TimeInt::MAX, "end"),
             (TimeInt::new_temporal(-42), "#−42"),
-            (TimeInt::new_temporal(12345), "#12 345"),
+            (TimeInt::new_temporal(12345), "#12 345"),
         ];
 
         for (int, s) in cases {

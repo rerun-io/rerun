@@ -22,7 +22,7 @@ Supports raw text and markdown.
 
 ## API reference links
  * 🌊 [C++ API docs for `TextDocument`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1TextDocument.html)
- * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.TextDocument)
+ * 🐍 [Python API docs for `TextDocument`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.TextDocument)
  * 🦀 [Rust API docs for `TextDocument`](https://docs.rs/rerun/latest/rerun/archetypes/struct.TextDocument.html)
 
 ## Example
@@ -36,6 +36,6 @@ snippet: archetypes/text_document
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/1200w.png">
-  <img src="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png">
+  <img src="https://static.rerun.io/textdocument/babda19558ee32ed8d730495b595aee7a5e2c174/full.png" alt="Rerun Viewer with a rendered markdown document view next to a plain text document view, and the raw markdown in the selection panel">
 </picture>
 

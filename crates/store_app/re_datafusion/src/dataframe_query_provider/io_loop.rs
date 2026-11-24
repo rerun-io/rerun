@@ -21,11 +21,11 @@ use tracing::Instrument as _;
 use crate::ObjectStoreAuthenticator;
 use crate::analytics::{QueryErrorKind, TaskFetchStats};
 use crate::chunk_fetcher::{
-    ChunksWithSegment, DIRECT_FETCH_HTTP_CLIENT, SortedChunksWithSegment, batch_byte_size,
+    DIRECT_FETCH_HTTP_CLIENT, SortedChunksWithSegment, batch_byte_size,
     batch_byte_size_uncompressed, batch_has_any_direct_urls, fetch_batch_direct,
     fetch_batch_group_via_grpc, split_batch_by_direct_url,
 };
-use crate::dataframe_query_common::{DataframeClientAPI, force_grpc};
+use crate::dataframe_query_common::{ChunksWithSegment, DataframeClientAPI, force_grpc};
 use crate::metrics_capture::{InflightFetchGuard, QueryMetrics};
 #[cfg(test)]
 use crate::pipeline_budget::MAX_CONCURRENT_SEGMENTS;
@@ -279,10 +279,7 @@ fn sort_chunks_by_segment_order(
 
     // Extract all chunks and group by segment
     for chunks_with_segment in chunks {
-        for (chunk, segment_id_opt) in chunks_with_segment {
-            let Some(segment_id) = segment_id_opt else {
-                continue;
-            };
+        for (chunk, segment_id) in chunks_with_segment {
             segment_groups.entry(segment_id).or_default().push(chunk);
         }
     }
@@ -1007,8 +1004,6 @@ pub(super) async fn chunk_stream_io_loop<T: DataframeClientAPI>(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashMap;
-
     use arrow::array::{
         BooleanArray, FixedSizeBinaryBuilder, Int64Array, RecordBatchOptions, StringArray,
         UInt64Array,
@@ -1448,9 +1443,9 @@ mod tests {
         let segment_order: Vec<SegmentId> = vec!["segA".into(), "segB".into(), "segC".into()];
 
         let chunks: Vec<ChunksWithSegment> = vec![
-            vec![(empty_chunk.clone(), Some("segC".into()))],
-            vec![(empty_chunk.clone(), Some("segA".into()))],
-            vec![(empty_chunk.clone(), Some("segB".into()))],
+            vec![(empty_chunk.clone(), "segC".into())],
+            vec![(empty_chunk.clone(), "segA".into())],
+            vec![(empty_chunk.clone(), "segB".into())],
         ];
 
         let sorted_chunks = sort_chunks_by_segment_order(chunks, &segment_order);
@@ -1475,13 +1470,13 @@ mod tests {
         let chunks: Vec<ChunksWithSegment> = vec![
             // Single response containing segments in wrong order: segC, segA, segB
             vec![
-                (empty_chunk.clone(), Some("segC".into())),
-                (empty_chunk.clone(), Some("segC".into())), // Multiple chunks for segC
-                (empty_chunk.clone(), Some("segA".into())),
-                (empty_chunk.clone(), Some("segB".into())),
-                (empty_chunk.clone(), Some("segB".into())), // Multiple chunks for segB
-                (empty_chunk.clone(), Some("segA".into())), // More chunks for segA
-                (empty_chunk.clone(), Some("segB".into())), // More chunks for segB
+                (empty_chunk.clone(), "segC".into()),
+                (empty_chunk.clone(), "segC".into()), // Multiple chunks for segC
+                (empty_chunk.clone(), "segA".into()),
+                (empty_chunk.clone(), "segB".into()),
+                (empty_chunk.clone(), "segB".into()), // Multiple chunks for segB
+                (empty_chunk.clone(), "segA".into()), // More chunks for segA
+                (empty_chunk.clone(), "segB".into()), // More chunks for segB
             ],
         ];
 
@@ -1518,14 +1513,14 @@ mod tests {
 
         let chunks: Vec<ChunksWithSegment> = vec![
             // Single segment response
-            vec![(empty_chunk.clone(), Some("segC".into()))],
+            vec![(empty_chunk.clone(), "segC".into())],
             // Multi-segment response
             vec![
-                (empty_chunk.clone(), Some("segB".into())),
-                (empty_chunk.clone(), Some("segA".into())),
+                (empty_chunk.clone(), "segB".into()),
+                (empty_chunk.clone(), "segA".into()),
             ],
             // Another single segment response
-            vec![(empty_chunk.clone(), Some("segB".into()))],
+            vec![(empty_chunk.clone(), "segB".into())],
         ];
 
         let sorted_chunks = sort_chunks_by_segment_order(chunks, &segment_order);

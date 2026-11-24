@@ -8,7 +8,17 @@ options = { tabWidth = 2 }
 
 [[overrides]]
 files = ["*.js", "*.mjs", "*.cjs", "*.ts", "*.d.ts"]
-options = { semi = true, tabWidth = 2 }
+# Match rustfmt's default width, except for snippets embedded on the website.
+options = { semi = true, tabWidth = 2, printWidth = 100, quoteProps = "preserve" }
+
+[[overrides]]
+files = [
+  "docs/snippets/**/*.js",
+  "docs/snippets/**/*.mjs",
+  "docs/snippets/**/*.cjs",
+  "docs/snippets/**/*.ts",
+]
+options = { printWidth = 80 }
 
 [[overrides]]
 files = [".prettierrc", "*.json", "*.css", "*.html"]

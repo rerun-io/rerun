@@ -87,8 +87,27 @@ pub enum SystemCommand {
     /// showing the recording does.
     EnsureRecordingBlueprint(StoreId),
 
+    /// Make a blueprint of a catalog dataset the active blueprint of an application.
+    ///
+    /// The blueprint is streamed from the server first if the viewer doesn't have all of it. A
+    /// streamed blueprint becomes active once its stream ends, unless another blueprint of the
+    /// application was picked or reset by then. The cached copy of the blueprint becomes active
+    /// if there is one, and otherwise a new clone of it.
+    ActivateDatasetBlueprint {
+        application_id: re_log_types::ApplicationId,
+        origin: re_uri::Origin,
+        blueprint_dataset: re_log_types::EntryId,
+        blueprint_segment: re_types_core::SegmentId,
+    },
+
     /// Activates the setting route.
     OpenSettings,
+
+    /// Open the agent panel, and send `prompt` in a new conversation that preselects `model`.
+    TriggerPrompt {
+        model: re_agent_tools::ModelPreselect,
+        prompt: String,
+    },
 
     /// Activates the chunk store route.
     OpenChunkStoreBrowser {
@@ -127,6 +146,18 @@ pub enum SystemCommand {
     /// does not affect the default blueprint if any was set.
     ClearActiveBlueprintAndEnableHeuristics,
 
+    /// Make the heuristic blueprint the active blueprint of an application.
+    ///
+    /// The blueprint with the local cache entry of the application becomes active if there is
+    /// one, and otherwise the heuristics generate a new blueprint. No cache entry is deleted.
+    ActivateHeuristicBlueprint(re_log_types::ApplicationId),
+
+    /// Discard all changes to the active blueprint.
+    ///
+    /// The active blueprint becomes a new clone of the blueprint it was cloned from. If it wasn't
+    /// cloned from one, the heuristics generate a new blueprint.
+    ResetActiveBlueprint,
+
     /// Close a [`RecordingOrLocalTable`] and free its memory.
     CloseRecordingOrTable(RecordingOrLocalTable),
 
@@ -137,10 +168,16 @@ pub enum SystemCommand {
     ///
     /// Edit recordings with case: we generally regard recordings as immutable.
     ///
-    /// For blueprints,the [`StoreId`] should generally be the currently selected blueprint.
-    ///
     /// Instead of using this directly, consider using `save_blueprint_archetype` or similar.
-    AppendToStore(StoreId, Vec<Chunk>),
+    AppendToStore {
+        /// The store to append to.
+        ///
+        /// For blueprints, this should generally be the currently selected blueprint.
+        store_id: StoreId,
+
+        /// The chunks to append.
+        chunks: Vec<Chunk>,
+    },
 
     UndoBlueprint {
         blueprint_id: StoreId,
@@ -152,11 +189,17 @@ pub enum SystemCommand {
     /// Drop a specific entity from a store.
     ///
     /// Also drops all recursive children.
-    ///
-    /// The [`StoreId`] should generally be the currently selected blueprint
-    /// but is tracked manually to ensure self-consistency if the blueprint
-    /// is both modified and changed in the same frame.
-    DropEntity(StoreId, EntityPath),
+    DropEntity {
+        /// The store to drop the entity from.
+        ///
+        /// This should generally be the currently selected blueprint
+        /// but is tracked manually to ensure self-consistency if the blueprint
+        /// is both modified and changed in the same frame.
+        store_id: StoreId,
+
+        /// The entity to drop.
+        entity_path: EntityPath,
+    },
 
     /// Show a timeline of the blueprint data.
     #[cfg(debug_assertions)]

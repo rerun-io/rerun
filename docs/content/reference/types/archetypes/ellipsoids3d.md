@@ -38,7 +38,7 @@ Orienting and placing ellipsoids/spheres forms a separate transform that is appl
 
 ## API reference links
  * 🌊 [C++ API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Ellipsoids3D.html)
- * 🐍 [Python API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Ellipsoids3D)
+ * 🐍 [Python API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.Ellipsoids3D)
  * 🦀 [Rust API docs for `Ellipsoids3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Ellipsoids3D.html)
 
 ## Example
@@ -52,6 +52,6 @@ snippet: archetypes/ellipsoids3d_simple
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/1200w.png">
-  <img src="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/full.png">
+  <img src="https://static.rerun.io/elliopsoid3d_simple/bd5d46e61b80ae44792b52ee07d750a7137002ea/full.png" alt="3D view of a purple point cloud enclosed by yellow wireframe ellipsoids marking its covariance">
 </picture>
 

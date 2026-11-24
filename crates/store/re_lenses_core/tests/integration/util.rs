@@ -325,7 +325,6 @@ pub mod fixtures {
         );
 
         // Wrap in a ListArray.
-        use arrow::buffer::OffsetBuffer;
         let list_offsets = OffsetBuffer::from_lengths([1, 1, 0, 2]); // varying list lengths
         let list_nulls = NullBuffer::from(vec![true, true, false, true]); // third list is null
 

@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-import warnings
 from typing import TYPE_CHECKING
+
+from typing_extensions import deprecated
 
 from rerun_bindings import _UrdfJointInternal, _UrdfLinkInternal, _UrdfMimicInternal, _UrdfTreeInternal
 
+from ._kinematic_tree import _KinematicJoint, _KinematicTree
+
 if TYPE_CHECKING:
-    from collections.abc import Sequence
     from pathlib import Path
 
-    import pyarrow as pa
-
-    from . import Transform3D
-    from ._baseclasses import ComponentColumnList
-    from .chunk import LazyChunkStream
     from .recording_stream import RecordingStream
 
 __all__ = ["UrdfJoint", "UrdfLink", "UrdfMimic", "UrdfTree"]
@@ -49,11 +46,15 @@ class UrdfMimic:
         return self._inner.__repr__()
 
 
-class UrdfJoint:
-    """A URDF joint with properties and transform computation."""
+class UrdfJoint(_KinematicJoint):
+    """
+    A URDF joint with properties and transform computation.
 
-    def __init__(self, inner: _UrdfJointInternal) -> None:
-        self._inner = inner
+    Its value is an angle in radians for revolute and continuous joints, and a distance in meters for prismatic
+    joints, and is ignored for fixed joints.
+    """
+
+    _inner: _UrdfJointInternal
 
     @property
     def name(self) -> str:
@@ -116,74 +117,6 @@ class UrdfJoint:
         inner = self._inner.mimic
         return UrdfMimic(inner) if inner is not None else None
 
-    def compute_transform(self, value: float, clamp: bool = True) -> Transform3D:
-        """
-        Compute a Transform3D for this joint at the given value.
-
-        Parameters
-        ----------
-        value:
-            Joint angle in radians (revolute/continuous) or distance in meters (prismatic).
-            Ignored for fixed joints. Values outside limits are clamped with a warning if `clamp` is True.
-        clamp:
-            Whether to clamp & warn about values outside joint limits.
-
-        Returns
-        -------
-        Transform3D
-            Transform with rotation, translation, parent_frame, and child_frame ready to log.
-
-        """
-        from . import Transform3D
-        from .encodings import Quaternion
-
-        result = self._inner.compute_transform(value, clamp=clamp)
-
-        if result["warning"] is not None:
-            warnings.warn(result["warning"], UserWarning, stacklevel=2)
-
-        return Transform3D(
-            quaternion=Quaternion(xyzw=result["quaternion_xyzw"]),
-            translation=result["translation"],
-            parent_frame=result["parent_frame"],
-            child_frame=result["child_frame"],
-        )
-
-    def compute_transform_columns(self, values: Sequence[float], *, clamp: bool = True) -> ComponentColumnList:
-        """
-        Compute transforms for this joint at multiple values, returning columnar data for use with `send_columns`.
-
-        Parameters
-        ----------
-        values:
-            Joint values: angles in radians (revolute/continuous) or distances in meters (prismatic).
-            Values outside limits are clamped with a warning if `clamp` is True.
-        clamp:
-            Whether to clamp & warn about values outside joint limits.
-
-        Returns
-        -------
-        ComponentColumnList
-            Columnar transform data ready for use with [`rerun.send_columns`][].
-
-        """
-        from . import Transform3D
-
-        result = self._inner.compute_transform_columns(list(values), clamp=clamp)
-
-        for warning in result["warnings"]:
-            warnings.warn(warning, UserWarning, stacklevel=2)
-
-        return Transform3D.columns(
-            translation=result["translations"],
-            quaternion=result["quaternions_xyzw"],
-            parent_frame=[result["parent_frame"]] * len(values),
-            child_frame=[result["child_frame"]] * len(values),
-        )
-
-    def __repr__(self) -> str:
-        return self._inner.__repr__()
-
 
 class UrdfLink:
     """A URDF link."""
@@ -200,17 +133,16 @@ class UrdfLink:
         return self._inner.__repr__()
 
 
-class UrdfTree:
+class UrdfTree(_KinematicTree):
     """
     A URDF robot model with joints and links.
 
-    Use [`log_urdf_to_recording`][rerun.urdf.UrdfTree.log_urdf_to_recording] to log the full model (geometry + static transforms), then animate
+    Use [`log_to_recording`][rerun.urdf.UrdfTree.log_to_recording] to log the full model (geometry + static transforms), then animate
     individual joints by logging [`archetypes.Transform3D`][rerun.archetypes.Transform3D] computed via
     [`UrdfJoint.compute_transform`][rerun.urdf.UrdfJoint.compute_transform].
     """
 
-    def __init__(self, inner: _UrdfTreeInternal) -> None:
-        self._inner = inner
+    _inner: _UrdfTreeInternal
 
     @staticmethod
     def from_file_path(
@@ -246,16 +178,6 @@ class UrdfTree:
                 static_transform_entity_path=static_transform_entity_path,
             )
         )
-
-    @property
-    def name(self) -> str:
-        """Name of the robot defined in this URDF."""
-        return self._inner.name
-
-    @property
-    def frame_prefix(self) -> str | None:
-        """The frame prefix, if set."""
-        return self._inner.frame_prefix
 
     def root_link(self) -> UrdfLink:
         """Get the root link of the URDF."""
@@ -314,13 +236,8 @@ class UrdfTree:
             either by name or as an UrdfLink instance.
 
         """
-        if isinstance(link, str):
-            inner = self._inner.get_link_by_name(link)
-            if inner is None:
-                return []
-        else:
-            inner = link._inner
-        return self._inner.get_visual_geometry_paths(inner)
+        inner = self._link_inner(link)
+        return self._inner.get_visual_geometry_paths(inner) if inner is not None else []
 
     def get_collision_geometry_paths(self, link: str | UrdfLink) -> list[str]:
         """
@@ -333,21 +250,18 @@ class UrdfTree:
             either by name or as an UrdfLink instance.
 
         """
-        if isinstance(link, str):
-            inner = self._inner.get_link_by_name(link)
-            if inner is None:
-                return []
-        else:
-            inner = link._inner
-        return self._inner.get_collision_geometry_paths(inner)
+        inner = self._link_inner(link)
+        return self._inner.get_collision_geometry_paths(inner) if inner is not None else []
 
+    def _link_inner(self, link: str | UrdfLink) -> _UrdfLinkInternal | None:
+        if isinstance(link, str):
+            return self._inner.get_link_by_name(link)
+        return link._inner
+
+    @deprecated("Renamed to `log_to_recording`.")
     def log_urdf_to_recording(self, recording: RecordingStream | None = None) -> None:
         """
         Log the full robot model (geometry + static transforms) to a recording stream.
-
-        This can be used as alternative to [`rerun.log_file_from_path`][] for URDF files,
-        especially in cases where you need the extra configuration options of `UrdfTree`
-        (e.g. `frame_prefix` for multi-robot setups).
 
         Parameters
         ----------
@@ -355,61 +269,4 @@ class UrdfTree:
             The recording stream to log to. If `None`, the current active recording is used.
 
         """
-        self._inner.log(recording.to_native() if recording is not None else None)
-
-    def stream(self, *, include_joint_transforms: bool = True) -> LazyChunkStream:
-        """
-        Return a lazy stream over chunks emitted from this URDF tree.
-
-        !!! warning
-            This method is experimental and returns the experimental
-            `rerun.chunk.LazyChunkStream` API.
-
-        Parameters
-        ----------
-        include_joint_transforms:
-            Whether to include the static joint transforms from the URDF.
-
-        """
-        from .chunk import LazyChunkStream
-
-        return LazyChunkStream(self._inner.stream(include_joint_transforms=include_joint_transforms))
-
-    def compute_joint_transform_batches(
-        self,
-        names: pa.Array,
-        values: pa.Array,
-        *,
-        clamp: bool = False,
-    ) -> pa.Array:
-        """
-        Compute batches of 3D transform components from Arrow list arrays containing joint names and values.
-
-        `names` must be a `ListArray` with `Utf8` values.
-        `values` must be a `ListArray` with values castable to `Float64`.
-
-        The output is a `ListArray` with `translation`, `quaternion`, `parent_frame`, and
-        `child_frame` fields and the same outer row count as the inputs.
-
-        Note: this is intended as a helper for lens pipelines, where you would usually pipe this output
-        through an additional lens that scatters each batch into final `Transform3D` component rows.
-
-        Parameters
-        ----------
-        names:
-            Joint names for each row.
-        values:
-            Joint values for each row.
-        clamp:
-            Whether to clamp & warn about values outside joint limits.
-
-        Returns
-        -------
-        pa.Array
-            Transform batches with one outer row for each input row.
-
-        """
-        return self._inner.compute_joint_transform_batches(names, values, clamp=clamp)
-
-    def __repr__(self) -> str:
-        return self._inner.__repr__()
+        self.log_to_recording(recording)

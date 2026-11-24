@@ -1,3 +1,5 @@
+use re_protos::log_msg::v1alpha1::{ArrowMsg, BlueprintActivationCommand, SetStoreInfo};
+
 use crate::rrd::{CodecError, Decodable, Encodable, MessageHeader, MessageKind};
 
 impl Encodable for re_protos::log_msg::v1alpha1::log_msg::Msg {
@@ -75,67 +77,53 @@ impl Encodable for re_protos::log_msg::v1alpha1::RrdManifest {
 // definitions. I.e. `MessageKind::End` yields `None`.
 impl Decodable for Option<re_protos::log_msg::v1alpha1::log_msg::Msg> {
     /// This expects `data` to carry the `MessageHeader` bytes too!
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
-        use re_protos::log_msg::v1alpha1::{ArrowMsg, BlueprintActivationCommand, SetStoreInfo};
+    fn from_rrd_bytes(mut data: impl bytes::Buf) -> Result<Self, CodecError> {
+        let mut header = [0u8; MessageHeader::ENCODED_SIZE_BYTES];
+        data.try_copy_to_slice(&mut header).map_err(|err| {
+            CodecError::FrameDecoding(format!(
+                "message of {} bytes is too short to hold a {}-byte header",
+                err.available, err.requested
+            ))
+        })?;
+        decode_transport_msg(MessageHeader::from_rrd_bytes(header.as_slice())?.kind, data)
+    }
+}
 
-        let header = MessageHeader::from_rrd_bytes(&data[..MessageHeader::ENCODED_SIZE_BYTES])?;
+/// Decodes the payload of a message of the given `kind`, excluding its `MessageHeader`.
+///
+/// `MessageKind::End` yields `None`. See [`Decodable`] for how the type of `payload`
+/// affects copies and lifetimes.
+pub fn decode_transport_msg(
+    kind: MessageKind,
+    payload: impl bytes::Buf,
+) -> Result<Option<re_protos::log_msg::v1alpha1::log_msg::Msg>, CodecError> {
+    use re_protos::log_msg::v1alpha1::log_msg::Msg;
 
-        let data = &data[MessageHeader::ENCODED_SIZE_BYTES..];
-        let msg = match header.kind {
-            MessageKind::SetStoreInfo => {
-                Some(re_protos::log_msg::v1alpha1::log_msg::Msg::SetStoreInfo(
-                    SetStoreInfo::from_rrd_bytes(data)?,
-                ))
+    Ok(Some(match kind {
+        MessageKind::SetStoreInfo => Msg::SetStoreInfo(SetStoreInfo::from_rrd_bytes(payload)?),
+        MessageKind::ArrowMsg => Msg::ArrowMsg(ArrowMsg::from_rrd_bytes(payload)?),
+        MessageKind::BlueprintActivationCommand => {
+            Msg::BlueprintActivationCommand(BlueprintActivationCommand::from_rrd_bytes(payload)?)
+        }
+        MessageKind::End => return Ok(None),
+    }))
+}
+
+macro_rules! impl_decodable_message {
+    ($($ty:ty),* $(,)?) => {$(
+        impl Decodable for $ty {
+            fn from_rrd_bytes(data: impl bytes::Buf) -> Result<Self, CodecError> {
+                use re_protos::external::prost::Message as _;
+                Ok(Self::decode(data)?)
             }
-
-            MessageKind::ArrowMsg => Some(re_protos::log_msg::v1alpha1::log_msg::Msg::ArrowMsg(
-                ArrowMsg::from_rrd_bytes(data)?,
-            )),
-
-            MessageKind::BlueprintActivationCommand => Some(
-                re_protos::log_msg::v1alpha1::log_msg::Msg::BlueprintActivationCommand(
-                    BlueprintActivationCommand::from_rrd_bytes(data)?,
-                ),
-            ),
-
-            MessageKind::End => None,
-        };
-
-        Ok(msg)
-    }
+        }
+    )*};
 }
 
-impl Decodable for re_protos::log_msg::v1alpha1::SetStoreInfo {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
-        use re_protos::external::prost::Message as _;
-        Ok(Self::decode(data)?)
-    }
-}
-
-impl Decodable for re_protos::log_msg::v1alpha1::ArrowMsg {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
-        use re_protos::external::prost::Message as _;
-        Ok(Self::decode(data)?)
-    }
-}
-
-impl Decodable for re_protos::log_msg::v1alpha1::BlueprintActivationCommand {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
-        use re_protos::external::prost::Message as _;
-        Ok(Self::decode(data)?)
-    }
-}
-
-impl Decodable for re_protos::log_msg::v1alpha1::RrdFooter {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
-        use re_protos::external::prost::Message as _;
-        Ok(Self::decode(data)?)
-    }
-}
-
-impl Decodable for re_protos::log_msg::v1alpha1::RrdManifest {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError> {
-        use re_protos::external::prost::Message as _;
-        Ok(Self::decode(data)?)
-    }
-}
+impl_decodable_message!(
+    ArrowMsg,
+    BlueprintActivationCommand,
+    SetStoreInfo,
+    re_protos::log_msg::v1alpha1::RrdFooter,
+    re_protos::log_msg::v1alpha1::RrdManifest,
+);

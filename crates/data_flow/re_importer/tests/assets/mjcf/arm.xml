@@ -1,0 +1,28 @@
+<mujoco model="test_arm">
+  <compiler angle="radian"/>
+
+  <default>
+    <default class="collision">
+      <geom group="3"/>
+    </default>
+  </default>
+
+  <worldbody>
+    <body name="base">
+      <geom name="base_visual" type="box" size="0.1 0.1 0.05"/>
+      <body name="shoulder" pos="0 0 1">
+        <joint name="yaw" axis="0 0 1"/>
+        <joint name="pitch" axis="0 1 0" pos="1 0 0"/>
+        <geom name="shoulder_visual" type="sphere" size="0.05"/>
+        <geom name="shoulder_collision" class="collision" type="capsule" fromto="0 0 0 1 0 0" size="0.05"/>
+        <body name="slider" pos="1 0 0">
+          <joint name="extend" type="slide" axis="1 0 0" ref="0.5"/>
+        </body>
+        <body name="wrist">
+          <joint name="limited" axis="1 0 0" range="-1 1"/>
+          <joint name="ball" type="ball"/>
+        </body>
+      </body>
+    </body>
+  </worldbody>
+</mujoco>

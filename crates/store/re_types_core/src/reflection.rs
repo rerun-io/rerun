@@ -534,6 +534,12 @@ impl ViewApplicability {
 /// Runtime reflection about a view.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewReflection {
+    /// Short Markdown description shared with the view's documentation overview.
+    pub description: String,
+
+    /// Discovery terms for choosing a view by its intended use.
+    pub keywords: Vec<String>,
+
     /// What archetypes this view is applicable to.
     pub applicability: ViewApplicability,
 
@@ -551,6 +557,8 @@ impl ViewReflection {
 impl Default for ViewReflection {
     fn default() -> Self {
         Self {
+            description: String::new(),
+            keywords: Vec::new(),
             applicability: ViewApplicability::Archetypes(Vec::new()),
             property_archetypes: Vec::new(),
         }

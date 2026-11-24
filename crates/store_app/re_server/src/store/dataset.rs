@@ -20,6 +20,7 @@ use re_protos::cloud::v1alpha1::{EntryKind, ScanSegmentTableResponse};
 use re_protos::common::v1alpha1::ext::{
     DatasetHandle, DatasetKind, IfDuplicateBehavior, SegmentId,
 };
+use re_protos::protocol_level::ProtocolLevel;
 use re_sorbet::ColumnKind;
 use re_sorbet::metadata::RERUN_KIND;
 use re_types_core::LayerName;
@@ -56,6 +57,9 @@ pub struct Dataset {
     created_at: jiff::Timestamp,
     inner: Tracked<DatasetInner>,
 
+    /// The lowest protocol level a client needs to read this dataset.
+    required_client_protocol_level: ProtocolLevel,
+
     /// Mutable per-segment properties, written and read without registering anything.
     ///
     /// Kept outside `inner`: these are not part of the layer model, and rewriting them must not
@@ -71,24 +75,44 @@ pub struct Dataset {
 }
 
 impl Dataset {
+    /// An empty dataset, created at `created_at` and last modified at `updated_at`.
     pub fn new(
         id: EntryId,
         name: EntryName,
         dataset_kind: DatasetKind,
         details: DatasetDetails,
+        created_at: jiff::Timestamp,
+        updated_at: jiff::Timestamp,
     ) -> Self {
         Self {
             id,
             dataset_kind,
-            created_at: jiff::Timestamp::now(),
-            inner: Tracked::new(DatasetInner {
-                name,
-                details,
-                segments: Default::default(),
-            }),
+            created_at,
+            inner: Tracked::new(
+                DatasetInner {
+                    name,
+                    details,
+                    segments: Default::default(),
+                },
+                updated_at,
+            ),
+            required_client_protocol_level: ProtocolLevel::BASELINE,
             segment_properties: Default::default(),
             cached_schema: Mutex::new(None),
         }
+    }
+
+    /// The lowest protocol level a client needs to read this dataset.
+    #[inline]
+    pub fn required_client_protocol_level(&self) -> ProtocolLevel {
+        self.required_client_protocol_level
+    }
+
+    /// Raises the lowest protocol level a client needs to read this dataset to at least `level`.
+    ///
+    /// Never lowers it: whatever made a level necessary stays in the dataset.
+    pub fn raise_required_client_protocol_level(&mut self, level: ProtocolLevel) {
+        self.required_client_protocol_level = self.required_client_protocol_level.max(level);
     }
 
     #[inline]
@@ -268,6 +292,8 @@ impl Dataset {
                 dataset_kind: self.dataset_kind,
                 url: url::Url::parse(&format!("memory:///{}", self.id)).expect("valid url"),
             },
+
+            required_client_protocol_level: self.required_client_protocol_level,
         }
     }
 
@@ -543,6 +569,10 @@ impl Dataset {
         Ok(())
     }
 
+    /// Add a layer to a segment, creating the segment if needed.
+    ///
+    /// `registration_time` orders the layers of a segment: see [`Segment::iter_sources`].
+    //
     // we can't expect there are no async calls without the lance feature
     #[allow(clippy::allow_attributes)]
     #[allow(clippy::unused_async)]
@@ -553,6 +583,7 @@ impl Dataset {
         store_slot_id: StoreSlotId,
         resolved: ResolvedStore,
         storage_url: Url,
+        registration_time: jiff::Timestamp,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<(), Error> {
         let layer_name = &layer_info.name;
@@ -592,6 +623,7 @@ impl Dataset {
             DataSourceKind::Rrd,
             storage_url,
             layer_info,
+            registration_time,
         )?);
 
         self.enforce_limits(&segment_id, &source)?;
@@ -713,6 +745,7 @@ impl Dataset {
                 slot_id,
                 resolved,
                 storage_url.clone(),
+                jiff::Timestamp::now(),
                 on_duplicate,
             )
             .await?;

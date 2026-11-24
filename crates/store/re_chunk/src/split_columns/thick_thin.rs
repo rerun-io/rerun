@@ -111,7 +111,7 @@ mod tests {
 
     use re_log_types::{EntityPath, Timeline, example_components::MyPoint};
     use re_sdk_types::components::Blob;
-    use re_types_core::{ArchetypeName, ComponentDescriptor};
+    use re_types_core::ComponentDescriptor;
 
     use crate::RowId;
 

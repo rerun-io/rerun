@@ -41,6 +41,36 @@ pub fn settings_screen_ui(
     });
 }
 
+/// The user's analytics opt-out.
+///
+/// On native, this is the same setting as `rerun analytics enable|disable`; on the web, it is
+/// saved for this website in this browser.
+fn analytics_checkbox_ui(ui: &mut egui::Ui) {
+    let mut enabled = re_analytics::user_switch() == re_analytics::AnalyticsSwitch::Enabled;
+    let hover_text = if cfg!(target_arch = "wasm32") {
+        "Send high-level events about the Viewer features you use. \
+         The data you view is never collected."
+    } else {
+        "Send high-level events about the Viewer features you use. \
+         The data you view is never collected. \
+         Turning this on takes effect after a restart."
+    };
+    if ui
+        .checkbox(&mut enabled, "Send usage data to Rerun")
+        .on_hover_text(hover_text)
+        .changed()
+    {
+        let switch = if enabled {
+            re_analytics::AnalyticsSwitch::Enabled
+        } else {
+            re_analytics::AnalyticsSwitch::Disabled
+        };
+        if let Err(err) = re_analytics::set_user_switch(switch) {
+            re_log::warn!("Failed to save the analytics setting: {err}");
+        }
+    }
+}
+
 fn settings_screen_ui_impl(
     ui: &mut egui::Ui,
     app_options: &mut AppOptions,
@@ -191,6 +221,10 @@ fn settings_screen_ui_impl(
 
     ui.checkbox(check_for_updates_on_startup, "Check for updates on startup");
 
+    if cfg!(feature = "analytics") && startup_options.analytics_mode.allows_analytics() {
+        analytics_checkbox_ui(ui);
+    }
+
     separator_with_some_space(ui);
     ui.strong("Map view");
     map_view_section_ui(ui, mapbox_access_token);
@@ -216,7 +250,6 @@ fn settings_screen_ui_impl(
 
     {
         let ExperimentalAppOptions {
-            agent_panel,
             gamepad_navigation,
             point_cloud_transparency,
         } = experimental;
@@ -227,9 +260,6 @@ fn settings_screen_ui_impl(
                 "Alpha-blend semi-transparent point clouds, sorting them back-to-front.\n\n\
                  Sorting happens on the CPU every frame, so this is very slow for large point clouds.",
             );
-        ui.checkbox(agent_panel, "Agent panel").on_hover_text(
-            "Experimental: chat with an AI agent that can drive the viewer, in a panel on the right.",
-        );
         cfg_select! {
             target_arch = "wasm32" => {
                 let _ = gamepad_navigation;

@@ -68,15 +68,21 @@ similar-asserts.workspace = true
 bench = false
 
 
+# The bin paths are explicit so that the manifest still parses when only manifests are on disk,
+# which is how Dependabot loads path dependencies.
 [[bin]]
 name = "clamped_zip"
+path = "src/bin/clamped_zip.rs"
 required-features = ["codegen"]
 bench = false
+test = false
 
 [[bin]]
 name = "range_zip"
+path = "src/bin/range_zip.rs"
 required-features = ["codegen"]
 bench = false
+test = false
 
 
 [[bench]]

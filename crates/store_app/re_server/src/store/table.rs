@@ -19,6 +19,7 @@ use re_protos::cloud::v1alpha1::ext::{
 #[derive(Clone)]
 pub enum TableType {
     DataFusionTable(Arc<dyn TableProvider>),
+
     #[cfg(all(feature = "lance", not(target_arch = "wasm32")))]
     LanceDataset(Arc<lance::Dataset>),
 }
@@ -37,11 +38,13 @@ pub struct Table {
 }
 
 impl Table {
+    /// A table entry, created at `created_at` and last modified at `updated_at`.
     pub fn new(
         id: EntryId,
         name: EntryName,
         table: TableType,
-        created_at: Option<jiff::Timestamp>,
+        created_at: jiff::Timestamp,
+        updated_at: jiff::Timestamp,
         provider_details: ProviderDetails,
         table_details: TableDetails,
     ) -> Self {
@@ -49,8 +52,8 @@ impl Table {
             id,
             name,
             table,
-            created_at: created_at.unwrap_or_else(jiff::Timestamp::now),
-            updated_at: jiff::Timestamp::now(),
+            created_at,
+            updated_at,
             provider_details,
             table_details,
         }
@@ -290,7 +293,7 @@ impl Table {
         let rb = arrow::record_batch::RecordBatchIterator::new(rb.into_iter(), schema);
 
         let ds = Arc::new(lance::Dataset::write(rb, url.as_str(), None).await?);
-        let created_at = Some(jiff::Timestamp::now());
+        let now = jiff::Timestamp::now();
         let provider_details = LanceTable {
             table_url: url.clone(),
         };
@@ -299,7 +302,8 @@ impl Table {
             id,
             name,
             TableType::LanceDataset(ds),
-            created_at,
+            now,
+            now,
             ProviderDetails::LanceTable(provider_details),
             table_details,
         ))

@@ -451,26 +451,41 @@ impl BlueprintResolvedLatestAtResults<'_> {
 
 /// An enum wrapping either latest-at or range blueprint resolved results.
 pub enum BlueprintResolvedResults<'a> {
-    LatestAt(LatestAtQuery, BlueprintResolvedLatestAtResults<'a>),
-    Range(RangeQuery, BlueprintResolvedRangeResults<'a>),
+    /// Results of a latest-at query.
+    LatestAt {
+        /// The query that produced `results`.
+        query: LatestAtQuery,
+
+        /// The results, with blueprint overrides and defaults resolved.
+        results: BlueprintResolvedLatestAtResults<'a>,
+    },
+
+    /// Results of a range query.
+    Range {
+        /// The query that produced `results`.
+        query: RangeQuery,
+
+        /// The results, with blueprint overrides and defaults resolved.
+        results: BlueprintResolvedRangeResults<'a>,
+    },
 }
 
 impl BlueprintResolvedResults<'_> {
     pub fn timeline(&self) -> re_log_types::TimelineName {
         match self {
-            Self::LatestAt(query, _) => query.timeline().unwrap_or_else(|| {
+            Self::LatestAt { query, .. } => query.timeline().unwrap_or_else(|| {
                 re_log::error_once!("Blueprint latest-at query unexpectedly missing a timeline");
                 re_log_types::TimelineName::log_time()
             }),
-            Self::Range(query, _) => *query.timeline(),
+            Self::Range { query, .. } => *query.timeline(),
         }
     }
 
     /// Are there any chunks that need to be fetched from a remote store?
     pub fn any_missing_chunks(&self) -> bool {
         match self {
-            Self::LatestAt(_, results) => results.any_missing_chunks(),
-            Self::Range(_, results) => results.any_missing_chunks(),
+            Self::LatestAt { results, .. } => results.any_missing_chunks(),
+            Self::Range { results, .. } => results.any_missing_chunks(),
         }
     }
 
@@ -485,8 +500,8 @@ impl BlueprintResolvedResults<'_> {
         re_tracing::profile_function!();
 
         match self {
-            Self::LatestAt(_, results) => results.query_result_hash(),
-            Self::Range(_, results) => results.query_result_hash(),
+            Self::LatestAt { results, .. } => results.query_result_hash(),
+            Self::Range { results, .. } => results.query_result_hash(),
         }
     }
 
@@ -494,8 +509,8 @@ impl BlueprintResolvedResults<'_> {
     #[inline]
     pub fn query_context(&self) -> &QueryContext<'_> {
         match self {
-            Self::LatestAt(_, results) => &results.query_context,
-            Self::Range(_, results) => &results.query_context,
+            Self::LatestAt { results, .. } => &results.query_context,
+            Self::Range { results, .. } => &results.query_context,
         }
     }
 
@@ -513,14 +528,14 @@ impl<'a> From<(LatestAtQuery, BlueprintResolvedLatestAtResults<'a>)>
 {
     #[inline]
     fn from((query, results): (LatestAtQuery, BlueprintResolvedLatestAtResults<'a>)) -> Self {
-        Self::LatestAt(query, results)
+        Self::LatestAt { query, results }
     }
 }
 
 impl<'a> From<(RangeQuery, BlueprintResolvedRangeResults<'a>)> for BlueprintResolvedResults<'a> {
     #[inline]
     fn from((query, results): (RangeQuery, BlueprintResolvedRangeResults<'a>)) -> Self {
-        Self::Range(query, results)
+        Self::Range { query, results }
     }
 }
 
@@ -759,10 +774,12 @@ impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedResults<'_> {
         force_preserve_store_row_ids: bool,
     ) -> MaybeChunksWithComponent<'a> {
         match self {
-            Self::LatestAt(_, results) => {
+            Self::LatestAt { results, .. } => {
                 results.get_chunks(component, force_preserve_store_row_ids)
             }
-            Self::Range(_, results) => results.get_chunks(component, force_preserve_store_row_ids),
+            Self::Range { results, .. } => {
+                results.get_chunks(component, force_preserve_store_row_ids)
+            }
         }
     }
 }
@@ -770,7 +787,6 @@ impl<'a> BlueprintResolvedResultsExt<'a> for BlueprintResolvedResults<'_> {
 // ---
 
 use re_chunk::{ChunkComponentIterItem, RowId, TimeInt, TimelineName};
-use re_chunk_store::external::re_chunk;
 
 /// The iterator type backing [`BlueprintResolvedResultsExt::iter_required`] and [`BlueprintResolvedResultsExt::iter_optional`].
 pub struct HybridResultsChunkIter<'a> {

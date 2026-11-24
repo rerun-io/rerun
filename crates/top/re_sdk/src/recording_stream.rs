@@ -690,10 +690,7 @@ impl RecordingStreamBuilder {
             application_id,
             recording_id.unwrap_or_else(RecordingId::random),
         );
-        let store_source = store_source.unwrap_or_else(|| StoreSource::RustSdk {
-            rustc_version: env!("RE_BUILD_RUSTC_VERSION").into(),
-            llvm_version: env!("RE_BUILD_LLVM_VERSION").into(),
-        });
+        let store_source = store_source.unwrap_or(StoreSource::RustSdk);
 
         let store_info = StoreInfo::new(store_id, store_source);
 
@@ -1110,6 +1107,7 @@ enum Command {
     SwapSink {
         #[size_bytes(ignore)]
         new_sink: Box<dyn LogSink>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },
@@ -1118,6 +1116,7 @@ enum Command {
     Flush {
         #[size_bytes(ignore)]
         on_done: Sender<FlushResult>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },
@@ -1129,6 +1128,7 @@ enum Command {
     FinalizeDeferredSinks {
         #[size_bytes(ignore)]
         on_done: Sender<()>,
+
         #[size_bytes(ignore)]
         timeout: Duration,
     },
@@ -1237,7 +1237,7 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
     ///
     /// See also: [`Self::log_static`] for logging static data.
     ///
@@ -1278,7 +1278,7 @@ impl RecordingStream {
     /// stream.log("data", &rerun::Points3D::new(points))?;
     /// ```
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log<AS: ?Sized + AsComponents>(
@@ -1343,7 +1343,7 @@ impl RecordingStream {
     ///
     /// See also [`Self::log`].
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log_static<AS: ?Sized + AsComponents>(
@@ -1368,13 +1368,13 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log_with_static<AS: ?Sized + AsComponents>(
@@ -1408,13 +1408,13 @@ impl RecordingStream {
     /// The entity path can either be a string
     /// (with special characters escaped, split on unescaped slashes)
     /// or an [`EntityPath`] constructed with [`crate::entity_path`].
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/logging-and-ingestion/sinks-and-modes/micro-batching
     ///
     /// [`SerializedComponentBatch`]: [re_types_core::SerializedComponentBatch]
     pub fn log_serialized_batches(
@@ -1499,7 +1499,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
     #[cfg(feature = "importers")]
     pub fn log_file_from_path(
         &self,
@@ -1517,7 +1517,7 @@ impl RecordingStream {
     /// This method blocks until either at least one [`re_importer::Importer`] starts
     /// streaming data in or all of them fail.
     ///
-    /// See <https://www.rerun.io/docs/concepts/logging-and-ingestion/importers/overview> for more information.
+    /// See <https://www.rerun.io/docs/logging-and-ingestion/import/importers/overview> for more information.
     #[cfg(feature = "importers")]
     pub fn log_file_from_contents(
         &self,
@@ -2741,7 +2741,7 @@ impl RecordingStream {
     /// Example:
     /// ```no_run
     /// # mod rerun { pub use re_sdk::*; }
-    /// # let rec: rerun::RecordingStream = unimplemented!();
+    /// # let rec: rerun::RecordingStream = unimplemented!("only type-checked");
     /// rec.set_time("frame_nr", rerun::TimeCell::from_sequence(42));
     /// rec.set_time("duration", std::time::Duration::from_millis(123));
     /// rec.set_time("capture_time", std::time::SystemTime::now());
@@ -3344,7 +3344,7 @@ mod tests {
     }
 
     fn example_rows(static_: bool) -> Vec<PendingRow> {
-        use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
+        use re_log_types::example_components::{MyColor, MyPoint};
         use re_sdk_types::ToArrow;
 
         let mut tick = 0i64;

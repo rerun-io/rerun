@@ -32,10 +32,7 @@ where
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
                 .read_table_entry(
-                    tonic::Request::new(ReadTableEntryRequest {
-                        id: Some(entry_id.into()),
-                    })
-                    .with_entry_id(entry_id),
+                    tonic::Request::new(ReadTableEntryRequest::default()).with_entry_id(entry_id),
                 )
                 .await
                 .map_err(|err| ApiError::tonic(&self.origin, err, "/ReadTableEntry"))?,
@@ -61,13 +58,16 @@ where
     ) -> ApiResult<TableEntry> {
         let (inner, trace_id) = TonicResponseExt::into_inner_and_trace_id(
             self.inner()
-                .update_table_entry(tonic::Request::new(
-                    UpdateTableEntryRequest {
-                        id: entry_id,
-                        table_details,
-                    }
-                    .into(),
-                ))
+                .update_table_entry(
+                    tonic::Request::new(
+                        UpdateTableEntryRequest {
+                            id: entry_id,
+                            table_details,
+                        }
+                        .into(),
+                    )
+                    .with_entry_id(entry_id),
+                )
                 .await
                 .map_err(|err| ApiError::tonic(&self.origin, err, "/UpdateTableEntry"))?,
         );

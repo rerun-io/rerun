@@ -392,18 +392,22 @@ impl ViewClass for SpatialView3D {
                 // Is there a nicer way for this or do we want a visualizer for view coordinates anyways?
                 // There's also a strong argument to be made that ViewCoordinates implies a 3D space, thus changing the SpacialTopology accordingly!
                 let engine = ctx.recording_engine();
-                engine.store().entity_tree().visit_children_recursively(|path| {
-                    if let Some(components) = engine.schema().all_components_for_entity(path)
-                        && components.iter().any(|&component| {
-                            archetypes::Pinhole::all_components().iter().any(|c| c.component == component)
-                            // TODO(#2663): Note that the view coordinates component may be logged by different archetypes.
-                                || component
-                                    == archetypes::ViewCoordinates::descriptor_xyz().component
-                        })
-                    {
-                        indicated_entities.insert(path.clone());
-                    }
-                });
+                engine
+                    .store()
+                    .entity_tree()
+                    .visit_children_recursively(|path| {
+                        if let Some(components) = engine.schema().all_components_for_entity(path)
+                            && components.iter().any(|&component| {
+                                archetypes::Pinhole::all_components()
+                                    .iter()
+                                    .any(|c| c.component == component)
+                                    || component
+                                        == archetypes::ViewCoordinates::descriptor_xyz().component
+                            })
+                        {
+                            indicated_entities.insert(path.clone());
+                        }
+                    });
             },
         );
 

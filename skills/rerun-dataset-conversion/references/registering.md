@@ -45,6 +45,7 @@ dataset = client.create_dataset("my_dataset", exist_ok=True)
 
 # Each .rrd registers as one layer of a segment; the segment is keyed by the
 # recording_id stored inside the .rrd, so files sharing an id stack as layers.
+# Pass `segment_id=[…]`, one per URI, to key them by another id instead.
 dataset.register(
     ["file:///path/to/file.rrd"],
     layer_name="base",
@@ -52,7 +53,7 @@ dataset.register(
 ).wait()
 
 # Optional: install a default blueprint for the dataset.
-dataset.register_blueprint("file:///path/to/file.rbl", set_default=True)
+dataset.register_blueprint("file:///path/to/file.rbl", set_default=True, name="default")
 ```
 
 Three details:

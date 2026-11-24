@@ -45,7 +45,7 @@ blueprint = rrb.Blueprint(
                 ),
                 # Configure the legend.
                 plot_legend=rrb.PlotLegend(visible=False),
-                # Set time different time ranges for different timelines.
+                # Set different time ranges for different timelines.
                 time_ranges=[
                     # Sliding window depending on the time cursor for the
                     # first timeline.

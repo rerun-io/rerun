@@ -244,15 +244,8 @@ impl ::prost::Name for PythonVersion {
     }
 }
 /// Information about the Rust SDK that created the recording.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
-pub struct CrateInfo {
-    /// Version of the Rust compiler used to compile the SDK.
-    #[prost(string, tag = "1")]
-    pub rustc_version: ::prost::alloc::string::String,
-    /// Version of LLVM used by the Rust compiler.
-    #[prost(string, tag = "2")]
-    pub llvm_version: ::prost::alloc::string::String,
-}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct CrateInfo {}
 impl ::prost::Name for CrateInfo {
     const NAME: &'static str = "CrateInfo";
     const PACKAGE: &'static str = "rerun.log_msg.v1alpha1";

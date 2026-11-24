@@ -87,6 +87,19 @@ jobs:
       - name: Rerun lints
         run: pixi run lint-rerun
 
+      - name: Set up Rust
+        uses: ./.github/actions/setup-rust
+        with:
+          cache_key: "build-linux"
+          workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
+
+      - name: relint
+        run: pixi run relint
+
+      - name: relint self-check
+        run: pixi run relint-self-check
+
       - name: Check crate dependencies
         run: pixi run scripts/check_crate_dependencies.py
 
@@ -251,6 +264,9 @@ jobs:
           pixi run mdlint --glob 'examples/python/*/README.md'
           pixi run mdlint --glob 'examples/cpp/*/README.md'
           pixi run mdlint --glob 'examples/rust/*/README.md'
+
+      - name: Check local links
+        run: pixi run link-check-local
 
   # ---------------------------------------------------------------------------
 

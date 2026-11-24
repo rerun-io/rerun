@@ -1066,7 +1066,6 @@ fn visualizers_section_ui(ui: &mut egui::Ui, ctx: &re_viewer_context::ViewContex
 /// Returns a priority score for a given Arrow datatype.
 /// Lower scores are preferred.
 fn scalar_datatype_priority(datatype: &re_log_types::external::arrow::datatypes::DataType) -> u32 {
-    use re_log_types::external::arrow::datatypes::DataType;
     match datatype {
         DataType::Float64 => 0,
         DataType::Float32 => 1,
@@ -1318,10 +1317,7 @@ fn nearest_data_point_tooltip(
             continue;
         }
 
-        let idx = series
-            .points
-            .binary_search_by_key(&hover_time, |&(t, _)| t)
-            .unwrap_or_else(|i| i);
+        let idx = series.points.partition_point(|&(t, _)| t < hover_time);
 
         // Check the point at `idx` and the one before it (the two nearest candidates).
         let candidates = [idx.saturating_sub(1), idx.min(series.points.len() - 1)];
@@ -1467,8 +1463,7 @@ fn tooltip_sample_at_hover(
 ) -> Option<TooltipSample> {
     let index = series
         .points
-        .binary_search_by_key(&hover_time, |&(time, _)| time)
-        .unwrap_or_else(|index| index);
+        .partition_point(|&(time, _)| time < hover_time);
 
     let sample = match series.kind {
         PlotSeriesKind::Continuous | PlotSeriesKind::Stepped(_) => {
@@ -2126,7 +2121,6 @@ fn time_series_visualizers_section(
 mod tests {
     use super::*;
     use crate::StepMode;
-    use re_viewer_context::SingleRequiredComponentMatch;
 
     #[test]
     fn test_interpolated_series_value_respects_line_modes() {

@@ -91,7 +91,13 @@ class FieldBatch:
     field when it was fetched in several chunks.
     """
 
-    __slots__ = ("_chunk_starts", "_chunks", "_column", "is_windowed", "select")
+    __slots__ = (
+        "_chunk_starts",
+        "_chunks",
+        "_column",
+        "is_windowed",
+        "select",
+    )
 
     def __init__(
         self,

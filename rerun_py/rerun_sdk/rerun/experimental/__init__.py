@@ -15,7 +15,7 @@ from typing import Any
 from . import video as video
 from ._hdf5_reader import DatasetInfo as DatasetInfo, Hdf5Reader as Hdf5Reader
 from ._lerobot_reader import LeRobotReader as LeRobotReader
-from ._mp4_reader import Mp4Reader as Mp4Reader, Mp4TranscodeOptions as Mp4TranscodeOptions
+from ._mp4_reader import Mp4Info as Mp4Info, Mp4Reader as Mp4Reader, Mp4TranscodeOptions as Mp4TranscodeOptions
 from ._object_store import BearerTokenObjectStoreAuth as BearerTokenObjectStoreAuth, ObjectStoreAuth as ObjectStoreAuth
 from ._optimizer_settings import (
     _GopBatchingRule as _GopBatchingRule,
@@ -42,12 +42,20 @@ from ._viewer_client import (
     ProfileTrace as ProfileTrace,
     Recording as Recording,
     RecordingSchema as RecordingSchema,
+    SelectedComponent as SelectedComponent,
+    SelectedContainer as SelectedContainer,
+    SelectedEntity as SelectedEntity,
+    SelectedItem as SelectedItem,
+    SelectedRecording as SelectedRecording,
+    SelectedView as SelectedView,
+    Selection as Selection,
     StoreId as StoreId,
     TableColumnSchema as TableColumnSchema,
     Timeline as Timeline,
     View as View,
     ViewerClient as ViewerClient,
     ViewerState as ViewerState,
+    ViewerViewType as ViewerViewType,
     ViewReport as ViewReport,
 )
 
@@ -78,7 +86,8 @@ _MOVED_TO_CHUNK = frozenset({
 })
 
 
-def __getattr__(name: str) -> Any:
+# Type checkers give every forwarded name this return type, so it must be `Any` (PEP 562).
+def __getattr__(name: str) -> Any:  # noqa: ANN401
     """Forward moved names to their new home with a deprecation warning (see PEP 562)."""
     if name == "send_chunks":
         import warnings

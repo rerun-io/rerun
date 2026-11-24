@@ -16,7 +16,7 @@ FixedSizeList(2 x non-null Float32)
 
 ## API reference links
  * 🌊 [C++ API docs for `Position2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Position2D.html)
- * 🐍 [Python API docs for `Position2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Position2D)
+ * 🐍 [Python API docs for `Position2D`](https://ref.rerun.io/docs/python/stable/components#rerun.components.Position2D)
  * 🦀 [Rust API docs for `Position2D`](https://docs.rs/rerun/latest/rerun/components/struct.Position2D.html)
 
 

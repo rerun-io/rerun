@@ -8,9 +8,7 @@ fn build_handler() -> RerunCloudHandler {
     let builder = RerunCloudHandlerBuilder::new(re_build_info::cargo_build_info!());
     cfg_select! {
         target_arch = "wasm32" => builder.build(),
-        _ => builder
-            .build()
-            .expect("failed to build handler"),
+        _ => builder.build().expect("failed to build handler"),
     }
 }
 
@@ -69,13 +67,16 @@ async fn legacy_dataset_without_asset_dataset() {
     );
 
     let updated: ext::DatasetEntry = handler
-        .update_dataset_entry(tonic::Request::new(
-            UpdateDatasetEntryRequest {
-                id: dataset_id,
-                dataset_details: Default::default(),
-            }
-            .into(),
-        ))
+        .update_dataset_entry(
+            tonic::Request::new(
+                UpdateDatasetEntryRequest {
+                    id: dataset_id,
+                    dataset_details: Default::default(),
+                }
+                .into(),
+            )
+            .with_entry_id(dataset_id),
+        )
         .await
         .expect("updating the entry should succeed")
         .into_inner()

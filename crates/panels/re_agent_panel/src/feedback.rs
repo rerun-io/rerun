@@ -53,7 +53,7 @@ impl FeedbackModal {
 
     /// Must be called every frame, also when the modal is closed.
     ///
-    /// Sending needs analytics to be enabled, and the Send button is disabled otherwise.
+    /// Sending needs [`re_analytics::can_send`], and the Send button is disabled otherwise.
     pub fn ui(&mut self, ctx: &egui::Context) {
         crate::agent_analytics::update_redactor(&mut self.redactor, ctx);
 
@@ -68,11 +68,14 @@ impl FeedbackModal {
                         .desired_rows(5)
                         .desired_width(f32::INFINITY),
                 );
-                let can_send = re_analytics::is_enabled();
+                let can_send = re_analytics::can_send();
                 ui.weak(if can_send {
                     "Your feedback is sent to Rerun together with the agent trace: \
                      your prompts, the agent's answers, and its tool calls. \
                      Another agent session redacts any sensitive information first."
+                } else if re_analytics::is_enabled() {
+                    "Feedback is sent with analytics, and nothing is sent during your first \
+                     session. You can send feedback from your next session."
                 } else {
                     "Feedback is sent with analytics, and analytics is turned off."
                 });
@@ -196,6 +199,9 @@ struct Agent {
 struct Extra {
     feedback: String,
     rerun_version: &'static str,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    effort: Option<re_agent::Effort>,
 }
 
 #[derive(Serialize)]
@@ -327,6 +333,7 @@ impl Trajectory {
             extra: Extra {
                 feedback: String::new(),
                 rerun_version: env!("CARGO_PKG_VERSION"),
+                effort: transcript.current_effort(),
             },
             image_count,
         }
@@ -406,7 +413,8 @@ fn tool_output(call: &ToolCallState) -> String {
 #[cfg(test)]
 mod tests {
     use re_agent::acp::schema::v1::{
-        ContentChunk, SessionUpdate, TextContent, ToolCall as AcpToolCall,
+        ConfigOptionUpdate, ContentChunk, SessionConfigOption, SessionConfigOptionCategory,
+        SessionConfigSelectOption, SessionUpdate, TextContent, ToolCall as AcpToolCall,
     };
 
     use super::*;
@@ -455,6 +463,33 @@ mod tests {
             "trajectory",
             serde_json::to_string_pretty(&trajectory).expect("serialize")
         );
+    }
+
+    #[test]
+    fn the_trajectory_names_the_model_and_its_effort() {
+        let mut transcript = Transcript::default();
+        transcript.apply(SessionUpdate::ConfigOptionUpdate(ConfigOptionUpdate::new(
+            vec![
+                SessionConfigOption::select(
+                    "model",
+                    "Model",
+                    "opus",
+                    vec![SessionConfigSelectOption::new("opus", "Opus 4.6")],
+                )
+                .category(SessionConfigOptionCategory::Model),
+                SessionConfigOption::select(
+                    "effort",
+                    "Effort",
+                    "high",
+                    vec![SessionConfigSelectOption::new("high", "High")],
+                )
+                .category(SessionConfigOptionCategory::ThoughtLevel),
+            ],
+        )));
+
+        let json = serde_json::to_value(Trajectory::new(&transcript, None)).expect("serialize");
+        assert_eq!(json["agent"]["model_name"], "Opus 4.6");
+        assert_eq!(json["extra"]["effort"], "high");
     }
 
     #[test]

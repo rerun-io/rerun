@@ -281,8 +281,6 @@ impl InMemoryStore {
         named_path: &NamedPath,
         on_duplicate: IfDuplicateBehavior,
     ) -> Result<EntryId, Error> {
-        use std::sync::Arc;
-
         use re_protos::cloud::v1alpha1::ext::LanceTable;
 
         let directory = tokio::fs::canonicalize(&named_path.path).await?;
@@ -359,14 +357,19 @@ impl InMemoryStore {
             };
         }
 
-        if let Some(dataset) = self.datasets.get_mut(&entry_id) {
+        let old_name = if let Some(dataset) = self.datasets.get_mut(&entry_id) {
+            let old_name = dataset.name().clone();
             dataset.set_name(entry_name.clone());
+            old_name
         } else if let Some(table) = self.tables.get_mut(&entry_id) {
+            let old_name = table.name().clone();
             table.set_name(entry_name.clone());
+            old_name
         } else {
             return Err(Error::EntryIdNotFound(entry_id));
-        }
+        };
 
+        self.id_by_name.remove(&old_name);
         self.id_by_name.insert(entry_name, entry_id);
         self.update_entries_table()
     }
@@ -391,6 +394,7 @@ impl InMemoryStore {
     ) -> Result<(), Error> {
         let blueprint_dataset_id = self.create_blueprint_dataset_for_entry(entry_id)?;
 
+        let now = jiff::Timestamp::now();
         self.id_by_name.insert(entry_name.clone(), entry_id);
         self.tables.insert(
             entry_id,
@@ -398,7 +402,8 @@ impl InMemoryStore {
                 entry_id,
                 entry_name,
                 table,
-                None,
+                now,
+                now,
                 ProviderDetails::LanceTable(provider_details),
                 TableDetails {
                     blueprint_dataset: Some(blueprint_dataset_id),
@@ -519,9 +524,17 @@ impl InMemoryStore {
 
         self.id_by_name.insert(name.clone(), entry_id);
 
+        let now = jiff::Timestamp::now();
         self.datasets.insert(
             entry_id,
-            Dataset::new(entry_id, name, dataset_kind, details.unwrap_or_default()),
+            Dataset::new(
+                entry_id,
+                name,
+                dataset_kind,
+                details.unwrap_or_default(),
+                now,
+                now,
+            ),
         );
 
         self.update_entries_table()?;
@@ -577,8 +590,6 @@ impl InMemoryStore {
     /// `Arc<Mutex<_>>` and then have an ac-hoc table generation.
     /// TODO(#11369)
     fn update_entries_table(&mut self) -> Result<(), Error> {
-        use std::sync::Arc;
-
         use re_protos::cloud::v1alpha1::SystemTableKind;
         use re_protos::cloud::v1alpha1::ext::SystemTable;
 
@@ -589,13 +600,15 @@ impl InMemoryStore {
         let prior_entries_table = self.tables.remove(&entries_table_id);
 
         let entries_table = Arc::new(self.entries_table()?);
+        let now = jiff::Timestamp::now();
         self.tables.insert(
             entries_table_id,
             Table::new(
                 entries_table_id,
                 EntryName::entries_table(),
                 TableType::DataFusionTable(entries_table),
-                prior_entries_table.map(|t| t.created_at()),
+                prior_entries_table.map_or(now, |table| table.created_at()),
+                now,
                 ProviderDetails::SystemTable(SystemTable {
                     kind: SystemTableKind::Entries,
                 }),

@@ -2,6 +2,7 @@
 title: Migrating from 0.37 to 0.38
 order: 976
 hidden: true
+description: Breaking changes in Rerun 0.38 and how to update code written for 0.37
 ---
 
 ## Chunk API and stable readers moved out of `experimental`

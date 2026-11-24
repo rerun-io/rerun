@@ -1,7 +1,7 @@
 //! Standalone chat app for iterating on `re_agent_ui` without the full viewer.
 //!
 //! ```sh
-//! cargo run -p re_agent_ui --example agent_app -- --mcp "rerun viewer-mcp"
+//! cargo run -p re_agent_ui --example agent_app -- --mcp "rerun mcp"
 //! ```
 //!
 //! To skip the agent harness and call a model API directly with your own key, pick the
@@ -50,7 +50,7 @@ struct Args {
     #[arg(long)]
     cwd: Option<String>,
 
-    /// MCP server command line to hand to the agent, e.g. `rerun viewer-mcp`. Repeatable.
+    /// MCP server command line to hand to the agent, e.g. `rerun mcp`. Repeatable.
     #[arg(long = "mcp")]
     mcp_servers: Vec<String>,
 
@@ -68,7 +68,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     // Runs the model-API agents (`--agent anthropic-api`).
-    let runtime = tokio::runtime::Runtime::new()?; // NOLINT: the example process owns this runtime
+    let runtime = tokio::runtime::Runtime::new()?;
     let async_runtime = re_async::AsyncRuntimeHandle::new_native(runtime.handle().clone());
 
     if args.headless {
@@ -107,9 +107,9 @@ fn run_headless(args: &Args, async_runtime: re_async::AsyncRuntimeHandle) {
 
     let mut harness = egui_kittest::Harness::builder()
         .with_size(WINDOW_SIZE)
+        .with_context_setup(re_ui::apply_style_and_install_loaders)
         .wgpu()
         .build_eframe(|_cc| app);
-    re_ui::apply_style_and_install_loaders(&harness.ctx);
 
     match egui_inspection::attach_from_env(&harness.ctx, Some("agent_app".to_owned())) {
         Ok(true) => re_log::info!("egui inspection enabled"),
@@ -129,9 +129,9 @@ fn default_settings() -> AgentSettings {
     let dev_rerun =
         std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../target/debug/rerun");
     let command = if dev_rerun.is_file() {
-        format!("{} viewer-mcp", dev_rerun.display())
+        format!("{} mcp", dev_rerun.display())
     } else {
-        "rerun viewer-mcp".to_owned()
+        "rerun mcp".to_owned()
     };
 
     AgentSettings {
@@ -202,6 +202,8 @@ impl App {
             additional_directories: Vec::new(),
             default_cwd: None,
             off_limits_directories: Vec::new(),
+            model_preselect: Default::default(),
+            rerun_mcp_server: None,
         });
         Self { panel }
     }

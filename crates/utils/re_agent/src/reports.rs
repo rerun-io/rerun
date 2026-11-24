@@ -14,7 +14,17 @@ pub struct SessionReports {
 
     /// MCP servers that failed to start, including the ones the agent replaced with a definition
     /// from its own config.
-    pub mcp_startup_failures: Vec<McpStartupFailure>,
+    pub mcp_startup_failures: Vec<McpStartupReport>,
+}
+
+/// An MCP server that failed to start, and which agent reported it.
+#[derive(Clone, Debug)]
+pub struct McpStartupReport {
+    /// The agent's self-reported name, if it had introduced itself by then.
+    pub agent: Option<String>,
+
+    /// What failed.
+    pub failure: McpStartupFailure,
 }
 
 impl SessionReports {

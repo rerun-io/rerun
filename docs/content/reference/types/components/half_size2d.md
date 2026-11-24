@@ -21,7 +21,7 @@ FixedSizeList(2 x non-null Float32)
 
 ## API reference links
  * 🌊 [C++ API docs for `HalfSize2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1HalfSize2D.html)
- * 🐍 [Python API docs for `HalfSize2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.HalfSize2D)
+ * 🐍 [Python API docs for `HalfSize2D`](https://ref.rerun.io/docs/python/stable/components#rerun.components.HalfSize2D)
  * 🦀 [Rust API docs for `HalfSize2D`](https://docs.rs/rerun/latest/rerun/components/struct.HalfSize2D.html)
 
 

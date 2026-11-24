@@ -1,8 +1,7 @@
 use arrow::datatypes::DataType;
 use arrow::pyarrow::PyArrowType;
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyModule;
-use pyo3::{PyResult, exceptions::PyValueError};
 use re_log_types::TimeType;
 
 const SEQUENCE: &str = "sequence";

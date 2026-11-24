@@ -198,17 +198,14 @@ Configure in the selection panel:
             None
         };
 
-        let scroll_to_time_cursor_row = if view_query.auto_scroll_enabled()? && timelines_match {
-            if let Some(time) = ctx.time_ctrl.time_i64() {
-                // We only scroll when the time cursor moves. Otherwise, the user won't have a
-                // chance to manually scroll.
-                state.latest_time != Some(time)
-            } else {
-                false
-            }
-        } else {
-            false
-        };
+        // We only scroll when the time cursor moves. Otherwise, the user won't have a
+        // chance to manually scroll.
+        let scroll_to_time_cursor_row = view_query.auto_scroll_enabled()?
+            && timelines_match
+            && ctx
+                .time_ctrl
+                .time_i64()
+                .is_some_and(|time| state.latest_time != Some(time));
 
         state.latest_time = timelines_match.then(|| ctx.time_ctrl.time_i64()).flatten();
 

@@ -13,21 +13,13 @@ use web_time::Instant;
 
 #[cfg(agent_harness_backend)]
 use crate::AgentHarnessConfig;
-use crate::{AgentLaunch, AgentSession, HostedTools};
+use crate::{AgentLaunch, AgentSession, HostedTools, ModelCategory};
 
 /// How long the redacting agent gets before the redaction fails.
 const REDACTION_TIMEOUT: Duration = Duration::from_mins(2);
 
 /// Maximum number of requests waiting for redaction before new ones fail.
 const REDACTION_QUEUE_CAPACITY: usize = 1024;
-
-/// Models to redact with, best first, matched against whatever the user's agent offers.
-///
-/// Redaction is mechanical work on one short JSON object, so the cheapest capable model of each
-/// family is enough, and the user should not pay flagship prices for a background task.
-/// An agent that offers none of these keeps its default model.
-#[cfg(agent_harness_backend)]
-const REDACTION_MODELS: &[&str] = &["sonnet", "flash", "mini", "haiku"];
 
 /// Instructions for removing sensitive data from agent analytics.
 const REDACTION_INSTRUCTIONS: &str = r#"# Redact analytics
@@ -69,11 +61,14 @@ The redacted JSON object only, on one line or pretty-printed, starting with `{` 
 pub enum RedactionError {
     #[cfg(agent_harness_backend)]
     NoScratchDirectory,
+
     #[cfg(not(agent_harness_backend))]
     NoHarness,
+
     #[cfg(not(target_arch = "wasm32"))]
     NoThread,
     QueueFull,
+
     #[cfg(not(target_arch = "wasm32"))]
     ThreadGone,
     TimedOut,
@@ -279,7 +274,10 @@ impl Redactor {
         cfg_select! {
             target_arch = "wasm32" => {
                 while self.queue.step(waker.clone()) {}
-                self.queue.in_flight.is_some().then_some(Duration::from_secs(1))
+                self.queue
+                    .in_flight
+                    .is_some()
+                    .then_some(Duration::from_secs(1))
             }
             _ => {
                 let _ = waker;
@@ -324,10 +322,10 @@ impl Redactor {
         } = agent;
         let launch = match launch {
             AgentLaunch::AgentHarness(config) => cfg_select! {
-                agent_harness_backend => AgentLaunch::AgentHarness(
-                    self.harness_config(config)
+                agent_harness_backend => AgentLaunch::AgentHarness(Box::new(
+                    self.harness_config(*config)
                         .ok_or(RedactionError::NoScratchDirectory)?,
-                ),
+                )),
                 _ => {{
                     drop(config);
                     return Err(RedactionError::NoHarness);
@@ -335,7 +333,8 @@ impl Redactor {
             },
             AgentLaunch::ModelApi(mut config) => {
                 config.hosted_tools = HostedTools::NONE;
-                config.model = config.provider.default_model().to_owned();
+                config.model = config.provider.model(ModelCategory::VeryFast).to_owned();
+                config.effort = None;
                 config.system_prompt = None;
                 config.toolbox = None;
                 AgentLaunch::ModelApi(config)
@@ -365,11 +364,8 @@ impl Redactor {
 
         config.mcp_servers.clear();
         config.cwd = self.scratch.as_ref()?.path().to_owned();
-        config.preferred_model = None;
-        config.model_preferences = REDACTION_MODELS
-            .iter()
-            .map(|&model| model.to_owned())
-            .collect();
+        config.preferences = Default::default();
+        config.model_preselect = ModelCategory::VeryFast.into();
         Some(config)
     }
 }
@@ -546,24 +542,27 @@ mod tests {
             mcp_servers: vec![crate::McpStdioServer {
                 name: "rerun".to_owned(),
                 command: std::path::PathBuf::from("rerun"),
-                args: vec!["viewer-mcp".to_owned()],
+                args: vec!["mcp".to_owned()],
             }],
             log_protocol: false,
             preamble: None,
-            model_preferences: Vec::new(),
-            preferred_model: Some(crate::acp::schema::v1::SessionConfigValueId::new("opus")),
-            mode_preferences: Vec::new(),
+            model_preselect: crate::ModelPreselect::Previous,
+            preferences: crate::AgentPreferences {
+                config_options: [
+                    ("model".into(), "opus".into()),
+                    ("effort".into(), "max".into()),
+                ]
+                .into(),
+            },
+            session_to_load: None,
         };
         let mut redactor = Redactor::default();
         let config = redactor
             .harness_config(config)
             .expect("a scratch directory");
         assert!(config.mcp_servers.is_empty());
-        assert!(config.preferred_model.is_none());
-        assert_eq!(
-            config.model_preferences.first().map(String::as_str),
-            Some("sonnet")
-        );
+        assert!(config.preferences.config_options.is_empty());
+        assert_eq!(config.model_preselect, ModelCategory::VeryFast.into());
         assert_ne!(config.cwd, std::env::current_dir().expect("cwd"));
         assert!(config.cwd.is_dir());
         assert_eq!(std::fs::read_dir(&config.cwd).expect("read_dir").count(), 0);
@@ -576,6 +575,7 @@ mod tests {
             provider,
             api_key: crate::ApiKey::new("key").expect("a key"),
             model: "opus".to_owned(),
+            effort: Some(crate::Effort("max".to_owned())),
             system_prompt: Some("Drive the viewer".to_owned()),
             hosted_tools: HostedTools::default(),
             toolbox: None,
@@ -592,7 +592,8 @@ mod tests {
             panic!("a model-API agent redacts with a model-API agent");
         };
         assert_eq!(config.hosted_tools, HostedTools::NONE);
-        assert_eq!(config.model, provider.default_model());
+        assert!(crate::ModelPreference::new(&["haiku"]).matches(&config.model));
+        assert!(config.effort.is_none());
         assert!(config.system_prompt.is_none());
     }
 }

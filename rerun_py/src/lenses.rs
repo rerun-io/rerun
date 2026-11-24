@@ -2,8 +2,6 @@ use arrow::datatypes::DataType;
 use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
-use pyo3::types::PyModule;
-use pyo3::{Borrowed, FromPyObject};
 
 use re_lenses_core::{CastTo, DynExpr, Lens, OutputMode, Selector};
 use re_types_core::{ComponentDescriptor, ComponentIdentifier, TimelineName};

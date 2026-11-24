@@ -406,6 +406,10 @@ impl ApiError {
         Self::new(origin, ApiErrorKind::NotFound, message)
     }
 
+    pub fn already_exists(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
+        Self::new(origin, ApiErrorKind::AlreadyExists, message)
+    }
+
     pub fn invalid_arguments(origin: &re_uri::Origin, message: impl Into<String>) -> Self {
         Self::new(origin, ApiErrorKind::InvalidArguments, message)
     }
@@ -547,7 +551,7 @@ impl ApiError {
 ///
 /// The leading `/` and the absence of any prose is what distinguishes the two. Call sites that
 /// have something to say beyond the endpoint keep saying it in the summary.
-fn endpoint_only(message: &str) -> Option<&str> {
+pub fn endpoint_only(message: &str) -> Option<&str> {
     let message = message.trim();
     (message.starts_with('/') && !message.contains(char::is_whitespace)).then_some(message)
 }

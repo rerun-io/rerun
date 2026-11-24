@@ -275,7 +275,7 @@ def create_demo_tables(
         )
         uri = blueprint_uri(name, blueprint_paths[name], blueprint_uri_base)
         # Register a file the server can access.
-        table.register_blueprint(uri)
+        table.register_blueprint(uri, name=name)
         print(f"  {name}: registered table blueprint {uri}")
 
 
@@ -288,8 +288,7 @@ def apply_segment_table_blueprint(
     """Register the segment-table blueprint on the dataset's own segment table."""
     path = make_segment_table_blueprint(blueprint_dir)
     uri = blueprint_uri(SEGMENT_TABLE_BLUEPRINT_NAME, path, blueprint_uri_base)
-    # Apply to the segment table, not individual recordings.
-    dataset.register_blueprint(uri, segment_table=True)
+    dataset.register_table_blueprint(uri, name=SEGMENT_TABLE_BLUEPRINT_NAME)
     print(f"  segment table: registered blueprint {uri}")
 
 

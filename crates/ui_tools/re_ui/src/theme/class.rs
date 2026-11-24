@@ -35,6 +35,12 @@ pub const ON_SELECTED: &str = "rerun::on_selected";
 /// That background is the same shade as a button's hover fill, so the buttons step one shade past it.
 pub const ON_HOVERED: &str = "rerun::on_hovered";
 
+/// Tell the widgets inside to fit a background filled with the fill of [`crate::Variant::Opened`].
+///
+/// The buttons take the hovered and pressed fills of that variant, which are translucent and
+/// tint the background further.
+pub const ON_OPENED: &str = "rerun::on_opened";
+
 /// Make the buttons inside gray rather than blue while selected.
 ///
 /// Used by the `selectable_toggle`.

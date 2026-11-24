@@ -35,6 +35,8 @@ with rr.RecordingStream("rerun_example_dataframe_query") as rec:
 with rr.server.Server(datasets={"dataset": [RRD_PATH]}) as server:
     # obtain a dataset from the catalog
     dataset = server.client().get_dataset("dataset")
+    # On Rerun Hub, connect to your Hub instead:
+    # dataset = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io").get_dataset("dataset")
 
     # (optional) filter interesting data
     selection = dataset.filter_contents("/data")

@@ -20,8 +20,10 @@ use crate::catalog::{PyComponentColumnDescriptor, PyComponentColumnSelector};
 pub enum AnyComponentColumn {
     #[pyo3(transparent, annotation = "name")]
     Name(String),
+
     #[pyo3(transparent, annotation = "component_descriptor")]
     ComponentDescriptor(PyComponentColumnDescriptor),
+
     #[pyo3(transparent, annotation = "component_selector")]
     ComponentSelector(PyComponentColumnSelector),
 }
@@ -138,8 +140,8 @@ impl IndexValuesLike<'_> {
                 let values: BTreeSet<re_chunk_store::TimeInt> = int_array
                     .iter()
                     .map(|v| {
-                        v.map_or_else(
-                            || re_chunk_store::TimeInt::STATIC,
+                        v.map_or(
+                            re_chunk_store::TimeInt::STATIC,
                             // The use of temporal here should be fine even if the data is
                             // not actually temporal. The important thing is we are converting
                             // from an i64 input
@@ -186,8 +188,8 @@ impl IndexValuesLike<'_> {
                                 int_array
                                     .iter()
                                     .map(|v| {
-                                        v.map_or_else(
-                                            || re_chunk_store::TimeInt::STATIC,
+                                        v.map_or(
+                                            re_chunk_store::TimeInt::STATIC,
                                             // The use of temporal here should be fine even if the data is
                                             // not actually temporal. The important thing is we are converting
                                             // from an i64 input

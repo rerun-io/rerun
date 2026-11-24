@@ -91,7 +91,7 @@ Each episode arrives as its own recording, with `recording_id` `episode_0`, `epi
 
 ## Step 2: one RRD per episode
 
-Catalog segments are one-recording-per-file, and `recording_id` becomes the segment id on registration.
+Catalog segments are one-recording-per-file, and `recording_id` becomes the segment id on registration, unless `register(…, segment_id=[…])` names another one.
 
 `LeRobotReader` goes straight there, without building the combined RRD of Step 1 first:
 
@@ -141,20 +141,20 @@ Two non-obvious moves:
 
 If episodes need cleanup (drop topics, fix data, add derived components), run the store through lenses between read and write: `reader.stream(store=entry).drop(...).lenses(...)` then `collect().write_rrd(..., recording_id=episode_id)` (see `rerun-chunk-processing`).
 
-Computed layers and per-episode properties then follow the standard patterns in `rerun-data-model` (layer `recording_id` must equal the episode segment id).
+Computed layers and per-episode properties then follow the standard patterns in `rerun-data-model` (the layer registers under the episode segment id: its `recording_id`, or `register(…, segment_id=[…])`).
 
 ## Step 3: add the robot model (URDF)
 
 A LeRobot dataset ships joint values, never a robot.
 Without a URDF you get camera views and joint plots but no 3D arm, which is usually not what the user pictured when they asked to look at the data.
-Adding one is a forward-kinematics layer — `rerun-urdf` owns that; this section is only the LeRobot-specific wiring.
+Adding one is a forward-kinematics layer — `rerun-robot-model` owns that; this section is only the LeRobot-specific wiring.
 
-- **The URDF.** `meta/info.json` `robot_type` names it (`so100`, `so101`, `aloha`, …); `rerun-urdf` has the source table.
+- **The URDF.** `meta/info.json` `robot_type` names it (`so100`, `so101`, `aloha`, …); `rerun-robot-model` has the source table.
 - **The joint names.** `meta/info.json` `features.observation.state.names` lists them in column order.
   Map each source name explicitly to the corresponding URDF joint name; do not assume that removing a prefix produces a valid URDF name.
 - **The values.** `observation.state` is the measured pose and the one to run FK on; `action` is the commanded pose and belongs on the plots, not the robot.
 - **The units and calibration.** Confirm the units, sign, and offset against the dataset and robot documentation.
-  Run `rerun-urdf`'s `check_joint_mapping.py` against the episode parquets before trusting a pose.
+  Run `rerun-robot-model`'s `check_joint_mapping.py` against the episode parquets before trusting a pose.
 
 The FK source is the per-episode parquet, read directly rather than out of the imported RRD:
 
@@ -166,8 +166,8 @@ ParquetReader(str(episode_parquet)).stream(
 ```
 
 `frame_index` is the index the importer uses too, so the FK transforms line up with the video and plots.
-Merge the URDF model stream plus the FK stream into each episode's RRD, keeping the episode's `recording_id` (see `rerun-urdf`'s "Minimal shape").
-For a whole dataset, the model belongs in a shared asset rather than in every segment — also `rerun-urdf`.
+Merge the URDF model stream plus the FK stream into each episode's RRD, keeping the episode's `recording_id` (see `rerun-robot-model`'s "Minimal shape").
+For a whole dataset, the model belongs in a shared asset rather than in every segment — also `rerun-robot-model`.
 
 ## Gotchas
 
@@ -182,5 +182,5 @@ For a whole dataset, the model belongs in a shared asset rather than in every se
 ## References
 
 - `rerun-chunk-processing` (`LazyChunkStream`, lenses, `RrdReader`)
-- `rerun-urdf` (adding the robot model and the joint-value mapping)
+- `rerun-robot-model` (adding the robot model and the joint-value mapping)
 - `https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader` `prepare_dataset.py` (download → import → split → register, complete and runnable) and `train.py` (training-side consumption via `rerun.experimental.dataloader`)

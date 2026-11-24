@@ -79,6 +79,26 @@ impl Color {
 }
 
 #[cfg(feature = "ecolor")]
+impl Color {
+    /// Default color for the given index, as used by color fallbacks.
+    ///
+    /// Consecutive indices get hues that are far apart.
+    // Borrowed from `egui::PlotUi`
+    #[inline]
+    pub fn auto(val: u16) -> Self {
+        let golden_ratio = (5.0_f32.sqrt() - 1.0) / 2.0; // 0.61803398875
+        let h = val as f32 * golden_ratio;
+        ecolor::Color32::from(ecolor::Hsva::new(h, 0.85, 0.5, 1.0)).into()
+    }
+
+    /// Default color for the given hash, as used by color fallbacks.
+    #[inline]
+    pub fn auto_from_hash(hash: u64) -> Self {
+        Self::auto((hash % u16::MAX as u64) as u16)
+    }
+}
+
+#[cfg(feature = "ecolor")]
 impl From<Color> for ecolor::Color32 {
     fn from(color: Color) -> Self {
         let [r, g, b, a] = color.to_array();

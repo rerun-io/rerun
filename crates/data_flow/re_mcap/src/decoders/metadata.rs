@@ -96,10 +96,7 @@ impl Decoder for McapMetadataDecoder {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
     use std::io;
-
-    use re_chunk::Chunk;
 
     use re_log_types::TimeType;
 

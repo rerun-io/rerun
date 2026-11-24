@@ -31,7 +31,7 @@ UInt8
 
 ## API reference links
  * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1encodings.html)
- * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/common/encodings#rerun.encodings.ColorModel)
+ * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/encodings#rerun.encodings.ColorModel)
  * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/encodings/enum.ColorModel.html)
 
 

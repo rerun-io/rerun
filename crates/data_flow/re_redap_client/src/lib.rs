@@ -16,8 +16,12 @@ mod schema_cache;
 mod tasks;
 
 #[cfg(not(target_arch = "wasm32"))]
+mod known_servers;
+#[cfg(not(target_arch = "wasm32"))]
 mod segment_chunk_provider;
 
+#[cfg(not(target_arch = "wasm32"))]
+pub use self::known_servers::{KnownServers, KnownServersError};
 #[cfg(not(target_arch = "wasm32"))]
 pub use self::segment_chunk_provider::SegmentChunkProvider;
 
@@ -37,9 +41,10 @@ pub use self::connection_registry::{
 };
 pub use self::dataset_revisions::{DatasetRevisions, dataset_revisions};
 pub use self::grpc::{
-    ChunksWithSegment, RedapClientStack, SegmentDownload, StreamingOptions, channel,
-    fetch_chunks_response_to_chunk_and_segment_id, stream_blueprint_and_segment_from_server,
-    stream_table_blueprint_segment_from_server, table_blueprint_log_channel,
+    FetchedPayloads, RedapClientStack, SegmentDownload, StreamingOptions, blueprint_log_channel,
+    blueprint_store_id_for_segment, channel, fetch_chunks_response_to_chunks,
+    stream_active_blueprint_segment_from_server, stream_blueprint_and_segment_from_server,
+    stream_table_blueprint_segment_from_server,
 };
 pub use self::tasks::TaskCompletion;
 

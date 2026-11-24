@@ -46,7 +46,7 @@ impl GeoSpan {
     pub fn zoom_for_screen_size(&self, screen_size: egui::Vec2) -> Option<f64> {
         // Thanks, Claude: https://claude.site/artifacts/cb4f7f53-07a6-4ad0-bce3-eee3cb7e3177
 
-        if self.min_latitude == self.max_latitude || self.min_longitude == self.max_longitude {
+        if self.min_latitude == self.max_latitude && self.min_longitude == self.max_longitude {
             return None;
         }
 
@@ -69,11 +69,15 @@ impl GeoSpan {
         let tiles_y = lat_range * TILE_SIZE;
 
         // Calculate zoom levels needed for both dimensions
-        let zoom_x = (screen_size.x as f64 / tiles_x).ln() / 2.0_f64.ln();
-        let zoom_y = (screen_size.y as f64 / tiles_y).ln() / 2.0_f64.ln();
+        let zoom_x = (tiles_x > 0.0).then(|| (screen_size.x as f64 / tiles_x).ln() / 2.0_f64.ln());
+        let zoom_y = (tiles_y > 0.0).then(|| (screen_size.y as f64 / tiles_y).ln() / 2.0_f64.ln());
 
         // Use the minimum zoom level to ensure the entire range fits
-        Some(zoom_x.min(zoom_y))
+        Some(match (zoom_x, zoom_y) {
+            (Some(zoom_x), Some(zoom_y)) => zoom_x.min(zoom_y),
+            (Some(zoom), None) | (None, Some(zoom)) => zoom,
+            (None, None) => return None,
+        })
     }
 }
 
@@ -152,5 +156,17 @@ mod tests {
             None,
             span.zoom_for_screen_size(egui::Vec2::new(1024.0, 512.0))
         );
+
+        // collinear points
+        let span = GeoSpan {
+            min_latitude: 46.0,
+            max_latitude: 47.0,
+            min_longitude: 6.0,
+            max_longitude: 6.0,
+        };
+        let zoom = span
+            .zoom_for_screen_size(egui::Vec2::new(1024.0, 512.0))
+            .unwrap();
+        assert!(zoom >= 8.0 && zoom <= 9.0);
     }
 }

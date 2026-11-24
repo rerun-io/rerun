@@ -437,9 +437,7 @@ impl VisualizerEntitySubscriber {
 mod tests {
     use super::*;
     use crate::BufferAndFormatConstraint;
-    use re_chunk_store::{
-        ChunkStoreDiff, ChunkStoreDiffSchemaAddition, ChunkStoreEvent, ChunkStoreGeneration,
-    };
+    use re_chunk_store::{ChunkStoreDiff, ChunkStoreDiffSchemaAddition, ChunkStoreGeneration};
     use re_log_types::{example_components::MyPoint, example_components::MyPoints};
     use re_sdk_types::{ComponentDescriptor, ComponentType};
     use re_types_core::ArrowDataType as _;

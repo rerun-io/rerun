@@ -15,13 +15,14 @@ from rerun_bindings import (
 
 from ..error_utils import RerunIncompatibleDependencyVersionError, RerunMissingDependencyError
 from . import EntryId
+from ._location import StorageLocation, StorageLocations
 
 if TYPE_CHECKING:
     import datafusion
     import pyarrow as pa
 
     from ..experimental import ObjectStoreAuth
-    from . import DatasetEntry, TableEntry
+    from . import ChunkIndexingPolicy, DatasetEntry, TableEntry
 
 # Known FFI compatible releases of Datafusion.
 DATAFUSION_MAJOR_VERSION_COMPATIBILITY_SETS = [
@@ -202,6 +203,15 @@ class CatalogClient:
     def url(self) -> str:
         """Returns the catalog URL."""
         return self._internal.url
+
+    @with_tracing("CatalogClient.get_storage_locations")
+    def _get_storage_locations(self) -> StorageLocations:
+        """List storage locations, sorted by alias."""
+        raw = self._internal.get_storage_locations()
+        return StorageLocations(
+            locations=[StorageLocation(**location) for location in raw["locations"]],
+            default_alias=raw["default_alias"],
+        )
 
     def version_info(self) -> VersionInfo:
         """
@@ -428,7 +438,9 @@ class CatalogClient:
 
     # ---
 
-    def create_dataset(self, name: str, *, exist_ok: bool = False) -> DatasetEntry:
+    def create_dataset(
+        self, name: str, *, exist_ok: bool = False, chunk_indexing_policy: ChunkIndexingPolicy | None = None
+    ) -> DatasetEntry:
         """
         Creates a new dataset with the given name.
 
@@ -441,6 +453,13 @@ class CatalogClient:
             The name of the dataset to create.
         exist_ok
             If True, return the existing dataset if it already exists; otherwise, raise an error.
+        chunk_indexing_policy
+            Entity paths and timelines to index. Each dimension is a list of names or `"all"`.
+            Entity path rules such as `/world/**` raise `ValueError`.
+            A new dataset has no schema to match them against.
+            `None` indexes everything.
+            Only Rerun Hub applies the policy. The OSS server stores it and ignores it.
+            With `exist_ok=True`, an existing dataset keeps its policy.
 
         Raises
         ------
@@ -454,7 +473,10 @@ class CatalogClient:
         from . import DatasetEntry
 
         try:
-            return DatasetEntry(self._internal.create_dataset(name))
+            policy = None
+            if chunk_indexing_policy is not None:
+                policy = (chunk_indexing_policy.entity_paths, chunk_indexing_policy.timelines)
+            return DatasetEntry(self._internal.create_dataset(name, chunk_indexing_policy=policy))
         except AlreadyExistsError:
             if not exist_ok:
                 raise

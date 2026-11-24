@@ -264,7 +264,9 @@ pub trait ViewClass: Send + Sync {
     }
 
     /// Controls how likely this view will get a large tile in the ui.
-    fn layout_priority(&self) -> ViewClassLayoutPriority;
+    fn layout_priority(&self) -> ViewClassLayoutPriority {
+        ViewClassLayoutPriority::default()
+    }
 
     /// Controls whether the visible time range UI should be displayed for this view.
     fn supports_visible_time_range(&self) -> bool {

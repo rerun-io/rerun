@@ -100,7 +100,7 @@ impl Transform for GetIndexList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use arrow::array::{AsArray as _, ListArray};
+    use arrow::array::AsArray as _;
     use arrow::datatypes::Int32Type;
 
     #[test]

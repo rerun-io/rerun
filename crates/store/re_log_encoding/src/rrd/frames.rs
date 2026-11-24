@@ -67,10 +67,27 @@ impl Encodable for EncodingOptions {
     }
 }
 
+/// Takes all of `data` as a fixed-size frame, failing unless it holds exactly `N` bytes.
+fn read_exact_frame<const N: usize>(
+    mut data: impl bytes::Buf,
+    frame_name: &str,
+) -> Result<[u8; N], crate::rrd::CodecError> {
+    let len = data.remaining();
+    if len != N {
+        return Err(crate::rrd::CodecError::FrameDecoding(format!(
+            "invalid {frame_name} length (expected {N} but got {len})"
+        )));
+    }
+    let mut out = [0u8; N];
+    data.copy_to_slice(&mut out);
+    Ok(out)
+}
+
 impl Decodable for EncodingOptions {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
+    fn from_rrd_bytes(data: impl bytes::Buf) -> Result<Self, crate::rrd::CodecError> {
+        let data: [u8; Self::ENCODED_SIZE_BYTES] = read_exact_frame(data, "EncodingOptions")?;
         match data {
-            &[compression, serializer, 0, 0] => {
+            [compression, serializer, 0, 0] => {
                 let compression = match compression {
                     0 => Compression::Off,
                     1 => Compression::LZ4,
@@ -174,14 +191,8 @@ impl Encodable for StreamHeader {
 }
 
 impl Decodable for StreamHeader {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
-        if data.len() != Self::ENCODED_SIZE_BYTES {
-            return Err(crate::rrd::CodecError::FrameDecoding(format!(
-                "invalid StreamHeader length (expected {} but got {})",
-                Self::ENCODED_SIZE_BYTES,
-                data.len()
-            )));
-        }
+    fn from_rrd_bytes(data: impl bytes::Buf) -> Result<Self, crate::rrd::CodecError> {
+        let data: [u8; Self::ENCODED_SIZE_BYTES] = read_exact_frame(data, "StreamHeader")?;
 
         let to_array_4b = |slice: &[u8]| slice.try_into().expect("always returns an Ok() variant");
 
@@ -386,7 +397,11 @@ impl Encodable for StreamFooter {
 }
 
 impl Decodable for StreamFooter {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
+    fn from_rrd_bytes(mut data: impl bytes::Buf) -> Result<Self, crate::rrd::CodecError> {
+        // The fixed part is at the end and says how many entries precede it, so this frame is
+        // parsed backwards, which needs contiguous bytes.
+        let data = data.copy_to_bytes(data.remaining());
+
         if data.len() < Self::ENCODED_SIZE_BYTES {
             return Err(crate::rrd::CodecError::FrameDecoding(format!(
                 "invalid StreamFooter length (expected {} but got {})",
@@ -537,14 +552,8 @@ impl Encodable for MessageHeader {
 }
 
 impl Decodable for MessageHeader {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, crate::rrd::CodecError> {
-        if data.len() != Self::ENCODED_SIZE_BYTES {
-            return Err(crate::rrd::CodecError::FrameDecoding(format!(
-                "invalid MessageHeader length (expected {} but got {})",
-                Self::ENCODED_SIZE_BYTES,
-                data.len()
-            )));
-        }
+    fn from_rrd_bytes(data: impl bytes::Buf) -> Result<Self, crate::rrd::CodecError> {
+        let data: [u8; Self::ENCODED_SIZE_BYTES] = read_exact_frame(data, "MessageHeader")?;
 
         let kind = u64::from_le_bytes(data[0..8].try_into().expect("cannot fail, checked above"));
         let kind = match kind {
@@ -621,7 +630,7 @@ mod tests {
         let count_start = bytes.len() - size_of::<u32>();
         bytes[count_start..].copy_from_slice(&2u32.to_le_bytes());
 
-        let err = StreamFooter::from_rrd_bytes(&bytes)
+        let err = StreamFooter::from_rrd_bytes(bytes.as_slice())
             .expect_err("a footer announcing more entries than it carries must not decode");
         assert_matches!(
             err,
@@ -668,8 +677,8 @@ mod tests {
         let count_start = bytes.len() - size_of::<u32>();
         bytes[count_start..].copy_from_slice(&2u32.to_le_bytes());
 
-        let footer =
-            StreamFooter::from_rrd_bytes(&bytes).expect("a complete two-entry footer must decode");
+        let footer = StreamFooter::from_rrd_bytes(bytes.as_slice())
+            .expect("a complete two-entry footer must decode");
 
         assert_eq!(vec![first, second], footer.entries);
     }

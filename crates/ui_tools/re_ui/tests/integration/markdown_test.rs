@@ -24,3 +24,33 @@ pub fn test_markdown_code_block_stays_within_its_ui() {
         "The code block reaches {overhang} px past the right edge of its ui"
     );
 }
+
+#[test]
+pub fn test_markdown_inline_code() {
+    let markdown = "\
+Dataset `libero` (robot manipulation demos, from HDF5).
+
+* Timelines: `sim_time`, `row_index`
+* Cameras: `/camera/agentview` and `/camera/eye_in_hand` (wrist cam)
+* Robot: `/urdf/transforms`, plus the `urdf-model` asset (shown in every segment)
+* Demo data: `/demo`, and raw `__hdf5_properties` metadata
+
+Some code:
+
+```python
+print(\"hello\")
+```
+";
+
+    let mut results = egui_kittest::SnapshotResults::new();
+    for theme in [egui::Theme::Dark, egui::Theme::Light] {
+        let mut harness =
+            re_ui::testing::new_harness(re_ui::testing::TestOptions::Gui, Vec2::new(500.0, 200.0))
+                .with_theme(theme)
+                .build_ui(|ui| ui.markdown_ui(markdown));
+        harness.run();
+        harness.fit_contents();
+        harness.snapshot(format!("markdown_inline_code_{theme:?}").to_lowercase());
+        results.extend_harness(&mut harness);
+    }
+}

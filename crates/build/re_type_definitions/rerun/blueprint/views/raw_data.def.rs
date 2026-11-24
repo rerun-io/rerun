@@ -6,6 +6,7 @@
 /// \example views/raw_data title="Use a blueprint to show a RawDataView."
 #[rerun::rerun_type]
 #[docs(archetype_agnostic)]
+#[docs(keywords = "raw, message, component, inspect, event, single entity")]
 #[rerun(view_identifier = "RawData")]
 #[rerun(state = "unstable")]
 pub struct RawDataView {

@@ -25,6 +25,9 @@ version = "0.0.0" # Must match the stub on crates.io, which never changes.
 [lints]
 workspace = true
 
+[lib]
+test = false
+
 # The parts of the file between the BEGIN HAKARI SECTION and END HAKARI SECTION comments
 # are managed by hakari.
 
@@ -61,15 +64,15 @@ crossbeam-utils = { version = "0.8" }
 datafusion-common = { version = "54", default-features = false, features = ["object_store", "sql"] }
 datafusion-expr = { version = "54" }
 digest = { version = "0.10", features = ["mac", "std"] }
-ecolor = { version = "0.37", features = ["bytemuck", "color-hex", "serde"] }
-eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "experimental", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
-egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
-egui-wgpu = { version = "0.37" }
-egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main", features = ["bytemuck", "color-hex", "serde"] }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["clipboard", "default_fonts", "experimental", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main", features = ["http", "image", "serde", "svg"] }
 ehttp = { version = "0.7", features = ["native-async", "platform-verifier", "streaming"] }
 either = { version = "1", features = ["use_std"] }
-emath = { version = "0.37", features = ["bytemuck", "serde"] }
-epaint = { version = "0.37", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main", features = ["bytemuck", "serde"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
 flate2 = { version = "1", features = ["zlib-rs"] }
 foldhash = { version = "0.2" }
 font-types = { version = "0.12", default-features = false, features = ["bytemuck", "serde", "std"] }
@@ -90,9 +93,10 @@ icu_locale_core = { version = "2", default-features = false, features = ["alloc"
 icu_provider = { version = "2", default-features = false, features = ["alloc", "baked"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 indexmap = { version = "2", features = ["serde"] }
-insta = { version = "1", features = ["filters", "glob", "redactions", "yaml"] }
-itertools = { version = "0.14" }
+insta = { version = "1", features = ["filters", "glob", "json", "redactions", "yaml"] }
+itertools = { version = "0.13" }
 jiff = { version = "0.2", features = ["js", "serde"] }
+kurbo = { version = "0.13" }
 litemap = { version = "0.8", default-features = false, features = ["alloc"] }
 lock_api = { version = "0.4", features = ["arc_lock", "serde"] }
 log = { version = "0.4", default-features = false, features = ["release_max_level_debug", "std"] }
@@ -122,7 +126,6 @@ prost = { version = "0.14" }
 prost-reflect = { version = "0.16", default-features = false, features = ["serde", "text-format"] }
 prost-types = { version = "0.14" }
 puffin = { version = "0.20", features = ["serialization"] }
-quiver = { version = "0.6", default-features = false, features = ["derive"] }
 quote = { version = "1" }
 rand = { version = "0.9" }
 rand_distr = { version = "0.5" }
@@ -137,6 +140,7 @@ rfd = { version = "0.17", default-features = false, features = ["file-handle-inn
 rig-core = { version = "0.45", default-features = false, features = ["test-utils"] }
 rig-http = { version = "0.45", default-features = false, features = ["test-utils"] }
 rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
+rustls-pki-types = { version = "1", features = ["std"] }
 rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
 schemars = { version = "1", features = ["chrono04"] }
 semver = { version = "1", features = ["serde"] }
@@ -150,7 +154,7 @@ similar = { version = "2", features = ["inline", "unicode"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
 stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
-syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit", "visit-mut"] }
+syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
 tempfile = { version = "3" }
@@ -172,6 +176,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tungstenite = { version = "0.29" }
 twox-hash = { version = "2" }
 typenum = { version = "1", default-features = false, features = ["const-generics"] }
+unicode-normalization = { version = "0.1" }
 ureq = { version = "3", features = ["json", "socks-proxy"] }
 url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["js", "serde", "v4"] }
@@ -181,7 +186,7 @@ wgpu-types = { version = "30", default-features = false, features = ["fragile-se
 winnow = { version = "1" }
 writeable = { version = "0.6", default-features = false, features = ["alloc"] }
 xxhash-rust = { version = "0.8", default-features = false, features = ["xxh3", "xxh32", "xxh64"] }
-yoke = { version = "0.8", default-features = false, features = ["alloc", "derive"] }
+yoke = { version = "0.8", features = ["derive"] }
 zerocopy = { version = "0.8", default-features = false, features = ["derive", "simd"] }
 zerofrom = { version = "0.1", default-features = false, features = ["alloc", "derive"] }
 zeroize = { version = "1", features = ["derive"] }
@@ -224,15 +229,15 @@ crossbeam-utils = { version = "0.8" }
 datafusion-common = { version = "54", default-features = false, features = ["object_store", "sql"] }
 datafusion-expr = { version = "54" }
 digest = { version = "0.10", features = ["mac", "std"] }
-ecolor = { version = "0.37", features = ["bytemuck", "color-hex", "serde"] }
-eframe = { version = "0.37", default-features = false, features = ["clipboard", "default_fonts", "experimental", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
-egui = { version = "0.37", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
-egui-wgpu = { version = "0.37" }
-egui_extras = { version = "0.37", features = ["http", "image", "serde", "svg"] }
+ecolor = { git = "https://github.com/emilk/egui.git", branch = "main", features = ["bytemuck", "color-hex", "serde"] }
+eframe = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["clipboard", "default_fonts", "experimental", "inspection", "links", "persistence", "system_fonts", "wayland", "wgpu", "x11"] }
+egui = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["bytemuck", "callstack", "color-hex", "default_fonts", "experimental", "persistence", "rayon"] }
+egui-wgpu = { git = "https://github.com/emilk/egui.git", branch = "main" }
+egui_extras = { git = "https://github.com/emilk/egui.git", branch = "main", features = ["http", "image", "serde", "svg"] }
 ehttp = { version = "0.7", features = ["native-async", "platform-verifier", "streaming"] }
 either = { version = "1", features = ["use_std"] }
-emath = { version = "0.37", features = ["bytemuck", "serde"] }
-epaint = { version = "0.37", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
+emath = { git = "https://github.com/emilk/egui.git", branch = "main", features = ["bytemuck", "serde"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["bytemuck", "color-hex", "default_fonts", "rayon", "serde"] }
 flate2 = { version = "1", features = ["zlib-rs"] }
 foldhash = { version = "0.2" }
 font-types = { version = "0.12", default-features = false, features = ["bytemuck", "serde", "std"] }
@@ -253,9 +258,10 @@ icu_locale_core = { version = "2", default-features = false, features = ["alloc"
 icu_provider = { version = "2", default-features = false, features = ["alloc", "baked"] }
 image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
 indexmap = { version = "2", features = ["serde"] }
-insta = { version = "1", features = ["filters", "glob", "redactions", "yaml"] }
-itertools = { version = "0.14" }
+insta = { version = "1", features = ["filters", "glob", "json", "redactions", "yaml"] }
+itertools = { version = "0.13" }
 jiff = { version = "0.2", features = ["js", "serde"] }
+kurbo = { version = "0.13" }
 litemap = { version = "0.8", default-features = false, features = ["alloc"] }
 lock_api = { version = "0.4", features = ["arc_lock", "serde"] }
 log = { version = "0.4", default-features = false, features = ["release_max_level_debug", "std"] }
@@ -285,7 +291,6 @@ prost = { version = "0.14" }
 prost-reflect = { version = "0.16", default-features = false, features = ["serde", "text-format"] }
 prost-types = { version = "0.14" }
 puffin = { version = "0.20", features = ["serialization"] }
-quiver = { version = "0.6", default-features = false, features = ["derive"] }
 quote = { version = "1" }
 rand = { version = "0.9" }
 rand_distr = { version = "0.5" }
@@ -300,6 +305,7 @@ rfd = { version = "0.17", default-features = false, features = ["file-handle-inn
 rig-core = { version = "0.45", default-features = false, features = ["test-utils"] }
 rig-http = { version = "0.45", default-features = false, features = ["test-utils"] }
 rustls = { version = "0.23", default-features = false, features = ["logging", "ring", "std", "tls12"] }
+rustls-pki-types = { version = "1", features = ["std"] }
 rustls-webpki = { version = "0.103", default-features = false, features = ["ring", "std"] }
 schemars = { version = "1", features = ["chrono04"] }
 semver = { version = "1", features = ["serde"] }
@@ -314,7 +320,7 @@ similar = { version = "2", features = ["inline", "unicode"] }
 slab = { version = "0.4" }
 smallvec = { version = "1", default-features = false, features = ["const_new", "serde", "union"] }
 stable_deref_trait = { version = "1", default-features = false, features = ["alloc"] }
-syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "full", "visit", "visit-mut"] }
+syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 syn-f595c2ba2a3f28df = { package = "syn", version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 sync_wrapper = { version = "1", default-features = false, features = ["futures"] }
 tempfile = { version = "3" }
@@ -336,6 +342,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 tungstenite = { version = "0.29" }
 twox-hash = { version = "2" }
 typenum = { version = "1", default-features = false, features = ["const-generics"] }
+unicode-normalization = { version = "0.1" }
 ureq = { version = "3", features = ["json", "socks-proxy"] }
 url = { version = "2", features = ["serde"] }
 uuid = { version = "1", features = ["js", "serde", "v4"] }
@@ -345,7 +352,7 @@ wgpu-types = { version = "30", default-features = false, features = ["fragile-se
 winnow = { version = "1" }
 writeable = { version = "0.6", default-features = false, features = ["alloc"] }
 xxhash-rust = { version = "0.8", default-features = false, features = ["xxh3", "xxh32", "xxh64"] }
-yoke = { version = "0.8", default-features = false, features = ["alloc", "derive"] }
+yoke = { version = "0.8", features = ["derive"] }
 zerocopy = { version = "0.8", default-features = false, features = ["derive", "simd"] }
 zerofrom = { version = "0.1", default-features = false, features = ["alloc", "derive"] }
 zeroize = { version = "1", features = ["derive"] }
@@ -359,9 +366,9 @@ zstd-sys = { version = "2", default-features = false, features = ["legacy", "std
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
@@ -392,8 +399,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-apple = { version = "30", default-features = false, features = ["metal", "vulkan-portability"] }
 wgpu-hal = { version = "30", default-features = false, features = ["fragile-send-sync-non-atomic-wasm", "metal", "portable-atomic", "renderdoc", "vulkan"] }
@@ -406,9 +413,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
@@ -439,8 +446,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-apple = { version = "30", default-features = false, features = ["metal", "vulkan-portability"] }
 wgpu-hal = { version = "30", default-features = false, features = ["fragile-send-sync-non-atomic-wasm", "metal", "portable-atomic", "renderdoc", "vulkan"] }
@@ -453,9 +460,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
@@ -472,10 +479,8 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
-syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1", default-features = false, features = ["io-util"] }
@@ -483,8 +488,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
@@ -498,9 +503,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
@@ -517,10 +522,8 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
-syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1", default-features = false, features = ["io-util"] }
@@ -528,8 +531,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
@@ -543,9 +546,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
@@ -576,8 +579,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-apple = { version = "30", default-features = false, features = ["metal", "vulkan-portability"] }
 wgpu-hal = { version = "30", default-features = false, features = ["fragile-send-sync-non-atomic-wasm", "metal", "portable-atomic", "renderdoc", "vulkan"] }
@@ -590,9 +593,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 errno = { version = "0.3" }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
@@ -623,8 +626,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-apple = { version = "30", default-features = false, features = ["metal", "vulkan-portability"] }
 wgpu-hal = { version = "30", default-features = false, features = ["fragile-send-sync-non-atomic-wasm", "metal", "portable-atomic", "renderdoc", "vulkan"] }
@@ -637,9 +640,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
@@ -659,8 +662,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
 wgpu-hal = { version = "30", default-features = false, features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "portable-atomic", "renderdoc", "vulkan"] }
@@ -671,10 +674,10 @@ windows-core = { version = "0.62" }
 windows-future = { version = "0.3", default-features = false, features = ["std"] }
 windows-numerics = { version = "0.3", default-features = false, features = ["std"] }
 windows-strings = { version = "0.5", default-features = false, features = ["std"] }
-windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Storage_FileSystem", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
-windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
-windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_IO", "Win32_System_Threading", "Win32_System_WindowsProgramming"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_Time", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell"] }
+windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Networking_WinSock", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
 zstd = { version = "0.13", default-features = false, features = ["zstdmt"] }
 zstd-safe = { version = "7", default-features = false, features = ["zstdmt"] }
@@ -684,9 +687,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 futures-task = { version = "0.3", default-features = false, features = ["std"] }
 getrandom-9fbad63c4bcf4a8f = { package = "getrandom", version = "0.4", default-features = false, features = ["std", "sys_rng"] }
@@ -706,8 +709,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
 wgpu-hal = { version = "30", default-features = false, features = ["dx12", "fragile-send-sync-non-atomic-wasm", "gles", "portable-atomic", "renderdoc", "vulkan"] }
@@ -718,10 +721,10 @@ windows-core = { version = "0.62" }
 windows-future = { version = "0.3", default-features = false, features = ["std"] }
 windows-numerics = { version = "0.3", default-features = false, features = ["std"] }
 windows-strings = { version = "0.5", default-features = false, features = ["std"] }
-windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Graphics_Gdi", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_IO", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Shell"] }
-windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Storage_FileSystem", "Win32_System_Console", "Win32_UI_Input_KeyboardAndMouse"] }
-windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_LibraryLoader", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
-windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_Registry", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_Time", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-4db8c43aad08e7ae = { package = "windows-sys", version = "0.60", features = ["Win32_Networking_WinSock", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Console", "Win32_System_IO", "Win32_System_Threading", "Win32_System_WindowsProgramming"] }
+windows-sys-73dcd821b1037cfd = { package = "windows-sys", version = "0.59", features = ["Win32_Globalization", "Win32_Security", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_Diagnostics_Debug", "Win32_System_Registry", "Win32_System_Time", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell"] }
+windows-sys-b21d60becc0929df = { package = "windows-sys", version = "0.52", features = ["Win32_Devices_HumanInterfaceDevice", "Win32_Foundation", "Win32_Globalization", "Win32_Graphics_Dwm", "Win32_Graphics_Gdi", "Win32_Media", "Win32_Networking_WinSock", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com_StructuredStorage", "Win32_System_Console", "Win32_System_DataExchange", "Win32_System_Diagnostics_Debug", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Ole", "Win32_System_ProcessStatus", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Accessibility", "Win32_UI_Controls", "Win32_UI_HiDpi", "Win32_UI_Input_Ime", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_Pointer", "Win32_UI_Input_Touch", "Win32_UI_Shell", "Win32_UI_TextServices", "Win32_UI_WindowsAndMessaging"] }
+windows-sys-d4189bed749088b6 = { package = "windows-sys", version = "0.61", features = ["Wdk_Foundation", "Wdk_Storage_FileSystem", "Wdk_System_IO", "Win32_Graphics_Dwm", "Win32_Networking_WinSock", "Win32_Security_Authentication_Identity", "Win32_Security_Credentials", "Win32_Security_Cryptography", "Win32_Storage_FileSystem", "Win32_System_Com", "Win32_System_Console", "Win32_System_IO", "Win32_System_LibraryLoader", "Win32_System_Memory", "Win32_System_Pipes", "Win32_System_SystemInformation", "Win32_System_SystemServices", "Win32_System_Threading", "Win32_System_WindowsProgramming", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Shell_Common", "Win32_UI_WindowsAndMessaging"] }
 winit = { version = "0.30", default-features = false, features = ["rwh_06", "wayland", "wayland-dlopen", "x11"] }
 zstd = { version = "0.13", default-features = false, features = ["zstdmt"] }
 zstd-safe = { version = "7", default-features = false, features = ["zstdmt"] }
@@ -731,9 +734,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
@@ -750,10 +753,8 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
-syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1", default-features = false, features = ["io-util"] }
@@ -761,8 +762,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }
@@ -776,9 +777,9 @@ zstd-sys = { version = "2", default-features = false, features = ["zstdmt"] }
 bitflags = { version = "2", default-features = false, features = ["std"] }
 comfy-table = { version = "7", default-features = false, features = ["tty"] }
 concurrent-queue = { version = "2" }
-egui-winit = { version = "0.37", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
+egui-winit = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["accesskit", "clipboard", "links", "serde", "wayland", "x11"] }
 ehttp = { version = "0.7", default-features = false, features = ["json"] }
-epaint = { version = "0.37", default-features = false, features = ["color_fonts"] }
+epaint = { git = "https://github.com/emilk/egui.git", branch = "main", default-features = false, features = ["color_fonts"] }
 event-listener = { version = "5" }
 event-listener-strategy = { version = "0.5" }
 fastrand = { version = "2" }
@@ -795,10 +796,8 @@ mio = { version = "1", features = ["net", "os-ext"] }
 naga = { version = "30", features = ["glsl-out", "hlsl-out", "spv-out", "wgsl-in"] }
 phf_shared = { version = "0.14", default-features = false, features = ["std"] }
 poll-promise = { version = "0.3", default-features = false, features = ["tokio"] }
-quick-xml = { version = "0.36", features = ["overlapped-lists", "serialize"] }
 rig-http = { version = "0.45", default-features = false, features = ["tokio"] }
 rustix = { version = "1", features = ["event", "fs", "net", "pipe", "process", "stdio", "system", "termios", "time"] }
-syn-7b89eefb6aaa9bf3 = { package = "syn", version = "3", default-features = false, features = ["fold"] }
 tokio = { version = "1", default-features = false, features = ["process"] }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "ring", "tls12"] }
 tokio-stream = { version = "0.1", default-features = false, features = ["io-util"] }
@@ -806,8 +805,8 @@ tokio-util = { version = "0.7", default-features = false, features = ["rt"] }
 tower = { version = "0.5", default-features = false, features = ["retry", "timeout"] }
 tower-http = { version = "0.6", default-features = false, features = ["decompression-gzip", "follow-redirect"] }
 ureq = { version = "3", default-features = false, features = ["platform-verifier"] }
-vello_common = { version = "0.2", default-features = false, features = ["png"] }
-vello_cpu = { version = "0.2", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
+vello_common = { version = "0.4", default-features = false, features = ["png"] }
+vello_cpu = { version = "0.4", default-features = false, features = ["f32_pipeline", "png", "text", "u8_pipeline"] }
 wayland-sys = { version = "0.31", default-features = false, features = ["dlopen", "egl"] }
 wgpu-core = { version = "30", default-features = false, features = ["portable-atomic", "renderdoc"] }
 wgpu-core-deps-windows-linux-android = { version = "30", default-features = false, features = ["dx12", "gles", "renderdoc", "vulkan"] }

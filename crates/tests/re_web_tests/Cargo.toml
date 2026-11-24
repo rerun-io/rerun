@@ -15,6 +15,10 @@ version.workspace = true
 [lints]
 workspace = true
 
+[[bin]]
+name = "re_web_tests"
+test = false
+
 [package.metadata.docs.rs]
 all-features = true
 

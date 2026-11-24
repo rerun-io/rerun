@@ -21,7 +21,7 @@ List(non-null UInt8)
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoSample`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VideoSample.html)
- * 🐍 [Python API docs for `VideoSample`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VideoSample)
+ * 🐍 [Python API docs for `VideoSample`](https://ref.rerun.io/docs/python/stable/components#rerun.components.VideoSample)
  * 🦀 [Rust API docs for `VideoSample`](https://docs.rs/rerun/latest/rerun/components/struct.VideoSample.html)
 
 

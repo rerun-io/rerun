@@ -2,9 +2,10 @@
 """
 Check that deleted/renamed doc files have corresponding redirects in _redirects.yaml.
 
-This script compares the current branch against the base branch (default: main)
+This script compares the working tree against the merge base of HEAD and the base branch (default: main)
 and ensures that any deleted or renamed markdown files in docs/content/ have
 corresponding entries in docs/content/_redirects.yaml.
+Pages that the base branch added or moved after the merge base are not counted.
 """
 
 from __future__ import annotations
@@ -22,7 +23,7 @@ REDIRECTS_FILE = DOCS_ROOT / "_redirects.yaml"
 def get_deleted_and_renamed_docs(base_branch: str = "main") -> tuple[list[str], list[str]]:
     """Get lists of deleted and renamed doc paths relative to docs/content/."""
     repo = git.Repo(search_parent_directories=True)
-    diff_output = repo.git.diff(base_branch, "--name-status", "--", "docs/content/**/*.md")
+    diff_output = repo.git.diff("--merge-base", base_branch, "--name-status", "--", "docs/content/**/*.md")
 
     deleted = []
     renamed = []
@@ -83,7 +84,7 @@ def main() -> int:
     parser.add_argument(
         "--base",
         default="main",
-        help="Base branch to compare against (default: main)",
+        help="Branch whose merge base with HEAD to compare against (default: main)",
     )
     args = parser.parse_args()
 

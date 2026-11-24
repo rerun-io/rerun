@@ -7,7 +7,7 @@ title: "VideoCodec"
 The codec used to encode video stored in [`components.VideoSample`](https://rerun.io/docs/reference/types/components/video_sample).
 
 Support of these codecs by the Rerun Viewer is platform dependent.
-For more details see check the [video reference](https://rerun.io/docs/reference/video).
+For more details see check the [video reference](https://rerun.io/docs/logging-and-ingestion/media/video).
 
 ## Variants
 #### `AV1` = 0x61763031
@@ -70,7 +70,7 @@ UInt32
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoCodec`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
- * 🐍 [Python API docs for `VideoCodec`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.VideoCodec)
+ * 🐍 [Python API docs for `VideoCodec`](https://ref.rerun.io/docs/python/stable/components#rerun.components.VideoCodec)
  * 🦀 [Rust API docs for `VideoCodec`](https://docs.rs/rerun/latest/rerun/components/enum.VideoCodec.html)
 
 

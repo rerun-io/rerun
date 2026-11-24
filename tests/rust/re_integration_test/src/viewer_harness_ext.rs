@@ -86,14 +86,14 @@ pub trait ViewerHarnessExt {
     }
 
     /// Repeatedly [`run`](Self::run) and evaluate `predicate` until it returns `true` or the
-    /// default timeout elapses.
+    /// 15-second timeout elapses.
     #[track_caller]
     fn step_until(&mut self, description: &'static str, predicate: impl FnMut(&Self) -> bool) {
         self.step_until_with_custom_timeout(
             description,
             predicate,
             re_viewer::viewer_test_utils::DEFAULT_POLL_INTERVAL,
-            re_viewer::viewer_test_utils::DEFAULT_WAIT_TIMEOUT,
+            Duration::from_secs(15),
         );
     }
 
@@ -110,6 +110,19 @@ pub trait ViewerHarnessExt {
         poll_interval: Duration,
         timeout: Duration,
     );
+
+    /// Is there any node with `label`?
+    fn has_label(&self, label: &str) -> bool {
+        self.root_node().query_all_by_label(label).next().is_some()
+    }
+
+    /// Is there any node whose label contains `label`?
+    fn has_label_contains(&self, label: &str) -> bool {
+        self.root_node()
+            .query_all_by_label_contains(label)
+            .next()
+            .is_some()
+    }
 
     /// Wait until the viewer is no longer showing any loading indicator.
     #[track_caller]

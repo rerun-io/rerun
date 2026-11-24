@@ -113,7 +113,7 @@ def to_nanos(duration: int | np.integer | float | np.float64 | timedelta | np.ti
     if isinstance(duration, np.timedelta64):
         return duration.astype("timedelta64[ns]").astype("int64")  # type: ignore[no-any-return]
     elif isinstance(duration, timedelta):
-        return round(1e9 * duration.total_seconds())
+        return duration // timedelta(microseconds=1) * 1_000
     elif isinstance(duration, (int, np.integer)):
         return 1_000_000_000 * int(duration)  # Interpret as seconds and convert to nanos
     elif isinstance(
@@ -134,6 +134,8 @@ def to_nanos_since_epoch(
     if isinstance(timestamp, (int, np.integer, float, np.float64)):
         if timestamp > 1e11:
             raise ValueError("set_time: Expected seconds since unix epoch, but it looks like this is in milliseconds")
+        if isinstance(timestamp, (int, np.integer)):
+            return 1_000_000_000 * int(timestamp)  # Interpret as seconds and convert to nanos
         return int(np.round(1e9 * timestamp))  # Interpret as seconds and convert to nanos
     elif isinstance(timestamp, datetime):
         # Special case pandas to avoid loss of precision
@@ -147,7 +149,8 @@ def to_nanos_since_epoch(
             timestamp = timestamp.astimezone(UTC)
         epoch = datetime(1970, 1, 1, tzinfo=UTC)
 
-        return int(np.round(1e9 * (timestamp - epoch).total_seconds()))
+        # Integer arithmetic keeps the result exact; float seconds round to the nearest ~256 ns at present-day offsets.
+        return (timestamp - epoch) // timedelta(microseconds=1) * 1_000
     elif isinstance(timestamp, np.datetime64):
         return int(timestamp.astype("datetime64[ns]").astype("int64"))
     elif isinstance(timestamp, pa.TimestampScalar):

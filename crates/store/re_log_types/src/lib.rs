@@ -50,7 +50,9 @@ pub use self::index::{
 };
 pub use self::instance::Instance;
 pub use self::path::*;
-pub use self::store_id::{RecordingId, StoreId, StoreKind};
+pub use self::store_id::{
+    InvalidStoreKindError, RecordingId, StoreId, StoreIdParseError, StoreKind,
+};
 pub use self::vec_deque_ext::{VecDequeInsertionExt, VecDequeRemovalExt, VecDequeSortingExt};
 
 pub mod external {

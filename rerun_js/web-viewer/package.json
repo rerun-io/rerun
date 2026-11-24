@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.43.0-alpha.1+dev",
+  "version": "0.44.0-alpha.1+dev",
   "description": "Embed the Rerun web viewer in your app",
   "licenses": [
     {
@@ -52,6 +52,9 @@
     }
   },
   "files": [
+    "compat.d.ts",
+    "compat.d.ts.map",
+    "compat.ts",
     "exact_json.d.ts",
     "exact_json.d.ts.map",
     "exact_json.ts",
@@ -72,14 +75,14 @@
     "tsconfig.json"
   ],
   "devDependencies": {
-    "@bufbuild/protoc-gen-es": "^2.16.0",
+    "@bufbuild/protoc-gen-es": "^2.17.0",
     "dts-buddy": "^0.8.3",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.2",
     "typedoc": "^0.28.20",
-    "typedoc-github-theme": "^0.3.0",
-    "typescript": "^6.0.3"
+    "typedoc-github-theme": "^0.4.0",
+    "typescript": "^7.0.2"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "^2.16.0"
+    "@bufbuild/protobuf": "^2.17.0"
   }
 }

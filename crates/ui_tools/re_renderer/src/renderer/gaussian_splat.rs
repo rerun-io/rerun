@@ -874,13 +874,8 @@ impl Renderer for GaussianSplatRenderer {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::view_builder::{
-        Projection, TargetConfiguration, ViewBuilder, ViewPickingConfiguration,
-    };
-    use crate::{
-        PickingLayerInstanceId, PickingLayerProcessor, RectInt, Rgba, Rgba32Unmul, ViewBuilderId,
-        draw_phases::PickingLayerObjectId,
-    };
+    use crate::view_builder::{Projection, TargetConfiguration, ViewPickingConfiguration};
+    use crate::{PickingLayerInstanceId, RectInt, Rgba, Rgba32Unmul, ViewBuilderId};
 
     /// A single opaque gaussian at the origin should write its object- and instance-id into the
     /// picking layer, and reading back the center pixel should return exactly those ids.

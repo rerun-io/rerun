@@ -54,7 +54,7 @@ impl PixelFormat {
         #[expect(clippy::match_same_arms)]
         match self {
             // 444 formats.
-            Self::Y_U_V24_FullRange | Self::Y_U_V24_LimitedRange => num_pixels * 4,
+            Self::Y_U_V24_FullRange | Self::Y_U_V24_LimitedRange => 24 * num_pixels / 8,
 
             // 422 formats.
             Self::Y_U_V16_FullRange | Self::Y_U_V16_LimitedRange | Self::YUY2 => {
@@ -179,7 +179,7 @@ impl PixelFormat {
                 let y_plane_size = (w * h) as usize;
                 let uv_plane_size = y_plane_size / 4; // Half horizontal & vertical resolution.
                 let y_plane_coord = (y * w + x) as usize;
-                let uv_plane_coord = (y * w / 4 + x / 2) as usize; // == ((y / 2) * (w / 2) + x / 2)
+                let uv_plane_coord = ((y / 2) * (w / 2) + x / 2) as usize;
 
                 let luma = *buf.get(y_plane_coord)?;
                 let u = *buf.get(uv_plane_coord + y_plane_size)?;
@@ -195,8 +195,9 @@ impl PixelFormat {
             Self::NV12 => {
                 let uv_offset = w * h;
                 let luma = *buf.get((y * w + x) as usize)?;
-                let u = *buf.get((uv_offset + (y / 2) * w + x) as usize)?;
-                let v = *buf.get((uv_offset + (y / 2) * w + x) as usize + 1)?;
+                let uv_coord = (uv_offset + (y / 2) * w + x / 2 * 2) as usize; // U/V are interleaved pairs shared by two columns.
+                let u = *buf.get(uv_coord)?;
+                let v = *buf.get(uv_coord + 1)?;
                 Some([luma, u, v])
             }
 
@@ -288,6 +289,50 @@ impl PixelFormat {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A buffer of exactly [`PixelFormat::num_bytes`] must decode every pixel, and use its last byte.
+    #[test]
+    fn yuv_decode_matches_num_bytes() {
+        let yuv_formats = [
+            PixelFormat::Y_U_V24_FullRange,
+            PixelFormat::Y_U_V24_LimitedRange,
+            PixelFormat::Y_U_V16_FullRange,
+            PixelFormat::Y_U_V16_LimitedRange,
+            PixelFormat::Y_U_V12_FullRange,
+            PixelFormat::Y_U_V12_LimitedRange,
+            PixelFormat::NV12,
+            PixelFormat::YUY2,
+            PixelFormat::Y8_FullRange,
+            PixelFormat::Y8_LimitedRange,
+        ];
+
+        for format in yuv_formats {
+            for size in [[2, 2], [4, 4], [8, 2], [2, 8], [16, 6]] {
+                let [w, h] = size;
+                let num_bytes = format.num_bytes(size);
+                let buf: Vec<u8> = (0..num_bytes).map(|i| (i % 251) as u8).collect();
+                let mut buf_with_last_byte_changed = buf.clone();
+                buf_with_last_byte_changed[num_bytes - 1] ^= 0xFF;
+
+                let mut last_byte_used = false;
+                for y in 0..h {
+                    for x in 0..w {
+                        let yuv = format.decode_yuv_at(&buf, size, [x, y]);
+                        assert!(
+                            yuv.is_some(),
+                            "{format} {w}x{h}: pixel {x},{y} is out of bounds for a buffer of {num_bytes} B"
+                        );
+                        last_byte_used |=
+                            yuv != format.decode_yuv_at(&buf_with_last_byte_changed, size, [x, y]);
+                    }
+                }
+                assert!(
+                    last_byte_used,
+                    "{format} {w}x{h}: the last of the {num_bytes} B is never read"
+                );
+            }
+        }
+    }
 
     const BAYER_FORMATS: [PixelFormat; 4] = [
         PixelFormat::BayerRGGB8,

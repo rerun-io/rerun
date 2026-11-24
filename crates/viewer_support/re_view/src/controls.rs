@@ -30,6 +30,9 @@ pub const ROLL_MOUSE_MODIFIER: Modifiers = Modifiers::ALT;
 /// Which modifier speeds up the 3D camera movement.
 pub const SPEED_UP_3D_MODIFIER: Modifiers = Modifiers::SHIFT;
 
+/// Hold while focusing an object to make the 3D camera track it.
+pub const TRACK_ENTITY_3D_MODIFIER: Modifiers = Modifiers::ALT;
+
 /// Key to restore the camera.
 pub const TRACKED_OBJECT_RESTORE_KEY: Key = Key::Escape;
 

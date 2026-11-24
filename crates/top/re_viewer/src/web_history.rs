@@ -13,7 +13,6 @@
 
 use std::sync::{Arc, OnceLock};
 
-use js_sys::wasm_bindgen;
 use re_log::ResultExt as _;
 use re_log_channel::RecordingOpenBehavior;
 use re_mutex::Mutex;
@@ -54,18 +53,27 @@ impl HistoryEntry {
 
     /// The address bar URL for this entry.
     ///
-    /// An entry with no url resolves to the bare path, without a query string.
+    /// Keeps the current page's `analytics` query parameter, so that an embedder's choice, such as
+    /// `analytics=off` on an iframe, still applies after the page is reloaded.
+    /// An entry with no url and no `analytics` parameter resolves to the bare path.
     pub fn to_url(&self) -> Result<String, JsValue> {
-        if self.url.is_empty() {
-            let location =
-                re_web::browser::location().map_err(|err| JsError::new(&err.to_string()))?;
-            return location.pathname();
-        }
+        let location = re_web::browser::location().map_err(|err| JsError::new(&err.to_string()))?;
+        let current_params = UrlSearchParams::new_with_str(&location.search()?)?;
 
         let params = UrlSearchParams::new()?;
-        params.append("url", &self.url);
+        if !self.url.is_empty() {
+            params.append("url", &self.url);
+        }
+        if let Some(analytics) = current_params.get("analytics") {
+            params.append("analytics", &analytics);
+        }
 
-        Ok(format!("?{}", params.to_string()))
+        let query = String::from(params.to_string());
+        if query.is_empty() {
+            location.pathname()
+        } else {
+            Ok(format!("?{query}"))
+        }
     }
 }
 

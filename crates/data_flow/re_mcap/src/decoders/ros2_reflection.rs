@@ -286,7 +286,6 @@ mod tests {
     use re_arrow_util::ArrowArrayDowncastRef as _;
     use re_chunk::EntityPath;
     use re_log_types::TimeType;
-    use re_ros_msg::MessageSchema;
 
     use super::*;
 

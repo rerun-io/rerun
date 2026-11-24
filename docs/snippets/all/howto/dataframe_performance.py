@@ -16,10 +16,10 @@ sample_video_path = (
     Path(__file__).parents[4] / "tests" / "assets" / "rrd" / "video_sample"
 )
 server = rr.server.Server(datasets={"video_dataset": sample_video_path})
-# Using OSS server for demonstration but in practice replace with
-# the URL of your cloud instance
 CATALOG_URL = server.url()
 client = rr.catalog.CatalogClient(CATALOG_URL)
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 dataset = client.get_dataset(name="video_dataset")
 df = dataset.filter_contents([
     "/compressed_images/**",
@@ -53,6 +53,8 @@ with rr.RecordingStream("rerun_example_layer", recording_id=segment_id) as rec:
     rec.set_time("log_time", timestamp=second_to_last_timestamp)
     rec.log("/events", rr.AnyValues(flag=True))
 
+# On Rerun Hub, register from object storage:
+# dataset.register(["s3://bucket/events.rrd"], layer_name="event_layer")
 dataset.register([Path(RRD_PATH).as_uri()], layer_name="event_layer")
 
 # Step 1: read the marker on its own, which fetches no image chunks

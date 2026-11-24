@@ -49,6 +49,10 @@ suggests close matches; `… example_tags.py similar` reports tags that may be d
 
 The `manifest.toml` file describes the structure of the examples contained in this repository. Only the examples which appear in the manifest are included in the [generated documentation](https://rerun.io/examples). The file contains a description of its own format.
 
+A manifest category can declare an ordered list of `steps`, such as the experiment loop's `collect`, `prepare`, `train`, and `evaluate`.
+An example in such a category names the steps it covers with `steps` in its README frontmatter, e.g. `steps = ["prepare", "train"]`.
+`pixi run ./scripts/check_example_manifest_coverage.py` checks that each such example lists a non-empty subset of its category's steps, in the category's order.
+
 If you want to run the example on CI and include it in the in-viewer example page,
 add a `channel` entry to its README frontmatter. The available channels right now are:
 - `main` for simple/fast examples built on each merge to `main`

@@ -793,7 +793,7 @@ fn coordinate_frame_ui(ui: &mut egui::Ui, ctx: &ViewContext<'_>, data_result: &D
             ui.markdown_ui(
                 "The coordinate frame this entity is associated with.
 
-To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/concepts/logging-and-ingestion/transforms) in the manual.",
+To learn more about coordinate frames, see the [Spaces & Transforms](https://rerun.io/docs/logging-and-ingestion/data-model/transforms) in the manual.",
             );
         });
 
@@ -1029,7 +1029,7 @@ fn entity_path_filter_ui(
     }
     if query.num_matching_entities != 0 && query.num_visualized_entities == 0 {
         // TODO(andreas): Talk about this root bit only if it's a spatial view.
-        // `NOLINT`: `EntityPath`'s debug impl doesn't quote the result.
+        // NOLINT: `EntityPath`'s debug impl doesn't quote the result.
         ui.warning_label(
             format!("This view is not able to visualize any of the matched entities using the current root \"{origin:?}\"."), // NOLINT
         );
@@ -1167,7 +1167,7 @@ fn component_layers_ui(
         ui,
         "Layer",
         &sources.iter().map(ComponentSource::name).join(", "),
-        Some("https://rerun.io/docs/howto/logging-and-ingestion/layers".to_owned()),
+        Some("https://rerun.io/docs/query-and-transform/catalog/layers".to_owned()),
         |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;

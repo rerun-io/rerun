@@ -13,10 +13,12 @@ import torch.utils.data
 from rerun._tracing import set_current_span_attributes, tracing_scope, with_tracing
 
 from ._config import TimeAlignedSampling
-from ._sample_index import SampleIndex, _validate_timeline_sampling
-from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_blocks
+from ._metrics import DataloaderMetrics
+from ._sample_index import SampleIndex
+from ._shuffle import SampleShuffle, ShuffleStrategy
 from ._utils import (
     FetchedBlock,
+    FetchMetricsAccumulator,
     _build_query_plans,
     _build_targets,
     _decode_iter,
@@ -26,9 +28,10 @@ from ._utils import (
     _index_fetched_block,
     _locate_samples,
     _pipeline_blocks,
-    _replay,
+    _record_query_metrics,
     _resolve_decode_requests_in_block,
     _resolve_decode_threads,
+    _validate_source_schema,
     _warn_if_fork_unsafe,
     _WorkerConnection,
 )
@@ -37,11 +40,11 @@ from .decoders._base import DecodedSample
 if TYPE_CHECKING:
     from collections.abc import Generator, Iterator
 
-    import pyarrow as pa
+    from rerun.experimental.spans import Curation
 
     from ._config import DataSource, Field, FixedRateSampling
-    from ._utils import Target
-    from .manifest._manifest import Manifest
+    from ._metrics import _WorkerMetricsPublisher
+    from ._shuffle import _WorkOrder
 
 
 _DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES = 1000
@@ -51,8 +54,9 @@ def _skip_incomplete(
     samples: Generator[DecodedSample, None, None],
     *,
     max_consecutive_skipped_samples: int | None = _DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES,
+    metrics: _WorkerMetricsPublisher | None = None,
 ) -> Generator[DecodedSample, None, None]:
-    """Drop live samples with missing fields up to the configured limit."""
+    """Drop emitted samples with missing fields up to the configured limit."""
     if max_consecutive_skipped_samples is not None and max_consecutive_skipped_samples < 0:
         raise ValueError(f"max_consecutive_skipped_samples must be non-negative, got {max_consecutive_skipped_samples}")
 
@@ -70,6 +74,8 @@ def _skip_incomplete(
 
             skipped += 1
             consecutive_skipped += 1
+            if metrics is not None:
+                metrics.record_skipped_samples()
             for key in missing:
                 skipped_by_field[key] = skipped_by_field.get(key, 0) + 1
             set_current_span_attributes({"rerun.dataloader.iter.num_samples_skipped": skipped})
@@ -90,32 +96,6 @@ def _skip_incomplete(
                 )
     finally:
         samples.close()
-
-
-def _raise_if_incomplete(
-    sample: DecodedSample,
-    target: Target,
-    required: set[str],
-) -> None:
-    """Raise if a required field is missing despite a manifest's validation."""
-    missing = [key for key in required if sample.get(key) is None]
-    if missing:
-        raise RuntimeError(
-            f"Required fields decoded to nothing: {', '.join(sorted(missing))}. The manifest was built "
-            "against different data, so regenerate it.\n"
-            f"Segment: {target.segment.segment_id} at {target.index_value}"
-        )
-
-
-def _check_complete(
-    decoded: Iterator[DecodedSample],
-    targets: list[Target],
-    required: set[str],
-) -> Iterator[DecodedSample]:
-    """Yield `decoded` through, raising if a sample is missing a required field."""
-    for target, sample in zip(targets, decoded, strict=True):
-        _raise_if_incomplete(sample, target, required)
-        yield sample
 
 
 def _count_yields(
@@ -168,7 +148,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
     The index list is partitioned across DDP ranks and DataLoader workers
     internally. With shuffling enabled (default), the sample order is permuted
     once per epoch before partitioning; call `set_epoch` to re-seed between
-    epochs. When a finite live dataset is consumed to exhaustion under DDP,
+    epochs. When a finite dataset is consumed to exhaustion under DDP,
     wrap the training loop in `DistributedDataParallel.join()`: rank shards can
     have different lengths, especially when incomplete samples are skipped
     after sharding.
@@ -196,14 +176,15 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         optional post-decode buffer samples are emitted through. Defaults to
         [`SampleShuffle`][rerun.experimental.dataloader.SampleShuffle]; pass
         [`NoShuffle`][rerun.experimental.dataloader.NoShuffle] for natural order.
+    seed
+        Base shuffle seed. The epoch selects a reproducible order using `seed + epoch`.
     decode_threads
         Fields to decode concurrently within each `DataLoader` worker.
     max_consecutive_skipped_samples
-        Maximum number of consecutive incomplete samples to skip in each live
+        Maximum number of consecutive incomplete samples to skip in each
         iterator, independently for every rank and `DataLoader` worker. A valid
         sample resets the count. The next missing sample raises with total and
         per-field counts. Defaults to 1000; pass `None` to apply no limit.
-        Manifest replay remains strict regardless of this setting.
 
     """
 
@@ -216,12 +197,17 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
         fetch_block_size: int = 128,
         shuffle_strategy: ShuffleStrategy | None = None,
+        seed: int = 0,
         decode_threads: int | None = None,
         max_consecutive_skipped_samples: int | None = _DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES,
     ) -> None:
         super().__init__()
 
         _warn_if_fork_unsafe(stacklevel=3)
+        if type(seed) is not int or seed < 0:
+            raise ValueError("seed must be a non-negative integer")
+        if type(fetch_block_size) is not int or fetch_block_size <= 0:
+            raise ValueError("fetch_block_size must be a positive integer")
         if max_consecutive_skipped_samples is not None and max_consecutive_skipped_samples < 0:
             raise ValueError(
                 f"max_consecutive_skipped_samples must be non-negative, got {max_consecutive_skipped_samples}"
@@ -237,70 +223,67 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         self._shuffle_strategy = shuffle_strategy if shuffle_strategy is not None else SampleShuffle()
         self._shuffle_buffer = self._shuffle_strategy.emission_buffer()
         self._epoch = 0
-        self._manifest: Manifest | None = None
+        self._seed = seed
         self._parent_ddp_topology: tuple[int, int] | None = None
 
+        _validate_source_schema(
+            source,
+            index,
+            fields,
+            expected_index_type=None if source.curation is None else source.curation.index_type,
+        )
         self._sample_index = SampleIndex.build(
             source,
             index,
             self._fields,
             timeline_sampling=timeline_sampling,
         )
+        self._metrics: DataloaderMetrics | None = DataloaderMetrics()
+        self._metrics_publisher = self._metrics._worker_publisher()
 
         self._connection = _WorkerConnection.from_source(source, fields)
 
     @classmethod
-    def from_manifest(
+    def from_curation(
         cls,
-        manifest: Manifest,
+        curation: Curation,
         source: DataSource,
         fields: dict[str, Field],
         *,
         timeline_sampling: TimeAlignedSampling | FixedRateSampling | None = None,
+        fetch_block_size: int = 128,
+        shuffle_strategy: ShuffleStrategy | None = None,
+        seed: int = 0,
         decode_threads: int | None = None,
+        max_consecutive_skipped_samples: int | None = _DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES,
     ) -> RerunIterableDataset:
         """
-        Build a dataset that replays a frozen [`Manifest`][rerun.experimental.dataloader.Manifest]'s sampling order.
+        Sample selected intervals with deterministic shuffling and rank/worker assignments.
 
-        The order, shards, and decode ranges all come from `manifest`; a manifest records only
-        the field specs, not the objects, so the live connection and decoders are supplied here.
-
-        Parameters
-        ----------
-        manifest:
-            The frozen manifest to replay. Provides the sampling order, shards, and decode ranges.
-        source:
-            The live catalog connection.
-        fields:
-            The decoders, keyed by field name (a manifest records only their spec, not the objects).
-        timeline_sampling:
-            Optional sampling declaration matching the manifest's stored grid.
-            Stored sample positions and decode ranges are unchanged.
-        decode_threads:
-            Fields to decode concurrently within each `DataLoader` worker.
-
-        Returns
-        -------
-        RerunIterableDataset
-            A dataset that yields samples in the manifest's recorded order.
-
+        Sampling determines candidate anchors without reading source fields.
+        Field windows may extend beyond selected intervals. Fields and video keyframes
+        are resolved at runtime; missing samples are skipped
+        after shuffling without replacement. Reproducing assignments requires the same
+        source contents, settings, epoch, and rank/worker counts.
         """
-        self = cls.__new__(cls)
-        torch.utils.data.IterableDataset.__init__(self)
-        _warn_if_fork_unsafe(stacklevel=3)
-        self._fields = fields
-        self._timeline_sampling = timeline_sampling
-        self._index = manifest.metadata.index_name
-        self._sample_index = SampleIndex(
-            [], ns_per_sample=manifest.metadata.ns_per_sample, ns_dtype=manifest.metadata.ns_dtype
+        return cls(
+            source._with_curation(curation),
+            curation.index_name,
+            fields,
+            timeline_sampling=timeline_sampling,
+            fetch_block_size=fetch_block_size,
+            shuffle_strategy=shuffle_strategy,
+            seed=seed,
+            decode_threads=decode_threads,
+            max_consecutive_skipped_samples=max_consecutive_skipped_samples,
         )
-        _validate_timeline_sampling(timeline_sampling, self._sample_index)
-        self._epoch = 0
-        self._manifest = manifest
-        self._parent_ddp_topology = None
-        self._decode_threads = _resolve_decode_threads(decode_threads, fields)
-        self._connection = _WorkerConnection.from_source(source, fields)
-        return self
+
+    @property
+    def metrics(self) -> DataloaderMetrics:
+        """Cumulative fetch and decode metrics aggregated across this dataset's workers."""
+        if self._metrics is None:
+            raise RuntimeError("Dataloader metrics are only available from the process that created the dataset")
+        return self._metrics
 
     @property
     def sample_index(self) -> SampleIndex:
@@ -308,9 +291,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         return self._sample_index
 
     def __len__(self) -> int:
-        """Total number of samples across all segments."""
-        if self._manifest is not None:
-            return self._manifest.num_rows
+        """Candidate count across all workers, before missing samples are skipped."""
         return self._sample_index.total_samples
 
     def set_epoch(self, epoch: int) -> None:
@@ -321,6 +302,7 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         """Carry the parent's DDP rank into spawned workers, which have no process group of their own."""
         state = self.__dict__.copy()
         state["_parent_ddp_topology"] = _live_ddp_topology() or self._parent_ddp_topology
+        state["_metrics"] = None
         return state
 
     def _ddp_topology(self) -> tuple[int, int]:
@@ -328,13 +310,6 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         return _live_ddp_topology() or self._parent_ddp_topology or (0, 1)
 
     def __iter__(self) -> Iterator[DecodedSample]:
-        """Yield this worker's samples: replayed from a manifest, or fetched live from the catalog."""
-        if self._manifest is not None:
-            yield from self._iter_manifest()
-        else:
-            yield from self._iter_catalog()
-
-    def _iter_catalog(self) -> Iterator[DecodedSample]:
         """
         Yield individual samples as they are decoded.
 
@@ -344,171 +319,121 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         through that buffer before being yielded.
         """
         with (
-            tracing_scope("RerunIterableDataset._iter_catalog"),
+            tracing_scope("RerunIterableDataset.__iter__"),
             _decode_pool(self._decode_threads, len(self._fields)) as executor,
         ):
-            view, decoders = self._connection.ensure()
-
-            indices, block_bounds = self._worker_order()
-            blocks = _fetch_blocks(indices, block_bounds, fetch_block_size=self._fetch_block_size)
+            work_order = self._worker_order()
 
             set_current_span_attributes({
-                "rerun.dataloader.iter.num_blocks": len(blocks),
+                "rerun.dataloader.iter.num_candidates": work_order.num_samples,
+                "rerun.dataloader.iter.num_samples_yielded": 0,
                 "rerun.dataloader.shuffle_strategy": self._shuffle_strategy.RECIPE_TAG,
             })
+            if work_order.num_samples == 0:
+                return
+
+            blocks = work_order.fetch_blocks(fetch_block_size=self._fetch_block_size)
+            view, decoders = self._connection.ensure()
 
             @with_tracing("RerunDataset._fetch_block")
             def fetch_block(block: np.ndarray) -> FetchedBlock:
+                fetch_metrics = FetchMetricsAccumulator()
                 located = _locate_samples(
                     block,
                     sample_index=self._sample_index,
                     num_fields=len(self._fields),
                 )
-                keyframes = (
-                    {}
-                    if isinstance(self._timeline_sampling, TimeAlignedSampling)
-                    else _discover_prior_keyframes(
-                        view=view,
-                        index=self._index,
-                        fields=self._fields,
-                        located=located,
-                        sample_index=self._sample_index,
+                with _record_query_metrics(fetch_metrics):
+                    keyframes = (
+                        {}
+                        if isinstance(self._timeline_sampling, TimeAlignedSampling)
+                        else _discover_prior_keyframes(
+                            view=view,
+                            index=self._index,
+                            fields=self._fields,
+                            located=located,
+                            sample_index=self._sample_index,
+                        )
                     )
+                    targets = _build_targets(
+                        located,
+                        keyframes,
+                        fields=self._fields,
+                        sample_index=self._sample_index,
+                        timeline_sampling=self._timeline_sampling,
+                    )
+                    query_plans = _build_query_plans(
+                        targets,
+                        self._fields,
+                        sample_index=self._sample_index,
+                        timeline_sampling=self._timeline_sampling,
+                        index=self._index,
+                    )
+                    fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
+                return FetchedBlock(
+                    targets=targets,
+                    fetched_groups=fetched_groups,
+                    fetch_direct_original_ranges=fetch_metrics.direct_original_ranges,
+                    fetch_direct_merged_ranges=fetch_metrics.direct_merged_ranges,
+                    fetch_grpc_requests=fetch_metrics.grpc_requests,
+                    delivered_bytes=fetch_metrics.delivered_bytes,
                 )
-                targets = _build_targets(
-                    located,
-                    keyframes,
-                    fields=self._fields,
-                    sample_index=self._sample_index,
-                    timeline_sampling=self._timeline_sampling,
-                )
-                query_plans = _build_query_plans(
-                    targets,
-                    self._fields,
-                    sample_index=self._sample_index,
-                    timeline_sampling=self._timeline_sampling,
-                    index=self._index,
-                )
-                fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
-                return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
 
             def process(fetched: FetchedBlock) -> Iterator[DecodedSample]:
+                preparation_started_ns = time.perf_counter_ns()
                 # 1. Group each fetched table into contiguous, index-ordered segment spans.
                 indexed = _index_fetched_block(fetched, self._index)
                 # 2. Map each requested timeline range to physical Arrow rows.
                 prepared = _resolve_decode_requests_in_block(indexed)
+                preparation_elapsed_ns = time.perf_counter_ns() - preparation_started_ns
                 # 3. Decode field batches and scatter their results back into sample order.
                 return _decode_iter(
                     prepared=prepared,
                     decoders=decoders,
                     executor=executor,
+                    metrics=self._metrics_publisher,
+                    preparation_elapsed_ns=preparation_elapsed_ns,
                 )
 
-            samples = _skip_incomplete(
-                _pipeline_blocks(blocks, fetch=fetch_block, process=process),
-                max_consecutive_skipped_samples=self._max_consecutive_skipped_samples,
-            )
+            samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process, metrics=self._metrics_publisher)
             if self._shuffle_buffer is not None:
                 rank, _ = self._ddp_topology()
                 worker_info = torch.utils.data.get_worker_info()
                 worker_id = worker_info.id if worker_info is not None else 0
-                # Must match the build-time buffer seed in `_manifest_build._emit_rank`
-                # (`[seed, rank, worker]`) so a manifest replays a live buffered run's exact order.
-                rng = np.random.default_rng([self._epoch, rank, worker_id])
+                rng = np.random.default_rng([self._seed + self._epoch, rank, worker_id])
                 samples = self._shuffle_buffer.shuffle(samples, rng=rng)
+            samples = _skip_incomplete(
+                samples,
+                max_consecutive_skipped_samples=self._max_consecutive_skipped_samples,
+                metrics=self._metrics_publisher,
+            )
             yield from _count_yields(samples)
 
-    def _iter_manifest(self) -> Iterator[DecodedSample]:
-        """Replay the manifest for this `(rank, worker)`: fetch groups in order, emit in the frozen order."""
-        from .manifest._manifest_read import targets_from_rows
-
-        assert self._manifest is not None
-        with (
-            tracing_scope("RerunIterableDataset._iter_manifest"),
-            _decode_pool(self._decode_threads, len(self._fields)) as executor,
-        ):
-            view, decoders = self._connection.ensure()
-            meta = self._manifest.metadata
-
-            rank, world_size = self._ddp_topology()
-            worker_info = torch.utils.data.get_worker_info()
-            worker = worker_info.id if worker_info is not None else 0
-            num_workers = worker_info.num_workers if worker_info is not None else 1
-
-            self._manifest.validate_topology(world_size, num_workers)
-            # Read this worker's shard once (a disk hit for parquet-backed manifests) and
-            # derive both the fetch schedule and the emission order from it.
-            blocks, emit_order = self._manifest.worker_plan(rank, worker)
-            if not blocks:
-                set_current_span_attributes({
-                    "rerun.dataloader.iter.num_samples_yielded": 0,
-                    "rerun.dataloader.iter.num_blocks": len(blocks),
-                })
-                return
-
-            set_current_span_attributes({
-                "rerun.dataloader.iter.num_blocks": len(blocks),
-                "rerun.dataloader.shuffle_strategy": self._manifest.metadata.shuffle_strategy,
-            })
-
-            # Query construction only needs the grid step / dtype, not the full sample space.
-            sample_index = self._sample_index
-
-            @with_tracing("RerunDataset._fetch_block")
-            def fetch_block(block: pa.Table) -> FetchedBlock:
-                targets = targets_from_rows(block, fields=self._fields, sample_index=sample_index)
-                set_current_span_attributes({"rerun.dataloader.fetch.block_size": len(targets)})
-                query_plans = _build_query_plans(
-                    targets,
-                    self._fields,
-                    sample_index=sample_index,
-                    timeline_sampling=self._timeline_sampling,
-                    index=self._index,
-                )
-                fetched_groups = _fetch_queries_parallel(query_plans, view=view, index=self._index)
-                return FetchedBlock(targets=targets, fetched_groups=fetched_groups)
-
-            # Only the fields being decoded: a replay may ask for a subset of what was frozen.
-            required = {key for key in meta.required_fields if key in self._fields}
-
-            def process(fetched: FetchedBlock) -> Iterator[DecodedSample]:
-                # 1. Group each fetched table into contiguous, index-ordered segment spans.
-                indexed = _index_fetched_block(fetched, self._index)
-                # 2. Map each requested timeline range to physical Arrow rows.
-                prepared = _resolve_decode_requests_in_block(indexed)
-                # 3. Decode field batches and scatter their results back into sample order.
-                decoded = _decode_iter(
-                    prepared=prepared,
-                    decoders=decoders,
-                    executor=executor,
-                )
-                return _check_complete(decoded, fetched.targets, required)
-
-            samples = _pipeline_blocks(blocks, fetch=fetch_block, process=process)
-            yield from _count_yields(_replay(samples, emit_order))
-
-    def _worker_order(self) -> tuple[np.ndarray, np.ndarray]:
-        """Return this worker's shard of the epoch's `(indices, block_bounds)`, in fetch order."""
-        indices, block_bounds = self._shuffle_strategy.epoch_order(
-            self._sample_index,
-            fetch_block_size=self._fetch_block_size,
-            seed=self._epoch,
-        )
+    def _worker_order(self) -> _WorkOrder:
+        """Return this worker's lazily materialized shard of the epoch order."""
+        with tracing_scope("RerunIterableDataset._worker_order.epoch_order"):
+            work_order = self._shuffle_strategy._work_order(
+                self._sample_index,
+                fetch_block_size=self._fetch_block_size,
+                seed=self._seed + self._epoch,
+            )
+            set_current_span_attributes({"rerun.dataloader.worker_order.num_samples": work_order.num_samples})
 
         # Partition across distributed ranks first (DDP), then across
         # DataLoader workers within this rank. Contiguous (not interleaved)
         # slices keep a worker on a small set of segments.
         rank, world_size = self._ddp_topology()
         if world_size > 1:
-            indices, block_bounds = _contiguous_shard(indices, block_bounds, rank=rank, world_size=world_size)
+            with tracing_scope("RerunIterableDataset._worker_order.ddp_shard"):
+                work_order = work_order.shard(rank=rank, world_size=world_size)
 
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is not None:
-            indices, block_bounds = _contiguous_shard(
-                indices,
-                block_bounds,
-                rank=worker_info.id,
-                world_size=worker_info.num_workers,
-            )
+            with tracing_scope("RerunIterableDataset._worker_order.worker_shard"):
+                work_order = work_order.shard(rank=worker_info.id, world_size=worker_info.num_workers)
 
-        return indices, block_bounds
+        with tracing_scope("RerunIterableDataset._worker_order.compact"):
+            work_order = work_order.compact()
+            set_current_span_attributes({"rerun.dataloader.worker_order.num_samples": work_order.num_samples})
+
+        return work_order

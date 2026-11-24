@@ -353,14 +353,20 @@ def print_changeset_summary(new_version: str) -> None:
 
     # `CHANGELOG.md` has no separate "New features" section — features live under the
     # overview, so both changeset sections are listed together here.
-    overview = changeset_headings(path, "Highlights") + changeset_headings(path, "New features")
+    highlights = changeset_headings(path, "Highlights")
+    overview = highlights + changeset_headings(path, "New features")
     if overview:
-        print("### ✨ Overview & highlights")
+        if highlights:
+            print("### ✨ Overview & highlights")
+            anchor = "highlights"
+        else:
+            print("### ✨ Overview")
+            anchor = "new-features"
         print()
         for heading in overview:
             print(f"- {heading}")
         print()
-        print(f"📖 Release notes: {url}#highlights")
+        print(f"📖 Release notes: {url}#{anchor}")
         print()
 
     breaking = changeset_headings(path, "Breaking changes")

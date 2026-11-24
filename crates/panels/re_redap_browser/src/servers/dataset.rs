@@ -1,6 +1,8 @@
 use datafusion::sql::TableReference;
 use egui::AtomExt as _;
-use re_catalog_client::{Asset, AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
+use re_catalog_client::{
+    AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT, ManifestSegment,
+};
 use re_dataframe_ui::TableLayoutKind;
 use re_format::format_uint;
 use re_log_types::external::re_types_core::SegmentId;
@@ -139,7 +141,7 @@ impl Server {
                                 ui,
                                 app_ctx,
                                 dataset,
-                                self.segments_queried_at(ui, dataset),
+                                Self::segments_queried_at(ui, dataset),
                             );
                         },
                     );
@@ -185,10 +187,10 @@ impl Server {
 
     /// When the client last fetched the segment table shown in the segments tab, or `None` if it
     /// has not been fetched yet.
-    fn segments_queried_at(&self, ui: &egui::Ui, dataset: &Dataset) -> Option<Timestamp> {
+    fn segments_queried_at(ui: &egui::Ui, dataset: &Dataset) -> Option<Timestamp> {
         re_dataframe_ui::DataFusionTableWidget::queried_at(
             ui,
-            &self.tables_session_ctx,
+            dataset.requests().loaded_table_session().as_deref()?,
             TableReference::bare(dataset.name().to_string()),
         )
     }
@@ -226,14 +228,30 @@ impl Server {
     ) {
         const RECORDING_LINK_COLUMN_NAME: &str = "recording link";
 
+        let session = match dataset.table_session(
+            self.entry_meta_query(ui.ctx(), dataset),
+            app_ctx.command_sender(),
+        ) {
+            ServerValue::Pending { .. } => {
+                ui.loading_indicator("Loading dataset…");
+                return;
+            }
+            ServerValue::Unavailable { err, .. } => {
+                ui.error_label(err.to_string());
+                return;
+            }
+            ServerValue::Completed(session) => session,
+        };
+
         re_dataframe_ui::DataFusionTableWidget::new(
-            self.tables_session_ctx.clone(),
+            session,
             TableReference::bare(dataset.name().to_string()),
             ViewerTableReference::RedapEntry {
                 origin: dataset.origin.clone(),
                 entry_id: dataset.id(),
             },
         )
+        .loading_header("Loading dataset")
         .toolbar_summary(|ui| self.segment_count_ui(ui, dataset))
         .additional_column_heuristics(|layout, desc, mut column| {
             // TODO(andreas): we should not operate on display name as much since this can be very brittle.
@@ -279,10 +297,9 @@ impl Server {
         dataset: &Dataset,
         asset_sources: &SourceCapabilities,
     ) {
-        let assets = dataset.requests().assets(
-            self.entry_meta_query(ui.ctx(), dataset),
-            dataset.asset_dataset(),
-        );
+        let assets = dataset
+            .requests()
+            .assets(self.entry_meta_query(ui.ctx(), dataset));
 
         // We want to keep the registration around while we're still refetching the asset list
         // so it doesn't flash in and out between pending and in the list.
@@ -370,10 +387,9 @@ impl Server {
         dataset_id: EntryId,
     ) -> AssetSlots {
         let assets = match self.find_entry(dataset_id).map(Entry::inner) {
-            Some(Ok(EntryInner::Dataset(dataset))) => dataset.requests().assets(
-                self.entry_meta_query(egui_ctx, dataset),
-                dataset.asset_dataset(),
-            ),
+            Some(Ok(EntryInner::Dataset(dataset))) => dataset
+                .requests()
+                .assets(self.entry_meta_query(egui_ctx, dataset)),
 
             // We don't know the dataset, so only its pending registrations count.
             _ => ServerValue::Completed(AssetsRef::default()),
@@ -415,7 +431,7 @@ impl Server {
         };
 
         let query = self.entry_meta_query(egui_ctx, dataset);
-        let assets = dataset.requests().assets(query, dataset.asset_dataset());
+        let assets = dataset.requests().assets(query);
         let Some(asset) = assets
             .get()
             .and_then(|assets| assets.iter().find(|asset| asset.is_registered()))
@@ -612,7 +628,7 @@ impl Server {
         app_ctx: &AppContext<'_>,
         ctx: &Context<'_>,
         dataset: &Dataset,
-        asset: &Asset,
+        asset: &ManifestSegment,
         is_card_hovered: bool,
     ) {
         egui::Sides::new()
@@ -821,7 +837,7 @@ fn tab_meta_line_ui(ui: &mut egui::Ui, terms: &[MetaTerm<'_>]) {
 }
 
 /// Opens an asset, from its card or from its "Open" button.
-fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &Asset, new_tab: bool) {
+fn open_asset_ui(ui: &egui::Ui, dataset: &Dataset, asset: &ManifestSegment, new_tab: bool) {
     let url = re_viewer_context::viewer_url::ViewerUrl::RedapDataset(re_uri::DatasetUri {
         origin: dataset.origin.clone(),
         dataset_id: dataset.id().id,
@@ -850,7 +866,7 @@ fn asset_size_text(egui_ctx: &egui::Context, size_bytes: f64) -> String {
     }
 }
 
-fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &Asset) {
+fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &ManifestSegment) {
     send_crossbeam(
         ctx.command_sender,
         Command::OpenAssetCoverageModal {
@@ -865,7 +881,7 @@ fn open_asset_coverage_modal(ctx: &Context<'_>, dataset: &Dataset, asset: &Asset
 }
 
 /// Menu item opening [`crate::asset_source_modal::AssetSourceModal`] on an asset.
-fn asset_source_menu_ui(ui: &mut egui::Ui, ctx: &Context<'_>, asset: &Asset) {
+fn asset_source_menu_ui(ui: &mut egui::Ui, ctx: &Context<'_>, asset: &ManifestSegment) {
     if ui.button("Source URI details").clicked() {
         send_crossbeam(
             ctx.command_sender,
@@ -881,7 +897,7 @@ fn asset_source_menu_ui(ui: &mut egui::Ui, ctx: &Context<'_>, asset: &Asset) {
 }
 
 /// The line under an asset's name: when it was registered, and when it was last updated if that differs.
-fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &Asset) {
+fn asset_meta_ui(ui: &mut egui::Ui, app_ctx: &AppContext<'_>, asset: &ManifestSegment) {
     ui.horizontal_wrapped(|ui| {
         let date_format = app_ctx.app_options.timestamp_format;
         ui.spacing_mut().item_spacing.x = 0.0;
@@ -1155,7 +1171,7 @@ fn failure_reason(err: &ApiError) -> String {
 }
 
 /// The color a card is outlined with when the server has yet to finish registering its asset.
-fn asset_outline_color(asset: &Asset, tokens: &DesignTokens) -> egui::Color32 {
+fn asset_outline_color(asset: &ManifestSegment, tokens: &DesignTokens) -> egui::Color32 {
     if asset.has_failed() {
         tokens.outlines.error
     } else {
@@ -1164,7 +1180,7 @@ fn asset_outline_color(asset: &Asset, tokens: &DesignTokens) -> egui::Color32 {
 }
 
 /// The color an asset is marked with when the server has yet to finish registering it.
-fn asset_fg_color(asset: &Asset, tokens: &DesignTokens) -> egui::Color32 {
+fn asset_fg_color(asset: &ManifestSegment, tokens: &DesignTokens) -> egui::Color32 {
     if asset.has_failed() {
         tokens.error_fg_color
     } else {
@@ -1507,20 +1523,19 @@ fn centered_row<R>(
         ui.ctx().request_discard("centered row without a width yet");
     }
 
-    let mut leading_space = 0.0;
-
     let response = ui.horizontal(|ui| {
         if let Some(row_width) = row_width {
-            leading_space = ((ui.available_width() - row_width) / 2.0).max(0.0);
-            ui.add_space(leading_space);
+            ui.add_space(((ui.available_width() - row_width) / 2.0).max(0.0));
         }
 
-        add_contents(ui)
+        let contents_left = ui.cursor().min.x;
+        (add_contents(ui), contents_left)
     });
 
-    ui.data_mut(|data| data.insert_temp(id, response.response.rect.width() - leading_space));
+    let (inner, contents_left) = response.inner;
+    ui.data_mut(|data| data.insert_temp(id, response.response.rect.max.x - contents_left));
 
-    response.inner
+    inner
 }
 
 /// Button that opens the register modal, disabled while the dataset has no room for another asset.
@@ -1626,7 +1641,48 @@ fn refresh_button_ui(
 
 #[cfg(test)]
 mod tests {
-    use super::source_uri_file_name;
+    use super::{centered_row, source_uri_file_name};
+
+    /// A centered row with a fractional width stays at the same position across frames.
+    #[test]
+    fn centered_row_settles() {
+        for width in [400.0, 601.0] {
+            let ctx = egui::Context::default();
+            let mut previous_rect = None;
+            for frame in 0..4 {
+                let mut rect = egui::Rect::NOTHING;
+                let mut output = ctx.run_ui(
+                    egui::RawInput {
+                        screen_rect: Some(egui::Rect::from_min_size(
+                            egui::Pos2::ZERO,
+                            egui::vec2(width, 100.0),
+                        )),
+                        ..Default::default()
+                    },
+                    |ui| {
+                        egui::CentralPanel::default().show(ui, |ui| {
+                            rect = centered_row(ui, "row", |ui| {
+                                ui.allocate_exact_size(
+                                    egui::vec2(100.03125, 20.0),
+                                    egui::Sense::hover(),
+                                )
+                                .0
+                            });
+                        });
+                    },
+                );
+                output.textures_delta.clear();
+                if previous_rect.is_some() {
+                    assert_eq!(
+                        Some(rect),
+                        previous_rect,
+                        "the row moved between frames at width {width}, frame {frame}"
+                    );
+                }
+                previous_rect = Some(rect);
+            }
+        }
+    }
 
     /// A registration card is titled with the file name of the uri it registers, whatever scheme
     /// the uri uses and whatever query it carries. A uri with nothing to take a file name from

@@ -10,13 +10,20 @@ use std::sync::Arc;
 use example_section::{ExampleSection, MIN_COLUMN_WIDTH};
 use re_log_channel::LogSource;
 
-use crate::app_state::WelcomeScreenState;
-
 pub use intro_section::{CloudState, LoginState};
 use re_viewer_context::AppContext;
 
 const MIN_PAGE_MARGIN: f32 = 16.0;
 const MAX_PAGE_MARGIN: f32 = 40.0;
+
+/// How the welcome screen should be shown this frame.
+pub(crate) struct WelcomeScreenState {
+    /// The normal examples screen should be hidden. Show a fallback "no data ui" instead.
+    pub hide_examples: bool,
+
+    /// `false` while the welcome screen is held back at startup.
+    pub revealed: bool,
+}
 
 fn page_horizontal_margin(available_width: f32) -> i8 {
     ((available_width - MIN_COLUMN_WIDTH) / 2.0)

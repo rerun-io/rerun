@@ -11,7 +11,7 @@ An entity can only ever contain a single array of any given component type.
 If you log the same component several times on an entity, the last value (or array of values) will overwrite the previous.
 
 For more information on the relationship between **archetypes** and **components**, check out the concept page
-on [Entities and Components](../../concepts/logging-and-ingestion/entity-component.md).
+on [Entities and Components](../../logging-and-ingestion/data-model/entity-component.md).
 
 
 * [`AggregationPolicy`](components/aggregation_policy.md): Policy for aggregation of multiple scalar plot values.
@@ -91,7 +91,7 @@ on [Entities and Components](../../concepts/logging-and-ingestion/entity-compone
 * [`Thumbnail`](components/thumbnail.md): An encoded image, e.g. PNG or JPEG, shown as a thumbnail.
 * [`Timestamp`](components/timestamp.md): When the recording started.
 * [`TransformFrameId`](components/transform_frame_id.md): A string identifier for a transform frame.
-* [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix Matrix.
+* [`TransformMat3x3`](components/transform_mat3x3.md): A 3x3 transformation matrix.
 * [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.

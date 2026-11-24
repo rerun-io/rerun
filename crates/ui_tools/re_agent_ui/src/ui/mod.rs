@@ -1,3 +1,5 @@
+use re_ui::UiExt as _;
+
 mod agent_panel;
 mod chat_ui;
 mod conversation;
@@ -19,4 +21,11 @@ const MAX_REQUEST_CONTENT_HEIGHT: f32 = 320.0;
 pub enum Screen {
     Setup,
     Chat,
+}
+
+/// A warning-colored pill saying that the panel is experimental.
+fn experimental_tag_ui(ui: &mut egui::Ui) -> egui::Response {
+    ui.experimental_tag()
+        .response
+        .on_hover_text("Expect rough edges!")
 }

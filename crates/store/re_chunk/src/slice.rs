@@ -994,7 +994,7 @@ mod tests {
     };
 
     use super::*;
-    use crate::{Chunk, RowId, Timeline};
+    use crate::Timeline;
 
     #[test]
     fn cell() -> anyhow::Result<()> {

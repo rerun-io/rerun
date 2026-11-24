@@ -455,11 +455,8 @@ impl Renderer for VoxelGridRenderer {
 
 #[cfg(test)]
 mod tests {
-    use enumset::EnumSet;
-
     use super::*;
-    use crate::renderer::DrawableCollectionViewInfo;
-    use crate::{DrawPhaseManager, PickingLayerObjectId};
+    use crate::DrawPhaseManager;
 
     #[test]
     fn test_phase_collection() {

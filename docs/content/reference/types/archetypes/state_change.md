@@ -23,7 +23,7 @@ The state timeline view displays these as horizontal colored lanes over time.
 
 ## API reference links
  * 🌊 [C++ API docs for `StateChange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1StateChange.html)
- * 🐍 [Python API docs for `StateChange`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.StateChange)
+ * 🐍 [Python API docs for `StateChange`](https://ref.rerun.io/docs/python/stable/archetypes#rerun.archetypes.StateChange)
  * 🦀 [Rust API docs for `StateChange`](https://docs.rs/rerun/latest/rerun/archetypes/struct.StateChange.html)
 
 ## Example
@@ -37,6 +37,6 @@ snippet: archetypes/state_change
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/1200w.png">
-  <img src="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/full.png">
+  <img src="https://static.rerun.io/state_change/6654a13e984702b96547750469c368ce6e900c0f/full.png" alt="State timeline view showing a /door lane with colored segments for open, closed, and open again over time">
 </picture>
 

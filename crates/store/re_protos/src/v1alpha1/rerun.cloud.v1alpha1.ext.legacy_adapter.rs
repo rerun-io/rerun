@@ -11,12 +11,12 @@ use arrow::datatypes::{FieldRef, Schema};
 use re_chunk::TimelineName;
 use re_log_types::{EntityPath, TimeInt};
 
-use crate::cloud::v1alpha1::QueryDatasetResponse;
 use crate::cloud::v1alpha1::ext::{
     ChunkCandidatesDataframe, ChunkMode, ComponentSelection, ContentSelection, DirectUrlMode,
     EntitySelection, FillMode, FindChunksRequest, Query, QueryDatasetDataframe,
-    QueryDatasetRequest, RangeSelection, SegmentSelection,
+    QueryDatasetRequest, RangeSelection, SampleTimes, SegmentSelection,
 };
+use crate::cloud::v1alpha1::{DatasetQueryScope, QueryDatasetResponse};
 
 /// The result of mapping a legacy [`QueryDatasetRequest`] onto the new selection model.
 ///
@@ -50,7 +50,7 @@ pub enum LegacyPlan {
 /// `Status::internal`.
 ///
 /// TODO(RR-5817): remove with the rest of the `QueryDataset` compatibility code.
-pub fn adapt_legacy(request: QueryDatasetRequest) -> Result<LegacyPlan, tonic::Status> {
+pub fn adapt_legacy(request: QueryDatasetRequest) -> tonic::Result<LegacyPlan> {
     let QueryDatasetRequest {
         segment_ids,
         generate_direct_urls,
@@ -200,9 +200,6 @@ pub fn adapt_legacy(request: QueryDatasetRequest) -> Result<LegacyPlan, tonic::S
             for (segment_id, values) in
                 std::iter::zip(segment_ids.iter(), latest_at.per_segment_values.iter())
             {
-                if values.is_empty() {
-                    continue;
-                }
                 plan_segments.insert(
                     segment_id.clone(),
                     values
@@ -216,10 +213,11 @@ pub fn adapt_legacy(request: QueryDatasetRequest) -> Result<LegacyPlan, tonic::S
                 contents,
                 mode: ChunkMode::Samples {
                     timeline,
-                    segments: plan_segments,
+                    segments: SampleTimes::new(plan_segments)?,
                     fill_mode: FillMode::LatestAt,
                 },
                 direct_url_mode,
+                scope: DatasetQueryScope::Full,
             }))
         }
 
@@ -228,6 +226,7 @@ pub fn adapt_legacy(request: QueryDatasetRequest) -> Result<LegacyPlan, tonic::S
                 contents,
                 mode: ChunkMode::Static { segments },
                 direct_url_mode,
+                scope: DatasetQueryScope::Full,
             }))
         }
 
@@ -249,6 +248,7 @@ pub fn adapt_legacy(request: QueryDatasetRequest) -> Result<LegacyPlan, tonic::S
                     },
                 },
                 direct_url_mode,
+                scope: DatasetQueryScope::Full,
             }))
         }
 
@@ -276,6 +276,7 @@ pub fn adapt_legacy(request: QueryDatasetRequest) -> Result<LegacyPlan, tonic::S
                     },
                 },
                 direct_url_mode,
+                scope: DatasetQueryScope::Full,
             }))
         }
 
@@ -392,7 +393,7 @@ pub fn list_entities_for_component_selection(
 pub fn encode_legacy_candidates(
     batch: RecordBatch,
     timeline: Option<&TimelineName>,
-) -> Result<RecordBatch, tonic::Status> {
+) -> tonic::Result<RecordBatch> {
     let base_schema = QueryDatasetDataframe::min_schema();
 
     let mut fields: Vec<FieldRef> = Vec::with_capacity(base_schema.fields().len() + 1);
@@ -465,6 +466,7 @@ mod tests {
                     segments: SegmentSelection::All,
                 },
                 direct_url_mode,
+                scope: DatasetQueryScope::Full,
             })
         }
 
@@ -491,6 +493,7 @@ mod tests {
                 } else {
                     DirectUrlMode::Signed
                 },
+                scope: DatasetQueryScope::Full,
             })
         }
 
@@ -774,13 +777,15 @@ mod tests {
                     contents: ContentSelection::All,
                     mode: ChunkMode::Samples {
                         timeline: TimelineName::from("frame"),
-                        segments: BTreeMap::from([(
+                        segments: SampleTimes::new(BTreeMap::from([(
                             SegmentId::from("seg1"),
                             BTreeSet::from([TimeInt::new_temporal(1), TimeInt::new_temporal(2)]),
-                        )]),
+                        )]))
+                        .expect("valid sample times"),
                         fill_mode: FillMode::LatestAt,
                     },
                     direct_url_mode: DirectUrlMode::Omit,
+                    scope: DatasetQueryScope::Full,
                 })),
             },
             Case {
@@ -800,6 +805,7 @@ mod tests {
                         )])),
                     },
                     direct_url_mode: DirectUrlMode::Omit,
+                    scope: DatasetQueryScope::Full,
                 })),
             },
             Case {
@@ -838,6 +844,7 @@ mod tests {
                         segments: SegmentSelection::All,
                     },
                     direct_url_mode: DirectUrlMode::Omit,
+                    scope: DatasetQueryScope::Full,
                 })),
             },
             Case {
@@ -1026,6 +1033,7 @@ mod tests {
                 segments: SegmentSelection::All,
             },
             direct_url_mode: DirectUrlMode::Omit,
+            scope: DatasetQueryScope::Full,
         });
         let cases: &[(&LegacyPlan, &[&str], Result<Option<&str>, tonic::Code>)] = &[
             (

@@ -2,7 +2,6 @@ use std::sync::Arc;
 
 use arrow::array::{ArrayRef, BinaryArray, RecordBatch, UInt64Array};
 use arrow::error::ArrowError;
-use re_chunk::external::re_byte_size;
 use re_chunk_index::RawRrdManifest;
 use re_log_types::StoreId;
 

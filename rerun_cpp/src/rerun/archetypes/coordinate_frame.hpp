@@ -21,7 +21,7 @@ namespace rerun::archetypes {
     /// If not specified, the coordinate frame uses an implicit frame derived from the entity path.
     /// The implicit frame's name is `tf#/your/entity/path` and has an identity transform connection to its parent path.
     ///
-    /// To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/concepts/spaces-and-transforms) in the reference.
+    /// To learn more about transforms see [Spaces & Transforms](https://rerun.io/docs/logging-and-ingestion/data-model/transforms) in the reference.
     ///
     /// ## Example
     ///

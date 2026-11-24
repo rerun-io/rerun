@@ -426,7 +426,7 @@ class RecordingStream:
 
             # At this point if there aren't other references to this recording, it's considered
             # orphaned. Do a sweep to clean up any orphaned recordings.
-            self._disconnect_orphaned_recordings()  # NOLINT
+            self._disconnect_orphaned_recordings()
 
     # any free function taking a `RecordingStream` as the first argument can also be a method
     binary_stream = binary_stream
@@ -473,9 +473,9 @@ class RecordingStream:
 
             See [`rerun.GrpcSink`][], [`rerun.GrpcServerSink`][], [`rerun.FileSink`][].
         default_blueprint:
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
 
         Example
@@ -516,9 +516,9 @@ class RecordingStream:
 
             The default is `rerun+http://127.0.0.1:9876/proxy`.
         default_blueprint
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
 
         """
@@ -548,9 +548,9 @@ class RecordingStream:
         path:
             The path to save the data to.
         default_blueprint
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
         write_footer:
             Whether to emit a complete RRD footer (including a manifest of every chunk) at the
@@ -585,9 +585,9 @@ class RecordingStream:
         Parameters
         ----------
         default_blueprint
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.send_blueprint`][] API.
         write_footer:
             Whether to emit a complete RRD footer (including a manifest of every chunk) at the
@@ -663,9 +663,9 @@ class RecordingStream:
         grpc_port:
             The port to serve the gRPC server on (defaults to 9876)
         default_blueprint:
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
         server_memory_limit:
             Maximum amount of memory to use for buffering log data for clients that connect late.
@@ -711,13 +711,13 @@ class RecordingStream:
         make_active:
             Immediately make this the active blueprint for the associated `app_id`.
             Note that setting this to `false` does not mean the blueprint may not still end
-            up becoming active. In particular, if `make_default` is true and there is no other
-            currently active blueprint.
+            up becoming active. In particular, if `make_default` is true and the user has not
+            edited the active blueprint.
         make_default:
             Make this the default blueprint for the `app_id`.
             The default blueprint will be used as the template when the user resets the
-            blueprint for the app. It will also become the active blueprint if no other
-            blueprint is currently active.
+            blueprint for the app. It also replaces the active blueprint, unless the user has
+            edited the active blueprint.
 
         """
 
@@ -755,9 +755,9 @@ class RecordingStream:
         detach_process:
             Detach Rerun Viewer process from the application process.
         default_blueprint
-            Optionally set a default blueprint to use for this application. If the application
-            already has an active blueprint, the new blueprint won't become active until the user
-            clicks the "reset blueprint" button. If you want to activate the new blueprint
+            Optionally set a default blueprint to use for this application. If the user has edited
+            the active blueprint of the application, the new blueprint won't become active until
+            the user resets to the default blueprint. If you want to activate the new blueprint
             immediately, instead use the [`rerun.RecordingStream.send_blueprint`][] API.
 
         """
@@ -1017,7 +1017,7 @@ class RecordingStream:
         This is the main entry point for logging data to rerun. It can be used to log anything
         that implements the [`rerun.AsComponents`][] interface, or a collection of [`rerun.ComponentBatchLike`][] objects.
 
-        When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path)
+        When logging data, you must always provide an [entity_path](https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path)
         for identifying the data. Note that paths prefixed with "__" are considered reserved for use by the Rerun SDK
         itself and should not be used for logging user data. This is where Rerun will log additional information
         such as properties and warnings.
@@ -1054,7 +1054,7 @@ class RecordingStream:
             This means that logging to `"world/my\ image\!"` is the same as logging
             to ["world", "my image!"].
 
-            See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+            See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
 
         entity:
             Anything that implements the [`rerun.AsComponents`][] interface, usually an archetype.
@@ -1099,7 +1099,7 @@ class RecordingStream:
         This method blocks until either at least one `Importer` starts
         streaming data in or all of them fail.
 
-        See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
+        See <https://www.rerun.io/docs/logging-and-ingestion/import/open-any-file> for more information.
 
         Parameters
         ----------
@@ -1148,7 +1148,7 @@ class RecordingStream:
         This method blocks until either at least one `Importer` starts
         streaming data in or all of them fail.
 
-        See <https://www.rerun.io/docs/getting-started/data-in/open-any-file> for more information.
+        See <https://www.rerun.io/docs/logging-and-ingestion/import/open-any-file> for more information.
 
         Parameters
         ----------
@@ -1203,7 +1203,7 @@ class RecordingStream:
         entity_path:
             Path to the entity in the space hierarchy.
 
-            See <https://www.rerun.io/docs/concepts/logging-and-ingestion/entity-path> for more on entity paths.
+            See <https://www.rerun.io/docs/logging-and-ingestion/data-model/entity-path> for more on entity paths.
         indexes:
             The time values of this batch of data. Each `TimeColumnLike` object represents a single column
             of timestamps. Generally, you should use one of the provided class [`TimeColumn`][rerun.TimeColumn].
@@ -1492,9 +1492,9 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
 
     def decorator(func: _TFunc) -> _TFunc:
         if inspect.isgeneratorfunction(func):
-
+            # Cast back to `_TFunc` below, so callers never see this return type.
             @functools.wraps(func)
-            def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
+            def generator_wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
                 # The following code is structured to avoid leaking the recording stream
                 # context when yielding from the generator.
                 # See: https://github.com/rerun-io/rerun/issues/6238
@@ -1517,9 +1517,9 @@ def thread_local_stream(application_id: str) -> Callable[[_TFunc], _TFunc]:
 
             return cast("_TFunc", generator_wrapper)
         else:
-
+            # Cast back to `_TFunc` below, so callers never see this return type.
             @functools.wraps(func)
-            def wrapper(*args: Any, **kwargs: Any) -> Any:
+            def wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
                 with RecordingStream(application_id, recording_id=uuid.uuid4()):
                     gen = func(*args, **kwargs)
                     return gen
@@ -1562,9 +1562,9 @@ def recording_stream_generator_ctx(func: _TFunc) -> _TFunc:
 
     """
     if inspect.isgeneratorfunction(func):
-
+        # Cast back to `_TFunc` below, so callers never see this return type.
         @functools.wraps(func)
-        def generator_wrapper(*args: Any, **kwargs: Any) -> Any:
+        def generator_wrapper(*args: Any, **kwargs: Any) -> Any:  # noqa: ANN401
             # The following code is structured to avoid leaking the recording stream
             # context when yielding from the generator.
             # See: https://github.com/rerun-io/rerun/issues/6238

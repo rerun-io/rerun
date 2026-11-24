@@ -44,6 +44,34 @@ struct CameraComponentDataWithFallbacks {
     image_plane_distance: f32,
 }
 
+/// Why a pinhole camera cannot be shown.
+#[derive(Debug, thiserror::Error)]
+enum CameraError {
+    #[error("Pinhole transform can't be resolved due to empty child frame ID.")]
+    EmptyChildFrame,
+
+    #[error(
+        "The pinhole's {} does not form the root of a 2D subspace. Ensure your transform tree is valid.",
+        .child_frame.as_ref().map_or_else(|| "child frame".to_owned(), |frame_id| format!("child frame {frame_id:?}"))
+    )]
+    NotSubspaceRoot { child_frame: Option<String> },
+
+    #[error("{reason}")]
+    InvalidProjection { reason: String },
+
+    #[error("Invalid pinhole resolution.")]
+    InvalidResolution,
+
+    #[error("Can't visualize pinholes at the view's origin")]
+    AtViewOrigin,
+
+    #[error("Pinhole is not connected to the view's target frame.")]
+    NotConnectedToTarget,
+
+    #[error("Can only visualize pinhole under isometric transforms.")]
+    NotIsometric,
+}
+
 impl CamerasVisualizer {
     fn visit_instance(
         data: &mut SpatialViewVisualizerData,
@@ -54,7 +82,7 @@ impl CamerasVisualizer {
         pinhole_properties: &CameraComponentDataWithFallbacks,
         entity_highlight: &ViewOutlineMasks,
         view_kind: SpaceKind,
-    ) -> Result<(), String> {
+    ) -> Result<(), CameraError> {
         let instance = Instance::from(0);
         let ent_path = ctx.target_entity_path;
 
@@ -77,24 +105,21 @@ impl CamerasVisualizer {
             // This implies that the transform context didn't see the pinhole transform.
             // This can happen with various frame id mismatches. TODO(andreas): When exactly does this happen? Can we add a unit test and improve the message?
             if transforms.is_empty_frame_name(pinhole_child_frame_id) {
-                return Err(
-                    "Pinhole transform can't be resolved due to empty child frame ID.".to_owned(),
-                );
+                return Err(CameraError::EmptyChildFrame);
             }
 
-            let frame = if let Some(frame_id) = transforms
-                .format_frame_or_debug_warn(pinhole_child_frame_id, ctx.target_entity_path)
-            {
-                format!("child frame {frame_id:?}")
-            } else {
-                "child frame".to_owned()
-            };
-            return Err(format!(
-                "The pinhole's {frame} does not form the root of a 2D subspace. Ensure your transform tree is valid.",
-            ));
+            return Err(CameraError::NotSubspaceRoot {
+                child_frame: transforms
+                    .format_frame_or_debug_warn(pinhole_child_frame_id, ctx.target_entity_path),
+            });
         };
         let resolved_pinhole = &pinhole_tree_root_info.pinhole_projection;
-        resolved_pinhole.image_from_camera.sanity_check()?;
+        resolved_pinhole
+            .image_from_camera
+            .sanity_check()
+            .map_err(|err| CameraError::InvalidProjection {
+                reason: err.to_string(),
+            })?;
 
         // Check for a valid resolution.
         let resolution = resolved_pinhole
@@ -104,7 +129,7 @@ impl CamerasVisualizer {
         let h = resolution.y();
         let z = pinhole_properties.image_plane_distance;
         if !w.is_finite() || !h.is_finite() || w <= 0.0 || h <= 0.0 {
-            return Err("Invalid pinhole resolution.".to_owned());
+            return Err(CameraError::InvalidResolution);
         }
 
         let pinhole = crate::Pinhole {
@@ -122,20 +147,20 @@ impl CamerasVisualizer {
                 pinhole,
                 picture_plane_distance: pinhole_properties.image_plane_distance,
             });
-            return Err("Can't visualize pinholes at the view's origin".to_owned());
+            return Err(CameraError::AtViewOrigin);
         }
 
         // If this transform is not representable as an `IsoTransform` we can't display it yet.
         // This would happen if the camera is under another camera or under a transform with non-uniform scale.
         let Some(world_from_camera) = transforms.target_from_pinhole_root(pinhole_child_frame_id)
         else {
-            return Err("Pinhole is not connected to the view's target frame.".to_owned());
+            return Err(CameraError::NotConnectedToTarget);
         };
         let world_from_camera = world_from_camera.as_affine3a();
         let Some(world_from_camera_iso) =
             re_math::IsoTransform::from_mat4(&world_from_camera.into())
         else {
-            return Err("Can only visualize pinhole under isometric transforms.".to_owned());
+            return Err(CameraError::NotIsometric);
         };
 
         re_log::debug_assert!(world_from_camera_iso.is_finite());
@@ -330,7 +355,11 @@ impl VisualizerSystem for CamerasVisualizer {
                 entity_highlight,
                 view_kind,
             ) {
-                output.report_unspecified_source(instruction.id, ViewerReportSeverity::Error, err);
+                output.report_unspecified_source(
+                    instruction.id,
+                    ViewerReportSeverity::Error,
+                    err.to_string(),
+                );
             }
         }
 

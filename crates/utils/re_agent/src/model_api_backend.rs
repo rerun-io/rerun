@@ -7,16 +7,19 @@ use agent_client_protocol_schema::v1::{
     AgentCapabilities, ConfigOptionUpdate, ContentBlock, ContentChunk, ImageContent,
     Implementation, PermissionOption, PermissionOptionKind, PromptCapabilities,
     RequestPermissionOutcome, RequestPermissionRequest, SessionConfigId, SessionConfigOption,
-    SessionConfigOptionCategory, SessionConfigSelectOption, SessionConfigValueId, SessionId,
-    SessionUpdate, StopReason, TextContent, ToolCall as AcpToolCall, ToolCallId, ToolCallStatus,
-    ToolCallUpdate, ToolCallUpdateFields, ToolKind,
+    SessionConfigOptionCategory, SessionConfigOptionValue, SessionConfigSelectOption,
+    SessionConfigValueId, SessionId, SessionUpdate, StopReason, TextContent,
+    ToolCall as AcpToolCall, ToolCallId, ToolCallStatus, ToolCallUpdate, ToolCallUpdateFields,
+    ToolKind,
 };
 use base64::Engine as _;
 use futures::StreamExt as _;
 use futures::channel::mpsc::UnboundedReceiver;
 use futures::future::Either;
+use re_agent_tools::{AgentToolbox, ToolOutput};
 use re_async::{AsyncRuntimeHandle, UiWaker};
 use rig_core::DynModel;
+use rig_core::catalog::Catalog;
 use rig_core::completion::{
     AssistantContent, CompletionRequest, CompletionResponse, FinishReason, Message,
     ProviderToolDefinition, ToolDefinition as RigTool,
@@ -30,11 +33,14 @@ use rig_core::streaming::{Item, StreamEvent};
 
 use crate::AgentProfileId;
 use crate::Responder;
-use crate::agent_toolbox::{AgentToolbox, ToolOutput};
-use crate::backend::{AgentCommand, AgentConnection, AgentEvent, EventSender};
+use crate::backend::{
+    AgentCommand, AgentConnection, AgentEvent, EventSender, SessionOrigin, TurnError,
+};
 
 /// The id of the model selector the backend offers as a session config option.
 const MODEL_CONFIG_ID: &str = "model";
+const EFFORT_CONFIG_ID: &str = "effort";
+const DEFAULT_EFFORT: &str = crate::Effort::DEFAULT;
 
 /// Why a model-API agent could not start, or could not finish a turn.
 #[derive(Debug, thiserror::Error)]
@@ -228,14 +234,20 @@ impl ModelApiProvider {
     }
 
     /// The model a new session starts with, unless the user has picked another.
-    ///
-    /// A fast one, like the models `DEFAULT_MODEL_PREFERENCES` picks for agent harnesses,
-    /// because the agent panel should feel fast.
     pub fn default_model(self) -> &'static str {
-        match self {
-            Self::Anthropic => rig_core::providers::anthropic::CLAUDE_SONNET_5_5,
-            Self::OpenAi => rig_core::providers::openai::GPT_5_MINI,
-        }
+        self.model(crate::ModelCategory::default())
+    }
+
+    /// The model of `category` that this provider offers, or else its default model.
+    pub fn model(self, category: crate::ModelCategory) -> &'static str {
+        let models = self.models();
+        let preferred = |category: crate::ModelCategory| -> Option<&'static str> {
+            crate::model_recommendation::preferred_model_id(models, &category.preferences())
+        };
+        preferred(category)
+            .or_else(|| preferred(crate::ModelCategory::default()))
+            .or_else(|| models.first().copied())
+            .unwrap_or_default()
     }
 
     /// The definitions of the `hosted` tools that this provider runs on its own servers during
@@ -280,8 +292,26 @@ impl ModelApiProvider {
         tools
     }
 
+    fn efforts(self, model: &str) -> Vec<rig_core::completion::Effort> {
+        let vendor = match self {
+            Self::Anthropic => "anthropic",
+            Self::OpenAi => "openai",
+        };
+        Catalog::builtin()
+            .resolve(&format!("{vendor}/{model}"))
+            .ok()
+            .and_then(|resolved| {
+                resolved
+                    .spec
+                    .reasoning
+                    .levels()
+                    .map(<[rig_core::completion::Effort]>::to_vec)
+            })
+            .unwrap_or_default()
+    }
+
     /// Models offered in the model selector, best first. Includes [`Self::default_model`].
-    fn models(self) -> &'static [&'static str] {
+    pub fn models(self) -> &'static [&'static str] {
         match self {
             Self::Anthropic => &[
                 rig_core::providers::anthropic::CLAUDE_OPUS_5_5,
@@ -348,6 +378,8 @@ pub struct ModelApiConfig {
     /// The model to start with. The user can switch to another from the model selector.
     pub model: String,
 
+    pub effort: Option<crate::Effort>,
+
     /// Sent as the system prompt of every request.
     pub system_prompt: Option<String>,
 
@@ -364,6 +396,7 @@ impl std::fmt::Debug for ModelApiConfig {
             provider,
             api_key: _,
             model,
+            effort,
             system_prompt,
             hosted_tools,
             toolbox,
@@ -371,6 +404,7 @@ impl std::fmt::Debug for ModelApiConfig {
         f.debug_struct("ModelApiConfig")
             .field("provider", provider)
             .field("model", model)
+            .field("effort", effort)
             .field("system_prompt", system_prompt)
             .field("hosted_tools", hosted_tools)
             .field("toolbox", &toolbox.is_some())
@@ -461,17 +495,34 @@ struct ModelSelection<F> {
     make_model: F,
     id: String,
     model: DynModel<Completion>,
+
+    effort: Option<rig_core::completion::Effort>,
 }
 
 impl<F: Fn(&str) -> DynModel<Completion>> ModelSelection<F> {
-    fn new(provider: ModelApiProvider, make_model: F, id: String) -> Self {
+    fn new(
+        provider: ModelApiProvider,
+        make_model: F,
+        id: String,
+        effort: Option<&crate::Effort>,
+    ) -> Self {
         let model = make_model(&id);
-        Self {
+        let mut selection = Self {
             provider,
             make_model,
             id,
             model,
-        }
+            effort: None,
+        };
+        selection.effort = effort.and_then(|effort| selection.offered_effort(effort));
+        selection
+    }
+
+    fn offered_effort(&self, effort: &crate::Effort) -> Option<rig_core::completion::Effort> {
+        self.provider
+            .efforts(&self.id)
+            .into_iter()
+            .find(|level| level.as_str() == effort.0)
     }
 
     fn config_options(&self) -> Vec<SessionConfigOption> {
@@ -487,7 +538,7 @@ impl<F: Fn(&str) -> DynModel<Completion>> ModelSelection<F> {
                 SessionConfigSelectOption::new(self.id.clone(), self.id.clone()),
             );
         }
-        vec![
+        let mut options = vec![
             SessionConfigOption::select(
                 SessionConfigId::new(MODEL_CONFIG_ID),
                 "Model",
@@ -495,27 +546,87 @@ impl<F: Fn(&str) -> DynModel<Completion>> ModelSelection<F> {
                 models,
             )
             .category(SessionConfigOptionCategory::Model),
-        ]
+        ];
+        let levels = self.provider.efforts(&self.id);
+        if !levels.is_empty() {
+            let choices = std::iter::chain(
+                std::iter::once(SessionConfigSelectOption::new(DEFAULT_EFFORT, "Default")),
+                levels.iter().map(|level| {
+                    SessionConfigSelectOption::new(level.as_str(), effort_name(*level))
+                }),
+            )
+            .collect::<Vec<_>>();
+            let current = self.effort.map_or(DEFAULT_EFFORT, |level| level.as_str());
+            options.push(
+                SessionConfigOption::select(
+                    SessionConfigId::new(EFFORT_CONFIG_ID),
+                    "Effort",
+                    SessionConfigValueId::new(current),
+                    choices,
+                )
+                .category(SessionConfigOptionCategory::ThoughtLevel),
+            );
+        }
+        options
     }
 
-    /// Switches models when `config_id` is the model selector, which is the only option offered.
+    /// Switches the model or the effort. An effort the new model does not offer
+    /// falls back to the provider's default.
     fn set_config_option(
         &mut self,
         config_id: &SessionConfigId,
-        value: &SessionConfigValueId,
+        value: &SessionConfigOptionValue,
         events: &EventSender,
     ) {
-        if config_id.0.as_ref() != MODEL_CONFIG_ID {
+        let Some(value) = value.as_value_id() else {
             events.send(AgentEvent::Error(format!(
-                "Unknown session option: {config_id:?}"
+                "Expected a select value for session option: {config_id:?}"
             )));
             return;
+        };
+        match config_id.0.as_ref() {
+            MODEL_CONFIG_ID => {
+                self.id = value.0.to_string();
+                self.model = (self.make_model)(&self.id);
+                self.effort = self
+                    .effort
+                    .filter(|level| self.provider.efforts(&self.id).contains(level));
+            }
+            EFFORT_CONFIG_ID if value.0.as_ref() == DEFAULT_EFFORT => {
+                self.effort = None;
+            }
+            EFFORT_CONFIG_ID => {
+                let Some(level) = self.offered_effort(&crate::Effort::from(value)) else {
+                    events.send(AgentEvent::Error(format!(
+                        "{} does not offer the effort {value:?}",
+                        self.id
+                    )));
+                    return;
+                };
+                self.effort = Some(level);
+            }
+            _ => {
+                events.send(AgentEvent::Error(format!(
+                    "Unknown session option: {config_id:?}"
+                )));
+                return;
+            }
         }
-        self.id = value.0.to_string();
-        self.model = (self.make_model)(&self.id);
         events.send(AgentEvent::Update(SessionUpdate::ConfigOptionUpdate(
             ConfigOptionUpdate::new(self.config_options()),
         )));
+    }
+}
+
+fn effort_name(level: rig_core::completion::Effort) -> &'static str {
+    match level {
+        rig_core::completion::Effort::Minimal => "Minimal",
+        rig_core::completion::Effort::Low => "Low",
+        rig_core::completion::Effort::Medium => "Medium",
+        rig_core::completion::Effort::High => "High",
+        rig_core::completion::Effort::XHigh => "Extra high",
+        rig_core::completion::Effort::Max => "Max",
+        _ => level.as_str(),
     }
 }
 
@@ -526,7 +637,12 @@ async fn run(
     mut command_rx: UnboundedReceiver<AgentCommand>,
     events: &EventSender,
 ) {
-    let mut selection = ModelSelection::new(config.provider, make_model, config.model.clone());
+    let mut selection = ModelSelection::new(
+        config.provider,
+        make_model,
+        config.model.clone(),
+        config.effort.as_ref(),
+    );
     let provider_tools = config.provider_tools();
     let mut history: Vec<Message> = Vec::new();
 
@@ -542,8 +658,8 @@ async fn run(
     });
     events.send(AgentEvent::SessionStarted {
         session_id: SessionId::new(SESSION_ID),
-        modes: None,
         config_options: selection.config_options(),
+        origin: SessionOrigin::New,
     });
 
     while let Some(command) = command_rx.next().await {
@@ -558,6 +674,7 @@ async fn run(
                 let result = {
                     let mut turn = std::pin::pin!(run_turn(
                         selection.model.clone(),
+                        selection.effort,
                         config.system_prompt.as_deref(),
                         config.toolbox.as_deref(),
                         &provider_tools,
@@ -583,13 +700,7 @@ async fn run(
                                         .to_owned(),
                                 ));
                             }
-                            Either::Right((
-                                Some(
-                                    command @ (AgentCommand::SetMode(_)
-                                    | AgentCommand::Authenticate(_)),
-                                ),
-                                _,
-                            )) => {
+                            Either::Right((Some(command @ AgentCommand::Authenticate(_)), _)) => {
                                 re_log::debug!(
                                     "Ignoring {command:?}: not supported by this backend"
                                 );
@@ -598,7 +709,7 @@ async fn run(
                     }
                 };
                 events.send(AgentEvent::TurnFinished(
-                    result.map_err(|err| err.to_string()),
+                    result.map_err(TurnError::ModelApi),
                 ));
 
                 for (config_id, value) in config_changes {
@@ -613,7 +724,7 @@ async fn run(
             // A running turn handles its own cancellation; between turns, nothing runs.
             AgentCommand::Cancel => {}
 
-            AgentCommand::SetMode(_) | AgentCommand::Authenticate(_) => {
+            AgentCommand::Authenticate(_) => {
                 re_log::debug!("Ignoring {command:?}: not supported by this backend");
             }
 
@@ -629,6 +740,7 @@ async fn run(
 /// is cancelled.
 async fn run_turn(
     model: DynModel<Completion>,
+    effort: Option<rig_core::completion::Effort>,
     system_prompt: Option<&str>,
     toolbox: Option<&dyn AgentToolbox>,
     provider_tools: &[ProviderToolDefinition],
@@ -641,6 +753,7 @@ async fn run_turn(
         prune_old_tool_images(history, MAX_IMAGES_IN_HISTORY);
         let reply = stream_reply(
             &model,
+            effort,
             system_prompt,
             &tools,
             provider_tools,
@@ -723,6 +836,7 @@ fn prune_old_tool_images(history: &mut [Message], keep: usize) {
 /// never as tool calls for the loop to run.
 async fn stream_reply(
     model: &DynModel<Completion>,
+    effort: Option<rig_core::completion::Effort>,
     system_prompt: Option<&str>,
     tools: &[Arc<RigTool>],
     provider_tools: &[ProviderToolDefinition],
@@ -734,6 +848,9 @@ async fn stream_reply(
         .provider_tools(provider_tools.to_vec());
     if let Some(system_prompt) = system_prompt {
         request = request.preamble(system_prompt);
+    }
+    if let Some(effort) = effort {
+        request = request.reasoning(effort);
     }
 
     let mut stream = model
@@ -1071,9 +1188,143 @@ mod tests {
     use futures::task::LocalSpawnExt as _;
     use rig_core::test_utils::{MockCompletionModel, MockStreamEvent};
 
-    use agent_client_protocol_schema::v1::{RequestPermissionResponse, SelectedPermissionOutcome};
+    use agent_client_protocol_schema::v1::{
+        RequestPermissionResponse, SelectedPermissionOutcome, SessionConfigKind,
+    };
 
     use super::*;
+
+    #[test]
+    fn efforts_come_from_the_model_catalog() {
+        use rig_core::providers::{anthropic, openai};
+        let all = vec![
+            rig_core::completion::Effort::Low,
+            rig_core::completion::Effort::Medium,
+            rig_core::completion::Effort::High,
+            rig_core::completion::Effort::XHigh,
+            rig_core::completion::Effort::Max,
+        ];
+        let anthropic_api = ModelApiProvider::Anthropic;
+        assert_eq!(anthropic_api.efforts(anthropic::CLAUDE_OPUS_5_5), all);
+        assert_eq!(anthropic_api.efforts(anthropic::CLAUDE_HAIKU_4_5), vec![]);
+        assert_eq!(anthropic_api.efforts("not-a-model"), vec![]);
+        assert_eq!(
+            ModelApiProvider::OpenAi.efforts(openai::GPT_5_MINI),
+            vec![
+                rig_core::completion::Effort::Minimal,
+                rig_core::completion::Effort::Low,
+                rig_core::completion::Effort::Medium,
+                rig_core::completion::Effort::High
+            ]
+        );
+    }
+
+    fn effort_option(
+        selection: &ModelSelection<impl Fn(&str) -> DynModel<Completion>>,
+    ) -> Option<(String, Vec<String>)> {
+        selection.config_options().into_iter().find_map(|option| {
+            if option.category != Some(SessionConfigOptionCategory::ThoughtLevel) {
+                return None;
+            }
+            let SessionConfigKind::Select(select) = option.kind else {
+                return None;
+            };
+            let values = crate::select_options(&select)
+                .into_iter()
+                .map(|choice| choice.value.0.to_string())
+                .collect();
+            Some((select.current_value.0.to_string(), values))
+        })
+    }
+
+    #[test]
+    fn effort_follows_the_selected_model() {
+        use rig_core::providers::anthropic;
+        let make_model = |_: &str| {
+            MockCompletionModel::from_stream_turns(Vec::<Vec<MockStreamEvent>>::new()).erase()
+        };
+        let (events, _event_rx) = EventSender::new(UiWaker::noop());
+        let mut selection = ModelSelection::new(
+            ModelApiProvider::Anthropic,
+            make_model,
+            anthropic::CLAUDE_OPUS_5_5.to_owned(),
+            Some(&crate::Effort("max".to_owned())),
+        );
+        assert_eq!(selection.effort, Some(rig_core::completion::Effort::Max));
+        assert_eq!(
+            effort_option(&selection),
+            Some((
+                "max".to_owned(),
+                ["default", "low", "medium", "high", "xhigh", "max"]
+                    .map(str::to_owned)
+                    .to_vec()
+            ))
+        );
+
+        selection.set_config_option(
+            &SessionConfigId::new(MODEL_CONFIG_ID),
+            &SessionConfigOptionValue::value_id(anthropic::CLAUDE_HAIKU_4_5),
+            &events,
+        );
+        assert_eq!(selection.effort, None);
+        assert_eq!(effort_option(&selection), None);
+
+        selection.set_config_option(
+            &SessionConfigId::new(MODEL_CONFIG_ID),
+            &SessionConfigOptionValue::value_id(anthropic::CLAUDE_SONNET_5_5),
+            &events,
+        );
+        selection.set_config_option(
+            &SessionConfigId::new(EFFORT_CONFIG_ID),
+            &SessionConfigOptionValue::value_id("low"),
+            &events,
+        );
+        assert_eq!(selection.effort, Some(rig_core::completion::Effort::Low));
+        selection.set_config_option(
+            &SessionConfigId::new(EFFORT_CONFIG_ID),
+            &SessionConfigOptionValue::value_id(DEFAULT_EFFORT),
+            &events,
+        );
+        assert_eq!(selection.effort, None);
+
+        let saved_but_not_offered = ModelSelection::new(
+            ModelApiProvider::OpenAi,
+            make_model,
+            rig_core::providers::openai::GPT_5_MINI.to_owned(),
+            Some(&crate::Effort("max".to_owned())),
+        );
+        assert_eq!(saved_but_not_offered.effort, None);
+    }
+
+    #[test]
+    fn requests_carry_the_effort() {
+        use futures::FutureExt as _;
+
+        let model = MockCompletionModel::from_stream_turns([vec![
+            MockStreamEvent::text("Done"),
+            MockStreamEvent::final_response_with_default_usage(),
+        ]]);
+        let (events, _event_rx) = EventSender::new(UiWaker::noop());
+        let mut history = vec![Message::user("Go")];
+        run_turn(
+            model.clone().erase(),
+            Some(rig_core::completion::Effort::High),
+            None,
+            None,
+            &[],
+            &mut history,
+            &events,
+        )
+        .now_or_never()
+        .expect("a text reply finishes at once")
+        .expect("the turn succeeds");
+        assert_eq!(
+            model.requests()[0].options.reasoning,
+            Some(rig_core::completion::Reasoning::Effort(
+                rig_core::completion::Effort::High
+            ))
+        );
+    }
 
     #[test]
     fn api_key_is_trimmed_and_never_blank() {
@@ -1139,13 +1390,18 @@ mod tests {
     struct TestToolbox;
 
     impl AgentToolbox for TestToolbox {
-        fn definitions(&self) -> Vec<crate::ToolDefinition> {
+        fn definitions(&self) -> Vec<re_agent_tools::ToolDefinition> {
             ["echo", "delete"]
                 .into_iter()
-                .map(|name| crate::ToolDefinition {
+                .map(|name| re_agent_tools::ToolDefinition {
                     name: name.to_owned(),
                     description: format!("The {name} tool"),
                     input_schema: serde_json::Map::new(),
+                    effect: if name == "delete" {
+                        re_agent_tools::ToolEffect::Destructive
+                    } else {
+                        re_agent_tools::ToolEffect::ReadOnly
+                    },
                 })
                 .collect()
         }
@@ -1175,11 +1431,12 @@ mod tests {
     struct ScreenshotToolbox;
 
     impl AgentToolbox for ScreenshotToolbox {
-        fn definitions(&self) -> Vec<crate::ToolDefinition> {
-            vec![crate::ToolDefinition {
+        fn definitions(&self) -> Vec<re_agent_tools::ToolDefinition> {
+            vec![re_agent_tools::ToolDefinition {
                 name: "screenshot".to_owned(),
                 description: "Takes a screenshot".to_owned(),
                 input_schema: serde_json::Map::new(),
+                effect: re_agent_tools::ToolEffect::ReadOnly,
             }]
         }
 
@@ -1220,6 +1477,7 @@ mod tests {
             provider: ModelApiProvider::Anthropic,
             api_key: ApiKey("mock".to_owned()),
             model: "mock".to_owned(),
+            effort: None,
             system_prompt: Some("Be brief".to_owned()),
             hosted_tools: HostedTools::NONE,
             toolbox,
@@ -1368,6 +1626,7 @@ mod tests {
         assert!(
             run_turn(
                 model.erase(),
+                None,
                 None,
                 Some(&TestToolbox),
                 &[],
@@ -1545,7 +1804,7 @@ mod tests {
             .collect()
     }
 
-    fn turn_results(events: &[AgentEvent]) -> Vec<&Result<StopReason, String>> {
+    fn turn_results(events: &[AgentEvent]) -> Vec<&Result<StopReason, TurnError>> {
         events
             .iter()
             .filter_map(|event| match event {
@@ -1558,16 +1817,14 @@ mod tests {
     #[test]
     #[cfg(agent_harness_backend)]
     fn default_models_are_the_preferred_fast_ones() {
-        for provider in [ModelApiProvider::Anthropic, ModelApiProvider::OpenAi] {
-            let model = provider.default_model();
-            assert!(provider.models().contains(&model), "{model:?}");
-            assert!(
-                crate::settings::DEFAULT_MODEL_PREFERENCES
-                    .iter()
-                    .any(|preference| model.contains(preference)),
-                "{model:?} is not one of DEFAULT_MODEL_PREFERENCES"
-            );
-        }
+        assert_eq!(
+            ModelApiProvider::Anthropic.default_model(),
+            rig_core::providers::anthropic::CLAUDE_SONNET_5_5
+        );
+        assert_eq!(
+            ModelApiProvider::OpenAi.default_model(),
+            rig_core::providers::openai::GPT_5_MINI
+        );
     }
 
     #[test]
@@ -1642,7 +1899,7 @@ mod tests {
         assert!(
             results[0]
                 .as_ref()
-                .is_err_and(|err| err.contains("overloaded"))
+                .is_err_and(|err| err.to_string().contains("overloaded"))
         );
         assert!(matches!(results[1], Ok(StopReason::EndTurn)));
         assert_eq!(message_text(&events), "ok");

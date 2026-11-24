@@ -62,13 +62,10 @@ fn hevc_codec_string(profile_tier_level: &ProfileTierLevel) -> String {
     write!(codec, "{}", profile_tier_level.general_profile_idc).ok();
 
     // .B: A 32-bit value representing one or more general profile compatibility flags.
-    let mut reversed = 0;
-    for i in 0..32 {
-        reversed |= profile_tier_level.general_profile_compatibility_flag[i] as u32;
-        if i != 31 {
-            reversed <<= 1;
-        }
-    }
+    let reversed = profile_tier_level
+        .general_profile_compatibility_flag
+        .iter()
+        .fold(0u32, |acc, &flag| (acc << 1) | flag as u32);
     codec.push_str(format!(".{reversed:X}").trim_end_matches('0'));
 
     // .C: The general_tier_flag, encoded as L (general_tier_flag === 0) or H (general_tier_flag === 1), followed by the general_level_idc, encoded as a decimal number.
@@ -280,6 +277,46 @@ mod test {
         let sample_data = &[0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A];
         let result = detect_h265_annexb_gop(sample_data);
         assert_eq!(result, Ok(GopStartDetection::NotStartOfGop));
+    }
+
+    /// The decoders are handed the SPS of an `hvcC` box as stored, followed by a start code.
+    #[test]
+    fn test_detect_h265_annexb_gop_with_trailing_zero_bytes() {
+        // Extracted from "tests/assets/video/Big_Buck_Bunny_1080_1s_h265.mp4".
+        let vps_and_sps: &[u8] = &[
+            // VPS NAL unit (NAL type 32)
+            0x00, 0x00, 0x00, 0x01, 0x40, 0x01, 0x0c, 0x01, 0xff, 0xff, 0x01, 0x60, 0x00, 0x00,
+            0x03, 0x00, 0x90, 0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x78, 0x95, 0x98, 0x09,
+            // SPS NAL unit (NAL type 33)
+            0x00, 0x00, 0x00, 0x01, 0x42, 0x01, 0x01, 0x01, 0x60, 0x00, 0x00, 0x03, 0x00, 0x90,
+            0x00, 0x00, 0x03, 0x00, 0x00, 0x03, 0x00, 0x78, 0xa0, 0x03, 0xc0, 0x80, 0x10, 0xe5,
+            0x96, 0x56, 0x69, 0x24, 0xca, 0xf0, 0x16, 0x9c, 0x20, 0x00, 0x00, 0x03, 0x00, 0x20,
+            0x00, 0x00, 0x03, 0x03, 0xc1,
+        ];
+        let idr: &[u8] = &[
+            // IDR frame NAL unit (NAL type 19)
+            0x00, 0x00, 0x00, 0x01, 0x26, 0x01, 0x88, 0x84, 0x21, 0x43, 0x02, 0x4C, 0x82, 0x54,
+            0x2B, 0x8F, 0x2C, 0x8C, 0x54, 0x4A, 0x92, 0x54, 0x2B, 0x8F, 0x2C, 0x8C, 0x54, 0x4A,
+        ];
+
+        for num_trailing_zeros in 0..=4 {
+            let mut sample_data = vps_and_sps.to_vec();
+            sample_data.resize(vps_and_sps.len() + num_trailing_zeros, 0x00);
+            sample_data.extend_from_slice(idr);
+
+            assert_eq!(
+                detect_h265_annexb_gop(&sample_data),
+                Ok(GopStartDetection::StartOfGop(VideoEncodingDetails {
+                    codec_string: "hvc1.1.6.L120.90".to_owned(),
+                    coded_dimensions: [1920, 1080],
+                    bit_depth: Some(8),
+                    chroma_subsampling: Some(ChromaSubsamplingModes::Yuv420),
+                    max_num_reorder_frames: Some(2),
+                    stsd: None,
+                })),
+                "{num_trailing_zeros} trailing zero bytes"
+            );
+        }
     }
 
     #[test]

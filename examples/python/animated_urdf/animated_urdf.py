@@ -96,8 +96,8 @@ def run_dual(args: argparse.Namespace, urdf_path: Path) -> None:
     right = rr.urdf.UrdfTree.from_file_path(urdf_path, entity_path_prefix="right", frame_prefix="right/")
 
     # Log both robots (geometry + static transforms with prefixed frame IDs).
-    left.log_urdf_to_recording()
-    right.log_urdf_to_recording()
+    left.log_to_recording()
+    right.log_to_recording()
 
     # Offset the arms so they don't overlap.
     rec.log("left", rr.Transform3D(translation=[-0.2, 0, 0]), static=True)

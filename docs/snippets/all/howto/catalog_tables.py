@@ -21,6 +21,8 @@ storage_dir = Path(temp_dir.name)
 server = rr.server.Server(datasets={"sample_dataset": sample_5_path})
 CATALOG_URL = server.url()
 client = rr.catalog.CatalogClient(CATALOG_URL)
+# On Rerun Hub, connect to your Hub instead:
+# client = rr.catalog.CatalogClient("rerun://api.<stack>.cloud.rerun.io")
 dataset = client.get_dataset(name="sample_dataset")
 # endregion: setup
 
