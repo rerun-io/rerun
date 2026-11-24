@@ -43,7 +43,7 @@ pub struct PointCloud2MessageParser {
 
     // We lazily create this, only if we can interpret the point cloud semantically.
     // For now, this is the case if there are fields with names `x`,`y`, and `z` present.
-    points_3ds: Option<Vec<archetypes::Points3D>>,
+    points_3ds: Option<Vec<(usize, archetypes::Points3D)>>,
 }
 
 impl PointCloud2MessageParser {
@@ -371,6 +371,9 @@ impl MessageParser for PointCloud2MessageParser {
             points_3ds,
         } = self;
 
+        // The row of this message, also counting messages without points
+        let row = frame_id.len();
+
         frame_id.values().append_value(point_cloud.header.frame_id);
         frame_id.append(true);
 
@@ -391,10 +394,12 @@ impl MessageParser for PointCloud2MessageParser {
                 .fields
                 .iter()
                 .map(|field| {
-                    (
-                        field.name.clone(),
-                        ListBuilder::new(builder_from_datatype(field.datatype)),
-                    )
+                    let mut builder = ListBuilder::new(builder_from_datatype(field.datatype));
+                    // Earlier messages without fields, such as empty placeholders, have no values
+                    for _ in 0..row {
+                        builder.append(true);
+                    }
+                    (field.name.clone(), builder)
                 })
                 .collect();
         }
@@ -429,7 +434,7 @@ impl MessageParser for PointCloud2MessageParser {
         if let Some(position_iter) = position_iter {
             points_3ds
                 .get_or_insert_with(|| Vec::with_capacity(*num_rows))
-                .push(archetypes::Points3D::new(position_iter));
+                .push((row, archetypes::Points3D::new(position_iter)));
         }
 
         {
@@ -525,10 +530,10 @@ impl MessageParser for PointCloud2MessageParser {
         )?;
         chunks.push(frame_ids_chunk);
 
-        for (i, points_3d) in points_3ds.iter().flatten().enumerate() {
+        for (row, points_3d) in points_3ds.iter().flatten() {
             let timelines = timelines
                 .iter()
-                .map(|(timeline, time_col)| (*timeline, time_col.row_sliced_unit(i)))
+                .map(|(timeline, time_col)| (*timeline, time_col.row_sliced_unit(*row)))
                 .collect::<HashMap<_, _, _>>();
 
             let components = points_3d
@@ -830,5 +835,70 @@ mod tests {
         assert_eq!(intensity.len(), 1);
         assert_eq!(values.len(), 1);
         assert_eq!(values.value(0), 42.123);
+    }
+
+    /// Checks that each point cloud keeps its own timestamp around empty placeholder messages
+    #[test]
+    fn points_keep_their_timestamps_around_empty_messages() {
+        let field = |name: &str, offset| PointField {
+            name: name.to_owned(),
+            offset,
+            datatype: PointFieldDatatype::Float32,
+            count: 1,
+        };
+        let cloud = |sec, data: Vec<u8>| {
+            let point_step = if data.is_empty() { 0 } else { 16 };
+            sensor_msgs::PointCloud2 {
+                header: std_msgs::Header {
+                    stamp: builtin_interfaces::Time { sec, nanosec: 0 },
+                    frame_id: "map".to_owned(),
+                },
+                height: u32::from(point_step != 0),
+                width: u32::from(point_step != 0),
+                fields: if data.is_empty() {
+                    Vec::new()
+                } else {
+                    vec![
+                        field("x", 0),
+                        field("y", 4),
+                        field("z", 8),
+                        field("intensity", 12),
+                    ]
+                },
+                is_bigendian: false,
+                point_step,
+                row_step: point_step,
+                data,
+                is_dense: true,
+            }
+        };
+        let point = |value: f32| [value; 4].into_iter().flat_map(f32::to_le_bytes).collect();
+
+        let messages = [
+            cloud(1, Vec::new()),
+            cloud(2, Vec::new()),
+            cloud(3, point(3.0)),
+            cloud(4, Vec::new()),
+            cloud(5, point(5.0)),
+        ];
+        let mut parser = PointCloud2MessageParser::new(messages.len());
+        let mut ctx =
+            ParserContext::new(EntityPath::from("/cloud"), "/cloud", TimeType::TimestampNs);
+        for message in &messages {
+            parser.append(&mut ctx, &cdr_message(message)).unwrap();
+        }
+        let chunks = Box::new(parser).finalize(ctx).unwrap();
+
+        let positions = archetypes::Points3D::descriptor_positions().component;
+        let stamps = chunks
+            .iter()
+            .filter(|chunk| chunk.components().contains_component(positions))
+            .flat_map(|chunk| {
+                chunk.timelines()[&"ros2_timestamp".into()]
+                    .times_raw()
+                    .to_vec()
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(stamps, vec![3_000_000_000, 5_000_000_000]);
     }
 }
