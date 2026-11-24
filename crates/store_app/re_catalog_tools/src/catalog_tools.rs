@@ -233,17 +233,17 @@ impl CatalogTools {
             CatalogTool::QueryTables => {
                 crate::query::query_tables(&self.catalog()?, parse_args(arguments)?).await
             }
-            CatalogTool::CreateDataset => {
-                crate::write::create_dataset(&self.catalog()?, parse_args(arguments)?).await
+            CatalogTool::CreateDatasets => {
+                crate::write::create_datasets(&self.catalog()?, parse_args(arguments)?).await
             }
-            CatalogTool::RenameEntry => {
-                crate::write::rename_entry(&self.catalog()?, parse_args(arguments)?).await
+            CatalogTool::RenameEntries => {
+                crate::write::rename_entries(&self.catalog()?, parse_args(arguments)?).await
             }
-            CatalogTool::UploadRecording => cfg_select! {
+            CatalogTool::UploadRecordings => cfg_select! {
                 target_arch = "wasm32" => Err(CatalogToolError::UnknownTool {
                     name: tool.name().to_owned(),
                 }),
-                _ => crate::write::upload_recording(&self.catalog()?, parse_args(arguments)?).await,
+                _ => crate::write::upload_recordings(&self.catalog()?, parse_args(arguments)?).await,
             },
             CatalogTool::RegisterRecordings => {
                 crate::write::register_recordings(&self.catalog()?, parse_args(arguments)?).await

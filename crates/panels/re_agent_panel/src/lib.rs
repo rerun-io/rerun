@@ -476,7 +476,7 @@ mod toolbox_tests {
         }
         assert!(!toolbox.requires_approval("catalog_query_tables", &Map::new()));
         assert!(toolbox.requires_approval("catalog_connect", &Map::new()));
-        assert!(toolbox.requires_approval("catalog_create_dataset", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_create_datasets", &Map::new()));
 
         catalog_tools.set_access(re_agent_tools::CatalogAccess::ReadOnly);
         let names: Vec<String> = toolbox
@@ -485,7 +485,7 @@ mod toolbox_tests {
             .map(|definition| definition.name)
             .collect();
         assert!(names.iter().any(|name| name == "catalog_list_entries"));
-        assert!(!names.iter().any(|name| name == "catalog_create_dataset"));
+        assert!(!names.iter().any(|name| name == "catalog_create_datasets"));
     }
 
     #[tokio::test]
@@ -505,13 +505,13 @@ mod toolbox_tests {
             toolbox
                 .definitions()
                 .iter()
-                .any(|definition| definition.name == "catalog_create_dataset")
+                .any(|definition| definition.name == "catalog_create_datasets")
         };
         assert!(!offers_create());
 
         catalog_tools.set_access(re_agent_tools::CatalogAccess::ReadWrite);
         assert!(offers_create());
-        assert!(toolbox.requires_approval("catalog_create_dataset", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_create_datasets", &Map::new()));
     }
 }
 

@@ -15,8 +15,8 @@ use re_types_core::{LayerName, SegmentId};
 
 use crate::CatalogToolError;
 use crate::args::{
-    CreateDatasetArgs, OnDuplicateArg, RegisterRecordingsArgs, RegisterTableBlueprintArgs,
-    RenameEntryArgs,
+    CreateDatasetsArgs, EntryRename, OnDuplicateArg, RegisterRecordingsArgs,
+    RegisterTableBlueprintArgs, RenameEntriesArgs,
 };
 use crate::metadata::{dataset_id, find_entry};
 
@@ -26,74 +26,158 @@ use crate::metadata::{dataset_id, find_entry};
 /// takes longer keeps running on the server, and the result says so.
 const REGISTRATION_WAIT: Duration = Duration::from_secs(120);
 
-/// The most URLs one call takes, so one call cannot start an unbounded amount of work on the
+/// The most items one call takes, so one call cannot start an unbounded amount of work on the
 /// server.
-const MAX_URLS_PER_CALL: usize = 1000;
+const MAX_ITEMS_PER_CALL: usize = 1000;
 
-pub async fn create_dataset(
+/// Checks every name before creating any. A dataset the server refuses stops the rest, and the
+/// error says which were created.
+pub async fn create_datasets(
     catalog: &CatalogClient,
-    args: CreateDatasetArgs,
+    args: CreateDatasetsArgs,
 ) -> Result<Value, CatalogToolError> {
-    let CreateDatasetArgs { name } = args;
-    let entry_name = visible_entry_name(&name)?;
-    let dataset = catalog
-        .create_dataset(entry_name, None)
-        .await
-        .map_err(|err| name_taken_or(err, &name, "create the dataset"))?;
-    Ok(json!({
-        "created": dataset.details.name.to_string(),
-        "id": dataset.details.id.to_string(),
-    }))
+    let CreateDatasetsArgs { names } = args;
+    check_count("names", names.len())?;
+    let entry_names = names
+        .iter()
+        .map(|name| visible_entry_name(name))
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut created = Vec::with_capacity(entry_names.len());
+    let mut done = Vec::with_capacity(entry_names.len());
+    for entry_name in entry_names {
+        let name = entry_name.to_string();
+        match catalog.create_dataset(entry_name, None).await {
+            Ok(dataset) => {
+                done.push(format!("{name:?}"));
+                created.push(json!({
+                    "name": dataset.details.name.to_string(),
+                    "id": dataset.details.id.to_string(),
+                }));
+            }
+            Err(err) => {
+                return Err(stopped_partway(
+                    done,
+                    name_taken_or(err, &name, "create the dataset"),
+                ));
+            }
+        }
+    }
+    Ok(json!({ "created": created }))
 }
 
-pub async fn rename_entry(
+/// Checks every rename before making any, so that a mistyped entry or name changes nothing.
+/// A rename the server refuses stops the rest, and the error says which were done.
+pub async fn rename_entries(
     catalog: &CatalogClient,
-    args: RenameEntryArgs,
+    args: RenameEntriesArgs,
 ) -> Result<Value, CatalogToolError> {
-    let RenameEntryArgs { entry, new_name } = args;
-    let update = EntryDetailsUpdate {
-        name: Some(visible_entry_name(&new_name)?),
-    };
-    let details = writable_entry(catalog, &entry).await?;
-    let renamed = catalog
-        .update_entry(details.id, update)
-        .await
-        .map_err(|err| name_taken_or(err, &new_name, "rename the entry"))?;
-    Ok(json!({
-        "old_name": details.name.to_string(),
-        "new_name": renamed.name.to_string(),
-        "id": renamed.id.to_string(),
-    }))
+    let RenameEntriesArgs { renames } = args;
+    check_count("renames", renames.len())?;
+    let mut checked = Vec::with_capacity(renames.len());
+    for EntryRename { entry, new_name } in renames {
+        let entry_name = visible_entry_name(&new_name)?;
+        let details = writable_entry(catalog, &entry).await?;
+        checked.push((details, entry_name));
+    }
+
+    let mut renamed = Vec::with_capacity(checked.len());
+    let mut done = Vec::with_capacity(checked.len());
+    for (details, entry_name) in checked {
+        let new_name = entry_name.to_string();
+        let update = EntryDetailsUpdate {
+            name: Some(entry_name),
+        };
+        match catalog.update_entry(details.id, update).await {
+            Ok(entry) => {
+                done.push(format!(
+                    "{:?} to {:?}",
+                    details.name.as_str(),
+                    entry.name.as_str()
+                ));
+                renamed.push(json!({
+                    "old_name": details.name.to_string(),
+                    "new_name": entry.name.to_string(),
+                    "id": entry.id.to_string(),
+                }));
+            }
+            Err(err) => {
+                return Err(stopped_partway(
+                    done,
+                    name_taken_or(err, &new_name, "rename the entry"),
+                ));
+            }
+        }
+    }
+    Ok(json!({ "renamed": renamed }))
 }
 
+/// Checks every file before uploading any. Uploads them in order, each waiting for its
+/// registration within one wait shared by all, and stops at the first that fails, with an error
+/// that says which were uploaded.
 #[cfg(not(target_arch = "wasm32"))]
-pub async fn upload_recording(
+pub async fn upload_recordings(
     catalog: &CatalogClient,
-    args: crate::args::UploadRecordingArgs,
+    args: crate::args::UploadRecordingsArgs,
 ) -> Result<Value, CatalogToolError> {
-    let crate::args::UploadRecordingArgs {
+    let crate::args::UploadRecordingsArgs {
         dataset,
-        path,
+        paths,
         layer,
         on_duplicate,
     } = args;
-    check_rrd_file(&path)?;
+    check_count("paths", paths.len())?;
+    for path in &paths {
+        check_rrd_file(path)?;
+    }
     let layer = layer_name(layer)?;
     let dataset_id = dataset_id(catalog, &dataset).await?;
+
+    let deadline = std::time::Instant::now() + REGISTRATION_WAIT;
+    let mut registered = Vec::new();
+    let mut running = Vec::new();
+    let mut done = Vec::with_capacity(paths.len());
+    for path in paths {
+        match upload_recording(catalog, dataset_id, &path, &layer, on_duplicate, deadline).await {
+            Ok(Registration::Done(segment_ids)) => registered.extend(segment_ids),
+            Ok(Registration::Running(segment_ids)) => running.extend(segment_ids),
+            Err(err) => return Err(stopped_partway(done, err)),
+        }
+        done.push(format!("{path:?}"));
+    }
+    Ok(registration_json(
+        &layer,
+        on_duplicate,
+        &registered,
+        &running,
+    ))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn upload_recording(
+    catalog: &CatalogClient,
+    dataset_id: re_log_types::EntryId,
+    path: &std::path::Path,
+    layer: &LayerName,
+    on_duplicate: OnDuplicateArg,
+    deadline: std::time::Instant,
+) -> Result<Registration, CatalogToolError> {
     let write = catalog
         .write_segment_path(
             dataset_id,
-            path.clone(),
+            path.to_owned(),
             None,
             layer.clone(),
             None,
             on_duplicate.into(),
         )
         .await
-        .map_err(|source| upload_error(path, source))?;
+        .map_err(|source| upload_error(path.to_owned(), source))?;
     let segment_ids: Vec<SegmentId> = write.segment_ids().cloned().collect();
-    let outcome = write.wait(REGISTRATION_WAIT).await;
-    registration_result(&layer, on_duplicate, &segment_ids, outcome)
+    let outcome = write
+        .wait(deadline.saturating_duration_since(std::time::Instant::now()))
+        .await;
+    registration_outcome(on_duplicate, &segment_ids, outcome)
 }
 
 pub async fn register_recordings(
@@ -197,27 +281,25 @@ pub async fn register_table_blueprint(
 
 /// The tool result for a registration of `segment_ids` as `layer`.
 ///
-/// A registration still running when the wait ends is not a failure: the agent can check on it
-/// with `catalog_list_segments`.
-fn registration_result(
-    layer: &LayerName,
+/// What became of a registration by the end of the wait.
+enum Registration {
+    Done(Vec<SegmentId>),
+
+    /// Still running on the server. Not a failure: the agent can check on it with
+    /// `catalog_list_segments`.
+    Running(Vec<SegmentId>),
+}
+
+fn registration_outcome(
     on_duplicate: OnDuplicateArg,
     segment_ids: &[SegmentId],
     outcome: Result<Vec<SegmentId>, RegistrationError>,
-) -> Result<Value, CatalogToolError> {
-    let names = |ids: &[SegmentId]| ids.iter().map(ToString::to_string).collect::<Vec<_>>();
+) -> Result<Registration, CatalogToolError> {
     match outcome {
-        Ok(registered) => Ok(json!({
-            "segment_ids": names(&registered),
-            "layer": layer.as_str(),
-            "on_duplicate": on_duplicate.name(),
-        })),
-        Err(RegistrationError::Query(err)) if err.kind == ApiErrorKind::Timeout => Ok(json!({
-            "registering": names(segment_ids),
-            "layer": layer.as_str(),
-            "next_step": "The server is still registering them. Check with \
-                          `catalog_list_segments` later.",
-        })),
+        Ok(registered) => Ok(Registration::Done(registered)),
+        Err(RegistrationError::Query(err)) if err.kind == ApiErrorKind::Timeout => {
+            Ok(Registration::Running(segment_ids.to_vec()))
+        }
         Err(RegistrationError::Query(err)) => Err(CatalogToolError::RegistrationUnknown {
             source: Box::new(err),
         }),
@@ -226,6 +308,43 @@ fn registration_result(
             suggest_skip: matches!(on_duplicate, OnDuplicateArg::Error),
         }),
     }
+}
+
+fn registration_json(
+    layer: &LayerName,
+    on_duplicate: OnDuplicateArg,
+    registered: &[SegmentId],
+    running: &[SegmentId],
+) -> Value {
+    let names = |ids: &[SegmentId]| ids.iter().map(ToString::to_string).collect::<Vec<_>>();
+    let mut result = json!({
+        "segment_ids": names(registered),
+        "layer": layer.as_str(),
+        "on_duplicate": on_duplicate.name(),
+    });
+    if !running.is_empty() {
+        result["registering"] = json!(names(running));
+        result["next_step"] = json!(
+            "The server is still registering them. Check with `catalog_list_segments` later."
+        );
+    }
+    result
+}
+
+fn registration_result(
+    layer: &LayerName,
+    on_duplicate: OnDuplicateArg,
+    segment_ids: &[SegmentId],
+    outcome: Result<Vec<SegmentId>, RegistrationError>,
+) -> Result<Value, CatalogToolError> {
+    Ok(
+        match registration_outcome(on_duplicate, segment_ids, outcome)? {
+            Registration::Done(registered) => {
+                registration_json(layer, on_duplicate, &registered, &[])
+            }
+            Registration::Running(running) => registration_json(layer, on_duplicate, &[], &running),
+        },
+    )
 }
 
 /// Refuse anything but an `.rrd` file at an absolute path, before anything is sent.
@@ -309,6 +428,18 @@ fn visible_entry_name(name: &str) -> Result<EntryName, CatalogToolError> {
     Ok(entry_name)
 }
 
+/// `source`, saying which items of the call were `done` before it, if any.
+fn stopped_partway(done: Vec<String>, source: CatalogToolError) -> CatalogToolError {
+    if done.is_empty() {
+        source
+    } else {
+        CatalogToolError::StoppedPartway {
+            done,
+            source: Box::new(source),
+        }
+    }
+}
+
 fn name_taken_or(err: ApiError, name: &str, operation: &'static str) -> CatalogToolError {
     if err.kind == ApiErrorKind::AlreadyExists {
         CatalogToolError::EntryNameTaken {
@@ -330,11 +461,11 @@ fn layer_name(layer: Option<String>) -> Result<LayerName, CatalogToolError> {
 fn check_count(field: &'static str, count: usize) -> Result<(), CatalogToolError> {
     if count == 0 {
         Err(CatalogToolError::EmptyList { field })
-    } else if MAX_URLS_PER_CALL < count {
+    } else if MAX_ITEMS_PER_CALL < count {
         Err(CatalogToolError::TooManyItems {
             field,
             count,
-            max: MAX_URLS_PER_CALL,
+            max: MAX_ITEMS_PER_CALL,
         })
     } else {
         Ok(())
@@ -403,7 +534,7 @@ mod tests {
     #[test]
     fn counts_are_bounded() {
         assert!(check_count("urls", 0).is_err());
-        assert!(check_count("urls", MAX_URLS_PER_CALL).is_ok());
-        assert!(check_count("urls", MAX_URLS_PER_CALL + 1).is_err());
+        assert!(check_count("urls", MAX_ITEMS_PER_CALL).is_ok());
+        assert!(check_count("urls", MAX_ITEMS_PER_CALL + 1).is_err());
     }
 }

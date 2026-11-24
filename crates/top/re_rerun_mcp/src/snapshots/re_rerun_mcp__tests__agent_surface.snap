@@ -86,7 +86,7 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
 - If `catalog_connect` says the server needs a login, call `catalog_login`, show the user its link, call `catalog_login` again to wait until they are done, then retry `catalog_connect`.
 - Until you call `catalog_connect`, the catalog tools act on the catalog of the connected viewer (its `catalog_url`) when that viewer runs on this machine. It holds the recordings the viewer loaded from files: read their values with `catalog_query_dataset` rather than the Python API. Call `catalog_connect` to read another server, e.g. one from the `servers` that `viewer_get_state` lists.
 - A recording's `store_id` in `viewer_get_state` names its dataset id and segment id: pass them as `dataset` and `segment_id`.
-- The write tools, such as `catalog_create_dataset`, change the catalog for everyone using it. Confirm the server with the user before you change anything. Upload an `.rrd` file on this machine with `catalog_upload_recording`.
+- The write tools, such as `catalog_create_datasets`, change the catalog for everyone using it. Confirm the server with the user before you change anything. Upload `.rrd` files on this machine with `catalog_upload_recordings`.
 
 # Tools
 
@@ -163,22 +163,25 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
   }
 }
 
-## catalog_create_dataset
+## catalog_create_datasets
 
 {
-  "name": "catalog_create_dataset",
-  "description": "Create an empty dataset in the catalog. Fill it with `catalog_upload_recording` or `catalog_register_recordings`.",
+  "name": "catalog_create_datasets",
+  "description": "Create empty datasets in the catalog. Put all of them in one call, so the user approves them at once. Checks every name first, then creates them in order, and stops at the first the server refuses. Fill them with `catalog_upload_recordings` or `catalog_register_recordings`.",
   "inputSchema": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "name": {
-        "type": "string",
-        "description": "The new dataset's name."
+      "names": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "The new datasets' names, created in order, at most 1000."
       }
     },
     "required": [
-      "name"
+      "names"
     ]
   },
   "annotations": {
@@ -516,7 +519,7 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
 
 {
   "name": "catalog_register_recordings",
-  "description": "Register `.rrd` files that the catalog server can read, e.g. on S3, into a dataset, without copying them. Waits for the server to register their recordings as segments, and returns the segment ids, with `skip` also those already there. For a file on this machine, use `catalog_upload_recording`.",
+  "description": "Register `.rrd` files that the catalog server can read, e.g. on S3, into a dataset, without copying them. Waits for the server to register their recordings as segments, and returns the segment ids, with `skip` also those already there. For files on this machine, use `catalog_upload_recordings`.",
   "inputSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -603,27 +606,40 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
   }
 }
 
-## catalog_rename_entry
+## catalog_rename_entries
 
 {
-  "name": "catalog_rename_entry",
-  "description": "Rename a dataset or table in the catalog.",
+  "name": "catalog_rename_entries",
+  "description": "Rename datasets and tables in the catalog. Put all renames in one call, so the user approves them at once. Checks them all first, then renames in order, and stops at the first the server refuses.",
   "inputSchema": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "entry": {
-        "type": "string",
-        "description": "The dataset's or table's name or id, from `catalog_list_entries`."
-      },
-      "new_name": {
-        "type": "string",
-        "description": "The name to give it."
+      "renames": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "entry": {
+              "description": "The dataset's or table's name or id, from `catalog_list_entries`.",
+              "type": "string"
+            },
+            "new_name": {
+              "description": "The name to give it.",
+              "type": "string"
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "entry",
+            "new_name"
+          ]
+        },
+        "description": "What to rename, done in order, at most 1000."
       }
     },
     "required": [
-      "entry",
-      "new_name"
+      "renames"
     ]
   },
   "annotations": {
@@ -634,11 +650,11 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
   }
 }
 
-## catalog_upload_recording
+## catalog_upload_recordings
 
 {
-  "name": "catalog_upload_recording",
-  "description": "Upload an `.rrd` file on this machine into a dataset, and wait for the server to register its recordings as segments. Returns the segment ids, with `skip` also those already there. A large file takes a while to upload.",
+  "name": "catalog_upload_recordings",
+  "description": "Upload `.rrd` files on this machine into a dataset, and wait for the server to register their recordings as segments. Put all files in one call, so the user approves them at once. Checks every file first, then uploads them in order, and stops at the first that fails. Returns the segment ids, with `skip` also those already there. Large files take a while to upload.",
   "inputSchema": {
     "type": "object",
     "additionalProperties": false,
@@ -647,9 +663,12 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
         "type": "string",
         "description": "The dataset's name or id, from `catalog_list_entries`."
       },
-      "path": {
-        "type": "string",
-        "description": "Absolute path of an `.rrd` file on this machine. Each recording in it becomes a segment,\nnamed by its recording id."
+      "paths": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "Absolute paths of `.rrd` files on this machine, uploaded in order, at most 1000. Each\nrecording in them becomes a segment, named by its recording id."
       },
       "layer": {
         "type": [
@@ -670,7 +689,7 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
     },
     "required": [
       "dataset",
-      "path"
+      "paths"
     ]
   },
   "annotations": {

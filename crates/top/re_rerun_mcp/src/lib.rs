@@ -450,10 +450,10 @@ mod tests {
             .map(|tool| tool.name.to_string())
             .collect();
         assert!(names.iter().any(|name| name == "catalog_list_entries"));
-        assert!(!names.iter().any(|name| name == "catalog_create_dataset"));
+        assert!(!names.iter().any(|name| name == "catalog_create_datasets"));
         let instructions = server.instructions();
         assert!(
-            !instructions.contains("catalog_create_dataset"),
+            !instructions.contains("catalog_create_datasets"),
             "{instructions}"
         );
     }

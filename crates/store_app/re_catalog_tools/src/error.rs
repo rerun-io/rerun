@@ -85,6 +85,12 @@ pub enum CatalogToolError {
     #[error("A dataset or table named {name:?} already exists. Pick another name.")]
     EntryNameTaken { name: String },
 
+    #[error("{source} These were done before it: {}. The ones after it were not.", done.join(", "))]
+    StoppedPartway {
+        done: Vec<String>,
+        source: Box<Self>,
+    },
+
     #[error("{name:?} is one of Rerun's own entries, which start with `__`. Leave it as it is.")]
     HiddenEntry { name: String },
 
@@ -102,7 +108,7 @@ pub enum CatalogToolError {
 
     #[error(
         "Invalid storage URL {url:?}: {source}. For a file on this machine, use \
-         `catalog_upload_recording`."
+         `catalog_upload_recordings`."
     )]
     InvalidStorageUrl {
         url: String,

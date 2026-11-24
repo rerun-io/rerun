@@ -794,15 +794,18 @@ fn recording_url(segment_id: &str) -> (String, TempPath) {
 async fn creates_a_dataset_once() {
     let (tools, _recordings, _storage) = connected_tools().await;
     tools
-        .run(CatalogTool::CreateDataset, args(json!({ "name": "fresh" })))
+        .run(
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["fresh"] })),
+        )
         .await
         .expect("create");
     assert!(dataset_names(&tools).await.contains(&"fresh".to_owned()));
     assert_eq!(
         run_err(
             &tools,
-            CatalogTool::CreateDataset,
-            json!({ "name": "fresh" })
+            CatalogTool::CreateDatasets,
+            json!({ "names": ["fresh"] })
         )
         .await,
         "A dataset or table named \"fresh\" already exists. Pick another name."
@@ -832,58 +835,150 @@ async fn without_write_access_the_writes_are_hidden_and_refused() {
     assert!(
         run_err(
             &tools,
-            CatalogTool::CreateDataset,
-            json!({ "name": "fresh" })
+            CatalogTool::CreateDatasets,
+            json!({ "names": ["fresh"] })
         )
         .await
         .starts_with("Write access to the catalog is off")
     );
     assert!(!dataset_names(&tools).await.contains(&"fresh".to_owned()));
-    assert!(!tools.requires_approval(CatalogTool::CreateDataset.name(), &Map::new()));
+    assert!(!tools.requires_approval(CatalogTool::CreateDatasets.name(), &Map::new()));
     assert!(tools.requires_approval(CatalogTool::Connect.name(), &Map::new()));
 
     tools.set_access(CatalogAccess::ReadWrite);
     tools
-        .run(CatalogTool::CreateDataset, args(json!({ "name": "fresh" })))
+        .run(
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["fresh"] })),
+        )
         .await
         .expect("create");
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn renames_a_dataset_by_id() {
+async fn creates_several_datasets_in_one_call() {
+    let (tools, _recordings, _storage) = connected_tools().await;
+    let result = tools
+        .run(
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["first", "second"] })),
+        )
+        .await
+        .expect("create");
+    assert_eq!(
+        result["created"].as_array().map(Vec::len),
+        Some(2),
+        "{result}"
+    );
+    let names = dataset_names(&tools).await;
+    assert!(names.contains(&"first".to_owned()), "{names:?}");
+    assert!(names.contains(&"second".to_owned()), "{names:?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn dataset_names_are_all_checked_before_any_is_created() {
+    let (tools, _recordings, _storage) = connected_tools().await;
+    assert_eq!(
+        run_err(
+            &tools,
+            CatalogTool::CreateDatasets,
+            json!({ "names": ["fine", ""] }),
+        )
+        .await,
+        "Invalid name \"\": name '' must not be empty"
+    );
+    assert!(!dataset_names(&tools).await.contains(&"fine".to_owned()));
+
+    assert_eq!(
+        run_err(
+            &tools,
+            CatalogTool::CreateDatasets,
+            json!({ "names": ["fine", DATASET, "never"] }),
+        )
+        .await,
+        format!(
+            "A dataset or table named {DATASET:?} already exists. Pick another name. These were \
+             done before it: \"fine\". The ones after it were not."
+        )
+    );
+    let names = dataset_names(&tools).await;
+    assert!(names.contains(&"fine".to_owned()), "{names:?}");
+    assert!(!names.contains(&"never".to_owned()), "{names:?}");
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn renames_several_entries_in_one_call() {
     let (tools, _recordings, _storage) = connected_tools().await;
     let created = tools
-        .run(CatalogTool::CreateDataset, args(json!({ "name": "fresh" })))
+        .run(
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["fresh"] })),
+        )
         .await
         .expect("create");
     tools
         .run(
-            CatalogTool::RenameEntry,
-            args(json!({ "entry": created["id"], "new_name": "renamed" })),
+            CatalogTool::RenameEntries,
+            args(json!({ "renames": [
+                { "entry": created["created"][0]["id"], "new_name": "renamed" },
+                { "entry": DATASET, "new_name": "also_renamed" },
+            ] })),
         )
         .await
         .expect("rename");
     let names = dataset_names(&tools).await;
     assert!(names.contains(&"renamed".to_owned()), "{names:?}");
+    assert!(names.contains(&"also_renamed".to_owned()), "{names:?}");
     assert!(!names.contains(&"fresh".to_owned()), "{names:?}");
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn a_rename_needs_a_free_name() {
+async fn renames_are_all_checked_before_any_is_made() {
     let (tools, _recordings, _storage) = connected_tools().await;
-    tools
-        .run(CatalogTool::CreateDataset, args(json!({ "name": "fresh" })))
-        .await
-        .expect("create");
     assert_eq!(
         run_err(
             &tools,
-            CatalogTool::RenameEntry,
-            json!({ "entry": "fresh", "new_name": DATASET }),
+            CatalogTool::RenameEntries,
+            json!({ "renames": [
+                { "entry": DATASET, "new_name": "renamed" },
+                { "entry": "nope", "new_name": "other" },
+            ] }),
         )
         .await,
-        format!("A dataset or table named {DATASET:?} already exists. Pick another name.")
+        "No dataset or table named \"nope\". Call `catalog_list_entries` for the names."
     );
+    assert!(dataset_names(&tools).await.contains(&DATASET.to_owned()));
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn a_refused_rename_says_which_were_done() {
+    let (tools, _recordings, _storage) = connected_tools().await;
+    for name in ["fresh", "third"] {
+        tools
+            .run(
+                CatalogTool::CreateDatasets,
+                args(json!({ "names": [name] })),
+            )
+            .await
+            .expect("create");
+    }
+    assert_eq!(
+        run_err(
+            &tools,
+            CatalogTool::RenameEntries,
+            json!({ "renames": [
+                { "entry": "fresh", "new_name": "renamed" },
+                { "entry": DATASET, "new_name": "renamed" },
+                { "entry": "third", "new_name": "never" },
+            ] }),
+        )
+        .await,
+        "A dataset or table named \"renamed\" already exists. Pick another name. These were \
+         done before it: \"fresh\" to \"renamed\". The ones after it were not."
+    );
+    let names = dataset_names(&tools).await;
+    assert!(names.contains(&"renamed".to_owned()), "{names:?}");
+    assert!(!names.contains(&"never".to_owned()), "{names:?}");
 }
 
 #[tokio::test(flavor = "multi_thread")]
@@ -894,8 +989,8 @@ async fn rerun_s_own_entries_are_left_alone() {
     assert_eq!(
         run_err(
             &tools,
-            CatalogTool::RenameEntry,
-            json!({ "entry": "__entries", "new_name": "mine" }),
+            CatalogTool::RenameEntries,
+            json!({ "renames": [{ "entry": "__entries", "new_name": "mine" }] }),
         )
         .await,
         hidden
@@ -903,8 +998,8 @@ async fn rerun_s_own_entries_are_left_alone() {
     assert_eq!(
         run_err(
             &tools,
-            CatalogTool::CreateDataset,
-            json!({ "name": "__entries" })
+            CatalogTool::CreateDatasets,
+            json!({ "names": ["__entries"] })
         )
         .await,
         hidden
@@ -946,15 +1041,15 @@ async fn uploads_a_recording_into_a_new_dataset() {
 
     tools
         .run(
-            CatalogTool::CreateDataset,
-            args(json!({ "name": "uploads" })),
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["uploads"] })),
         )
         .await
         .expect("create");
     let result = tools
         .run(
-            CatalogTool::UploadRecording,
-            args(json!({ "dataset": "uploads", "path": recording.as_path() })),
+            CatalogTool::UploadRecordings,
+            args(json!({ "dataset": "uploads", "paths": [recording.as_path()] })),
         )
         .await
         .expect("upload");
@@ -964,14 +1059,70 @@ async fn uploads_a_recording_into_a_new_dataset() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn uploads_several_recordings_in_one_call() {
+    let (tools, _server) = writable_catalog().await;
+    let first =
+        create_simple_recording(3, "first", &["/points"], 0, TimeType::Sequence).expect("rrd");
+    let second =
+        create_simple_recording(3, "second", &["/points"], 0, TimeType::Sequence).expect("rrd");
+    tools
+        .run(
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["uploads"] })),
+        )
+        .await
+        .expect("create");
+
+    let missing = first.as_path().with_file_name("missing.rrd");
+    let err = run_err(
+        &tools,
+        CatalogTool::UploadRecordings,
+        json!({ "dataset": "uploads", "paths": [first.as_path(), missing] }),
+    )
+    .await;
+    assert!(err.starts_with("Failed to read "), "{err}");
+    let page = segment_page(&tools, json!({ "dataset": "uploads" })).await;
+    assert_eq!(
+        page["segment_ids"],
+        json!([]),
+        "checked before uploading: {page}"
+    );
+
+    let result = tools
+        .run(
+            CatalogTool::UploadRecordings,
+            args(json!({ "dataset": "uploads", "paths": [first.as_path(), second.as_path()] })),
+        )
+        .await
+        .expect("upload");
+    assert_eq!(result["segment_ids"], json!(["first", "second"]));
+
+    let third =
+        create_simple_recording(3, "third", &["/points"], 0, TimeType::Sequence).expect("rrd");
+    let err = run_err(
+        &tools,
+        CatalogTool::UploadRecordings,
+        json!({ "dataset": "uploads", "paths": [third.as_path(), first.as_path()] }),
+    )
+    .await;
+    assert!(
+        err.contains(&format!(
+            "These were done before it: {:?}.",
+            third.as_path()
+        )),
+        "{err}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn uploads_only_absolute_rrd_paths() {
     let (tools, _recordings, _storage) = connected_tools().await;
     for path in ["recording.rrd", "/home/me/.ssh/id_rsa"] {
         assert_eq!(
             run_err(
                 &tools,
-                CatalogTool::UploadRecording,
-                json!({ "dataset": DATASET, "path": path }),
+                CatalogTool::UploadRecordings,
+                json!({ "dataset": DATASET, "paths": [path] }),
             )
             .await,
             format!("{path:?} is not the absolute path of an `.rrd` file.")
@@ -1119,7 +1270,7 @@ async fn a_local_path_is_not_a_storage_url() {
         "{err}"
     );
     assert!(
-        err.ends_with("For a file on this machine, use `catalog_upload_recording`."),
+        err.ends_with("For a file on this machine, use `catalog_upload_recordings`."),
         "{err}"
     );
 }
@@ -1142,17 +1293,17 @@ async fn registering_needs_urls() {
 async fn names_and_layers_are_checked() {
     let (tools, _recordings, _storage) = connected_tools().await;
     assert_eq!(
-        run_err(&tools, CatalogTool::CreateDataset, json!({ "name": "" })).await,
+        run_err(
+            &tools,
+            CatalogTool::CreateDatasets,
+            json!({ "names": [""] })
+        )
+        .await,
         "Invalid name \"\": name '' must not be empty"
     );
     assert_eq!(
-        run_err(
-            &tools,
-            CatalogTool::RenameEntry,
-            json!({ "entry": "nope", "new_name": "other" }),
-        )
-        .await,
-        "No dataset or table named \"nope\". Call `catalog_list_entries` for the names."
+        run_err(&tools, CatalogTool::RenameEntries, json!({ "renames": [] }),).await,
+        "`renames` is empty."
     );
     let (url, _recording) = recording_url("layered");
     assert_eq!(
@@ -1223,8 +1374,8 @@ async fn uploads_only_rrd_files() {
     assert_eq!(
         run_err(
             &tools,
-            CatalogTool::UploadRecording,
-            json!({ "dataset": DATASET, "path": fake }),
+            CatalogTool::UploadRecordings,
+            json!({ "dataset": DATASET, "paths": [fake] }),
         )
         .await,
         format!("{fake:?} is not the absolute path of an `.rrd` file.")
@@ -1232,8 +1383,8 @@ async fn uploads_only_rrd_files() {
     let missing = dir.path().join("missing.rrd");
     let err = run_err(
         &tools,
-        CatalogTool::UploadRecording,
-        json!({ "dataset": DATASET, "path": missing }),
+        CatalogTool::UploadRecordings,
+        json!({ "dataset": DATASET, "paths": [missing] }),
     )
     .await;
     assert!(
@@ -1251,8 +1402,8 @@ async fn a_server_without_uploads_points_at_register() {
     assert_eq!(
         run_err(
             &tools,
-            CatalogTool::UploadRecording,
-            json!({ "dataset": DATASET, "path": recording.as_path() }),
+            CatalogTool::UploadRecordings,
+            json!({ "dataset": DATASET, "paths": [recording.as_path()] }),
         )
         .await,
         "This catalog server does not accept uploads. If it can read the file from storage, e.g. \
@@ -1267,17 +1418,17 @@ async fn uploads_a_layer_and_skips_duplicates() {
         create_simple_recording(6, "twice", &["/points"], 0, TimeType::Sequence).expect("rrd");
     tools
         .run(
-            CatalogTool::CreateDataset,
-            args(json!({ "name": "uploads" })),
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["uploads"] })),
         )
         .await
         .expect("create");
     let upload = |extra: Value| {
-        let mut arguments = json!({ "dataset": "uploads", "path": recording.as_path() });
+        let mut arguments = json!({ "dataset": "uploads", "paths": [recording.as_path()] });
         if let (Value::Object(arguments), Value::Object(extra)) = (&mut arguments, extra) {
             arguments.extend(extra);
         }
-        tools.run(CatalogTool::UploadRecording, args(arguments))
+        tools.run(CatalogTool::UploadRecordings, args(arguments))
     };
 
     let labels = upload(json!({ "layer": "labels" })).await.expect("upload");
