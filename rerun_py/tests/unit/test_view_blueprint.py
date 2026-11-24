@@ -71,7 +71,7 @@ def test_wildcard_in_override_path_warns() -> None:
 
     rr.set_strict_mode(False)
 
-    for path in ["/boxes/**", "boxes/*/inner", "/world/*"]:
+    for path in ["/boxes/**", "boxes/*/inner", "/world/*", r"/boxes/a\\*"]:
         with pytest.warns(RerunWarning, match="has no effect") as record:
             rrb.Spatial2DView(overrides={path: [rr.Boxes2D.from_fields(colors=[0, 255, 0])]})
 

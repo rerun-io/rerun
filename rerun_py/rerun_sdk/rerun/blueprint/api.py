@@ -134,7 +134,7 @@ class View:
 
         for path in self.visualizer_overrides:
             # An unescaped `*` is a glob, not part of an entity path part's name.
-            if re.search(r"(?<!\\)\*", str(path)):
+            if re.search(r"(?<!\\)(?:\\\\)*\*", str(path)):
                 _send_warning_or_raise(
                     f"Override path '{path}' contains a wildcard, so this override has no effect: "
                     "override paths do not support glob expressions (see https://github.com/rerun-io/rerun/issues/6673). "
