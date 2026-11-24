@@ -99,27 +99,51 @@ impl CatalogTool {
     /// web server for the login callback, which the browser cannot start, and `upload_recording`
     /// reads a local file, which the browser cannot do.
     pub fn available() -> impl Iterator<Item = Self> {
-        Self::VARIANTS.iter().copied().filter(|tool| {
-            cfg!(not(target_arch = "wasm32"))
-                || !matches!(
-                    tool,
-                    Self::ListServers | Self::Login | Self::UploadRecording
-                )
-        })
+        Self::VARIANTS
+            .iter()
+            .copied()
+            .filter(|tool| !cfg!(target_arch = "wasm32") || !tool.is_native_only())
+    }
+
+    fn is_native_only(self) -> bool {
+        match self {
+            Self::ListServers | Self::Login | Self::UploadRecording => true,
+            Self::Connect
+            | Self::ListEntries
+            | Self::GetDatasetInfo
+            | Self::GetDatasetSchema
+            | Self::ListSegments
+            | Self::GetSegmentProperties
+            | Self::QueryDataset
+            | Self::QueryTables
+            | Self::CreateDataset
+            | Self::RenameEntry
+            | Self::RegisterRecordings
+            | Self::RegisterTableBlueprint => false,
+        }
     }
 
     /// Whether the tool changes the catalog. These always ask the user first.
     ///
     /// None of them removes or replaces data, since a catalog has no way to undo that.
     pub fn writes(self) -> bool {
-        matches!(
-            self,
+        match self {
             Self::CreateDataset
-                | Self::RenameEntry
-                | Self::UploadRecording
-                | Self::RegisterRecordings
-                | Self::RegisterTableBlueprint
-        )
+            | Self::RenameEntry
+            | Self::UploadRecording
+            | Self::RegisterRecordings
+            | Self::RegisterTableBlueprint => true,
+            Self::ListServers
+            | Self::Connect
+            | Self::Login
+            | Self::ListEntries
+            | Self::GetDatasetInfo
+            | Self::GetDatasetSchema
+            | Self::ListSegments
+            | Self::GetSegmentProperties
+            | Self::QueryDataset
+            | Self::QueryTables => false,
+        }
     }
 
     /// The tool's definition, as the agent sees it.
@@ -137,17 +161,51 @@ impl CatalogTool {
     /// `list_servers` lists the ones to pick from, `connect` picks a catalog itself, and `login`
     /// logs the user in for any catalog.
     pub fn acts_on_catalog(self) -> bool {
-        !matches!(self, Self::ListServers | Self::Connect | Self::Login)
+        match self {
+            Self::ListServers | Self::Connect | Self::Login => false,
+            Self::ListEntries
+            | Self::GetDatasetInfo
+            | Self::GetDatasetSchema
+            | Self::ListSegments
+            | Self::GetSegmentProperties
+            | Self::QueryDataset
+            | Self::QueryTables
+            | Self::CreateDataset
+            | Self::RenameEntry
+            | Self::UploadRecording
+            | Self::RegisterRecordings
+            | Self::RegisterTableBlueprint => true,
+        }
+    }
+
+    /// `connect` and `login`, which set up the session.
+    fn is_session_tool(self) -> bool {
+        match self {
+            Self::Connect | Self::Login => true,
+            Self::ListServers
+            | Self::ListEntries
+            | Self::GetDatasetInfo
+            | Self::GetDatasetSchema
+            | Self::ListSegments
+            | Self::GetSegmentProperties
+            | Self::QueryDataset
+            | Self::QueryTables
+            | Self::CreateDataset
+            | Self::RenameEntry
+            | Self::UploadRecording
+            | Self::RegisterRecordings
+            | Self::RegisterTableBlueprint => false,
+        }
     }
 
     /// What an agent that may call the write tools should know, for the host's instructions.
     pub fn write_guidance() -> String {
         let mut guidance = format!(
-            "`{create}` and the other write tools change the catalog for everyone using it. \
+            "The write tools, such as `{create}`, change the catalog for everyone using it. \
              Confirm the server with the user before you change anything.",
             create = Self::CreateDataset.name(),
         );
-        if Self::available().any(|tool| tool == Self::UploadRecording) {
+        if !cfg!(target_arch = "wasm32") || !Self::UploadRecording.is_native_only() {
             guidance.push_str(" Upload an `.rrd` file on this machine with `");
             guidance.push_str(Self::UploadRecording.name());
             guidance.push_str("`.");
@@ -162,9 +220,7 @@ impl CatalogTool {
     /// once the user logs in through their browser. Every tool that writes asks, since its
     /// changes are shared with everyone using the catalog.
     pub fn requires_approval(self) -> bool {
-        matches!(self, Self::Connect | Self::Login)
-            || self.writes()
-            || self.effect().requires_approval()
+        self.is_session_tool() || self.writes() || self.effect().requires_approval()
     }
 
     fn description(self) -> &'static str {

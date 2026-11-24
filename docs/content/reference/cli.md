@@ -611,6 +611,11 @@ See <https://rerun.io/docs/viewer/extend/mcp> for details.
 >
 > [Default: `viewer`, `catalog`]
 
+* `--catalog-read-only <CATALOG_READ_ONLY>`
+> Leave out the catalog tools that create, rename, or upload.
+>
+> [Default: `false`]
+
 ## rerun rrd
 
 Manipulate the contents of .rrd and .rbl files.

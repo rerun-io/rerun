@@ -40,6 +40,13 @@ pub enum CatalogToolError {
     #[error("Unknown tool {name:?}")]
     UnknownTool { name: String },
 
+    #[error(
+        "Write access to the catalog is off. Do not try again. Tell the user what you wanted to \
+         change, and that they can allow it: in the Rerun Viewer's agent panel settings, or by \
+         starting `rerun mcp` without `--catalog-read-only`."
+    )]
+    WriteAccessOff,
+
     #[error("Invalid arguments: {source}")]
     InvalidArguments { source: serde_json::Error },
 

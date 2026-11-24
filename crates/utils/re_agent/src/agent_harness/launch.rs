@@ -60,7 +60,16 @@ impl AgentSettings {
             .rerun_mcp_server
             .iter()
             .filter(|_| self.rerun_mcp_enabled)
-            .cloned()
+            .map(|server| {
+                let mut server = server.clone();
+                match self.catalog_access {
+                    re_agent_tools::CatalogAccess::ReadOnly => {
+                        server.args.push("--catalog-read-only".to_owned());
+                    }
+                    re_agent_tools::CatalogAccess::ReadWrite => {}
+                }
+                server
+            })
             .collect();
         for server in self.mcp_servers.iter().filter(|s| s.enabled) {
             let mut parts = shell_words::split(&server.command_line).map_err(|err| {
@@ -246,6 +255,37 @@ mod tests {
         };
         assert_eq!(names(true), ["rerun", "mine"]);
         assert_eq!(names(false), ["mine"]);
+    }
+
+    #[test]
+    fn without_write_access_the_host_s_server_starts_read_only() {
+        let context = SessionContext {
+            rerun_mcp_server: Some(crate::McpStdioServer {
+                name: "rerun".to_owned(),
+                command: PathBuf::from("/bin/rerun"),
+                args: vec!["mcp".to_owned()],
+            }),
+            ..Default::default()
+        };
+        let args = |catalog_access: re_agent_tools::CatalogAccess| {
+            let settings = AgentSettings {
+                profile_id: AgentProfileId::CUSTOM,
+                custom_command_line: "agent".to_owned(),
+                catalog_access,
+                ..Default::default()
+            };
+            settings
+                .agent_harness_config(&[], &context)
+                .expect("config")
+                .mcp_servers
+                .remove(0)
+                .args
+        };
+        assert_eq!(args(re_agent_tools::CatalogAccess::ReadWrite), ["mcp"]);
+        assert_eq!(
+            args(re_agent_tools::CatalogAccess::ReadOnly),
+            ["mcp", "--catalog-read-only"]
+        );
     }
 
     #[test]

@@ -23,6 +23,7 @@ re_log.workspace = true
 
 ahash.workspace = true
 futures.workspace = true
+serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 
 [dev-dependencies]

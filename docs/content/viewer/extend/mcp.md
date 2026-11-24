@@ -54,6 +54,7 @@ The web Viewer cannot offer that list, since it keeps its servers in the browser
 The agent can also create and rename datasets, upload or register `.rrd` recordings into them, and register a table blueprint for a dataset's segment table, optionally as its default.
 Ask “Upload `/data/run_42.rrd` into a new dataset called `runs`”.
 These tools never delete or replace data, and the agent asks you before every change, since changes are shared with everyone using the catalog.
+To keep the agent read-only, start the server with `rerun mcp --catalog-read-only`, or set "Catalog servers" to "Read only" in the agent panel's settings.
 
 <a id="what-the-agent-sees"></a>
 

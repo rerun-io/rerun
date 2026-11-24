@@ -158,6 +158,10 @@ pub struct ViewerAgentPanel {
     /// The catalog servers the catalog tools list, as set by [`Self::set_known_servers`].
     #[cfg(not(target_arch = "wasm32"))]
     known_servers: Option<re_redap_client::KnownServers>,
+
+    /// The catalog tools of a model-API agent, which follow [`AgentSettings::catalog_access`]
+    /// as it changes. Set up with the panel.
+    catalog_tools: Option<re_catalog_tools::CatalogTools>,
 }
 
 impl ViewerAgentPanel {
@@ -341,6 +345,9 @@ impl ViewerAgentPanel {
         };
         // Also while collapsed, since its conversations keep running and are saved as they go.
         settings.clone_from(panel.settings());
+        if let Some(catalog_tools) = &self.catalog_tools {
+            catalog_tools.set_access(settings.catalog_access);
+        }
         #[cfg(agent_harness_backend)]
         self.harness.handle_self_improve_request(panel);
         // Before the redactors run, so that turning sharing off drops what is queued before any
@@ -413,7 +420,9 @@ impl ViewerAgentPanel {
         );
         #[cfg(not(target_arch = "wasm32"))]
         let catalog_tools = catalog_tools.with_known_servers(self.known_servers.clone());
-        panel.set_toolbox(model_api_toolbox(viewer_tools, catalog_tools));
+        catalog_tools.set_access(panel.settings().catalog_access);
+        panel.set_toolbox(model_api_toolbox(viewer_tools, catalog_tools.clone()));
+        self.catalog_tools = Some(catalog_tools);
 
         self.panel = Some(panel);
     }
@@ -444,13 +453,14 @@ mod toolbox_tests {
     #[tokio::test]
     async fn a_model_api_agent_gets_viewer_and_catalog_tools() {
         let (calls_tx, _calls_rx) = viewer_toolbox::calls_channel();
+        let catalog_tools = re_catalog_tools::CatalogTools::new(
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
+            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime"),
+            None,
+        );
         let toolbox = model_api_toolbox(
             viewer_toolbox::ViewerToolbox::new(calls_tx, re_async::UiWaker::noop()),
-            re_catalog_tools::CatalogTools::new(
-                re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
-                AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime"),
-                None,
-            ),
+            catalog_tools.clone(),
         );
         let names: Vec<String> = toolbox
             .definitions()
@@ -466,6 +476,41 @@ mod toolbox_tests {
         }
         assert!(!toolbox.requires_approval("catalog_query_tables", &Map::new()));
         assert!(toolbox.requires_approval("catalog_connect", &Map::new()));
+        assert!(toolbox.requires_approval("catalog_create_dataset", &Map::new()));
+
+        catalog_tools.set_access(re_agent_tools::CatalogAccess::ReadOnly);
+        let names: Vec<String> = toolbox
+            .definitions()
+            .into_iter()
+            .map(|definition| definition.name)
+            .collect();
+        assert!(names.iter().any(|name| name == "catalog_list_entries"));
+        assert!(!names.iter().any(|name| name == "catalog_create_dataset"));
+    }
+
+    #[tokio::test]
+    async fn a_model_api_agent_started_read_only_gets_the_write_tools_once_allowed() {
+        let (calls_tx, _calls_rx) = viewer_toolbox::calls_channel();
+        let catalog_tools = re_catalog_tools::CatalogTools::new(
+            re_redap_client::ConnectionRegistry::new_without_stored_credentials(),
+            AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen().expect("runtime"),
+            None,
+        );
+        catalog_tools.set_access(re_agent_tools::CatalogAccess::ReadOnly);
+        let toolbox = model_api_toolbox(
+            viewer_toolbox::ViewerToolbox::new(calls_tx, re_async::UiWaker::noop()),
+            catalog_tools.clone(),
+        );
+        let offers_create = || {
+            toolbox
+                .definitions()
+                .iter()
+                .any(|definition| definition.name == "catalog_create_dataset")
+        };
+        assert!(!offers_create());
+
+        catalog_tools.set_access(re_agent_tools::CatalogAccess::ReadWrite);
+        assert!(offers_create());
         assert!(toolbox.requires_approval("catalog_create_dataset", &Map::new()));
     }
 }

@@ -9097,6 +9097,7 @@ dependencies = [
  "pollster 1.0.1",
  "re_log",
  "re_workspace_hack",
+ "serde",
  "serde_json",
 ]
 

@@ -369,14 +369,14 @@ fn mcp_servers_ui(
 fn mcp_server_enabled_ui(ui: &mut egui::Ui, enabled: &mut bool) {
     let response = ui
         .checkbox(enabled, "")
-        .on_hover_text("Give this server to the agent");
+        .on_hover_text("Enable this MCP server");
     let is_enabled = *enabled;
     response.widget_info(|| {
         egui::WidgetInfo::selected(
             egui::Role::CheckBox,
             true,
             is_enabled,
-            "Give this server to the agent",
+            "Enable this MCP server",
         )
     });
 }

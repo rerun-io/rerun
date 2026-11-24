@@ -1,13 +1,14 @@
 //! [`CatalogTools`]: the catalog the tools act on, and the [`AgentToolbox`] that runs them.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
-use re_agent_tools::{AgentToolbox, ToolDefinition, ToolError, ToolOutput};
+use re_agent_tools::{AgentToolbox, CatalogAccess, ToolDefinition, ToolError, ToolOutput};
 use re_async::AsyncRuntimeHandle;
 use re_catalog_client::CatalogClient;
 #[cfg(not(target_arch = "wasm32"))]
@@ -38,6 +39,10 @@ pub struct CatalogTools {
     registry: ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
     state: Arc<Mutex<State>>,
+
+    /// Whether the write tools are offered and run. Shared by clones, so a host can flip it
+    /// while a conversation is running.
+    write_access: Arc<AtomicBool>,
 
     #[cfg(not(target_arch = "wasm32"))]
     login: Arc<Login>,
@@ -84,9 +89,25 @@ impl CatalogTools {
                 catalog,
                 ..Default::default()
             })),
+            write_access: Arc::new(AtomicBool::new(true)),
             #[cfg(not(target_arch = "wasm32"))]
             known_servers: None,
         }
+    }
+
+    /// Whether the tools that change the catalog are offered and run. Read-write by default.
+    pub fn access(&self) -> CatalogAccess {
+        if self.write_access.load(Ordering::Relaxed) {
+            CatalogAccess::ReadWrite
+        } else {
+            CatalogAccess::ReadOnly
+        }
+    }
+
+    /// Offer and run the tools that change the catalog or not, for this and all clones.
+    pub fn set_access(&self, access: CatalogAccess) {
+        self.write_access
+            .store(access.allows_writes(), Ordering::Relaxed);
     }
 
     /// Let `list_servers` list the servers in `known_servers`, or none.
@@ -170,6 +191,9 @@ impl CatalogTools {
         tool: CatalogTool,
         arguments: Map<String, Value>,
     ) -> Result<Value, CatalogToolError> {
+        if tool.writes() && !self.access().allows_writes() {
+            return Err(CatalogToolError::WriteAccessOff);
+        }
         match tool {
             CatalogTool::Connect => {
                 let ConnectArgs { url } = parse_args(arguments)?;
@@ -352,12 +376,18 @@ fn is_logged_in() -> bool {
 impl AgentToolbox for CatalogTools {
     fn definitions(&self) -> Vec<ToolDefinition> {
         CatalogTool::available()
+            .filter(|tool| !tool.writes() || self.access().allows_writes())
             .map(CatalogTool::definition)
             .collect()
     }
 
     fn requires_approval(&self, name: &str, _arguments: &Map<String, Value>) -> bool {
-        CatalogTool::from_name(name).is_none_or(CatalogTool::requires_approval)
+        match CatalogTool::from_name(name) {
+            None => true,
+            // Refused without asking, since the user turned writes off.
+            Some(tool) if tool.writes() && !self.access().allows_writes() => false,
+            Some(tool) => tool.requires_approval(),
+        }
     }
 
     fn call(

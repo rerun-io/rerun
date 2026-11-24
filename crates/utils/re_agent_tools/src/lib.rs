@@ -18,6 +18,28 @@ use serde_json::{Map, Value};
 pub use self::combined_toolbox::CombinedToolbox;
 pub use self::model_preselect::{ModelCategory, ModelPreference, ModelPreselect};
 
+/// What the agent may do with a catalog server.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum CatalogAccess {
+    /// Find and query data, but change nothing.
+    ReadOnly,
+
+    /// Also create datasets, rename entries, and upload or register recordings.
+    /// Every change still asks the user first.
+    #[default]
+    ReadWrite,
+}
+
+impl CatalogAccess {
+    /// Whether the agent may change the catalog.
+    pub fn allows_writes(self) -> bool {
+        match self {
+            Self::ReadOnly => false,
+            Self::ReadWrite => true,
+        }
+    }
+}
+
 /// The error a tool call fails with.
 ///
 /// Its message is reported to the model, so it can correct itself.

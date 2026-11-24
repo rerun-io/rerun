@@ -4,6 +4,7 @@ use std::sync::Arc;
 
 use serde_json::{Map, Value, json};
 
+use re_agent_tools::CatalogAccess;
 use re_catalog_tools::{CatalogTool, CatalogTools};
 use re_log_types::{EntryName, TimeType};
 use re_protos::common::v1alpha1::ext::IfDuplicateBehavior;
@@ -806,6 +807,46 @@ async fn creates_a_dataset_once() {
         .await,
         "A dataset or table named \"fresh\" already exists. Pick another name."
     );
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn without_write_access_the_writes_are_hidden_and_refused() {
+    use re_agent_tools::AgentToolbox as _;
+
+    let (tools, _recordings, _storage) = connected_tools().await;
+    let clone = tools.clone();
+    tools.set_access(CatalogAccess::ReadOnly);
+
+    let names: Vec<String> = clone
+        .definitions()
+        .into_iter()
+        .map(|definition| definition.name)
+        .collect();
+    for tool in CatalogTool::available() {
+        assert_eq!(
+            names.iter().any(|name| name == tool.name()),
+            !tool.writes(),
+            "{tool:?}"
+        );
+    }
+    assert!(
+        run_err(
+            &tools,
+            CatalogTool::CreateDataset,
+            json!({ "name": "fresh" })
+        )
+        .await
+        .starts_with("Write access to the catalog is off")
+    );
+    assert!(!dataset_names(&tools).await.contains(&"fresh".to_owned()));
+    assert!(!tools.requires_approval(CatalogTool::CreateDataset.name(), &Map::new()));
+    assert!(tools.requires_approval(CatalogTool::Connect.name(), &Map::new()));
+
+    tools.set_access(CatalogAccess::ReadWrite);
+    tools
+        .run(CatalogTool::CreateDataset, args(json!({ "name": "fresh" })))
+        .await
+        .expect("create");
 }
 
 #[tokio::test(flavor = "multi_thread")]
