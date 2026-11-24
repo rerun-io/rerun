@@ -12375,6 +12375,7 @@ dependencies = [
  "criterion",
  "egui",
  "egui_tiles",
+ "insta",
  "itertools 0.15.0",
  "mimalloc",
  "nohash-hasher",
