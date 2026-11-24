@@ -23,7 +23,7 @@ all-features = true
 default = []
 
 ## Enable loading data from an .rrd file.
-decoder = ["dep:bytes", "dep:re_async"]
+decoder = ["dep:re_async"]
 
 ## Enable encoding of log messages to an .rrd file/stream.
 encoder = []
@@ -61,6 +61,7 @@ re_types_core.workspace = true
 # External:
 arrow = { workspace = true, features = ["ipc"] }
 async-trait.workspace = true
+bytes.workspace = true
 crossbeam.workspace = true
 futures.workspace = true
 itertools.workspace = true
@@ -75,7 +76,6 @@ url.workspace = true
 xxhash-rust.workspace = true
 
 # Optional external dependencies:
-bytes = { workspace = true, optional = true }
 ehttp = { workspace = true, optional = true, features = ["streaming"] }
 web-time = { workspace = true, optional = true }
 

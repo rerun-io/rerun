@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
-use std::io::{Cursor, Read as _};
+use std::ops::Deref;
 
+use bytes::Bytes;
 use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_chunk_index::RawRrdManifest;
@@ -131,8 +132,11 @@ impl<T: DecoderEntrypoint> Decoder<T> {
     }
 
     /// Feed a bunch of bytes to the decoding state machine.
-    pub fn push_byte_chunk(&mut self, byte_chunk: Vec<u8>) {
-        self.byte_chunks.push(byte_chunk);
+    ///
+    /// Messages decoded from these bytes alias them rather than copy them, so a message that is
+    /// kept alive keeps its whole byte chunk alive: push chunks of bounded size.
+    pub fn push_byte_chunk(&mut self, byte_chunk: impl Into<Bytes>) {
+        self.byte_chunks.push(byte_chunk.into());
     }
 
     /// Returns all the RRD manifests accumulated _so far_.
@@ -175,27 +179,24 @@ impl<T: DecoderEntrypoint> Decoder<T> {
         // Enable this for easy debugging of the state machine.
         #[expect(clippy::print_stderr)]
         if false {
-            use bytes::Buf as _;
-            let num_bytes = self
+            eprintln!(
+                "state: {:?} (bytes available: {})",
+                self.state, self.byte_chunks.queued_len
+            );
+
+            let upcoming = self
                 .byte_chunks
                 .queue
                 .iter()
-                .map(|v| v.remaining())
-                .sum::<usize>();
-
-            eprintln!("state: {:?} (bytes available: {num_bytes})", self.state);
-
-            let mut peeked = [0u8; 32];
-            self.byte_chunks.try_peek(&mut peeked);
-            let peeked = peeked
-                .into_iter()
-                .map(|b| match b {
+                .flatten()
+                .take(32)
+                .map(|&b| match b {
                     b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' => String::from(b as char),
                     v => v.to_string(),
                 })
                 .join(", ");
 
-            eprintln!("upcoming 32 bytes: [{peeked}]");
+            eprintln!("upcoming bytes: [{upcoming}]");
         }
 
         match self.state {
@@ -206,7 +207,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                     self.byte_chunks.try_read(StreamHeader::ENCODED_SIZE_BYTES)
                 {
                     // header contains version and compression options
-                    let version_and_options = StreamHeader::from_rrd_bytes(&header_data)
+                    let version_and_options = StreamHeader::from_rrd_bytes(&header_data[..])
                         .and_then(|h| h.to_version_and_options());
                     let (version, options) = match version_and_options {
                         Ok(ok) => ok,
@@ -252,9 +253,11 @@ impl<T: DecoderEntrypoint> Decoder<T> {
             }
 
             DecoderState::WaitingForMessageHeader => {
-                let mut peeked = [0u8; MessageHeader::ENCODED_SIZE_BYTES];
-                if self.byte_chunks.try_peek(&mut peeked) == peeked.len() {
-                    let header = match MessageHeader::from_rrd_bytes(&peeked) {
+                if let Some(peeked) = self
+                    .byte_chunks
+                    .try_peek::<{ MessageHeader::ENCODED_SIZE_BYTES }>()
+                {
+                    let header = match MessageHeader::from_rrd_bytes(&peeked[..]) {
                         Ok(header) => header,
 
                         Err(crate::rrd::CodecError::FrameDecoding(_)) => {
@@ -275,9 +278,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                         Err(err) => Err(err)?,
                     };
 
-                    self.byte_chunks
-                        .try_read(MessageHeader::ENCODED_SIZE_BYTES)
-                        .expect("reading cannot fail if peeking worked");
+                    peeked.consume();
 
                     re_log::trace!(?header, "found MessageHeader");
 
@@ -331,7 +332,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
 
                     if !bytes.is_empty() {
                         let rrd_footer =
-                            re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&bytes)?;
+                            re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(bytes)?;
                         self.rrd_manifests.extend(rrd_footer.manifests);
                     }
 
@@ -358,7 +359,7 @@ impl<T: DecoderEntrypoint> Decoder<T> {
                     .byte_chunks
                     .try_read(crate::rrd::StreamFooter::ENCODED_SIZE_BYTES)
                 {
-                    match crate::rrd::StreamFooter::from_rrd_bytes(&bytes) {
+                    match crate::rrd::StreamFooter::from_rrd_bytes(&bytes[..]) {
                         Ok(footer) => {
                             re_log::trace!(?footer, "found StreamFooter");
 
@@ -424,18 +425,23 @@ impl<T: DecoderEntrypoint> Decoder<T> {
 
 // ---
 
-/// A bunch of contiguous bytes.
-type ByteChunk = Cursor<Vec<u8>>;
-
 pub struct ByteChunkBuffer {
     /// Any incoming byte chunks are queued until they are emptied.
-    queue: VecDeque<ByteChunk>,
+    queue: VecDeque<Bytes>,
 
     /// Number of unread bytes in the queue.
     queued_len: usize,
 
-    /// How many bytes have been read with [`Self::try_read`] so far?
+    /// How many bytes have been consumed so far?
     num_read: usize,
+}
+
+/// A copy of the next `N` queued bytes, which stay queued until [`Self::consume`] is called.
+///
+/// Holds the buffer mutably borrowed, so `consume` always drops exactly the bytes that were peeked.
+struct Peeked<'buffer, const N: usize> {
+    buffer: &'buffer mut ByteChunkBuffer,
+    bytes: [u8; N],
 }
 
 impl ByteChunkBuffer {
@@ -447,15 +453,16 @@ impl ByteChunkBuffer {
         }
     }
 
-    fn push(&mut self, byte_chunk: Vec<u8>) {
+    fn push(&mut self, byte_chunk: impl Into<Bytes>) {
+        let byte_chunk = byte_chunk.into();
         if byte_chunk.is_empty() {
             return;
         }
         self.queued_len += byte_chunk.len();
-        self.queue.push_back(ByteChunk::new(byte_chunk));
+        self.queue.push_back(byte_chunk);
     }
 
-    /// How many bytes have been read with [`Self::try_read`] so far?
+    /// How many bytes have been consumed so far?
     pub fn num_read(&self) -> usize {
         self.num_read
     }
@@ -463,60 +470,91 @@ impl ByteChunkBuffer {
     /// Attempt to read exactly `n` bytes out of the queued byte chunks.
     ///
     /// Returns `None` without allocating or consuming bytes if fewer than `n` are queued.
-    fn try_read(&mut self, n: usize) -> Option<bytes::Bytes> {
+    ///
+    /// When the bytes all lie in the front chunk, the result is a view into that chunk and keeps
+    /// the whole chunk alive; only bytes spanning several chunks are gathered into a new buffer.
+    fn try_read(&mut self, n: usize) -> Option<Bytes> {
         if self.queued_len < n {
             return None;
         }
 
-        let mut buffer = vec![0; n];
-        let mut filled = 0;
-        while filled < n {
-            let byte_chunk = self
+        let bytes = match self.queue.front() {
+            Some(front) if n <= front.len() => front.slice(..n),
+            _ => {
+                let mut gathered = bytes::BytesMut::with_capacity(n);
+                for chunk in &self.queue {
+                    let take = chunk.len().min(n - gathered.len());
+                    gathered.extend_from_slice(&chunk[..take]);
+                    if gathered.len() == n {
+                        break;
+                    }
+                }
+                gathered.freeze()
+            }
+        };
+
+        self.advance(n);
+        Some(bytes)
+    }
+
+    /// Attempt to copy out the next `N` queued bytes without consuming them.
+    ///
+    /// Returns `None` if fewer than `N` are queued.
+    fn try_peek<const N: usize>(&mut self) -> Option<Peeked<'_, N>> {
+        if self.queued_len < N {
+            return None;
+        }
+
+        let mut bytes = [0u8; N];
+        for (dst, src) in std::iter::zip(&mut bytes, self.queue.iter().flatten()) {
+            *dst = *src;
+        }
+
+        Some(Peeked {
+            buffer: self,
+            bytes,
+        })
+    }
+
+    /// Drop the next `n` queued bytes.
+    ///
+    /// Panics if fewer than `n` are queued.
+    fn advance(&mut self, n: usize) {
+        use bytes::Buf as _;
+
+        let mut remaining = n;
+        while remaining > 0 {
+            let front = self
                 .queue
                 .front_mut()
                 .expect("queued_len counts queued bytes");
-            filled += byte_chunk
-                .read(&mut buffer[filled..])
-                .expect("failed to read from byte chunk");
-            if is_byte_chunk_empty(byte_chunk) {
+            if front.len() <= remaining {
+                remaining -= front.len();
                 self.queue.pop_front();
+            } else {
+                front.advance(remaining);
+                remaining = 0;
             }
         }
 
         self.queued_len -= n;
         self.num_read += n;
-        Some(buffer.into())
-    }
-
-    /// Attempt to peek exactly `n` bytes from of the queued byte chunks.
-    ///
-    /// Returns the number of bytes that could successfully be peeked, and therefore copied into `out`.
-    /// The returned value is guaranteed to never exceed `out.len`.
-    fn try_peek(&self, out: &mut [u8]) -> usize {
-        use std::io::Write as _;
-
-        let target_len = out.len();
-
-        let mut out = std::io::Cursor::new(out);
-        let mut n = 0;
-
-        for byte_chunk in &self.queue {
-            if n == target_len {
-                return n;
-            }
-
-            let pos = byte_chunk.position() as usize;
-            n += out
-                .write(&byte_chunk.get_ref()[pos..])
-                .expect("memcpy, cannot fail");
-        }
-
-        n
     }
 }
 
-fn is_byte_chunk_empty(byte_chunk: &ByteChunk) -> bool {
-    byte_chunk.position() >= byte_chunk.get_ref().len() as u64
+impl<const N: usize> Peeked<'_, N> {
+    fn consume(self) {
+        self.buffer.advance(N);
+    }
+}
+
+impl<const N: usize> Deref for Peeked<'_, N> {
+    type Target = [u8; N];
+
+    #[inline]
+    fn deref(&self) -> &Self::Target {
+        &self.bytes
+    }
 }
 
 // ---
@@ -524,6 +562,7 @@ fn is_byte_chunk_empty(byte_chunk: &ByteChunk) -> bool {
 #[cfg(test)]
 mod tests {
     use std::assert_matches;
+    use std::io::{Cursor, Read as _};
 
     use re_chunk::RowId;
     use re_log_msg::{LogMsg, SetStoreInfo, StoreInfo};
@@ -629,7 +668,7 @@ mod tests {
                 .byte_chunks
                 .queue
                 .iter()
-                .map(|chunk| chunk.get_ref().len() - chunk.position() as usize)
+                .map(|chunk| chunk.len())
                 .sum::<usize>()
         );
     }
@@ -800,6 +839,39 @@ mod tests {
         assert_eq!(None, buffer.try_read(1));
     }
 
+    /// Bytes read from within one chunk are a view into it, not a copy.
+    #[test]
+    fn chunk_buffer_read_within_one_chunk_aliases_it() {
+        let mut buffer = ByteChunkBuffer::new();
+
+        let chunk = Bytes::from(vec![0, 1, 2, 3, 4]);
+        buffer.push(chunk.clone());
+
+        let read = buffer.try_read(3).unwrap();
+        assert_eq!(&read[..], &chunk[..3]);
+        assert_eq!(read.as_ptr(), chunk.as_ptr());
+
+        let read = buffer.try_read(2).unwrap();
+        assert_eq!(&read[..], &chunk[3..]);
+        assert_eq!(read.as_ptr(), chunk[3..].as_ptr());
+    }
+
+    /// Bytes spanning several chunks are gathered into a buffer of their own.
+    #[test]
+    fn chunk_buffer_read_across_chunks_gathers() {
+        let mut buffer = ByteChunkBuffer::new();
+
+        let first = Bytes::from(vec![0, 1, 2]);
+        buffer.push(first.clone());
+        buffer.push(vec![3, 4]);
+
+        let read = buffer.try_read(4).unwrap();
+        assert_eq!(&read[..], &[0, 1, 2, 3]);
+        assert_ne!(read.as_ptr(), first.as_ptr());
+        assert_eq!(Some(&[4][..]), buffer.try_read(1).as_deref());
+        assert_eq!(None, buffer.try_read(1));
+    }
+
     #[test]
     fn chunk_buffer_read_multi_chunk() {
         // reading a large `n` from multiple smaller byte chunks
@@ -841,12 +913,72 @@ mod tests {
         assert!(buffer.try_read(usize::MAX).is_none());
         assert_eq!(buffer.queued_len, 3);
         assert_eq!(buffer.num_read(), 0);
-        let mut peeked = [0; 3];
-        assert_eq!(buffer.try_peek(&mut peeked), 3);
-        assert_eq!(peeked, [1, 2, 3]);
         assert_eq!(buffer.try_read(2).as_deref(), Some(&[1, 2][..]));
         assert_eq!(buffer.try_read(1).as_deref(), Some(&[3][..]));
         assert_eq!(buffer.queued_len, 0);
         assert_eq!(buffer.num_read(), 3);
+    }
+
+    /// Zero-length payloads (e.g. an empty `End` message) read 0 bytes, even from an empty queue.
+    #[test]
+    fn chunk_buffer_read_zero() {
+        let mut buffer = ByteChunkBuffer::new();
+        assert_eq!(Some(&[][..]), buffer.try_read(0).as_deref());
+
+        buffer.push(vec![0, 1]);
+        assert_eq!(Some(&[][..]), buffer.try_read(0).as_deref());
+        assert_eq!(buffer.queued_len, 2);
+        assert_eq!(Some(&[0, 1][..]), buffer.try_read(2).as_deref());
+
+        assert_eq!(Some(&[][..]), buffer.try_read(0).as_deref());
+        assert_eq!(buffer.num_read(), 2);
+    }
+
+    #[test]
+    fn chunk_buffer_peek_without_consume_keeps_bytes() {
+        let mut buffer = ByteChunkBuffer::new();
+        buffer.push(vec![1, 2]);
+        buffer.push(vec![3]);
+
+        assert!(buffer.try_peek::<4>().is_none());
+        assert_eq!(*buffer.try_peek::<3>().unwrap(), [1, 2, 3]);
+        assert_eq!(*buffer.try_peek::<2>().unwrap(), [1, 2]);
+
+        assert_eq!(buffer.queued_len, 3);
+        assert_eq!(buffer.num_read(), 0);
+        assert_eq!(buffer.try_read(3).as_deref(), Some(&[1, 2, 3][..]));
+    }
+
+    #[test]
+    fn chunk_buffer_peek_consume_across_chunks() {
+        let mut buffer = ByteChunkBuffer::new();
+        buffer.push(vec![1, 2]);
+        buffer.push(vec![3]);
+        buffer.push(vec![4, 5]);
+
+        let peeked = buffer.try_peek::<4>().unwrap();
+        assert_eq!(*peeked, [1, 2, 3, 4]);
+        peeked.consume();
+
+        assert_eq!(buffer.queued_len, 1);
+        assert_eq!(buffer.num_read(), 4);
+        assert_eq!(buffer.try_read(1).as_deref(), Some(&[5][..]));
+        assert_eq!(buffer.try_read(1), None);
+        assert_eq!(buffer.num_read(), 5);
+    }
+
+    /// Consuming part of a chunk leaves the rest of it in place, so later reads still alias it.
+    #[test]
+    fn chunk_buffer_consume_then_read_aliases_chunk() {
+        let mut buffer = ByteChunkBuffer::new();
+
+        let chunk = Bytes::from(vec![0, 1, 2, 3, 4]);
+        buffer.push(chunk.clone());
+
+        buffer.try_peek::<2>().unwrap().consume();
+
+        let read = buffer.try_read(3).unwrap();
+        assert_eq!(&read[..], &chunk[2..]);
+        assert_eq!(read.as_ptr(), chunk[2..].as_ptr());
     }
 }

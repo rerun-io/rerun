@@ -193,7 +193,11 @@ async fn load_chunks(client: &mut ConnectionClient, batch: &RecordBatch) -> ApiR
     re_log::trace!("Requesting {} chunk(s) from server…", batch.num_rows());
 
     let chunk_stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunks(chunk_stream, None);
+    let mut chunk_stream = re_redap_client::fetch_chunks_response_to_chunks(
+        chunk_stream,
+        re_redap_client::FetchedPayloads::Copied,
+        None,
+    );
     let mut all_chunks = Vec::new();
     while let Some(chunks) = chunk_stream.next().await {
         all_chunks.extend(chunks?);

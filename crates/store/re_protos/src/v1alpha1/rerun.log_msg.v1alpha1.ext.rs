@@ -321,6 +321,33 @@ impl crate::log_msg::v1alpha1::log_msg::Msg {
             Self::BlueprintActivationCommand(_) => 0,
         }
     }
+
+    /// Moves an uncompressed payload into an allocation of its own.
+    ///
+    /// See [`crate::log_msg::v1alpha1::ArrowMsg::unshare_payload`].
+    pub fn unshare_payload(&mut self) {
+        match self {
+            Self::ArrowMsg(msg) => msg.unshare_payload(),
+            Self::SetStoreInfo(_) | Self::BlueprintActivationCommand(_) => {}
+        }
+    }
+}
+
+impl crate::log_msg::v1alpha1::ArrowMsg {
+    /// Moves an uncompressed payload into an allocation of its own.
+    ///
+    /// A payload decoded by tonic is a view into the stream's receive buffer, which also holds
+    /// neighboring messages and grows to fit the largest message received.
+    /// An uncompressed payload decodes into Arrow arrays that alias it, and those arrays report
+    /// only their own size while keeping that whole buffer alive.
+    /// Call this before decoding a message whose batch is retained for longer than the stream,
+    /// e.g. by the viewer store.
+    /// A compressed payload is left alone: decompression already writes into a fresh buffer.
+    pub fn unshare_payload(&mut self) {
+        if self.compression != crate::common::v1alpha1::Compression::Lz4 as i32 {
+            self.payload = Bytes::copy_from_slice(&self.payload);
+        }
+    }
 }
 
 impl crate::log_msg::v1alpha1::RrdFooter {
@@ -360,6 +387,30 @@ impl crate::log_msg::v1alpha1::RrdFooter {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn unshare_payload_copies_only_uncompressed_payloads() {
+        use crate::common::v1alpha1::Compression;
+
+        let receive_buffer = prost::bytes::Bytes::from(vec![7u8; 1024]);
+        let shared_payload = receive_buffer.slice(100..200);
+
+        for (compression, expect_copy) in [
+            (Compression::None, true),
+            (Compression::Unspecified, true),
+            (Compression::Lz4, false),
+        ] {
+            let mut msg = crate::log_msg::v1alpha1::ArrowMsg {
+                compression: compression as i32,
+                payload: shared_payload.clone(),
+                ..Default::default()
+            };
+            msg.unshare_payload();
+
+            assert_eq!(msg.payload, shared_payload, "{compression:?}");
+            let still_shared = std::ptr::eq(msg.payload.as_ptr(), shared_payload.as_ptr());
+            assert_eq!(still_shared, !expect_copy, "{compression:?}");
+        }
+    }
 
     #[test]
     fn store_source_conversion() {

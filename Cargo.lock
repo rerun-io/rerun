@@ -9917,6 +9917,7 @@ dependencies = [
  "re_uri",
  "re_workspace_hack",
  "reqwest 0.12.28",
+ "thiserror 2.0.19",
  "tokio",
  "tokio-stream",
  "tokio-util",

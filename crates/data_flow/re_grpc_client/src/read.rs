@@ -66,8 +66,11 @@ async fn stream_async(
     loop {
         match stream.try_next().await {
             Ok(Some(ReadMessagesResponse {
-                log_msg: Some(log_msg_proto),
+                log_msg: Some(mut log_msg_proto),
             })) => {
+                if let Some(msg) = &mut log_msg_proto.msg {
+                    msg.unshare_payload();
+                }
                 let mut log_msg = log_msg_proto.to_application((&mut app_id_cache, None))?;
 
                 // Insert the timestamp metadata into the Arrow message for accurate e2e latency measurements:

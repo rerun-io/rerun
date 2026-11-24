@@ -187,15 +187,16 @@ async fn fetch_rrd_manifest_via_key(
         ));
     }
 
-    let rrd_footer = re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(&response.bytes)
-        .map_err(|err| {
-            ApiError::deserialization_with_source(
-                origin,
-                trace_id,
-                err,
-                with_url("failed decoding direct RRD footer"),
-            )
-        })?;
+    let rrd_footer =
+        re_protos::log_msg::v1alpha1::RrdFooter::from_rrd_bytes(Bytes::from(response.bytes))
+            .map_err(|err| {
+                ApiError::deserialization_with_source(
+                    origin,
+                    trace_id,
+                    err,
+                    with_url("failed decoding direct RRD footer"),
+                )
+            })?;
 
     let rrd_manifest = rrd_footer
         .into_segment_manifest(store_id.as_ref(), segment_id)

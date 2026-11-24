@@ -706,10 +706,12 @@ pub fn spawn_with_recv_and_services(
             let msg: anyhow::Result<DataSourceMessage> = match broadcast_log_rx.recv().await {
                 Ok(inner) => match inner {
                     LogOrTableMsgProto::LogMsg(msg) => match msg.msg {
-                        Some(msg) => msg
-                            .to_application((&mut app_id_cache, None))
-                            .map(DataSourceMessage::LogMsg)
-                            .map_err(|err| err.into()),
+                        Some(mut msg) => {
+                            msg.unshare_payload();
+                            msg.to_application((&mut app_id_cache, None))
+                                .map(DataSourceMessage::LogMsg)
+                                .map_err(|err| err.into())
+                        }
                         None => Err(re_protos::missing_field!(
                             re_protos::log_msg::v1alpha1::LogMsg,
                             "msg"

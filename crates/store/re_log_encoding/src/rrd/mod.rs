@@ -73,6 +73,7 @@ pub use self::frames::{
     Compression, CrateVersion, EncodingOptions, MessageHeader, MessageKind, Serializer,
     StreamFooter, StreamFooterEntry, StreamHeader,
 };
+pub use self::log_msg::decode_transport_msg;
 #[cfg(feature = "decoder")]
 pub use self::rrd_chunk_provider::RrdChunkProvider;
 
@@ -138,9 +139,15 @@ pub trait Encodable {
 ///
 /// The only way this can fail is due to invalid data.
 ///
+/// `data` must hold exactly one encoded value, with nothing before or after it.
+///
+/// Passing a [`bytes::Bytes`] makes the `Bytes`-typed fields of the result (e.g. an `ArrowMsg`'s
+/// payload) refcounted slices of it instead of copies; passing a `&[u8]` copies them.
+/// See [`re_protos::common::v1alpha1::ext::record_batch_from_ipc_bytes`] for what decoded Arrow data then keeps alive.
+///
 /// [`ToApplication`]: crate::ToApplication
 //
 // TODO(cmc): technically this should be a sealed trait, but things are complicated enough as is.
 pub trait Decodable: Sized {
-    fn from_rrd_bytes(data: &[u8]) -> Result<Self, CodecError>;
+    fn from_rrd_bytes(data: impl bytes::Buf) -> Result<Self, CodecError>;
 }
