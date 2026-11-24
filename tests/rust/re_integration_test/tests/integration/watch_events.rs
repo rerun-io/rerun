@@ -72,6 +72,7 @@ pub async fn watch_events_auto_refresh_test() {
         &mut harness,
         |harness| harness.query_by_label_contains("alpha").is_some(),
     );
+    harness.step_until_no_loading_indicator();
     snapshot_results.add(harness.try_snapshot("watch_events_1_initial"));
 
     // When creating entries, the server emits `EntryCreated` and the viewer's watch loop
@@ -97,6 +98,7 @@ pub async fn watch_events_auto_refresh_test() {
         &mut harness,
         |harness| harness.query_by_label_contains("alpha").is_some(),
     );
+    harness.step_until_no_loading_indicator();
     snapshot_results.add(harness.try_snapshot("watch_events_2_entries_added"));
 
     // Keep the transient table selected during deletion to check the resulting error state.
@@ -159,6 +161,7 @@ pub async fn watch_events_auto_refresh_test() {
         harness.query_by_label("Could not open entry").is_some()
             && harness.query_by_label(&deleted_entry_message).is_some()
     });
+    harness.step_until_no_loading_indicator();
 
     // Monospace keeps the random ID's bounds stable; its value is checked above.
     let id_rect = harness
@@ -194,6 +197,7 @@ pub async fn watch_events_auto_refresh_test() {
         |harness| harness.query_by_label_contains("alpha").is_some(),
     );
     assert!(harness.query_by_label("Could not open entry").is_none());
+    harness.step_until_no_loading_indicator();
     snapshot_results.add(harness.try_snapshot("watch_events_4_persistent_table_reopened"));
 }
 
