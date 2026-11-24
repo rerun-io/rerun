@@ -5,7 +5,7 @@ use re_ui::{ButtonExt as _, UiExt as _, icons};
 
 use super::Screen;
 use re_agent::AgentEntry;
-use re_agent::{AgentProfileId, AgentSettings, HostedTools, ModelApiProvider};
+use re_agent::{AgentProfileId, AgentSettings, HostedTools, ModelApiProvider, SessionContext};
 
 #[cfg(agent_harness_backend)]
 mod agent_harness;
@@ -35,6 +35,7 @@ enum ApiKeySource<'a> {
 pub fn setup_ui(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
+    context: &SessionContext,
     agents: &mut [AgentEntry],
     available_model_apis: &[ModelApiProvider],
 ) -> Screen {
@@ -50,6 +51,7 @@ pub fn setup_ui(
                         agent_harness_backend => setup_ui_inner(
                             ui,
                             settings,
+                            context,
                             agents,
                             available_model_apis,
                             agent_harness::agent_choice_ui,
@@ -57,6 +59,7 @@ pub fn setup_ui(
                         _ => setup_ui_inner(
                             ui,
                             settings,
+                            context,
                             agents,
                             available_model_apis,
                             web_choice_ui,
@@ -73,6 +76,11 @@ pub fn setup_ui(
 fn setup_ui_inner(
     ui: &mut egui::Ui,
     settings: &mut AgentSettings,
+    #[cfg_attr(
+        not(agent_harness_backend),
+        expect(unused_variables, reason = "only an agent harness gets MCP servers")
+    )]
+    context: &SessionContext,
     agents: &mut [AgentEntry],
     available_model_apis: &[ModelApiProvider],
     choice_ui: impl FnOnce(&mut egui::Ui, &mut AgentSettings, &mut [AgentEntry], &[ModelApiProvider]),
@@ -126,7 +134,7 @@ fn setup_ui_inner(
 
         #[cfg(agent_harness_backend)]
         {
-            agent_harness::options_ui(ui, settings);
+            agent_harness::options_ui(ui, settings, context.rerun_mcp_server.as_ref());
             ui.add_space(8.0);
         }
         ui.label(RichText::new("Options").strong());
@@ -410,11 +418,18 @@ mod tests {
                 egui::Frame::new()
                     .inner_margin(ui.tokens().view_padding())
                     .show(ui, |ui| {
-                        _ = setup_ui_inner(ui, settings, &mut [], &[], |ui, settings, _, _| {
-                            model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
-                                ApiKeySource::Typed(key)
-                            });
-                        });
+                        _ = setup_ui_inner(
+                            ui,
+                            settings,
+                            &SessionContext::default(),
+                            &mut [],
+                            &[],
+                            |ui, settings, _, _| {
+                                model_api_choice_ui(ui, &mut settings.profile_id, &[], |_| {
+                                    ApiKeySource::Typed(key)
+                                });
+                            },
+                        );
                     });
             },
             (AgentSettings::default(), String::new()),

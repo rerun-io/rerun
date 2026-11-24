@@ -56,7 +56,12 @@ impl AgentSettings {
             return Err(AgentLaunchError::MissingWorkingDirectory { cwd });
         }
 
-        let mut mcp_servers = Vec::new();
+        let mut mcp_servers: Vec<McpStdioServer> = context
+            .rerun_mcp_server
+            .iter()
+            .filter(|_| self.rerun_mcp_enabled)
+            .cloned()
+            .collect();
         for server in self.mcp_servers.iter().filter(|s| s.enabled) {
             let mut parts = shell_words::split(&server.command_line).map_err(|err| {
                 AgentLaunchError::InvalidMcpCommandLine {
@@ -206,6 +211,41 @@ mod tests {
         // Neither source may name a directory that does not exist.
         assert!(cwd(&here.join("nope").display().to_string(), None).is_none());
         assert!(cwd("", Some(&here.join("nope").display().to_string())).is_none());
+    }
+
+    #[test]
+    fn the_host_s_own_mcp_server_comes_first_unless_turned_off() {
+        let rerun = crate::McpStdioServer {
+            name: "rerun".to_owned(),
+            command: PathBuf::from("/bin/rerun"),
+            args: vec!["mcp".to_owned()],
+        };
+        let context = SessionContext {
+            rerun_mcp_server: Some(rerun.clone()),
+            ..Default::default()
+        };
+        let names = |rerun_mcp_enabled: bool| {
+            let settings = AgentSettings {
+                profile_id: AgentProfileId::CUSTOM,
+                custom_command_line: "agent".to_owned(),
+                mcp_servers: vec![crate::McpServerConfig::new(
+                    "mine",
+                    std::path::Path::new("/bin/mine"),
+                    &[] as &[&str],
+                )],
+                rerun_mcp_enabled,
+                ..Default::default()
+            };
+            settings
+                .agent_harness_config(&[], &context)
+                .expect("config")
+                .mcp_servers
+                .into_iter()
+                .map(|server| server.name)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(true), ["rerun", "mine"]);
+        assert_eq!(names(false), ["mine"]);
     }
 
     #[test]
