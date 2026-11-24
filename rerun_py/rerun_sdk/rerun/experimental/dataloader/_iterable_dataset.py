@@ -15,7 +15,7 @@ from rerun._tracing import set_current_span_attributes, tracing_scope, with_trac
 from ._config import TimeAlignedSampling
 from ._metrics import DataloaderMetrics
 from ._sample_index import SampleIndex
-from ._shuffle import SampleShuffle, ShuffleStrategy, _contiguous_shard, _fetch_blocks
+from ._shuffle import SampleShuffle, ShuffleStrategy
 from ._utils import (
     FetchedBlock,
     FetchMetricsAccumulator,
@@ -44,6 +44,7 @@ if TYPE_CHECKING:
 
     from ._config import DataSource, Field, FixedRateSampling
     from ._metrics import _WorkerMetricsPublisher
+    from ._shuffle import _WorkOrder
 
 
 _DEFAULT_MAX_CONSECUTIVE_SKIPPED_SAMPLES = 1000
@@ -321,18 +322,17 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
             tracing_scope("RerunIterableDataset.__iter__"),
             _decode_pool(self._decode_threads, len(self._fields)) as executor,
         ):
-            indices, block_bounds = self._worker_order()
-            with tracing_scope("RerunIterableDataset._iter_catalog._fetch_blocks"):
-                blocks = _fetch_blocks(indices, block_bounds, fetch_block_size=self._fetch_block_size)
+            work_order = self._worker_order()
 
             set_current_span_attributes({
-                "rerun.dataloader.iter.num_candidates": len(indices),
+                "rerun.dataloader.iter.num_candidates": work_order.num_samples,
                 "rerun.dataloader.iter.num_samples_yielded": 0,
-                "rerun.dataloader.iter.num_blocks": len(blocks),
                 "rerun.dataloader.shuffle_strategy": self._shuffle_strategy.RECIPE_TAG,
             })
-            if not blocks:
+            if work_order.num_samples == 0:
                 return
+
+            blocks = work_order.fetch_blocks(fetch_block_size=self._fetch_block_size)
             view, decoders = self._connection.ensure()
 
             @with_tracing("RerunDataset._fetch_block")
@@ -409,14 +409,15 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
             )
             yield from _count_yields(samples)
 
-    def _worker_order(self) -> tuple[np.ndarray, np.ndarray]:
-        """Return this worker's shard of the epoch's `(indices, block_bounds)`, in fetch order."""
+    def _worker_order(self) -> _WorkOrder:
+        """Return this worker's lazily materialized shard of the epoch order."""
         with tracing_scope("RerunIterableDataset._worker_order.epoch_order"):
-            indices, block_bounds = self._shuffle_strategy.epoch_order(
+            work_order = self._shuffle_strategy._work_order(
                 self._sample_index,
                 fetch_block_size=self._fetch_block_size,
                 seed=self._seed + self._epoch,
             )
+            set_current_span_attributes({"rerun.dataloader.worker_order.num_samples": work_order.num_samples})
 
         # Partition across distributed ranks first (DDP), then across
         # DataLoader workers within this rank. Contiguous (not interleaved)
@@ -424,16 +425,15 @@ class RerunIterableDataset(torch.utils.data.IterableDataset[DecodedSample]):
         rank, world_size = self._ddp_topology()
         if world_size > 1:
             with tracing_scope("RerunIterableDataset._worker_order.ddp_shard"):
-                indices, block_bounds = _contiguous_shard(indices, block_bounds, rank=rank, world_size=world_size)
+                work_order = work_order.shard(rank=rank, world_size=world_size)
 
         worker_info = torch.utils.data.get_worker_info()
         if worker_info is not None:
             with tracing_scope("RerunIterableDataset._worker_order.worker_shard"):
-                indices, block_bounds = _contiguous_shard(
-                    indices,
-                    block_bounds,
-                    rank=worker_info.id,
-                    world_size=worker_info.num_workers,
-                )
+                work_order = work_order.shard(rank=worker_info.id, world_size=worker_info.num_workers)
 
-        return indices, block_bounds
+        with tracing_scope("RerunIterableDataset._worker_order.compact"):
+            work_order = work_order.compact()
+            set_current_span_attributes({"rerun.dataloader.worker_order.num_samples": work_order.num_samples})
+
+        return work_order
