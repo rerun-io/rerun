@@ -8,7 +8,8 @@ import rerun_bindings as bindings
 
 from .._baseclasses import AsComponents, ComponentBatchLike, DescribedComponentBatch
 from .._spawn import _spawn_viewer
-from ..encodings import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
+from ..encodings import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like, VisibleTimeRange
+from ..error_utils import _send_warning_or_raise
 from ..recording_stream import RecordingStream
 from .archetypes import (
     ActiveVisualizers,
@@ -214,6 +215,14 @@ class View:
         base_visualizer_path: str,
         visualizer: VisualizerLike,
     ) -> uuid.UUID | None:
+        if isinstance(visualizer, VisibleTimeRange):
+            _send_warning_or_raise(
+                "In overrides, put all ranges for each entity in a single VisibleTimeRanges, "
+                "such as VisibleTimeRanges([range_a, range_b]).",
+                exception_type=TypeError,
+            )
+            return None
+
         if isinstance(visualizer, VisualizableArchetype):
             visualizer = visualizer.visualizer()
 
