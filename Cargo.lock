@@ -9077,6 +9077,7 @@ dependencies = [
  "re_sdk_types",
  "re_tracing",
  "re_ui",
+ "re_uri",
  "re_viewer_context",
  "re_viewer_control_tools",
  "re_workspace_hack",

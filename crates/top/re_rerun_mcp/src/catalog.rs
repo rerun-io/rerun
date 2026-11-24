@@ -102,6 +102,11 @@ impl CatalogToolset {
         self.defaults_to_viewer_catalog.load(Ordering::Relaxed)
     }
 
+    /// See [`CatalogTools::on_catalog_change`].
+    pub fn on_catalog_change(&self, on_change: impl Fn(&re_uri::Origin) + Send + Sync + 'static) {
+        self.tools.on_catalog_change(on_change);
+    }
+
     /// The catalog the tools act on, if any.
     pub fn origin(&self) -> Option<re_uri::Origin> {
         self.tools.origin()

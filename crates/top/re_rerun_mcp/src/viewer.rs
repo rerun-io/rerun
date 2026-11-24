@@ -34,7 +34,7 @@ use url::Url;
 use egui_inspection::protocol::{self, PROTOCOL_VERSION, Request, Response};
 use egui_mcp::{BoxFuture, Bridge, PeerInfo, Transport, UiServer};
 use re_protos::viewer_control::v1alpha1::{
-    EguiInspectRequest, GetLogsRequest, GetStateRequest, ListCommandsRequest,
+    EguiInspectRequest, GetLogsRequest, GetStateRequest, ListCommandsRequest, RunCommandRequest,
     UnexpectedResponseKind, ViewerControlOp, ViewerLogEntry,
     viewer_control_service_client::ViewerControlServiceClient,
 };
@@ -43,6 +43,9 @@ use re_viewer_control_tools::ScreenshotDelivery;
 use crate::{ToolResult, annotations, complete, text_error};
 
 const DEFAULT_VIEWER_ENDPOINT: &str = "http://127.0.0.1:9876";
+
+/// The viewer command that re-reads a catalog server's entries ("Refresh server").
+const REFRESH_SERVER_COMMAND: &str = "server.refresh";
 
 /// Agents on MCP are coding agents that can read files. See [`ScreenshotDelivery::File`].
 const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::File;
@@ -442,6 +445,25 @@ impl ViewerToolset {
                     .map_err(|source| ViewerCatalogError::InvalidUrl { source, url })
             })
             .transpose()
+    }
+
+    // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+    /// Has the connected viewer refresh the catalog server at `origin`, so that the user sees a
+    /// change the agent made. Does nothing if the viewer is not connected to that server.
+    pub async fn show_catalog_changes(&self, origin: &re_uri::Origin) {
+        let Some(conn) = self.conn.lock().clone() else {
+            return;
+        };
+        let mut client = conn.client.clone();
+        let request = RunCommandRequest {
+            id: REFRESH_SERVER_COMMAND.to_owned(),
+            store_id: None,
+            server_origin: Some(origin.to_string()),
+            allow_blocking_native_modal: None,
+        };
+        if let Err(err) = execute(&mut client, request).await {
+            re_log::debug!("Failed to refresh the changed catalog in the viewer: {err}");
+        }
     }
 
     /// Whether the connected viewer runs on this machine.

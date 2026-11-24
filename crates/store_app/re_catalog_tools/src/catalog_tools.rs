@@ -29,6 +29,9 @@ use crate::{CatalogTool, CatalogToolError};
 /// What the tools are doing when they connect, for error messages.
 const CONNECTING: &str = "connect to the catalog";
 
+/// Called with the origin of a catalog that a write tool may have changed.
+type OnCatalogChange = Arc<dyn Fn(&Origin) + Send + Sync>;
+
 /// The catalog the tools act on, and how to reach others.
 ///
 /// Cheap to clone: clones share the chosen catalog. The choice is shared state rather than a
@@ -43,6 +46,9 @@ pub struct CatalogTools {
     /// Whether the write tools are offered and run. Shared by clones, so a host can flip it
     /// while a conversation is running.
     write_access: Arc<AtomicBool>,
+
+    /// See [`Self::on_catalog_change`]. Shared by clones.
+    on_catalog_change: Arc<Mutex<Option<OnCatalogChange>>>,
 
     #[cfg(not(target_arch = "wasm32"))]
     login: Arc<Login>,
@@ -90,6 +96,7 @@ impl CatalogTools {
                 ..Default::default()
             })),
             write_access: Arc::new(AtomicBool::new(true)),
+            on_catalog_change: Arc::default(),
             #[cfg(not(target_arch = "wasm32"))]
             known_servers: None,
         }
@@ -154,6 +161,16 @@ impl CatalogTools {
         })
     }
 
+    // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+    /// Calls `on_change` after every write tool call, with the origin of the catalog it acted on,
+    /// so that a host can show the change. Also after a failed call, which may have changed the
+    /// catalog partway.
+    ///
+    /// Replaces the previous callback, for this and all clones.
+    pub fn on_catalog_change(&self, on_change: impl Fn(&Origin) + Send + Sync + 'static) {
+        *self.on_catalog_change.lock() = Some(Arc::new(on_change));
+    }
+
     /// The catalog the tools act on, if any.
     pub fn origin(&self) -> Option<Origin> {
         self.state
@@ -194,6 +211,22 @@ impl CatalogTools {
         if tool.writes() && !self.access().allows_writes() {
             return Err(CatalogToolError::WriteAccessOff);
         }
+        let changed_origin = tool.writes().then(|| self.origin()).flatten();
+        let result = self.run_unchecked(tool, arguments).await;
+        if let Some(origin) = changed_origin {
+            let on_change = self.on_catalog_change.lock().clone();
+            if let Some(on_change) = on_change {
+                on_change(&origin);
+            }
+        }
+        result
+    }
+
+    async fn run_unchecked(
+        &self,
+        tool: CatalogTool,
+        arguments: Map<String, Value>,
+    ) -> Result<Value, CatalogToolError> {
         match tool {
             CatalogTool::Connect => {
                 let ConnectArgs { url } = parse_args(arguments)?;

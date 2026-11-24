@@ -141,10 +141,17 @@ impl RerunMcpServer {
                 CatalogToolset::new(origin, access).map(Arc::new)
             })
             .transpose()?;
-        Ok(Self {
-            viewer: viewer.map(|ViewerConfig { endpoint }| Arc::new(ViewerToolset::new(endpoint))),
-            catalog,
-        })
+        let viewer = viewer.map(|ViewerConfig { endpoint }| Arc::new(ViewerToolset::new(endpoint)));
+        // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+        if let (Some(viewer), Some(catalog)) = (&viewer, &catalog) {
+            let viewer = Arc::clone(viewer);
+            catalog.on_catalog_change(move |origin| {
+                let viewer = Arc::clone(&viewer);
+                let origin = origin.clone();
+                tokio::spawn(async move { viewer.show_catalog_changes(&origin).await });
+            });
+        }
+        Ok(Self { viewer, catalog })
     }
 
     /// Every tool of every enabled toolset.

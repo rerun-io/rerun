@@ -813,6 +813,49 @@ async fn creates_a_dataset_once() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn every_write_reports_the_catalog_it_changed() {
+    let (tools, _recordings, _storage) = connected_tools().await;
+    let changed = Arc::new(parking_lot::Mutex::new(Vec::new()));
+    tools.on_catalog_change({
+        let changed = Arc::clone(&changed);
+        move |origin| changed.lock().push(origin.clone())
+    });
+
+    tools
+        .run(CatalogTool::ListEntries, args(json!({})))
+        .await
+        .expect("list");
+    assert!(changed.lock().is_empty());
+
+    tools
+        .run(
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["fresh"] })),
+        )
+        .await
+        .expect("create");
+    assert_eq!(*changed.lock(), [tools.origin().expect("connected")]);
+
+    tools
+        .run(
+            CatalogTool::CreateDatasets,
+            args(json!({ "names": ["fresh"] })),
+        )
+        .await
+        .expect_err("already exists");
+    assert_eq!(changed.lock().len(), 2);
+
+    tools.set_access(CatalogAccess::ReadOnly);
+    run_err(
+        &tools,
+        CatalogTool::CreateDatasets,
+        json!({ "names": ["other"] }),
+    )
+    .await;
+    assert_eq!(changed.lock().len(), 2);
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn without_write_access_the_writes_are_hidden_and_refused() {
     use re_agent_tools::AgentToolbox as _;
 

@@ -47,6 +47,11 @@ impl AppCore {
             {
                 self.serve_viewer_control(request, on_done, store_hub, egui_ctx);
             }
+            // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+            for origin in self.agent_panel.take_changed_catalogs() {
+                self.command_sender
+                    .send_system(SystemCommand::RefreshRedapServer(origin));
+            }
             self.receive_fetched_chunks(store_hub);
             self.prefetch_chunks(store_hub);
         }

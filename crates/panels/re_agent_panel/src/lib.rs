@@ -6,7 +6,7 @@
 //! viewer-control toolbox, the harness setup, the embedded skills, feedback, and
 //! analytics. Chat UI that any egui app could use goes in [`re_agent_ui`] instead.
 
-use std::collections::VecDeque;
+use std::collections::{BTreeSet, VecDeque};
 use std::path::Path;
 use std::sync::Arc;
 
@@ -162,6 +162,10 @@ pub struct ViewerAgentPanel {
     /// The catalog tools of a model-API agent, which follow [`AgentSettings::catalog_access`]
     /// as it changes. Set up with the panel.
     catalog_tools: Option<re_catalog_tools::CatalogTools>,
+
+    // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+    /// Catalogs that a model-API agent changed, for the viewer to refresh.
+    changed_catalogs: Arc<parking_lot::Mutex<BTreeSet<re_uri::Origin>>>,
 }
 
 impl ViewerAgentPanel {
@@ -186,6 +190,17 @@ impl ViewerAgentPanel {
                     .collect()
             })
             .unwrap_or_default()
+    }
+
+    /// Takes the catalogs that the agent changed since the last call, so the viewer can refresh
+    /// them and show the change.
+    ///
+    /// Only for a model-API agent: an agent harness changes catalogs through `rerun mcp`, which
+    /// refreshes them in the viewer itself.
+    pub fn take_changed_catalogs(&self) -> Vec<re_uri::Origin> {
+        std::mem::take(&mut *self.changed_catalogs.lock())
+            .into_iter()
+            .collect()
     }
 
     /// Queue feedback that an agent sent about Rerun, to be sent.
@@ -420,6 +435,12 @@ impl ViewerAgentPanel {
         );
         #[cfg(not(target_arch = "wasm32"))]
         let catalog_tools = catalog_tools.with_known_servers(self.known_servers.clone());
+        let changed_catalogs = Arc::clone(&self.changed_catalogs);
+        let ui_waker = egui_ctx.ui_waker();
+        catalog_tools.on_catalog_change(move |origin| {
+            changed_catalogs.lock().insert(origin.clone());
+            ui_waker.wake();
+        });
         catalog_tools.set_access(panel.settings().catalog_access);
         panel.set_toolbox(model_api_toolbox(viewer_tools, catalog_tools.clone()));
         self.catalog_tools = Some(catalog_tools);
