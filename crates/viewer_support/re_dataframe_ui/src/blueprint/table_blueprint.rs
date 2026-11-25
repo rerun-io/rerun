@@ -230,10 +230,15 @@ impl<'a> TableBlueprint<'a> {
     }
 
     /// Returns the selected layout, resolved against the available layouts.
-    pub fn layout(&self) -> TableLayoutKind {
+    ///
+    /// Without a card layout, cards can only be selected where `cards_supported`. They then show
+    /// a screen to set the cards up.
+    pub fn layout(&self, cards_supported: bool) -> TableLayoutKind {
         if self.card_layout.is_some() {
             // If cards are available show cards unless configured otherwise.
             self.layout.unwrap_or(TableLayoutKind::Cards)
+        } else if cards_supported {
+            self.layout.unwrap_or(TableLayoutKind::Table)
         } else {
             // If no cards are available, ignore the configuration.
             TableLayoutKind::Table

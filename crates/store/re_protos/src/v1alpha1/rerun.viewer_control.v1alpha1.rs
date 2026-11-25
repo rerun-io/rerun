@@ -2216,7 +2216,8 @@ pub mod set_blueprint_request {
         ///
         /// `TableBlueprint` at `/table` has these fields:
         /// * `layout`: `Table` or `Cards`. When unset, cards show if `/table/layouts/cards` has a
-        ///    `CardLayout`, and the table shows otherwise. `Cards` without a `CardLayout` shows the table.
+        ///    `CardLayout`, and the table shows otherwise. `Cards` without a `CardLayout` shows the table,
+        ///    except in a dataset's segment table, where it shows a screen to set up the cards.
         /// * `column_display_mode`: how column names show, `Compact`, `Component` or `Full`.
         ///    Defaults to `Compact`.
         /// * `filters`: SQL row filters, described below.

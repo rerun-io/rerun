@@ -529,6 +529,13 @@ impl<'a> DataFusionTableWidget<'a> {
         self
     }
 
+    /// Whether the table can show cards, even before its blueprint has a card layout.
+    ///
+    /// Cards need a dataset's segment table, which is the table with segment links.
+    fn supports_cards(&self) -> bool {
+        self.initial_query_data.segment_links.is_some()
+    }
+
     pub fn generate_segment_links(
         mut self,
         column_name: ColumnName,
@@ -1001,7 +1008,8 @@ impl<'a> DataFusionTableWidget<'a> {
             &query_result.schema.original_schema,
         );
 
-        let mut layout_kind = blueprint.layout();
+        let cards_supported = self.supports_cards();
+        let mut layout_kind = blueprint.layout(cards_supported);
         let card_layout_available = blueprint.card_layout.is_some();
 
         let display_record_batches: Result<Vec<_>, _> = query_result
@@ -1069,7 +1077,8 @@ impl<'a> DataFusionTableWidget<'a> {
 
         let mut playback_speed = blueprint.previews_config.playback_speed;
         let blueprint_columns = blueprint.iter_columns(layout_kind);
-        let layout_kind_ref = if card_layout_available {
+        let show_columns_menu = layout_kind == TableLayoutKind::Table || card_layout_available;
+        let layout_kind_ref = if card_layout_available || cards_supported {
             MaybeMutRef::MutRef(&mut layout_kind)
         } else {
             MaybeMutRef::Ref(&layout_kind)
@@ -1090,6 +1099,7 @@ impl<'a> DataFusionTableWidget<'a> {
                     ToolbarControls {
                         column_display_mode: &mut column_display_mode,
                         layout_kind: layout_kind_ref,
+                        show_columns_menu,
                         preview_state: has_previews
                             .then(|| view_states.preview_state.get_or_insert_default()),
                         playback_speed: &mut playback_speed,
@@ -1101,7 +1111,7 @@ impl<'a> DataFusionTableWidget<'a> {
         if column_display_mode != blueprint.column_display_mode {
             TableBlueprint::save_column_display_mode(&blueprint_ctx, column_display_mode);
         }
-        if layout_kind != blueprint.layout() {
+        if layout_kind != blueprint.layout(cards_supported) {
             TableBlueprint::save_layout(&blueprint_ctx, layout_kind);
         }
         if playback_speed != blueprint.previews_config.playback_speed {
@@ -1314,8 +1324,7 @@ impl<'a> DataFusionTableWidget<'a> {
                         &marked_rows,
                     );
                 } else {
-                    // Should never happen.
-                    ui.error_label("No card layout defined in the table blueprint");
+                    crate::no_cards_ui::no_cards_ui(ui, ctx);
                 }
             }
         }
@@ -1493,6 +1502,10 @@ struct ToolbarControls<'a> {
     column_display_mode: &'a mut ColumnDisplayMode,
     layout_kind: MaybeMutRef<'a, TableLayoutKind>,
 
+    /// Whether the columns menu shows. There are no columns to edit while the cards view shows
+    /// the screen to set up cards.
+    show_columns_menu: bool,
+
     /// Set when the table shows previews, which puts the playback controls in the toolbar.
     preview_state: Option<&'a mut re_viewer_context::PreviewState>,
 
@@ -1591,6 +1604,7 @@ fn toolbar_controls_ui<'a>(
     let ToolbarControls {
         column_display_mode,
         mut layout_kind,
+        show_columns_menu,
         preview_state,
         playback_speed,
         num_marked_rows,
@@ -1615,18 +1629,20 @@ fn toolbar_controls_ui<'a>(
         });
     }
 
-    ui.scope_builder(
-        egui::UiBuilder::new().with_class(re_ui::Size::Small.class_name()),
-        |ui| {
-            columns_edit_menu_ui(
-                ui,
-                blueprint_ctx,
-                *layout_kind,
-                column_display_mode,
-                blueprint_columns,
-            );
-        },
-    );
+    if show_columns_menu {
+        ui.scope_builder(
+            egui::UiBuilder::new().with_class(re_ui::Size::Small.class_name()),
+            |ui| {
+                columns_edit_menu_ui(
+                    ui,
+                    blueprint_ctx,
+                    *layout_kind,
+                    column_display_mode,
+                    blueprint_columns,
+                );
+            },
+        );
+    }
 
     if let Some(state) = preview_state {
         ui.add_space(12.0);
