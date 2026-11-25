@@ -2,8 +2,8 @@
 
 ## [0.44.0](https://github.com/rerun-io/rerun/compare/0.43.2...0.44.0) - 2026-11-25
 
-The Rust crates of 0.44.0 are not published on crates.io, because this release depends on unreleased versions of egui and `re_mp4`.
-The Python, C++, and JavaScript SDKs and the CLI are released as usual.
+0.44.0 is not published on crates.io, since it depends on an unreleased version of egui.
+The `rerun` CLI is available via `pip install rerun-sdk` or the binaries attached to this release.
 
 ### ✨ Overview & highlights
 
