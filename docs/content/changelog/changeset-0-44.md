@@ -5,38 +5,6 @@ order: 930
 
 ## Highlights
 
-### MCP improvements
-
-#### Catalog tools in the MCP server
-
-`rerun mcp` now has `catalog_*` tools that connect to a Rerun catalog server directly. They can list and query datasets, their segments, schemas, segment properties, and data, with SQL over tables and query results.
-By default they act on the catalog of the connected Viewer (if any); pass `--catalog-url <url>` for another server, and `--toolsets catalog` to run them without a Viewer.
-The Viewer's agent panel has the same tools when it uses a model API, on native and on the web.
-See the [MCP server documentation](../viewer/extend/mcp.md#reading-a-catalog).
-
-#### Catalog write tools in the MCP server
-
-The catalog tools of `rerun mcp` and of the Viewer's agent panel can now create datasets, rename datasets and tables, upload or register `.rrd` recordings into datasets, and register `.rbl` table blueprints as a dataset's default.
-Each change asks you first, and none deletes or replaces data.
-To keep an agent read-only, set "Catalog servers" to "Read only" in the agent panel's settings, or start `rerun mcp --catalog-read-only`.
-See the [MCP server documentation](../viewer/extend/mcp.md#changing-a-catalog).
-
-#### Shared list of catalog servers
-
-The catalog servers you add in the Viewer are now also known to the CLI and to `rerun mcp`.
-`rerun servers list`, `rerun servers add <url>`, and `rerun servers remove <url>` manage the list, and the `catalog_list_servers` MCP tool offers it to agents.
-The native Viewer now only remembers servers you add or log in to, not those it merely opened from a URL.
-On first start it moves the servers it remembered into the list, leaving out local ones.
-The list lives in `servers.json` in Rerun's config directory, so Reset Viewer and `rerun reset` keep it, and a Viewer older than this release no longer shows these servers.
-See the [MCP server documentation](../viewer/extend/mcp.md#reading-a-catalog).
-
-#### Discover available view types via MCP
-
-Agents can use `viewer_list_view_types` to discover the connected viewer's supported view classes.
-Short descriptions and tag keywords help find suitable views for visualization tasks like editing blueprints.
-The same information is available through `ViewerClient.list_view_types()` in Python and `WebViewer.listViewTypes()` in JavaScript.
-See the [Viewer MCP documentation](../viewer/extend/mcp.md).
-
 ### Register a recording under any segment ID
 
 `DatasetEntry.register()` takes an optional `segment_id` list, one per URI, to register each recording as a segment other than its recording ID.
@@ -105,6 +73,38 @@ The same mixed-image previews at the same window size:
 | Before | After |
 | --- | --- |
 | ![Before: one column of cards with large gaps around landscape and portrait previews](https://static.rerun.io/preview-card-layout-before/dedde945b7c74feee2d9ecab88d828d614cdba69/full.png) | ![After: two columns of cards with preview widths matched to their aspect ratios](https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/full.png) |
+
+### MCP improvements
+
+#### Catalog tools in the MCP server
+
+`rerun mcp` now has `catalog_*` tools that connect to a Rerun catalog server directly. They can list and query datasets, their segments, schemas, segment properties, and data, with SQL over tables and query results.
+By default they act on the catalog of the connected Viewer (if any); pass `--catalog-url <url>` for another server, and `--toolsets catalog` to run them without a Viewer.
+The Viewer's agent panel has the same tools when it uses a model API, on native and on the web.
+See the [MCP server documentation](../viewer/extend/mcp.md#reading-a-catalog).
+
+#### Catalog write tools in the MCP server
+
+The catalog tools of `rerun mcp` and of the Viewer's agent panel can now create datasets, rename datasets and tables, upload or register `.rrd` recordings into datasets, and register `.rbl` table blueprints as a dataset's default.
+Each change asks you first, and none deletes or replaces data.
+To keep an agent read-only, set "Catalog servers" to "Read only" in the agent panel's settings, or start `rerun mcp --catalog-read-only`.
+See the [MCP server documentation](../viewer/extend/mcp.md#changing-a-catalog).
+
+#### Shared list of catalog servers
+
+The catalog servers you add in the Viewer are now also known to the CLI and to `rerun mcp`.
+`rerun servers list`, `rerun servers add <url>`, and `rerun servers remove <url>` manage the list, and the `catalog_list_servers` MCP tool offers it to agents.
+The native Viewer now only remembers servers you add or log in to, not those it merely opened from a URL.
+On first start it moves the servers it remembered into the list, leaving out local ones.
+The list lives in `servers.json` in Rerun's config directory, so Reset Viewer and `rerun reset` keep it, and a Viewer older than this release no longer shows these servers.
+See the [MCP server documentation](../viewer/extend/mcp.md#reading-a-catalog).
+
+#### Discover available view types via MCP
+
+Agents can use `viewer_list_view_types` to discover the connected viewer's supported view classes.
+Short descriptions and tag keywords help find suitable views for visualization tasks like editing blueprints.
+The same information is available through `ViewerClient.list_view_types()` in Python and `WebViewer.listViewTypes()` in JavaScript.
+See the [Viewer MCP documentation](../viewer/extend/mcp.md).
 
 ### Import MuJoCo (MJCF) models
 
