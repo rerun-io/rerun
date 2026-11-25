@@ -46,6 +46,34 @@ Previous releases shipped an early version of the panel behind an experimental s
     <source src="https://static.rerun.io/f28ec42d7e0f6423ee585b343fcf9b0d9321567a_agent_panel_find_anomalies.mp4" type="video/mp4" />
 </video>
 
+### 2D labels in 3D views
+
+Labels on 2D points, lines, arrows, boxes, and ellipses can now be shown in [3D views](../reference/types/views/spatial3d_view.md).
+Camera-plane annotations stay attached to their geometry, with text facing the viewer.
+
+![Labels on 2D geometry in a 3D camera frustum](https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/full.png)
+
+### Switch between a dataset's blueprints
+
+When you open a recording from the catalog, a new dropdown in the top bar lets you switch between the blueprints registered for its dataset and the heuristic blueprint.
+This is the first step towards better blueprint management for datasets, with more improvements coming in future releases.
+See [Blueprints](../query-and-transform/catalog/catalog-object-model.md#blueprints) for how to register blueprints on a dataset.
+
+<img width="507" src="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/full.png" alt="Blueprint dropdown listing the heuristic blueprint and the dataset's blueprints">
+
+Resetting the current blueprint can still be done in the blueprint panel, but **Reset to default blueprint** and **Reset to heuristic blueprint** are now in the **View** menu and the command palette.
+
+### Better preview card layouts
+
+[Table preview cards](../viewer/blueprints/configure-table-blueprints.md) now size their views according to their aspect ratios and fit more cards across the available width.
+Landscape and portrait images can share a card with less empty space, and the grid adjusts as you resize the window.
+
+The same mixed-image previews at the same window size:
+
+| Before | After |
+| --- | --- |
+| ![Before: one column of cards with large gaps around landscape and portrait previews](https://static.rerun.io/preview-card-layout-before/dedde945b7c74feee2d9ecab88d828d614cdba69/full.png) | ![After: two columns of cards with preview widths matched to their aspect ratios](https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/full.png) |
+
 ### Catalog tools in the MCP server
 
 `rerun mcp` now has `catalog_*` tools that connect to a Rerun catalog server directly. They can list and query datasets, their segments, schemas, segment properties, and data, with SQL over tables and query results.
@@ -86,34 +114,6 @@ Hinge and slide joints are supported.
 A body with several joints gets an intermediate frame after each joint but its last, named `{body}::{joint}`, so that every joint can be animated on its own.
 
 See [Loading MJCF models](../logging-and-ingestion/import/mjcf.md).
-
-### 2D labels in 3D views
-
-Labels on 2D points, lines, arrows, boxes, and ellipses can now be shown in [3D views](../reference/types/views/spatial3d_view.md).
-Camera-plane annotations stay attached to their geometry, with text facing the viewer.
-
-![Labels on 2D geometry in a 3D camera frustum](https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/full.png)
-
-### Switch between a dataset's blueprints
-
-When you open a recording from the catalog, a new dropdown in the top bar lets you switch between the blueprints registered for its dataset and the heuristic blueprint.
-This is the first step towards better blueprint management for datasets, with more improvements coming in future releases.
-See [Blueprints](../query-and-transform/catalog/catalog-object-model.md#blueprints) for how to register blueprints on a dataset.
-
-<img width="507" src="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/full.png" alt="Blueprint dropdown listing the heuristic blueprint and the dataset's blueprints">
-
-Resetting the current blueprint can still be done in the blueprint panel, but **Reset to default blueprint** and **Reset to heuristic blueprint** are now in the **View** menu and the command palette.
-
-### Better preview card layouts
-
-[Table preview cards](../viewer/blueprints/configure-table-blueprints.md) now size their views according to their aspect ratios and fit more cards across the available width.
-Landscape and portrait images can share a card with less empty space, and the grid adjusts as you resize the window.
-
-The same mixed-image previews at the same window size:
-
-| Before | After |
-| --- | --- |
-| ![Before: one column of cards with large gaps around landscape and portrait previews](https://static.rerun.io/preview-card-layout-before/dedde945b7c74feee2d9ecab88d828d614cdba69/full.png) | ![After: two columns of cards with preview widths matched to their aspect ratios](https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/full.png) |
 
 ### Stream dataset selections as Arrow batches
 

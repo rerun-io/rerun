@@ -8,9 +8,13 @@ The Python, C++, and JavaScript SDKs and the CLI are released as usual.
 ### ✨ Overview & highlights
 
 - [Agent panel](https://rerun.io/docs/changelog/changeset-0-44#agent-panel): [chat with a coding agent](https://rerun.io/docs/agents#agent-panel) that inspects and controls the Viewer, using your own agent or a model API ([video](https://static.rerun.io/f28ec42d7e0f6423ee585b343fcf9b0d9321567a_agent_panel_find_anomalies.mp4))
-- [Catalog tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-tools-in-the-mcp-server): [`rerun mcp`](https://rerun.io/docs/viewer/extend/mcp#reading-a-catalog) can list and query datasets with SQL, with or without a Viewer
-- [Catalog write tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-write-tools-in-the-mcp-server): agents can [create datasets and upload or register recordings](https://rerun.io/docs/viewer/extend/mcp#changing-a-catalog), asking you before each change
-- [Import MuJoCo (MJCF) models](https://rerun.io/docs/changelog/changeset-0-44#import-mujoco-mjcf-models) from `.mjcf` and `.xml` files, animated with [`MjcfTree`](https://rerun.io/docs/logging-and-ingestion/import/mjcf)
+  <picture>
+    <img src="https://static.rerun.io/agent-panel/b1f5998b449df2c9f2468210db0e6be001a4c8f0/full.png" alt="The agent panel next to the Viewer, scanning a dataset's recordings for anomalies">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/agent-panel/b1f5998b449df2c9f2468210db0e6be001a4c8f0/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/agent-panel/b1f5998b449df2c9f2468210db0e6be001a4c8f0/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/agent-panel/b1f5998b449df2c9f2468210db0e6be001a4c8f0/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/agent-panel/b1f5998b449df2c9f2468210db0e6be001a4c8f0/1200w.png">
+  </picture>
 - [2D labels in 3D views](https://rerun.io/docs/changelog/changeset-0-44#2d-labels-in-3d-views) on points, lines, arrows, boxes, and ellipses
   <picture>
     <img src="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/full.png" alt="Labels on 2D geometry in a 3D camera frustum">
@@ -25,9 +29,6 @@ The Python, C++, and JavaScript SDKs and the CLI are released as usual.
     <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/480w.png">
     <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/768w.png">
   </picture>
-- [Register a recording under any segment ID](https://rerun.io/docs/changelog/changeset-0-44#register-a-recording-under-any-segment-id) with [`DatasetEntry.register(…, segment_id=…)`](https://rerun.io/docs/query-and-transform/catalog/layers#how-can-i-register-a-recording-under-another-segment-id)
-- [Shared list of catalog servers](https://rerun.io/docs/changelog/changeset-0-44#shared-list-of-catalog-servers) for the Viewer, the CLI ([`rerun servers`](https://rerun.io/docs/reference/cli#rerun-servers)), and `rerun mcp`
-- [Discover available view types via MCP](https://rerun.io/docs/changelog/changeset-0-44#discover-available-view-types-via-mcp) with `viewer_list_view_types`
 - [Better preview card layouts](https://rerun.io/docs/changelog/changeset-0-44#better-preview-card-layouts) for [table blueprints](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints), sized by aspect ratio
   <picture>
     <img src="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/full.png" alt="Two columns of preview cards with preview widths matched to their aspect ratios">
@@ -36,6 +37,12 @@ The Python, C++, and JavaScript SDKs and the CLI are released as usual.
     <source media="(max-width: 1024px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/1024w.png">
     <source media="(max-width: 1200px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/1200w.png">
   </picture>
+- [Catalog tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-tools-in-the-mcp-server): [`rerun mcp`](https://rerun.io/docs/viewer/extend/mcp#reading-a-catalog) can list and query datasets with SQL, with or without a Viewer
+- [Catalog write tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-write-tools-in-the-mcp-server): agents can [create datasets and upload or register recordings](https://rerun.io/docs/viewer/extend/mcp#changing-a-catalog), asking you before each change
+- [Import MuJoCo (MJCF) models](https://rerun.io/docs/changelog/changeset-0-44#import-mujoco-mjcf-models) from `.mjcf` and `.xml` files, animated with [`MjcfTree`](https://rerun.io/docs/logging-and-ingestion/import/mjcf)
+- [Register a recording under any segment ID](https://rerun.io/docs/changelog/changeset-0-44#register-a-recording-under-any-segment-id) with [`DatasetEntry.register(…, segment_id=…)`](https://rerun.io/docs/query-and-transform/catalog/layers#how-can-i-register-a-recording-under-another-segment-id)
+- [Shared list of catalog servers](https://rerun.io/docs/changelog/changeset-0-44#shared-list-of-catalog-servers) for the Viewer, the CLI ([`rerun servers`](https://rerun.io/docs/reference/cli#rerun-servers)), and `rerun mcp`
+- [Discover available view types via MCP](https://rerun.io/docs/changelog/changeset-0-44#discover-available-view-types-via-mcp) with `viewer_list_view_types`
 - [Stream dataset selections as Arrow batches](https://rerun.io/docs/changelog/changeset-0-44#stream-dataset-selections-as-arrow-batches) with [`DatasetSelection.read_arrow()`](https://rerun.io/docs/query-and-transform/catalog/get-data-out#streaming-arrow-batches)
 - [Query annotated time spans](https://rerun.io/docs/changelog/changeset-0-44#query-annotated-time-spans) with [`rerun.experimental.spans.SpanTable`](https://rerun.io/docs/query-and-transform/dataframes/spans)
 - [Measure dataloader pipeline performance](https://rerun.io/docs/changelog/changeset-0-44#measure-dataloader-pipeline-performance) with `dataset.metrics.summary()` in the [dataloader](https://rerun.io/docs/train/dataloader)
