@@ -18,6 +18,7 @@ steps = ["collect", "prepare", "train", "evaluate"]
 examples = [
   "robot_data_preprocessing",
   "droid_dataset",
+  "rrd_conversion",
   "droid_semantic_search",
   "annotation_gradio",
   "rerun_export",

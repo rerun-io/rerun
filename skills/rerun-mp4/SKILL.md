@@ -1,6 +1,6 @@
 ---
 name: rerun-mp4
-description: Ingest .mp4 video into Rerun chunk streams with rerun.experimental.Mp4Reader. Read when converting video into a VideoStream, choosing stream vs asset mode, transcoding (B-frames, output codec, GOP size) through FFmpeg, or aligning video PTS onto a recording's wall-clock timeline. Builds on rerun-chunk-processing (stream mechanics) and rerun-data-model (where the video belongs in the recording).
+description: Ingest .mp4 video into Rerun chunk streams with rerun.experimental.Mp4Reader. Read when converting video into a VideoStream, choosing stream vs asset mode, transcoding (B-frames, output codec, GOP size) through FFmpeg, aligning video PTS onto a recording's wall-clock timeline, or inspecting a file's keyframes, GOP sizes, codec and frame timing without streaming it (Mp4Reader.info()). Builds on rerun-chunk-processing (stream mechanics) and rerun-data-model (where the video belongs in the recording).
 user_invocable: true
 allowed-tools: Read, Grep, Bash, WebFetch
 ---
@@ -81,6 +81,33 @@ chunk carries only `VideoStream:is_keyframe`.
 
 Supported stream-mode codecs are exactly the five `VideoCodec` values: H264,
 H265, AV1, VP8, VP9.
+
+## Inspecting a file without streaming it
+
+`reader.info()` returns an `Mp4Info` built from the container metadata alone.
+No video data is read, so it costs a fraction of a stream read.
+Use it for anything that only needs the frame layout: keyframe positions, frame count, frame timing, whether FFmpeg will be needed.
+
+```python
+info = Mp4Reader(video_path).info()
+
+info.codec, info.width, info.height, info.num_frames, info.duration_ns
+info.has_b_frames  # True: stream mode will transcode through FFmpeg
+info.gop_size_min, info.gop_size_max
+
+info.keyframe_timestamps_ns  # sorted int64 PTS of the keyframes
+info.keyframe_frame_nrs  # the same keyframes as frame numbers
+info.samples  # pa.RecordBatch, one row per frame
+```
+
+- **It describes the source file, not the emitted stream.**
+  `mode`, `transcode` and the timeline settings do not change it.
+  When the stream is transcoded (B-frames, `gop_size`, `output_codec`), the emitted keyframes may differ from `info.keyframe_timestamps_ns`.
+  Without a transcode, `pts` equals the values on the stream's `video` timeline.
+- **Do not filter the stream for the keyframe marker to get this.**
+  `stream().filter(components=["VideoStream:is_keyframe"])` still reads every sample, because the marker chunk is emitted last.
+- VP8 and VP9 are the exception to "no video data is read": their keyframe flags come from the bitstream.
+- Each call parses the file again, so cache the result when many episodes share one file (LeRobot v3).
 
 ## Transcoding through FFmpeg
 
@@ -302,10 +329,10 @@ codec "mp4v"`. Asset mode does accept the file, but only partly: the blob
 
 - Canonical worked examples: `rerun_py/tests/integration/test_mp4_reader.py`
   (both modes, `chunk_by_gop`, entity paths, `timeline_type`, transcode
-  transforms, and the error cases).
+  transforms, `info()`, and the error cases).
 - Rust core: `crates/data_flow/re_mp4_reader/` (`stream.rs` for the GOP/transcode
-  path, `asset.rs` for the blob+index path), with
-  `crates/data_flow/re_mp4_reader/tests/stream.rs` covering codec pairs and GOP
+  path, `asset.rs` for the blob+index path, `info.rs` for `Mp4Info`), with
+  `crates/data_flow/re_mp4_reader/tests/integration/stream.rs` covering codec pairs and GOP
   spacing.
 - `rerun-chunk-processing` (stream/lens mechanics), `rerun-data-model` (where
   video, calibration, and thumbnails belong in the recording).

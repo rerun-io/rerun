@@ -31,6 +31,7 @@ mod chunk_stream;
 mod formatting;
 mod kinematic_tree;
 mod lenses;
+mod mjcf;
 mod python_bridge;
 mod query_metrics;
 mod selector;

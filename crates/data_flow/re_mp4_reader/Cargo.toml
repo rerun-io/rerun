@@ -27,6 +27,7 @@ re_video.workspace = true
 
 arrow.workspace = true
 itertools.workspace = true
+quiver.workspace = true
 thiserror.workspace = true
 
 # Native only: stream mode transcodes B-frame mp4s with the `ffmpeg` CLI.

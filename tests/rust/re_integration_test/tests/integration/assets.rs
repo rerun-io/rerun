@@ -9,7 +9,7 @@ use std::time::Duration;
 use arrow::array::RecordBatch;
 use egui::Role;
 use egui_kittest::Harness;
-use egui_kittest::kittest::{AccessKitNode, Queryable as _};
+use egui_kittest::kittest::{AccessKitNode, By, Queryable as _};
 use futures::StreamExt as _;
 
 use re_catalog_client::{AssetCoverage, CatalogClient, DEFAULT_ASSET_TASK_TIMEOUT};
@@ -97,7 +97,11 @@ async fn fetch_chunk_ids(
     batch: &RecordBatch,
 ) -> Result<Vec<ChunkId>, ApiError> {
     let stream = client.fetch_segment_chunks_by_id(batch).await?;
-    let mut stream = re_redap_client::fetch_chunks_response_to_chunks(stream, None);
+    let mut stream = re_redap_client::fetch_chunks_response_to_chunks(
+        stream,
+        re_redap_client::FetchedPayloads::Shared,
+        None,
+    );
 
     let mut chunk_ids = Vec::new();
     while let Some(chunks) = stream.next().await {
@@ -790,6 +794,14 @@ async fn registering_an_asset_through_the_modal_lists_it() {
     );
 
     open_register_asset_modal(&mut harness);
+
+    // The search hints name the dataset's segment count, which is its own round trip to the
+    // server.
+    viewer_test_utils::step_until(
+        "the modal knows how many segments the dataset has",
+        &mut harness,
+        |harness| has_placeholder(harness, "Search 1 segment to exclude…"),
+    );
     harness.snapshot("register_asset_modal");
 
     let asset = asset_rrd("robot_urdf").expect("Failed to build the asset recording");
@@ -1700,6 +1712,14 @@ fn open_register_asset_modal(harness: &mut Harness<'static, re_viewer::App>) {
     // Opening the modal goes through the browser's command queue, so it appears a frame later.
     harness.run_ok();
     harness.run_ok();
+}
+
+/// Is there a text field that shows `placeholder` as its hint?
+fn has_placeholder(harness: &Harness<'static, re_viewer::App>, placeholder: &str) -> bool {
+    harness
+        .query_all(By::new().predicate(|node| node.placeholder() == Some(placeholder)))
+        .next()
+        .is_some()
 }
 
 /// The url of the dataset's asset list.

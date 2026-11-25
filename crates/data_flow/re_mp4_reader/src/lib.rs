@@ -13,14 +13,20 @@
 //!
 //! The entry point is [`load_mp4_from_bytes`], with a native-only `load_mp4`
 //! convenience wrapper that reads the bytes from a path on disk.
+//!
+//! The native-only `load_mp4_info` describes a file as stored, without emitting chunks.
 
 mod asset;
 mod config;
 mod error;
+#[cfg(not(target_arch = "wasm32"))]
+mod info;
 mod stream;
 
 pub use config::{Mode, Mp4Config};
 pub use error::Mp4Error;
+#[cfg(not(target_arch = "wasm32"))]
+pub use info::{Mp4Info, Mp4Samples, load_mp4_info};
 pub use re_video::{HwAccel, Mp4TranscodeOptions, TimeWindow, VideoCodec};
 
 use itertools::Either;

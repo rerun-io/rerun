@@ -15,6 +15,17 @@ pub struct McpStdioServer {
     pub args: Vec<String>,
 }
 
+impl McpStdioServer {
+    /// The command and its arguments, as one line to show the user.
+    pub fn command_line(&self) -> String {
+        let command = self.command.to_string_lossy();
+        shell_words::join(std::iter::chain(
+            std::iter::once(command.as_ref()),
+            self.args.iter().map(String::as_str),
+        ))
+    }
+}
+
 /// Everything needed to spawn an agent and open a session with it.
 #[derive(Clone, Debug)]
 pub struct AgentHarnessConfig {

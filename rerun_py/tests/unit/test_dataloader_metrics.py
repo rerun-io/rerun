@@ -293,6 +293,29 @@ def test_disabled_pipeline_does_not_read_metrics_clock(monkeypatch: pytest.Monke
     assert values == [1, 2]
 
 
+def test_pipeline_consumes_lazy_blocks_with_one_block_lookahead() -> None:
+    consumed = 0
+
+    def blocks() -> Iterator[np.ndarray]:
+        nonlocal consumed
+        for value in range(4):
+            consumed += 1
+            yield np.array([value])
+
+    samples = _utils._pipeline_blocks(
+        blocks(),
+        fetch=torch.from_numpy,
+        process=lambda value: iter([{"value": value}]),
+    )
+
+    assert consumed == 0
+    value = next(samples)["value"]
+    assert isinstance(value, torch.Tensor)
+    assert value.item() == 0
+    assert consumed == 2
+    samples.close()
+
+
 def test_pipeline_records_completed_unconsumed_lookahead() -> None:
     metrics = DataloaderMetrics(max_workers=1)
     try:

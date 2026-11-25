@@ -159,9 +159,9 @@ impl Preamble<'_> {
         );
 
         text.push_str(
-            "- When a recording has joint angles but no robot model, suggest adding a URDF: \
+            "- When a recording has joint angles but no robot model, suggest adding a robot model (URDF or MJCF): \
              fetch one for that robot, solve forward kinematics from the joint states, \
-             and layer the transforms onto the recording. The `rerun-urdf` skill has the sources and the pipeline.\n",
+             and layer the transforms onto the recording. The `rerun-robot-model` skill has the sources and the pipeline.\n",
         );
 
         text.push_str(
@@ -223,6 +223,12 @@ pub fn model_api_text() -> String {
         "\n- Ask for clarification in chat when needed. Provide code for the user to run when a \
          task needs their local files or Python environment.\n",
     );
+    if crate::skills_toolbox::SkillsToolbox::embedded().is_some() {
+        text.push_str(
+            "- Rerun skills are listed in the description of `skill_read`. \
+             Read the relevant one with it before starting the task.\n",
+        );
+    }
     text.push_str(OUTRO);
     text
 }
@@ -244,6 +250,8 @@ mod tests {
                     re_viewer_control_tools::is_operation(operation),
                     "unknown tool: {name}"
                 );
+            } else if name.starts_with("skill_") {
+                assert_eq!(name, crate::skills_toolbox::SKILL_READ, "unknown tool");
             } else if name.starts_with("catalog_") && name != "catalog_url" {
                 assert!(
                     re_catalog_tools::CatalogTool::from_name(name).is_some(),

@@ -17,8 +17,8 @@ data associated with those entities.
 
 Entities are like folders, and components are like files.
 
-Additionally, the Rerun SDKs expose two additional concepts:
- * *Archetypes* are coherent sets of components corresponding to primitives such as 2D points or 3D boxes. In the Rerun SDKs, archetypes take the form of builder objects that assist with the creation of such component sets. They are meant as high-level, convenience helpers that can be bypassed entirely if/when required by advanced use-cases.
+Additionally, Rerun has two more concepts:
+ * *Archetypes* are named sets of semantically related components. `Points2D`, for example, is positions, colors, and radii. In the Rerun SDKs, archetypes take the form of builder objects that create such a set for you. The archetype name is stored with each component, and the Viewer uses it to choose how to show the data by default. See [Archetypes](archetypes.md).
  * *Encodings* are regular data structures that components occasionally rely on when fundamental data types (`float`, `uint32`, etc.) are not sufficient.
 
 ### Logging and viewing data
@@ -36,9 +36,10 @@ Internally, this archetype builds a set of, in this case, two components:
 * `Points2D:colors` of type [`Color`](../../reference/types/components/color.md).
 Then, the `rr.log()` function records these two components and associates them with the `"my_point"` entity.
 
-Later, the View for spatial types queries the chunk store for all the entities that have a `Points2D:positions` component.
-In this case it would find the "my_point" entity. This query additionally returns the `Points2D:colors` component because that
-component is associated with the same entity. These two components are recognized as corresponding to the `Points2D` archetype (via metadata attached to the components), which informs the Viewer on how to display the corresponding entity.
+Later, a 2D view looks for the entities it can draw.
+It finds the "my_point" entity, because `Points2D:positions` has the datatype that the `Points2D` visualizer needs.
+Both components are tagged with the `Points2D` archetype (via metadata attached to the components), so the Viewer selects the `Points2D` visualizer by default.
+That visualizer then reads `Points2D:colors` from the same entity.
 
 See the [Types](../../reference/types.md) reference for a list of [archetypes](../../reference/types/archetypes.md),
 [components](../../reference/types/components.md), and [encodings](../../reference/types/encodings.md).
@@ -54,7 +55,7 @@ Your entity could have any number of additional components as well. This isn't a
 aren't relevant to the scene that the view is drawing are safely ignored. Also, Rerun even allows you to log your
 own set of components, bypassing archetypes altogether.
 
-In Python, the [rr.AnyValues](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AnyValues) helper object can be used to add custom component(s) to an archetype:
+In Python, the [rr.AnyValues](https://ref.rerun.io/docs/python/stable/rerun/#rerun.AnyValues) helper object can be used to log custom component(s) to the same entity as an archetype:
 
 snippet: tutorials/extra_values
 

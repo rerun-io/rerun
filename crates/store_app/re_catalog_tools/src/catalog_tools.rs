@@ -1,13 +1,14 @@
 //! [`CatalogTools`]: the catalog the tools act on, and the [`AgentToolbox`] that runs them.
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use futures::future::BoxFuture;
 use parking_lot::Mutex;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value, json};
 
-use re_agent_tools::{AgentToolbox, ToolDefinition, ToolError, ToolOutput};
+use re_agent_tools::{AgentToolbox, CatalogAccess, ToolDefinition, ToolError, ToolOutput};
 use re_async::AsyncRuntimeHandle;
 use re_catalog_client::CatalogClient;
 #[cfg(not(target_arch = "wasm32"))]
@@ -28,6 +29,9 @@ use crate::{CatalogTool, CatalogToolError};
 /// What the tools are doing when they connect, for error messages.
 const CONNECTING: &str = "connect to the catalog";
 
+/// Called with the origin of a catalog that a write tool may have changed.
+type OnCatalogChange = Arc<dyn Fn(&Origin) + Send + Sync>;
+
 /// The catalog the tools act on, and how to reach others.
 ///
 /// Cheap to clone: clones share the chosen catalog. The choice is shared state rather than a
@@ -38,6 +42,13 @@ pub struct CatalogTools {
     registry: ConnectionRegistryHandle,
     runtime: AsyncRuntimeHandle,
     state: Arc<Mutex<State>>,
+
+    /// Whether the write tools are offered and run. Shared by clones, so a host can flip it
+    /// while a conversation is running.
+    write_access: Arc<AtomicBool>,
+
+    /// See [`Self::on_catalog_change`]. Shared by clones.
+    on_catalog_change: Arc<Mutex<Option<OnCatalogChange>>>,
 
     #[cfg(not(target_arch = "wasm32"))]
     login: Arc<Login>,
@@ -84,9 +95,26 @@ impl CatalogTools {
                 catalog,
                 ..Default::default()
             })),
+            write_access: Arc::new(AtomicBool::new(true)),
+            on_catalog_change: Arc::default(),
             #[cfg(not(target_arch = "wasm32"))]
             known_servers: None,
         }
+    }
+
+    /// Whether the tools that change the catalog are offered and run. Read-write by default.
+    pub fn access(&self) -> CatalogAccess {
+        if self.write_access.load(Ordering::Relaxed) {
+            CatalogAccess::ReadWrite
+        } else {
+            CatalogAccess::ReadOnly
+        }
+    }
+
+    /// Offer and run the tools that change the catalog or not, for this and all clones.
+    pub fn set_access(&self, access: CatalogAccess) {
+        self.write_access
+            .store(access.allows_writes(), Ordering::Relaxed);
     }
 
     /// Let `list_servers` list the servers in `known_servers`, or none.
@@ -133,6 +161,16 @@ impl CatalogTools {
         })
     }
 
+    // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+    /// Calls `on_change` after every write tool call, with the origin of the catalog it acted on,
+    /// so that a host can show the change. Also after a failed call, which may have changed the
+    /// catalog partway.
+    ///
+    /// Replaces the previous callback, for this and all clones.
+    pub fn on_catalog_change(&self, on_change: impl Fn(&Origin) + Send + Sync + 'static) {
+        *self.on_catalog_change.lock() = Some(Arc::new(on_change));
+    }
+
     /// The catalog the tools act on, if any.
     pub fn origin(&self) -> Option<Origin> {
         self.state
@@ -166,6 +204,25 @@ impl CatalogTools {
 
     /// Run `tool` with JSON `arguments`, returning its JSON result.
     pub async fn run(
+        &self,
+        tool: CatalogTool,
+        arguments: Map<String, Value>,
+    ) -> Result<Value, CatalogToolError> {
+        if tool.writes() && !self.access().allows_writes() {
+            return Err(CatalogToolError::WriteAccessOff);
+        }
+        let changed_origin = tool.writes().then(|| self.origin()).flatten();
+        let result = self.run_unchecked(tool, arguments).await;
+        if let Some(origin) = changed_origin {
+            let on_change = self.on_catalog_change.lock().clone();
+            if let Some(on_change) = on_change {
+                on_change(&origin);
+            }
+        }
+        result
+    }
+
+    async fn run_unchecked(
         &self,
         tool: CatalogTool,
         arguments: Map<String, Value>,
@@ -209,17 +266,17 @@ impl CatalogTools {
             CatalogTool::QueryTables => {
                 crate::query::query_tables(&self.catalog()?, parse_args(arguments)?).await
             }
-            CatalogTool::CreateDataset => {
-                crate::write::create_dataset(&self.catalog()?, parse_args(arguments)?).await
+            CatalogTool::CreateDatasets => {
+                crate::write::create_datasets(&self.catalog()?, parse_args(arguments)?).await
             }
-            CatalogTool::RenameEntry => {
-                crate::write::rename_entry(&self.catalog()?, parse_args(arguments)?).await
+            CatalogTool::RenameEntries => {
+                crate::write::rename_entries(&self.catalog()?, parse_args(arguments)?).await
             }
-            CatalogTool::UploadRecording => cfg_select! {
+            CatalogTool::UploadRecordings => cfg_select! {
                 target_arch = "wasm32" => Err(CatalogToolError::UnknownTool {
                     name: tool.name().to_owned(),
                 }),
-                _ => crate::write::upload_recording(&self.catalog()?, parse_args(arguments)?).await,
+                _ => crate::write::upload_recordings(&self.catalog()?, parse_args(arguments)?).await,
             },
             CatalogTool::RegisterRecordings => {
                 crate::write::register_recordings(&self.catalog()?, parse_args(arguments)?).await
@@ -352,12 +409,18 @@ fn is_logged_in() -> bool {
 impl AgentToolbox for CatalogTools {
     fn definitions(&self) -> Vec<ToolDefinition> {
         CatalogTool::available()
+            .filter(|tool| !tool.writes() || self.access().allows_writes())
             .map(CatalogTool::definition)
             .collect()
     }
 
     fn requires_approval(&self, name: &str, _arguments: &Map<String, Value>) -> bool {
-        CatalogTool::from_name(name).is_none_or(CatalogTool::requires_approval)
+        match CatalogTool::from_name(name) {
+            None => true,
+            // Refused without asking, since the user turned writes off.
+            Some(tool) if tool.writes() && !self.access().allows_writes() => false,
+            Some(tool) => tool.requires_approval(),
+        }
     }
 
     fn call(

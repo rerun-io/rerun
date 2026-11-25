@@ -48,13 +48,13 @@ Think of the Application ID as the "key" that binds a blueprint to a specific ty
 ## Blueprints of a catalog dataset
 
 A catalog dataset can have several blueprints registered for its recordings, and one of them can be the dataset's default.
-See [Blueprints](../../query-and-transform/catalog/catalog-object-model.md#blueprints) for how to register them.
+See [Blueprints](../query-and-transform/catalog/catalog-object-model.md#blueprints) for how to register them.
 A recording opened from the dataset starts with the dataset's default blueprint, if it has one.
-The [blueprint dropdown in the top bar](../ui/blueprint-panel.md#dataset-blueprints) switches between the dataset's blueprints and a heuristic blueprint.
+The [blueprint dropdown in the top bar](ui/blueprint-panel.md#dataset-blueprints) switches between the dataset's blueprints and a heuristic blueprint.
 
 ## Reset behavior
 
-The [reset button](../ui/blueprint-panel.md#reset-button) in the blueprint panel discards all changes made to the current blueprint.
+The [reset button](ui/blueprint-panel.md#reset-button) in the blueprint panel discards all changes made to the current blueprint.
 The **View** menu and the command palette have two more resets.
 
 ### Reset to heuristic blueprint

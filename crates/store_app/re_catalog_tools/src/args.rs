@@ -172,14 +172,21 @@ fn default_max_rows() -> usize {
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct CreateDatasetArgs {
-    /// The new dataset's name.
-    pub name: String,
+pub struct CreateDatasetsArgs {
+    /// The new datasets' names, created in order, at most 1000.
+    pub names: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(deny_unknown_fields)]
-pub struct RenameEntryArgs {
+pub struct RenameEntriesArgs {
+    /// What to rename, done in order, at most 1000.
+    pub renames: Vec<EntryRename>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
+pub struct EntryRename {
     /// The dataset's or table's name or id, from `catalog_list_entries`.
     pub entry: String,
 
@@ -202,13 +209,13 @@ pub enum OnDuplicateArg {
     target_arch = "wasm32",
     expect(dead_code, reason = "the browser cannot read a local file")
 )]
-pub struct UploadRecordingArgs {
+pub struct UploadRecordingsArgs {
     /// The dataset's name or id, from `catalog_list_entries`.
     pub dataset: String,
 
-    /// Absolute path of an `.rrd` file on this machine. Each recording in it becomes a segment,
-    /// named by its recording id.
-    pub path: std::path::PathBuf,
+    /// Absolute paths of `.rrd` files on this machine, uploaded in order, at most 1000. Each
+    /// recording in them becomes a segment, named by its recording id.
+    pub paths: Vec<std::path::PathBuf>,
 
     /// The layer to register the recordings as, e.g. `labels`. Left out, the base layer.
     #[serde(default)]

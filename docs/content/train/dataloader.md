@@ -148,6 +148,8 @@ It checks each computed decode start's `is_keyframe` marker alongside the reques
 A missing or false marker makes that video field unresolved, so live iterable loading skips the sample under the same `max_consecutive_skipped_samples` policy as other missing values.
 The default `timeline_sampling=None` preserves each field's filling behavior and discovers keyframes from the data.
 
+To validate the keyframes of video imported from MP4 with `rerun.experimental.Mp4Reader` and not transcoded, `Mp4Reader.info()` gives the keyframe frame numbers and GOP sizes from the file's metadata, without decoding it.
+
 To avoid CPU RGB conversion and reduce the size of decoded samples, keep video in YUV420 through collation.
 `Yuv420Collator` is an optional convenience for applications whose other fields can use PyTorch's default collation:
 

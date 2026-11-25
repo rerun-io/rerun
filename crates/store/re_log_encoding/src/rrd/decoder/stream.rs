@@ -104,8 +104,8 @@ impl<T: DecoderEntrypoint + Unpin, R: AsyncBufRead + Unpin> Stream for DecoderSt
                 }
 
                 std::task::Poll::Ready(Ok(buf)) => {
-                    decoder.push_byte_chunk(buf.to_vec());
-                    let len = buf.len(); // borrowck limitation
+                    let len = buf.len().min(super::MAX_BYTE_CHUNK_LEN);
+                    decoder.push_byte_chunk(bytes::Bytes::copy_from_slice(&buf[..len]));
                     reader.consume(len);
                 }
 

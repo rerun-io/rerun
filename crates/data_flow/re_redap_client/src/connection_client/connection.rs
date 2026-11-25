@@ -4,6 +4,7 @@ use re_protos::capabilities::ServerCapabilities;
 use re_protos::cloud::v1alpha1::rerun_cloud_service_server::{
     RerunCloudService, RerunCloudServiceServer,
 };
+use re_protos::protocol_level::ProtocolLevel;
 
 use super::RedapClient;
 
@@ -26,16 +27,21 @@ pub struct Connection {
 
     /// What the server advertised on `/WhoAmI` when the connection was made.
     pub(crate) capabilities: ServerCapabilities,
+
+    /// The protocol level of the server, as of when the connection was made.
+    pub(crate) server_protocol_level: ProtocolLevel,
 }
 
 impl Connection {
     /// Create a connection backed by an in-process Rerun catalog implementation.
     ///
-    /// No `/WhoAmI` call is made, so the handler's capabilities are passed in directly.
+    /// No `/WhoAmI` call is made, so the handler's capabilities and protocol level are passed in
+    /// directly.
     pub fn from_service<T>(
         origin: re_uri::Origin,
         handler: Arc<T>,
         capabilities: ServerCapabilities,
+        server_protocol_level: ProtocolLevel,
     ) -> Self
     where
         T: RerunCloudService,
@@ -51,6 +57,7 @@ impl Connection {
             client: RedapClient::new(origin, client, None),
             analytics: None,
             capabilities,
+            server_protocol_level,
         }
     }
 
@@ -64,5 +71,12 @@ impl Connection {
     /// This says nothing about what the caller is allowed to do.
     pub fn capabilities(&self) -> &ServerCapabilities {
         &self.capabilities
+    }
+
+    /// The protocol level this server implements.
+    ///
+    /// [`ProtocolLevel::BASELINE`] for a server that does not advertise one.
+    pub fn server_protocol_level(&self) -> ProtocolLevel {
+        self.server_protocol_level
     }
 }

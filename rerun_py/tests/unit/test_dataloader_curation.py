@@ -164,6 +164,12 @@ def test_seeded_sharding_covers_every_candidate_and_survives_spawn(
         fetch_block_size=2,
         seed=7,
     )
+
+    def worker_indices() -> np.ndarray:
+        work_order = dataset._worker_order()
+        blocks = list(work_order.fetch_blocks(fetch_block_size=dataset._fetch_block_size))
+        return np.concatenate(blocks) if blocks else np.empty(0, dtype=np.int64)
+
     indices = []
     for rank in range(2):
         monkeypatch.setattr(iterable_dataset, "_live_ddp_topology", lambda rank=rank: (rank, 2))
@@ -171,15 +177,17 @@ def test_seeded_sharding_covers_every_candidate_and_survives_spawn(
             monkeypatch.setattr(
                 torch.utils.data, "get_worker_info", lambda worker=worker: SimpleNamespace(id=worker, num_workers=2)
             )
-            order, _ = dataset._worker_order()
-            assert np.array_equal(order, dataset._worker_order()[0])
+            order = worker_indices()
+            assert np.array_equal(order, worker_indices())
             indices.extend(order.tolist())
     assert sorted(indices) == list(range(12))
-    expected_order = dataset._worker_order()[0]
+    expected_order = worker_indices()
     restored = pickle.loads(pickle.dumps(dataset))
     monkeypatch.setattr(iterable_dataset, "_live_ddp_topology", lambda: None)
     assert restored._ddp_topology() == (1, 2)
-    assert np.array_equal(restored._worker_order()[0], expected_order)
+    restored_order = restored._worker_order()
+    restored_blocks = list(restored_order.fetch_blocks(fetch_block_size=restored._fetch_block_size))
+    assert np.array_equal(np.concatenate(restored_blocks), expected_order)
 
 
 @pytest.mark.filterwarnings("ignore:The default multiprocessing start method is 'fork':RuntimeWarning")

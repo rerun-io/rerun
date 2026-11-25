@@ -20,10 +20,10 @@ all-features = true
 
 
 [features]
-default = ["image", "video", "mcap", "lerobot", "parquet", "puffin", "urdf"]
+default = ["image", "video", "mcap", "mjcf", "lerobot", "parquet", "puffin", "urdf"]
 
 ## Every importer feature.
-all = ["image", "lerobot", "mcap", "parquet", "puffin", "urdf", "video"]
+all = ["image", "lerobot", "mcap", "mjcf", "parquet", "puffin", "urdf", "video"]
 
 ## Import of common image formats (PNG, JPEG, …) as `EncodedImage`/`EncodedDepthImage`.
 image = ["dep:image", "re_sdk_types/image"]
@@ -35,6 +35,9 @@ lerobot = ["dep:re_lerobot"]
 ## MCAP file import. Also pulls in `urdf` since `robot_description` topics are
 ## decoded via the URDF importer's XML parser.
 mcap = ["dep:mcap", "dep:memmap2", "dep:re_mcap", "dep:re_lenses", "urdf"]
+
+## MJCF (MuJoCo model) file import.
+mjcf = ["dep:mjcf-rs"]
 
 ## Parquet file import.
 parquet = ["dep:parquet", "dep:re_parquet"]
@@ -73,6 +76,7 @@ anyhow.workspace = true
 arrow.workspace = true
 document-features.workspace = true
 memmap2 = { workspace = true, optional = true }
+mjcf-rs = { workspace = true, optional = true }
 crossbeam.workspace = true
 image = { workspace = true, optional = true }
 indexmap.workspace = true

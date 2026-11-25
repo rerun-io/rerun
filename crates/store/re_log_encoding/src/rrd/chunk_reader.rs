@@ -18,6 +18,9 @@ const MERGE_GAP_BYTES: u64 = 64 * 1024; // 64 KiB
 /// Internally sorts requested chunks by byte offset for sequential I/O,
 /// and merges adjacent/nearby spans (within 64 kB) into single reads.
 ///
+/// An uncompressed chunk aliases the buffer of the read it came from, so it keeps the other
+/// chunks of that read alive until it is dropped.
+///
 /// Returns [`CodecError::ChunkNotInManifest`] if any chunk ID is not in the manifest.
 /// Aborts on first error (no partial results).
 pub async fn read_chunks<R: AsyncReadAt>(
@@ -67,7 +70,7 @@ pub async fn read_chunks<R: AsyncReadAt>(
             );
             let chunk = {
                 re_tracing::profile_scope!("decode_chunk_from_bytes");
-                decode_chunk_from_bytes(&buf[local_span.range()])?
+                decode_chunk_from_bytes(buf.slice(local_span.range()))?
             };
             result.push(Arc::new(chunk));
         }
@@ -110,7 +113,10 @@ fn coalesce_spans(entries: &[(ChunkId, Span<u64>)]) -> Vec<CoalescedSpan> {
 }
 
 /// Decode a chunk from raw protobuf `ArrowMsg` bytes.
-fn decode_chunk_from_bytes(buf: &[u8]) -> Result<Chunk, CodecError> {
+///
+/// `buf` is sliced from the read buffer, which is what an uncompressed chunk keeps alive
+/// (see [`re_protos::common::v1alpha1::ext::record_batch_from_ipc_bytes`]).
+fn decode_chunk_from_bytes(buf: bytes::Bytes) -> Result<Chunk, CodecError> {
     use crate::rrd::Decodable as _;
 
     let transport_arrow_msg = re_protos::log_msg::v1alpha1::ArrowMsg::from_rrd_bytes(buf)?;

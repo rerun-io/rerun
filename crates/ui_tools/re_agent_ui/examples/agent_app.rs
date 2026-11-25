@@ -203,6 +203,7 @@ impl App {
             default_cwd: None,
             off_limits_directories: Vec::new(),
             model_preselect: Default::default(),
+            rerun_mcp_server: None,
         });
         Self { panel }
     }

@@ -517,49 +517,20 @@ fn encode_arrow(
     })
 }
 
-/// Decodes a potentially compressed IPC payload into a native `RecordBatch`.
-//
-// TODO(cmc): can we use the File-oriented APIs in order to re-use the transport buffer as backing
-// storage for the final RecordBatch?
-// See e.g. https://github.com/apache/arrow-rs/blob/b8b2f21f6a8254224d37a1e2d231b6b1e1767648/arrow/examples/zero_copy_ipc.rs
+/// Decodes a potentially compressed IPC payload into a native `RecordBatch`,
+/// see [`re_protos::common::v1alpha1::ext::record_batch_from_ipc_bytes`] for what the batch keeps alive.
 #[tracing::instrument(level = "debug", skip_all)]
 fn decode_arrow(
-    data: &[u8],
+    data: &re_protos::external::prost::bytes::Bytes,
     uncompressed_size: u64,
     compression: crate::rrd::Compression,
 ) -> Result<arrow::array::RecordBatch, CodecError> {
-    let mut uncompressed = Vec::new();
-    let data = match compression {
-        crate::rrd::Compression::Off => data,
-        crate::rrd::Compression::LZ4 => {
-            re_tracing::profile_scope!("LZ4-decompress");
-            let _span = tracing::trace_span!("lz4::decompress").entered();
-            let max = re_protos::common::v1alpha1::ext::max_lz4_decompressed_size(data.len());
-            if uncompressed_size > max {
-                return Err(CodecError::InvalidUncompressedSize {
-                    declared: uncompressed_size,
-                    max,
-                });
-            }
-            let uncompressed_size = usize::try_from(uncompressed_size)?;
-            uncompressed.try_reserve_exact(uncompressed_size)?;
-            uncompressed.resize(uncompressed_size, 0);
-            lz4_flex::block::decompress_into(data, &mut uncompressed)?;
-            uncompressed.as_slice()
-        }
-    };
-
-    let mut stream = {
-        let _span = tracing::trace_span!("schema").entered();
-        ::arrow::ipc::reader::StreamReader::try_new(data, None)
-            .map_err(CodecError::ArrowDeserialization)?
-    };
-
-    let _span = tracing::trace_span!("data").entered();
-    stream
-        .next()
-        .ok_or(CodecError::MissingRecordBatch)?
-        .map_err(CodecError::ArrowDeserialization)
+    re_protos::common::v1alpha1::ext::record_batch_from_ipc_bytes(
+        data,
+        compression,
+        uncompressed_size,
+    )?
+    .ok_or(CodecError::MissingRecordBatch)
 }
 
 #[cfg(test)]

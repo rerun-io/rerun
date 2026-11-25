@@ -8,7 +8,6 @@ use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
 use ffmpeg_sidecar::child::FfmpegChild;
 use ffmpeg_sidecar::command::FfmpegCommand;
 use ffmpeg_sidecar::event::{FfmpegEvent, LogLevel};
-use h264_reader::nal::UnitType;
 use re_log::debug_assert;
 use re_quota_channel::{Receiver, SendError, Sender};
 
@@ -23,7 +22,7 @@ use crate::decode::{
 use crate::demux::ChromaSubsamplingModes;
 use crate::h264::write_avc_chunk_to_nalu_stream;
 use crate::h265::write_hevc_chunk_to_nalu_stream;
-use crate::nalu::{ANNEXB_NAL_START_CODE, AnnexBStreamState, AnnexBStreamWriteError};
+use crate::nalu::{AnnexBStreamState, AnnexBStreamWriteError};
 use crate::{PixelFormat, Time, VideoDataDescription, VideoEncodingDetails};
 
 /// How many frame threads we tell ffmpeg to decode with.
@@ -392,12 +391,10 @@ impl FFmpegProcessAndListener {
             .spawn({
                 let output_sender = output_sender.clone();
                 let debug_name = debug_name.to_owned();
-                let ffmpeg_path = ffmpeg_path.map(|p| p.to_owned());
                 let outstanding_frames = num_outstanding_frames.clone();
                 move || {
                     read_ffmpeg_output(
                         &debug_name,
-                        ffmpeg_path.as_deref(),
                         ffmpeg_iterator,
                         &frame_info_rx,
                         &pixel_format,
@@ -555,12 +552,7 @@ fn write_ffmpeg_input(
         let chunk = match data {
             FFmpegFrameData::Chunk(chunk) => chunk,
             FFmpegFrameData::Quit => {
-                codec_meta.write_end_of_stream(ffmpeg_stdin).ok();
-
-                // NOTE(emilk): I've also tried writing `NalUnitType::AccessUnitDelimiter` here, but to no avail.
-
                 ffmpeg_stdin.flush().ok();
-
                 break;
             }
         };
@@ -688,23 +680,19 @@ impl FrameBuffer {
     }
 }
 
+/// Forwards the frames and errors of one ffmpeg process to `output_sender`.
+///
+/// This must depend on nothing but that one process. In particular it must not wait for
+/// [`FFmpegVersion::for_executable_blocking`], which runs a second process: if that one stalls,
+/// no frame would ever arrive.
 fn read_ffmpeg_output(
     debug_name: &str,
-    ffmpeg_path: Option<&std::path::Path>,
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
     frame_info_rx: &Receiver<FFmpegFrameInfo>,
     pixel_format: &PixelFormat,
     outstanding_frames: &AtomicI32,
     output_sender: &OutputSender,
 ) -> Option<()> {
-    // Before we do anything else - make sure the ffmpeg version is compatible:
-    // Ok to block here - we're in a background thread.
-    let ffmpeg_version_result = FFmpegVersion::for_executable_blocking(ffmpeg_path);
-    if let Err(err) = check_ffmpeg_version(ffmpeg_version_result) {
-        send_output(output_sender, Err(err.into())).ok();
-        return None;
-    }
-
     let mut buffer = FrameBuffer::new();
 
     for event in ffmpeg_iterator {
@@ -865,7 +853,8 @@ fn read_ffmpeg_output(
                             }
                             .into()),
                         )
-                        .ok()?;
+                        .ok();
+                        return None;
                     }
                 } else {
                     re_log::warn_once!(
@@ -927,9 +916,8 @@ impl FFmpegCliDecoder {
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        // Check the version once ahead of running FFmpeg, if we can get it without blocking.
-        // We also check it in a background thread, but getting the error
-        // early is preferable:
+        // Check the version ahead of running FFmpeg, if we can get it without blocking:
+        // getting the error early is preferable.
         if let std::task::Poll::Ready(ffmpeg_version_result) =
             FFmpegVersion::for_executable_poll(ffmpeg_path.as_deref())
         {
@@ -1040,9 +1028,6 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         "encoder         : ", // Describes the encoder that was used to encode a video.
         "Metadata:",
         "Stream mapping:",
-        // TODO(andreas): We see invalid IDR frames (NAL unit 5) on otherwise perfectly fine H265 video material
-        // This one might be an actual bug! But so far no issues in playback have been observed.
-        "Invalid NAL unit 5, skipping.",
         // It likes to say this a lot, almost no matter the format.
         // Some sources say this is more about internal formats, i.e. specific decoders using the wrong values, rather than the cli passed formats.
         "deprecated pixel format used, make sure you did set range correctly",
@@ -1177,25 +1162,6 @@ impl CodecMeta {
             Self::Ivf(ivf) => ivf.write_frame(out, &chunk.data),
         }
     }
-
-    fn write_end_of_stream(&self, out: &mut dyn std::io::Write) -> Result<(), Error> {
-        match self {
-            Self::Ivf(_) => Ok(()),
-            Self::RawBytestream | Self::Avc { .. } | Self::Hevc { .. } => {
-                // Try to flush out the last frames from ffmpeg with EndSequence/EndStream NAL units.
-                // Unfortunately this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
-                let end_nals: Vec<u8> = [
-                    ANNEXB_NAL_START_CODE,
-                    &[UnitType::EndOfSeq.id()],
-                    ANNEXB_NAL_START_CODE,
-                    &[UnitType::EndOfStream.id()],
-                ]
-                .concat();
-
-                write_bytes(out, &end_nals)
-            }
-        }
-    }
 }
 
 #[cfg(test)]
@@ -1204,6 +1170,17 @@ mod tests {
 
     use super::{FFmpegCliDecoder, FFmpegVersion, sanitize_ffmpeg_log_message};
     use crate::{AsyncDecoder as _, VideoDataDescription, player::VideoSliceSource};
+
+    fn read_video_asset(file_name: &str) -> Vec<u8> {
+        let video_path = std::env::var_os("CARGO_MANIFEST_DIR")
+            .map_or_else(
+                || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
+                std::path::PathBuf::from,
+            )
+            .join("../../../tests/assets/video")
+            .join(file_name);
+        std::fs::read(&video_path).unwrap()
+    }
 
     #[test]
     fn test_sanitize_ffmpeg_log_message() {
@@ -1273,13 +1250,7 @@ mod tests {
             return;
         }
 
-        let video_path = std::env::var_os("CARGO_MANIFEST_DIR")
-            .map_or_else(
-                || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")),
-                std::path::PathBuf::from,
-            )
-            .join("../../../tests/assets/video/Big_Buck_Bunny_1080_1s_h264.mp4");
-        let data = std::fs::read(&video_path).unwrap();
+        let data = read_video_asset("Big_Buck_Bunny_1080_1s_h264.mp4");
         let video_descr =
             VideoDataDescription::load_from_bytes(&data, "video/mp4", "ffmpeg delay").unwrap();
 
@@ -1335,6 +1306,133 @@ mod tests {
         assert!(
             needed <= promised,
             "ffmpeg needed {needed} samples ahead, more than the {promised} we promise the player"
+        );
+    }
+
+    /// `ffmpeg -version` is a second process. If it is slow, or never finishes, the decoder
+    /// must still hand out frames.
+    #[test]
+    fn decodes_while_version_is_pending() {
+        let Ok(version) = FFmpegVersion::for_executable_blocking(None) else {
+            // Nothing to assert without ffmpeg on this machine.
+            return;
+        };
+        if !version.is_compatible() {
+            return;
+        }
+
+        // A different cache key than the `None` that other tests use, for the same executable.
+        let file_name = format!("ffmpeg{}", std::env::consts::EXE_SUFFIX);
+        let Some(ffmpeg_path) = std::env::var_os("PATH").and_then(|paths| {
+            std::env::split_paths(&paths)
+                .map(|dir| dir.join(&file_name))
+                .find(|path| path.is_file())
+        }) else {
+            return;
+        };
+
+        let data = read_video_asset("Big_Buck_Bunny_1080_1s_h264.mp4");
+        let video_descr =
+            VideoDataDescription::load_from_bytes(&data, "video/mp4", "pending version").unwrap();
+
+        let chunks: Vec<_> = video_descr
+            .samples
+            .iter_indexed()
+            .map(|(sample_idx, sample)| {
+                let sample = sample.sample().unwrap();
+                sample.get(&VideoSliceSource(&data), sample_idx).unwrap()
+            })
+            .collect();
+
+        let (frame_tx, frame_rx) = crate::channel("pending version");
+
+        let pending_version = FFmpegVersion::pending_for_test(&ffmpeg_path);
+
+        let got_frame = FFmpegCliDecoder::new(
+            "pending version".to_owned(),
+            video_descr.encoding_details.as_ref(),
+            frame_tx,
+            Some(ffmpeg_path),
+            &crate::VideoCodec::H264,
+        )
+        .map(|mut decoder| {
+            for chunk in chunks {
+                decoder.submit_chunk(chunk).ok();
+            }
+            decoder.end_of_video().ok();
+
+            // ffmpeg may report recoverable errors before its first frame.
+            let deadline = std::time::Instant::now() + Duration::from_secs(30);
+            loop {
+                let time_left = deadline.saturating_duration_since(std::time::Instant::now());
+                match frame_rx.recv_timeout(time_left) {
+                    Ok(Ok(_frame)) => break true,
+                    Ok(Err(_err)) => {}
+                    Err(_err) => break false,
+                }
+            }
+        });
+
+        // Resolve the version before asserting, so that nothing is left waiting for it.
+        pending_version.set(Ok(version)).unwrap();
+
+        assert!(
+            got_frame.unwrap(),
+            "no frame while the ffmpeg version was pending"
+        );
+    }
+
+    /// Decodes every sample of an H.265 video, then ends the video.
+    /// Ending the video makes ffmpeg flush the frames it still holds,
+    /// so every sample must come back as a decoded frame.
+    #[test]
+    fn hevc_end_of_video_decodes_every_sample() {
+        if !matches!(
+            FFmpegVersion::for_executable_blocking(None),
+            Ok(version) if version.is_compatible()
+        ) {
+            // Nothing to assert without a usable ffmpeg on this machine.
+            return;
+        }
+
+        let data = read_video_asset("Big_Buck_Bunny_1080_1s_h265.mp4");
+        let video_descr =
+            VideoDataDescription::load_from_bytes(&data, "video/mp4", "hevc end of video").unwrap();
+
+        let (frame_tx, frame_rx) = crate::channel("hevc end of video");
+        let mut decoder = FFmpegCliDecoder::new(
+            "hevc end of video".to_owned(),
+            video_descr.encoding_details.as_ref(),
+            frame_tx,
+            None,
+            &crate::VideoCodec::H265,
+        )
+        .unwrap();
+
+        for (sample_idx, sample) in video_descr.samples.iter_indexed() {
+            let sample = sample.sample().unwrap();
+            let chunk = sample.get(&VideoSliceSource(&data), sample_idx).unwrap();
+            decoder.submit_chunk(chunk).unwrap();
+        }
+        decoder.end_of_video().unwrap();
+
+        let num_samples = video_descr.samples.num_elements();
+        let mut num_received = 0;
+
+        // ffmpeg may report recoverable errors between frames.
+        let deadline = std::time::Instant::now() + Duration::from_secs(30);
+        while num_received < num_samples {
+            let time_left = deadline.saturating_duration_since(std::time::Instant::now());
+            match frame_rx.recv_timeout(time_left) {
+                Ok(Ok(_frame)) => num_received += 1,
+                Ok(Err(_err)) => {}
+                Err(_err) => break,
+            }
+        }
+
+        assert_eq!(
+            num_received, num_samples,
+            "ffmpeg returned only {num_received} of {num_samples} frames"
         );
     }
 }

@@ -1,11 +1,13 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use arrow::array::RecordBatch;
+use arrow::pyarrow::PyArrowType;
 use pyo3::exceptions::{PyFileNotFoundError, PyValueError};
 use pyo3::prelude::*;
 use re_chunk::{Chunk, EntityPath};
 use re_log_types::TimelineName;
-use re_mp4_reader::{Mode, Mp4Config};
+use re_mp4_reader::{Mode, Mp4Config, Mp4Info};
 use re_sdk_types::components::VideoCodec;
 use re_video::{HwAccel, Mp4TranscodeOptions};
 
@@ -66,6 +68,97 @@ impl PyMp4TranscodeOptions {
 
     fn __repr__(&self) -> String {
         format!("Mp4TranscodeOptionsInternal({:?})", self.inner)
+    }
+}
+
+/// Internal binding for [`Mp4Info`].
+#[pyclass(
+    frozen,
+    name = "Mp4InfoInternal",
+    module = "rerun_bindings.rerun_bindings"
+)]
+pub struct PyMp4InfoInternal {
+    /// A `rerun.components.VideoCodec` enum value.
+    #[pyo3(get)]
+    codec: u32,
+
+    #[pyo3(get)]
+    codec_string: String,
+
+    #[pyo3(get)]
+    width: u16,
+
+    #[pyo3(get)]
+    height: u16,
+
+    #[pyo3(get)]
+    bit_depth: Option<u8>,
+
+    #[pyo3(get)]
+    num_frames: usize,
+
+    #[pyo3(get)]
+    duration_ns: i64,
+
+    #[pyo3(get)]
+    has_b_frames: bool,
+
+    #[pyo3(get)]
+    gop_size_min: usize,
+
+    #[pyo3(get)]
+    gop_size_max: usize,
+
+    samples: RecordBatch,
+}
+
+#[pymethods]
+impl PyMp4InfoInternal {
+    #[getter]
+    fn samples(&self) -> PyArrowType<RecordBatch> {
+        PyArrowType(self.samples.clone())
+    }
+}
+
+impl TryFrom<Mp4Info> for PyMp4InfoInternal {
+    type Error = ChunkPipelineError;
+
+    fn try_from(info: Mp4Info) -> Result<Self, Self::Error> {
+        let Mp4Info {
+            codec,
+            codec_string,
+            coded_dimensions: [width, height],
+            bit_depth,
+            num_frames,
+            duration_nanos,
+            has_b_frames,
+            gop_size_min,
+            gop_size_max,
+            samples,
+        } = info;
+
+        let codec = VideoCodec::try_from(codec).map_err(|err| ChunkPipelineError::Mp4 {
+            reason: err.to_string(),
+        })?;
+        let samples = samples
+            .into_record_batch()
+            .map_err(|err| ChunkPipelineError::Mp4 {
+                reason: err.to_string(),
+            })?;
+
+        Ok(Self {
+            codec: codec as u32,
+            codec_string,
+            width,
+            height,
+            bit_depth,
+            num_frames,
+            duration_ns: duration_nanos,
+            has_b_frames,
+            gop_size_min,
+            gop_size_max,
+            samples,
+        })
     }
 }
 
@@ -165,6 +258,16 @@ impl PyMp4ReaderInternal {
             config: self.config.clone(),
             entity_path: self.entity_path.clone(),
         }))
+    }
+
+    /// Describe the source file as stored, without streaming it.
+    fn info(&self, py: Python<'_>) -> PyResult<PyMp4InfoInternal> {
+        let info = py
+            .detach(|| re_mp4_reader::load_mp4_info(&self.path))
+            .map_err(|err| ChunkPipelineError::Mp4 {
+                reason: err.to_string(),
+            })?;
+        Ok(PyMp4InfoInternal::try_from(info)?)
     }
 
     /// The file path this reader was constructed with.

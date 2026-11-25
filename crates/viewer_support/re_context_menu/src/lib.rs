@@ -25,7 +25,7 @@ pub use visibility_actions::{
 use actions::add_container::AddContainerAction;
 use actions::add_entities_to_new_view::AddEntitiesToNewViewAction;
 use actions::add_view::AddViewAction;
-use actions::clone_view::CloneViewAction;
+use actions::clone_contents::CloneContentsAction;
 use actions::collapse_expand_all::CollapseExpandAllAction;
 use actions::lock_unlock::{LockAction, UnlockAction};
 use actions::move_contents_to_new_container::MoveContentsToNewContainerAction;
@@ -186,7 +186,7 @@ fn action_list(
                 Box::new(CollapseExpandAllAction::ExpandAll),
                 Box::new(CollapseExpandAllAction::CollapseAll),
             ],
-            vec![Box::new(CloneViewAction)],
+            vec![Box::new(CloneContentsAction)],
             vec![
                 Box::new(SubMenu {
                     label: "Add container".to_owned(),

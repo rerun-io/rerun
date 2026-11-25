@@ -14,6 +14,19 @@ use crate::{
     ViewClass, ViewId, ViewState, ViewerDiagnostic, VisualizerTypeReport,
 };
 
+/// Hold this to act on all previews at once: scrub them all, or play/pause them all.
+pub const ALL_PREVIEWS_MODIFIER: egui::Modifiers = egui::Modifiers::COMMAND;
+
+/// How long [`ALL_PREVIEWS_MODIFIER`] must be held before the scrub bars show on all previews.
+///
+/// Avoids flashing the bars on shortcuts like cmd-V or cmd-tab.
+const SCRUB_ALL_DELAY_SECS: f64 = 0.1;
+
+/// How long the scrub bars on all previews take to fade in.
+///
+/// Short enough to feel responsive, long enough to not pop.
+const SCRUB_ALL_FADE_SECS: f64 = 0.15;
+
 /// Combined key of recording store id and view id.
 ///
 /// The same view may be shown for different recordings, and we don't want to share
@@ -50,6 +63,85 @@ impl Default for ActivePreview {
     }
 }
 
+/// When to show the scrub bars on every preview while cmd is held.
+///
+/// Each preview reads and updates it, so a value written by one preview is seen by the
+/// previews drawn after it in the same frame, and by all previews in the next frame.
+#[derive(Clone, Copy, Default, re_byte_size::SizeBytes)]
+pub struct ScrubAllState {
+    /// When cmd started being held, or `None` if it is not held.
+    command_held_since: Option<f64>,
+
+    /// When the scrub bars on all previews started to show, or `None` if they are hidden.
+    visible_since: Option<f64>,
+
+    /// The last frame where the pointer was over a preview card.
+    card_hovered_frame: Option<u64>,
+
+    /// The last frame where any preview read this state.
+    ///
+    /// Cmd may be released while no preview is drawn, so state older than that is stale.
+    last_used_frame: Option<u64>,
+
+    /// Cmd was held while a scrub bar was hovered or dragged, so show the bars without delay.
+    skip_delay: bool,
+}
+
+impl ScrubAllState {
+    /// Note that the pointer is over a preview card this frame.
+    pub fn mark_card_hovered(&mut self, ctx: &egui::Context) {
+        self.card_hovered_frame = Some(ctx.cumulative_frame_nr());
+    }
+
+    /// How visible the scrub bars on all previews should be, in `0..=1`.
+    ///
+    /// `scrub_bar_active` is whether this preview's scrub bar is hovered or dragged.
+    pub fn opacity(&mut self, ctx: &egui::Context, scrub_bar_active: bool) -> f32 {
+        let (now, modifier_held) =
+            ctx.input(|i| (i.time, i.modifiers.matches_exact(ALL_PREVIEWS_MODIFIER)));
+        let frame_nr = ctx.cumulative_frame_nr();
+
+        let is_stale = self
+            .last_used_frame
+            .is_some_and(|last_used_frame| last_used_frame + 1 < frame_nr);
+        self.last_used_frame = Some(frame_nr);
+
+        if !modifier_held || is_stale {
+            *self = Self {
+                card_hovered_frame: self.card_hovered_frame,
+                last_used_frame: self.last_used_frame,
+                ..Default::default()
+            };
+            return 0.0;
+        }
+
+        let held_since = *self.command_held_since.get_or_insert(now);
+        self.skip_delay |= scrub_bar_active;
+
+        // The hovered card may be drawn after this one, so also accept the previous frame.
+        let any_card_hovered = self
+            .card_hovered_frame
+            .is_some_and(|hovered_frame| frame_nr <= hovered_frame + 1);
+        if !any_card_hovered {
+            self.visible_since = None;
+            return 0.0;
+        }
+
+        let remaining_delay = held_since + SCRUB_ALL_DELAY_SECS - now;
+        if !self.skip_delay && 0.0 < remaining_delay {
+            ctx.request_repaint_after_secs(remaining_delay as f32);
+            return 0.0;
+        }
+
+        let visible_since = *self.visible_since.get_or_insert(now);
+        let opacity = ((now - visible_since) / SCRUB_ALL_FADE_SECS).clamp(0.0, 1.0) as f32;
+        if opacity < 1.0 {
+            ctx.request_repaint();
+        }
+        opacity
+    }
+}
+
 /// Shared playback state for all preview recordings shown in grid or table cards.
 ///
 /// All active previews have their own [`TimeControl`].
@@ -66,6 +158,9 @@ pub struct PreviewState {
 
     /// URIs that have already been requested.
     pub requested_uris: ahash::HashSet<re_uri::DatasetUri>,
+
+    /// When to show the scrub bars on every preview while cmd is held.
+    pub scrub_all: ScrubAllState,
 }
 
 impl PreviewState {

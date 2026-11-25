@@ -117,6 +117,19 @@ impl FFmpegVersion {
             || (self.major == FFMPEG_MINIMUM_VERSION_MAJOR
                 && self.minor >= FFMPEG_MINIMUM_VERSION_MINOR)
     }
+
+    /// Keeps the version of the executable at `path` pending until the returned cell is set.
+    ///
+    /// Set the result before leaving the test so any waiters can finish.
+    #[cfg(test)]
+    pub fn pending_for_test(path: &std::path::Path) -> Arc<OnceLock<FfmpegVersionResult>> {
+        let modification_time = file_modification_time(Some(path)).unwrap();
+        let pending = Arc::new(OnceLock::new());
+        VersionCache::global(|VersionCache(cache)| {
+            cache.insert(path.to_path_buf(), (modification_time, pending.clone()));
+        });
+        pending
+    }
 }
 
 fn file_modification_time(
@@ -247,22 +260,17 @@ fn ffmpeg_version(
 
 #[cfg(test)]
 mod tests {
-    use std::sync::{Arc, OnceLock};
     use std::task::Poll;
     use std::time::Duration;
 
-    use super::{FFmpegVersion, VersionCache, file_modification_time};
+    use super::FFmpegVersion;
 
     /// Regression test for <https://github.com/rerun-io/rerun/issues/10789>.
     #[test]
     fn poll_does_not_wait_for_blocking_caller() {
         // The cache is global, so use a path no other test uses. It must exist for `file_modification_time`.
         let path = std::env::current_exe().unwrap();
-        let modification_time = file_modification_time(Some(&path)).unwrap();
-        let pending = Arc::new(OnceLock::new());
-        VersionCache::global(|VersionCache(cache)| {
-            cache.insert(path.clone(), (modification_time, pending.clone()));
-        });
+        let pending = FFmpegVersion::pending_for_test(&path);
 
         let blocking = std::thread::Builder::new()
             .name("test_blocking".to_owned())

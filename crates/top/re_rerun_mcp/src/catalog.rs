@@ -5,6 +5,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use rmcp::model::{CallToolRequestParams, CallToolResult, Tool};
 
+use re_agent_tools::CatalogAccess;
 use re_catalog_tools::{CatalogTool, CatalogTools};
 
 use crate::{ServeError, toolbox};
@@ -24,15 +25,18 @@ pub struct CatalogToolset {
 
 impl CatalogToolset {
     /// Must be called inside the Tokio runtime the server runs on.
-    pub fn new(origin: Option<re_uri::Origin>) -> Result<Self, ServeError> {
+    pub fn new(origin: Option<re_uri::Origin>, access: CatalogAccess) -> Result<Self, ServeError> {
         let runtime = re_async::AsyncRuntimeHandle::from_current_tokio_runtime_or_wasmbindgen()
             .map_err(|source| ServeError::NoRuntime { source })?;
         let registry = re_redap_client::ConnectionRegistry::new_with_stored_credentials()
             .with_client_name("rerun-mcp".to_owned());
+        let defaults_to_viewer_catalog = AtomicBool::new(origin.is_none());
+        let tools = CatalogTools::new(registry, runtime, origin)
+            .with_known_servers(re_redap_client::KnownServers::in_config_dir());
+        tools.set_access(access);
         Ok(Self {
-            defaults_to_viewer_catalog: AtomicBool::new(origin.is_none()),
-            tools: CatalogTools::new(registry, runtime, origin)
-                .with_known_servers(re_redap_client::KnownServers::in_config_dir()),
+            tools,
+            defaults_to_viewer_catalog,
         })
     }
 
@@ -78,7 +82,9 @@ impl CatalogToolset {
             format!("Call `{connect}` with the catalog's URL first.")
         };
         let mut instructions = format!("{}\n- {start}", INSTRUCTIONS.trim_end());
-        write!(instructions, "\n- {}", CatalogTool::write_guidance()).ok();
+        if self.tools.access().allows_writes() {
+            write!(instructions, "\n- {}", CatalogTool::write_guidance()).ok();
+        }
         instructions
     }
 
@@ -94,6 +100,11 @@ impl CatalogToolset {
     /// itself, so an explicit choice always wins.
     pub fn defaults_to_viewer_catalog(&self) -> bool {
         self.defaults_to_viewer_catalog.load(Ordering::Relaxed)
+    }
+
+    /// See [`CatalogTools::on_catalog_change`].
+    pub fn on_catalog_change(&self, on_change: impl Fn(&re_uri::Origin) + Send + Sync + 'static) {
+        self.tools.on_catalog_change(on_change);
     }
 
     /// The catalog the tools act on, if any.

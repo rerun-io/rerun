@@ -7,7 +7,7 @@ use itertools::Itertools as _;
 use re_chunk::{Chunk, EntityPath, TimePoint};
 use re_log_types::EntityPathPart;
 use re_sdk_types::archetypes::Transform3D;
-use urdf_rs::{Geometry, Joint, Link, Material, Robot};
+use urdf_rs::{Geometry, Joint, JointType, Link, Material, Robot};
 
 use super::joint_transform;
 use crate::kinematic_tree::LogPaths;
@@ -121,6 +121,16 @@ impl UrdfTree {
                     "Joint '{}' references unknown parent link '{}'",
                     joint.name,
                     joint.parent.link
+                );
+            }
+            let moves_along_axis = matches!(
+                joint.joint_type,
+                JointType::Continuous | JointType::Revolute | JointType::Prismatic
+            );
+            if moves_along_axis && super::unit_joint_axis(joint).is_none() {
+                let joint_name = &joint.name;
+                re_log::warn!(
+                    "Joint {joint_name:?} has a zero-length or non-finite axis, so it will not move. Set a non-zero `<axis xyz>` in the URDF."
                 );
             }
         }
@@ -344,6 +354,88 @@ mod tests {
             visual: vec![],
             collision: vec![],
         }
+    }
+
+    /// Two robots that share the default `/tf_static` entity keep all of their static joint
+    /// transforms, because the store keeps every static named-transform row.
+    #[test]
+    fn test_two_prefixed_robots_keep_their_static_transforms() {
+        const URDF: &str = r#"
+            <robot name="arm">
+              <link name="base"/><link name="upper"/><link name="lower"/>
+              <joint name="shoulder" type="fixed"><parent link="base"/><child link="upper"/></joint>
+              <joint name="elbow" type="fixed"><parent link="upper"/><child link="lower"/></joint>
+            </robot>"#;
+
+        let mut store = re_chunk_store::ChunkStore::new(
+            re_log_types::StoreId::random(re_log_types::StoreKind::Recording, "test"),
+            Default::default(),
+        );
+        let mut transforms_paths = Vec::new();
+        for side in ["left", "right"] {
+            let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
+            let tree = UrdfTree::new(robot, None, Some(EntityPath::from(side)))
+                .expect("the test URDF should load")
+                .with_frame_prefix(format!("{side}/"));
+            transforms_paths.push(tree.log_paths.transforms.clone());
+            tree.emit(
+                &mut |chunk| {
+                    store
+                        .insert_chunk(&std::sync::Arc::new(chunk))
+                        .expect("insert should succeed");
+                },
+                &TimePoint::STATIC,
+                true,
+            )
+            .expect("emit should succeed");
+        }
+
+        assert_eq!(
+            transforms_paths[0], transforms_paths[1],
+            "both robots should share the default static transform entity"
+        );
+
+        let mut child_frames = store
+            .iter_physical_chunks()
+            .filter(|chunk| chunk.entity_path() == &transforms_paths[0])
+            .flat_map(|chunk| {
+                chunk
+                    .iter_slices::<String>(Transform3D::descriptor_child_frame().component)
+                    .flatten()
+                    .map(|frame| frame.to_string())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        child_frames.sort();
+        assert_eq!(
+            child_frames,
+            ["left/lower", "left/upper", "right/lower", "right/upper"]
+        );
+    }
+
+    /// A zero axis is a broken joint, not a broken robot: the model still loads, and the joint stays still.
+    #[test]
+    fn test_zero_axis_joint_does_not_move() {
+        const URDF: &str = r#"
+            <robot name="arm">
+              <link name="a"/><link name="b"/>
+              <joint name="broken_hinge" type="revolute">
+                <parent link="a"/><child link="b"/><axis xyz="0 0 0"/>
+                <limit lower="-1" upper="1" effort="1" velocity="1"/>
+              </joint>
+            </robot>"#;
+
+        let robot = urdf_rs::read_from_string(URDF).expect("the test URDF should parse");
+        let tree = UrdfTree::new(robot, None, None).expect("a zero axis must not fail the load");
+        let joint = tree
+            .get_joint_by_name("broken_hinge")
+            .expect("the test URDF declares this joint");
+        let transform = joint_transform::compute_joint_transform(joint, 0.5, false)
+            .expect("a revolute joint is supported");
+        assert_eq!(
+            transform.quaternion,
+            re_sdk_types::external::glam::Quat::IDENTITY
+        );
     }
 
     #[test]

@@ -11,7 +11,7 @@ use crate::codegen::{Target, autogen_warning};
 use crate::objects::{FieldKind, ViewReference};
 use crate::{
     AtomicDataType, CodeGenerator, DocsAttr, GeneratedFiles, Object, ObjectField, ObjectKind,
-    Objects, Reporter, Type,
+    Objects, Reporter, RerunAttr, Type,
 };
 
 /// Like [`writeln!`], but without a [`Result`].
@@ -19,6 +19,9 @@ macro_rules! putln {
     ($o:ident) => ( { writeln!($o).ok(); } );
     ($o:ident, $($tt:tt)*) => ( { writeln!($o, $($tt)*).unwrap(); } );
 }
+
+/// How the archetype index marks an archetype that has the `visualizer_none` attribute.
+const NO_VISUALIZER_NOTE: &str = "no visualizer of its own";
 
 pub struct DocsCodeGenerator {
     docs_dir: Utf8PathBuf,
@@ -84,15 +87,22 @@ impl CodeGenerator for DocsCodeGenerator {
             files_to_write.insert(path, page);
         }
 
+        let archetypes_prelude = format!(
+            r"An archetype is a named set of semantically related components.
+`Points3D`, for example, groups positions, colors, and radii into a point cloud.
+The name is stored with the data, and the Viewer uses it to choose how to show that data by default.
+See [Archetypes](../../logging-and-ingestion/data-model/archetypes.md) for how they work and how to pick one.
+
+This page lists all built-in archetypes.
+Most of them have a visualizer of their own.
+Those marked _{NO_VISUALIZER_NOTE}_ are drawn through another archetype, or are not drawn at all."
+        );
+
         for (kind, order, prelude, kind_objects) in [
             (
                 ObjectKind::Archetype,
                 1,
-                r"Archetypes are bundles of components for which the Rerun viewer has first-class
-built-in support. See [Entities and Components](../../logging-and-ingestion/data-model/entity-component.md) and
-[Visualizers and Overrides](../../viewer/view-concepts/customize-views.md) for more information.
-
-This page lists all built-in archetypes.",
+                archetypes_prelude.as_str(),
                 &archetypes,
             ),
             (
@@ -201,9 +211,15 @@ fn index_page(
                 ""
             };
 
+            let visualizer_note = if object.is_attr_set(RerunAttr::VisualizerNone) {
+                format!(" _({NO_VISUALIZER_NOTE})_")
+            } else {
+                String::new()
+            };
+
             putln!(
                 page,
-                "* {deprecation_note}[`{}`]({}/{}.md): {}",
+                "* {deprecation_note}[`{}`]({}/{}.md): {}{visualizer_note}",
                 object.name,
                 object.kind.plural_snake_case(),
                 object.snake_case_name(),

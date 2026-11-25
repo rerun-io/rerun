@@ -73,8 +73,6 @@ impl StatsCommand {
                         continue;
                     };
 
-                    let mut uncompressed = Vec::new();
-
                     const COMPRESSION_NONE: i32 = Compression::None as _;
                     const COMPRESSION_LZ4: i32 = Compression::Lz4 as _;
 
@@ -83,22 +81,14 @@ impl StatsCommand {
                         COMPRESSION_NONE => Compression::None,
 
                         COMPRESSION_LZ4 => {
-                            let max = re_protos::common::v1alpha1::ext::max_lz4_decompressed_size(
-                                msg.payload.len(),
+                            let uncompressed =
+                                re_protos::common::v1alpha1::ext::decompress_lz4_payload(
+                                    &msg.payload,
+                                    msg.uncompressed_size,
+                                )?;
+                            msg.payload = re_protos::external::prost::bytes::Bytes::from_owner(
+                                BytesOwner(uncompressed),
                             );
-                            anyhow::ensure!(
-                                msg.uncompressed_size <= max,
-                                "declared uncompressed size {} exceeds the {max} byte maximum for this payload",
-                                msg.uncompressed_size
-                            );
-                            let uncompressed_size = usize::try_from(msg.uncompressed_size)?;
-                            uncompressed.try_reserve_exact(uncompressed_size)?;
-                            uncompressed.resize(uncompressed_size, 0);
-                            re_log_encoding::external::lz4_flex::block::decompress_into(
-                                &msg.payload,
-                                &mut uncompressed,
-                            )?;
-                            msg.payload = uncompressed.into();
                             msg.compression = COMPRESSION_NONE;
                             Compression::Lz4
                         }
@@ -618,6 +608,16 @@ fn print_chunk_index_analysis(chunk_index: &RawRrdManifest) -> std::io::Result<(
         )?;
     }
     Ok(())
+}
+
+/// Lets a `Bytes` own an arrow buffer, which does not implement `AsRef<[u8]>` by value.
+struct BytesOwner(arrow::buffer::Buffer);
+
+impl AsRef<[u8]> for BytesOwner {
+    #[inline]
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_slice()
+    }
 }
 
 /// How a chunk's payload was found in the stream, before `rrd stats` decompresses it.

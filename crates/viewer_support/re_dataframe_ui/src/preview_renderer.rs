@@ -17,10 +17,11 @@ use re_ui::UiExt as _;
 
 use re_view::execute_systems_for_view;
 use re_viewer_context::{
-    ActivePreview, ActiveStoreContext, ApplicationSelectionState, Contents, MissingChunkReporter,
-    NeedsRepaint, PreviewState, StoreCache, SystemCommand, SystemCommandSender as _, TimeControl,
-    TimeControlCommand, ViewClass, ViewContextSystemOncePerFrameResult, ViewId, ViewStates,
-    ViewSystemIdentifier, ViewerContext, blueprint_timeline,
+    ALL_PREVIEWS_MODIFIER, ActivePreview, ActiveStoreContext, ApplicationSelectionState, Contents,
+    MissingChunkReporter, NeedsRepaint, PreviewState, StoreCache, SystemCommand,
+    SystemCommandSender as _, TimeControl, TimeControlCommand, ViewClass,
+    ViewContextSystemOncePerFrameResult, ViewId, ViewStates, ViewSystemIdentifier, ViewerContext,
+    blueprint_timeline,
 };
 use re_viewport_blueprint::ViewBlueprint;
 
@@ -33,9 +34,6 @@ use crate::display_record_batch::DisplayColumn;
 type OncePerFrameResults = IntMap<ViewSystemIdentifier, ViewContextSystemOncePerFrameResult>;
 
 const VIEW_SPACING: f32 = 2.0;
-
-/// Hold this to act on all previews at once: scrub them all, or play/pause them all.
-const ALL_PREVIEWS_MODIFIER: egui::Modifiers = egui::Modifiers::COMMAND;
 
 /// View widths follow their preferred aspect ratios at a shared height.
 /// Missing, non-finite, and non-positive ratios fall back to the golden ratio.
@@ -728,8 +726,7 @@ fn preview_playback_ui(
 
     if body.clicked() || button.clicked() {
         playing = !playing;
-        // If holding command, play all previews
-        if ui.input(|input| input.modifiers.matches_logically(ALL_PREVIEWS_MODIFIER)) {
+        if ui.input(|input| input.modifiers.matches_exact(ALL_PREVIEWS_MODIFIER)) {
             play_pause_all = Some(playing);
         } else {
             preview.play_override = Some(playing);
@@ -840,7 +837,7 @@ fn apply_start_point(preview: &mut ActivePreview, start_point: f64, recording: &
     preview.start_point_timeline = Some(timeline);
 }
 
-/// Shows a preview timeline when the grid card/row is hovered.
+/// Shows a preview timeline when the grid card/row is hovered, or on every preview while cmd is held.
 ///
 /// This timeline can be interacted with to set the time of the preview.
 fn preview_timeline(
@@ -852,14 +849,20 @@ fn preview_timeline(
     recording: &EntityDb,
     views_rect: egui::Rect,
 ) {
-    let Some(preview) = state.active_preview_mut(recording.store_id()) else {
-        return;
-    };
-
     // Do this outside the if to keep showing the timeline when dragged.
     let was_active = ui.read_response(id).is_some_and(|last_response| {
         last_response.hovered() || last_response.dragged() || last_response.clicked()
     });
+
+    // Cards report no hover while anything is dragged, so also count the scrub bar itself.
+    if row_hovered || was_active {
+        state.scrub_all.mark_card_hovered(ui.ctx());
+    }
+    let scrub_all_opacity = state.scrub_all.opacity(ui.ctx(), was_active);
+
+    let Some(preview) = state.active_preview_mut(recording.store_id()) else {
+        return;
+    };
 
     // `egui::Id` for memory if the user has used cmd/ctrl drag
     // on the timeline.
@@ -867,20 +870,21 @@ fn preview_timeline(
     // Used to know if we should always show the hint or not.
     let mem_id = egui::Id::unique("preview-has_multi_dragged");
 
-    let all_previews_modifier_held =
-        ui.input(|i| i.modifiers.matches_logically(ALL_PREVIEWS_MODIFIER));
-    if all_previews_modifier_held
-        || was_active
-        || (views_rect != egui::Rect::NOTHING && row_hovered)
-    {
+    let all_previews_modifier_held = ui.input(|i| i.modifiers.matches_exact(ALL_PREVIEWS_MODIFIER));
+    let shown_on_own = was_active || (views_rect != egui::Rect::NOTHING && row_hovered);
+    let opacity = if shown_on_own { 1.0 } else { scrub_all_opacity };
+
+    if 0.0 < opacity {
         let height = egui::lerp(
             TIMELINE_HEIGHT..=TIMELINE_HEIGHT_ACTIVE,
             ui.animate_bool(id, was_active),
         );
         let timeline_rect = views_rect.with_min_y(views_rect.max.y - height);
 
-        ui.painter()
-            .rect_filled(timeline_rect, 0.0, ui.tokens().preview_timeline_track_color);
+        let mut painter = ui.painter().clone();
+        painter.multiply_opacity(opacity);
+
+        painter.rect_filled(timeline_rect, 0.0, ui.tokens().preview_timeline_track_color);
 
         if let Some(time) = preview.time_control.time()
             && let Some(range) = recording.time_range_for(preview.time_control.timeline_name())
@@ -977,7 +981,7 @@ fn preview_timeline(
                 ((time.as_f64() - range.min.as_f64()) / range.abs_length() as f64).clamp(0.0, 1.0)
             };
             if p > 0.0 {
-                ui.painter().rect_filled(
+                painter.rect_filled(
                     timeline_rect
                         .with_max_x(timeline_rect.min.x + timeline_rect.width() * p as f32),
                     0.0,

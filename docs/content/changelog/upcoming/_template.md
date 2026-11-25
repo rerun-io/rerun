@@ -1,6 +1,5 @@
 ---
 title: Changeset entry (template)
-hidden: true
 type: feature # highlight | misc | breaking | feature
 ---
 
@@ -16,7 +15,6 @@ type: feature # highlight | misc | breaking | feature
  Frontmatter:
    title  — your entry's heading (the docs build requires every page under
             docs/content/ to have one).
-   hidden — keep `true`; it keeps the in-flight entry out of the navigation.
    type   — which section the entry belongs in. One of:
               highlight  — a flagship change worth selling at the top of the notes
               misc       — concise user-facing information, rendered as one list item

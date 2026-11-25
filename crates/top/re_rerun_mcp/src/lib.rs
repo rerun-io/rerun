@@ -38,6 +38,7 @@ use rmcp::{
 };
 use url::Url;
 
+pub use re_agent_tools::CatalogAccess;
 use re_agent_tools::ToolEffect;
 use re_catalog_tools::CatalogTool;
 
@@ -92,6 +93,9 @@ pub struct CatalogConfig {
     /// When `None`, the tools act on the catalog of the connected viewer, if it runs on this
     /// machine, until the agent calls `catalog_connect`.
     pub origin: Option<re_uri::Origin>,
+
+    /// Whether to offer the tools that change the catalog.
+    pub access: CatalogAccess,
 }
 
 /// A recoverable tool failure (not connected, a bad endpoint, a bridge or gRPC error, …), carried
@@ -133,12 +137,21 @@ impl RerunMcpServer {
     fn new(config: Config) -> Result<Self, ServeError> {
         let Config { viewer, catalog } = config;
         let catalog = catalog
-            .map(|CatalogConfig { origin }| CatalogToolset::new(origin).map(Arc::new))
+            .map(|CatalogConfig { origin, access }| {
+                CatalogToolset::new(origin, access).map(Arc::new)
+            })
             .transpose()?;
-        Ok(Self {
-            viewer: viewer.map(|ViewerConfig { endpoint }| Arc::new(ViewerToolset::new(endpoint))),
-            catalog,
-        })
+        let viewer = viewer.map(|ViewerConfig { endpoint }| Arc::new(ViewerToolset::new(endpoint)));
+        // TODO(RR-4859, RR-4853): remove once the catalog server sends an event for every change.
+        if let (Some(viewer), Some(catalog)) = (&viewer, &catalog) {
+            let viewer = Arc::clone(viewer);
+            catalog.on_catalog_change(move |origin| {
+                let viewer = Arc::clone(&viewer);
+                let origin = origin.clone();
+                tokio::spawn(async move { viewer.show_catalog_changes(&origin).await });
+            });
+        }
+        Ok(Self { viewer, catalog })
     }
 
     /// Every tool of every enabled toolset.
@@ -416,6 +429,7 @@ mod tests {
             viewer: Some(ViewerConfig::default()),
             catalog: Some(CatalogConfig {
                 origin: Some("rerun+http://127.0.0.1:51234".parse().expect("valid")),
+                access: CatalogAccess::ReadWrite,
             }),
         })
         .expect("server");
@@ -424,6 +438,29 @@ mod tests {
         let instructions = server.instructions();
         assert!(
             instructions.contains("acting on the catalog at `rerun+http://127.0.0.1:51234`"),
+            "{instructions}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_read_only_catalog_offers_no_writes() {
+        let server = server(
+            None,
+            Some(CatalogConfig {
+                origin: None,
+                access: CatalogAccess::ReadOnly,
+            }),
+        );
+        let names: Vec<String> = server
+            .all_tools()
+            .into_iter()
+            .map(|tool| tool.name.to_string())
+            .collect();
+        assert!(names.iter().any(|name| name == "catalog_list_entries"));
+        assert!(!names.iter().any(|name| name == "catalog_create_datasets"));
+        let instructions = server.instructions();
+        assert!(
+            !instructions.contains("catalog_create_datasets"),
             "{instructions}"
         );
     }
@@ -455,6 +492,7 @@ mod tests {
             Some(ViewerConfig::default()),
             Some(CatalogConfig {
                 origin: Some("rerun+http://127.0.0.1:51234".parse().expect("valid")),
+                access: CatalogAccess::ReadWrite,
             }),
         );
         let catalog = configured.catalog.as_ref().expect("catalog toolset");

@@ -156,6 +156,19 @@ pub struct WhoAmIResponse {
     /// anyway rather than treat everything as unsupported.
     #[prost(message, optional, tag = "4")]
     pub capabilities: ::core::option::Option<ServerCapabilities>,
+    /// Set when the server still serves the calling client's version, but will stop doing so.
+    ///
+    /// Unset when the client is not deprecated, and by a server that deprecates no version.
+    /// The server decides from the version the client reports: a client only has to tell its
+    /// user when the field is set.
+    #[prost(message, optional, tag = "5")]
+    pub client_deprecation: ::core::option::Option<ClientDeprecation>,
+    /// The protocol level this server implements: see `ClientMeta.protocol_level`.
+    ///
+    /// 0 from a server that predates this field. A client must not rely on the server part of a
+    /// level above the one advertised here.
+    #[prost(uint32, tag = "6")]
+    pub protocol_level: u32,
 }
 impl ::prost::Name for WhoAmIResponse {
     const NAME: &'static str = "WhoAmIResponse";
@@ -165,6 +178,26 @@ impl ::prost::Name for WhoAmIResponse {
     }
     fn type_url() -> ::prost::alloc::string::String {
         "/rerun.cloud.v1alpha1.WhoAmIResponse".into()
+    }
+}
+/// Tells a client that the server will stop serving its version.
+#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+pub struct ClientDeprecation {
+    /// The oldest client version that is not deprecated.
+    ///
+    /// Unset when the server names none: the client is deprecated all the same.
+    #[prost(message, optional, tag = "1")]
+    pub min_non_deprecated_version:
+        ::core::option::Option<super::super::common::v1alpha1::SemanticVersion>,
+}
+impl ::prost::Name for ClientDeprecation {
+    const NAME: &'static str = "ClientDeprecation";
+    const PACKAGE: &'static str = "rerun.cloud.v1alpha1";
+    fn full_name() -> ::prost::alloc::string::String {
+        "rerun.cloud.v1alpha1.ClientDeprecation".into()
+    }
+    fn type_url() -> ::prost::alloc::string::String {
+        "/rerun.cloud.v1alpha1.ClientDeprecation".into()
     }
 }
 /// Request for `DoBandwidthTest`.

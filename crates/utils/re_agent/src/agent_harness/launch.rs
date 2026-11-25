@@ -56,7 +56,21 @@ impl AgentSettings {
             return Err(AgentLaunchError::MissingWorkingDirectory { cwd });
         }
 
-        let mut mcp_servers = Vec::new();
+        let mut mcp_servers: Vec<McpStdioServer> = context
+            .rerun_mcp_server
+            .iter()
+            .filter(|_| self.rerun_mcp_enabled)
+            .map(|server| {
+                let mut server = server.clone();
+                match self.catalog_access {
+                    re_agent_tools::CatalogAccess::ReadOnly => {
+                        server.args.push("--catalog-read-only".to_owned());
+                    }
+                    re_agent_tools::CatalogAccess::ReadWrite => {}
+                }
+                server
+            })
+            .collect();
         for server in self.mcp_servers.iter().filter(|s| s.enabled) {
             let mut parts = shell_words::split(&server.command_line).map_err(|err| {
                 AgentLaunchError::InvalidMcpCommandLine {
@@ -206,6 +220,72 @@ mod tests {
         // Neither source may name a directory that does not exist.
         assert!(cwd(&here.join("nope").display().to_string(), None).is_none());
         assert!(cwd("", Some(&here.join("nope").display().to_string())).is_none());
+    }
+
+    #[test]
+    fn the_host_s_own_mcp_server_comes_first_unless_turned_off() {
+        let rerun = crate::McpStdioServer {
+            name: "rerun".to_owned(),
+            command: PathBuf::from("/bin/rerun"),
+            args: vec!["mcp".to_owned()],
+        };
+        let context = SessionContext {
+            rerun_mcp_server: Some(rerun.clone()),
+            ..Default::default()
+        };
+        let names = |rerun_mcp_enabled: bool| {
+            let settings = AgentSettings {
+                profile_id: AgentProfileId::CUSTOM,
+                custom_command_line: "agent".to_owned(),
+                mcp_servers: vec![crate::McpServerConfig::new(
+                    "mine",
+                    std::path::Path::new("/bin/mine"),
+                    &[] as &[&str],
+                )],
+                rerun_mcp_enabled,
+                ..Default::default()
+            };
+            settings
+                .agent_harness_config(&[], &context)
+                .expect("config")
+                .mcp_servers
+                .into_iter()
+                .map(|server| server.name)
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(names(true), ["rerun", "mine"]);
+        assert_eq!(names(false), ["mine"]);
+    }
+
+    #[test]
+    fn without_write_access_the_host_s_server_starts_read_only() {
+        let context = SessionContext {
+            rerun_mcp_server: Some(crate::McpStdioServer {
+                name: "rerun".to_owned(),
+                command: PathBuf::from("/bin/rerun"),
+                args: vec!["mcp".to_owned()],
+            }),
+            ..Default::default()
+        };
+        let args = |catalog_access: re_agent_tools::CatalogAccess| {
+            let settings = AgentSettings {
+                profile_id: AgentProfileId::CUSTOM,
+                custom_command_line: "agent".to_owned(),
+                catalog_access,
+                ..Default::default()
+            };
+            settings
+                .agent_harness_config(&[], &context)
+                .expect("config")
+                .mcp_servers
+                .remove(0)
+                .args
+        };
+        assert_eq!(args(re_agent_tools::CatalogAccess::ReadWrite), ["mcp"]);
+        assert_eq!(
+            args(re_agent_tools::CatalogAccess::ReadOnly),
+            ["mcp", "--catalog-read-only"]
+        );
     }
 
     #[test]

@@ -7,7 +7,7 @@ use re_ui::{UiExt as _, icons};
 
 use re_agent::{
     AgentEntry, AgentInstall, AgentKind, AgentProfile, AgentProfileId, AgentSettings,
-    McpServerConfig, ModelApiProvider,
+    McpServerConfig, McpStdioServer, ModelApiProvider,
 };
 
 use super::{ApiKeySource, default_model_api, model_api_key_ui, tag_ui};
@@ -57,7 +57,12 @@ pub fn agent_choice_ui(
 }
 
 /// The working directory, environment, and MCP servers of an agent harness.
-pub fn options_ui(ui: &mut egui::Ui, settings: &mut AgentSettings) {
+/// `rerun_mcp_server` is the host's own MCP server, see [`re_agent::SessionContext::rerun_mcp_server`].
+pub fn options_ui(
+    ui: &mut egui::Ui,
+    settings: &mut AgentSettings,
+    rerun_mcp_server: Option<&McpStdioServer>,
+) {
     ui.label(RichText::new("Working directory").strong());
     let current_dir =
         std::env::current_dir().map_or_else(|_| String::new(), |dir| dir.display().to_string());
@@ -78,7 +83,12 @@ pub fn options_ui(ui: &mut egui::Ui, settings: &mut AgentSettings) {
     ui.weak("One NAME=value per line, set for the agent process.");
 
     ui.add_space(8.0);
-    mcp_servers_ui(ui, &mut settings.mcp_servers);
+    mcp_servers_ui(
+        ui,
+        rerun_mcp_server,
+        &mut settings.rerun_mcp_enabled,
+        &mut settings.mcp_servers,
+    );
 }
 
 /// A selectable card: a radio button with a title and a description.
@@ -267,7 +277,12 @@ fn custom_agent_ui(ui: &mut egui::Ui, settings: &mut AgentSettings, selected: bo
     radio_clicked || field_used
 }
 
-fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
+fn mcp_servers_ui(
+    ui: &mut egui::Ui,
+    rerun_mcp_server: Option<&McpStdioServer>,
+    rerun_mcp_enabled: &mut bool,
+    servers: &mut Vec<McpServerConfig>,
+) {
     egui::containers::Sides::new().show(
         ui,
         |ui| ui.label(RichText::new("MCP servers").strong()),
@@ -278,14 +293,40 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
                 .clicked()
             {
                 servers.push(McpServerConfig {
-                    name: "rerun".to_owned(),
-                    command_line: "rerun mcp".to_owned(),
+                    name: String::new(),
+                    command_line: String::new(),
                     enabled: true,
                 });
             }
         },
     );
-    ui.weak("Given to the agent when the session starts. `rerun mcp` lets it see and drive a running Rerun Viewer.");
+    ui.weak("Given to the agent when the session starts.");
+
+    if let Some(server) = rerun_mcp_server {
+        ui.horizontal(|ui| {
+            ui.set_min_height(re_ui::DesignTokens::list_item_height(
+                re_ui::ListItemDensity::Spacious,
+            ));
+            mcp_server_enabled_ui(ui, rerun_mcp_enabled);
+            // The executable's name rather than its full path, which can be long.
+            let executable = server.command.file_name().map_or_else(
+                || server.command.to_string_lossy(),
+                |name| name.to_string_lossy(),
+            );
+            let short_command = std::iter::chain(
+                std::iter::once(executable.as_ref()),
+                server.args.iter().map(String::as_str),
+            )
+            .collect::<Vec<_>>()
+            .join(" ");
+            ui.add(egui::Label::new(short_command).truncate())
+                .on_hover_text(format!(
+                    "`rerun mcp` is what lets the agent panel connect to this viewer and your \
+                     catalog servers.\n\n{}",
+                    server.command_line()
+                ));
+        });
+    }
 
     let mut remove = None;
     for (index, server) in servers.iter_mut().enumerate() {
@@ -295,18 +336,7 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
                 re_ui::ListItemDensity::Spacious,
             ));
 
-            let response = ui
-                .checkbox(&mut server.enabled, "")
-                .on_hover_text("Give this server to the agent");
-            let enabled = server.enabled;
-            response.widget_info(|| {
-                egui::WidgetInfo::selected(
-                    egui::Role::CheckBox,
-                    true,
-                    enabled,
-                    "Give this server to the agent",
-                )
-            });
+            mcp_server_enabled_ui(ui, &mut server.enabled);
             ui.add(
                 ReTextEdit::singleline(&mut server.name)
                     .hint_text("name")
@@ -334,4 +364,19 @@ fn mcp_servers_ui(ui: &mut egui::Ui, servers: &mut Vec<McpServerConfig>) {
     if let Some(index) = remove {
         servers.remove(index);
     }
+}
+
+fn mcp_server_enabled_ui(ui: &mut egui::Ui, enabled: &mut bool) {
+    let response = ui
+        .checkbox(enabled, "")
+        .on_hover_text("Enable this MCP server");
+    let is_enabled = *enabled;
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(
+            egui::Role::CheckBox,
+            true,
+            is_enabled,
+            "Enable this MCP server",
+        )
+    });
 }

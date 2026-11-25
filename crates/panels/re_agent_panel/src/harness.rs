@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use re_agent::{AgentSettings, McpServerConfig, SessionContext};
+use re_agent::{AgentSettings, McpStdioServer, SessionContext};
 use re_agent_ui::AgentPanel;
 use re_async::AsyncRuntimeHandle;
 
@@ -41,6 +41,9 @@ pub struct Harness {
 
     /// Counts the self-improvement conversations started, so their transcripts get separate files.
     self_improvements_started: usize,
+
+    /// `rerun mcp` pointed at this viewer, or `None` if no `rerun` executable was found.
+    rerun_mcp_server: Option<McpStdioServer>,
 }
 
 impl Harness {
@@ -52,19 +55,14 @@ impl Harness {
     /// `is_in_rerun_workspace` marks one of our own development builds; see [`Self::user_like_cwd`].
     pub fn new_panel(
         &mut self,
-        mut settings: AgentSettings,
+        settings: AgentSettings,
         async_runtime: AsyncRuntimeHandle,
         viewer_endpoint: Option<&str>,
         cache_dir: Option<&Path>,
         is_in_rerun_workspace: bool,
     ) -> AgentPanel {
-        // The viewer's port can change between runs, so the persisted entry is replaced.
-        settings
-            .mcp_servers
-            .retain(|server| server.name != MCP_SERVER_NAME);
-        if let Some(server) = rerun_mcp_server(viewer_endpoint) {
-            settings.mcp_servers.insert(0, server);
-        } else {
+        self.rerun_mcp_server = rerun_mcp_server(viewer_endpoint);
+        if self.rerun_mcp_server.is_none() {
             re_log::warn_once!(
                 "Could not find the `rerun` executable, so the agent cannot connect to the viewer"
             );
@@ -111,6 +109,7 @@ impl Harness {
             default_cwd: self.scratch_cwd.clone(),
             off_limits_directories,
             model_preselect: Default::default(),
+            rerun_mcp_server: self.rerun_mcp_server.clone(),
         });
         panel
     }
@@ -133,6 +132,7 @@ impl Harness {
             rerun_workspace,
             transcript_dir,
             self_improvements_started,
+            rerun_mcp_server,
             ..
         } = self;
         let Some(workspace) = rerun_workspace.as_ref() else {
@@ -177,7 +177,7 @@ impl Harness {
         *self_improvements_started += 1;
 
         panel.open_conversation(
-            self_improve::session_context(workspace, dir.path()),
+            self_improve::session_context(workspace, dir.path(), rerun_mcp_server.clone()),
             self_improve::opening_prompt(&transcript),
         );
     }
@@ -239,7 +239,7 @@ pub fn record_mcp_startup_failures(reports: &[re_agent::McpStartupReport]) {
 /// The name check keeps this honest: `re_viewer` is a library, so the running executable may be a
 /// custom viewer or one of our examples, and only the `rerun` binary has an `mcp` subcommand.
 /// It is case-insensitive because the macOS bundle names the executable `Rerun`.
-fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
+fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpStdioServer> {
     let current_exe = std::env::current_exe();
     let mut args = vec!["mcp".to_owned()];
     let rerun = match &current_exe {
@@ -270,7 +270,11 @@ fn rerun_mcp_server(viewer_endpoint: Option<&str>) -> Option<McpServerConfig> {
         args.push("--endpoint".to_owned());
         args.push(endpoint.to_owned());
     }
-    Some(McpServerConfig::new(MCP_SERVER_NAME, &rerun, &args))
+    Some(McpStdioServer {
+        name: MCP_SERVER_NAME.to_owned(),
+        command: rerun,
+        args,
+    })
 }
 
 /// Unpacks the embedded skills into `agent_dir` on a background thread.
@@ -314,7 +318,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[cfg(feature = "agent_context")]
+    #[cfg(feature = "agent_skills")]
     fn skills_are_embedded() {
         assert!(
             embedded::SKILL_FILES

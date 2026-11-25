@@ -39,7 +39,7 @@ Ask before writing only when an edit could apply to several existing views (see 
 
 ## Editing a recording's blueprint through MCP
 
-If a request could apply to multiple views and the intended view is unclear, use elicitation to ask the user which view they mean before editing.
+If a request could apply to multiple views and the intended view is unclear, ask the user which view they mean before editing, with elicitation if you have it.
 
 Without a target, `viewer_get_blueprint` and `viewer_set_blueprint` use what is on screen: the table if one is shown, else the active recording.
 Use `{"recording": {}}` to target the active recording even when a table is shown.
@@ -250,6 +250,9 @@ was never materialized. Read the `CoordinateFrame:frame` values, target the one
 the main 3D content sits in, and exclude entities in unconnected frames.
 
 ## 5. Iterate from screenshots
+
+With the viewer MCP, iterate on the viewer the user is looking at: `viewer_set_blueprint`, then `viewer_save_screenshot`.
+The rest of this section is for building a blueprint in Python.
 
 Spawn the viewer and load the recording once, then re-send blueprints into the
 same viewer; each send + screenshot is one cheap iteration. Render, look, revise.

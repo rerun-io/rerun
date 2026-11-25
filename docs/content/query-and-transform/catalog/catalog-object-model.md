@@ -77,8 +77,8 @@ Pass `on_duplicate=OnDuplicateSegmentLayer.REPLACE` to `register()` to overwrite
 Additive registration can be achieved by using different layer names for different `.rrd`s registered under the same segment ID.
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/6a9690740962bcda73b78a847c04862ba646461a_d2.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
-  <img class="d2-light" src="https://static.rerun.io/97520fa2e99046614f595be752eec7c48c405e51_d2-light.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
+  <img class="d2-dark" src="https://static.rerun.io/87994b13acba8b61778eca16b947454f6d4380d9_diagram-catalog-object-model-dark.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
+  <img class="d2-light" src="https://static.rerun.io/139785ff1666d48a7caf4ad48a7b4226a6f37011_diagram-catalog-object-model-light.svg" alt="Diagram of a catalog dataset with segment_a and segment_b, whose base and extra layers each point to an .rrd file in an object store">
 </div>
 
 Layers are immutable and can only be overwritten by registering a new `.rrd` file. In other words, datasets support the following mutation operations:
@@ -117,8 +117,8 @@ Use `dataset.layer(name).schema()` to fetch the union of one layer's schemas acr
 snippet: concepts/query-and-transform/catalog_object_model[schema]
 
 <div class="d2-diagram">
-  <img class="d2-dark" src="https://static.rerun.io/f98523a3b94a18887af13ad8b45a05f685480a2d_d2.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
-  <img class="d2-light" src="https://static.rerun.io/43ed31f276a37305d671c76e9ae4083667ccb988_d2-light.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
+  <img class="d2-dark" src="https://static.rerun.io/a2425d9909b1766edff1b2940d66331f8f54d512_diagram-schema-stack-dark.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
+  <img class="d2-light" src="https://static.rerun.io/df137081af950d481ad5b27ae900910d286a2ca3_diagram-schema-stack-light.svg" alt="Diagram of my_dataset schema stacked on segment_a schema (base and extra layer schemas) and segment_b schema (base schema)">
 </div>
 
 Datasets maintain a minimal level of schema self-consistency.
