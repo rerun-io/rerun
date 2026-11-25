@@ -49,7 +49,7 @@ Empty strings are valid if you size the canvas with your own CSS.
 ## Data sources
 
 `rrd` is a URL that points to one of:
-- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.38.1/examples/dna.rrd>
+- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.44.0/examples/dna.rrd>
 - A gRPC server started with the SDK's [`serve_grpc`](https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/operating-modes#serve_grpc) API, such as `rerun+http://127.0.0.1:9876/proxy`
 
 Without an `rrd`, the Viewer shows the same welcome screen as <https://app.rerun.io>.
@@ -97,6 +97,6 @@ For example, Vite needs [`vite-plugin-wasm`](https://www.npmjs.com/package/vite-
 ## Resources
 
 - [Embedding guide](https://rerun.io/docs/viewer/integrations/embed-web#using-the-javascript-package)
-- [API reference](https://ref.rerun.io/docs/js/0.38.1/web-viewer-react/index.html)
+- [API reference](https://ref.rerun.io/docs/js/0.44.0/web-viewer-react/index.html)
 - [Troubleshooting](https://rerun.io/docs/getting-started/install-rerun/troubleshooting)
 - [Discord](https://discord.gg/Gcm8BbTaAj)

@@ -48,7 +48,7 @@ viewer.stop();
   </picture>
 </p>
 
-The [`WebViewer`](https://ref.rerun.io/docs/js/0.38.1/web-viewer/classes/WebViewer.html) class manages a canvas element inside `parentElement`.
+The [`WebViewer`](https://ref.rerun.io/docs/js/0.44.0/web-viewer/classes/WebViewer.html) class manages a canvas element inside `parentElement`.
 
 Always set `width` and `height`, or the Viewer may not display correctly.
 Empty strings are valid if you size the canvas with your own CSS.
@@ -56,7 +56,7 @@ Empty strings are valid if you size the canvas with your own CSS.
 ## Data sources
 
 `rrd` is a URL that points to one of:
-- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.38.1/examples/dna.rrd>
+- A hosted `.rrd` file, such as <https://app.rerun.io/version/0.44.0/examples/dna.rrd>
 - A gRPC server started with the SDK's [`serve_grpc`](https://rerun.io/docs/logging-and-ingestion/sinks-and-modes/operating-modes#serve_grpc) API, such as `rerun+http://127.0.0.1:9876/proxy`
 
 Without an `rrd`, the Viewer shows the same welcome screen as <https://app.rerun.io>.
@@ -109,7 +109,7 @@ For example, Vite needs [`vite-plugin-wasm`](https://www.npmjs.com/package/vite-
 ## Resources
 
 - [Embedding guide](https://rerun.io/docs/viewer/integrations/embed-web#using-the-javascript-package)
-- [API reference](https://ref.rerun.io/docs/js/0.38.1/web-viewer/index.html)
+- [API reference](https://ref.rerun.io/docs/js/0.44.0/web-viewer/index.html)
 - [Example project](https://github.com/rerun-io/web-viewer-example) ([open in CodeSandbox](https://codesandbox.io/s/github/rerun-io/web-viewer-example))
 - [Viewer control example in TypeScript](https://github.com/rerun-io/rerun/tree/main/examples/js/viewer_control)
 - [Troubleshooting](https://rerun.io/docs/getting-started/install-rerun/troubleshooting)
