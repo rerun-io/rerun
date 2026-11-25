@@ -25,9 +25,12 @@ impl ChunkStore {
     ///
     /// On top of the data inside the range, each split gets what our datamodel needs to show
     /// it correctly:
+    /// * all static data,
     /// * the latest-at value of every component at the start of the range,
     /// * for `VideoStream`s, all samples since the last keyframe before the start of the range,
     /// * for `Transform3D`s and `Pinhole`s with multiplexed coordinate frames, all of their data before the range.
+    ///
+    /// Chunks that are not loaded are reported through `tracking` and left out of the splits.
     ///
     /// Keyframes are only detected if `is_start_of_gop` is provided, which can use `re_video::is_start_of_gop`.
     ///
@@ -111,19 +114,22 @@ impl ChunkStore {
             }
         }
 
+        // Static data applies to all times, so it is kept as-is in every split.
+        // The latest-at bootstrap below skips it.
+        // Missing static chunks are still reported, by the range queries in the base case.
+        let static_chunks = self
+            .iter_physical_chunks()
+            .filter(|chunk| chunk.is_static())
+            .map(|chunk| (chunk.id(), Chunk::clone(chunk)))
+            .collect_vec();
+
         ranges.iter().map(move |range| {
             re_tracing::profile_scope!("split");
 
             let start_inclusive = range.min();
             let end_exclusive = range.max().inc();
 
-            // Static data applies to all times, so it is kept as-is in every split.
-            // The latest-at bootstrap below skips it.
-            let mut all_chunks_in_split = self
-                .iter_physical_chunks()
-                .filter(|chunk| chunk.is_static())
-                .map(|chunk| (chunk.id(), Chunk::clone(chunk)))
-                .collect_vec();
+            let mut all_chunks_in_split = static_chunks.clone();
 
             for (entity, components, entity_has_multiplexed_frames) in
                 &all_entities_and_their_components
