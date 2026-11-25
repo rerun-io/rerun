@@ -1663,7 +1663,7 @@ wheels = [
 
 [[package]]
 name = "inline-snapshot"
-version = "0.36.2"
+version = "0.37.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "asttokens" },
@@ -1672,9 +1672,9 @@ dependencies = [
     { name = "rich" },
     { name = "typing-extensions" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/3a/de/eb3d06a644732d3a6e390a249780be132d535d5c850a1598681e48d8b8a3/inline_snapshot-0.36.2.tar.gz", hash = "sha256:fb30d99a915a768d1c46ab5b7576b7ee2a8d60eb31063a14ada305c05bb5ffc8", size = 2570804, upload-time = "2026-11-09T06:55:41.617Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5f/57/5ea4630cf5922971d728e66f2855fd041be6e3756e670a094b8e01f4c448/inline_snapshot-0.37.0.tar.gz", hash = "sha256:9de2ef1a246ee0af9b2c7d12bd14ad5a5977b8897c4d5f94e7f6251ab5196f1b", size = 2573002, upload-time = "2026-11-18T05:20:29.444Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b4/c3/acde9e9d26ec0b529ae77543a1e8fa1816ff601618a34a27c35cd7c81b1b/inline_snapshot-0.36.2-py3-none-any.whl", hash = "sha256:2c7980bee5149ecfffae3fea2e6670e56d0cd94fa975e7bd8517c4c984ce6e5c", size = 101459, upload-time = "2026-11-09T06:55:40.165Z" },
+    { url = "https://files.pythonhosted.org/packages/6e/fc/7a132be6584b9a9dcd13e48552e4ad90f370d460a6d394da8acf5d8ff7f3/inline_snapshot-0.37.0-py3-none-any.whl", hash = "sha256:c2c7c48d102abb1cd3465469cddcb5e167b0ea89e17ad47ea545d003c3c30eb1", size = 105480, upload-time = "2026-11-18T05:20:27.492Z" },
 ]
 
 [[package]]
@@ -4392,7 +4392,7 @@ requires-dist = [
     { name = "datafusion", marker = "extra == 'all'", specifier = "==54.0.0" },
     { name = "datafusion", marker = "extra == 'catalog'", specifier = "==54.0.0" },
     { name = "datafusion", marker = "extra == 'tests'", specifier = "==54.0.0" },
-    { name = "inline-snapshot", marker = "extra == 'tests'", specifier = "==0.36.2" },
+    { name = "inline-snapshot", marker = "extra == 'tests'", specifier = "==0.37.0" },
     { name = "numpy", specifier = ">=2" },
     { name = "opencv-python", marker = "extra == 'tests'", specifier = ">4.6" },
     { name = "opentelemetry-api", marker = "extra == 'tracing'" },
@@ -4410,7 +4410,7 @@ requires-dist = [
     { name = "rerun-notebook", marker = "extra == 'all'", editable = "rerun_notebook" },
     { name = "rerun-notebook", marker = "extra == 'notebook'", editable = "rerun_notebook" },
     { name = "semver", marker = "extra == 'tests'", specifier = ">=3.0,<3.2" },
-    { name = "syrupy", marker = "extra == 'tests'", specifier = "==7.0.0" },
+    { name = "syrupy", marker = "extra == 'tests'", specifier = "==7.0.2" },
     { name = "tomli", marker = "extra == 'tests'", specifier = "==2.5.0" },
     { name = "torch", marker = "extra == 'dataloader'", specifier = ">=2.5" },
     { name = "torch", marker = "extra == 'tests'", specifier = ">=2.5" },
@@ -5169,14 +5169,14 @@ wheels = [
 
 [[package]]
 name = "syrupy"
-version = "7.0.0"
+version = "7.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pytest" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/34/75/c3312dabf8356c74580cf0f0f0c7fbf228107479f4d10ad7e9412652b9b9/syrupy-7.0.0.tar.gz", hash = "sha256:2e8733d9b3b42b665143be49f38b7543d77f4243e8fb29545ec410ef467c7b0a", size = 117384, upload-time = "2026-11-11T01:16:57.716Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/55/ff/308f191363c1bc456323918619597aaf9f3a37405d038a350b45f90b6e9f/syrupy-7.0.2.tar.gz", hash = "sha256:b35d3efc800a3362c20f24026d1d116b91fcd4578a315745860ec234e023592c", size = 122668, upload-time = "2026-11-16T04:40:28.401Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/b7/41/5915a9643bf77661e6f14a57d1edd810d0a9961dddc74a7dd7f93d98205f/syrupy-7.0.0-py3-none-any.whl", hash = "sha256:c2f00abec70c444771c999295a166bb0b957da0853a015dff0d0f95930a121f7", size = 66867, upload-time = "2026-11-11T01:16:56.232Z" },
+    { url = "https://files.pythonhosted.org/packages/a9/eb/72e4460a4d36cf6781f3eacc8dd17256d067c841d147a011956c0d6218ef/syrupy-7.0.2-py3-none-any.whl", hash = "sha256:bb7999d6cc1cce6731154fe46ad98874b484904d3e3fba950e244c5666c53c1b", size = 68914, upload-time = "2026-11-16T04:40:26.776Z" },
 ]
 
 [[package]]
