@@ -7,6 +7,7 @@ import multiprocessing as mp
 import os
 import sys
 import threading
+from copy import deepcopy
 from dataclasses import dataclass
 from multiprocessing import Pipe
 from multiprocessing.connection import Connection
@@ -28,6 +29,8 @@ _FieldKey = str | tuple[str, int]
 # Fixed-size pipe writes fit within PIPE_BUF, so nonblocking writes cannot split an acknowledgement.
 _ACK_BYTES = 8
 _LEASE_POLL_INTERVAL_SECS = 0.005
+_PACKED_GROUP: _FieldKey = ("", -1)
+_PACKED_ALIGNMENT = 64
 
 
 class _TransferableFileDescriptor(Protocol):
@@ -154,6 +157,7 @@ class _LeaseTracker:
 class _TensorMetadata:
     dtype: torch.dtype
     shape: tuple[int, ...]
+    offset_bytes: int = 0
 
 
 @dataclass(frozen=True)
@@ -186,8 +190,24 @@ class _FieldTransfer:
 
 def _view(storage: torch.UntypedStorage, metadata: _TensorMetadata) -> torch.Tensor:
     tensor = torch.empty(0, dtype=metadata.dtype, device="cpu")
-    tensor.set_(storage, 0, metadata.shape)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
+    itemsize = tensor.element_size()
+    if metadata.offset_bytes < 0 or metadata.offset_bytes % itemsize:
+        raise ValueError("Pooled tensor offsets must be nonnegative and dtype-aligned")
+    tensor.set_(storage, metadata.offset_bytes // itemsize, metadata.shape)  # type: ignore[call-overload]  # ty: ignore[no-matching-overload]
     return tensor
+
+
+def _receive_storage(field: _FieldTransfer) -> torch.UntypedStorage:
+    buffer_fd = field.buffer_handle.detach()
+    try:
+        storage = torch.UntypedStorage._new_shared_fd_cpu(  # type: ignore[attr-defined]
+            buffer_fd, field.buffer_size_bytes
+        )
+    finally:
+        os.close(buffer_fd)
+    if field.release is not None:
+        _consumer_lease_tracker.track(storage, field.release)
+    return cast("torch.UntypedStorage", storage)
 
 
 def _rebuild_batch(spec: pytree.TreeSpec, fields: list[_FieldTransfer]) -> dict[str, Any]:
@@ -201,18 +221,120 @@ def _rebuild_batch(spec: pytree.TreeSpec, fields: list[_FieldTransfer]) -> dict[
     """
     tensors = []
     for field in fields:
-        buffer_fd = field.buffer_handle.detach()
-        try:
-            storage = torch.UntypedStorage._new_shared_fd_cpu(  # type: ignore[attr-defined]
-                buffer_fd, field.buffer_size_bytes
-            )
-        finally:
-            # The reconstructed storage owns its mapping independently of this transferred descriptor.
-            os.close(buffer_fd)
-        if field.release is not None:
-            _consumer_lease_tracker.track(storage, field.release)
-        tensors.append(_view(storage, field.tensor_metadata))
+        tensors.append(_view(_receive_storage(field), field.tensor_metadata))
     return cast("dict[str, Any]", pytree.tree_unflatten(tensors, spec))
+
+
+class PackedBatch(dict[str, Any]):
+    """
+    A dictionary whose tensor leaves share one leased CPU allocation.
+
+    Created by [`PooledBatchCollator`][rerun.experimental.dataloader.PooledBatchCollator]
+    with `packed=True`.
+    When accelerator pinning is enabled, a `DataLoader` with `pin_memory=True`
+    calls [`pin_memory`][rerun.experimental.dataloader.PackedBatch.pin_memory]
+    and delivers an ordinary dictionary with pinned tensor views.
+    If pinning is disabled or no supported accelerator is available, the loader
+    delivers this dictionary subclass even when `pin_memory=True` was requested.
+    With `num_workers=0`, the collator instead returns an ordinary dictionary.
+    Dictionary operations and PyTorch pytree transformations work without
+    an explicit unpacking step, including when pinning is disabled.
+
+    Retaining any tensor or NumPy view retains the entire shared buffer.
+    Clone tensors before forwarding them to another process.
+    """
+
+    def __init__(
+        self,
+        storage: torch.UntypedStorage,
+        metadata: tuple[_TensorMetadata, ...],
+        spec: pytree.TreeSpec,
+        *,
+        nbytes: int,
+    ) -> None:
+        self._storage = storage
+        self._nbytes = nbytes
+        super().__init__(pytree.tree_unflatten([_view(storage, item) for item in metadata], spec))
+
+    def __copy__(self) -> dict[str, Any]:
+        """Return a shallow dictionary whose tensor views retain their shared-buffer lease."""
+        return dict(self)
+
+    def __deepcopy__(self, memo: dict[int, Any]) -> dict[str, Any]:
+        """Copy values into an ordinary dictionary without retaining packed-storage metadata."""
+        result: dict[str, Any] = {}
+        memo[id(self)] = result
+        for key, value in self.items():
+            result[deepcopy(key, memo)] = deepcopy(value, memo)
+        return result
+
+    def pin_memory(self) -> dict[str, Any]:
+        """
+        Copy the packed storage once and reconstruct ordinary pinned tensor views.
+
+        Existing CPU aliases are left intact and retain their lease.
+        Application metadata and changes to the batch are preserved.
+        Tensors added or replaced after collation are pinned separately.
+        """
+        source = _view(self._storage, _TensorMetadata(torch.uint8, (self._nbytes,)))
+        pinned = source.pin_memory()
+        target = pinned.untyped_storage()
+
+        def pin(value: Any) -> Any:  # noqa: ANN401
+            if not isinstance(value, torch.Tensor):
+                return value
+            if (
+                value.device.type != "cpu"
+                or type(value) is not torch.Tensor
+                or value.layout != torch.strided
+                or value.is_nested
+                or value.requires_grad
+                or value.is_conj()
+                or value.is_neg()
+                or any(name is not None for name in getattr(value, "names", ()))
+                or value.untyped_storage()._cdata != self._storage._cdata
+            ):
+                return value.pin_memory()
+            end = value.storage_offset()
+            if value.numel():
+                end += 1 + sum((size - 1) * stride for size, stride in zip(value.shape, value.stride(), strict=True))
+            if end * value.element_size() > target.nbytes():
+                raise ValueError("A packed tensor view extends beyond the collated buffer")
+            result = torch.empty(0, dtype=value.dtype, device="cpu")
+            result.set_(target, value.storage_offset(), value.shape, value.stride())  # type: ignore[call-overload]
+            return result
+
+        return cast("dict[str, Any]", pytree.tree_map(pin, dict(self)))
+
+    def __reduce__(self) -> Any:  # noqa: ANN401
+        raise RuntimeError("Packed batches cannot be forwarded; clone their tensors into a dictionary first")
+
+
+def _flatten_packed_batch(batch: PackedBatch) -> tuple[list[Any], list[str]]:
+    return list(batch.values()), list(batch)
+
+
+def _unflatten_packed_batch(values: Iterable[Any], keys: list[str]) -> dict[str, Any]:
+    return dict(zip(keys, values, strict=True))
+
+
+def _flatten_packed_batch_with_keys(batch: PackedBatch) -> tuple[list[tuple[pytree.KeyEntry, Any]], list[str]]:
+    return [(cast("pytree.KeyEntry", pytree.MappingKey(key)), value) for key, value in batch.items()], list(batch)
+
+
+if PackedBatch not in pytree.SUPPORTED_NODES:
+    pytree.register_pytree_node(
+        PackedBatch,
+        _flatten_packed_batch,
+        _unflatten_packed_batch,
+        flatten_with_keys_fn=_flatten_packed_batch_with_keys,
+    )
+
+
+def _rebuild_packed_batch(
+    spec: pytree.TreeSpec, field: _FieldTransfer, metadata: tuple[_TensorMetadata, ...]
+) -> PackedBatch:
+    return PackedBatch(_receive_storage(field), metadata, spec, nbytes=field.tensor_metadata.shape[0])
 
 
 @dataclass
@@ -231,18 +353,18 @@ class _SerializableBatch:
         spec: pytree.TreeSpec,
         fields: list[tuple[_Slot, _TensorMetadata, bool]],
         release_connection: Connection,
+        *,
+        packed_metadata: tuple[_TensorMetadata, ...] | None = None,
     ) -> None:
         self.spec = spec
         self.fields = fields
         self.release_connection = release_connection
         self.sent = False
+        self.packed_metadata = packed_metadata
 
     def __reduce__(
         self,
-    ) -> tuple[
-        Callable[[pytree.TreeSpec, list[_FieldTransfer]], dict[str, Any]],
-        tuple[pytree.TreeSpec, list[_FieldTransfer]],
-    ]:
+    ) -> tuple[Callable[..., Any], tuple[Any, ...]]:
         from multiprocessing.reduction import DupFd
 
         if self.sent:
@@ -263,6 +385,8 @@ class _SerializableBatch:
                     release=release,
                 )
             )
+        if self.packed_metadata is not None:
+            return _rebuild_packed_batch, (self.spec, fields[0], self.packed_metadata)
         return _rebuild_batch, (self.spec, fields)
 
 
@@ -296,17 +420,45 @@ class PooledBatchCollator:
         This does not bound memory retained by consumers or fallback allocations
         when all cached buffers are busy. Shared memory must accommodate both
         cached and in-flight batches.
+    packed:
+        Store all tensor leaves in one aligned shared buffer instead of one buffer
+        per leaf. `slots_per_field` then limits cached whole-batch buffers.
+        When `DataLoader(pin_memory=True)` actually enables accelerator pinning,
+        one parent pinning copy produces an ordinary dictionary.
+        Otherwise the consumer receives the dictionary subclass
+        [`PackedBatch`][rerun.experimental.dataloader.PackedBatch], including on
+        CPU-only hosts where PyTorch disables the requested pinning.
+        Both results support dictionary operations and PyTorch pytree transformations
+        without changing the training loop.
+        Retaining one leaf retains the whole packed allocation.
+        The zero-worker fallback is unchanged.
+
+    Examples
+    --------
+    ```python
+    loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=32,
+        num_workers=4,
+        multiprocessing_context="spawn",
+        pin_memory=True,
+        collate_fn=PooledBatchCollator(packed=True),
+    )
+    ```
 
     """
 
-    def __init__(self, *, slots_per_field: int = 4, max_pool_bytes: int = 4 * 1024**3) -> None:
+    def __init__(self, *, slots_per_field: int = 4, max_pool_bytes: int = 4 * 1024**3, packed: bool = False) -> None:
         limits: tuple[object, object] = (slots_per_field, max_pool_bytes)
         if any(not isinstance(limit, int) or isinstance(limit, bool) for limit in limits):
             raise TypeError("Pool limits must be integers")
         if slots_per_field < 1 or max_pool_bytes < 1:
             raise ValueError("Pool limits must be positive")
+        if not isinstance(packed, bool):
+            raise TypeError("packed must be a boolean")
         self.slots_per_field = slots_per_field
         self.max_pool_bytes = max_pool_bytes
+        self.packed = packed
         self._slots: dict[_FieldKey, list[_Slot]] = {}
         self._busy_slots: dict[int, _Slot] = {}
         self._recv: Connection | None = None
@@ -315,7 +467,7 @@ class PooledBatchCollator:
         self._allocations = self._reuses = self._fallbacks = 0
 
     def __getstate__(self) -> dict[str, Any]:
-        return {"slots_per_field": self.slots_per_field, "max_pool_bytes": self.max_pool_bytes}
+        return {"slots_per_field": self.slots_per_field, "max_pool_bytes": self.max_pool_bytes, "packed": self.packed}
 
     def __setstate__(self, state: dict[str, Any]) -> None:
         PooledBatchCollator.__init__(self, **state)
@@ -429,16 +581,37 @@ class PooledBatchCollator:
             tensors[key] = field
         acquired: list[tuple[_Slot, _TensorMetadata, bool]] = []
         try:
-            for key, field in tensors.items():
-                first = field[0]
-                metadata = _TensorMetadata(dtype=first.dtype, shape=(len(samples), *first.shape))
-                nbytes = len(samples) * first.numel() * first.element_size()
-                slot, pooled = self._acquire(key, nbytes)
-                acquired.append((slot, metadata, pooled))
-                torch.stack(field, out=_view(slot.storage, metadata))
+            packed_metadata = None
+            if self.packed and tensors:
+                layouts = []
+                nbytes = 0
+                for field in tensors.values():
+                    first = field[0]
+                    alignment = max(_PACKED_ALIGNMENT, first.element_size())
+                    offset = (nbytes + alignment - 1) // alignment * alignment
+                    layouts.append(_TensorMetadata(first.dtype, (len(samples), *first.shape), offset))
+                    nbytes = offset + len(samples) * first.numel() * first.element_size()
+                byte_metadata = _TensorMetadata(torch.uint8, (nbytes,))
+                slot, pooled = self._acquire(_PACKED_GROUP, nbytes)
+                acquired.append((slot, byte_metadata, pooled))
+                packed_metadata = tuple(layouts)
+                cursor = 0
+                buffer = _view(slot.storage, byte_metadata)
+                for field, layout in zip(tensors.values(), layouts, strict=True):
+                    buffer[cursor : layout.offset_bytes].zero_()
+                    torch.stack(field, out=_view(slot.storage, layout))
+                    cursor = layout.offset_bytes + len(samples) * field[0].numel() * field[0].element_size()
+            else:
+                for key, field in tensors.items():
+                    first = field[0]
+                    metadata = _TensorMetadata(dtype=first.dtype, shape=(len(samples), *first.shape))
+                    nbytes = len(samples) * first.numel() * first.element_size()
+                    slot, pooled = self._acquire(key, nbytes)
+                    acquired.append((slot, metadata, pooled))
+                    torch.stack(field, out=_view(slot.storage, metadata))
             if self._send is None:
                 self._recv, self._send = Pipe(duplex=False)
-            return _SerializableBatch(spec, acquired, self._send)
+            return _SerializableBatch(spec, acquired, self._send, packed_metadata=packed_metadata)
         except BaseException:
             for slot, _, _ in acquired:
                 if slot.token is not None:

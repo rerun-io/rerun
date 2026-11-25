@@ -36,6 +36,8 @@ The dataloader assembles those samples on demand from the per-recording [chunks]
 
 ## How to use it
 
+Install `rerun-sdk[dataloader]` to include the dataloader's dependencies, including PyTorch 2.11 or newer.
+
 ### Register data with a catalog
 
 The dataloader reads from a Rerun catalog, so you must first register [RRDs](../logging-and-ingestion/data-model/recordings.md#storage-formats). Start the open-source server in a separate terminal:
@@ -115,6 +117,33 @@ With `num_workers=0`, it batches data without pooling and also works on other pl
 Buffers are allocated on demand and returned to the pool after the consumer releases them.
 Pool limits bound cached buffers per worker; retained batches and uncached fallback allocations can use additional memory.
 It works with either dataset style; see the [pooled-batch example](https://github.com/rerun-io/rerun/tree/main/examples/python/dataloader_pooled_batches) for usage and ownership constraints.
+
+Set `packed=True` to combine tensor fields into one shared buffer and use one parent-side pinning copy.
+With worker processes, unpinned batches are `PackedBatch` dictionaries: a `dict` subclass containing the usual tensor fields and nested values.
+When DataLoader performs accelerator pinning, it returns an ordinary dictionary with pinned tensor views.
+PyTorch can disable pinning when no supported accelerator is available, even if `pin_memory=True`.
+With `num_workers=0`, the collator returns an ordinary dictionary without pooling.
+The training loop consumes batches directly in every case:
+
+```python
+from torch.utils.data import DataLoader
+
+from rerun.experimental.dataloader import PooledBatchCollator
+
+loader = DataLoader(
+    dataset,
+    batch_size=32,
+    num_workers=4,
+    multiprocessing_context="spawn",
+    pin_memory=True,
+    collate_fn=PooledBatchCollator(packed=True),
+)
+
+for batch in loader:
+    train_step(batch)
+```
+
+Keep source tensors alive until non-blocking device transfers finish.
 
 #### Video decoding is GOP-aware
 

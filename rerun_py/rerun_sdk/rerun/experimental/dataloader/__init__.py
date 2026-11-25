@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from ._iterable_dataset import RerunIterableDataset
     from ._map_dataset import RerunMapDataset
     from ._metrics import DataloaderMetrics
-    from ._pooled_batches import PooledBatchCollator
+    from ._pooled_batches import PackedBatch, PooledBatchCollator
     from ._yuv import Yuv420Collator, Yuv420Frame
     from .decoders import (
         ColumnDecoder,
@@ -42,6 +42,7 @@ __all__ = [
     "IndexValue",
     "NoShuffle",
     "NumericDecoder",
+    "PackedBatch",
     "PooledBatchCollator",
     "RerunIterableDataset",
     "RerunMapDataset",
@@ -68,6 +69,7 @@ _LAZY_SUBMODULES = {
     "NumericDecoder": ".decoders",
     "DataloaderMetrics": "._metrics",
     "PooledBatchCollator": "._pooled_batches",
+    "PackedBatch": "._pooled_batches",
     "VideoFrameDecoder": ".decoders",
     "Yuv420Collator": "._yuv",
     "Yuv420Frame": "._yuv",
