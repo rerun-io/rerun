@@ -28,7 +28,7 @@ Its `start_time` field is automatically set to the time the recording stream was
 
 To customize how the segment table appears in the Viewer, use a table blueprint.
 You can choose columns, enable cards, and embed segment previews without changing the underlying properties.
-See [Configure table layouts and segment previews](../../viewer/blueprints/configure-table-blueprints.md) for a Python example and registration instructions.
+See [Configure table layouts and segment previews](../../viewer/browse-datasets/table-layout.md) for a Python example and registration instructions.
 
 ## Querying the segment table
 

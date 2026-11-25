@@ -28,7 +28,7 @@ Also available in-browser at [rerun.io/viewer](https://rerun.io/viewer).
 ## Scale across many recordings
 
 Rerun's catalog organizes recordings as queryable [**segments**](./query-and-transform/catalog/catalog-object-model.md).
-The workflow: log (or convert) data to an `.rrd`, start a local catalog server (or connect to [Rerun Hub](./hub.md), our commercial managed offering for production deployments), register the `.rrd` as a segment, then visualize and query across recordings. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
+To query across recordings, log (or convert) data to an `.rrd`, start a local catalog server (or connect to [Rerun Hub](./hub.md), our commercial managed offering for production deployments), register the `.rrd` as a segment, then visualize and query across recordings. The Viewer can also open an `.rrd` in its built-in catalog without a separate server. <!-- TODO(RR-6462): update this Rerun Hub description to the new branding -->
 
 ### Log
 
@@ -56,7 +56,7 @@ snippet: tutorials/getting_started[ingest]
 ### Visualize
 
 Point the Viewer at your server to browse every recording in the catalog.
-See the [Viewer overview](./viewer/ui/overview.md).
+See the [Viewer overview](viewer/organization.md).
 
 ```bash
 rerun rerun+http://127.0.0.1:51234

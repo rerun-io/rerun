@@ -9,7 +9,9 @@ It is useful for relating warnings, errors, and application events to what happe
 
 See the [`TextLogView` reference](../../reference/types/views/text_log_view.md) for properties and examples.
 
-## Log text messages
+## Data for this view
+
+### Log text messages
 
 Log a [`TextLog`](../../reference/types/archetypes/text_log.md) with an optional level:
 
@@ -29,7 +31,9 @@ logging.getLogger().addHandler(rr.LoggingHandler("logs"))
 logging.getLogger().setLevel(logging.DEBUG)
 ```
 
-## Configure the text log view
+## Configure the view
+
+### Configure the text log view
 
 The [`TextLogView`](../../reference/types/views/text_log_view.md) shows the messages as a table.
 In the blueprint, you can choose:
@@ -54,3 +58,7 @@ You can change the same settings in the Viewer: select the view and use the sele
   To show only some messages, split them into different entity paths, and use the view's [entity path filter](../view-concepts/entity-path-filter.md) to choose which ones to show.
 
 See [missing features](../../development/roadmap.md#missing-features).
+
+## Related
+
+See [Text document](text-document.md) for plain text and Markdown documents.

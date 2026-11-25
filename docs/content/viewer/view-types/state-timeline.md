@@ -11,7 +11,9 @@ See the [`StateTimelineView` reference](../../reference/types/views/state_timeli
 
 Each entity becomes a group of horizontal lanes, one lane per instance of its `state` (most entities log one state, and get one lane), and each logged state is rendered as a colored band that runs until the next change.
 
-## Logging state changes
+## Data for this view
+
+### Logging state changes
 
 Use [`StateChange`](../../reference/types/archetypes/state_change.md) to log a transition. Each call marks the start of a new state at the current time; the previous state implicitly ends. The state value is a string, so you can use any label that's meaningful for your application.
 
@@ -25,7 +27,7 @@ snippet: howto/state_timeline[log_changes]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/state_timeline/90a670f810b9be2fc001a2d83e223215497583d8/1200w.png">
 </picture>
 
-### Notes
+#### Notes
 - The view groups state changes by entity path, so logging to `/door` and `/window` produces two separate lane groups.
 - If you log several states at once, for example `rr.StateChange(state=["open", "closed"])`, each instance gets its own lane.
   Keep the number of states the same over time.
@@ -33,7 +35,7 @@ snippet: howto/state_timeline[log_changes]
 - Each phase runs from its `StateChange` time to the next `StateChange` time on the same entity.
 The final phase is drawn up to the end of the recording's timeline or the configured visible time range, whichever comes first.
 
-### Ending a state, gaps, and time spans
+#### Ending a state, gaps, and time spans
 
 To end a state without starting a new one, log a reset.
 The lane then shows a gap until the next state.
@@ -48,7 +50,10 @@ rr.log("tasks/download", rr.StateChange(state=""))  # The span ends here.
 
 This is how you show events with a start and an end (spans), like a Gantt chart: one entity (or one instance) per task, with a state at the start and a reset at the end.
 
-## Customizing labels, colors, and visibility
+
+## Configure the view
+
+### Customizing labels, colors, and visibility
 
 To override the default styling, log a [`StateConfiguration`](../../reference/types/archetypes/state_configuration.md) to the same entity. `values`, `labels`, `colors`, and `visible` are parallel arrays — index `i` of each describes the same state value. Anything you don't provide falls back to the default (raw value as label, hashed color, visible).
 
@@ -64,31 +69,7 @@ snippet: howto/state_timeline[state_config]
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/state_timeline/8b56b1d7ec02bb6d45f6115dcba7c4ba8875942b/1200w.png">
 </picture>
 
-## Visualize any component as state
-
-You don't have to log [`StateChange`](../../reference/types/archetypes/state_change.md) to use this view. Any component whose data is string-, boolean-, or number-like can drive a lane by **remapping** the visualizer's `StateChange:state` input to read from it instead. This lets you separate how you _model_ your data from how you _visualize_ it. For example, visualizing a robot mode that you logged as a plain string via `AnyValues` or `DynamicArchetype` (the same idea as [Plot any scalar](time-series.md#plot-any-scalar), applied to the state slot).
-
-The supported source data types are:
-
-- `Utf8` and `LargeUtf8` (rendered as string states)
-- `Boolean` (rendered as two states)
-- `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `Float16`, `Float32`, and `Float64` (rendered as numeric states)
-
-For background on how visualizers resolve their inputs, see [Component mappings](../view-concepts/component-mappings.md) and [Customize views](../view-concepts/customize-views.md).
-
-For example, log a robot mode as a plain string component:
-
-snippet: howto/state_remapping[custom_data]
-
-Then point the state-timeline visualizer at it by remapping `StateChange:state`:
-
-snippet: howto/state_remapping[blueprint]
-
-### Add data by dragging components
-
-You can set up the same mapping interactively: drag a component from the streams panel onto a State Timeline view. If the component is a compatible source (string, boolean, or numeric), a new lane is added that remaps `StateChange:state` from it. Incompatible components (e.g. a blob or tensor) are rejected, as is dropping a component that the view already visualizes.
-
-## Setting up the view via blueprint
+### Setting up the view via blueprint
 
 The State Timeline view is also created automatically when `StateChange` data is present, but you can also configure it explicitly via the blueprint API:
 
@@ -109,7 +90,33 @@ By default, no such filter is applied, and long recordings open with a window ce
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/state_timeline/40a6d7fc78ebebf316160ad33da1971a3b23e857/1200w.png">
 </picture>
 
-## Link time axes
+
+## Common tasks
+
+### Visualize any component as state
+
+You don't have to log [`StateChange`](../../reference/types/archetypes/state_change.md) to use this view. Any component whose data is string-, boolean-, or number-like can drive a lane by **remapping** the visualizer's `StateChange:state` input to read from it instead. This lets you separate how you _model_ your data from how you _visualize_ it. For example, visualizing a robot mode that you logged as a plain string via `AnyValues` or `DynamicArchetype` (the same idea as [Plot any scalar](time-series.md#plot-any-scalar), applied to the state slot).
+
+The supported source data types are:
+
+- `Utf8` and `LargeUtf8` (rendered as string states)
+- `Boolean` (rendered as two states)
+- `Int8`, `Int16`, `Int32`, `Int64`, `UInt8`, `UInt16`, `UInt32`, `UInt64`, `Float16`, `Float32`, and `Float64` (rendered as numeric states)
+
+For background on how visualizers resolve their inputs, see [Component mappings](../view-concepts/component-mappings.md) and [Customize views](../view-concepts/customize-views.md).
+
+For example, log a robot mode as a plain string component:
+
+snippet: howto/state_remapping[custom_data]
+
+Then point the state-timeline visualizer at it by remapping `StateChange:state`:
+
+snippet: howto/state_remapping[blueprint]
+
+To add data by dragging a component, see [Remap in the Viewer](../view-concepts/component-mappings.md#remap-in-the-viewer).
+
+
+## Related
 
 To pan and zoom with other state timeline or time series views, set `time_view=rrb.TimeAxis(link="LinkToGlobal")`.
 See [Link the time axis of several plots](../view-concepts/visible-time-ranges.md#link-the-time-axis-of-several-plots).

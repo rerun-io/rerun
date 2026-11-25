@@ -72,7 +72,7 @@ impl IntroItem {
             Self::DocItem {
                 icon: &EXPLORE_DATA_ICON,
                 title: "Explore data",
-                url: "https://rerun.io/docs/viewer/ui/overview",
+                url: "https://rerun.io/docs/viewer/inspect-recordings/configure-layout",
                 body: "Visualize and explore multi-rate, multimodal data across every stage of the pipeline.",
             },
             Self::DocItem {

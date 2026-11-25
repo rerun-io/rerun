@@ -31,7 +31,7 @@ This page gives a high-level overview of ongoing and planned work.
 - Better blueprint management, such as several blueprints per dataset
 - A composable Viewer toolkit, for building your own viewer from Rerun's UI building blocks
 - A more mature training dataloader, and more ready-made conversions of open robotics datasets
-- Richer filtering in the dataframe view (table views already have [filters](../viewer/blueprints/configure-table-blueprints.md#filtering-rows))
+- Richer filtering in the dataframe view (table views already have [filters](../viewer/browse-datasets/table-layout.md#filtering-rows))
 - Dataset views that give zero-copy modified views into large datasets
 
 ### Longer term

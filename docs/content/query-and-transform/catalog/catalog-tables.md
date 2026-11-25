@@ -107,7 +107,7 @@ schema = pa.schema([
 ])
 ```
 
-A [table blueprint](../../viewer/blueprints/configure-table-blueprints.md) can override both the component type and whether a column is editable.
+A [table blueprint](../../viewer/browse-datasets/table-layout.md) can override both the component type and whether a column is editable.
 
 ## Register an existing table
 

@@ -1,6 +1,6 @@
 ---
 title: Configure table layouts and segment previews
-order: 700
+order: 500
 description: Order, rename, or hide columns and show previews in catalog tables
 ---
 
@@ -11,7 +11,7 @@ Use table blueprints to order, rename, or hide columns, embed segment previews, 
 >
 > The `rerun.blueprint.table` API is experimental and may change in future releases.
 
-Table blueprints are separate from [blueprints for individual recordings](build-a-blueprint-programmatically.md), though both are saved as `.rbl` files, and segment previews use the same view classes, such as `Spatial3DView`.
+Table blueprints are separate from [blueprints for individual recordings](../inspect-recordings/configure-from-code.md), though both are saved as `.rbl` files, and segment previews use the same view classes, such as `Spatial3DView`.
 
 The [runnable Python example](https://github.com/rerun-io/rerun/blob/latest/docs/snippets/all/howto/visualization/configure_table_blueprints.py) downloads 20 recordings from the public [DROID sample dataset](https://huggingface.co/datasets/rerun/droid_sample/tree/main), starts a local catalog server, and opens the Viewer.
 
@@ -41,7 +41,7 @@ For the UI of one archetype field, pass its component descriptor, e.g. `rr.TextD
 
 Instead of a component, `column_type` also takes a `PreviewCell`, which is what we use here.
 `PreviewCell` renders the referenced recording using one or more views.
-You configure these views just as you would in a [recording blueprint](build-a-blueprint-programmatically.md), including their contents and view properties.
+You configure these views just as you would in a [recording blueprint](../inspect-recordings/configure-from-code.md), including their contents and view properties.
 Pass the views directly to `PreviewCell`, without the container layout tree (`Horizontal`, `Vertical`, `Tabs`, etc.) used to arrange a recording's viewport.
 Multiple views are shown side by side.
 Previews only come from a table blueprint, since the Viewer has no option to turn a column into a preview.

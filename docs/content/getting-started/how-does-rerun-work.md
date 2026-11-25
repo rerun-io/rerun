@@ -102,7 +102,7 @@ $ rerun /tmp/my_recording.rrd
 Best for: sharing recordings, offline analysis, archiving.
 
 ## Visualize
-Rerun provides an open source pre-built [viewer](../viewer/ui/overview.md) that is [adjustable](../viewer/ui/overview.md) and [extensible](../viewer/integrations/extend.md).
+Rerun provides an open source pre-built [viewer](../viewer/organization.md) that is [adjustable](../viewer/inspect-recordings/configure-layout.md#panels) and [extensible](../viewer/integrations/extend.md).
 You can log directly to the viewer, [open](../logging-and-ingestion/import/open-any-file.md) a range of file formats to get data into the viewer, or even connect the viewer to a Rerun [catalog](../query-and-transform/catalog/catalog-object-model.md).
 
 <div class="d2-diagram">
@@ -125,7 +125,8 @@ We also offer **[Rerun Hub](../hub.md)** for teams that need collaborative datas
 The two are API compatible, so to run our examples on **Rerun Hub** you connect to your Hub instead of launching a server, and register recordings from object storage instead of local paths (see [Run the examples on Hub](../hub.md#run-the-examples-on-hub)).
 
 ### Prepare catalog
-Before querying or viewing recordings on the catalog we have to register them.
+Before querying or viewing recordings on a catalog server, register them.
+The Viewer can also open an `.rrd` in its built-in catalog without a separate server.
 We group recordings as [datasets](../query-and-transform/catalog/catalog-object-model.md#datasets).
 Since Rerun indexes existing data in place, registration needs paths to RRDs to index: in object store for **Rerun Hub** or on disk for local catalog server.
 

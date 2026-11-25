@@ -133,15 +133,15 @@ You can add blueprints to a dataset by registering `.rbl` blueprint files, typic
 A dedicated API exists for this in the Catalog SDK: [`DatasetEntry.register_blueprint()`](https://ref.rerun.io/docs/python/stable/catalog/#rerun.catalog.DatasetEntry.register_blueprint).
 You can also set one as the default, which is then loaded with each segment of the dataset.
 
-The registered blueprints show up in the Viewer in a [dropdown in the top bar](../../viewer/ui/blueprint-panel.md#dataset-blueprints).
+The registered blueprints show up in the Viewer in a [dropdown in the top bar](../../viewer/inspect-recordings/recording-layout.md#select-a-recording-blueprint-for-a-dataset).
 
 A separate **table blueprint** can be used to configure the segment table itself: columns, card layouts, and embedded segment previews.
-See [Configure table layouts and segment previews](../../viewer/blueprints/configure-table-blueprints.md) for the complete save-and-register workflow.
+See [Configure table layouts and segment previews](../../viewer/browse-datasets/table-layout.md) for the complete save-and-register workflow.
 
 
 ### Assets
 
-An asset is static data registered on a dataset and shared by all of its segments, such as a robot URDF, a room mesh, or a calibration.
+An asset is static data registered on a dataset and shared by its segments, such as a robot URDF, a room mesh, or a calibration.
 Registering it once as an asset means it does not have to be copied into every recording.
 
 Like blueprints, assets live in their own dataset, owned by the dataset they belong to.
@@ -156,9 +156,12 @@ Asset datasets have some restrictions to keep them light, and the server rejects
 - are larger than 300 MiB
 - would bring the dataset above 12 assets
 
-When the Rerun Viewer opens a segment, it loads the dataset's assets along with the segment's own data.
+Assets can apply to all segments except selected ones (`mode="opt_out"`, the default), or only to selected segments (`mode="opt_in"`).
+Choose coverage during registration or change it later using `add_segments_to_asset()` and `remove_segments_from_asset()`.
+
+When the Rerun Viewer opens a segment, it loads the assets that apply to it along with the segment's own data.
 The asset data is cached, so opening another segment of the same dataset does not download it again.
-The assets tab of a dataset lists the registered assets and their metadata, and lets you register and unregister them right in the viewer.
+The assets tab of a dataset lists the registered assets and their coverage, and lets you register and unregister them and edit their coverage in the Viewer.
 If the server accepts uploads, the viewer can also upload a `.rrd` from your machine and register it as an asset.
 
 Assets also show up in the [python chunk processing api](../../logging-and-ingestion/import/chunk-processing-api.md) if `include_assets` is `True`:

@@ -21,7 +21,7 @@ The source of <https://rerun.io/docs> and every code snippet it shows are plain 
 
 | Path | What |
 |------|------|
-| `docs/content/**/*.md` | The website pages. `docs/content/viewer/ui/<name>.md` maps to `rerun.io/docs/viewer/ui/<name>`. |
+| `docs/content/**/*.md` | The website pages. `docs/content/viewer/<section>/<name>.md` maps to `rerun.io/docs/viewer/<section>/<name>`. |
 | `docs/content/reference/types/` | One page per archetype, component, view, and blueprint type. |
 | `docs/content/reference/cli.md` | CLI reference. |
 | `docs/content/getting-started/` | Install, project setup, and how Rerun works. |

@@ -7,6 +7,8 @@ description: Extract, reshape, and reroute component data on the fly
 Lenses transform data by extracting, reshaping, and rerouting components.
 They produce new component columns, entity paths, or timelines from existing data.
 
+A lens transforms data, while a [component mapping](../viewer/view-concepts/component-mappings.md#lens-or-remapping) changes what a visualizer reads.
+
 ## Motivation
 
 Rerun can load data with user-defined types into the viewer and into `.rrd` files, for example arbitrary Protobuf-based MCAP messages via [schema reflection](../logging-and-ingestion/import/mcap/message-formats.md#schema-reflection).

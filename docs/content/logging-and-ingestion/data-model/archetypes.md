@@ -28,7 +28,7 @@ The archetype name becomes part of the column name.
 
 The archetype name selects the default [visualizer](../../viewer/view-concepts/customize-views.md), as long as the entity has the archetype's required fields.
 An entity logged with `rr.Points3D` is drawn by the `Points3D` visualizer in a 3D view without any setup.
-Data under another name is still available to that visualizer if its Arrow datatype matches, but in most views you add the visualizer yourself in the UI or the [blueprint](../../viewer/view-concepts/customize-views.md#select-visualizers).
+Data under another name is still available to that visualizer if its Arrow datatype matches, but in most views you add the visualizer yourself in the UI or the [blueprint](../../viewer/view-concepts/customize-views.md#choose-visualizers).
 The exception is a time series view, which plots floating-point values logged under your own names.
 See [Plot any scalar](../../viewer/view-types/time-series.md#plot-any-scalar).
 The streams panel and the selection panel group an entity's components by archetype.

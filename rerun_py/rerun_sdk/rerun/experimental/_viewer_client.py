@@ -1352,7 +1352,7 @@ class ViewerClient:
         A recording's blueprint has its layout, views, their properties, and overrides.
         A table's blueprint has its row filters, layout, and column settings.
         Without any arguments, reads the blueprint of what is on screen.
-        See [Blueprints](https://rerun.io/docs/viewer/blueprints).
+        See [Blueprints](https://rerun.io/docs/viewer/inspect-recordings/recording-layout).
 
         Parameters
         ----------
@@ -1390,7 +1390,7 @@ class ViewerClient:
         ----------
         blueprint:
             The blueprint, keyed by blueprint entity path, then archetype, then field.
-            See [Blueprints](https://rerun.io/docs/viewer/blueprints).
+            See [Blueprints](https://rerun.io/docs/viewer/inspect-recordings/recording-layout).
         of:
             Whether to write a recording's or a table's blueprint.
             Implied by `store_id` or `table_url`.

@@ -27,8 +27,8 @@ physical recording 2 ─┼─ one logical recording (if same recording ID)
 This implicit merging semantics also implies that, from the perspective of the Viewer, recordings are never "completed."
 This enables the [distributed logging workflows](#distributed-recordings) described below.
 
-In its UI, the Viewer presents (logical) recordings sharing the same application ID as related.
-In particular, they share the same [blueprint](../../viewer/blueprints.md).
+For recordings opened directly, the Viewer presents (logical) recordings sharing the same application ID as related, and they share the same [blueprint](../../viewer/inspect-recordings/recording-layout.md).
+Catalog datasets can instead provide a default recording blueprint.
 
 
 ### Recordings on a catalog server
@@ -38,7 +38,8 @@ You can read more about it in [Catalog object model](../../query-and-transform/c
 
 Datasets are top-level objects that group semantically related episodes of data, which we call _segments_.
 Populating a dataset happens by registering recordings using the Catalog SDK.
-By default, its recording ID becomes the segment ID, and its application ID is discarded.
+By default, its recording ID becomes the segment ID, and the dataset determines how the segment is grouped.
+When the Viewer opens an `.rrd` through its built-in catalog, it uses the file’s application ID to name the dataset.
 For example, it can be multiple recordings of the same robotic task.
 Blueprints can optionally be assigned to datasets, so all segments in a dataset share the same blueprint.
 
@@ -90,7 +91,7 @@ To log several recordings from one process, see [Log to several recordings from 
 
 ### Storage formats
 
-Rerun recordings are stored in `.rrd` files. [Blueprints](../../viewer/blueprints.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.
+Rerun recordings are stored in `.rrd` files. [Blueprints](../../viewer/inspect-recordings/recording-layout.md) are also recordings, albeit ones containing layout information instead of data. By convention, the `.rbl` file extension is used for blueprints.
 
 
 ## Application IDs
@@ -104,13 +105,15 @@ snippet: tutorials/custom-application-id
 
 ### When application IDs matter
 
-Application IDs are used by the Viewer when loading recordings directly (not via a catalog server):
+For live streams and directly imported recordings, application IDs are used by the Viewer:
 
 - The Viewer stores blueprints per application ID
 - Different recordings share the same blueprint if they share the same application ID
 - Recordings are grouped by application ID in the Viewer UI
 
-For catalog servers, see [Recordings on a catalog server](#recordings-on-a-catalog-server).
+By default, an opened `.rrd` is registered in the built-in Viewer catalog, which uses its application ID to name a dataset.
+Embedded blueprints can be registered on that dataset.
+For catalog datasets, see [Recordings on a catalog server](#recordings-on-a-catalog-server).
 
 Check out the API to learn more about SDK initialization:
 - [🐍 Python](https://ref.rerun.io/docs/python/stable/rerun/#rerun.init)

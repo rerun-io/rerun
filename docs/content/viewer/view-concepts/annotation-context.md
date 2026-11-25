@@ -1,6 +1,6 @@
 ---
 title: Annotation Context
-order: 400
+order: 500
 description: Share labels and colors across entities by mapping class IDs to styles
 ---
 

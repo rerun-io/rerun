@@ -10,6 +10,16 @@ The filter selects entities by their paths without changing the recording, so di
 A filter is a list of include and exclude rules.
 Each rule can match one entity or an entire subtree, so you do not need to list every entity separately.
 
+## View origin
+
+A view's `origin` is an entity path that filter rules can refer to as [`$origin`](#origin-substitution).
+
+In 2D and 3D views, the origin also gives the default [target frame](../../reference/types/views/spatial3d_view.md#spatial_information): the frame that the view shows all data in.
+Data gets to that frame through [transforms](../../logging-and-ingestion/data-model/transforms.md), which come from the entity hierarchy or from named transform frames.
+
+You can now set the target frame directly, so the transforms in a view no longer depend on its origin.
+For this reason, the `origin` will be deprecated in an upcoming version.
+
 ## Filter syntax
 
 Use `+` to include a path, `-` to exclude it, and `/**` to match a path and all its descendants.
@@ -52,3 +62,17 @@ rrb.Spatial3DView(origin="helix", contents=["+ $origin/**", "- $origin/structure
 Every view's entity path filter implicitly excludes `__properties/**`, where [recording properties](../../query-and-transform/catalog/properties-and-segments.md) are stored.
 So `+ /**` does not show them.
 To include them in a view, add the rule `+ __properties/**` to the view's contents explicitly.
+
+## Hide or exclude an entity
+
+Use the eye icon in the blueprint panel to hide or show an entity interactively.
+To hide an entity (and its children) by default in a view, use the [`EntityBehavior`](https://ref.rerun.io/docs/python/stable/common/blueprint_archetypes/#rerun.blueprint.archetypes.EntityBehavior) blueprint archetype as an override.
+The entity is still part of the view, so the user can show it again by clicking the eye icon in the blueprint panel.
+You can also make entities non-interactive, so that they cannot be hovered or selected in the view.
+
+snippet: archetypes/entity_behavior
+
+`EntityBehavior` currently only has an effect when you set it in the blueprint, as above.
+Logging it together with your data does nothing.
+
+To remove an entity from a view completely, exclude it in the view's [entity path filter](entity-path-filter.md) instead, for example with `contents=["+ /**", "- /debug/**"]`.

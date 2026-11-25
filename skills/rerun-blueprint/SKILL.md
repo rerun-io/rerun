@@ -153,7 +153,7 @@ Every name in `field_order` must be a column from `viewer_get_table_schema`.
 Check the write with `viewer_get_blueprint`, not a full-window screenshot.
 The [MCP docs](https://rerun.io/docs/viewer/extend/mcp#table-blueprints) have more examples.
 For the whole Python API, including cards and segment previews, see
-[Configure table layouts and segment previews](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints).
+[Configure table layouts and segment previews](https://rerun.io/docs/viewer/browse-datasets/table-layout).
 
 ## 1. Read the data
 

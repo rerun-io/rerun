@@ -1,6 +1,6 @@
 ---
 title: Text labels in 2D and 3D
-order: 450
+order: 600
 description: Label instances and entities in 2D and 3D views
 ---
 

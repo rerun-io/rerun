@@ -5,8 +5,7 @@ use re_ui::{ButtonExt as _, UiExt as _, icons};
 use re_viewer_context::{AppContext, SystemCommand, SystemCommandSender as _};
 
 /// Where the Python API for card layouts is documented.
-const CARD_LAYOUT_DOCS_URL: &str =
-    "https://rerun.io/docs/viewer/blueprints/configure-table-blueprints";
+const CARD_LAYOUT_DOCS_URL: &str = "https://rerun.io/docs/viewer/browse-datasets/table-layout";
 
 /// What the button that sets up the cards asks the agent.
 const SET_UP_CARDS_PROMPT: &str = "Create a blueprint for this dataset";

@@ -64,7 +64,7 @@ Your agent can use the viewer tools to set up your viewer, or answer questions a
 
 <a id="reading-and-writing-the-blueprint"></a>
 
-A [blueprint](../blueprints.md) describes how the Viewer displays your data. Ask “Put the two cameras side by side, with the 3D view below them”. The agent can apply the layout to your open recording, and you can undo the edit in the Viewer.
+A [blueprint](../inspect-recordings/recording-layout.md) describes how the Viewer displays your data. Ask “Put the two cameras side by side, with the 3D view below them”. The agent can apply the layout to your open recording, and you can undo the edit in the Viewer.
 
 <a id="inspecting-transforms"></a>
 
@@ -72,15 +72,15 @@ The agent can trace how coordinate frames connect at the current time. Try “Sh
 
 <a id="component-defaults-for-a-whole-view"></a>
 
-To set a default style across a view, ask the agent to change its [component defaults](../view-concepts/customize-views.md#per-view-component-default).
+To set a default style across a view, ask the agent to change its [component defaults](../view-concepts/customize-views.md#set-a-default-for-a-view).
 
 <a id="component-overrides"></a>
 
-To highlight one entity, ask “Make the lidar points red in the 3D view”. The override affects only that view and takes precedence over the recorded color. See [Customize views](../view-concepts/customize-views.md#custom-values).
+To highlight one entity, ask “Make the lidar points red in the 3D view”. The override affects only that view and takes precedence over the recorded color. See [Customize views](../view-concepts/customize-views.md#set-a-value-for-one-entity).
 
 <a id="table-blueprints"></a>
 
-An agent can filter rows, rearrange columns, or show recordings as cards with camera previews. See [Configure table blueprints](../blueprints/configure-table-blueprints.md).
+An agent can filter rows, rearrange columns, or show recordings as cards with camera previews. See [Configure table layouts and segment previews](../browse-datasets/table-layout.md).
 
 <a id="changing-settings"></a>
 
