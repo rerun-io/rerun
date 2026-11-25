@@ -518,3 +518,32 @@ fn keeps_latest_transform_and_pinhole_before_range() {
     assert_eq!(times["/tf:Transform3D:translation"], some(&[1]));
     assert_eq!(times["/camera:Pinhole:image_from_camera"], some(&[0]));
 }
+
+#[test]
+fn reports_missing_static_chunks() {
+    let mut store = new_store();
+    let chunk = Chunk::builder("/static_points")
+        .with_component_batches(RowId::new(), TimePoint::STATIC, [points()])
+        .build()
+        .expect("build chunk");
+    let manifest = re_chunk_index::RrdManifest::build_in_memory_from_chunks(
+        store.id(),
+        std::iter::once(&chunk),
+    )
+    .expect("build manifest");
+    _ = store.insert_rrd_manifest(manifest);
+
+    let range = AbsoluteTimeRange::new(TimeInt::new_temporal(4), TimeInt::new_temporal(8));
+    let chunks = store
+        .split_by_time_ranges(ChunkTrackingMode::Report, *frame().name(), &[range], None)
+        .flatten()
+        .collect::<Vec<_>>();
+
+    assert!(chunks.is_empty(), "the static chunk is not loaded");
+    let missing = store.take_tracked_chunk_ids().missing_virtual;
+    assert!(
+        missing.contains_key(&chunk.id()),
+        "static chunk {} not reported missing: {missing:?}",
+        chunk.id()
+    );
+}
