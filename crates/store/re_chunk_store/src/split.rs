@@ -67,8 +67,6 @@ impl ChunkStore {
         let special_components: HashSet<_> =
             itertools::chain!(video_components, frame_components.iter().copied()).collect();
 
-        let no_bootstrap = HashSet::default();
-
         let all_entities_and_their_components = self
             .all_entities()
             .into_iter()
@@ -149,13 +147,21 @@ impl ChunkStore {
                                     && frame_components.contains(component))
                         })
                         .collect();
+                    all_chunks_in_split.extend(self.extract_bootstrap_chunks(
+                        tracking,
+                        entity,
+                        &components_to_bootstrap,
+                        timeline,
+                        start_inclusive,
+                        end_exclusive,
+                    ));
+
                     let components = components.iter().copied().collect();
                     let keep_other_components = true;
                     let chunks = self.extract_chunks_for_single_split(
                         tracking,
                         entity,
                         &components,
-                        &components_to_bootstrap,
                         timeline,
                         start_inclusive,
                         end_exclusive,
@@ -194,7 +200,6 @@ impl ChunkStore {
                             tracking,
                             entity,
                             &components,
-                            &no_bootstrap,
                             timeline,
                             start_revised,
                             start_inclusive,
@@ -219,7 +224,6 @@ impl ChunkStore {
                         tracking,
                         entity,
                         &frame_components,
-                        &no_bootstrap,
                         timeline,
                         TimeInt::MIN,
                         start_inclusive,
@@ -299,33 +303,23 @@ impl ChunkStore {
         keyframes
     }
 
-    #[expect(clippy::too_many_arguments)]
-    fn extract_chunks_for_single_split<'a>(
+    /// The latest-at value of each of `components` at `start_inclusive`, unless it already lies
+    /// within `start_inclusive..end_exclusive` or is static.
+    fn extract_bootstrap_chunks<'a>(
         &'a self,
         tracking: ChunkTrackingMode,
         entity: &'a EntityPath,
         components: &'a HashSet<ComponentIdentifier>,
-        components_to_bootstrap: &'a HashSet<ComponentIdentifier>,
         timeline: TimelineName,
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
-        keep_other_components: bool,
     ) -> impl Iterator<Item = (ChunkId, Chunk)> + 'a {
-        re_log::debug_assert!(
-            start_inclusive < end_exclusive,
-            "start_inclusive={start_inclusive:?}, end_exclusive={end_exclusive:?}",
-        );
-
         let query_bootstrap = LatestAtQuery::new(timeline, start_inclusive);
-        let query = RangeQuery::new(
-            timeline,
-            AbsoluteTimeRange::new(start_inclusive, end_exclusive.saturating_sub(1)),
-        );
 
         // TODO(cmc): There are certainly opportunities to do better on the bootstrap path, especially
         // when it comes to sharing chunks across components, using e.g. an approach somewhat similar
-        // to what we do below for ranges.
-        let chunks_bootstrap = components_to_bootstrap.iter().flat_map(move |component| {
+        // to what we do for ranges in `extract_chunks_for_single_split`.
+        components.iter().flat_map(move |component| {
             let chunks = self
                 .latest_at_relevant_chunks(tracking, &query_bootstrap, entity, *component)
                 .chunks
@@ -376,7 +370,29 @@ impl ChunkStore {
                     // a chunk ID nor a row ID with anything else.
                     .clone_as(ChunkId::new(), RowId::new()),
             )]
-        });
+        })
+    }
+
+    #[expect(clippy::too_many_arguments)]
+    fn extract_chunks_for_single_split(
+        &self,
+        tracking: ChunkTrackingMode,
+        entity: &EntityPath,
+        components: &HashSet<ComponentIdentifier>,
+        timeline: TimelineName,
+        start_inclusive: TimeInt,
+        end_exclusive: TimeInt,
+        keep_other_components: bool,
+    ) -> impl Iterator<Item = (ChunkId, Chunk)> + use<> {
+        re_log::debug_assert!(
+            start_inclusive < end_exclusive,
+            "start_inclusive={start_inclusive:?}, end_exclusive={end_exclusive:?}",
+        );
+
+        let query = RangeQuery::new(
+            timeline,
+            AbsoluteTimeRange::new(start_inclusive, end_exclusive.saturating_sub(1)),
+        );
 
         let mut chunks: HashMap<ChunkId, Chunk> = Default::default();
         for component in components {
@@ -456,6 +472,6 @@ impl ChunkStore {
             }
         }
 
-        std::iter::chain(chunks_bootstrap, chunks)
+        chunks.into_iter()
     }
 }
