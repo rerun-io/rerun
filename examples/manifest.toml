@@ -16,8 +16,6 @@ Collect, prepare, train, and evaluate: follow robot data through each step of th
 # The website orders the examples by their first step, then by the order of `examples`.
 steps = ["collect", "prepare", "train", "evaluate"]
 examples = [
-  "robot_data_preprocessing",
-  "droid_dataset",
   "rrd_conversion",
   "teleop_livekit",
   "droid_semantic_search",
@@ -82,6 +80,7 @@ examples = [
   "dicom_mri",
   "differentiable_blocks_world",
   "dna",
+  "droid_dataset",
   "egoexo_forge",
   "eigen_opencv",
   "eye_control",
@@ -122,6 +121,7 @@ examples = [
   "raw_mesh",
   "revy",
   "rgbd",
+  "robot_data_preprocessing",
   "ros2_bridge",
   "ros_bridge",
   "ros_node",
