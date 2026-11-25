@@ -37,12 +37,18 @@ The `rerun` CLI is available via `pip install rerun-sdk` or the binaries attache
     <source media="(max-width: 1024px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/1024w.png">
     <source media="(max-width: 1200px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/1200w.png">
   </picture>
+- [Import MuJoCo (MJCF) models](https://rerun.io/docs/changelog/changeset-0-44#import-mujoco-mjcf-models) from `.mjcf` and `.xml` files, animated with [`MjcfTree`](https://rerun.io/docs/logging-and-ingestion/import/mjcf)
+
+#### 🤖 MCP improvements
+
 - [Catalog tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-tools-in-the-mcp-server): [`rerun mcp`](https://rerun.io/docs/viewer/extend/mcp#reading-a-catalog) can list and query datasets with SQL, with or without a Viewer
 - [Catalog write tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-write-tools-in-the-mcp-server): agents can [create datasets and upload or register recordings](https://rerun.io/docs/viewer/extend/mcp#changing-a-catalog), asking you before each change
-- [Import MuJoCo (MJCF) models](https://rerun.io/docs/changelog/changeset-0-44#import-mujoco-mjcf-models) from `.mjcf` and `.xml` files, animated with [`MjcfTree`](https://rerun.io/docs/logging-and-ingestion/import/mjcf)
-- [Register a recording under any segment ID](https://rerun.io/docs/changelog/changeset-0-44#register-a-recording-under-any-segment-id) with [`DatasetEntry.register(…, segment_id=…)`](https://rerun.io/docs/query-and-transform/catalog/layers#how-can-i-register-a-recording-under-another-segment-id)
 - [Shared list of catalog servers](https://rerun.io/docs/changelog/changeset-0-44#shared-list-of-catalog-servers) for the Viewer, the CLI ([`rerun servers`](https://rerun.io/docs/reference/cli#rerun-servers)), and `rerun mcp`
 - [Discover available view types via MCP](https://rerun.io/docs/changelog/changeset-0-44#discover-available-view-types-via-mcp) with `viewer_list_view_types`
+
+#### 🗄️ Catalog and data
+
+- [Register a recording under any segment ID](https://rerun.io/docs/changelog/changeset-0-44#register-a-recording-under-any-segment-id) with [`DatasetEntry.register(…, segment_id=…)`](https://rerun.io/docs/query-and-transform/catalog/layers#how-can-i-register-a-recording-under-another-segment-id)
 - [Stream dataset selections as Arrow batches](https://rerun.io/docs/changelog/changeset-0-44#stream-dataset-selections-as-arrow-batches) with [`DatasetSelection.read_arrow()`](https://rerun.io/docs/query-and-transform/catalog/get-data-out#streaming-arrow-batches)
 - [Query annotated time spans](https://rerun.io/docs/changelog/changeset-0-44#query-annotated-time-spans) with [`rerun.experimental.spans.SpanTable`](https://rerun.io/docs/query-and-transform/dataframes/spans)
 - [Measure dataloader pipeline performance](https://rerun.io/docs/changelog/changeset-0-44#measure-dataloader-pipeline-performance) with `dataset.metrics.summary()` in the [dataloader](https://rerun.io/docs/train/dataloader)
