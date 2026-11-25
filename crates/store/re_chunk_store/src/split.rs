@@ -77,19 +77,32 @@ impl ChunkStore {
         let special_components: HashSet<_> =
             itertools::chain!(video_components, frame_components.iter().copied()).collect();
 
+        let has_multiplexed_frames = |entity: &EntityPath| {
+            [
+                transform_parent_frame_identifier,
+                transform_child_frame_identifier,
+                pinhole_parent_frame_identifier,
+                pinhole_child_frame_identifier,
+            ]
+            .into_iter()
+            .any(|component| {
+                self.entity_has_component_on_timeline(Some(&timeline), entity, component)
+            })
+        };
+
         let all_entities_and_their_components = self
             .all_entities()
             .into_iter()
             .filter_map(|entity| {
-                self.schema()
-                    .all_components_for_entity(&entity)
-                    .map(|components| (entity, components))
+                let components = self.schema().all_components_for_entity(&entity)?;
+                let entity_has_multiplexed_frames = has_multiplexed_frames(&entity);
+                Some((entity, components, entity_has_multiplexed_frames))
             })
             .collect_vec();
 
         let mut keyframes_per_entity: IntMap<EntityPath, Vec<TimeInt>> = IntMap::default();
         if let Some(is_start_of_gop) = is_start_of_gop {
-            for (entity, _) in &all_entities_and_their_components {
+            for (entity, _, _) in &all_entities_and_their_components {
                 let keyframes =
                     self.extract_keyframes(tracking, entity, timeline, is_start_of_gop.as_ref());
                 if !keyframes.is_empty() {
@@ -112,30 +125,10 @@ impl ChunkStore {
                 .map(|chunk| (chunk.id(), Chunk::clone(chunk)))
                 .collect_vec();
 
-            for (entity, components) in &all_entities_and_their_components {
-                // Transforms and/or pinholes with multiplexed coordinate frames, see the special case below.
-                let entity_has_multiplexed_transforms_on_timeline =
-                    self.entity_has_component_on_timeline(
-                        Some(&timeline),
-                        entity,
-                        transform_parent_frame_identifier,
-                    ) || self.entity_has_component_on_timeline(
-                        Some(&timeline),
-                        entity,
-                        transform_child_frame_identifier,
-                    );
-                let entity_has_multiplexed_pinholes_on_timeline =
-                    self.entity_has_component_on_timeline(
-                        Some(&timeline),
-                        entity,
-                        pinhole_parent_frame_identifier,
-                    ) || self.entity_has_component_on_timeline(
-                        Some(&timeline),
-                        entity,
-                        pinhole_child_frame_identifier,
-                    );
-                let entity_has_multiplexed_frames = entity_has_multiplexed_transforms_on_timeline
-                    || entity_has_multiplexed_pinholes_on_timeline;
+            for (entity, components, entity_has_multiplexed_frames) in
+                &all_entities_and_their_components
+            {
+                let entity_has_multiplexed_frames = *entity_has_multiplexed_frames;
 
                 // Base case: everything
                 {
