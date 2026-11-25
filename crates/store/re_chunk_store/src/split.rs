@@ -392,6 +392,7 @@ impl ChunkStore {
             timeline,
             AbsoluteTimeRange::new(start_inclusive, end_exclusive.saturating_sub(1)),
         );
+        let components_to_keep = components.iter().copied().collect_vec();
 
         let mut chunks: HashMap<ChunkId, Chunk> = Default::default();
         for component in components {
@@ -458,9 +459,7 @@ impl ChunkStore {
 
                 let mut chunk = match keep_components {
                     KeepComponents::All => chunk,
-                    KeepComponents::Queried => {
-                        chunk.components_sliced(&components.iter().copied().collect_vec())
-                    }
+                    KeepComponents::Queried => chunk.components_sliced(&components_to_keep),
                 };
 
                 // Unsorted chunks were sorted by time for slicing, which can leave their rows out of
