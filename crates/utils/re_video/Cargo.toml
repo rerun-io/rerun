@@ -57,7 +57,6 @@ cros-codecs.workspace = true
 econtext.workspace = true
 h264-reader.workspace = true
 itertools.workspace = true
-poll-promise.workspace = true
 re_mp4.workspace = true
 scuffle-av1.workspace = true
 scuffle-bytes-util.workspace = true

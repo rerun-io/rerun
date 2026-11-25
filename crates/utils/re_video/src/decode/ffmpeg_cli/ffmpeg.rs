@@ -1346,7 +1346,7 @@ mod tests {
 
         let (frame_tx, frame_rx) = crate::channel("pending version");
 
-        let version_sender = FFmpegVersion::pending_for_test(&ffmpeg_path);
+        let pending_version = FFmpegVersion::pending_for_test(&ffmpeg_path);
 
         let got_frame = FFmpegCliDecoder::new(
             "pending version".to_owned(),
@@ -1374,7 +1374,9 @@ mod tests {
         });
 
         // Resolve the version before asserting, so that nothing is left waiting for it.
-        version_sender.send(Ok(version));
+        pending_version
+            .set(Ok(version))
+            .expect("cached FFmpeg version should still be pending");
 
         assert!(
             got_frame.unwrap(),
