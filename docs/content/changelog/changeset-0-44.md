@@ -126,15 +126,13 @@ See the [streaming example](../query-and-transform/catalog/get-data-out.md#strea
 The experimental `rerun.experimental.spans.SpanTable` stores time span annotations, such as task labels and scores, for a dataset's recordings in a catalog table.
 Add and edit spans with `append` and `upsert`, then select them with DataFusion filters on `reader()`, joined with the recordings' properties.
 See [Curating annotated time spans](../query-and-transform/dataframes/spans.md) for a walkthrough.
-It is part of `rerun.experimental` and may change in future releases.
 
-### Experimental: measure dataloader pipeline performance
+### Measure dataloader pipeline performance
 
 `RerunIterableDataset` now collects cumulative fetch and decode metrics automatically across PyTorch `DataLoader` workers.
 Read `dataset.metrics.summary()` to get a flat dictionary of fetch versus decode time, direct HTTP range merging, GOP decode amplification, and skipped samples.
 An optional prefix makes the dictionary directly usable with experiment trackers such as MLflow and Weights & Biases.
 Reports are cumulative aggregates of completed worker measurements.
-The dataloader is part of `rerun.experimental` and may change in future releases.
 
 Docs: [Dataloader](../train/dataloader.md)
 
@@ -148,9 +146,9 @@ Docs: [Dataloader](../train/dataloader.md)
   - In Python, `rerun.urdf.UrdfTree.log_urdf_to_recording` is deprecated in favor of `log_to_recording`.
 
   `compute_joint_transform_batches` now logs clamping warnings once per call instead of once per clamped value. The single log line contains the first warning and the number of further warnings in the batch.
-- **Experimental: read and change the Viewer settings over ViewerControl**: `ViewerClient.get_settings()` and `ViewerClient.set_settings()` in Python, and the `viewer_get_settings` and `viewer_set_settings` MCP tools, read and change the Viewer's app settings as JSON. Secrets, such as the Mapbox access token, are left out. See [Changing settings](../viewer/extend/mcp.md#changing-settings). `ViewerClient` is part of `rerun.experimental` and may change in future releases.
-- **Experimental: inspect an MP4 file without streaming it**: `rerun.experimental.Mp4Reader.info()` returns an `Mp4Info` with the codec, dimensions, frame count, GOP sizes, and a per-frame Arrow table of the file, read from the container metadata alone. `Mp4Info.keyframe_timestamps_ns` lists the keyframes without streaming the video, and without FFmpeg for sources with B-frames.
-- **Experimental: reduce iterable dataloader scheduling memory**: `BlockShuffle` and `NoShuffle` now use substantially less worker memory when iterating large datasets. This improves startup memory use for ordinary and curated iterable datasets.
+- **Read and change the Viewer settings over ViewerControl**: `ViewerClient.get_settings()` and `ViewerClient.set_settings()` in Python, and the `viewer_get_settings` and `viewer_set_settings` MCP tools, read and change the Viewer's app settings as JSON. Secrets, such as the Mapbox access token, are left out. See [Changing settings](../viewer/extend/mcp.md#changing-settings).
+- **Inspect an MP4 file without streaming it**: `rerun.experimental.Mp4Reader.info()` returns an `Mp4Info` with the codec, dimensions, frame count, GOP sizes, and a per-frame Arrow table of the file, read from the container metadata alone. `Mp4Info.keyframe_timestamps_ns` lists the keyframes without streaming the video, and without FFmpeg for sources with B-frames.
+- **Reduce iterable dataloader scheduling memory**: `BlockShuffle` and `NoShuffle` now use substantially less worker memory when iterating large datasets. This improves startup memory use for ordinary and curated iterable datasets.
 - **Blueprint override path warnings**: The Python SDK now warns when a blueprint view override path contains a wildcard, such as `/boxes/**`. Use the full path of each entity instead.
 
 ## Breaking changes

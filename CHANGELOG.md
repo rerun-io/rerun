@@ -36,6 +36,7 @@ The Python, C++, and JavaScript SDKs and the CLI are released as usual.
     <source media="(max-width: 1200px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/1200w.png">
   </picture>
 - [Stream dataset selections as Arrow batches](https://rerun.io/docs/changelog/changeset-0-44#stream-dataset-selections-as-arrow-batches) with [`DatasetSelection.read_arrow()`](https://rerun.io/docs/query-and-transform/catalog/get-data-out#streaming-arrow-batches)
+- [Measure dataloader pipeline performance](https://rerun.io/docs/changelog/changeset-0-44#measure-dataloader-pipeline-performance) with `dataset.metrics.summary()` in the [dataloader](https://rerun.io/docs/train/dataloader)
 
 #### 🧪 Experimental and unstable
 
@@ -43,7 +44,6 @@ These may change in future releases, and unstable types may not stay backwards c
 
 - [Agent panel](https://rerun.io/docs/changelog/changeset-0-44#experimental-agent-panel): [chat with a coding agent](https://rerun.io/docs/agents#agent-panel) that inspects and controls the Viewer, using your own agent or a model API ([video](https://static.rerun.io/f28ec42d7e0f6423ee585b343fcf9b0d9321567a_agent_panel_find_anomalies.mp4))
 - [Query annotated time spans](https://rerun.io/docs/changelog/changeset-0-44#experimental-query-annotated-time-spans) with [`rerun.experimental.spans.SpanTable`](https://rerun.io/docs/query-and-transform/dataframes/spans)
-- [Measure dataloader pipeline performance](https://rerun.io/docs/changelog/changeset-0-44#experimental-measure-dataloader-pipeline-performance) with `dataset.metrics.summary()` in the [dataloader](https://rerun.io/docs/train/dataloader)
 
 📖 Release notes: https://rerun.io/docs/changelog/changeset-0-44#highlights
 
