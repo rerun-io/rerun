@@ -19,6 +19,7 @@ examples = [
   "robot_data_preprocessing",
   "droid_dataset",
   "rrd_conversion",
+  "teleop_livekit",
   "droid_semantic_search",
   "annotation_gradio",
   "rerun_export",
