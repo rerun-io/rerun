@@ -12,6 +12,7 @@ pub const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
 pub const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
 
 pub type FfmpegVersionResult = Result<FFmpegVersion, FFmpegVersionParseError>;
+type SharedVersionResult = Arc<OnceLock<FfmpegVersionResult>>;
 
 /// A successfully parsed `FFmpeg` version.
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -33,7 +34,7 @@ impl std::fmt::Display for FFmpegVersion {
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum FFmpegVersionParseError {
-    #[error("Failed to retrieve file modification time of FFmpeg executable: {0}")]
+    #[error("Failed to read FFmpeg executable metadata: {0}")]
     RetrieveFileModificationTime(String),
 
     #[error("Failed to run FFmpeg: {0}")]
@@ -84,12 +85,12 @@ impl FFmpegVersion {
     /// Error indicates issues running `FFmpeg`. Ok(None) indicates that we weren't able to parse the
     /// version string. Since version strings can get pretty wild, we don't want to fail in this case.
     ///
-    /// Internally caches the result per path together with its modification time to re-run/parse the version only if the file has changed.
+    /// Internally caches the result per executable path.
     pub fn for_executable_poll(path: Option<&std::path::Path>) -> Poll<FfmpegVersionResult> {
         re_tracing::profile_function!();
 
-        let modification_time = file_modification_time(path)?;
-        let version = VersionCache::global(|cache| cache.version(path, modification_time));
+        check_executable_path(path)?;
+        let version = VersionCache::global(|cache| cache.version(path));
         match version.get() {
             Some(result) => Poll::Ready(result.clone()),
             None => Poll::Pending,
@@ -103,9 +104,9 @@ impl FFmpegVersion {
     pub fn for_executable_blocking(path: Option<&std::path::Path>) -> FfmpegVersionResult {
         re_tracing::profile_function!();
 
-        let modification_time = file_modification_time(path)?;
+        check_executable_path(path)?;
 
-        let version = VersionCache::global(|cache| cache.version(path, modification_time));
+        let version = VersionCache::global(|cache| cache.version(path));
 
         re_tracing::profile_wait!("ffmpeg-version");
         version.wait().clone()
@@ -122,46 +123,31 @@ impl FFmpegVersion {
     ///
     /// Set the result before leaving the test so any waiters can finish.
     #[cfg(test)]
-    pub fn pending_for_test(path: &std::path::Path) -> Arc<OnceLock<FfmpegVersionResult>> {
-        let modification_time = file_modification_time(Some(path)).unwrap();
+    pub fn pending_for_test(path: &std::path::Path) -> SharedVersionResult {
         let pending = Arc::new(OnceLock::new());
         VersionCache::global(|VersionCache(cache)| {
-            cache.insert(path.to_path_buf(), (modification_time, pending.clone()));
+            cache.insert(path.to_path_buf(), pending.clone());
         });
         pending
     }
 }
 
-fn file_modification_time(
-    path: Option<&std::path::Path>,
-) -> Result<Option<std::time::SystemTime>, FFmpegVersionParseError> {
-    Ok(if let Some(path) = path {
-        path.metadata()
-            .map_err(|err| {
-                if err.kind() == std::io::ErrorKind::NotFound {
-                    FFmpegVersionParseError::FFmpegNotFound(path.display().to_string())
-                } else {
-                    FFmpegVersionParseError::RetrieveFileModificationTime(err.to_string())
-                }
-            })?
-            .modified()
-            .ok()
-    } else {
-        None
-    })
+fn check_executable_path(path: Option<&std::path::Path>) -> Result<(), FFmpegVersionParseError> {
+    if let Some(path) = path {
+        path.metadata().map_err(|err| {
+            if err.kind() == std::io::ErrorKind::NotFound {
+                FFmpegVersionParseError::FFmpegNotFound(path.display().to_string())
+            } else {
+                FFmpegVersionParseError::RetrieveFileModificationTime(err.to_string())
+            }
+        })?;
+    }
+    Ok(())
 }
 
 /// The `Arc` lets callers wait on a result without holding the cache lock.
 #[derive(Default)]
-struct VersionCache(
-    HashMap<
-        PathBuf,
-        (
-            Option<std::time::SystemTime>,
-            Arc<OnceLock<FfmpegVersionResult>>,
-        ),
-    >,
-);
+struct VersionCache(HashMap<PathBuf, SharedVersionResult>);
 
 impl VersionCache {
     fn global<R>(f: impl FnOnce(&mut Self) -> R) -> R {
@@ -170,11 +156,7 @@ impl VersionCache {
         f(&mut CACHE.lock())
     }
 
-    fn version(
-        &mut self,
-        path: Option<&std::path::Path>,
-        modification_time: Option<std::time::SystemTime>,
-    ) -> Arc<OnceLock<FfmpegVersionResult>> {
+    fn version(&mut self, path: Option<&std::path::Path>) -> SharedVersionResult {
         let Self(cache) = self;
 
         let cache_key = path
@@ -182,7 +164,7 @@ impl VersionCache {
             .to_path_buf();
 
         match cache.entry(cache_key) {
-            std::collections::hash_map::Entry::Occupied(entry) => entry.get().1.clone(),
+            std::collections::hash_map::Entry::Occupied(entry) => entry.get().clone(),
             std::collections::hash_map::Entry::Vacant(entry) => {
                 let version = Arc::new(OnceLock::new());
                 let path = path.map(|path| path.to_path_buf());
@@ -195,7 +177,7 @@ impl VersionCache {
                         }
                     })
                     .expect("Failed to spawn thread");
-                entry.insert((modification_time, version.clone()));
+                entry.insert(version.clone());
                 version
             }
         }
@@ -268,7 +250,7 @@ mod tests {
     /// Regression test for <https://github.com/rerun-io/rerun/issues/10789>.
     #[test]
     fn poll_does_not_wait_for_blocking_caller() {
-        // The cache is global, so use a path no other test uses. It must exist for `file_modification_time`.
+        // The cache is global, so use an existing path no other test uses.
         let path = std::env::current_exe().unwrap();
         let pending = FFmpegVersion::pending_for_test(&path);
 
@@ -294,7 +276,9 @@ mod tests {
         let poll_was_pending = poll_rx.recv_timeout(Duration::from_secs(5));
 
         let version = FFmpegVersion::parse("7.1").unwrap();
-        pending.set(Ok(version.clone())).unwrap();
+        pending
+            .set(Ok(version.clone()))
+            .expect("cached FFmpeg version should still be pending");
 
         assert_eq!(
             poll_was_pending,

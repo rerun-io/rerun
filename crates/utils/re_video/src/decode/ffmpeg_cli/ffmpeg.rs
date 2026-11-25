@@ -1374,7 +1374,9 @@ mod tests {
         });
 
         // Resolve the version before asserting, so that nothing is left waiting for it.
-        pending_version.set(Ok(version)).unwrap();
+        pending_version
+            .set(Ok(version))
+            .expect("cached FFmpeg version should still be pending");
 
         assert!(
             got_frame.unwrap(),
