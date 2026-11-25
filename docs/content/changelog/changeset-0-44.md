@@ -90,7 +90,14 @@ Each change asks you first, and none deletes or replaces data.
 To keep an agent read-only, set "Catalog servers" to "Read only" in the agent panel's settings, or start `rerun mcp --catalog-read-only`.
 See the [MCP server documentation](../viewer/extend/mcp.md#changing-a-catalog).
 
-#### Shared list of catalog servers
+#### Discover available view types via MCP
+
+Agents can use `viewer_list_view_types` to discover the connected viewer's supported view classes.
+Short descriptions and tag keywords help find suitable views for visualization tasks like editing blueprints.
+The same information is available through `ViewerClient.list_view_types()` in Python and `WebViewer.listViewTypes()` in JavaScript.
+See the [Viewer MCP documentation](../viewer/extend/mcp.md).
+
+### Shared list of catalog servers
 
 The catalog servers you add in the Viewer are now also known to the CLI and to `rerun mcp`.
 `rerun servers list`, `rerun servers add <url>`, and `rerun servers remove <url>` manage the list, and the `catalog_list_servers` MCP tool offers it to agents.
@@ -98,13 +105,6 @@ The native Viewer now only remembers servers you add or log in to, not those it 
 On first start it moves the servers it remembered into the list, leaving out local ones.
 The list lives in `servers.json` in Rerun's config directory, so Reset Viewer and `rerun reset` keep it, and a Viewer older than this release no longer shows these servers.
 See the [MCP server documentation](../viewer/extend/mcp.md#reading-a-catalog).
-
-#### Discover available view types via MCP
-
-Agents can use `viewer_list_view_types` to discover the connected viewer's supported view classes.
-Short descriptions and tag keywords help find suitable views for visualization tasks like editing blueprints.
-The same information is available through `ViewerClient.list_view_types()` in Python and `WebViewer.listViewTypes()` in JavaScript.
-See the [Viewer MCP documentation](../viewer/extend/mcp.md).
 
 ### Import MuJoCo (MJCF) models
 
