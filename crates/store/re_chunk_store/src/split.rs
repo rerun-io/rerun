@@ -105,7 +105,7 @@ impl ChunkStore {
             let end_exclusive = range.max().inc();
 
             // Static data applies to all times, so it is kept as-is in every split.
-            // The latest-at bootstrap below skips it, and doesn't cover special components anyway.
+            // The latest-at bootstrap below skips it.
             let mut all_chunks_in_split = self
                 .iter_physical_chunks()
                 .filter(|chunk| chunk.is_static())
@@ -139,15 +139,14 @@ impl ChunkStore {
 
                 // Base case: everything
                 {
-                    // We must not try to bootstrap special components, as they will undergo some
-                    // custom bootstrap logic below anyway.
-                    // Normally this would be fine, but again we cannot afford the presence of any
-                    // duplicate data when it comes to video decoding.
-                    //
-                    // All components go through a single pass, so that a chunk holding both special
-                    // and regular components (common after compaction) is only extracted once.
+                    // Video samples and multiplexed transforms/pinholes get their data before the
+                    // range from the special cases below, so bootstrapping them here would
+                    // duplicate it, which the video decoder cannot handle.
                     // Transforms and pinholes without multiplexed coordinate frames are plain
-                    // latest-at data though.
+                    // latest-at data.
+                    //
+                    // All components go through a single range pass, so that a chunk holding both
+                    // special and regular components (common after compaction) is only extracted once.
                     let components_to_bootstrap = components
                         .iter()
                         .copied()
@@ -358,8 +357,8 @@ impl ChunkStore {
                 .expect("non-empty latest-at chunk must have a single row");
 
             if start_inclusive <= time && time < end_exclusive {
-                // If this chunk overlaps with the range results that will follow, then we will create
-                // duplicate data with different chunk and row IDs.
+                // This row is part of the range that `extract_chunks_for_single_split` extracts,
+                // so keeping it would create duplicate data with different chunk and row IDs.
                 // This is wasteful and useless in general, but the video decoder in particular really
                 // hates it, so make sure to filter it out.
                 return vec![];
