@@ -498,7 +498,7 @@ jobs:
           cat <<EOF > comment-body.txt
           The GitHub release draft for $version can be found in the [release list](https://github.com/rerun-io/rerun/releases).
 
-          Its description is pre-filled from \`CHANGELOG.md\`: check it, add a nice header video/picture, then click 'Publish release'.
+          Its description is pre-filled from \`CHANGELOG.md\`: check it, then click 'Publish release'.
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
