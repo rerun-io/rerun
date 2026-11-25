@@ -544,6 +544,11 @@ impl AgentSession {
         &self.launch.cwd
     }
 
+    /// Directories the host put there for the agent to read, e.g. skills.
+    pub fn readable_directories(&self) -> &[PathBuf] {
+        &self.launch.readable_directories
+    }
+
     /// How many items at the start of the transcript were replayed from a loaded session.
     ///
     /// They carry the time of the replay, not of the original messages.

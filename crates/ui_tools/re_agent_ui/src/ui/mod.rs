@@ -8,6 +8,7 @@ mod elicitation_ui;
 mod linkify;
 mod pasted_image;
 mod setup_ui;
+mod tool_call_title;
 mod tool_call_ui;
 mod transcript_ui;
 

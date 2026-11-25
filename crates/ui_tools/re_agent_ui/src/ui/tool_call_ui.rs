@@ -5,6 +5,7 @@ use re_ui::{UiExt as _, icons};
 use re_agent::{AgentSession, ToolCallState};
 
 use super::conversation_list::status_dot_ui;
+use super::tool_call_title::short_tool_title;
 
 /// A collapsible row for one tool call: status, kind, title, and the details underneath.
 ///
@@ -59,7 +60,8 @@ pub fn subdued_triangle(ui: &mut egui::Ui, openness: f32, response: &egui::Respo
     ui.visuals_mut().widgets.inactive.fg_stroke.color = default;
 }
 
-/// The title is truncated while collapsed and wraps when expanded, so no tooltip is needed.
+/// The title is truncated while collapsed and wraps when expanded.
+/// Shortened paths in it show in full on hover.
 fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is_open: bool) {
     ui.spacing_mut().item_spacing.x = 6.0;
 
@@ -90,12 +92,16 @@ fn header_ui(ui: &mut egui::Ui, session: &AgentSession, call: &ToolCallState, is
     } else {
         egui::TextWrapMode::Truncate
     };
-    ui.add(
-        egui::Label::new(RichText::new(title).color(tokens.text_subdued))
+    let short_title = short_tool_title(session, &title);
+    let response = ui.add(
+        egui::Label::new(RichText::new(&short_title).color(tokens.text_subdued))
             .wrap_mode(wrap_mode)
             .show_tooltip_when_elided(false)
             .selectable(false),
     );
+    if short_title != title {
+        response.on_hover_text(title);
+    }
 }
 
 fn body_ui(ui: &mut egui::Ui, call: &ToolCallState) {
