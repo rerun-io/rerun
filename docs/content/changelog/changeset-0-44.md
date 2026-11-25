@@ -46,13 +46,6 @@ Previous releases shipped an early version of the panel behind an experimental s
     <source src="https://static.rerun.io/f28ec42d7e0f6423ee585b343fcf9b0d9321567a_agent_panel_find_anomalies.mp4" type="video/mp4" />
 </video>
 
-### 2D labels in 3D views
-
-Labels on 2D points, lines, arrows, boxes, and ellipses can now be shown in [3D views](../reference/types/views/spatial3d_view.md).
-Camera-plane annotations stay attached to their geometry, with text facing the viewer.
-
-![Labels on 2D geometry in a 3D camera frustum](https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/full.png)
-
 ### Switch between a dataset's blueprints
 
 When you open a recording from the catalog, a new dropdown in the top bar lets you switch between the blueprints registered for its dataset and the heuristic blueprint.
@@ -62,6 +55,13 @@ See [Blueprints](../query-and-transform/catalog/catalog-object-model.md#blueprin
 <img width="507" src="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/full.png" alt="Blueprint dropdown listing the heuristic blueprint and the dataset's blueprints">
 
 Resetting the current blueprint can still be done in the blueprint panel, but **Reset to default blueprint** and **Reset to heuristic blueprint** are now in the **View** menu and the command palette.
+
+### 2D labels in 3D views
+
+Labels on 2D points, lines, arrows, boxes, and ellipses can now be shown in [3D views](../reference/types/views/spatial3d_view.md).
+Camera-plane annotations stay attached to their geometry, with text facing the viewer.
+
+<img width="600" src="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/full.png" alt="Labels on 2D geometry in a 3D camera frustum">
 
 ### Better preview card layouts
 

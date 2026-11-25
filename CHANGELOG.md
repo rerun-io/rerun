@@ -15,19 +15,19 @@ The `rerun` CLI is available via `pip install rerun-sdk` or the binaries attache
     <source media="(max-width: 1024px)" srcset="https://static.rerun.io/agent-panel/b1f5998b449df2c9f2468210db0e6be001a4c8f0/1024w.png">
     <source media="(max-width: 1200px)" srcset="https://static.rerun.io/agent-panel/b1f5998b449df2c9f2468210db0e6be001a4c8f0/1200w.png">
   </picture>
-- [2D labels in 3D views](https://rerun.io/docs/changelog/changeset-0-44#2d-labels-in-3d-views) on points, lines, arrows, boxes, and ellipses
-  <picture>
-    <img src="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/full.png" alt="Labels on 2D geometry in a 3D camera frustum">
-    <source media="(max-width: 480px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/480w.png">
-    <source media="(max-width: 768px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/768w.png">
-    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/1024w.png">
-    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/1200w.png">
-  </picture>
 - [Switch between a dataset's blueprints](https://rerun.io/docs/changelog/changeset-0-44#switch-between-a-datasets-blueprints) from a dropdown in the top bar
   <picture>
     <img src="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/full.png" alt="Blueprint dropdown listing the heuristic blueprint and the dataset's blueprints">
     <source media="(max-width: 480px)" srcset="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/480w.png">
     <source media="(max-width: 768px)" srcset="https://static.rerun.io/blueprint_dropdown/9cd8260a49672534c1fb7d15883eae87ede1ee34/768w.png">
+  </picture>
+- [2D labels in 3D views](https://rerun.io/docs/changelog/changeset-0-44#2d-labels-in-3d-views) on points, lines, arrows, boxes, and ellipses
+  <picture>
+    <img width="600" src="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/full.png" alt="Labels on 2D geometry in a 3D camera frustum">
+    <source media="(max-width: 480px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/480w.png">
+    <source media="(max-width: 768px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/768w.png">
+    <source media="(max-width: 1024px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/1024w.png">
+    <source media="(max-width: 1200px)" srcset="https://static.rerun.io/labels-2d-in-3d/e47f5d77b5022059f1668266dcb224bf6d564cfe/1200w.png">
   </picture>
 - [Better preview card layouts](https://rerun.io/docs/changelog/changeset-0-44#better-preview-card-layouts) for [table blueprints](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints), sized by aspect ratio
   <picture>
