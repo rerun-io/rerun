@@ -10,6 +10,16 @@ use re_types_core::{Archetype as _, ComponentIdentifier};
 use crate::rebatch_videos::extract_codec;
 use crate::{ChunkStore, ChunkTrackingMode, IsStartOfGop, LatestAtQuery, RangeQuery};
 
+/// Which components of a chunk to keep when extracting a time range from it.
+#[derive(Clone, Copy)]
+enum KeepComponents {
+    /// Every component in the chunk, including the ones that were not queried.
+    All,
+
+    /// Only the queried components.
+    Queried,
+}
+
 impl ChunkStore {
     /// Extracts, for each of the given `ranges` on `timeline`, the chunks needed to view that range on its own.
     ///
@@ -157,7 +167,6 @@ impl ChunkStore {
                     ));
 
                     let components = components.iter().copied().collect();
-                    let keep_other_components = true;
                     let chunks = self.extract_chunks_for_single_split(
                         tracking,
                         entity,
@@ -165,7 +174,7 @@ impl ChunkStore {
                         timeline,
                         start_inclusive,
                         end_exclusive,
-                        keep_other_components,
+                        KeepComponents::All,
                     );
                     all_chunks_in_split.extend(chunks);
                 }
@@ -195,7 +204,6 @@ impl ChunkStore {
                     if let Some(start_revised) = start_revised {
                         let components = video_components.into_iter().collect();
                         // Data logged next to the video samples is already covered by the base case.
-                        let keep_other_components = false;
                         let chunks = self.extract_chunks_for_single_split(
                             tracking,
                             entity,
@@ -203,7 +211,7 @@ impl ChunkStore {
                             timeline,
                             start_revised,
                             start_inclusive,
-                            keep_other_components,
+                            KeepComponents::Queried,
                         );
                         all_chunks_in_split.extend(chunks);
                     }
@@ -219,7 +227,6 @@ impl ChunkStore {
                     );
 
                     // Data logged next to the transforms is already covered by the base case.
-                    let keep_other_components = false;
                     let chunks = self.extract_chunks_for_single_split(
                         tracking,
                         entity,
@@ -227,7 +234,7 @@ impl ChunkStore {
                         timeline,
                         TimeInt::MIN,
                         start_inclusive,
-                        keep_other_components,
+                        KeepComponents::Queried,
                     );
                     all_chunks_in_split.extend(chunks);
                 }
@@ -382,7 +389,7 @@ impl ChunkStore {
         timeline: TimelineName,
         start_inclusive: TimeInt,
         end_exclusive: TimeInt,
-        keep_other_components: bool,
+        keep_components: KeepComponents,
     ) -> impl Iterator<Item = (ChunkId, Chunk)> + use<> {
         re_log::debug_assert!(
             start_inclusive < end_exclusive,
@@ -457,10 +464,11 @@ impl ChunkStore {
                     chunk.row_sliced_deep(re_chunk::Span::from_start_len(start_idx, slice_len))
                 };
 
-                let mut chunk = if keep_other_components {
-                    chunk
-                } else {
-                    chunk.components_sliced(&components.iter().copied().collect_vec())
+                let mut chunk = match keep_components {
+                    KeepComponents::All => chunk,
+                    KeepComponents::Queried => {
+                        chunk.components_sliced(&components.iter().copied().collect_vec())
+                    }
                 };
 
                 // Unsorted chunks were sorted by time for slicing, which can leave their rows out of
