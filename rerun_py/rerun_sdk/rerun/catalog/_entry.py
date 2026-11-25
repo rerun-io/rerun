@@ -1927,7 +1927,7 @@ class DatasetSelection:
             scope=scope,
         )
 
-    def _read_arrow(
+    def read_arrow(
         self,
         index: str | None,
         *,

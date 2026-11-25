@@ -309,7 +309,7 @@ impl PyDatasetSelectionInternal {
         using_index_values: Option<BTreeMap<String, IndexValuesLike<'_>>>,
     ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let py = self_.py();
-        let _span = read_trace_context_from_python(py, "DatasetSelection._read_arrow").entered();
+        let _span = read_trace_context_from_python(py, "DatasetSelection.read_arrow").entered();
 
         let using_index_values = convert_using_index_values(using_index_values)?;
 
