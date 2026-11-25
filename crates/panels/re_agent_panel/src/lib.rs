@@ -33,6 +33,7 @@ mod self_improve;
 mod skills_toolbox;
 mod viewer_toolbox;
 
+pub use product_feedback::{AgentFeedback, InvalidFeedback};
 pub use viewer_toolbox::ViewerControlCall;
 
 /// The MCP server name an agent harness sees the viewer under. Tools show up as
@@ -206,13 +207,9 @@ impl ViewerAgentPanel {
     /// Queue feedback that an agent sent about Rerun, to be sent.
     ///
     /// Its text is only sent when `share_text` is set, after the panel's agent has redacted it.
-    pub fn submit_product_feedback(
-        &mut self,
-        request: re_protos::viewer_control::v1alpha1::SubmitFeedbackRequest,
-        share_text: bool,
-    ) {
+    pub fn submit_product_feedback(&mut self, feedback: AgentFeedback, share_text: bool) {
         self.reporting
-            .submit_product_feedback(self.panel.as_ref(), request, share_text);
+            .submit_product_feedback(self.panel.as_ref(), feedback, share_text);
     }
 
     /// Queue a nonblank prompt in the active conversation, buffering it until the panel exists.

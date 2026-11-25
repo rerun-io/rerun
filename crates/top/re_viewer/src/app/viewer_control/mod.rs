@@ -9,6 +9,8 @@ use std::sync::Arc;
 use std::task::Poll;
 use std::time::Duration;
 
+#[cfg(feature = "analytics")]
+use re_agent_panel::AgentFeedback;
 use re_chunk::TimelineName;
 use re_entity_db::LogSource;
 use re_log_channel::{
@@ -616,15 +618,16 @@ impl AppCore {
             Kind::SubmitFeedback(request) => {
                 cfg_select! {
                     feature = "analytics" => {
-                        if let Err(err) = check_feedback(&request) {
-                            on_done.call(Err(err));
-                        } else {
-                            // The text is only sent with "Share redacted prompts with Rerun",
-                            // after the panel's agent has redacted it.
-                            let share_text = self.state.agent_settings.share_redacted_prompts;
-                            self.agent_panel
-                                .submit_product_feedback(request, share_text);
-                            on_done.call(Ok(SubmitFeedbackResponse {}.into()));
+                        match parse_feedback(request) {
+                            Err(err) => on_done.call(Err(err)),
+                            Ok(feedback) => {
+                                // The text is only sent with "Share redacted prompts with Rerun",
+                                // after the panel's agent has redacted it.
+                                let share_text = self.state.agent_settings.share_redacted_prompts;
+                                self.agent_panel
+                                    .submit_product_feedback(feedback, share_text);
+                                on_done.call(Ok(SubmitFeedbackResponse {}.into()));
+                            }
                         }
                     }
                     _ => {
@@ -766,12 +769,11 @@ impl AppCore {
     }
 }
 
-/// Whether feedback that an agent sent about Rerun can be sent with analytics.
+/// Parse feedback that an agent sent about Rerun, if it can be sent with analytics.
 #[cfg(feature = "analytics")]
-fn check_feedback(request: &SubmitFeedbackRequest) -> Result<(), ViewerControlError> {
-    if request.title.trim().is_empty() {
-        return Err(ViewerControlError::invalid_argument("`title` is empty"));
-    }
+fn parse_feedback(request: SubmitFeedbackRequest) -> Result<AgentFeedback, ViewerControlError> {
+    let feedback = AgentFeedback::try_from(request)
+        .map_err(|err| ViewerControlError::invalid_argument(err.to_string()))?;
     if !re_analytics::is_enabled() {
         return Err(ViewerControlError::failed_precondition(
             "Analytics is turned off in this viewer, so feedback cannot be sent",
@@ -783,7 +785,7 @@ fn check_feedback(request: &SubmitFeedbackRequest) -> Result<(), ViewerControlEr
              so feedback cannot be sent until their next session",
         ));
     }
-    Ok(())
+    Ok(feedback)
 }
 
 /// Which recordings a `close` request selects.
@@ -2995,6 +2997,60 @@ mod tests {
                 set_time_cursor(&store_id, Some(3), Some(ProtoPlayState::Following)),
             );
             assert_eq!(error_code(&answer), ViewerControlErrorCode::InvalidArgument);
+        }
+    }
+
+    #[cfg(feature = "analytics")]
+    #[test]
+    fn feedback_with_an_invalid_surface_or_confidence_is_refused() {
+        let valid = SubmitFeedbackRequest {
+            title: "`rr.log` failed.".to_owned(),
+            surface: "rr.log".to_owned(),
+            ..Default::default()
+        };
+        for (field, request) in [
+            (
+                "surface",
+                SubmitFeedbackRequest {
+                    surface: String::new(),
+                    ..valid.clone()
+                },
+            ),
+            (
+                "surface",
+                SubmitFeedbackRequest {
+                    surface: "rr.log(\"/home/me/data\")".to_owned(),
+                    ..valid.clone()
+                },
+            ),
+            (
+                "confidence",
+                SubmitFeedbackRequest {
+                    confidence: Some(1.1),
+                    ..valid.clone()
+                },
+            ),
+            (
+                "confidence",
+                SubmitFeedbackRequest {
+                    confidence: Some(f64::NAN),
+                    ..valid.clone()
+                },
+            ),
+        ] {
+            let err = parse_feedback(request.clone())
+                .err()
+                .expect("an invalid request");
+            assert_eq!(
+                err.code,
+                ViewerControlErrorCode::InvalidArgument,
+                "{request:?}"
+            );
+            assert!(
+                err.message.contains(&format!("`{field}`")),
+                "{}",
+                err.message
+            );
         }
     }
 

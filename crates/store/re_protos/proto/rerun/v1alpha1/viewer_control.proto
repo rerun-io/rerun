@@ -1651,7 +1651,8 @@ message SubmitFeedbackRequest {
   FeedbackCategory category = 2;
 
   // The tool, command, or API that let you down, e.g. `viewer_set_blueprint` or `rr.log`.
-  optional string surface = 3;
+  // 1 to 64 characters: letters, digits, `_`, `.`, `:`, and `-`.
+  string surface = 3;
 
   // More detail: the error message, what you expected instead, and how you worked around it.
   optional string summary = 4;
@@ -1661,6 +1662,15 @@ message SubmitFeedbackRequest {
 
   // How much the problem got in your way.
   FeedbackSeverity severity = 6;
+
+  // How often the problem happens when you try again.
+  optional FeedbackReproducibility reproducibility = 7;
+
+  // What kind of thing `surface` names.
+  optional FeedbackSurfaceKind kind = 8;
+
+  // How sure you are of this report, from 0 to 1.
+  optional double confidence = 9;
 }
 
 // What kind of problem a `SubmitFeedback` reports.
@@ -1703,6 +1713,46 @@ enum FeedbackSeverity {
 
   // A small annoyance.
   FEEDBACK_SEVERITY_LOW = 4;
+}
+
+// How often the problem of a `SubmitFeedback` happens.
+enum FeedbackReproducibility {
+  // Not said.
+  FEEDBACK_REPRODUCIBILITY_UNSPECIFIED = 0;
+
+  // It happens every time you try.
+  FEEDBACK_REPRODUCIBILITY_ALWAYS = 1;
+
+  // It happens on some tries, and you know what makes it happen.
+  FEEDBACK_REPRODUCIBILITY_SOMETIMES = 2;
+
+  // It happens on some tries, and you do not know why.
+  FEEDBACK_REPRODUCIBILITY_INTERMITTENT = 3;
+
+  // It happened once, or you did not try again.
+  FEEDBACK_REPRODUCIBILITY_ONCE = 4;
+}
+
+// What kind of thing the `surface` of a `SubmitFeedback` names.
+enum FeedbackSurfaceKind {
+  // Not said.
+  FEEDBACK_SURFACE_KIND_UNSPECIFIED = 0;
+
+  // A gRPC or HTTP endpoint, or an MCP tool, e.g. `viewer_set_blueprint`.
+  FEEDBACK_SURFACE_KIND_API_ENDPOINT = 1;
+
+  // An example or a skill, e.g. `rerun-catalog-queries`.
+  // For wrong docs about an API, name the API instead.
+  FEEDBACK_SURFACE_KIND_DOCS_PAGE = 2;
+
+  // A command of the `rerun` CLI, e.g. `rerun rrd split`.
+  FEEDBACK_SURFACE_KIND_CLI_COMMAND = 3;
+
+  // A function or method of a Rerun SDK, e.g. `rr.log`.
+  FEEDBACK_SURFACE_KIND_SDK_METHOD = 4;
+
+  // Anything else.
+  FEEDBACK_SURFACE_KIND_OTHER = 5;
 }
 
 // Response for `SubmitFeedback`.

@@ -2454,7 +2454,7 @@ impl ::prost::Name for SetLocationResponse {
     }
 }
 /// Request for `SubmitFeedback`.
-#[derive(Clone, PartialEq, Eq, Hash, ::prost::Message)]
+#[derive(Clone, PartialEq, ::prost::Message)]
 pub struct SubmitFeedbackRequest {
     /// One or two sentences: what you tried to do, and what the tool, doc, or API did wrong or lacked.
     #[prost(string, tag = "1")]
@@ -2463,8 +2463,9 @@ pub struct SubmitFeedbackRequest {
     #[prost(enumeration = "FeedbackCategory", tag = "2")]
     pub category: i32,
     /// The tool, command, or API that let you down, e.g. `viewer_set_blueprint` or `rr.log`.
-    #[prost(string, optional, tag = "3")]
-    pub surface: ::core::option::Option<::prost::alloc::string::String>,
+    /// 1 to 64 characters: letters, digits, `_`, `.`, `:`, and `-`.
+    #[prost(string, tag = "3")]
+    pub surface: ::prost::alloc::string::String,
     /// More detail: the error message, what you expected instead, and how you worked around it.
     #[prost(string, optional, tag = "4")]
     pub summary: ::core::option::Option<::prost::alloc::string::String>,
@@ -2474,6 +2475,15 @@ pub struct SubmitFeedbackRequest {
     /// How much the problem got in your way.
     #[prost(enumeration = "FeedbackSeverity", tag = "6")]
     pub severity: i32,
+    /// How often the problem happens when you try again.
+    #[prost(enumeration = "FeedbackReproducibility", optional, tag = "7")]
+    pub reproducibility: ::core::option::Option<i32>,
+    /// What kind of thing `surface` names.
+    #[prost(enumeration = "FeedbackSurfaceKind", optional, tag = "8")]
+    pub kind: ::core::option::Option<i32>,
+    /// How sure you are of this report, from 0 to 1.
+    #[prost(double, optional, tag = "9")]
+    pub confidence: ::core::option::Option<f64>,
 }
 impl ::prost::Name for SubmitFeedbackRequest {
     const NAME: &'static str = "SubmitFeedbackRequest";
@@ -2654,6 +2664,93 @@ impl FeedbackSeverity {
             "FEEDBACK_SEVERITY_HIGH" => Some(Self::High),
             "FEEDBACK_SEVERITY_MEDIUM" => Some(Self::Medium),
             "FEEDBACK_SEVERITY_LOW" => Some(Self::Low),
+            _ => None,
+        }
+    }
+}
+/// How often the problem of a `SubmitFeedback` happens.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum FeedbackReproducibility {
+    /// Not said.
+    Unspecified = 0,
+    /// It happens every time you try.
+    Always = 1,
+    /// It happens on some tries, and you know what makes it happen.
+    Sometimes = 2,
+    /// It happens on some tries, and you do not know why.
+    Intermittent = 3,
+    /// It happened once, or you did not try again.
+    Once = 4,
+}
+impl FeedbackReproducibility {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "FEEDBACK_REPRODUCIBILITY_UNSPECIFIED",
+            Self::Always => "FEEDBACK_REPRODUCIBILITY_ALWAYS",
+            Self::Sometimes => "FEEDBACK_REPRODUCIBILITY_SOMETIMES",
+            Self::Intermittent => "FEEDBACK_REPRODUCIBILITY_INTERMITTENT",
+            Self::Once => "FEEDBACK_REPRODUCIBILITY_ONCE",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "FEEDBACK_REPRODUCIBILITY_UNSPECIFIED" => Some(Self::Unspecified),
+            "FEEDBACK_REPRODUCIBILITY_ALWAYS" => Some(Self::Always),
+            "FEEDBACK_REPRODUCIBILITY_SOMETIMES" => Some(Self::Sometimes),
+            "FEEDBACK_REPRODUCIBILITY_INTERMITTENT" => Some(Self::Intermittent),
+            "FEEDBACK_REPRODUCIBILITY_ONCE" => Some(Self::Once),
+            _ => None,
+        }
+    }
+}
+/// What kind of thing the `surface` of a `SubmitFeedback` names.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum FeedbackSurfaceKind {
+    /// Not said.
+    Unspecified = 0,
+    /// A gRPC or HTTP endpoint, or an MCP tool, e.g. `viewer_set_blueprint`.
+    ApiEndpoint = 1,
+    /// An example or a skill, e.g. `rerun-catalog-queries`.
+    /// For wrong docs about an API, name the API instead.
+    DocsPage = 2,
+    /// A command of the `rerun` CLI, e.g. `rerun rrd split`.
+    CliCommand = 3,
+    /// A function or method of a Rerun SDK, e.g. `rr.log`.
+    SdkMethod = 4,
+    /// Anything else.
+    Other = 5,
+}
+impl FeedbackSurfaceKind {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unspecified => "FEEDBACK_SURFACE_KIND_UNSPECIFIED",
+            Self::ApiEndpoint => "FEEDBACK_SURFACE_KIND_API_ENDPOINT",
+            Self::DocsPage => "FEEDBACK_SURFACE_KIND_DOCS_PAGE",
+            Self::CliCommand => "FEEDBACK_SURFACE_KIND_CLI_COMMAND",
+            Self::SdkMethod => "FEEDBACK_SURFACE_KIND_SDK_METHOD",
+            Self::Other => "FEEDBACK_SURFACE_KIND_OTHER",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "FEEDBACK_SURFACE_KIND_UNSPECIFIED" => Some(Self::Unspecified),
+            "FEEDBACK_SURFACE_KIND_API_ENDPOINT" => Some(Self::ApiEndpoint),
+            "FEEDBACK_SURFACE_KIND_DOCS_PAGE" => Some(Self::DocsPage),
+            "FEEDBACK_SURFACE_KIND_CLI_COMMAND" => Some(Self::CliCommand),
+            "FEEDBACK_SURFACE_KIND_SDK_METHOD" => Some(Self::SdkMethod),
+            "FEEDBACK_SURFACE_KIND_OTHER" => Some(Self::Other),
             _ => None,
         }
     }

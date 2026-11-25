@@ -60,7 +60,7 @@ Reading the data itself:
 - Dataset queries may require the Python query SDK, which is separate from this MCP server. Before using it, read the `rerun-catalog-queries` skill if available and inspect the schema/metadata. Query only the necessary segments, columns, and time range; avoid costly scans across the full dataset, and clarify the scope with the user before running a potentially expensive query if it is unclear.
 
 Telling Rerun what let you down:
-- When a Rerun tool, doc, or API lets you down (an error you cannot explain, a feature you need that is missing, docs that are wrong), call `viewer_submit_feedback` once, after you have tried to work around it. Write only about Rerun, never about the user's data, and name the tool in `surface`. If it fails with `FAILED_PRECONDITION`, analytics is turned off: carry on and do not retry.
+- When a Rerun tool, doc, or API lets you down (an error you cannot explain, a feature you need that is missing, docs that are wrong), call `viewer_submit_feedback` once, after you have tried to work around it. Write only about Rerun, never about the user's data, and name the tool, command, or API in `surface`. For wrong docs, name the API the page describes, not the page. If it fails with `FAILED_PRECONDITION`, analytics is turned off: carry on and do not retry.
 
 The UI tools (`ui_widget_tree`, `ui_get_widget`, `ui_click`, `ui_type_text`, `ui_hover`, `ui_scroll`, `ui_screenshot`, …) drive the widgets of the connected viewer one input event at a time, the way a person would: they read the viewer's accessibility tree and synthesize real input events. Work in an observe → act → verify loop.
 
@@ -2524,7 +2524,7 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
       },
       "surface": {
         "type": "string",
-        "description": "The tool, command, or API that let you down, e.g. `viewer_set_blueprint` or `rr.log`."
+        "description": "The tool, command, or API that let you down, e.g. `viewer_set_blueprint` or `rr.log`.\n1 to 64 characters: letters, digits, `_`, `.`, `:`, and `-`."
       },
       "summary": {
         "type": "string",
@@ -2544,11 +2544,39 @@ Catalog tools (`catalog_*`) work on the contents of a Rerun catalog server (does
           "FEEDBACK_SEVERITY_LOW"
         ],
         "description": "How much the problem got in your way."
+      },
+      "reproducibility": {
+        "type": "string",
+        "enum": [
+          "FEEDBACK_REPRODUCIBILITY_UNSPECIFIED",
+          "FEEDBACK_REPRODUCIBILITY_ALWAYS",
+          "FEEDBACK_REPRODUCIBILITY_SOMETIMES",
+          "FEEDBACK_REPRODUCIBILITY_INTERMITTENT",
+          "FEEDBACK_REPRODUCIBILITY_ONCE"
+        ],
+        "description": "How often the problem happens when you try again."
+      },
+      "kind": {
+        "type": "string",
+        "enum": [
+          "FEEDBACK_SURFACE_KIND_UNSPECIFIED",
+          "FEEDBACK_SURFACE_KIND_API_ENDPOINT",
+          "FEEDBACK_SURFACE_KIND_DOCS_PAGE",
+          "FEEDBACK_SURFACE_KIND_CLI_COMMAND",
+          "FEEDBACK_SURFACE_KIND_SDK_METHOD",
+          "FEEDBACK_SURFACE_KIND_OTHER"
+        ],
+        "description": "What kind of thing `surface` names."
+      },
+      "confidence": {
+        "type": "number",
+        "description": "How sure you are of this report, from 0 to 1."
       }
     },
     "required": [
       "title",
       "category",
+      "surface",
       "severity"
     ],
     "description": "Request for `SubmitFeedback`."

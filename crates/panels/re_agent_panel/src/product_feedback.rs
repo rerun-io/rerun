@@ -2,11 +2,14 @@
 //! operation, which `re_rerun_mcp` offers agents as an MCP tool.
 
 use re_analytics::event::{
-    Feedback, FeedbackAbout, FeedbackAuthor, FeedbackCategory, FeedbackSeverity,
-    ProductFeedbackContent,
+    Confidence, Feedback, FeedbackAbout, FeedbackAuthor, FeedbackCategory, FeedbackReproducibility,
+    FeedbackSeverity, FeedbackSurfaceKind, InvalidConfidence, InvalidSurface,
+    ProductFeedbackContent, Surface,
 };
 use re_protos::viewer_control::v1alpha1::{
-    FeedbackCategory as ProtoCategory, FeedbackSeverity as ProtoSeverity, SubmitFeedbackRequest,
+    FeedbackCategory as ProtoCategory, FeedbackReproducibility as ProtoReproducibility,
+    FeedbackSeverity as ProtoSeverity, FeedbackSurfaceKind as ProtoSurfaceKind,
+    SubmitFeedbackRequest,
 };
 use re_sdk_types::external::uuid::Uuid;
 
@@ -18,10 +21,70 @@ struct RedactableContent {
     summary: Option<String>,
 }
 
-/// Records feedback without its title and summary, which may hold sensitive data.
-pub fn record_without_text(request: SubmitFeedbackRequest) {
-    let (unsent, _text) = Unsent::from_request(request);
-    unsent.record(None);
+/// Feedback that an agent sent about Rerun, parsed from a [`SubmitFeedbackRequest`].
+pub struct AgentFeedback {
+    unsent: Unsent,
+    text: RedactableContent,
+}
+
+/// Why a [`SubmitFeedbackRequest`] is refused.
+#[derive(thiserror::Error, Debug)]
+pub enum InvalidFeedback {
+    #[error("`title` is empty")]
+    EmptyTitle,
+
+    #[error("`surface` {0}")]
+    Surface(#[from] InvalidSurface),
+
+    #[error("`confidence` {0}")]
+    Confidence(#[from] InvalidConfidence),
+
+    #[error("`{field}` has the unknown value {value}")]
+    UnknownValue { field: &'static str, value: i32 },
+}
+
+impl TryFrom<SubmitFeedbackRequest> for AgentFeedback {
+    type Error = InvalidFeedback;
+
+    fn try_from(request: SubmitFeedbackRequest) -> Result<Self, Self::Error> {
+        let SubmitFeedbackRequest {
+            title,
+            category,
+            surface,
+            summary,
+            agent,
+            severity,
+            reproducibility,
+            kind,
+            confidence,
+        } = request;
+        if title.trim().is_empty() {
+            return Err(InvalidFeedback::EmptyTitle);
+        }
+        let unsent = Unsent {
+            agent: agent.unwrap_or_else(|| "unknown".to_owned()),
+            category: self::category(known("category", category)?),
+            severity: self::severity(known("severity", severity)?),
+            reproducibility: reproducibility
+                .map(|value| known("reproducibility", value))
+                .transpose()?
+                .and_then(self::reproducibility),
+            confidence: confidence.map(Confidence::new).transpose()?,
+            surface: Surface::new(surface)?,
+            kind: kind
+                .map(|value| known("kind", value))
+                .transpose()?
+                .and_then(self::kind),
+        };
+        Ok(Self {
+            unsent,
+            text: RedactableContent { title, summary },
+        })
+    }
+}
+
+fn known<T: TryFrom<i32>>(field: &'static str, value: i32) -> Result<T, InvalidFeedback> {
+    T::try_from(value).map_err(|_err| InvalidFeedback::UnknownValue { field, value })
 }
 
 /// Sends feedback, with its text once a second session of the panel's agent has redacted it.
@@ -38,14 +101,15 @@ impl ProductFeedback {
 
     pub fn submit(
         &mut self,
-        request: SubmitFeedbackRequest,
+        feedback: AgentFeedback,
         redact_with: Option<re_agent::RedactionAgent>,
     ) {
+        let AgentFeedback { unsent, text } = feedback;
         let Some(agent) = redact_with else {
-            record_without_text(request);
+            // The title and summary may hold sensitive data.
+            unsent.record(None);
             return;
         };
-        let (unsent, text) = Unsent::from_request(request);
 
         let json = match serde_json::to_value(&text) {
             Ok(json) => json,
@@ -89,36 +153,22 @@ struct Unsent {
     agent: String,
     category: Option<FeedbackCategory>,
     severity: Option<FeedbackSeverity>,
-    surface: Option<String>,
+    reproducibility: Option<FeedbackReproducibility>,
+    confidence: Option<Confidence>,
+    surface: Surface,
+    kind: Option<FeedbackSurfaceKind>,
 }
 
 impl Unsent {
-    fn from_request(request: SubmitFeedbackRequest) -> (Self, RedactableContent) {
-        let SubmitFeedbackRequest {
-            title,
-            category,
-            surface,
-            summary,
-            agent,
-            severity,
-        } = request;
-        let category = self::category(ProtoCategory::try_from(category).unwrap_or_default());
-        let severity = self::severity(ProtoSeverity::try_from(severity).unwrap_or_default());
-        let unsent = Self {
-            agent: agent.unwrap_or_else(|| "unknown".to_owned()),
-            category,
-            severity,
-            surface,
-        };
-        (unsent, RedactableContent { title, summary })
-    }
-
     fn event(self, content: Option<RedactableContent>) -> Feedback {
         let Self {
             agent,
             category,
             severity,
+            reproducibility,
+            confidence,
             surface,
+            kind,
         } = self;
         Feedback {
             feedback_id: Uuid::new_v4(),
@@ -128,7 +178,10 @@ impl Unsent {
             about: FeedbackAbout::Product(re_analytics::event::ProductFeedback {
                 category,
                 severity,
+                reproducibility,
+                confidence,
                 surface,
+                kind,
                 content: content.map(|RedactableContent { title, summary }| {
                     ProductFeedbackContent { title, summary }
                 }),
@@ -169,24 +222,53 @@ fn severity(severity: ProtoSeverity) -> Option<FeedbackSeverity> {
     }
 }
 
+fn reproducibility(reproducibility: ProtoReproducibility) -> Option<FeedbackReproducibility> {
+    match reproducibility {
+        ProtoReproducibility::Unspecified => None,
+        ProtoReproducibility::Always => Some(FeedbackReproducibility::Always),
+        ProtoReproducibility::Sometimes => Some(FeedbackReproducibility::Sometimes),
+        ProtoReproducibility::Intermittent => Some(FeedbackReproducibility::Intermittent),
+        ProtoReproducibility::Once => Some(FeedbackReproducibility::Once),
+    }
+}
+
+fn kind(kind: ProtoSurfaceKind) -> Option<FeedbackSurfaceKind> {
+    match kind {
+        ProtoSurfaceKind::Unspecified => None,
+        ProtoSurfaceKind::ApiEndpoint => Some(FeedbackSurfaceKind::ApiEndpoint),
+        ProtoSurfaceKind::DocsPage => Some(FeedbackSurfaceKind::DocsPage),
+        ProtoSurfaceKind::CliCommand => Some(FeedbackSurfaceKind::CliCommand),
+        ProtoSurfaceKind::SdkMethod => Some(FeedbackSurfaceKind::SdkMethod),
+        ProtoSurfaceKind::Other => Some(FeedbackSurfaceKind::Other),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn parse(request: SubmitFeedbackRequest) -> (Unsent, RedactableContent) {
+        let AgentFeedback { unsent, text } = request.try_into().expect("a valid request");
+        (unsent, text)
+    }
 
     fn request() -> SubmitFeedbackRequest {
         SubmitFeedbackRequest {
             title: "`viewer_set_blueprint` rejected a valid blueprint.".to_owned(),
             category: ProtoCategory::Bug.into(),
-            surface: Some("viewer_set_blueprint".to_owned()),
+            surface: "viewer_set_blueprint".to_owned(),
             summary: Some("It said the JSON was invalid.".to_owned()),
             agent: Some("Test Agent".to_owned()),
             severity: ProtoSeverity::Unspecified.into(),
+            reproducibility: None,
+            kind: None,
+            confidence: None,
         }
     }
 
     #[test]
     fn without_redaction_the_text_is_left_out() {
-        let (unsent, _) = Unsent::from_request(request());
+        let (unsent, _) = parse(request());
         let Feedback { agent, about, .. } = unsent.event(None);
         assert_eq!(agent, "Test Agent");
         let FeedbackAbout::Product(product) = about else {
@@ -194,13 +276,61 @@ mod tests {
         };
         assert_eq!(product.category, Some(FeedbackCategory::Bug));
         assert_eq!(product.severity, None);
-        assert_eq!(product.surface.as_deref(), Some("viewer_set_blueprint"));
+        assert_eq!(product.surface.as_str(), "viewer_set_blueprint");
+        assert_eq!(product.reproducibility, None);
+        assert_eq!(product.kind, None);
+        assert_eq!(product.confidence, None);
         assert!(product.content.is_none());
     }
 
     #[test]
+    fn reproducibility_kind_and_confidence_are_sent() {
+        let (unsent, _) = parse(SubmitFeedbackRequest {
+            reproducibility: Some(ProtoReproducibility::Always.into()),
+            kind: Some(ProtoSurfaceKind::ApiEndpoint.into()),
+            confidence: Some(0.1),
+            ..request()
+        });
+        let FeedbackAbout::Product(product) = unsent.event(None).about else {
+            panic!("expected product feedback");
+        };
+        assert_eq!(
+            product.reproducibility,
+            Some(FeedbackReproducibility::Always)
+        );
+        assert_eq!(product.kind, Some(FeedbackSurfaceKind::ApiEndpoint));
+        assert_eq!(product.confidence.map(Confidence::get), Some(0.1));
+    }
+
+    #[test]
+    fn an_unknown_proto_value_is_refused() {
+        for (field, request) in [
+            (
+                "category",
+                SubmitFeedbackRequest {
+                    category: 99,
+                    ..request()
+                },
+            ),
+            (
+                "kind",
+                SubmitFeedbackRequest {
+                    kind: Some(99),
+                    ..request()
+                },
+            ),
+        ] {
+            let err = AgentFeedback::try_from(request).err().expect("refused");
+            assert!(
+                matches!(err, InvalidFeedback::UnknownValue { field: f, value: 99 } if f == field),
+                "{err}"
+            );
+        }
+    }
+
+    #[test]
     fn redacted_content_is_sent() {
-        let (unsent, text) = Unsent::from_request(request());
+        let (unsent, text) = parse(request());
         let FeedbackAbout::Product(product) = unsent.event(Some(text)).about else {
             panic!("expected product feedback");
         };
