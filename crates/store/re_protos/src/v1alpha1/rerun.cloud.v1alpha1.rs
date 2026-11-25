@@ -3814,6 +3814,8 @@ pub mod rerun_cloud_service_client {
     /// but disagree, the call fails with `INVALID_ARGUMENT` naming the two ids, rather than silently
     /// picking one. `x-rerun-entry-name-bin` is never resolved on these endpoints.
     /// OSS servers older than 0.37 ignore the header on these endpoints and only read the body field.
+    ///
+    /// Every RPC sets `idempotency_level`, which tells clients whether it is safe to call more than once.
     #[derive(Debug, Clone)]
     pub struct RerunCloudServiceClient<T> {
         inner: tonic::client::Grpc<T>,
@@ -5522,6 +5524,8 @@ pub mod rerun_cloud_service_server {
     /// but disagree, the call fails with `INVALID_ARGUMENT` naming the two ids, rather than silently
     /// picking one. `x-rerun-entry-name-bin` is never resolved on these endpoints.
     /// OSS servers older than 0.37 ignore the header on these endpoints and only read the body field.
+    ///
+    /// Every RPC sets `idempotency_level`, which tells clients whether it is safe to call more than once.
     #[derive(Debug)]
     pub struct RerunCloudServiceServer<T> {
         inner: Arc<T>,

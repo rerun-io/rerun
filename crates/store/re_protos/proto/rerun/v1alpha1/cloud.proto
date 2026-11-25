@@ -38,19 +38,25 @@ import "rerun/v1alpha1/log_msg.proto";
 // but disagree, the call fails with `INVALID_ARGUMENT` naming the two ids, rather than silently
 // picking one. `x-rerun-entry-name-bin` is never resolved on these endpoints.
 // OSS servers older than 0.37 ignore the header on these endpoints and only read the body field.
+//
+// Every RPC sets `idempotency_level`, which tells clients whether it is safe to call more than once.
 service RerunCloudService {
   // Returns version and build information about the server.
   //
   // Also reports the optional features this server supports, so clients can stay safe against
   // rolling deployments where the server is older than the client
   // (see `ConnectionClient::supports_feature`).
-  rpc Version(VersionRequest) returns (VersionResponse) {}
+  rpc Version(VersionRequest) returns (VersionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Returns information about the currently authenticated user.
   //
   // This is a lightweight endpoint that can be used to verify that authentication
   // is successful and to retrieve the user's identity.
-  rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse) {}
+  rpc WhoAmI(WhoAmIRequest) returns (WhoAmIResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Returns a payload of pseudo-random (incompressible) bytes of the requested size.
   //
@@ -61,12 +67,16 @@ service RerunCloudService {
   //
   // The response is streamed as one or more chunks; the total number of bytes across
   // all chunks is exactly `num_bytes`.
-  rpc DoBandwidthTest(DoBandwidthTestRequest) returns (stream DoBandwidthTestResponse) {}
+  rpc DoBandwidthTest(DoBandwidthTestRequest) returns (stream DoBandwidthTestResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // --- Catalog ---
 
   // List storage locations, sorted by alias.
-  rpc GetStorageLocations(GetStorageLocationsRequest) returns (GetStorageLocationsResponse) {}
+  rpc GetStorageLocations(GetStorageLocationsRequest) returns (GetStorageLocationsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Subscribe to catalog events as they happen.
   //
@@ -77,10 +87,14 @@ service RerunCloudService {
   // Servers may not support this at all: a server without event support returns
   // `UNIMPLEMENTED`, and clients must treat that as permanent rather than retrying.
   // Rerun Hub currently returns `UNIMPLEMENTED` (RR-4859).
-  rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse) {}
+  rpc WatchEvents(WatchEventsRequest) returns (stream WatchEventsResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // List the entries of the catalog that match the given filter.
-  rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {}
+  rpc FindEntries(FindEntriesRequest) returns (FindEntriesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Mark an entry as deleted, making it unavailable for future use.
   //
@@ -91,7 +105,10 @@ service RerunCloudService {
   //
   // The entry is identified by the `x-rerun-entry-id` header, falling back to the deprecated
   // body `id` field (see the `Headers` section at the top of this file).
-  rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {}
+  rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {
+    // TODO(RR-6527): Unify idempotency between OSS and Hub
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Update the kind-agnostic details of an entry, i.e. its name.
   //
@@ -100,7 +117,9 @@ service RerunCloudService {
   //
   // The entry is identified by the `x-rerun-entry-id` header, falling back to the deprecated
   // body `id` field (see the `Headers` section at the top of this file).
-  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {}
+  rpc UpdateEntry(UpdateEntryRequest) returns (UpdateEntryResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Create a new dataset entry, with no segments.
   //
@@ -110,7 +129,9 @@ service RerunCloudService {
   //
   // Fails with `ALREADY_EXISTS` if an entry with the same name (or the same id) already
   // exists.
-  rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {}
+  rpc CreateDatasetEntry(CreateDatasetEntryRequest) returns (CreateDatasetEntryResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Create a new table entry with the given schema.
   //
@@ -120,12 +141,16 @@ service RerunCloudService {
   // configured, and with `ALREADY_EXISTS` if an entry with the same name already exists.
   //
   // Use `RegisterTable` instead to adopt a table that already exists.
-  rpc CreateTableEntry(CreateTableEntryRequest) returns (CreateTableEntryResponse) {}
+  rpc CreateTableEntry(CreateTableEntryRequest) returns (CreateTableEntryResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Fetch metadata about a specific dataset.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {}
+  rpc ReadDatasetEntry(ReadDatasetEntryRequest) returns (ReadDatasetEntryResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Overwrite the dataset-specific details of a dataset entry, e.g. its associated blueprint dataset.
   //
@@ -138,7 +163,9 @@ service RerunCloudService {
   //
   // The dataset is identified by the `x-rerun-entry-id` header, falling back to the deprecated
   // body `id` field (see the `Headers` section at the top of this file).
-  rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {}
+  rpc UpdateDatasetEntry(UpdateDatasetEntryRequest) returns (UpdateDatasetEntryResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // Set the policies of a dataset and apply them to the data already registered.
   //
@@ -147,14 +174,18 @@ service RerunCloudService {
   //
   // The dataset is identified by the `x-rerun-entry-id` header (see the `Headers` section at the
   // top of this file).
-  rpc ApplyDatasetPolicy(ApplyDatasetPolicyRequest) returns (ApplyDatasetPolicyResponse) {}
+  rpc ApplyDatasetPolicy(ApplyDatasetPolicyRequest) returns (ApplyDatasetPolicyResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Fetch metadata about a specific table.
   //
   // The table is identified by the `x-rerun-entry-id` header, falling back to the deprecated
   // body `id` field (see the `Headers` section at the top of this file).
   // Fails with the gRPC status code `NOT_FOUND` for unknown or soft-deleted entries.
-  rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {}
+  rpc ReadTableEntry(ReadTableEntryRequest) returns (ReadTableEntryResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Overwrite the table-specific details of a table entry, e.g. its associated blueprint dataset.
   //
@@ -164,7 +195,9 @@ service RerunCloudService {
   //
   // The table is identified by the `x-rerun-entry-id` header, falling back to the deprecated
   // body `id` field (see the `Headers` section at the top of this file).
-  rpc UpdateTableEntry(UpdateTableEntryRequest) returns (UpdateTableEntryResponse) {}
+  rpc UpdateTableEntry(UpdateTableEntryRequest) returns (UpdateTableEntryResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // --- Grants ---
 
@@ -174,20 +207,28 @@ service RerunCloudService {
   // or fails with FAILED_PRECONDITION if it supports none of them.
   // The grant must use the requested URL signing mode; unsupported modes fail with UNIMPLEMENTED.
   // TODO(grtlr): Add a `GetReadAccessGrant` when clients need direct read access.
-  rpc GetWriteAccessGrant(GetWriteAccessGrantRequest) returns (GetWriteAccessGrantResponse) {}
+  rpc GetWriteAccessGrant(GetWriteAccessGrantRequest) returns (GetWriteAccessGrantResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Issues part grants without extending the session deadline.
-  rpc GetMultipartUploadPartGrants(GetMultipartUploadPartGrantsRequest) returns (GetMultipartUploadPartGrantsResponse) {}
+  rpc GetMultipartUploadPartGrants(GetMultipartUploadPartGrantsRequest) returns (GetMultipartUploadPartGrantsResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // Publishes an upload at its authorized key without replacing an existing object.
   // If another object exists at the destination, fails atomically with ALREADY_EXISTS.
   // Idempotent: confirming this upload's publication succeeds even after the session deadline.
   // After the deadline, this RPC must not publish an unfinished upload.
-  rpc CompleteMultipartUpload(CompleteMultipartUploadRequest) returns (CompleteMultipartUploadResponse) {}
+  rpc CompleteMultipartUpload(CompleteMultipartUploadRequest) returns (CompleteMultipartUploadResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // Aborts an upload, even after the session deadline.
   // Idempotent: aborting an unknown, aborted, or published upload succeeds without side effects.
-  rpc AbortMultipartUpload(AbortMultipartUploadRequest) returns (AbortMultipartUploadResponse) {}
+  rpc AbortMultipartUpload(AbortMultipartUploadRequest) returns (AbortMultipartUploadResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // --- Manifest Registry ---
 
@@ -196,7 +237,9 @@ service RerunCloudService {
   // Register new segments with the Dataset.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {}
+  rpc RegisterWithDataset(RegisterWithDatasetRequest) returns (RegisterWithDatasetResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Unregisters segments and layers from the Dataset.
   //
@@ -204,7 +247,9 @@ service RerunCloudService {
   // The response is a stream only for historical reasons.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc UnregisterFromDataset(UnregisterFromDatasetRequest) returns (stream UnregisterFromDatasetResponse) {}
+  rpc UnregisterFromDataset(UnregisterFromDatasetRequest) returns (stream UnregisterFromDatasetResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   /* Query schemas */
 
@@ -216,14 +261,18 @@ service RerunCloudService {
   // this endpoint, check out `ScanSegmentTable`.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc GetSegmentTableSchema(GetSegmentTableSchemaRequest) returns (GetSegmentTableSchemaResponse) {}
+  rpc GetSegmentTableSchema(GetSegmentTableSchemaRequest) returns (GetSegmentTableSchemaResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Inspect the contents of the segment table.
   //
   // The data will follow the schema returned by `GetSegmentTableSchema`.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc ScanSegmentTable(ScanSegmentTableRequest) returns (stream ScanSegmentTableResponse) {}
+  rpc ScanSegmentTable(ScanSegmentTableRequest) returns (stream ScanSegmentTableResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Returns the schema of the dataset manifest.
   //
@@ -231,14 +280,18 @@ service RerunCloudService {
   // this endpoint, check out `ScanDatasetManifest`.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc GetDatasetManifestSchema(GetDatasetManifestSchemaRequest) returns (GetDatasetManifestSchemaResponse) {}
+  rpc GetDatasetManifestSchema(GetDatasetManifestSchemaRequest) returns (GetDatasetManifestSchemaResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Inspect the contents of the dataset manifest.
   //
   // The data will follow the schema returned by `GetDatasetManifestSchema`.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc ScanDatasetManifest(ScanDatasetManifestRequest) returns (stream ScanDatasetManifestResponse) {}
+  rpc ScanDatasetManifest(ScanDatasetManifestRequest) returns (stream ScanDatasetManifestResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Returns the schema of the dataset.
   //
@@ -246,7 +299,9 @@ service RerunCloudService {
   // entities and components present in the dataset.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {}
+  rpc GetDatasetSchema(GetDatasetSchemaRequest) returns (GetDatasetSchemaResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Look up layer schemas by their `SchemaId`.
   //
@@ -254,7 +309,9 @@ service RerunCloudService {
   // Unlike `GetDatasetSchema`, the schemas are returned unmerged, one per distinct identifier.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc GetSchemas(GetSchemasRequest) returns (stream GetSchemasResponse) {}
+  rpc GetSchemas(GetSchemasRequest) returns (stream GetSchemasResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Get the RRD Footer manifest.
   //
@@ -269,7 +326,9 @@ service RerunCloudService {
   // encoded `rerun.log_msg.v1alpha1.RrdFooter` payloads for the client to fetch and decode.
   // This is best-effort: the response may still inline the manifests: clients must handle both forms.
   // However, all the items in a stream will either send inline manifest or urls, uniformly.
-  rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {}
+  rpc GetRrdManifest(GetRrdManifestRequest) returns (stream GetRrdManifestResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Get the assets that apply to a given segment of this dataset.
   //
@@ -278,7 +337,9 @@ service RerunCloudService {
   // The asset segment ids may be spread over multiple responses, at the discretion of the server.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc GetAssetsForSegment(GetAssetsForSegmentRequest) returns (stream GetAssetsForSegmentResponse) {}
+  rpc GetAssetsForSegment(GetAssetsForSegmentRequest) returns (stream GetAssetsForSegmentResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   /* Segment properties */
 
@@ -291,19 +352,25 @@ service RerunCloudService {
   // response is sent as soon as the segments it carries have been read.
   //
   // This endpoint requires the standard dataset headers.
-  rpc GetSegmentProperties(GetSegmentPropertiesRequest) returns (stream GetSegmentPropertiesResponse) {}
+  rpc GetSegmentProperties(GetSegmentPropertiesRequest) returns (stream GetSegmentPropertiesResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Replace the mutable properties of one segment in this dataset.
   //
   // This endpoint requires the standard dataset headers.
-  rpc SetSegmentProperties(SetSegmentPropertiesRequest) returns (SetSegmentPropertiesResponse) {}
+  rpc SetSegmentProperties(SetSegmentPropertiesRequest) returns (SetSegmentPropertiesResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Drop the mutable properties of segments in this dataset.
   //
   // Properties stay stored when a segment is unregistered, so dropping them is up to the client.
   //
   // This endpoint requires the standard dataset headers.
-  rpc DeleteSegmentProperties(DeleteSegmentPropertiesRequest) returns (DeleteSegmentPropertiesResponse) {}
+  rpc DeleteSegmentProperties(DeleteSegmentPropertiesRequest) returns (DeleteSegmentPropertiesResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   /* Indexing */
 
@@ -325,6 +392,7 @@ service RerunCloudService {
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
   rpc QueryDataset(QueryDatasetRequest) returns (stream QueryDatasetResponse) {
     option deprecated = true;
+    option idempotency_level = NO_SIDE_EFFECTS;
   }
 
   // Fetch specific chunks from the catalog server. In a 2-step query process, result of 1st phase,
@@ -332,7 +400,9 @@ service RerunCloudService {
   // the actual chunk requests, which is the 2nd step of the query process.
   //
   // See `FetchChunksRequest` for details on the fields that describe each individual chunk.
-  rpc FetchChunks(FetchChunksRequest) returns (stream FetchChunksResponse) {}
+  rpc FetchChunks(FetchChunksRequest) returns (stream FetchChunksResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Find the candidate chunks for a selection of content and segments.
   //
@@ -340,19 +410,25 @@ service RerunCloudService {
   // rows from the chunks it fetches.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc FindChunks(FindChunksRequest) returns (stream FindChunksResponse) {}
+  rpc FindChunks(FindChunksRequest) returns (stream FindChunksResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // --- Tables ---
   // TODO(jleibs): This will be replaced / extended by Arrow Flight
 
   // Register a foreign table as a new table entry in the catalog.
-  rpc RegisterTable(RegisterTableRequest) returns (RegisterTableResponse) {}
+  rpc RegisterTable(RegisterTableRequest) returns (RegisterTableResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Returns the schema of a table entry.
   //
   // The table is identified by the `x-rerun-entry-id` header, falling back to the deprecated
   // body `table_id` field (see the `Headers` section at the top of this file).
-  rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {}
+  rpc GetTableSchema(GetTableSchemaRequest) returns (GetTableSchemaResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Inspect the contents of a table entry.
   //
@@ -361,7 +437,9 @@ service RerunCloudService {
   //
   // The table is identified by the `x-rerun-entry-id` header, falling back to the deprecated
   // body `table_id` field (see the `Headers` section at the top of this file).
-  rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {}
+  rpc ScanTable(ScanTableRequest) returns (stream ScanTableResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Write record batches to a table.
   //
@@ -369,29 +447,41 @@ service RerunCloudService {
   //
   // TODO(#11645): endpoints with streaming input are not supported by `grpc-web`.
   // A non-streaming shim will need to be added if/when the viewer uses this endpoint.
-  rpc WriteTable(stream WriteTableRequest) returns (WriteTableResponse) {}
+  rpc WriteTable(stream WriteTableRequest) returns (WriteTableResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // --- Tasks ---
 
   // Query the status of submitted tasks
-  rpc QueryTasks(QueryTasksRequest) returns (QueryTasksResponse) {}
+  rpc QueryTasks(QueryTasksRequest) returns (QueryTasksResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Query the status of submitted tasks as soon as they are no longer pending
-  rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse) {}
+  rpc QueryTasksOnCompletion(QueryTasksOnCompletionRequest) returns (stream QueryTasksOnCompletionResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
 
   // Cancel existing tasks
-  rpc CancelTasks(CancelTasksRequest) returns (CancelTasksResponse);
+  rpc CancelTasks(CancelTasksRequest) returns (CancelTasksResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
 
   // --- Utilities ---
 
   // Rerun Manifests maintenance operations: scalar index creation, compaction, etc.
   //
   // This endpoint requires the standard dataset headers (see the `Headers` section at the top of this file).
-  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {}
+  rpc DoMaintenance(DoMaintenanceRequest) returns (DoMaintenanceResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 
   // Run global maintenance operations on the platform: this includes optimization
   // of all datasets, garbage collection of unused data, and can include more in the future.
-  rpc DoGlobalMaintenance(DoGlobalMaintenanceRequest) returns (DoGlobalMaintenanceResponse) {}
+  rpc DoGlobalMaintenance(DoGlobalMaintenanceRequest) returns (DoGlobalMaintenanceResponse) {
+    option idempotency_level = IDEMPOTENCY_UNKNOWN;
+  }
 }
 
 // ---
