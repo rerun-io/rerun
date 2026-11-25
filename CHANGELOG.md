@@ -7,6 +7,7 @@ The Python, C++, and JavaScript SDKs and the CLI are released as usual.
 
 ### ✨ Overview & highlights
 
+- [Agent panel](https://rerun.io/docs/changelog/changeset-0-44#agent-panel): [chat with a coding agent](https://rerun.io/docs/agents#agent-panel) that inspects and controls the Viewer, using your own agent or a model API ([video](https://static.rerun.io/f28ec42d7e0f6423ee585b343fcf9b0d9321567a_agent_panel_find_anomalies.mp4))
 - [Catalog tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-tools-in-the-mcp-server): [`rerun mcp`](https://rerun.io/docs/viewer/extend/mcp#reading-a-catalog) can list and query datasets with SQL, with or without a Viewer
 - [Catalog write tools in the MCP server](https://rerun.io/docs/changelog/changeset-0-44#catalog-write-tools-in-the-mcp-server): agents can [create datasets and upload or register recordings](https://rerun.io/docs/viewer/extend/mcp#changing-a-catalog), asking you before each change
 - [Import MuJoCo (MJCF) models](https://rerun.io/docs/changelog/changeset-0-44#import-mujoco-mjcf-models) from `.mjcf` and `.xml` files, animated with [`MjcfTree`](https://rerun.io/docs/logging-and-ingestion/import/mjcf)
@@ -36,14 +37,8 @@ The Python, C++, and JavaScript SDKs and the CLI are released as usual.
     <source media="(max-width: 1200px)" srcset="https://static.rerun.io/preview-card-layout-after/6832352d2fd7ad9cfcec49b13b17a48fd5fe584d/1200w.png">
   </picture>
 - [Stream dataset selections as Arrow batches](https://rerun.io/docs/changelog/changeset-0-44#stream-dataset-selections-as-arrow-batches) with [`DatasetSelection.read_arrow()`](https://rerun.io/docs/query-and-transform/catalog/get-data-out#streaming-arrow-batches)
+- [Query annotated time spans](https://rerun.io/docs/changelog/changeset-0-44#query-annotated-time-spans) with [`rerun.experimental.spans.SpanTable`](https://rerun.io/docs/query-and-transform/dataframes/spans)
 - [Measure dataloader pipeline performance](https://rerun.io/docs/changelog/changeset-0-44#measure-dataloader-pipeline-performance) with `dataset.metrics.summary()` in the [dataloader](https://rerun.io/docs/train/dataloader)
-
-#### 🧪 Experimental and unstable
-
-These may change in future releases, and unstable types may not stay backwards compatible.
-
-- [Agent panel](https://rerun.io/docs/changelog/changeset-0-44#experimental-agent-panel): [chat with a coding agent](https://rerun.io/docs/agents#agent-panel) that inspects and controls the Viewer, using your own agent or a model API ([video](https://static.rerun.io/f28ec42d7e0f6423ee585b343fcf9b0d9321567a_agent_panel_find_anomalies.mp4))
-- [Query annotated time spans](https://rerun.io/docs/changelog/changeset-0-44#experimental-query-annotated-time-spans) with [`rerun.experimental.spans.SpanTable`](https://rerun.io/docs/query-and-transform/dataframes/spans)
 
 📖 Release notes: https://rerun.io/docs/changelog/changeset-0-44#highlights
 
@@ -54,7 +49,7 @@ These may change in future releases, and unstable types may not stay backwards c
 - [The `@rerun-io/web-viewer` npm package sends usage data by default](https://rerun.io/docs/changelog/changeset-0-44#the-rerun-ioweb-viewer-npm-package-sends-usage-data-by-default)
 - [Blueprint APIs return `RegisteredBlueprint` instead of blueprint ID strings](https://rerun.io/docs/changelog/changeset-0-44#blueprint-apis-return-registeredblueprint-instead-of-blueprint-id-strings)
 - [`UrdfTree.from_file_path` splits `entity_path_prefix` into path parts](https://rerun.io/docs/changelog/changeset-0-44#urdftreefrom_file_path-splits-entity_path_prefix-into-path-parts)
-- [Experimental dataloader `Manifest` replaced by curations](https://rerun.io/docs/changelog/changeset-0-44#experimental-dataloader-manifest-replaced-by-curations)
+- [Dataloader curations replace sampling manifests](https://rerun.io/docs/changelog/changeset-0-44#dataloader-curations-replace-sampling-manifests)
 - [`ImportedData` and `SplitFrom` have named fields](https://rerun.io/docs/changelog/changeset-0-44#importeddata-and-splitfrom-have-named-fields)
 
 🧳 Migration guide: https://rerun.io/docs/changelog/changeset-0-44#breaking-changes

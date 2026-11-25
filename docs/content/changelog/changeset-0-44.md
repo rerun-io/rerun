@@ -15,7 +15,7 @@ See [How can I register a recording under another segment ID?](../query-and-tran
 
 ## New features
 
-### Experimental agent panel
+### Agent panel
 
 The Viewer has a new agent panel: chat with a coding agent that can inspect and control the Viewer through the [Viewer MCP tools](../viewer/extend/mcp.md).
 Open it with the agent button in the top right corner, or press Tab in the command palette to ask the agent directly.
@@ -121,7 +121,7 @@ Use `DatasetSelection.read_arrow()` to stream dataset selections as PyArrow reco
 Unlike `reader()`, which returns a lazy DataFusion `DataFrame`, `read_arrow()` starts the query and returns a stream of Arrow record batches.
 See the [streaming example](../query-and-transform/catalog/get-data-out.md#streaming-arrow-batches).
 
-### Experimental: query annotated time spans
+### Query annotated time spans
 
 The experimental `rerun.experimental.spans.SpanTable` stores time span annotations, such as task labels and scores, for a dataset's recordings in a catalog table.
 Add and edit spans with `append` and `upsert`, then select them with DataFusion filters on `reader()`, joined with the recordings' properties.
@@ -253,7 +253,7 @@ Fixed a bug where `UrdfTree.from_file_path` treated `entity_path_prefix="world/r
 It now interprets the prefix as two entity path parts, matching the behavior of `log_file_from_path`.
 If you rely on the old parsing behavior, pass `rr.escape_entity_path_part("world/robot")` as the prefix to preserve the single-part path.
 
-### Experimental dataloader `Manifest` replaced by curations
+### Dataloader curations replace sampling manifests
 
 Replace the experimental `Manifest` / `from_manifest()` API with [`Curation.from_source()` and `DataSource(dataset, curation=curation)`](../train/dataloader.md#train-on-selected-spans); v1 manifest files must be regenerated as curations from selected recordings and optional span intervals.
 The resolved Arrow output is the training manifest; content filters, fields, and sampling remain loader configuration, `Field.max_staleness` is removed, and iterable loaders skip unresolved samples instead of enforcing strict frozen replay.
