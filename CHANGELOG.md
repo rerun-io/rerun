@@ -88,6 +88,7 @@ The `rerun` CLI is available via `pip install rerun-sdk` or the binaries attache
 #### 🪳 Bug fixes
 - Fix chunk prefetching when several recordings share the budget [ba8d334](https://github.com/rerun-io/rerun/commit/ba8d334af687e3c8239ac3c5cbe316a45cff8269)
 - Fix video stuck loading when `ffmpeg -version` stalls [c15895d](https://github.com/rerun-io/rerun/commit/c15895dd955e38e183440f0bf30984e48566afbe)
+- Don't block the UI on the FFmpeg version check [#13030](https://github.com/rerun-io/rerun/pull/13030) (thanks [@iseemhlyfta](https://github.com/iseemhlyfta)!)
 - Only fade the video that is buffering [af446a1](https://github.com/rerun-io/rerun/commit/af446a15a0136ff0834cfbe9ffd4d24d72e26ee4)
 - Fix pinhole resolution fallback for video streams [0c39e2f](https://github.com/rerun-io/rerun/commit/0c39e2fe73762dff88c8b1bd2812d32b1db958da)
 - Fix spurious FFmpeg NAL warning on H.265 video [7019465](https://github.com/rerun-io/rerun/commit/70194656587b801da40e6fc1e192d45c1de13472)
@@ -97,7 +98,9 @@ The `rerun` CLI is available via `pip install rerun-sdk` or the binaries attache
 - Fix [table preview card](https://rerun.io/docs/viewer/blueprints/configure-table-blueprints) sizing and aspect ratios [0662984](https://github.com/rerun-io/rerun/commit/0662984b15ddb5eaddff70504d2ef2aaffb7ee85)
 - Show why the agent exited in the [agent panel](https://rerun.io/docs/agents#agent-panel) [ccaa4b3](https://github.com/rerun-io/rerun/commit/ccaa4b3ce648b472f13c21b57ad2a674f4d78d09)
 - Make [`rerun rrd compare`](https://rerun.io/docs/reference/cli#rerun-rrd-compare) treat NaN as equal to NaN [638309f](https://github.com/rerun-io/rerun/commit/638309f77b98e87a92dbbc92808cdccbd93d81bf)
+- Fix duplicated and dropped data in [`rerun rrd split`](https://rerun.io/docs/reference/cli#rerun-rrd-split) [#13006](https://github.com/rerun-io/rerun/pull/13006) (thanks [@ragen1337](https://github.com/ragen1337)!)
 - Only show the update notice once per release [f824a15](https://github.com/rerun-io/rerun/commit/f824a15a1dbce6df17a9fd2fe57f061471a1e65b)
+- Show on/off state in top-bar toggles, and group panel toggles [a54fe1d](https://github.com/rerun-io/rerun/commit/a54fe1dde53ea3d2e0631f4ebc2e6a1c35d0bf6f)
 - Fix close button placement in the About dialog [b2cc69c](https://github.com/rerun-io/rerun/commit/b2cc69cb2f345f6aa69b9fc001dcfaa47ac67217)
 - Resolve a few stale to-do comments and remove some obsolete workarounds [a3de3fb](https://github.com/rerun-io/rerun/commit/a3de3fbe09bff309de7ed42ae5a243bedb9243c8)
 
