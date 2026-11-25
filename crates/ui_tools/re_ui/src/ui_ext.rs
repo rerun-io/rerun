@@ -263,6 +263,7 @@ pub trait UiExt {
         rect
     }
 
+    /// An icon button that toggles `selected`, with a bright icon while it is on.
     fn medium_icon_toggle_button(
         &mut self,
         icon: &Icon,
@@ -271,10 +272,11 @@ pub trait UiExt {
     ) -> egui::Response {
         let size_points = egui::Vec2::splat(16.0); // TODO(emilk): get from design tokens
 
+        let tokens = self.tokens();
         let tint = if *selected {
-            self.ui().visuals().widgets.inactive.fg_stroke.color
+            tokens.text_strong
         } else {
-            self.ui().visuals().widgets.noninteractive.fg_stroke.color
+            tokens.text_default
         };
         let alt_text = alt_text.into();
         let mut response = self.ui_mut().add(
@@ -284,7 +286,9 @@ pub trait UiExt {
                     .alt_text(alt_text.clone())
                     .tint(tint),
             )
-            .icon_button(),
+            .icon_button()
+            // The tint is what shows whether the toggle is on.
+            .image_tint_follows_text_color(false),
         );
         if response.clicked() {
             *selected = !*selected;
