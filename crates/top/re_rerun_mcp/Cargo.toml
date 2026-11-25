@@ -30,7 +30,7 @@ test = false
 
 [dependencies]
 egui_inspection.workspace = true
-egui_mcp.workspace = true
+egui_inspection_tools.workspace = true
 re_agent_tools.workspace = true
 re_analytics.workspace = true
 re_async.workspace = true
@@ -43,6 +43,8 @@ re_uri.workspace = true
 re_viewer_control_tools.workspace = true
 
 base64.workspace = true
+futures.workspace = true
+itertools.workspace = true
 parking_lot.workspace = true
 rmcp.workspace = true
 rustls = { workspace = true, features = ["ring"] }

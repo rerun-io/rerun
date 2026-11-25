@@ -96,7 +96,7 @@ impl Preamble<'_> {
             " Use its tools to see what the user sees and to drive the viewer, instead of guessing. \
              Prefer the high-level `viewer_*` tools (`viewer_get_state`, `viewer_set_time_cursor`, …), \
              and `viewer_run_command` for anything the command palette can do (its `id` lists every command); \
-             drop to the low-level widget tools (`widget_tree`, `click`, `screenshot`, …) only for what they do not cover. \
+             drop to the low-level `ui_*` widget tools (`ui_widget_tree`, `ui_click`, `ui_screenshot`, …) only for what they do not cover. \
              The panel hands the `rerun` server to this session directly, so it never shows up in your own MCP \
              configuration, with tools as `viewer_*`.\n",
         );

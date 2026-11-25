@@ -607,9 +607,10 @@ See <https://rerun.io/docs/viewer/extend/mcp> for details.
 > Possible values:
 >
 > * `viewer`: Drive a running Rerun Viewer
+> * `egui`: Click, type, and look at the widgets of the Viewer the viewer toolset connects to
 > * `catalog`: Read and add to a Rerun catalog server. Every change asks the user first
 >
-> [Default: `viewer`, `catalog`]
+> [Default: `viewer`, `egui`, `catalog`]
 
 * `--catalog-read-only <CATALOG_READ_ONLY>`
 > Leave out the catalog tools that create, rename, or upload.

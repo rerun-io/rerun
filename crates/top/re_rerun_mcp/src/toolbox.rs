@@ -23,8 +23,10 @@ fn to_mcp_tool(definition: ToolDefinition) -> Tool {
         description,
         input_schema,
         effect,
+        open_world,
     } = definition;
-    Tool::new(name, description, Arc::new(input_schema)).with_annotations(annotations(effect))
+    Tool::new(name, description, Arc::new(input_schema))
+        .with_annotations(annotations(effect, open_world))
 }
 
 /// Run the tool `name` of `toolbox`, and shape its outcome as an MCP tool result.

@@ -104,6 +104,7 @@ mod tests {
                     description: String::new(),
                     input_schema: Map::new(),
                     effect: ToolEffect::ReadOnly,
+                    open_world: false,
                 })
                 .collect()
         }
@@ -193,6 +194,7 @@ mod tests {
                         description: String::new(),
                         input_schema: Map::new(),
                         effect: ToolEffect::NonDestructive,
+                        open_world: false,
                     })
                     .into_iter()
                     .collect()

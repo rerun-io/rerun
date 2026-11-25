@@ -153,6 +153,8 @@ impl CatalogTool {
             description: self.description().to_owned(),
             input_schema: self.input_schema(),
             effect: self.effect(),
+            // Every tool talks to a catalog server, which may be anywhere.
+            open_world: true,
         }
     }
 
@@ -414,6 +416,7 @@ mod tests {
                     description,
                     input_schema,
                     effect,
+                    open_world: _,
                 } = tool.definition();
                 serde_json::json!({
                     "name": name,

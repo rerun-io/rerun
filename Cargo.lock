@@ -3637,7 +3637,7 @@ dependencies = [
 [[package]]
 name = "egui_inspection_tools"
 version = "0.1.0"
-source = "git+https://github.com/rerun-io/egui_crates.git?branch=main#8fe3f6f4afa59f334ca1a932fd4e08d717a331fe"
+source = "git+https://github.com/rerun-io/egui_crates.git?branch=main#54b452e2b09e748511132d7be179c5d5b2ae566d"
 dependencies = [
  "accesskit",
  "accesskit_consumer",
@@ -3669,23 +3669,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "egui_mcp"
-version = "0.3.0"
-source = "git+https://github.com/rerun-io/egui_crates.git?branch=main#8fe3f6f4afa59f334ca1a932fd4e08d717a331fe"
-dependencies = [
- "base64 0.23.1",
- "egui",
- "egui_inspection",
- "egui_inspection_tools",
- "rmcp",
- "schemars 1.2.2",
- "serde",
- "serde_json",
- "tokio",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "egui_plot"
 version = "0.38.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3714,7 +3697,7 @@ dependencies = [
 [[package]]
 name = "egui_table"
 version = "0.11.0"
-source = "git+https://github.com/rerun-io/egui_crates.git?branch=main#8fe3f6f4afa59f334ca1a932fd4e08d717a331fe"
+source = "git+https://github.com/rerun-io/egui_crates.git?branch=main#54b452e2b09e748511132d7be179c5d5b2ae566d"
 dependencies = [
  "egui",
  "serde",
@@ -3724,7 +3707,7 @@ dependencies = [
 [[package]]
 name = "egui_tiles"
 version = "0.18.0"
-source = "git+https://github.com/rerun-io/egui_crates.git?branch=main#8fe3f6f4afa59f334ca1a932fd4e08d717a331fe"
+source = "git+https://github.com/rerun-io/egui_crates.git?branch=main#54b452e2b09e748511132d7be179c5d5b2ae566d"
 dependencies = [
  "ahash",
  "egui",
@@ -8465,7 +8448,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "03da047801ff44bb6a4d407d4860c05fd70bb81714e6b2f3812603d5b145b042"
 dependencies = [
  "heck",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "log",
  "multimap",
  "petgraph",
@@ -8484,7 +8467,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b570b25f7617e43d59005d0990ccb79e950a423952cea19671b7a876da390adf"
 dependencies = [
  "anyhow",
- "itertools 0.13.0",
+ "itertools 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.119",
@@ -11047,8 +11030,10 @@ version = "0.44.0-alpha.1+dev"
 dependencies = [
  "base64 0.23.1",
  "egui_inspection",
- "egui_mcp",
+ "egui_inspection_tools",
+ "futures",
  "insta",
+ "itertools 0.15.0",
  "parking_lot",
  "re_agent_tools",
  "re_analytics",
@@ -12342,6 +12327,7 @@ dependencies = [
  "re_protos",
  "re_workspace_hack",
  "serde_json",
+ "strum 0.26.3",
  "thiserror 2.0.19",
 ]
 

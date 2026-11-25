@@ -216,6 +216,8 @@ fn definition(skills: &SkillFiles) -> ToolDefinition {
             _ => Map::new(),
         },
         effect: ToolEffect::ReadOnly,
+        // The skills are bundled with the viewer.
+        open_world: false,
     }
 }
 

@@ -403,8 +403,8 @@ message ViewerControlRequest {
     // The FFmpeg path and the cache directory are read-only.
     SetSettingsRequest set_settings = 26;
 
-    // When adding an operation, decide whether agents may run it without asking the user:
-    // see `OPERATIONS_WITHOUT_APPROVAL` in `crates/viewer_support/re_viewer_control_tools/src/lib.rs`.
+    // When adding an operation, add it to `Operation` in
+    // `crates/viewer_support/re_viewer_control_tools/src/operation.rs` too.
   }
 }
 
@@ -1259,7 +1259,7 @@ message ViewerTimeline {
 // Request for `HighlightRect`.
 message HighlightRectRequest {
   // The rectangle to outline, in logical points from the top-left corner of the viewer — the
-  // same coordinate frame `get_widget` reports a widget's `bounds` in, so those bounds can be
+  // same coordinate frame `ui_get_widget` reports a widget's `bounds` in, so those bounds can be
   // passed straight through.
   //
   // Omit it to dismiss the current highlight instead.
@@ -1272,7 +1272,7 @@ message HighlightRectRequest {
 // A rectangle on the viewer's screen.
 //
 // In logical points from the top-left corner of the viewer window — the same coordinate frame
-// `get_widget` reports a widget's `bounds` in, so those can be passed straight through.
+// `ui_get_widget` reports a widget's `bounds` in, so those can be passed straight through.
 message ScreenRect {
   // Distance from the left edge of the viewer to the left edge of the rectangle.
   float x = 1;

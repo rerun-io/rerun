@@ -1874,7 +1874,7 @@ impl ::prost::Name for ViewerTimeline {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct HighlightRectRequest {
     /// The rectangle to outline, in logical points from the top-left corner of the viewer — the
-    /// same coordinate frame `get_widget` reports a widget's `bounds` in, so those bounds can be
+    /// same coordinate frame `ui_get_widget` reports a widget's `bounds` in, so those bounds can be
     /// passed straight through.
     ///
     /// Omit it to dismiss the current highlight instead.
@@ -1897,7 +1897,7 @@ impl ::prost::Name for HighlightRectRequest {
 /// A rectangle on the viewer's screen.
 ///
 /// In logical points from the top-left corner of the viewer window — the same coordinate frame
-/// `get_widget` reports a widget's `bounds` in, so those can be passed straight through.
+/// `ui_get_widget` reports a widget's `bounds` in, so those can be passed straight through.
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ScreenRect {
     /// Distance from the left edge of the viewer to the left edge of the rectangle.

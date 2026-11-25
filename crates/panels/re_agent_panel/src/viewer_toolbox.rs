@@ -13,7 +13,7 @@ use re_protos::viewer_control::v1alpha1::{
     ViewerControlRequest, ViewerControlResponse, viewer_control_response,
 };
 use re_viewer_context::CommandKind;
-use re_viewer_control_tools::{ScreenshotDelivery, TOOL_NAME_PREFIX};
+use re_viewer_control_tools::{Operation, ScreenshotDelivery, TOOL_NAME_PREFIX};
 use serde_json::{Map, Value};
 
 /// A model-API agent sees images directly. See [`ScreenshotDelivery::Inline`].
@@ -23,10 +23,6 @@ const SCREENSHOT_DELIVERY: ScreenshotDelivery = ScreenshotDelivery::Inline;
 /// time, so more than one waiting means the viewer has stopped serving them.
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_WAITING_CALLS: usize = 4;
-
-/// The operation that runs a UI command, which needs approval only for commands the user cannot
-/// easily undo. See [`CommandKind::is_easily_undone`].
-const RUN_COMMAND_OPERATION: &str = "run_command";
 
 /// Why a viewer-control tool call failed. The message is sent back to the model.
 #[derive(Debug, thiserror::Error)]
@@ -164,6 +160,7 @@ impl AgentToolbox for ViewerToolbox {
                 description: tool.description.clone(),
                 input_schema: tool.input_schema.clone(),
                 effect: tool.effect,
+                open_world: tool.open_world,
             })
             .collect()
     }
@@ -174,9 +171,12 @@ impl AgentToolbox for ViewerToolbox {
         if let Some(tool) = re_catalog_tools::CatalogTool::from_name(name) {
             return tool.requires_approval();
         }
-        let operation = name.strip_prefix(TOOL_NAME_PREFIX);
-        if operation == Some(RUN_COMMAND_OPERATION) {
-            // An unknown command fails in the viewer anyway, but asking costs nothing.
+        let operation = name
+            .strip_prefix(TOOL_NAME_PREFIX)
+            .and_then(Operation::from_name);
+        if operation == Some(Operation::RunCommand) {
+            // A command needs approval only if the user cannot easily undo it. An unknown command
+            // fails in the viewer anyway, but asking costs nothing.
             return arguments
                 .get("id")
                 .and_then(Value::as_str)
@@ -254,7 +254,7 @@ mod tests {
         let needs_approval = |id: String| {
             let arguments = Map::from_iter([("id".to_owned(), Value::from(id))]);
             toolbox.requires_approval(
-                &format!("{TOOL_NAME_PREFIX}{RUN_COMMAND_OPERATION}"),
+                &format!("{TOOL_NAME_PREFIX}{}", Operation::RunCommand.name()),
                 &arguments,
             )
         };
@@ -310,10 +310,11 @@ mod tests {
             description,
             mut input_schema,
             effect: _,
+            open_world: _,
         } = toolbox
             .definitions()
             .into_iter()
-            .find(|tool| tool.name == format!("{TOOL_NAME_PREFIX}{RUN_COMMAND_OPERATION}"))
+            .find(|tool| tool.name == format!("{TOOL_NAME_PREFIX}{}", Operation::RunCommand.name()))
             .expect("the run_command tool");
 
         // The same snapshot for debug and release builds.
