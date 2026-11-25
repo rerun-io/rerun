@@ -1,2 +1,0 @@
-# The `rerun.utilities.datafusion` Python reference page goes live with the next release.
-^https://ref\.rerun\.io/docs/python/stable/utilities_datafusion/
